@@ -1,0 +1,201 @@
+timestamp,message
+1771023786571,"[2m2026-02-13T23:03:06.571911Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_autocomplete_normalized_full_vector_gin"" already exists, skipping"
+1771023786576,"[2m2026-02-13T23:03:06.576123Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_autocomplete_normalized_filters"" already exists, skipping"
+1771023786582,[2m2026-02-13T23:03:06.582486Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Optimisation matching vectoriel appliquée avec succès !
+1771023786582,[2m2026-02-13T23:03:06.582520Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Migration auto: vector matching optimization OK
+1771023786582,[2m2026-02-13T23:03:06.582569Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m 🔍 Application migration image search vector matching optimization...
+1771023786583,[2m2026-02-13T23:03:06.583446Z[0m [31mERROR[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ❌ Erreur migration auto image search vector matching: error returned from database: cannot insert multiple commands into a prepared statement
+1771023786583,[2m2026-02-13T23:03:06.583532Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m 🔍 Application migration fix image search to_tsvector error...
+1771023786584,[2m2026-02-13T23:03:06.584266Z[0m [31mERROR[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ❌ Erreur migration auto fix image search to_tsvector: error returned from database: cannot insert multiple commands into a prepared statement
+1771023786584,[2m2026-02-13T23:03:06.584360Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m 🔍 Application migration audio search cache optimization...
+1771023786585,[2m2026-02-13T23:03:06.585507Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Migration audio search cache optimization appliquée
+1771023786585,[2m2026-02-13T23:03:06.585571Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m 🔧 Correction de la fonction run_audio_cache_cleanup avec gestion NULL...
+1771023786586,[2m2026-02-13T23:03:06.586211Z[0m [31mERROR[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ❌ Erreur migration auto audio search cache: error returned from database: cannot insert multiple commands into a prepared statement
+1771023786586,[2m2026-02-13T23:03:06.586222Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m 🔍 Application migration search performance final optimization...
+1771023786586,[2m2026-02-13T23:03:06.586891Z[0m [31mERROR[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ❌ Erreur migration auto search performance final: error returned from database: cannot insert multiple commands into a prepared statement
+1771023786586,[2m2026-02-13T23:03:06.586901Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m 🔍 Vérification de la table autocomplete_combinations...
+1771023786589,[2m2026-02-13T23:03:06.589516Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Table autocomplete_combinations déjà présente
+1771023786627,[2m2026-02-13T23:03:06.627642Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m 🔄 Mise à jour de la fonction upsert_autocomplete_combination...
+1771023786631,[2m2026-02-13T23:03:06.631136Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Fonction upsert_autocomplete_combination mise à jour
+1771023786638,"[2m2026-02-13T23:03:06.638016Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_combinations_service_id"" already exists, skipping"
+1771023786639,"[2m2026-02-13T23:03:06.639352Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_combinations_session"" already exists, skipping"
+1771023786641,"[2m2026-02-13T23:03:06.641218Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_combinations_ai_preferred"" already exists, skipping"
+1771023786643,"[2m2026-02-13T23:03:06.643306Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_combinations_product_vector_gin"" already exists, skipping"
+1771023786645,"[2m2026-02-13T23:03:06.644974Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_combinations_location_vector_gin"" already exists, skipping"
+1771023786652,"[2m2026-02-13T23:03:06.652129Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_combinations_full_vector_gin"" already exists, skipping"
+1771023786656,"[2m2026-02-13T23:03:06.656617Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_combinations_usage_count"" already exists, skipping"
+1771023786658,"[2m2026-02-13T23:03:06.658038Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_combinations_variant"" already exists, skipping"
+1771023786681,[2m2026-02-13T23:03:06.681428Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Table autocomplete_combinations créée avec succès !
+1771023786681,[2m2026-02-13T23:03:06.681442Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m 🧹 Nettoyage des doublons dans autocomplete_combinations (full_vector)
+1771023786687,[2m2026-02-13T23:03:06.686957Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ 0 doublons full_vector supprimés
+1771023786687,[2m2026-02-13T23:03:06.686969Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m 🧹 Nettoyage des doublons dans autocomplete_combinations (product_vector)
+1771023786691,[2m2026-02-13T23:03:06.691319Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ 0 doublons product_vector supprimés
+1771023786691,[2m2026-02-13T23:03:06.691354Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Migration auto: autocomplete_combinations table OK
+1771023786691,[2m2026-02-13T23:03:06.691394Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m 🔍 Vérification de la table token_usage_logs...
+1771023786693,[2m2026-02-13T23:03:06.693355Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Table token_usage_logs déjà présente
+1771023786801,[2m2026-02-13T23:03:06.801187Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Migration auto: token_usage_logs table OK
+1771023786801,[2m2026-02-13T23:03:06.801212Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m 🔍 Vérification de la table service_reviews...
+1771023786804,[2m2026-02-13T23:03:06.804247Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Table service_reviews déjà présente
+1771023786831,"[2m2026-02-13T23:03:06.831634Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_service_reviews_service"" already exists, skipping"
+1771023786832,"[2m2026-02-13T23:03:06.832766Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_service_reviews_user"" already exists, skipping"
+1771023786834,"[2m2026-02-13T23:03:06.834635Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_service_reviews_reply_to"" already exists, skipping"
+1771023786834,[2m2026-02-13T23:03:06.834769Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Table service_reviews vérifiée/créée avec succès !
+1771023786834,[2m2026-02-13T23:03:06.834778Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Migration auto: service_reviews table OK
+1771023786834,[2m2026-02-13T23:03:06.834782Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m 🔍 Vérification de la table product_comments...
+1771023786847,"[2m2026-02-13T23:03:06.847753Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Table product_comments déjà présente, vérification des colonnes..."
+1771023786896,"[2m2026-02-13T23:03:06.896314Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_product_comments_service"" already exists, skipping"
+1771023786902,"[2m2026-02-13T23:03:06.902139Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_product_comments_parent"" already exists, skipping"
+1771023786903,"[2m2026-02-13T23:03:06.903699Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_product_comments_user"" already exists, skipping"
+1771023786909,[2m2026-02-13T23:03:06.909761Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m 🔍 Vérification de la table product_comment_reactions...
+1771023786912,"[2m2026-02-13T23:03:06.912556Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_product_comment_reactions_comment"" already exists, skipping"
+1771023786914,"[2m2026-02-13T23:03:06.914044Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_product_comment_reactions_user"" already exists, skipping"
+1771023786918,[2m2026-02-13T23:03:06.918121Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Tables product_comments et product_comment_reactions vérifiées/créées avec succès !
+1771023786918,[2m2026-02-13T23:03:06.918180Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Migration auto: product_comments table OK
+1771023786918,[2m2026-02-13T23:03:06.918190Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m 🔍 Vérification des tables livraison (enums + structures)...
+1771023786918,[2m2026-02-13T23:03:06.918194Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ➡️ [delivery_migration] Create enum delivery_status
+1771023786919,[2m2026-02-13T23:03:06.919744Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ [delivery_migration] Create enum delivery_status (0 lignes affectées)
+1771023786919,[2m2026-02-13T23:03:06.919797Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ➡️ [delivery_migration] Create enum delivery_cancel_reason
+1771023786921,[2m2026-02-13T23:03:06.921057Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ [delivery_migration] Create enum delivery_cancel_reason (0 lignes affectées)
+1771023786921,[2m2026-02-13T23:03:06.921138Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ➡️ [delivery_migration] Create enum delivery_engine_type
+1771023786924,[2m2026-02-13T23:03:06.924582Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ [delivery_migration] Create enum delivery_engine_type (0 lignes affectées)
+1771023786924,[2m2026-02-13T23:03:06.924607Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ➡️ [delivery_migration] Create enum delivery_courier_status
+1771023786926,[2m2026-02-13T23:03:06.926279Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ [delivery_migration] Create enum delivery_courier_status (0 lignes affectées)
+1771023786926,[2m2026-02-13T23:03:06.926332Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ➡️ [delivery_migration] Create enum delivery_terrain_difficulty
+1771023786929,[2m2026-02-13T23:03:06.929834Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ [delivery_migration] Create enum delivery_terrain_difficulty (0 lignes affectées)
+1771023786929,[2m2026-02-13T23:03:06.929876Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ➡️ [delivery_migration] Create enum delivery_application_status
+1771023786940,[2m2026-02-13T23:03:06.940845Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ [delivery_migration] Create enum delivery_application_status (0 lignes affectées)
+1771023786940,[2m2026-02-13T23:03:06.940901Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ➡️ [delivery_migration] Create enum delivery_matching_status
+1771023786941,[2m2026-02-13T23:03:06.941892Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ [delivery_migration] Create enum delivery_matching_status (0 lignes affectées)
+1771023786941,[2m2026-02-13T23:03:06.941945Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ➡️ [delivery_migration] Create parcel_types table
+1771023786942,"[2m2026-02-13T23:03:06.942832Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""parcel_types"" already exists, skipping"
+1771023786942,[2m2026-02-13T23:03:06.942900Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ [delivery_migration] Create parcel_types table (0 lignes affectées)
+1771023786942,[2m2026-02-13T23:03:06.942935Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ➡️ [delivery_migration] Create parcel_types slug index
+1771023786944,"[2m2026-02-13T23:03:06.944010Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_parcel_types_slug"" already exists, skipping"
+1771023786944,[2m2026-02-13T23:03:06.944162Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ [delivery_migration] Create parcel_types slug index (0 lignes affectées)
+1771023786944,[2m2026-02-13T23:03:06.944197Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ➡️ [delivery_migration] Create courier_applications table
+1771023786945,"[2m2026-02-13T23:03:06.945657Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""courier_applications"" already exists, skipping"
+1771023786945,[2m2026-02-13T23:03:06.945794Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ [delivery_migration] Create courier_applications table (0 lignes affectées)
+1771023786945,[2m2026-02-13T23:03:06.945826Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ➡️ [delivery_migration] Create courier_applications unique index
+1771023786946,"[2m2026-02-13T23:03:06.946854Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_courier_applications_user"" already exists, skipping"
+1771023786946,[2m2026-02-13T23:03:06.946923Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ [delivery_migration] Create courier_applications unique index (0 lignes affectées)
+1771023786947,[2m2026-02-13T23:03:06.946947Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ➡️ [delivery_migration] Create couriers table
+1771023786947,"[2m2026-02-13T23:03:06.947941Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""couriers"" already exists, skipping"
+1771023786947,[2m2026-02-13T23:03:06.947963Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ [delivery_migration] Create couriers table (0 lignes affectées)
+1771023786948,[2m2026-02-13T23:03:06.948011Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ➡️ [delivery_migration] Create courier_assets table
+1771023786949,"[2m2026-02-13T23:03:06.949476Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""courier_assets"" already exists, skipping"
+1771023786949,[2m2026-02-13T23:03:06.949557Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ [delivery_migration] Create courier_assets table (0 lignes affectées)
+1771023786949,[2m2026-02-13T23:03:06.949626Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ➡️ [delivery_migration] Create courier_assets courier index
+1771023786951,"[2m2026-02-13T23:03:06.951739Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_courier_assets_courier"" already exists, skipping"
+1771023786951,[2m2026-02-13T23:03:06.951859Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ [delivery_migration] Create courier_assets courier index (0 lignes affectées)
+1771023786951,[2m2026-02-13T23:03:06.951911Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ➡️ [delivery_migration] Create courier_assets primary unique index
+1771023786954,"[2m2026-02-13T23:03:06.954348Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_courier_assets_primary"" already exists, skipping"
+1771023786954,[2m2026-02-13T23:03:06.954490Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ [delivery_migration] Create courier_assets primary unique index (0 lignes affectées)
+1771023786954,[2m2026-02-13T23:03:06.954537Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ➡️ [delivery_migration] Create delivery_partner_type enum
+1771023786955,[2m2026-02-13T23:03:06.955903Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ [delivery_migration] Create delivery_partner_type enum (0 lignes affectées)
+1771023786955,[2m2026-02-13T23:03:06.955940Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ➡️ [delivery_migration] Create delivery_partners table
+1771023786956,"[2m2026-02-13T23:03:06.956906Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""delivery_partners"" already exists, skipping"
+1771023786956,[2m2026-02-13T23:03:06.956958Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ [delivery_migration] Create delivery_partners table (0 lignes affectées)
+1771023786956,[2m2026-02-13T23:03:06.956964Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ➡️ [delivery_migration] Create delivery_partners indexes
+1771023786957,[2m2026-02-13T23:03:06.957684Z[0m [31mERROR[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ❌ [delivery_migration] Create delivery_partners indexes -> error returned from database: cannot insert multiple commands into a prepared statement
+1771023786957,[2m2026-02-13T23:03:06.957709Z[0m [31mERROR[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m 🧾 SQL [Create delivery_partners indexes]: CREATE INDEX IF NOT EXISTS idx_delivery_partners_name ON delivery_partners(name);
+1771023786957,        CREATE INDEX IF NOT EXISTS idx_delivery_partners_active ON delivery_partners(is_active);
+1771023786957,        CREATE INDEX IF NOT EXISTS idx_delivery_partners_created_by ON delivery_partners(created_by);
+1771023786957,        CREATE INDEX IF NOT EXISTS idx_delivery_partners_type ON delivery_partners(partner_type);
+1771023786957,[2m2026-02-13T23:03:06.957726Z[0m [31mERROR[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ❌ Erreur migration auto tables livraison: error returned from database: cannot insert multiple commands into a prepared statement
+1771023786957,[2m2026-02-13T23:03:06.957741Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m 🔍 Vérification des seeds livraison (parcel_types alignés avec véhicules)...
+1771023786961,[2m2026-02-13T23:03:06.961589Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Seeds livraison (types alignés avec véhicules) vérifiés
+1771023786961,[2m2026-02-13T23:03:06.961621Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Migration auto: seeds livraison OK
+1771023786961,[2m2026-02-13T23:03:06.961637Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m 🔍 Vérification de la table product_reactions...
+1771023786963,[2m2026-02-13T23:03:06.963373Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Table product_reactions déjà présente
+1771023786974,"[2m2026-02-13T23:03:06.974247Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m function get_product_reactions_count(pg_catalog.int4,text) does not exist, skipping"
+1771023786978,[2m2026-02-13T23:03:06.978756Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Table product_reactions et ses composants vérifiés/créés avec succès !
+1771023786978,[2m2026-02-13T23:03:06.978798Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Migration auto: product_reactions table OK
+1771023786978,[2m2026-02-13T23:03:06.978830Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m 🔍 Vérification du système de mentions dans chat...
+1771023786993,[2m2026-02-13T23:03:06.993546Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Migration auto: chat mentions OK
+1771023786993,[2m2026-02-13T23:03:06.993590Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m 🔍 Vérification de la table search_history...
+1771023786995,[2m2026-02-13T23:03:06.995674Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Table search_history déjà présente
+1771023786995,[2m2026-02-13T23:03:06.995750Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Migration auto: search_history OK
+1771023786995,[2m2026-02-13T23:03:06.995759Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m 🔍 Vérification de la table alerts...
+1771023786997,[2m2026-02-13T23:03:06.997887Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Table alerts déjà présente
+1771023786997,[2m2026-02-13T23:03:06.997911Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Migration auto: alerts OK
+1771023786997,[2m2026-02-13T23:03:06.997922Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m 🔍 Vérification des tables signalements...
+1771023787002,[2m2026-02-13T23:03:07.002249Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Table signalements déjà présente
+1771023787002,[2m2026-02-13T23:03:07.002328Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Migration auto: signalements OK
+1771023787002,[2m2026-02-13T23:03:07.002338Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m 🔍 Vérification de la table private_conversations...
+1771023787005,[2m2026-02-13T23:03:07.004984Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Table private_conversations déjà présente
+1771023787005,[2m2026-02-13T23:03:07.005049Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Migration auto: private_conversations OK
+1771023787005,[2m2026-02-13T23:03:07.005080Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m 🔍 Vérification de la table bus_reservations...
+1771023787006,[2m2026-02-13T23:03:07.006870Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Table bus_reservations déjà présente
+1771023787006,[2m2026-02-13T23:03:07.006923Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Migration auto: bus_reservations OK
+1771023787010,"[2m2026-02-13T23:03:07.010500Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ℹ️ Aucun service actif à indexer, réindexation non nécessaire"
+1771023787010,[2m2026-02-13T23:03:07.010553Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Migration auto: réindexation services existants OK
+1771023787010,[2m2026-02-13T23:03:07.010561Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m 🔍 Création/Mise à jour des fonctions de visibilité...
+1771023787020,[2m2026-02-13T23:03:07.020837Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Fonctions de visibilité créées avec succès !
+1771023787020,[2m2026-02-13T23:03:07.020914Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Migration auto: fonctions visibilité OK
+1771023787020,[2m2026-02-13T23:03:07.020923Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m 🧹 Nettoyage des combinaisons invalides...
+1771023787025,"[2m2026-02-13T23:03:07.025914Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Table autocomplete_combinations vide, rien à nettoyer"
+1771023787025,[2m2026-02-13T23:03:07.025971Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Migration auto: nettoyage combinaisons invalides OK
+1771023787026,[2m2026-02-13T23:03:07.025981Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m 🔍 Vérification/création des tables planification menus...
+1771023787027,[2m2026-02-13T23:03:07.027432Z[0m [33m WARN[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ⚠️ [MIGRATION] Fragment de commande détecté (syntax error at end of input): error returned from database: syntax error at end of input | Commande: CREATE TABLE IF NOT EXISTS family_profiles (
+1771023787027,"    id SERIAL PRIMARY KEY,"
+1771023787027,"    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,"
+1771023787027,"    family_name VARCHAR(255),"
+1771023787027,    total_members INTEGER NOT...
+1771023787028,[2m2026-02-13T23:03:07.028147Z[0m [33m WARN[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ⚠️ [MIGRATION] Fragment de commande détecté (syntax error at end of input): error returned from database: syntax error at end of input | Commande: CREATE TABLE IF NOT EXISTS recipes (
+1771023787028,"    id SERIAL PRIMARY KEY,"
+1771023787028,"    name VARCHAR(255) NOT NULL,"
+1771023787028,"    description TEXT,"
+1771023787028,"    cuisine_style VARCHAR(100), -- africaine, camerounaise, occidentale, etc."
+1771023787028,    ...
+1771023787028,[2m2026-02-13T23:03:07.028926Z[0m [33m WARN[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ⚠️ [MIGRATION] Fragment de commande détecté (syntax error at end of input): error returned from database: syntax error at end of input | Commande: CREATE TABLE IF NOT EXISTS menu_plans (
+1771023787028,"    id SERIAL PRIMARY KEY,"
+1771023787028,"    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,"
+1771023787028,"    week_start DATE NOT NULL, -- lundi de la semaine"
+1771023787028,    week_en...
+1771023787029,[2m2026-02-13T23:03:07.029829Z[0m [33m WARN[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ⚠️ [MIGRATION] Fragment de commande détecté (syntax error at end of input): error returned from database: syntax error at end of input | Commande: CREATE TABLE IF NOT EXISTS planned_meals (
+1771023787029,"    id SERIAL PRIMARY KEY,"
+1771023787029,"    menu_plan_id INTEGER NOT NULL REFERENCES menu_plans(id) ON DELETE CASCADE,"
+1771023787029,"    day_of_week INTEGER NOT NULL, -- 1=lundi, 7=dim..."
+1771023787030,[2m2026-02-13T23:03:07.030579Z[0m [33m WARN[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ⚠️ [MIGRATION] Fragment de commande détecté (syntax error at end of input): error returned from database: syntax error at end of input | Commande: CREATE TABLE IF NOT EXISTS recipe_favorites (
+1771023787030,"    id SERIAL PRIMARY KEY,"
+1771023787030,"    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,"
+1771023787030,    recipe_id INTEGER NOT NULL REFERENCES recipes(id) ON D...
+1771023787031,[2m2026-02-13T23:03:07.031385Z[0m [33m WARN[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ⚠️ [MIGRATION] Fragment de commande détecté (syntax error at end of input): error returned from database: syntax error at end of input | Commande: CREATE TABLE IF NOT EXISTS shopping_lists (
+1771023787031,"    id SERIAL PRIMARY KEY,"
+1771023787031,"    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,"
+1771023787031,    menu_plan_id INTEGER REFERENCES menu_plans(id) ON DELETE...
+1771023787032,[2m2026-02-13T23:03:07.032117Z[0m [33m WARN[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ⚠️ [MIGRATION] Fragment de commande détecté (syntax error at end of input): error returned from database: syntax error at end of input | Commande: CREATE TABLE IF NOT EXISTS shopping_list_items (
+1771023787032,"    id SERIAL PRIMARY KEY,"
+1771023787032,"    shopping_list_id INTEGER NOT NULL REFERENCES shopping_lists(id) ON DELETE CASCADE,"
+1771023787032,    ingredient_name VARCHAR(255) NOT ...
+1771023787033,[2m2026-02-13T23:03:07.033002Z[0m [33m WARN[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ⚠️ [MIGRATION] Fragment de commande détecté (syntax error at end of input): error returned from database: syntax error at end of input | Commande: CREATE TABLE IF NOT EXISTS nutrition_analytics (
+1771023787033,"    id SERIAL PRIMARY KEY,"
+1771023787033,"    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,"
+1771023787033,    menu_plan_id INTEGER NOT NULL REFERENCES menu_plans...
+1771023787034,"[2m2026-02-13T23:03:07.034342Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_menu_plans_user_week"" already exists, skipping"
+1771023787035,"[2m2026-02-13T23:03:07.035029Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_planned_meals_menu_plan"" already exists, skipping"
+1771023787036,"[2m2026-02-13T23:03:07.036135Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_shopping_lists_user_week"" already exists, skipping"
+1771023787037,"[2m2026-02-13T23:03:07.037018Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_recipes_tags"" already exists, skipping"
+1771023787038,"[2m2026-02-13T23:03:07.038489Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_recipes_cuisine"" already exists, skipping"
+1771023787039,"[2m2026-02-13T23:03:07.039504Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_shopping_list_items_list"" already exists, skipping"
+1771023787040,"[2m2026-02-13T23:03:07.040201Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_family_profiles_user"" already exists, skipping"
+1771023787041,"[2m2026-02-13T23:03:07.041370Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_recipe_favorites_user"" already exists, skipping"
+1771023787042,"[2m2026-02-13T23:03:07.042878Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_nutrition_analytics_user_week"" already exists, skipping"
+1771023787058,[2m2026-02-13T23:03:07.058325Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Tables planification menus créées
+1771023787058,[2m2026-02-13T23:03:07.058338Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Migration auto: menu planning tables OK
+1771023787058,[2m2026-02-13T23:03:07.058342Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m 🔍 Vérification de la table product_creation_queue...
+1771023787060,[2m2026-02-13T23:03:07.060215Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Table product_creation_queue existe déjà
+1771023787060,[2m2026-02-13T23:03:07.060250Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Migration auto: product_creation_queue OK
+1771023787060,[2m2026-02-13T23:03:07.060277Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m 🔍 Vérification des tables phase de lancement...
+1771023787064,[2m2026-02-13T23:03:07.064120Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Colonne free_product_created existe déjà dans users
+1771023787066,[2m2026-02-13T23:03:07.066452Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Table launch_phase_config existe déjà
+1771023787070,[2m2026-02-13T23:03:07.070947Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Fonctions phase de lancement créées/vérifiées
+1771023787070,[2m2026-02-13T23:03:07.070958Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Migration auto: launch_phase_tables OK
+1771023787070,[2m2026-02-13T23:03:07.070962Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Migrations automatiques terminées
+1771023787071,[2m2026-02-13T23:03:07.070972Z[0m [32m INFO[0m [2myukpomnang_backend::utils::db_monitor[0m[2m:[0m ✅ DB Health Monitor démarré (vérification toutes les 30s)
+1771023787071,[MAIN] 🔌 Début de la connexion à MongoDB...
+1771023787071,[MAIN] MONGODB_URL: mongodb+srv://yukpomnang:DENQG9aru56Ixaqi@cluster1...
+1771023787071,[2m2026-02-13T23:03:07.071012Z[0m [32m INFO[0m [2myukpomnang_backend[0m[2m:[0m 🔌 Connexion à MongoDB...
+1771023787074,[MAIN] ✅ Client MongoDB créé avec succès
+1771023787074,[2m2026-02-13T23:03:07.074213Z[0m [32m INFO[0m [2myukpomnang_backend[0m[2m:[0m ✅ Client MongoDB initialisé
+1771023787074,[2m2026-02-13T23:03:07.074252Z[0m [32m INFO[0m [2myukpomnang_backend[0m[2m:[0m 🔍 Tentative de connexion Redis: redis://master.yukpo-redis.hbcyaa.euw1.cache.amazo...

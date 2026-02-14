@@ -1,0 +1,64 @@
+{
+  "description": "Liens AWS pour le nouveau compte d'Irlande (eu-west-1) - Variables d'environnement Expo Production",
+  "account_id": "108964700972",
+  "region": "eu-west-1",
+  "project": "yukpo",
+  
+  "variables_expo": {
+    "EXPO_PUBLIC_API_URL": "https://api.yukpomnang.com",
+    "EXPO_PUBLIC_WS_URL": "wss://api.yukpomnang.com",
+    "EXPO_PUBLIC_UPLOAD_BASE_URL": "https://api.yukpomnang.com",
+    "EXPO_PUBLIC_SHARE_URL": "https://yukpomnang.com",
+    
+    "EXPO_PUBLIC_WASABI_DIRECT_URL": "https://yukpo-backend-media.s3.eu-west-1.amazonaws.com",
+    
+    "EXPO_PUBLIC_CDN_CLOUDFLARE_URL": "https://d3jyvgg46kev8.cloudfront.net",
+    "note_cdn": "⚠️ Vérifier que cette distribution CloudFront pointe vers yukpo-backend-media.s3.eu-west-1.amazonaws.com. Si non, créer une nouvelle distribution CloudFront et mettre à jour cette valeur."
+  },
+  
+  "ressources_aws": {
+    "s3_bucket": {
+      "name": "yukpo-backend-media",
+      "region": "eu-west-1",
+      "direct_url": "https://yukpo-backend-media.s3.eu-west-1.amazonaws.com",
+      "endpoint": "s3.eu-west-1.amazonaws.com"
+    },
+    
+    "cloudfront": {
+      "current_distribution": "d3jyvgg46kev8.cloudfront.net",
+      "url": "https://d3jyvgg46kev8.cloudfront.net",
+      "note": "Vérifier dans AWS Console > CloudFront que cette distribution pointe vers yukpo-backend-media.s3.eu-west-1.amazonaws.com"
+    },
+    
+    "ecs": {
+      "cluster": "yukpo-cluster",
+      "service": "yukpo-backend-service",
+      "region": "eu-west-1"
+    }
+  },
+  
+  "commandes_verification": {
+    "verifier_bucket_s3": "aws s3 ls s3://yukpo-backend-media --region eu-west-1",
+    "verifier_cloudfront": "aws cloudfront list-distributions --region eu-west-1 --query 'DistributionList.Items[*].[Id,DomainName,Origins.Items[0].DomainName]' --output table",
+    "verifier_ssm_parameters": "aws ssm get-parameters --names /yukpo/production/S3_BUCKET /yukpo/production/S3_REGION --region eu-west-1"
+  },
+  
+  "fichier_a_modifier": "production (2).json",
+  
+  "configuration_finale": {
+    "EXPO_PUBLIC_API_URL": "https://api.yukpomnang.com",
+    "EXPO_PUBLIC_CDN_CLOUDFLARE_URL": "https://d3jyvgg46kev8.cloudfront.net",
+    "EXPO_PUBLIC_ENVIRONMENT": "production",
+    "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "738929393617-i2ss2ql4nr25hsffr5ri97gnesh0go3t.apps.googleusercontent.com",
+    "EXPO_PUBLIC_GOOGLE_CLIENT_ID": "738929393617-4kt4e9ed1g79j70dng7epskqn7rkqnm2.apps.googleusercontent.com",
+    "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "738929393617-j47rj98t5nprrlmdl1nk56mfa2cnmeee.apps.googleusercontent.com",
+    "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ",
+    "EXPO_PUBLIC_GOOGLE_TRANSLATE_API_KEY": "AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ",
+    "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "738929393617-4kt4e9ed1g79j70dng7epskqn7rkqnm2.apps.googleusercontent.com",
+    "EXPO_PUBLIC_SHARE_URL": "https://yukpomnang.com",
+    "EXPO_PUBLIC_UPLOAD_BASE_URL": "https://api.yukpomnang.com",
+    "EXPO_PUBLIC_WASABI_DIRECT_URL": "https://yukpo-backend-media.s3.eu-west-1.amazonaws.com",
+    "EXPO_PUBLIC_WS_URL": "wss://api.yukpomnang.com"
+  }
+}
+

@@ -9,7 +9,7 @@ on:
     paths:
       - 'backend/**'
       - '.github/workflows/docker-build-optimized.yml'
-      - 'infra/aws/**'  # Déclencher le build si infrastructure AWS change
+      - 'infra/aws/**'
   pull_request:
     branches:
       - main
@@ -29,25 +29,24 @@ on:
         required: false
         default: 'false'
         type: boolean
-      # push_to_hetzner:
-      #   description: 'Deploy to Hetzner'
-      #   required: false
-      #   default: 'false'
-      #   type: boolean
-      # ⚠️ DÉSACTIVÉ : Déploiement Hetzner temporairement désactivé (focus sur AWS)
+      push_to_gcp:
+        description: 'Push to GCP Cloud Run'
+        required: false
+        default: 'false'
+        type: boolean
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}/yukpomnang-backend-optimized
+  IMAGE_NAME: ${{ github.repository }}/yukpo-backend-optimized
   AWS_REGION: eu-west-1
   AWS_ACCOUNT_ID: 108964700972
   ECR_REPO_NAME: yukpo-backend
   ECR_REPO_URI: 108964700972.dkr.ecr.eu-west-1.amazonaws.com/yukpo-backend
   SSM_DATABASE_URL_PATH: /yukpo/production/DATABASE_URL
-  # ⚠️ DÉSACTIVÉ : Variables Hetzner temporairement désactivées (focus sur AWS)
-  # HETZNER_HOST: 46.224.14.85
-  # HETZNER_USER: root
-  # HETZNER_DIR: /opt/yukpo
+  # GCP Configuration
+  GCP_PROJECT_ID: yukpo-project
+  GCP_REGION: europe-west1
+  GCP_SERVICE_NAME: yukpo-backend
 
 jobs:
   run-migrations:
@@ -138,7 +137,6 @@ jobs:
             echo "📦 Installation de sqlx-cli..."
             echo "⏳ Cela peut prendre 5-10 minutes la première fois..."
             echo "💡 Les prochains runs utiliseront le cache (~30s)"
-            # Utiliser --locked pour une installation plus rapide et reproductible
             cargo install sqlx-cli --version 0.8.6 --no-default-features --features postgres --locked
             echo "✅ sqlx-cli installé avec succès"
             sqlx --version
@@ -148,7 +146,7 @@ jobs:
         env:
           SSM_DATABASE_URL_PATH: ${{ env.SSM_DATABASE_URL_PATH }}
           AWS_REGION: ${{ env.AWS_REGION }}
-          FAIL_ON_MIGRATION_ERROR: false  # Ne pas bloquer le build si migrations échouent (VPC privé)
+          FAIL_ON_MIGRATION_ERROR: false
         run: |
           python3 scripts/run_migrations_aws.py || echo "⚠️ Migrations non exécutées (seront exécutées au démarrage ECS)"
 
@@ -175,7 +173,7 @@ jobs:
     needs: run-migrations
     if: always() && (needs.run-migrations.result == 'success' || needs.run-migrations.result == 'skipped' || needs.run-migrations.result == 'failure')
     runs-on: ubuntu-latest
-    timeout-minutes: 60  # Timeout après 60 minutes
+    timeout-minutes: 60
     permissions:
       contents: read
       packages: write
@@ -239,14 +237,10 @@ jobs:
       - name: Prepare Dockerfile with root context
         run: |
           echo "=== Preparing Dockerfile for root context ==="
-          # S'assurer que le fichier source existe
           if [ ! -f backend/Dockerfile.cloud.optimized ]; then
             echo "❌ ERROR: backend/Dockerfile.cloud.optimized not found!"
             exit 1
           fi
-          # Créer un Dockerfile à la racine qui ajuste les chemins COPY
-          # Le contexte sera la racine, donc on doit préfixer les chemins avec backend/
-          # Mais seulement les COPY qui ne viennent pas de --from=builder
           sed -E \
             -e '/^COPY --from=/! s#^COPY (Cargo\.toml Cargo\.lock) #COPY backend/Cargo.toml backend/Cargo.lock #' \
             -e '/^COPY --from=/! s#^COPY \.sqlx #COPY backend/.sqlx #' \
@@ -277,7 +271,6 @@ jobs:
           build-args: |
             SQLX_OFFLINE=true
             BUILDKIT_INLINE_CACHE=1
-          # Optimisations pour accélérer le build
           outputs: type=docker,dest=/tmp/image.tar
 
       - name: Save build time
@@ -308,6 +301,7 @@ jobs:
           echo "- **Cache**: GitHub Actions cache + local cache pour builds rapides" >> $GITHUB_STEP_SUMMARY
           if [ "${{ github.event_name }}" == "push" ] && ( [ "${{ github.ref }}" == "refs/heads/main" ] || [ "${{ github.ref }}" == "refs/heads/master" ] ); then
             echo "- **AWS ECR**: Image automatiquement poussée vers ECR" >> $GITHUB_STEP_SUMMARY
+            echo "- **GCP Cloud Run**: Image automatiquement poussée vers GCP" >> $GITHUB_STEP_SUMMARY
           fi
 
   push-to-aws:
@@ -354,7 +348,6 @@ jobs:
             echo "❌ ERROR: backend/Dockerfile.cloud.optimized not found!"
             exit 1
           fi
-          # Créer un Dockerfile à la racine qui ajuste les chemins COPY
           sed -E \
             -e '/^COPY --from=/! s#^COPY (Cargo\.toml Cargo\.lock) #COPY backend/Cargo.toml backend/Cargo.lock #' \
             -e '/^COPY --from=/! s#^COPY \.sqlx #COPY backend/.sqlx #' \
@@ -363,7 +356,6 @@ jobs:
             -e '/^COPY --from=/! s#^COPY scripts/([^ ]+) #COPY backend/scripts/\1 #' \
             backend/Dockerfile.cloud.optimized > Dockerfile.build
           echo "✅ Dockerfile.build created for ECR build"
-          test -f Dockerfile.build && echo "✅ Dockerfile.build exists" || echo "❌ Dockerfile.build NOT FOUND"
 
       - name: Build and push to ECR (from cache)
         uses: docker/build-push-action@v5
@@ -390,6 +382,144 @@ jobs:
           echo "- **Tags**: \`latest\`, \`optimized\`, \`<branch>-<sha>\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "✅ Image disponible sur AWS ECR pour déploiement ECS/Fargate" >> $GITHUB_STEP_SUMMARY
+
+  push-to-gcp:
+    name: Push to GCP Cloud Run and Deploy
+    needs: build-and-push
+    if: (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')) || (github.event_name == 'workflow_dispatch' && inputs.push_to_gcp == 'true')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Google Auth (OIDC)
+        id: auth
+        uses: 'google-github-actions/auth@v2'
+        with:
+          workload_identity_provider: 'projects/${{ secrets.GCP_PROJECT_ID }}/locations/global/workloadIdentityPools/github-actions-pool/providers/github-actions-provider'
+          service_account: '${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}'
+
+      - name: Set up Cloud SDK
+        uses: 'google-github-actions/setup-gcloud@v2'
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Configure Docker for GCR
+        run: gcloud auth configure-docker
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Extract metadata for GCP
+        id: meta-gcp
+        uses: docker/metadata-action@v5
+        with:
+          images: gcr.io/${{ secrets.GCP_PROJECT_ID }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest
+            type=raw,value=optimized
+            type=ref,event=branch
+
+      - name: Prepare Dockerfile for GCP build
+        run: |
+          if [ ! -f backend/Dockerfile.cloud.optimized ]; then
+            echo "❌ ERROR: backend/Dockerfile.cloud.optimized not found!"
+            exit 1
+          fi
+          sed -E \
+            -e '/^COPY --from=/! s#^COPY (Cargo\.toml Cargo\.lock) #COPY backend/Cargo.toml backend/Cargo.lock #' \
+            -e '/^COPY --from=/! s#^COPY \.sqlx #COPY backend/.sqlx #' \
+            -e '/^COPY --from=/! s#^COPY (src|scripts|ia_prompts|config|migrations|blender) #COPY backend/\1 #' \
+            -e '/^COPY --from=/! s#^COPY ([^/ ]+\.md) #COPY backend/\1 #' \
+            -e '/^COPY --from=/! s#^COPY scripts/([^ ]+) #COPY backend/scripts/\1 #' \
+            backend/Dockerfile.cloud.optimized > Dockerfile.build
+          echo "✅ Dockerfile.build created for GCP build"
+
+      - name: Build and push to GCR (from cache)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile.build
+          push: true
+          tags: ${{ steps.meta-gcp.outputs.tags }}
+          labels: ${{ steps.meta-gcp.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64
+          build-args: |
+            SQLX_OFFLINE=true
+            BUILDKIT_INLINE_CACHE=1
+
+      - name: Prepare Environment Variables for Cloud Run
+        id: prepare-env
+        run: |
+          echo "Preparing environment variables from GitHub secrets..."
+          ENV_VARS="DATABASE_URL=${{ secrets.GCP_DATABASE_URL }},ENABLE_AUTO_MIGRATIONS=true,SQLX_OFFLINE=true,RUST_LOG=info,ENVIRONMENT=production,ALLOWED_ORIGINS=https://api.yukpo.com,https://yukpo.com"
+          
+          # Ajouter toutes les variables avec prefixe GCP_ENV_
+          if command -v gh &> /dev/null; then
+            gh auth status || gh auth login --with-token <<< "${{ secrets.GITHUB_TOKEN }}"
+            for secret in $(gh secret list --repo ${{ github.repository }} --json name -q '.[].name' | grep "^GCP_ENV_"); do
+              VAR_NAME=$(echo $secret | sed 's/^GCP_ENV_//')
+              VAR_VALUE=$(gh secret get $secret --repo ${{ github.repository }} 2>/dev/null || echo "")
+              if [ -n "$VAR_VALUE" ]; then
+                # Echapper les caracteres speciaux
+                VAR_VALUE=$(echo "$VAR_VALUE" | sed 's/,/\\,/g' | sed 's/=/\\=/g')
+                ENV_VARS="$ENV_VARS,$VAR_NAME=$VAR_VALUE"
+              fi
+            done
+          fi
+          
+          echo "env_vars<<EOF" >> $GITHUB_OUTPUT
+          echo "$ENV_VARS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Deploy to Cloud Run
+        run: |
+          echo "🔄 Deploying to Cloud Run..."
+          gcloud run deploy ${{ env.GCP_SERVICE_NAME }} \
+            --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/${{ env.IMAGE_NAME }}:latest \
+            --platform managed \
+            --region ${{ env.GCP_REGION }} \
+            --allow-unauthenticated \
+            --set-env-vars "${{ steps.prepare-env.outputs.env_vars }}" \
+            --add-cloudsql-instances ${{ secrets.GCP_PROJECT_ID }}:${{ env.GCP_REGION }}:${{ secrets.GCP_DB_INSTANCE_CONNECTION_NAME }} \
+            --memory 512Mi \
+            --cpu 1 \
+            --timeout 300 \
+            --max-instances 10 \
+            --service-account ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }} \
+            --project ${{ secrets.GCP_PROJECT_ID }}
+          
+          echo "✅ Cloud Run deployment completed"
+
+      - name: Get Service URL
+        id: service-url
+        run: |
+          URL=$(gcloud run services describe ${{ env.GCP_SERVICE_NAME }} \
+            --region ${{ env.GCP_REGION }} \
+            --format 'value(status.url)' \
+            --project ${{ secrets.GCP_PROJECT_ID }})
+          echo "url=$URL" >> $GITHUB_OUTPUT
+
+      - name: GCP deployment summary
+        if: always()
+        run: |
+          echo "## 🚀 GCP Cloud Run Push & Deployment - Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **GCR Repository**: \`gcr.io/${{ secrets.GCP_PROJECT_ID }}/${{ env.IMAGE_NAME }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Cloud Run Service**: \`${{ env.GCP_SERVICE_NAME }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Region**: \`${{ env.GCP_REGION }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **URL**: \`${{ steps.service-url.outputs.url }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Tags**: \`latest\`, \`optimized\`, \`<branch>-<sha>\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Image poussée vers GCR et Cloud Run mis à jour" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Migrations automatiques activées (ENABLE_AUTO_MIGRATIONS=true)" >> $GITHUB_STEP_SUMMARY
 
   deploy-to-ecs:
     name: Deploy to AWS ECS
@@ -421,7 +551,6 @@ jobs:
           if [ "$SERVICE_EXISTS" = "MISSING" ] || [ "$SERVICE_EXISTS" = "None" ] || [ -z "$SERVICE_EXISTS" ]; then
             echo "exists=false" >> $GITHUB_OUTPUT
             echo "⚠️ Service ECS n'existe pas encore"
-            echo "ℹ️ Le service doit être créé via Terraform (nécessite Load Balancer activé)"
           else
             echo "exists=true" >> $GITHUB_OUTPUT
             echo "✅ Service ECS existe"
@@ -432,19 +561,7 @@ jobs:
         run: |
           echo "⚠️ Service ECS n'existe pas encore" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "ℹ️ Le service nécessite un Load Balancer qui n'est pas encore activé par AWS Support" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "📋 Actions requises:" >> $GITHUB_STEP_SUMMARY
-          echo "   1. Attendre l'activation du Load Balancer par AWS Support" >> $GITHUB_STEP_SUMMARY
-          echo "   2. Exécuter: \`cd infra/aws && terraform apply\`" >> $GITHUB_STEP_SUMMARY
-          echo "   3. Le service sera créé automatiquement par Terraform" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
           echo "✅ L'image Docker a été buildée et poussée avec succès vers ECR" >> $GITHUB_STEP_SUMMARY
-          echo "✅ Le déploiement ECS sera possible une fois le Load Balancer activé" >> $GITHUB_STEP_SUMMARY
-          echo ""
-          echo "⚠️ Service ECS n'existe pas encore (non bloquant)"
-          echo "ℹ️ L'image Docker a été buildée avec succès"
-          echo "ℹ️ Le déploiement ECS sera possible une fois le Load Balancer activé"
 
       - name: Update ECS Service
         if: steps.check-service.outputs.exists == 'true'
@@ -460,17 +577,6 @@ jobs:
           
           echo ""
           echo "✅ Service ECS mis à jour, nouveau déploiement en cours..."
-          echo "⏳ Le déploiement peut prendre 2-5 minutes"
-
-      - name: Wait for deployment (optional)
-        if: false  # Désactivé par défaut (prend du temps)
-        run: |
-          echo "⏳ Attente de la stabilisation du déploiement..."
-          aws ecs wait services-stable \
-            --cluster yukpo-cluster \
-            --services yukpo-backend-service \
-            --region ${{ env.AWS_REGION }}
-          echo "✅ Déploiement terminé avec succès!"
 
       - name: Deployment summary
         if: always()
@@ -483,120 +589,3 @@ jobs:
           echo "- **Image**: \`${{ env.ECR_REPO_URI }}:latest\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "✅ Nouveau déploiement déclenché avec l'image optimisée" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "💡 Surveillez le déploiement avec:" >> $GITHUB_STEP_SUMMARY
-          echo "   \`aws ecs describe-services --cluster yukpo-cluster --services yukpo-backend-service --region ${{ env.AWS_REGION }}\`" >> $GITHUB_STEP_SUMMARY
-
-  # ⚠️ DÉSACTIVÉ : Déploiement Hetzner temporairement désactivé (focus sur AWS)
-  # deploy-to-hetzner:
-  #   name: Deploy to Hetzner
-  #   needs: build-and-push
-  #   if: false  # Désactivé : toujours false pour empêcher l'exécution
-  #   runs-on: ubuntu-latest
-  #   permissions:
-  #     contents: read
-
-  #   steps:
-  #     - name: Checkout repository
-  #       uses: actions/checkout@v4
-
-  #     - name: Setup SSH
-  #       uses: webfactory/ssh-agent@v0.9.0
-  #       with:
-  #         ssh-private-key: ${{ secrets.HETZNER_SSH_PRIVATE_KEY }}
-
-  #     - name: Add Hetzner to known hosts
-  #       run: |
-  #         ssh-keyscan -H ${{ env.HETZNER_HOST }} >> ~/.ssh/known_hosts
-
-  #     - name: Test SSH connection
-  #       run: |
-  #         ssh -o StrictHostKeyChecking=no ${{ env.HETZNER_USER }}@${{ env.HETZNER_HOST }} "echo '✅ SSH connection successful'"
-
-  #     - name: Pull latest image from GHCR
-  #       run: |
-  #         echo "🔄 Pulling latest image from GitHub Container Registry..."
-  #         ssh ${{ env.HETZNER_USER }}@${{ env.HETZNER_HOST }} << 'EOF'
-  #           cd ${{ env.HETZNER_DIR }}/backend
-  #           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-  #           docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest || echo "⚠️ Image latest not found, trying optimized tag..."
-  #           docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:optimized || echo "⚠️ Image optimized not found, trying main tag..."
-  #           docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main-${{ github.sha }} || echo "⚠️ Image with SHA not found"
-  #           docker images | grep -E "(${{ env.IMAGE_NAME }})" | head -5
-  #         EOF
-
-  #     - name: Update docker-compose on Hetzner
-  #       run: |
-  #         echo "🔄 Updating docker-compose.yml on Hetzner..."
-  #         scp -o StrictHostKeyChecking=no docker-compose.hetzner.yml ${{ env.HETZNER_USER }}@${{ env.HETZNER_HOST }}:${{ env.HETZNER_DIR }}/docker-compose.hetzner.yml
-  #         ssh -o StrictHostKeyChecking=no ${{ env.HETZNER_USER }}@${{ env.HETZNER_HOST }} "cd ${{ env.HETZNER_DIR }} && echo '✅ docker-compose.hetzner.yml ready'"
-
-  #     - name: Deploy to Hetzner
-  #       run: |
-  #         echo "🚀 Deploying to Hetzner..."
-  #         ssh ${{ env.HETZNER_USER }}@${{ env.HETZNER_HOST }} << 'EOF'
-  #           cd ${{ env.HETZNER_DIR }}
-  #           
-  #           # Charger les variables d'environnement si .env existe
-  #           if [ -f .env ]; then
-  #             set -a
-  #             source .env
-  #             set +a
-  #           fi
-  #           
-  #           # Arrêter les anciens conteneurs
-  #           echo "🛑 Stopping old containers..."
-  #           docker-compose -f docker-compose.hetzner.yml down || true
-  #           
-  #           # Pull les images à jour
-  #           echo "📥 Pulling latest images..."
-  #           docker-compose -f docker-compose.hetzner.yml pull backend || true
-  #           
-  #           # Démarrer les services
-  #           echo "🚀 Starting services..."
-  #           docker-compose -f docker-compose.hetzner.yml up -d
-  #           
-  #           # Attendre que les services soient prêts
-  #           echo "⏳ Waiting for services to be ready..."
-  #           sleep 10
-  #           
-  #           # Vérifier le statut
-  #           echo "📊 Service status:"
-  #           docker-compose -f docker-compose.hetzner.yml ps
-  #           
-  #           # Vérifier les logs
-  #           echo "📋 Recent logs:"
-  #           docker-compose -f docker-compose.hetzner.yml logs --tail=20 backend
-  #         EOF
-
-  #     - name: Verify deployment
-  #       run: |
-  #         echo "✅ Verifying deployment..."
-  #         ssh ${{ env.HETZNER_USER }}@${{ env.HETZNER_HOST }} << 'EOF'
-  #           cd ${{ env.HETZNER_DIR }}
-  #           
-  #           # Vérifier que le backend répond
-  #           echo "🔍 Checking backend health..."
-  #           sleep 5
-  #           curl -f http://localhost:8080/api/health || echo "⚠️ Health check failed, but service might still be starting"
-  #           
-  #           # Vérifier les conteneurs
-  #           echo ""
-  #           echo "📊 Container status:"
-  #           docker ps --filter "name=yukpo" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
-  #         EOF
-
-  #     - name: Deployment summary
-  #       if: always()
-  #       run: |
-  #         echo "## 🚀 Hetzner Deployment - Summary" >> $GITHUB_STEP_SUMMARY
-  #         echo "" >> $GITHUB_STEP_SUMMARY
-  #         echo "- **Host**: \`${{ env.HETZNER_HOST }}\`" >> $GITHUB_STEP_SUMMARY
-  #         echo "- **Image**: \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest\`" >> $GITHUB_STEP_SUMMARY
-  #         echo "- **Services**: Backend, PostgreSQL, Redis" >> $GITHUB_STEP_SUMMARY
-  #         echo "" >> $GITHUB_STEP_SUMMARY
-  #         echo "✅ Déploiement Hetzner terminé avec succès" >> $GITHUB_STEP_SUMMARY
-  #         echo "" >> $GITHUB_STEP_SUMMARY
-  #         echo "💡 Vérifier le déploiement avec:" >> $GITHUB_STEP_SUMMARY
-  #         echo "   \`ssh ${{ env.HETZNER_USER }}@${{ env.HETZNER_HOST }} 'cd ${{ env.HETZNER_DIR }} && docker-compose -f docker-compose.hetzner.yml ps'\`" >> $GITHUB_STEP_SUMMARY
-

@@ -1,0 +1,48 @@
+﻿{
+    "S3_Bucket":  {
+                      "Name":  "yukpo-backend-media",
+                      "Exists":  true
+                  },
+    "LoadBalancer":  [
+
+                     ],
+    "ECS_Service":  {
+                        "DesiredCount":  1,
+                        "Exists":  true,
+                        "Name":  "yukpo-backend-service",
+                        "PrimaryDeployment":  "PRIMARY",
+                        "RunningCount":  1,
+                        "Status":  "ACTIVE"
+                    },
+    "CloudFront":  [
+
+                   ],
+    "SSM_Variables":  {
+                          "S3_SECRET_KEY":  {
+                                                "Value":  "AQICAHg54bZalH6Lszdg6qIr8Jn8cB9nlQzeaCLB/aHJMAZFaQGMZaXmUIbGJJ+lsYDkBSANAAAAhzCBhAYJKoZIhvcNAQcGoHcwdQIBADBwBgkqhkiG9w0BBwEwHgYJYIZIAWUDBAEuMBEEDA4MR6SFPO0lb0oIOwIBEIBDlyw7Uw7bAhInyMPE3mktfqIw7yZ4uLUqGu+MutMfKpo1D6FtbSGS1kY0GgR2VuU46Kg4eykURkMw4sibNaDUbkpSIg==",
+                                                "Exists":  true
+                                            },
+                          "S3_BUCKET":  {
+                                            "Value":  "yukpo-backend-media",
+                                            "Exists":  true
+                                        },
+                          "S3_REGION":  {
+                                            "Value":  "eu-west-1",
+                                            "Exists":  true
+                                        },
+                          "UPLOAD_BASE_URL":  {
+                                                  "Value":  "https://yukpo-backend-media.s3.eu-west-1.amazonaws.com",
+                                                  "Exists":  true
+                                              },
+                          "S3_ACCESS_KEY":  {
+                                                "Value":  "AQICAHg54bZalH6Lszdg6qIr8Jn8cB9nlQzeaCLB/aHJMAZFaQG5dBWxlzhi2yIS6iNhVOsfAAAAcjBwBgkqhkiG9w0BBwagYzBhAgEAMFwGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQMUPBT/7k7iZEtWf6hAgEQgC9wchgk/FE77YlL7FRFvquNZv1p1pp5hlWXo8c3x2ofF0QPlS6g1qnM+IZTMa3QAA==",
+                                                "Exists":  true
+                                            }
+                      },
+    "BackendURL":  {
+                       "URL":  "https://api.yukpomnang.com",
+                       "Error":  "Le nom distant n\u0027a pas pu être résolu: \u0027api.yukpomnang.com\u0027",
+                       "Accessible":  false,
+                       "DNS":  null
+                   }
+}

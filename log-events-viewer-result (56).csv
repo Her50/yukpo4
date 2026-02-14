@@ -1,0 +1,945 @@
+timestamp,message
+1771066487000,2026-02-14 10:54:47 UTC:10.0.1.68(33400):yukpo_admin@yukpo:[7176]:ERROR:  column e.status does not exist at character 300
+1771066487000,"2026-02-14 10:54:47 UTC:10.0.1.68(33400):yukpo_admin@yukpo:[7176]:HINT:  Perhaps you meant to reference the column ""ev.status""."
+1771066487000,"2026-02-14 10:54:47 UTC:10.0.1.68(33400):yukpo_admin@yukpo:[7176]:STATEMENT:  
+	        SELECT
+	            e.id AS entry_id,
+	            e.service_id,
+	            e.submitted_by_user_id,
+	            ev.display_name AS event_display_name
+	        FROM global_promo_entries e
+	        JOIN global_promo_events ev ON ev.id = e.event_id
+	        WHERE ev.status = 'live'
+	          AND e.status = 'approved'"
+1771066487000,"2026-02-14 10:54:47 UTC:10.0.1.68(47620):yukpo_admin@yukpo:[7153]:ERROR:  column ""last_error"" does not exist at character 232"
+1771066487000,"2026-02-14 10:54:47 UTC:10.0.1.68(47620):yukpo_admin@yukpo:[7153]:STATEMENT:  SELECT id,
+	                             media_id,
+	                             platform,
+	                             payload,
+	                             status,
+	                             attempt,
+	                             last_error,
+	                             scheduled_for,
+	                             created_at,
+	                             updated_at
+	                     FROM social_publication_jobs
+	                     WHERE status = 'queued' AND scheduled_for <= NOW()
+	                     ORDER BY scheduled_for ASC
+	                     LIMIT $1"
+1771066517000,2026-02-14 10:55:17 UTC:10.0.1.68(47620):yukpo_admin@yukpo:[7153]:ERROR:  column e.status does not exist at character 300
+1771066517000,"2026-02-14 10:55:17 UTC:10.0.1.68(47620):yukpo_admin@yukpo:[7153]:HINT:  Perhaps you meant to reference the column ""ev.status""."
+1771066517000,"2026-02-14 10:55:17 UTC:10.0.1.68(47620):yukpo_admin@yukpo:[7153]:STATEMENT:  
+	        SELECT
+	            e.id AS entry_id,
+	            e.service_id,
+	            e.submitted_by_user_id,
+	            ev.display_name AS event_display_name
+	        FROM global_promo_entries e
+	        JOIN global_promo_events ev ON ev.id = e.event_id
+	        WHERE ev.status = 'live'
+	          AND e.status = 'approved'"
+1771066547000,2026-02-14 10:55:47 UTC:10.0.1.68(56696):yukpo_admin@yukpo:[7206]:ERROR:  column e.status does not exist at character 300
+1771066547000,"2026-02-14 10:55:47 UTC:10.0.1.68(56696):yukpo_admin@yukpo:[7206]:HINT:  Perhaps you meant to reference the column ""ev.status""."
+1771066547000,"2026-02-14 10:55:47 UTC:10.0.1.68(56696):yukpo_admin@yukpo:[7206]:STATEMENT:  
+	        SELECT
+	            e.id AS entry_id,
+	            e.service_id,
+	            e.submitted_by_user_id,
+	            ev.display_name AS event_display_name
+	        FROM global_promo_entries e
+	        JOIN global_promo_events ev ON ev.id = e.event_id
+	        WHERE ev.status = 'live'
+	          AND e.status = 'approved'"
+1771066547000,"2026-02-14 10:55:47 UTC:10.0.1.68(33400):yukpo_admin@yukpo:[7176]:ERROR:  column ""last_error"" does not exist at character 232"
+1771066547000,"2026-02-14 10:55:47 UTC:10.0.1.68(33400):yukpo_admin@yukpo:[7176]:STATEMENT:  SELECT id,
+	                             media_id,
+	                             platform,
+	                             payload,
+	                             status,
+	                             attempt,
+	                             last_error,
+	                             scheduled_for,
+	                             created_at,
+	                             updated_at
+	                     FROM social_publication_jobs
+	                     WHERE status = 'queued' AND scheduled_for <= NOW()
+	                     ORDER BY scheduled_for ASC
+	                     LIMIT $1"
+1771066577000,2026-02-14 10:56:17 UTC:10.0.1.68(35782):yukpo_admin@yukpo:[7331]:ERROR:  column e.status does not exist at character 300
+1771066577000,"2026-02-14 10:56:17 UTC:10.0.1.68(35782):yukpo_admin@yukpo:[7331]:HINT:  Perhaps you meant to reference the column ""ev.status""."
+1771066577000,"2026-02-14 10:56:17 UTC:10.0.1.68(35782):yukpo_admin@yukpo:[7331]:STATEMENT:  
+	        SELECT
+	            e.id AS entry_id,
+	            e.service_id,
+	            e.submitted_by_user_id,
+	            ev.display_name AS event_display_name
+	        FROM global_promo_entries e
+	        JOIN global_promo_events ev ON ev.id = e.event_id
+	        WHERE ev.status = 'live'
+	          AND e.status = 'approved'"
+1771066607000,2026-02-14 10:56:47 UTC:10.0.1.68(43560):yukpo_admin@yukpo:[7324]:ERROR:  column e.status does not exist at character 300
+1771066607000,"2026-02-14 10:56:47 UTC:10.0.1.68(43560):yukpo_admin@yukpo:[7324]:HINT:  Perhaps you meant to reference the column ""ev.status""."
+1771066607000,"2026-02-14 10:56:47 UTC:10.0.1.68(43560):yukpo_admin@yukpo:[7324]:STATEMENT:  
+	        SELECT
+	            e.id AS entry_id,
+	            e.service_id,
+	            e.submitted_by_user_id,
+	            ev.display_name AS event_display_name
+	        FROM global_promo_entries e
+	        JOIN global_promo_events ev ON ev.id = e.event_id
+	        WHERE ev.status = 'live'
+	          AND e.status = 'approved'"
+1771066607000,"2026-02-14 10:56:47 UTC:10.0.1.68(55890):yukpo_admin@yukpo:[7337]:ERROR:  column ""last_error"" does not exist at character 232"
+1771066607000,"2026-02-14 10:56:47 UTC:10.0.1.68(55890):yukpo_admin@yukpo:[7337]:STATEMENT:  SELECT id,
+	                             media_id,
+	                             platform,
+	                             payload,
+	                             status,
+	                             attempt,
+	                             last_error,
+	                             scheduled_for,
+	                             created_at,
+	                             updated_at
+	                     FROM social_publication_jobs
+	                     WHERE status = 'queued' AND scheduled_for <= NOW()
+	                     ORDER BY scheduled_for ASC
+	                     LIMIT $1"
+1771066637000,2026-02-14 10:57:17 UTC:10.0.1.68(43560):yukpo_admin@yukpo:[7324]:ERROR:  column e.status does not exist at character 300
+1771066637000,"2026-02-14 10:57:17 UTC:10.0.1.68(43560):yukpo_admin@yukpo:[7324]:HINT:  Perhaps you meant to reference the column ""ev.status""."
+1771066637000,"2026-02-14 10:57:17 UTC:10.0.1.68(43560):yukpo_admin@yukpo:[7324]:STATEMENT:  
+	        SELECT
+	            e.id AS entry_id,
+	            e.service_id,
+	            e.submitted_by_user_id,
+	            ev.display_name AS event_display_name
+	        FROM global_promo_entries e
+	        JOIN global_promo_events ev ON ev.id = e.event_id
+	        WHERE ev.status = 'live'
+	          AND e.status = 'approved'"
+1771066667000,2026-02-14 10:57:47 UTC:10.0.1.68(35796):yukpo_admin@yukpo:[7335]:ERROR:  column e.status does not exist at character 300
+1771066667000,"2026-02-14 10:57:47 UTC:10.0.1.68(35796):yukpo_admin@yukpo:[7335]:HINT:  Perhaps you meant to reference the column ""ev.status""."
+1771066667000,"2026-02-14 10:57:47 UTC:10.0.1.68(35796):yukpo_admin@yukpo:[7335]:STATEMENT:  
+	        SELECT
+	            e.id AS entry_id,
+	            e.service_id,
+	            e.submitted_by_user_id,
+	            ev.display_name AS event_display_name
+	        FROM global_promo_entries e
+	        JOIN global_promo_events ev ON ev.id = e.event_id
+	        WHERE ev.status = 'live'
+	          AND e.status = 'approved'"
+1771066667000,"2026-02-14 10:57:47 UTC:10.0.1.68(35782):yukpo_admin@yukpo:[7331]:ERROR:  column ""last_error"" does not exist at character 232"
+1771066667000,"2026-02-14 10:57:47 UTC:10.0.1.68(35782):yukpo_admin@yukpo:[7331]:STATEMENT:  SELECT id,
+	                             media_id,
+	                             platform,
+	                             payload,
+	                             status,
+	                             attempt,
+	                             last_error,
+	                             scheduled_for,
+	                             created_at,
+	                             updated_at
+	                     FROM social_publication_jobs
+	                     WHERE status = 'queued' AND scheduled_for <= NOW()
+	                     ORDER BY scheduled_for ASC
+	                     LIMIT $1"
+1771066697000,2026-02-14 10:58:17 UTC:10.0.1.68(43488):yukpo_admin@yukpo:[7363]:ERROR:  column e.status does not exist at character 300
+1771066697000,"2026-02-14 10:58:17 UTC:10.0.1.68(43488):yukpo_admin@yukpo:[7363]:HINT:  Perhaps you meant to reference the column ""ev.status""."
+1771066697000,"2026-02-14 10:58:17 UTC:10.0.1.68(43488):yukpo_admin@yukpo:[7363]:STATEMENT:  
+	        SELECT
+	            e.id AS entry_id,
+	            e.service_id,
+	            e.submitted_by_user_id,
+	            ev.display_name AS event_display_name
+	        FROM global_promo_entries e
+	        JOIN global_promo_events ev ON ev.id = e.event_id
+	        WHERE ev.status = 'live'
+	          AND e.status = 'approved'"
+1771066724000,2026-02-14 10:58:44 UTC::@:[1342]:LOG:  checkpoint starting: time
+1771066727000,2026-02-14 10:58:47 UTC:10.0.1.68(55890):yukpo_admin@yukpo:[7337]:ERROR:  column e.status does not exist at character 300
+1771066727000,"2026-02-14 10:58:47 UTC:10.0.1.68(55890):yukpo_admin@yukpo:[7337]:HINT:  Perhaps you meant to reference the column ""ev.status""."
+1771066727000,"2026-02-14 10:58:47 UTC:10.0.1.68(55890):yukpo_admin@yukpo:[7337]:STATEMENT:  
+	        SELECT
+	            e.id AS entry_id,
+	            e.service_id,
+	            e.submitted_by_user_id,
+	            ev.display_name AS event_display_name
+	        FROM global_promo_entries e
+	        JOIN global_promo_events ev ON ev.id = e.event_id
+	        WHERE ev.status = 'live'
+	          AND e.status = 'approved'"
+1771066727000,"2026-02-14 10:58:47 UTC:10.0.1.68(43488):yukpo_admin@yukpo:[7363]:ERROR:  column ""last_error"" does not exist at character 232"
+1771066727000,"2026-02-14 10:58:47 UTC:10.0.1.68(43488):yukpo_admin@yukpo:[7363]:STATEMENT:  SELECT id,
+	                             media_id,
+	                             platform,
+	                             payload,
+	                             status,
+	                             attempt,
+	                             last_error,
+	                             scheduled_for,
+	                             created_at,
+	                             updated_at
+	                     FROM social_publication_jobs
+	                     WHERE status = 'queued' AND scheduled_for <= NOW()
+	                     ORDER BY scheduled_for ASC
+	                     LIMIT $1"
+1771066731000,"2026-02-14 10:58:51 UTC::@:[1342]:LOG:  checkpoint complete: wrote 75 buffers (0.1%); 0 WAL file(s) added, 0 removed, 1 recycled; write=7.449 s, sync=0.002 s, total=7.458 s; sync files=36, longest=0.002 s, average=0.001 s; distance=65700 kB, estimate=66057 kB"
+1771066757000,2026-02-14 10:59:17 UTC:10.0.1.68(46372):yukpo_admin@yukpo:[7416]:ERROR:  column e.status does not exist at character 300
+1771066757000,"2026-02-14 10:59:17 UTC:10.0.1.68(46372):yukpo_admin@yukpo:[7416]:HINT:  Perhaps you meant to reference the column ""ev.status""."
+1771066757000,"2026-02-14 10:59:17 UTC:10.0.1.68(46372):yukpo_admin@yukpo:[7416]:STATEMENT:  
+	        SELECT
+	            e.id AS entry_id,
+	            e.service_id,
+	            e.submitted_by_user_id,
+	            ev.display_name AS event_display_name
+	        FROM global_promo_entries e
+	        JOIN global_promo_events ev ON ev.id = e.event_id
+	        WHERE ev.status = 'live'
+	          AND e.status = 'approved'"
+1771066787000,2026-02-14 10:59:47 UTC:10.0.1.68(33156):yukpo_admin@yukpo:[7492]:ERROR:  column e.status does not exist at character 300
+1771066787000,"2026-02-14 10:59:47 UTC:10.0.1.68(33156):yukpo_admin@yukpo:[7492]:HINT:  Perhaps you meant to reference the column ""ev.status""."
+1771066787000,"2026-02-14 10:59:47 UTC:10.0.1.68(33156):yukpo_admin@yukpo:[7492]:STATEMENT:  
+	        SELECT
+	            e.id AS entry_id,
+	            e.service_id,
+	            e.submitted_by_user_id,
+	            ev.display_name AS event_display_name
+	        FROM global_promo_entries e
+	        JOIN global_promo_events ev ON ev.id = e.event_id
+	        WHERE ev.status = 'live'
+	          AND e.status = 'approved'"
+1771066787000,"2026-02-14 10:59:47 UTC:10.0.1.68(43488):yukpo_admin@yukpo:[7363]:ERROR:  column ""last_error"" does not exist at character 232"
+1771066787000,"2026-02-14 10:59:47 UTC:10.0.1.68(43488):yukpo_admin@yukpo:[7363]:STATEMENT:  SELECT id,
+	                             media_id,
+	                             platform,
+	                             payload,
+	                             status,
+	                             attempt,
+	                             last_error,
+	                             scheduled_for,
+	                             created_at,
+	                             updated_at
+	                     FROM social_publication_jobs
+	                     WHERE status = 'queued' AND scheduled_for <= NOW()
+	                     ORDER BY scheduled_for ASC
+	                     LIMIT $1"
+1771066817000,2026-02-14 11:00:17 UTC:10.0.1.68(46372):yukpo_admin@yukpo:[7416]:ERROR:  column e.status does not exist at character 300
+1771066817000,"2026-02-14 11:00:17 UTC:10.0.1.68(46372):yukpo_admin@yukpo:[7416]:HINT:  Perhaps you meant to reference the column ""ev.status""."
+1771066817000,"2026-02-14 11:00:17 UTC:10.0.1.68(46372):yukpo_admin@yukpo:[7416]:STATEMENT:  
+	        SELECT
+	            e.id AS entry_id,
+	            e.service_id,
+	            e.submitted_by_user_id,
+	            ev.display_name AS event_display_name
+	        FROM global_promo_entries e
+	        JOIN global_promo_events ev ON ev.id = e.event_id
+	        WHERE ev.status = 'live'
+	          AND e.status = 'approved'"
+1771066847000,2026-02-14 11:00:47 UTC:10.0.1.68(40052):yukpo_admin@yukpo:[7524]:ERROR:  column e.status does not exist at character 300
+1771066847000,"2026-02-14 11:00:47 UTC:10.0.1.68(40052):yukpo_admin@yukpo:[7524]:HINT:  Perhaps you meant to reference the column ""ev.status""."
+1771066847000,"2026-02-14 11:00:47 UTC:10.0.1.68(40052):yukpo_admin@yukpo:[7524]:STATEMENT:  
+	        SELECT
+	            e.id AS entry_id,
+	            e.service_id,
+	            e.submitted_by_user_id,
+	            ev.display_name AS event_display_name
+	        FROM global_promo_entries e
+	        JOIN global_promo_events ev ON ev.id = e.event_id
+	        WHERE ev.status = 'live'
+	          AND e.status = 'approved'"
+1771066847000,"2026-02-14 11:00:47 UTC:10.0.1.68(33150):yukpo_admin@yukpo:[7491]:ERROR:  column ""last_error"" does not exist at character 232"
+1771066847000,"2026-02-14 11:00:47 UTC:10.0.1.68(33150):yukpo_admin@yukpo:[7491]:STATEMENT:  SELECT id,
+	                             media_id,
+	                             platform,
+	                             payload,
+	                             status,
+	                             attempt,
+	                             last_error,
+	                             scheduled_for,
+	                             created_at,
+	                             updated_at
+	                     FROM social_publication_jobs
+	                     WHERE status = 'queued' AND scheduled_for <= NOW()
+	                     ORDER BY scheduled_for ASC
+	                     LIMIT $1"
+1771066877000,2026-02-14 11:01:17 UTC:10.0.1.68(33156):yukpo_admin@yukpo:[7492]:ERROR:  column e.status does not exist at character 300
+1771066877000,"2026-02-14 11:01:17 UTC:10.0.1.68(33156):yukpo_admin@yukpo:[7492]:HINT:  Perhaps you meant to reference the column ""ev.status""."
+1771066877000,"2026-02-14 11:01:17 UTC:10.0.1.68(33156):yukpo_admin@yukpo:[7492]:STATEMENT:  
+	        SELECT
+	            e.id AS entry_id,
+	            e.service_id,
+	            e.submitted_by_user_id,
+	            ev.display_name AS event_display_name
+	        FROM global_promo_entries e
+	        JOIN global_promo_events ev ON ev.id = e.event_id
+	        WHERE ev.status = 'live'
+	          AND e.status = 'approved'"
+1771066907000,2026-02-14 11:01:47 UTC:10.0.1.68(40034):yukpo_admin@yukpo:[7521]:ERROR:  column e.status does not exist at character 300
+1771066907000,"2026-02-14 11:01:47 UTC:10.0.1.68(40034):yukpo_admin@yukpo:[7521]:HINT:  Perhaps you meant to reference the column ""ev.status""."
+1771066907000,"2026-02-14 11:01:47 UTC:10.0.1.68(40034):yukpo_admin@yukpo:[7521]:STATEMENT:  
+	        SELECT
+	            e.id AS entry_id,
+	            e.service_id,
+	            e.submitted_by_user_id,
+	            ev.display_name AS event_display_name
+	        FROM global_promo_entries e
+	        JOIN global_promo_events ev ON ev.id = e.event_id
+	        WHERE ev.status = 'live'
+	          AND e.status = 'approved'"
+1771066907000,"2026-02-14 11:01:47 UTC:10.0.1.68(33156):yukpo_admin@yukpo:[7492]:ERROR:  column ""last_error"" does not exist at character 232"
+1771066907000,"2026-02-14 11:01:47 UTC:10.0.1.68(33156):yukpo_admin@yukpo:[7492]:STATEMENT:  SELECT id,
+	                             media_id,
+	                             platform,
+	                             payload,
+	                             status,
+	                             attempt,
+	                             last_error,
+	                             scheduled_for,
+	                             created_at,
+	                             updated_at
+	                     FROM social_publication_jobs
+	                     WHERE status = 'queued' AND scheduled_for <= NOW()
+	                     ORDER BY scheduled_for ASC
+	                     LIMIT $1"
+1771066937000,2026-02-14 11:02:17 UTC:10.0.1.68(39578):yukpo_admin@yukpo:[7493]:ERROR:  column e.status does not exist at character 300
+1771066937000,"2026-02-14 11:02:17 UTC:10.0.1.68(39578):yukpo_admin@yukpo:[7493]:HINT:  Perhaps you meant to reference the column ""ev.status""."
+1771066937000,"2026-02-14 11:02:17 UTC:10.0.1.68(39578):yukpo_admin@yukpo:[7493]:STATEMENT:  
+	        SELECT
+	            e.id AS entry_id,
+	            e.service_id,
+	            e.submitted_by_user_id,
+	            ev.display_name AS event_display_name
+	        FROM global_promo_entries e
+	        JOIN global_promo_events ev ON ev.id = e.event_id
+	        WHERE ev.status = 'live'
+	          AND e.status = 'approved'"
+1771066967000,2026-02-14 11:02:47 UTC:10.0.1.68(40034):yukpo_admin@yukpo:[7521]:ERROR:  column e.status does not exist at character 300
+1771066967000,"2026-02-14 11:02:47 UTC:10.0.1.68(40034):yukpo_admin@yukpo:[7521]:HINT:  Perhaps you meant to reference the column ""ev.status""."
+1771066967000,"2026-02-14 11:02:47 UTC:10.0.1.68(40034):yukpo_admin@yukpo:[7521]:STATEMENT:  
+	        SELECT
+	            e.id AS entry_id,
+	            e.service_id,
+	            e.submitted_by_user_id,
+	            ev.display_name AS event_display_name
+	        FROM global_promo_entries e
+	        JOIN global_promo_events ev ON ev.id = e.event_id
+	        WHERE ev.status = 'live'
+	          AND e.status = 'approved'"
+1771066967000,"2026-02-14 11:02:47 UTC:10.0.1.68(40052):yukpo_admin@yukpo:[7524]:ERROR:  column ""last_error"" does not exist at character 232"
+1771066967000,"2026-02-14 11:02:47 UTC:10.0.1.68(40052):yukpo_admin@yukpo:[7524]:STATEMENT:  SELECT id,
+	                             media_id,
+	                             platform,
+	                             payload,
+	                             status,
+	                             attempt,
+	                             last_error,
+	                             scheduled_for,
+	                             created_at,
+	                             updated_at
+	                     FROM social_publication_jobs
+	                     WHERE status = 'queued' AND scheduled_for <= NOW()
+	                     ORDER BY scheduled_for ASC
+	                     LIMIT $1"
+1771066997000,2026-02-14 11:03:17 UTC:10.0.1.68(40442):yukpo_admin@yukpo:[7669]:ERROR:  column e.status does not exist at character 300
+1771066997000,"2026-02-14 11:03:17 UTC:10.0.1.68(40442):yukpo_admin@yukpo:[7669]:HINT:  Perhaps you meant to reference the column ""ev.status""."
+1771066997000,"2026-02-14 11:03:17 UTC:10.0.1.68(40442):yukpo_admin@yukpo:[7669]:STATEMENT:  
+	        SELECT
+	            e.id AS entry_id,
+	            e.service_id,
+	            e.submitted_by_user_id,
+	            ev.display_name AS event_display_name
+	        FROM global_promo_entries e
+	        JOIN global_promo_events ev ON ev.id = e.event_id
+	        WHERE ev.status = 'live'
+	          AND e.status = 'approved'"
+1771067024000,2026-02-14 11:03:44 UTC::@:[1342]:LOG:  checkpoint starting: time
+1771067024000,"2026-02-14 11:03:44 UTC::@:[1342]:LOG:  checkpoint complete: wrote 6 buffers (0.0%); 0 WAL file(s) added, 0 removed, 1 recycled; write=0.506 s, sync=0.002 s, total=0.516 s; sync files=4, longest=0.002 s, average=0.001 s; distance=65378 kB, estimate=65989 kB"
+1771067027000,2026-02-14 11:03:47 UTC:10.0.1.68(52846):yukpo_admin@yukpo:[7695]:ERROR:  column e.status does not exist at character 300
+1771067027000,"2026-02-14 11:03:47 UTC:10.0.1.68(52846):yukpo_admin@yukpo:[7695]:HINT:  Perhaps you meant to reference the column ""ev.status""."
+1771067027000,"2026-02-14 11:03:47 UTC:10.0.1.68(52846):yukpo_admin@yukpo:[7695]:STATEMENT:  
+	        SELECT
+	            e.id AS entry_id,
+	            e.service_id,
+	            e.submitted_by_user_id,
+	            ev.display_name AS event_display_name
+	        FROM global_promo_entries e
+	        JOIN global_promo_events ev ON ev.id = e.event_id
+	        WHERE ev.status = 'live'
+	          AND e.status = 'approved'"
+1771067027000,"2026-02-14 11:03:47 UTC:10.0.1.68(40442):yukpo_admin@yukpo:[7669]:ERROR:  column ""last_error"" does not exist at character 232"
+1771067027000,"2026-02-14 11:03:47 UTC:10.0.1.68(40442):yukpo_admin@yukpo:[7669]:STATEMENT:  SELECT id,
+	                             media_id,
+	                             platform,
+	                             payload,
+	                             status,
+	                             attempt,
+	                             last_error,
+	                             scheduled_for,
+	                             created_at,
+	                             updated_at
+	                     FROM social_publication_jobs
+	                     WHERE status = 'queued' AND scheduled_for <= NOW()
+	                     ORDER BY scheduled_for ASC
+	                     LIMIT $1"
+1771067057000,2026-02-14 11:04:17 UTC:10.0.1.68(40442):yukpo_admin@yukpo:[7669]:ERROR:  column e.status does not exist at character 300
+1771067057000,"2026-02-14 11:04:17 UTC:10.0.1.68(40442):yukpo_admin@yukpo:[7669]:HINT:  Perhaps you meant to reference the column ""ev.status""."
+1771067057000,"2026-02-14 11:04:17 UTC:10.0.1.68(40442):yukpo_admin@yukpo:[7669]:STATEMENT:  
+	        SELECT
+	            e.id AS entry_id,
+	            e.service_id,
+	            e.submitted_by_user_id,
+	            ev.display_name AS event_display_name
+	        FROM global_promo_entries e
+	        JOIN global_promo_events ev ON ev.id = e.event_id
+	        WHERE ev.status = 'live'
+	          AND e.status = 'approved'"
+1771067087000,2026-02-14 11:04:47 UTC:10.0.1.68(40822):yukpo_admin@yukpo:[7703]:ERROR:  column e.status does not exist at character 300
+1771067087000,"2026-02-14 11:04:47 UTC:10.0.1.68(40822):yukpo_admin@yukpo:[7703]:HINT:  Perhaps you meant to reference the column ""ev.status""."
+1771067087000,"2026-02-14 11:04:47 UTC:10.0.1.68(40822):yukpo_admin@yukpo:[7703]:STATEMENT:  
+	        SELECT
+	            e.id AS entry_id,
+	            e.service_id,
+	            e.submitted_by_user_id,
+	            ev.display_name AS event_display_name
+	        FROM global_promo_entries e
+	        JOIN global_promo_events ev ON ev.id = e.event_id
+	        WHERE ev.status = 'live'
+	          AND e.status = 'approved'"
+1771067087000,"2026-02-14 11:04:47 UTC:10.0.1.68(40822):yukpo_admin@yukpo:[7703]:ERROR:  column ""last_error"" does not exist at character 232"
+1771067087000,"2026-02-14 11:04:47 UTC:10.0.1.68(40822):yukpo_admin@yukpo:[7703]:STATEMENT:  SELECT id,
+	                             media_id,
+	                             platform,
+	                             payload,
+	                             status,
+	                             attempt,
+	                             last_error,
+	                             scheduled_for,
+	                             created_at,
+	                             updated_at
+	                     FROM social_publication_jobs
+	                     WHERE status = 'queued' AND scheduled_for <= NOW()
+	                     ORDER BY scheduled_for ASC
+	                     LIMIT $1"
+1771067117000,2026-02-14 11:05:17 UTC:10.0.1.68(40442):yukpo_admin@yukpo:[7669]:ERROR:  column e.status does not exist at character 300
+1771067117000,"2026-02-14 11:05:17 UTC:10.0.1.68(40442):yukpo_admin@yukpo:[7669]:HINT:  Perhaps you meant to reference the column ""ev.status""."
+1771067117000,"2026-02-14 11:05:17 UTC:10.0.1.68(40442):yukpo_admin@yukpo:[7669]:STATEMENT:  
+	        SELECT
+	            e.id AS entry_id,
+	            e.service_id,
+	            e.submitted_by_user_id,
+	            ev.display_name AS event_display_name
+	        FROM global_promo_entries e
+	        JOIN global_promo_events ev ON ev.id = e.event_id
+	        WHERE ev.status = 'live'
+	          AND e.status = 'approved'"
+1771067147000,2026-02-14 11:05:47 UTC:10.0.1.68(42606):yukpo_admin@yukpo:[7738]:ERROR:  column e.status does not exist at character 300
+1771067147000,"2026-02-14 11:05:47 UTC:10.0.1.68(42606):yukpo_admin@yukpo:[7738]:HINT:  Perhaps you meant to reference the column ""ev.status""."
+1771067147000,"2026-02-14 11:05:47 UTC:10.0.1.68(42606):yukpo_admin@yukpo:[7738]:STATEMENT:  
+	        SELECT
+	            e.id AS entry_id,
+	            e.service_id,
+	            e.submitted_by_user_id,
+	            ev.display_name AS event_display_name
+	        FROM global_promo_entries e
+	        JOIN global_promo_events ev ON ev.id = e.event_id
+	        WHERE ev.status = 'live'
+	          AND e.status = 'approved'"
+1771067147000,"2026-02-14 11:05:47 UTC:10.0.1.68(42606):yukpo_admin@yukpo:[7738]:ERROR:  column ""last_error"" does not exist at character 232"
+1771067147000,"2026-02-14 11:05:47 UTC:10.0.1.68(42606):yukpo_admin@yukpo:[7738]:STATEMENT:  SELECT id,
+	                             media_id,
+	                             platform,
+	                             payload,
+	                             status,
+	                             attempt,
+	                             last_error,
+	                             scheduled_for,
+	                             created_at,
+	                             updated_at
+	                     FROM social_publication_jobs
+	                     WHERE status = 'queued' AND scheduled_for <= NOW()
+	                     ORDER BY scheduled_for ASC
+	                     LIMIT $1"
+1771067177000,2026-02-14 11:06:17 UTC:10.0.1.68(37932):yukpo_admin@yukpo:[7789]:ERROR:  column e.status does not exist at character 300
+1771067177000,"2026-02-14 11:06:17 UTC:10.0.1.68(37932):yukpo_admin@yukpo:[7789]:HINT:  Perhaps you meant to reference the column ""ev.status""."
+1771067177000,"2026-02-14 11:06:17 UTC:10.0.1.68(37932):yukpo_admin@yukpo:[7789]:STATEMENT:  
+	        SELECT
+	            e.id AS entry_id,
+	            e.service_id,
+	            e.submitted_by_user_id,
+	            ev.display_name AS event_display_name
+	        FROM global_promo_entries e
+	        JOIN global_promo_events ev ON ev.id = e.event_id
+	        WHERE ev.status = 'live'
+	          AND e.status = 'approved'"
+1771067207000,2026-02-14 11:06:47 UTC:10.0.1.68(54416):yukpo_admin@yukpo:[7865]:ERROR:  column e.status does not exist at character 300
+1771067207000,"2026-02-14 11:06:47 UTC:10.0.1.68(54416):yukpo_admin@yukpo:[7865]:HINT:  Perhaps you meant to reference the column ""ev.status""."
+1771067207000,"2026-02-14 11:06:47 UTC:10.0.1.68(54416):yukpo_admin@yukpo:[7865]:STATEMENT:  
+	        SELECT
+	            e.id AS entry_id,
+	            e.service_id,
+	            e.submitted_by_user_id,
+	            ev.display_name AS event_display_name
+	        FROM global_promo_entries e
+	        JOIN global_promo_events ev ON ev.id = e.event_id
+	        WHERE ev.status = 'live'
+	          AND e.status = 'approved'"
+1771067207000,"2026-02-14 11:06:47 UTC:10.0.1.68(42606):yukpo_admin@yukpo:[7738]:ERROR:  column ""last_error"" does not exist at character 232"
+1771067207000,"2026-02-14 11:06:47 UTC:10.0.1.68(42606):yukpo_admin@yukpo:[7738]:STATEMENT:  SELECT id,
+	                             media_id,
+	                             platform,
+	                             payload,
+	                             status,
+	                             attempt,
+	                             last_error,
+	                             scheduled_for,
+	                             created_at,
+	                             updated_at
+	                     FROM social_publication_jobs
+	                     WHERE status = 'queued' AND scheduled_for <= NOW()
+	                     ORDER BY scheduled_for ASC
+	                     LIMIT $1"
+1771067237000,2026-02-14 11:07:17 UTC:10.0.1.68(54402):yukpo_admin@yukpo:[7862]:ERROR:  column e.status does not exist at character 300
+1771067237000,"2026-02-14 11:07:17 UTC:10.0.1.68(54402):yukpo_admin@yukpo:[7862]:HINT:  Perhaps you meant to reference the column ""ev.status""."
+1771067237000,"2026-02-14 11:07:17 UTC:10.0.1.68(54402):yukpo_admin@yukpo:[7862]:STATEMENT:  
+	        SELECT
+	            e.id AS entry_id,
+	            e.service_id,
+	            e.submitted_by_user_id,
+	            ev.display_name AS event_display_name
+	        FROM global_promo_entries e
+	        JOIN global_promo_events ev ON ev.id = e.event_id
+	        WHERE ev.status = 'live'
+	          AND e.status = 'approved'"
+1771067267000,2026-02-14 11:07:47 UTC:10.0.1.68(37932):yukpo_admin@yukpo:[7789]:ERROR:  column e.status does not exist at character 300
+1771067267000,"2026-02-14 11:07:47 UTC:10.0.1.68(37932):yukpo_admin@yukpo:[7789]:HINT:  Perhaps you meant to reference the column ""ev.status""."
+1771067267000,"2026-02-14 11:07:47 UTC:10.0.1.68(37932):yukpo_admin@yukpo:[7789]:STATEMENT:  
+	        SELECT
+	            e.id AS entry_id,
+	            e.service_id,
+	            e.submitted_by_user_id,
+	            ev.display_name AS event_display_name
+	        FROM global_promo_entries e
+	        JOIN global_promo_events ev ON ev.id = e.event_id
+	        WHERE ev.status = 'live'
+	          AND e.status = 'approved'"
+1771067267000,"2026-02-14 11:07:47 UTC:10.0.1.68(54416):yukpo_admin@yukpo:[7865]:ERROR:  column ""last_error"" does not exist at character 232"
+1771067267000,"2026-02-14 11:07:47 UTC:10.0.1.68(54416):yukpo_admin@yukpo:[7865]:STATEMENT:  SELECT id,
+	                             media_id,
+	                             platform,
+	                             payload,
+	                             status,
+	                             attempt,
+	                             last_error,
+	                             scheduled_for,
+	                             created_at,
+	                             updated_at
+	                     FROM social_publication_jobs
+	                     WHERE status = 'queued' AND scheduled_for <= NOW()
+	                     ORDER BY scheduled_for ASC
+	                     LIMIT $1"
+1771067297000,2026-02-14 11:08:17 UTC:10.0.1.68(54416):yukpo_admin@yukpo:[7865]:ERROR:  column e.status does not exist at character 300
+1771067297000,"2026-02-14 11:08:17 UTC:10.0.1.68(54416):yukpo_admin@yukpo:[7865]:HINT:  Perhaps you meant to reference the column ""ev.status""."
+1771067297000,"2026-02-14 11:08:17 UTC:10.0.1.68(54416):yukpo_admin@yukpo:[7865]:STATEMENT:  
+	        SELECT
+	            e.id AS entry_id,
+	            e.service_id,
+	            e.submitted_by_user_id,
+	            ev.display_name AS event_display_name
+	        FROM global_promo_entries e
+	        JOIN global_promo_events ev ON ev.id = e.event_id
+	        WHERE ev.status = 'live'
+	          AND e.status = 'approved'"
+1771067325000,2026-02-14 11:08:45 UTC::@:[1342]:LOG:  checkpoint starting: time
+1771067325000,"2026-02-14 11:08:45 UTC::@:[1342]:LOG:  checkpoint complete: wrote 3 buffers (0.0%); 0 WAL file(s) added, 0 removed, 1 recycled; write=0.203 s, sync=0.002 s, total=0.212 s; sync files=3, longest=0.001 s, average=0.001 s; distance=65528 kB, estimate=65943 kB"
+1771067327000,2026-02-14 11:08:47 UTC:10.0.1.68(35096):yukpo_admin@yukpo:[7867]:ERROR:  column e.status does not exist at character 300
+1771067327000,"2026-02-14 11:08:47 UTC:10.0.1.68(35096):yukpo_admin@yukpo:[7867]:HINT:  Perhaps you meant to reference the column ""ev.status""."
+1771067327000,"2026-02-14 11:08:47 UTC:10.0.1.68(35096):yukpo_admin@yukpo:[7867]:STATEMENT:  
+	        SELECT
+	            e.id AS entry_id,
+	            e.service_id,
+	            e.submitted_by_user_id,
+	            ev.display_name AS event_display_name
+	        FROM global_promo_entries e
+	        JOIN global_promo_events ev ON ev.id = e.event_id
+	        WHERE ev.status = 'live'
+	          AND e.status = 'approved'"
+1771067327000,"2026-02-14 11:08:47 UTC:10.0.1.68(35096):yukpo_admin@yukpo:[7867]:ERROR:  column ""last_error"" does not exist at character 232"
+1771067327000,"2026-02-14 11:08:47 UTC:10.0.1.68(35096):yukpo_admin@yukpo:[7867]:STATEMENT:  SELECT id,
+	                             media_id,
+	                             platform,
+	                             payload,
+	                             status,
+	                             attempt,
+	                             last_error,
+	                             scheduled_for,
+	                             created_at,
+	                             updated_at
+	                     FROM social_publication_jobs
+	                     WHERE status = 'queued' AND scheduled_for <= NOW()
+	                     ORDER BY scheduled_for ASC
+	                     LIMIT $1"
+1771067357000,2026-02-14 11:09:17 UTC:10.0.1.68(39872):yukpo_admin@yukpo:[7948]:ERROR:  column e.status does not exist at character 300
+1771067357000,"2026-02-14 11:09:17 UTC:10.0.1.68(39872):yukpo_admin@yukpo:[7948]:HINT:  Perhaps you meant to reference the column ""ev.status""."
+1771067357000,"2026-02-14 11:09:17 UTC:10.0.1.68(39872):yukpo_admin@yukpo:[7948]:STATEMENT:  
+	        SELECT
+	            e.id AS entry_id,
+	            e.service_id,
+	            e.submitted_by_user_id,
+	            ev.display_name AS event_display_name
+	        FROM global_promo_entries e
+	        JOIN global_promo_events ev ON ev.id = e.event_id
+	        WHERE ev.status = 'live'
+	          AND e.status = 'approved'"
+1771067387000,2026-02-14 11:09:47 UTC:10.0.1.68(39994):yukpo_admin@yukpo:[8024]:ERROR:  column e.status does not exist at character 300
+1771067387000,"2026-02-14 11:09:47 UTC:10.0.1.68(39994):yukpo_admin@yukpo:[8024]:HINT:  Perhaps you meant to reference the column ""ev.status""."
+1771067387000,"2026-02-14 11:09:47 UTC:10.0.1.68(39994):yukpo_admin@yukpo:[8024]:STATEMENT:  
+	        SELECT
+	            e.id AS entry_id,
+	            e.service_id,
+	            e.submitted_by_user_id,
+	            ev.display_name AS event_display_name
+	        FROM global_promo_entries e
+	        JOIN global_promo_events ev ON ev.id = e.event_id
+	        WHERE ev.status = 'live'
+	          AND e.status = 'approved'"
+1771067387000,"2026-02-14 11:09:47 UTC:10.0.1.68(38714):yukpo_admin@yukpo:[8055]:ERROR:  column ""last_error"" does not exist at character 232"
+1771067387000,"2026-02-14 11:09:47 UTC:10.0.1.68(38714):yukpo_admin@yukpo:[8055]:STATEMENT:  SELECT id,
+	                             media_id,
+	                             platform,
+	                             payload,
+	                             status,
+	                             attempt,
+	                             last_error,
+	                             scheduled_for,
+	                             created_at,
+	                             updated_at
+	                     FROM social_publication_jobs
+	                     WHERE status = 'queued' AND scheduled_for <= NOW()
+	                     ORDER BY scheduled_for ASC
+	                     LIMIT $1"
+1771067417000,2026-02-14 11:10:17 UTC:10.0.1.68(40006):yukpo_admin@yukpo:[8026]:ERROR:  column e.status does not exist at character 300
+1771067417000,"2026-02-14 11:10:17 UTC:10.0.1.68(40006):yukpo_admin@yukpo:[8026]:HINT:  Perhaps you meant to reference the column ""ev.status""."
+1771067417000,"2026-02-14 11:10:17 UTC:10.0.1.68(40006):yukpo_admin@yukpo:[8026]:STATEMENT:  
+	        SELECT
+	            e.id AS entry_id,
+	            e.service_id,
+	            e.submitted_by_user_id,
+	            ev.display_name AS event_display_name
+	        FROM global_promo_entries e
+	        JOIN global_promo_events ev ON ev.id = e.event_id
+	        WHERE ev.status = 'live'
+	          AND e.status = 'approved'"
+1771067447000,2026-02-14 11:10:47 UTC:10.0.1.68(39872):yukpo_admin@yukpo:[7948]:ERROR:  column e.status does not exist at character 300
+1771067447000,"2026-02-14 11:10:47 UTC:10.0.1.68(39872):yukpo_admin@yukpo:[7948]:HINT:  Perhaps you meant to reference the column ""ev.status""."
+1771067447000,"2026-02-14 11:10:47 UTC:10.0.1.68(39872):yukpo_admin@yukpo:[7948]:STATEMENT:  
+	        SELECT
+	            e.id AS entry_id,
+	            e.service_id,
+	            e.submitted_by_user_id,
+	            ev.display_name AS event_display_name
+	        FROM global_promo_entries e
+	        JOIN global_promo_events ev ON ev.id = e.event_id
+	        WHERE ev.status = 'live'
+	          AND e.status = 'approved'"
+1771067447000,"2026-02-14 11:10:47 UTC:10.0.1.68(38686):yukpo_admin@yukpo:[8052]:ERROR:  column ""last_error"" does not exist at character 232"
+1771067447000,"2026-02-14 11:10:47 UTC:10.0.1.68(38686):yukpo_admin@yukpo:[8052]:STATEMENT:  SELECT id,
+	                             media_id,
+	                             platform,
+	                             payload,
+	                             status,
+	                             attempt,
+	                             last_error,
+	                             scheduled_for,
+	                             created_at,
+	                             updated_at
+	                     FROM social_publication_jobs
+	                     WHERE status = 'queued' AND scheduled_for <= NOW()
+	                     ORDER BY scheduled_for ASC
+	                     LIMIT $1"
+1771067477000,2026-02-14 11:11:17 UTC:10.0.1.68(38686):yukpo_admin@yukpo:[8052]:ERROR:  column e.status does not exist at character 300
+1771067477000,"2026-02-14 11:11:17 UTC:10.0.1.68(38686):yukpo_admin@yukpo:[8052]:HINT:  Perhaps you meant to reference the column ""ev.status""."
+1771067477000,"2026-02-14 11:11:17 UTC:10.0.1.68(38686):yukpo_admin@yukpo:[8052]:STATEMENT:  
+	        SELECT
+	            e.id AS entry_id,
+	            e.service_id,
+	            e.submitted_by_user_id,
+	            ev.display_name AS event_display_name
+	        FROM global_promo_entries e
+	        JOIN global_promo_events ev ON ev.id = e.event_id
+	        WHERE ev.status = 'live'
+	          AND e.status = 'approved'"
+1771067507000,2026-02-14 11:11:47 UTC:10.0.1.68(38714):yukpo_admin@yukpo:[8055]:ERROR:  column e.status does not exist at character 300
+1771067507000,"2026-02-14 11:11:47 UTC:10.0.1.68(38714):yukpo_admin@yukpo:[8055]:HINT:  Perhaps you meant to reference the column ""ev.status""."
+1771067507000,"2026-02-14 11:11:47 UTC:10.0.1.68(38714):yukpo_admin@yukpo:[8055]:STATEMENT:  
+	        SELECT
+	            e.id AS entry_id,
+	            e.service_id,
+	            e.submitted_by_user_id,
+	            ev.display_name AS event_display_name
+	        FROM global_promo_entries e
+	        JOIN global_promo_events ev ON ev.id = e.event_id
+	        WHERE ev.status = 'live'
+	          AND e.status = 'approved'"
+1771067507000,"2026-02-14 11:11:47 UTC:10.0.1.68(40006):yukpo_admin@yukpo:[8026]:ERROR:  column ""last_error"" does not exist at character 232"
+1771067507000,"2026-02-14 11:11:47 UTC:10.0.1.68(40006):yukpo_admin@yukpo:[8026]:STATEMENT:  SELECT id,
+	                             media_id,
+	                             platform,
+	                             payload,
+	                             status,
+	                             attempt,
+	                             last_error,
+	                             scheduled_for,
+	                             created_at,
+	                             updated_at
+	                     FROM social_publication_jobs
+	                     WHERE status = 'queued' AND scheduled_for <= NOW()
+	                     ORDER BY scheduled_for ASC
+	                     LIMIT $1"
+1771067537000,2026-02-14 11:12:17 UTC:10.0.1.68(38730):yukpo_admin@yukpo:[8056]:ERROR:  column e.status does not exist at character 300
+1771067537000,"2026-02-14 11:12:17 UTC:10.0.1.68(38730):yukpo_admin@yukpo:[8056]:HINT:  Perhaps you meant to reference the column ""ev.status""."
+1771067537000,"2026-02-14 11:12:17 UTC:10.0.1.68(38730):yukpo_admin@yukpo:[8056]:STATEMENT:  
+	        SELECT
+	            e.id AS entry_id,
+	            e.service_id,
+	            e.submitted_by_user_id,
+	            ev.display_name AS event_display_name
+	        FROM global_promo_entries e
+	        JOIN global_promo_events ev ON ev.id = e.event_id
+	        WHERE ev.status = 'live'
+	          AND e.status = 'approved'"
+1771067567000,2026-02-14 11:12:47 UTC:10.0.1.68(38710):yukpo_admin@yukpo:[8054]:ERROR:  column e.status does not exist at character 300
+1771067567000,"2026-02-14 11:12:47 UTC:10.0.1.68(38710):yukpo_admin@yukpo:[8054]:HINT:  Perhaps you meant to reference the column ""ev.status""."
+1771067567000,"2026-02-14 11:12:47 UTC:10.0.1.68(38710):yukpo_admin@yukpo:[8054]:STATEMENT:  
+	        SELECT
+	            e.id AS entry_id,
+	            e.service_id,
+	            e.submitted_by_user_id,
+	            ev.display_name AS event_display_name
+	        FROM global_promo_entries e
+	        JOIN global_promo_events ev ON ev.id = e.event_id
+	        WHERE ev.status = 'live'
+	          AND e.status = 'approved'"
+1771067567000,"2026-02-14 11:12:47 UTC:10.0.1.68(38710):yukpo_admin@yukpo:[8054]:ERROR:  column ""last_error"" does not exist at character 232"
+1771067567000,"2026-02-14 11:12:47 UTC:10.0.1.68(38710):yukpo_admin@yukpo:[8054]:STATEMENT:  SELECT id,
+	                             media_id,
+	                             platform,
+	                             payload,
+	                             status,
+	                             attempt,
+	                             last_error,
+	                             scheduled_for,
+	                             created_at,
+	                             updated_at
+	                     FROM social_publication_jobs
+	                     WHERE status = 'queued' AND scheduled_for <= NOW()
+	                     ORDER BY scheduled_for ASC
+	                     LIMIT $1"
+1771067597000,2026-02-14 11:13:17 UTC:10.0.1.68(47002):yukpo_admin@yukpo:[8225]:ERROR:  column e.status does not exist at character 300
+1771067597000,"2026-02-14 11:13:17 UTC:10.0.1.68(47002):yukpo_admin@yukpo:[8225]:HINT:  Perhaps you meant to reference the column ""ev.status""."
+1771067597000,"2026-02-14 11:13:17 UTC:10.0.1.68(47002):yukpo_admin@yukpo:[8225]:STATEMENT:  
+	        SELECT
+	            e.id AS entry_id,
+	            e.service_id,
+	            e.submitted_by_user_id,
+	            ev.display_name AS event_display_name
+	        FROM global_promo_entries e
+	        JOIN global_promo_events ev ON ev.id = e.event_id
+	        WHERE ev.status = 'live'
+	          AND e.status = 'approved'"
+1771067625000,2026-02-14 11:13:45 UTC::@:[1342]:LOG:  checkpoint starting: time
+1771067627000,2026-02-14 11:13:47 UTC:10.0.1.68(46992):yukpo_admin@yukpo:[8222]:ERROR:  column e.status does not exist at character 300
+1771067627000,"2026-02-14 11:13:47 UTC:10.0.1.68(46992):yukpo_admin@yukpo:[8222]:HINT:  Perhaps you meant to reference the column ""ev.status""."
+1771067627000,"2026-02-14 11:13:47 UTC:10.0.1.68(46992):yukpo_admin@yukpo:[8222]:STATEMENT:  
+	        SELECT
+	            e.id AS entry_id,
+	            e.service_id,
+	            e.submitted_by_user_id,
+	            ev.display_name AS event_display_name
+	        FROM global_promo_entries e
+	        JOIN global_promo_events ev ON ev.id = e.event_id
+	        WHERE ev.status = 'live'
+	          AND e.status = 'approved'"
+1771067627000,"2026-02-14 11:13:47 UTC:10.0.1.68(47002):yukpo_admin@yukpo:[8225]:ERROR:  column ""last_error"" does not exist at character 232"
+1771067627000,"2026-02-14 11:13:47 UTC:10.0.1.68(47002):yukpo_admin@yukpo:[8225]:STATEMENT:  SELECT id,
+	                             media_id,
+	                             platform,
+	                             payload,
+	                             status,
+	                             attempt,
+	                             last_error,
+	                             scheduled_for,
+	                             created_at,
+	                             updated_at
+	                     FROM social_publication_jobs
+	                     WHERE status = 'queued' AND scheduled_for <= NOW()
+	                     ORDER BY scheduled_for ASC
+	                     LIMIT $1"
+1771067632000,"2026-02-14 11:13:52 UTC::@:[1342]:LOG:  checkpoint complete: wrote 73 buffers (0.1%); 0 WAL file(s) added, 0 removed, 1 recycled; write=7.253 s, sync=0.003 s, total=7.263 s; sync files=33, longest=0.002 s, average=0.001 s; distance=65714 kB, estimate=65920 kB"
+1771067657000,2026-02-14 11:14:17 UTC:10.0.1.68(50620):yukpo_admin@yukpo:[8230]:ERROR:  column e.status does not exist at character 300
+1771067657000,"2026-02-14 11:14:17 UTC:10.0.1.68(50620):yukpo_admin@yukpo:[8230]:HINT:  Perhaps you meant to reference the column ""ev.status""."
+1771067657000,"2026-02-14 11:14:17 UTC:10.0.1.68(50620):yukpo_admin@yukpo:[8230]:STATEMENT:  
+	        SELECT
+	            e.id AS entry_id,
+	            e.service_id,
+	            e.submitted_by_user_id,
+	            ev.display_name AS event_display_name
+	        FROM global_promo_entries e
+	        JOIN global_promo_events ev ON ev.id = e.event_id
+	        WHERE ev.status = 'live'
+	          AND e.status = 'approved'"
+1771067687000,2026-02-14 11:14:47 UTC:10.0.1.68(50622):yukpo_admin@yukpo:[8234]:ERROR:  column e.status does not exist at character 300
+1771067687000,"2026-02-14 11:14:47 UTC:10.0.1.68(50622):yukpo_admin@yukpo:[8234]:HINT:  Perhaps you meant to reference the column ""ev.status""."
+1771067687000,"2026-02-14 11:14:47 UTC:10.0.1.68(50622):yukpo_admin@yukpo:[8234]:STATEMENT:  
+	        SELECT
+	            e.id AS entry_id,
+	            e.service_id,
+	            e.submitted_by_user_id,
+	            ev.display_name AS event_display_name
+	        FROM global_promo_entries e
+	        JOIN global_promo_events ev ON ev.id = e.event_id
+	        WHERE ev.status = 'live'
+	          AND e.status = 'approved'"
+1771067687000,"2026-02-14 11:14:47 UTC:10.0.1.68(46992):yukpo_admin@yukpo:[8222]:ERROR:  column ""last_error"" does not exist at character 232"
+1771067687000,"2026-02-14 11:14:47 UTC:10.0.1.68(46992):yukpo_admin@yukpo:[8222]:STATEMENT:  SELECT id,
+	                             media_id,
+	                             platform,
+	                             payload,
+	                             status,
+	                             attempt,
+	                             last_error,
+	                             scheduled_for,
+	                             created_at,
+	                             updated_at
+	                     FROM social_publication_jobs
+	                     WHERE status = 'queued' AND scheduled_for <= NOW()
+	                     ORDER BY scheduled_for ASC
+	                     LIMIT $1"
+1771067717000,2026-02-14 11:15:17 UTC:10.0.1.68(46982):yukpo_admin@yukpo:[8215]:ERROR:  column e.status does not exist at character 300
+1771067717000,"2026-02-14 11:15:17 UTC:10.0.1.68(46982):yukpo_admin@yukpo:[8215]:HINT:  Perhaps you meant to reference the column ""ev.status""."
+1771067717000,"2026-02-14 11:15:17 UTC:10.0.1.68(46982):yukpo_admin@yukpo:[8215]:STATEMENT:  
+	        SELECT
+	            e.id AS entry_id,
+	            e.service_id,
+	            e.submitted_by_user_id,
+	            ev.display_name AS event_display_name
+	        FROM global_promo_entries e
+	        JOIN global_promo_events ev ON ev.id = e.event_id
+	        WHERE ev.status = 'live'
+	          AND e.status = 'approved'"
+1771067747000,2026-02-14 11:15:47 UTC:10.0.1.68(50620):yukpo_admin@yukpo:[8230]:ERROR:  column e.status does not exist at character 300
+1771067747000,"2026-02-14 11:15:47 UTC:10.0.1.68(50620):yukpo_admin@yukpo:[8230]:HINT:  Perhaps you meant to reference the column ""ev.status""."
+1771067747000,"2026-02-14 11:15:47 UTC:10.0.1.68(50620):yukpo_admin@yukpo:[8230]:STATEMENT:  
+	        SELECT
+	            e.id AS entry_id,
+	            e.service_id,
+	            e.submitted_by_user_id,
+	            ev.display_name AS event_display_name
+	        FROM global_promo_entries e
+	        JOIN global_promo_events ev ON ev.id = e.event_id
+	        WHERE ev.status = 'live'
+	          AND e.status = 'approved'"
+1771067747000,"2026-02-14 11:15:47 UTC:10.0.1.68(50620):yukpo_admin@yukpo:[8230]:ERROR:  column ""last_error"" does not exist at character 232"
+1771067747000,"2026-02-14 11:15:47 UTC:10.0.1.68(50620):yukpo_admin@yukpo:[8230]:STATEMENT:  SELECT id,
+	                             media_id,
+	                             platform,
+	                             payload,
+	                             status,
+	                             attempt,
+	                             last_error,
+	                             scheduled_for,
+	                             created_at,
+	                             updated_at
+	                     FROM social_publication_jobs
+	                     WHERE status = 'queued' AND scheduled_for <= NOW()
+	                     ORDER BY scheduled_for ASC
+	                     LIMIT $1"
+1771067777000,2026-02-14 11:16:17 UTC:10.0.1.68(37260):yukpo_admin@yukpo:[8400]:ERROR:  column e.status does not exist at character 300
+1771067777000,"2026-02-14 11:16:17 UTC:10.0.1.68(37260):yukpo_admin@yukpo:[8400]:HINT:  Perhaps you meant to reference the column ""ev.status""."
+1771067777000,"2026-02-14 11:16:17 UTC:10.0.1.68(37260):yukpo_admin@yukpo:[8400]:STATEMENT:  
+	        SELECT
+	            e.id AS entry_id,
+	            e.service_id,
+	            e.submitted_by_user_id,
+	            ev.display_name AS event_display_name
+	        FROM global_promo_entries e
+	        JOIN global_promo_events ev ON ev.id = e.event_id
+	        WHERE ev.status = 'live'
+	          AND e.status = 'approved'"
+1771067807000,2026-02-14 11:16:47 UTC:10.0.1.68(42842):yukpo_admin@yukpo:[8320]:ERROR:  column e.status does not exist at character 300
+1771067807000,"2026-02-14 11:16:47 UTC:10.0.1.68(42842):yukpo_admin@yukpo:[8320]:HINT:  Perhaps you meant to reference the column ""ev.status""."
+1771067807000,"2026-02-14 11:16:47 UTC:10.0.1.68(42842):yukpo_admin@yukpo:[8320]:STATEMENT:  
+	        SELECT
+	            e.id AS entry_id,
+	            e.service_id,
+	            e.submitted_by_user_id,
+	            ev.display_name AS event_display_name
+	        FROM global_promo_entries e
+	        JOIN global_promo_events ev ON ev.id = e.event_id
+	        WHERE ev.status = 'live'
+	          AND e.status = 'approved'"
+1771067807000,"2026-02-14 11:16:47 UTC:10.0.1.68(42842):yukpo_admin@yukpo:[8320]:ERROR:  column ""last_error"" does not exist at character 232"
+1771067807000,"2026-02-14 11:16:47 UTC:10.0.1.68(42842):yukpo_admin@yukpo:[8320]:STATEMENT:  SELECT id,
+	                             media_id,
+	                             platform,
+	                             payload,
+	                             status,
+	                             attempt,
+	                             last_error,
+	                             scheduled_for,
+	                             created_at,
+	                             updated_at
+	                     FROM social_publication_jobs
+	                     WHERE status = 'queued' AND scheduled_for <= NOW()
+	                     ORDER BY scheduled_for ASC
+	                     LIMIT $1"
+1771067837000,2026-02-14 11:17:17 UTC:10.0.1.68(52356):yukpo_admin@yukpo:[8454]:ERROR:  column e.status does not exist at character 300
+1771067837000,"2026-02-14 11:17:17 UTC:10.0.1.68(52356):yukpo_admin@yukpo:[8454]:HINT:  Perhaps you meant to reference the column ""ev.status""."
+1771067837000,"2026-02-14 11:17:17 UTC:10.0.1.68(52356):yukpo_admin@yukpo:[8454]:STATEMENT:  
+	        SELECT
+	            e.id AS entry_id,
+	            e.service_id,
+	            e.submitted_by_user_id,
+	            ev.display_name AS event_display_name
+	        FROM global_promo_entries e
+	        JOIN global_promo_events ev ON ev.id = e.event_id
+	        WHERE ev.status = 'live'
+	          AND e.status = 'approved'"
+1771067867000,2026-02-14 11:17:47 UTC:10.0.1.68(37244):yukpo_admin@yukpo:[8396]:ERROR:  column e.status does not exist at character 300
+1771067867000,"2026-02-14 11:17:47 UTC:10.0.1.68(37244):yukpo_admin@yukpo:[8396]:HINT:  Perhaps you meant to reference the column ""ev.status""."
+1771067867000,"2026-02-14 11:17:47 UTC:10.0.1.68(37244):yukpo_admin@yukpo:[8396]:STATEMENT:  
+	        SELECT
+	            e.id AS entry_id,
+	            e.service_id,
+	            e.submitted_by_user_id,
+	            ev.display_name AS event_display_name
+	        FROM global_promo_entries e
+	        JOIN global_promo_events ev ON ev.id = e.event_id
+	        WHERE ev.status = 'live'
+	          AND e.status = 'approved'"
+1771067867000,"2026-02-14 11:17:47 UTC:10.0.1.68(37260):yukpo_admin@yukpo:[8400]:ERROR:  column ""last_error"" does not exist at character 232"
+1771067867000,"2026-02-14 11:17:47 UTC:10.0.1.68(37260):yukpo_admin@yukpo:[8400]:STATEMENT:  SELECT id,
+	                             media_id,
+	                             platform,
+	                             payload,
+	                             status,
+	                             attempt,
+	                             last_error,
+	                             scheduled_for,
+	                             created_at,
+	                             updated_at
+	                     FROM social_publication_jobs
+	                     WHERE status = 'queued' AND scheduled_for <= NOW()
+	                     ORDER BY scheduled_for ASC
+	                     LIMIT $1"
+1771067897000,2026-02-14 11:18:17 UTC:10.0.1.68(37244):yukpo_admin@yukpo:[8396]:ERROR:  column e.status does not exist at character 300
+1771067897000,"2026-02-14 11:18:17 UTC:10.0.1.68(37244):yukpo_admin@yukpo:[8396]:HINT:  Perhaps you meant to reference the column ""ev.status""."
+1771067897000,"2026-02-14 11:18:17 UTC:10.0.1.68(37244):yukpo_admin@yukpo:[8396]:STATEMENT:  
+	        SELECT
+	            e.id AS entry_id,
+	            e.service_id,
+	            e.submitted_by_user_id,
+	            ev.display_name AS event_display_name
+	        FROM global_promo_entries e
+	        JOIN global_promo_events ev ON ev.id = e.event_id
+	        WHERE ev.status = 'live'
+	          AND e.status = 'approved'"

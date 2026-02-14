@@ -1,0 +1,4 @@
+﻿Analyse des logs apres detection - 2026-02-13 03:27:05
+Cluster: yukpo-cluster
+Service: yukpo-backend-service
+

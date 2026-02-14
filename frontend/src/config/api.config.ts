@@ -14,14 +14,15 @@ const VITE_WS_URL = import.meta.env.VITE_WS_BASE_URL;
 const VITE_ENV = import.meta.env.VITE_ENVIRONMENT || 'production';
 
 // ✅ Logique de détection intelligente:
-// - En prod Netlify: utilise proxy (pas de CORS)
+// - En prod Netlify/Vercel: utilise proxy (pas de CORS)
 // - En dev/prod ailleurs: utilise le domaine Cloudflare
 // ✅ 2026-02-14: Mise à jour pour utiliser le domaine Cloudflare api.yukpomnang.com
 // Le DNS Cloudflare pointe automatiquement vers l'IP ECS actuelle (mise à jour automatique)
 // HTTPS fourni automatiquement par Cloudflare
 const isNetlify = typeof window !== 'undefined' && window.location.hostname.includes('netlify.app');
+const isVercel = typeof window !== 'undefined' && (window.location.hostname.includes('vercel.app') || window.location.hostname.includes('yukpomnang.com'));
 
-export const API_BASE_URL = VITE_API_URL || (isNetlify ? '' : 'https://api.yukpomnang.com');
+export const API_BASE_URL = VITE_API_URL || ((isNetlify || isVercel) ? '' : 'https://api.yukpomnang.com');
 export const WS_BASE_URL = VITE_WS_URL || 'wss://api.yukpomnang.com';
 
 // Log pour vérifier la configuration chargée (seulement en développement)
@@ -30,6 +31,7 @@ if (import.meta.env.DEV) {
   console.log('📡 [Frontend API Config] WS_BASE_URL:', WS_BASE_URL);
   console.log('📡 [Frontend API Config] Environment:', VITE_ENV);
   console.log('📡 [Frontend API Config] Is Netlify:', isNetlify);
+  console.log('📡 [Frontend API Config] Is Vercel:', isVercel);
 }
 
 // URLs API spécifiques

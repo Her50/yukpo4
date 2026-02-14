@@ -1,0 +1,4 @@
+﻿Logs ECS via CloudWatch Logs Insights - 2026-02-13 02:52:12
+Log Group: /ecs/yukpo-backend
+Periode: 10 dernieres minutes
+

@@ -6,23 +6,23 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "https://yukpomnang.onrender.com/api/$1"
+      "destination": "https://api.yukpomnang.com/api/$1"
     },
     {
       "source": "/auth/(.*)",
-      "destination": "https://yukpomnang.onrender.com/auth/$1"
+      "destination": "https://api.yukpomnang.com/auth/$1"
     },
     {
       "source": "/services/(.*)",
-      "destination": "https://yukpomnang.onrender.com/services/$1"
+      "destination": "https://api.yukpomnang.com/services/$1"
     },
     {
       "source": "/ws/(.*)",
-      "destination": "https://yukpomnang.onrender.com/ws/$1"
+      "destination": "wss://api.yukpomnang.com/ws/$1"
     },
     {
       "source": "/healthz",
-      "destination": "https://yukpomnang.onrender.com/healthz"
+      "destination": "https://api.yukpomnang.com/healthz"
     },
     {
       "source": "/(.*)",

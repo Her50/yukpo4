@@ -1,0 +1,1013 @@
+timestamp,message
+1771030734000,"2026-02-14 00:58:54 UTC:10.0.0.186(35842):yukpo_admin@yukpo:[7375]:STATEMENT:  CREATE TABLE IF NOT EXISTS recipes (
+	    id SERIAL PRIMARY KEY,
+	    name VARCHAR(255) NOT NULL,
+	    description TEXT,
+	    cuisine_style VARCHAR(100), -- africaine, camerounaise, occidentale, etc.
+	    meal_type TEXT[], -- petit_dejeuner, dejeuner, diner
+	    difficulty VARCHAR(50), -- facile, moyen, difficile
+	    prep_time_minutes INTEGER,
+	    cook_time_minutes INTEGER,
+	    servings INTEGER DEFAULT 1,
+	    ingredients JSONB NOT NULL, -- [{name, quantity, unit}, ...]
+	    instructions TEXT[] NOT NULL, -- étapes de préparation
+	    nutrition_per_serving JSONB, -- {calories, proteins, carbs, fats, fiber}
+	    tags TEXT[], -- végétarien, vegan, rapide, économique, etc.
+	    image_url TEXT,
+	    video_url TEXT, -- vidéo recette optionnelle
+	    source VARCHAR(255), -- ""yukpo_ai"", ""community"", ""premium""
+	    is_premium BOOLEAN DEFAULT FALSE,
+	    created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+	    created_at TIMESTAMPTZ DEFAULT NOW(),
+	    updated_at TIMESTAMPTZ DEFAULT NOW()"
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35824):yukpo_admin@yukpo:[7373]:ERROR:  syntax error at end of input at character 506
+1771030734000,"2026-02-14 00:58:54 UTC:10.0.0.186(35824):yukpo_admin@yukpo:[7373]:STATEMENT:  CREATE TABLE IF NOT EXISTS menu_plans (
+	    id SERIAL PRIMARY KEY,
+	    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+	    week_start DATE NOT NULL, -- lundi de la semaine
+	    week_end DATE NOT NULL, -- dimanche de la semaine
+	    status VARCHAR(50) DEFAULT 'draft', -- draft, active, completed
+	    total_budget DECIMAL(10,2),
+	    actual_cost DECIMAL(10,2),
+	    notes TEXT,
+	    created_at TIMESTAMPTZ DEFAULT NOW(),
+	    updated_at TIMESTAMPTZ DEFAULT NOW(),
+	    UNIQUE(user_id, week_start)"
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35800):yukpo_admin@yukpo:[7371]:ERROR:  syntax error at end of input at character 516
+1771030734000,"2026-02-14 00:58:54 UTC:10.0.0.186(35800):yukpo_admin@yukpo:[7371]:STATEMENT:  CREATE TABLE IF NOT EXISTS planned_meals (
+	    id SERIAL PRIMARY KEY,
+	    menu_plan_id INTEGER NOT NULL REFERENCES menu_plans(id) ON DELETE CASCADE,
+	    day_of_week INTEGER NOT NULL, -- 1=lundi, 7=dimanche
+	    meal_type VARCHAR(50) NOT NULL, -- petit_dejeuner, dejeuner, diner, gouter
+	    recipe_id INTEGER REFERENCES recipes(id) ON DELETE SET NULL,
+	    custom_name VARCHAR(255), -- nom personnalisé si pas de recette
+	    servings INTEGER NOT NULL DEFAULT 1,
+	    notes TEXT,
+	    created_at TIMESTAMPTZ DEFAULT NOW()"
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35812):yukpo_admin@yukpo:[7372]:ERROR:  syntax error at end of input at character 288
+1771030734000,"2026-02-14 00:58:54 UTC:10.0.0.186(35812):yukpo_admin@yukpo:[7372]:STATEMENT:  CREATE TABLE IF NOT EXISTS recipe_favorites (
+	    id SERIAL PRIMARY KEY,
+	    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+	    recipe_id INTEGER NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
+	    created_at TIMESTAMPTZ DEFAULT NOW(),
+	    UNIQUE(user_id, recipe_id)"
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35836):yukpo_admin@yukpo:[7374]:ERROR:  syntax error at end of input at character 533
+1771030734000,"2026-02-14 00:58:54 UTC:10.0.0.186(35836):yukpo_admin@yukpo:[7374]:STATEMENT:  CREATE TABLE IF NOT EXISTS shopping_lists (
+	    id SERIAL PRIMARY KEY,
+	    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+	    menu_plan_id INTEGER REFERENCES menu_plans(id) ON DELETE SET NULL,
+	    week_start DATE NOT NULL,
+	    status VARCHAR(50) DEFAULT 'pending', -- pending, in_progress, completed
+	    organized_by_store BOOLEAN DEFAULT FALSE,
+	    organized_by_aisle BOOLEAN DEFAULT FALSE,
+	    total_estimated_cost DECIMAL(10,2),
+	    created_at TIMESTAMPTZ DEFAULT NOW(),
+	    updated_at TIMESTAMPTZ DEFAULT NOW()"
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35842):yukpo_admin@yukpo:[7375]:ERROR:  syntax error at end of input at character 739
+1771030734000,"2026-02-14 00:58:54 UTC:10.0.0.186(35842):yukpo_admin@yukpo:[7375]:STATEMENT:  CREATE TABLE IF NOT EXISTS shopping_list_items (
+	    id SERIAL PRIMARY KEY,
+	    shopping_list_id INTEGER NOT NULL REFERENCES shopping_lists(id) ON DELETE CASCADE,
+	    ingredient_name VARCHAR(255) NOT NULL,
+	    quantity DECIMAL(10,2) NOT NULL,
+	    unit VARCHAR(50) NOT NULL,
+	    category VARCHAR(100), -- fruits, légumes, viande, épicerie, etc.
+	    store_section VARCHAR(100), -- rayon magasin
+	    preferred_store VARCHAR(255), -- magasin préféré
+	    is_checked BOOLEAN DEFAULT FALSE,
+	    actual_price DECIMAL(10,2),
+	    notes TEXT,
+	    order_placed BOOLEAN DEFAULT FALSE, -- commande via Yukpo
+	    order_id INTEGER, -- Référence vers commande (peut être lié à shopping_orders ou delivery_requests)
+	    created_at TIMESTAMPTZ DEFAULT NOW()"
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35824):yukpo_admin@yukpo:[7373]:ERROR:  syntax error at end of input at character 550
+1771030734000,"2026-02-14 00:58:54 UTC:10.0.0.186(35824):yukpo_admin@yukpo:[7373]:STATEMENT:  CREATE TABLE IF NOT EXISTS nutrition_analytics (
+	    id SERIAL PRIMARY KEY,
+	    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+	    menu_plan_id INTEGER NOT NULL REFERENCES menu_plans(id) ON DELETE CASCADE,
+	    week_start DATE NOT NULL,
+	    total_calories DECIMAL(10,2),
+	    total_proteins DECIMAL(10,2),
+	    total_carbs DECIMAL(10,2),
+	    total_fats DECIMAL(10,2),
+	    total_fiber DECIMAL(10,2),
+	    daily_average JSONB, -- moyenne par jour
+	    recommendations TEXT[], -- recommandations IA
+	    created_at TIMESTAMPTZ DEFAULT NOW()"
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35812):yukpo_admin@yukpo:[7372]:ERROR:  syntax error at end of input at character 1001
+1771030734000,"2026-02-14 00:58:54 UTC:10.0.0.186(35812):yukpo_admin@yukpo:[7372]:STATEMENT:  CREATE TABLE IF NOT EXISTS plugin_marketplace (
+	    id SERIAL PRIMARY KEY,
+	    plugin_id VARCHAR(255) NOT NULL UNIQUE,
+	    name VARCHAR(255) NOT NULL,
+	    version VARCHAR(50) NOT NULL,
+	    author VARCHAR(255) NOT NULL,
+	    description TEXT,
+	    category VARCHAR(50) NOT NULL CHECK (category IN ('effect', 'transition', 'filter', 'export', 'integration', 'other')),
+	    tags TEXT[] DEFAULT ARRAY[]::TEXT[],
+	    icon_url TEXT,
+	    homepage_url TEXT,
+	    license VARCHAR(100) NOT NULL DEFAULT 'MIT',
+	    min_yukpo_version VARCHAR(50),
+	    download_url TEXT NOT NULL,
+	    download_count INTEGER DEFAULT 0,
+	    rating DECIMAL(3,2) DEFAULT 0.0 CHECK (rating >= 0.0 AND rating <= 5.0),
+	    rating_count INTEGER DEFAULT 0,
+	    price DECIMAL(10,2) DEFAULT 0.0,
+	    is_premium BOOLEAN DEFAULT false,
+	    is_featured BOOLEAN DEFAULT false,
+	    is_verified BOOLEAN DEFAULT false,
+	    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+	    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP"
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35836):yukpo_admin@yukpo:[7374]:ERROR:  syntax error at end of input at character 1126
+1771030734000,"2026-02-14 00:58:54 UTC:10.0.0.186(35836):yukpo_admin@yukpo:[7374]:STATEMENT:  CREATE TABLE IF NOT EXISTS livres_scolaires (
+	    id SERIAL PRIMARY KEY,
+	    service_id INTEGER REFERENCES services(id) ON DELETE CASCADE,
+	    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+	    -- Informations livre
+	    titre TEXT NOT NULL,
+	    auteur TEXT,
+	    editeur TEXT,
+	    isbn TEXT,
+	    classe_actuelle TEXT NOT NULL, -- Classe actuelle de l'élève (ex: ""6ème"", ""5ème"")
+	    classe_souhaitee TEXT NOT NULL, -- Classe souhaitée (ex: ""5ème"", ""4ème"")
+	    matiere TEXT NOT NULL, -- ""Mathématiques"", ""Français"", etc.
+	    niveau TEXT, -- ""Primaire"", ""Collège"", ""Lycée""
+	    -- État et médias
+	    etat_livre TEXT NOT NULL, -- ""Neuf"", ""Très bon"", ""Bon"", ""Acceptable""
+	    description_etat TEXT,
+	    images_urls TEXT[], -- URLs des images du livre
+	    video_url TEXT, -- URL vidéo d'appréciation de l'état
+	    -- Géolocalisation
+	    gps TEXT, -- Format: ""lat,lng""
+	    ville TEXT,
+	    quartier TEXT,
+	    -- Disponibilité
+	    is_available BOOLEAN DEFAULT true,
+	    is_active BOOLEAN DEFAULT true,
+	    -- Métadonnées
+	    created_at TIMESTAMPTZ DEFAULT NOW(),
+	    updated_at TIMESTAMPTZ DEFAULT NOW()"
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35842):yukpo_admin@yukpo:[7375]:ERROR:  syntax error at end of input at character 1192
+1771030734000,"2026-02-14 00:58:54 UTC:10.0.0.186(35842):yukpo_admin@yukpo:[7375]:STATEMENT:  CREATE TABLE IF NOT EXISTS troc_livres_scolaires (
+	    id SERIAL PRIMARY KEY,
+	    -- Participants
+	    initiateur_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+	    participant_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+	    -- Livres échangés
+	    livre_offert_id INTEGER REFERENCES livres_scolaires(id) ON DELETE CASCADE,
+	    livre_souhaite_id INTEGER REFERENCES livres_scolaires(id) ON DELETE CASCADE,
+	    -- Type de troc
+	    type_troc TEXT NOT NULL, -- ""direct"" (2 personnes) ou ""chaine"" (3+ personnes)
+	    chaine_troc_id INTEGER, -- ID de la chaîne si type_troc = ""chaine""
+	    -- Statut
+	    statut TEXT NOT NULL DEFAULT 'en_attente', -- ""en_attente"", ""accepte"", ""refuse"", ""annule"", ""complete""
+	    -- Validation
+	    validation_initiateur BOOLEAN DEFAULT false,
+	    validation_participant BOOLEAN DEFAULT false,
+	    validation_video BOOLEAN DEFAULT false, -- Validation via vidéo live
+	    -- Proximité
+	    distance_km FLOAT,
+	    -- Dates
+	    created_at TIMESTAMPTZ DEFAULT NOW(),
+	    updated_at TIMESTAMPTZ DEFAULT NOW(),
+	    date_echange TIMESTAMPTZ, -- Date prévue pour l'échange physique
+	    date_complete TIMESTAMPTZ -- Date de finalisation"
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35824):yukpo_admin@yukpo:[7373]:ERROR:  syntax error at end of input at character 594
+1771030734000,"2026-02-14 00:58:54 UTC:10.0.0.186(35824):yukpo_admin@yukpo:[7373]:STATEMENT:  CREATE TABLE IF NOT EXISTS chaines_troc_livres (
+	    id SERIAL PRIMARY KEY,
+	    -- Participants (ordre de la chaîne)
+	    participants JSONB NOT NULL, -- [{user_id, livre_offert_id, livre_souhaite_id, ordre}]
+	    -- Statut
+	    statut TEXT NOT NULL DEFAULT 'en_formation', -- ""en_formation"", ""validee"", ""en_cours"", ""complete""
+	    -- Score de proximité global
+	    score_proximite FLOAT,
+	    distance_totale_km FLOAT,
+	    -- Dates
+	    created_at TIMESTAMPTZ DEFAULT NOW(),
+	    updated_at TIMESTAMPTZ DEFAULT NOW(),
+	    date_validation TIMESTAMPTZ,
+	    date_complete TIMESTAMPTZ"
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35800):yukpo_admin@yukpo:[7371]:ERROR:  syntax error at end of input at character 2256
+1771030734000,"2026-02-14 00:58:54 UTC:10.0.0.186(35800):yukpo_admin@yukpo:[7371]:STATEMENT:  CREATE TABLE IF NOT EXISTS offres_emploi (
+	    id SERIAL PRIMARY KEY,
+	    entreprise_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+	    -- Informations générales
+	    titre_poste VARCHAR(255) NOT NULL,
+	    description TEXT NOT NULL,
+	    type_contrat VARCHAR(50) NOT NULL CHECK (type_contrat IN ('CDI', 'CDD', 'Stage', 'Freelance', 'Temps partiel', 'Alternance')),
+	    duree_contrat INTEGER, -- En mois (pour CDD)
+	    -- Localisation
+	    lieu_travail VARCHAR(255) NOT NULL, -- Ville, quartier
+	    adresse TEXT,
+	    gps VARCHAR(50), -- Format: ""lat,lng""
+	    location_point GEOGRAPHY(POINT, 4326), -- Index spatial
+	    remote BOOLEAN DEFAULT false, -- Télétravail possible
+	    remote_partiel BOOLEAN DEFAULT false, -- Télétravail partiel
+	    -- Rémunération
+	    salaire_min DECIMAL(10, 2), -- Salaire minimum
+	    salaire_max DECIMAL(10, 2), -- Salaire maximum
+	    devise VARCHAR(10) DEFAULT 'XAF',
+	    salaire_negociable BOOLEAN DEFAULT false,
+	    -- Exigences
+	    niveau_etude VARCHAR(100), -- 'Bac', 'Bac+2', 'Bac+3', 'Bac+5', etc.
+	    experience_min INTEGER, -- Années d'expérience minimum
+	    competences_requises TEXT[], -- Compétences techniques
+	    langues_requises JSONB, -- [{""langue"": ""Français"", ""niveau"": ""Courant""}, ...]
+	    permis_requis TEXT[], -- Permis de conduire, etc.
+	    -- Secteur et domaine
+	    secteur VARCHAR(100) NOT NULL, -- 'Informatique', 'Commerce', 'Santé', etc.
+	    domaine VARCHAR(100), -- Sous-domaine
+	    tags TEXT[], -- Tags pour recherche
+	    -- Dates
+	    date_publication TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+	    date_limite_candidature DATE,
+	    date_debut_poste DATE,
+	    -- Statut
+	    statut VARCHAR(50) DEFAULT 'active' CHECK (statut IN ('active', 'pourvue', 'fermee', 'brouillon')),
+	    nombre_candidatures INTEGER DEFAULT 0,
+	    nombre_vues INTEGER DEFAULT 0,
+	    -- Métadonnées
+	    is_active BOOLEAN DEFAULT true,
+	    is_verified BOOLEAN DEFAULT false, -- Vérification par admin
+	    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+	    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+	    -- Contraintes
+	    CONSTRAINT check_salaire CHECK (salaire_max IS NULL OR salaire_min IS NULL OR salaire_max >= salaire_min)"
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35836):yukpo_admin@yukpo:[7374]:ERROR:  functions in index predicate must be marked IMMUTABLE
+1771030734000,"2026-02-14 00:58:54 UTC:10.0.0.186(35836):yukpo_admin@yukpo:[7374]:STATEMENT:  CREATE INDEX IF NOT EXISTS idx_offres_date_limite ON offres_emploi(date_limite_candidature, statut) WHERE date_limite_candidature >= CURRENT_DATE AND statut = 'active';"
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35824):yukpo_admin@yukpo:[7373]:ERROR:  syntax error at end of input at character 1692
+1771030734000,"2026-02-14 00:58:54 UTC:10.0.0.186(35824):yukpo_admin@yukpo:[7373]:STATEMENT:  CREATE TABLE IF NOT EXISTS profils_candidats (
+	    id SERIAL PRIMARY KEY,
+	    user_id INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+	    -- Informations personnelles
+	    nom_complet VARCHAR(255) NOT NULL,
+	    date_naissance DATE,
+	    telephone VARCHAR(50),
+	    email VARCHAR(255) NOT NULL,
+	    adresse TEXT,
+	    ville VARCHAR(100),
+	    gps VARCHAR(50),
+	    location_point GEOGRAPHY(POINT, 4326),
+	    -- Profil professionnel
+	    titre_professionnel VARCHAR(255), -- ""Développeur Full Stack"", ""Comptable"", etc.
+	    niveau_etude VARCHAR(100),
+	    experience_annees INTEGER DEFAULT 0,
+	    secteur_principal VARCHAR(100),
+	    -- Compétences
+	    competences TEXT[], -- Compétences techniques
+	    langues JSONB, -- [{""langue"": ""Français"", ""niveau"": ""Courant""}, ...]
+	    permis TEXT[], -- Permis de conduire, etc.
+	    certifications TEXT[], -- Certifications professionnelles
+	    -- CV et documents
+	    cv_url TEXT, -- URL du CV
+	    cv_nom VARCHAR(255),
+	    photo_url TEXT, -- Photo de profil
+	    portfolio_url TEXT, -- Portfolio/LinkedIn
+	    -- Préférences
+	    type_contrat_souhaite TEXT[], -- Types de contrat acceptés
+	    salaire_souhaite_min DECIMAL(10, 2),
+	    salaire_souhaite_max DECIMAL(10, 2),
+	    remote_souhaite BOOLEAN DEFAULT false,
+	    secteurs_interesses TEXT[], -- Secteurs d'intérêt
+	    -- Disponibilité
+	    disponible_immediatement BOOLEAN DEFAULT false,
+	    date_disponibilite DATE,
+	    -- Métadonnées
+	    is_active BOOLEAN DEFAULT true,
+	    is_complete BOOLEAN DEFAULT false, -- Profil complété
+	    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+	    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP"
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35800):yukpo_admin@yukpo:[7371]:ERROR:  syntax error at end of input at character 1257
+1771030734000,"2026-02-14 00:58:54 UTC:10.0.0.186(35800):yukpo_admin@yukpo:[7371]:STATEMENT:  CREATE TABLE IF NOT EXISTS candidatures (
+	    id SERIAL PRIMARY KEY,
+	    offre_id INTEGER NOT NULL REFERENCES offres_emploi(id) ON DELETE CASCADE,
+	    candidat_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+	    profil_id INTEGER REFERENCES profils_candidats(id) ON DELETE SET NULL,
+	    -- Contenu candidature
+	    lettre_motivation TEXT,
+	    cv_url TEXT, -- CV spécifique pour cette candidature (optionnel)
+	    documents_complementaires JSONB, -- [{""nom"": ""Diplôme"", ""url"": ""...""}, ...]
+	    -- Statut
+	    statut VARCHAR(50) DEFAULT 'en_attente' CHECK (statut IN ('en_attente', 'en_cours', 'acceptee', 'refusee', 'annulee')),
+	    date_candidature TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+	    date_modification_statut TIMESTAMP WITH TIME ZONE,
+	    -- Évaluation
+	    score_matching DECIMAL(5, 2), -- Score de matching (0-100)
+	    notes_employeur TEXT, -- Notes internes employeur
+	    evaluation_candidat JSONB, -- Évaluation structurée
+	    -- Métadonnées
+	    is_archived BOOLEAN DEFAULT false,
+	    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+	    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+	    -- Contraintes
+	    CONSTRAINT unique_candidature UNIQUE (offre_id, candidat_id)"
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35800):yukpo_admin@yukpo:[7371]:ERROR:  syntax error at end of input at character 1180
+1771030734000,"2026-02-14 00:58:54 UTC:10.0.0.186(35800):yukpo_admin@yukpo:[7371]:STATEMENT:  CREATE TABLE IF NOT EXISTS matching_offres_candidats (
+	    id SERIAL PRIMARY KEY,
+	    offre_id INTEGER NOT NULL REFERENCES offres_emploi(id) ON DELETE CASCADE,
+	    candidat_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+	    -- Score de matching
+	    score_total DECIMAL(5, 2) NOT NULL, -- Score global (0-100)
+	    score_competences DECIMAL(5, 2), -- Score compétences (0-100)
+	    score_experience DECIMAL(5, 2), -- Score expérience (0-100)
+	    score_localisation DECIMAL(5, 2), -- Score localisation (0-100)
+	    score_salaire DECIMAL(5, 2), -- Score salaire (0-100)
+	    -- Détails matching
+	    competences_match TEXT[], -- Compétences correspondantes
+	    competences_manquantes TEXT[], -- Compétences manquantes
+	    criteres_match JSONB, -- Détails des critères correspondants
+	    -- Métadonnées
+	    date_calcul TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+	    is_notified BOOLEAN DEFAULT false, -- Notification envoyée au candidat
+	    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+	    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+	    -- Index
+	    CONSTRAINT unique_matching UNIQUE (offre_id, candidat_id)"
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35800):yukpo_admin@yukpo:[7371]:ERROR:  syntax error at end of input at character 742
+1771030734000,"2026-02-14 00:58:54 UTC:10.0.0.186(35800):yukpo_admin@yukpo:[7371]:STATEMENT:  CREATE TABLE IF NOT EXISTS alertes_emploi (
+	    id SERIAL PRIMARY KEY,
+	    candidat_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+	    -- Critères de recherche
+	    titre_poste VARCHAR(255),
+	    secteur VARCHAR(100),
+	    type_contrat TEXT[],
+	    salaire_min DECIMAL(10, 2),
+	    lieu_travail VARCHAR(255),
+	    remote BOOLEAN,
+	    competences TEXT[],
+	    -- Fréquence
+	    frequence VARCHAR(50) DEFAULT 'quotidienne' CHECK (frequence IN ('instantanee', 'quotidienne', 'hebdomadaire')),
+	    dernier_envoi TIMESTAMP WITH TIME ZONE,
+	    -- Métadonnées
+	    is_active BOOLEAN DEFAULT true,
+	    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+	    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP"
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35842):yukpo_admin@yukpo:[7375]:ERROR:  syntax error at end of input at character 834
+1771030734000,"2026-02-14 00:58:54 UTC:10.0.0.186(35842):yukpo_admin@yukpo:[7375]:STATEMENT:  CREATE TABLE IF NOT EXISTS statistiques_offres (
+	    id SERIAL PRIMARY KEY,
+	    offre_id INTEGER NOT NULL REFERENCES offres_emploi(id) ON DELETE CASCADE,
+	    -- Métriques
+	    nombre_vues INTEGER DEFAULT 0,
+	    nombre_candidatures INTEGER DEFAULT 0,
+	    nombre_candidatures_qualifiees INTEGER DEFAULT 0, -- Score > 70
+	    taux_conversion DECIMAL(5, 2), -- Candidatures / Vues
+	    -- Démographie candidats
+	    repartition_experience JSONB, -- {""0-2"": 10, ""3-5"": 25, ...}
+	    repartition_niveau_etude JSONB,
+	    repartition_localisation JSONB,
+	    -- Métadonnées
+	    date_calcul TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+	    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+	    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+	    CONSTRAINT unique_stats_offre UNIQUE (offre_id)"
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35812):yukpo_admin@yukpo:[7372]:ERROR:  syntax error at end of input at character 1681
+1771030734000,"2026-02-14 00:58:54 UTC:10.0.0.186(35812):yukpo_admin@yukpo:[7372]:STATEMENT:  CREATE TABLE IF NOT EXISTS etablissements_scolaires (
+	    id SERIAL PRIMARY KEY,
+	    service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+	    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+	    -- Informations générales
+	    nom_etablissement VARCHAR(255) NOT NULL,
+	    type_etablissement VARCHAR(50) NOT NULL CHECK (type_etablissement IN ('primaire', 'secondaire', 'superieur')),
+	    sous_type VARCHAR(50), -- 'ecole_formation', 'universite', 'institut', etc. pour supérieur
+	    niveau_min INTEGER, -- Classe/niveau minimum
+	    niveau_max INTEGER, -- Classe/niveau maximum
+	    -- Localisation
+	    adresse TEXT,
+	    quartier VARCHAR(100),
+	    ville VARCHAR(100) NOT NULL,
+	    region VARCHAR(100),
+	    gps VARCHAR(50), -- Format: ""lat,lng""
+	    location_point GEOGRAPHY(POINT, 4326), -- Index spatial
+	    -- Contact
+	    telephone VARCHAR(50),
+	    email VARCHAR(255),
+	    site_web VARCHAR(255),
+	    -- Informations académiques
+	    filieres TEXT[], -- Filières disponibles (pour secondaire/supérieur)
+	    specialites TEXT[], -- Spécialités (pour supérieur)
+	    langues_enseignement TEXT[], -- Langues d'enseignement
+	    -- Statistiques examens (JSON)
+	    statistiques_examens JSONB DEFAULT '{}'::jsonb, -- Agrégation: {""annee"": {""taux_reussite"": 85.5, ""nb_candidats"": 120, ...}}
+	    -- Métadonnées
+	    is_active BOOLEAN DEFAULT true,
+	    is_verified BOOLEAN DEFAULT false, -- Vérification par admin
+	    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+	    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+	    -- Contraintes
+	    CONSTRAINT unique_service_etablissement UNIQUE (service_id)"
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35824):yukpo_admin@yukpo:[7373]:ERROR:  syntax error at end of input at character 421
+1771030734000,"2026-02-14 00:58:54 UTC:10.0.0.186(35824):yukpo_admin@yukpo:[7373]:STATEMENT:  CREATE TABLE IF NOT EXISTS delivery_chat_messages (
+	    id SERIAL PRIMARY KEY,
+	    delivery_id UUID NOT NULL,
+	    sender_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+	    sender_name TEXT NOT NULL,
+	    sender_role TEXT NOT NULL CHECK (sender_role IN ('client', 'courier', 'provider')),
+	    content TEXT NOT NULL,
+	    metadata JSONB DEFAULT '{}'::jsonb,
+	    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()"
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35824):yukpo_admin@yukpo:[7373]:ERROR:  syntax error at end of input at character 566
+1771030734000,"2026-02-14 00:58:54 UTC:10.0.0.186(35824):yukpo_admin@yukpo:[7373]:STATEMENT:  CREATE TABLE IF NOT EXISTS delivery_gamification_stats (
+	    user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+	    total_deliveries INTEGER DEFAULT 0,
+	    total_completed_deliveries INTEGER DEFAULT 0,
+	    total_points INTEGER DEFAULT 0,
+	    current_level TEXT DEFAULT 'bronze' CHECK (current_level IN ('bronze', 'silver', 'gold', 'platinum', 'diamond')),
+	    badges JSONB DEFAULT '[]'::jsonb,
+	    achievements JSONB DEFAULT '{}'::jsonb,
+	    last_updated TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+	    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()"
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35842):yukpo_admin@yukpo:[7375]:ERROR:  syntax error at end of input at character 374
+1771030734000,"2026-02-14 00:58:54 UTC:10.0.0.186(35842):yukpo_admin@yukpo:[7375]:STATEMENT:  CREATE TABLE IF NOT EXISTS delivery_badges (
+	    id SERIAL PRIMARY KEY,
+	    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+	    badge_type TEXT NOT NULL,
+	    badge_name TEXT NOT NULL,
+	    badge_description TEXT,
+	    icon_url TEXT,
+	    earned_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+	    metadata JSONB DEFAULT '{}'::jsonb,
+	    UNIQUE(user_id, badge_type)"
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35836):yukpo_admin@yukpo:[7374]:ERROR:  syntax error at end of input at character 372
+1771030734000,"2026-02-14 00:58:54 UTC:10.0.0.186(35836):yukpo_admin@yukpo:[7374]:STATEMENT:  CREATE TABLE IF NOT EXISTS delivery_points_history (
+	    id SERIAL PRIMARY KEY,
+	    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+	    points_change INTEGER NOT NULL,
+	    reason TEXT NOT NULL,
+	    delivery_id UUID REFERENCES deliveries(id) ON DELETE SET NULL,
+	    metadata JSONB DEFAULT '{}'::jsonb,
+	    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()"
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35812):yukpo_admin@yukpo:[7372]:ERROR:  syntax error at end of input at character 602
+1771030734000,"2026-02-14 00:58:54 UTC:10.0.0.186(35812):yukpo_admin@yukpo:[7372]:STATEMENT:  CREATE TABLE IF NOT EXISTS delivery_product_suggestions (
+	    id SERIAL PRIMARY KEY,
+	    delivery_id UUID NOT NULL REFERENCES deliveries(id) ON DELETE CASCADE,
+	    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+	    suggested_product_id INTEGER REFERENCES products(id) ON DELETE SET NULL,
+	    suggested_product_name TEXT NOT NULL,
+	    suggested_product_price DECIMAL(10, 2),
+	    suggestion_reason TEXT,
+	    confidence_score DECIMAL(3, 2) DEFAULT 0.5,
+	    was_accepted BOOLEAN DEFAULT FALSE,
+	    metadata JSONB DEFAULT '{}'::jsonb,
+	    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()"
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35812):yukpo_admin@yukpo:[7372]:ERROR:  syntax error at end of input at character 804
+1771030734000,"2026-02-14 00:58:54 UTC:10.0.0.186(35812):yukpo_admin@yukpo:[7372]:STATEMENT:  CREATE TABLE IF NOT EXISTS user_documents (
+	    id SERIAL PRIMARY KEY,
+	    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+	    document_type TEXT NOT NULL CHECK (document_type IN ('permis', 'cni', 'assurance', 'passeport', 'carte_grise')),
+	    document_url TEXT NOT NULL,
+	    document_number TEXT,
+	    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected', 'expired')),
+	    verified_at TIMESTAMPTZ,
+	    verified_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+	    rejection_reason TEXT,
+	    expiry_date DATE,
+	    metadata JSONB DEFAULT '{}'::jsonb,
+	    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	    -- Un seul document de chaque type par utilisateur
+	    UNIQUE(user_id, document_type)"
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35812):yukpo_admin@yukpo:[7372]:ERROR:  syntax error at end of input at character 851
+1771030734000,"2026-02-14 00:58:54 UTC:10.0.0.186(35812):yukpo_admin@yukpo:[7372]:STATEMENT:  CREATE TABLE IF NOT EXISTS covoiturage_insurance (
+	    id SERIAL PRIMARY KEY,
+	    reservation_id INTEGER NOT NULL REFERENCES specialized_reservations(id) ON DELETE CASCADE,  -- ✅ Corrigé: utiliser specialized_reservations
+	    passenger_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+	    insurance_provider TEXT, -- 'internal', 'external', 'partner'
+	    policy_number TEXT,
+	    coverage_amount DECIMAL(10,2), -- Montant couverture
+	    coverage_type TEXT DEFAULT 'basic' CHECK (coverage_type IN ('basic', 'premium', 'full')),
+	    status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'expired', 'cancelled')),
+	    start_date TIMESTAMPTZ NOT NULL,
+	    end_date TIMESTAMPTZ NOT NULL,
+	    metadata JSONB DEFAULT '{}'::jsonb,
+	    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()"
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35812):yukpo_admin@yukpo:[7372]:ERROR:  syntax error at end of input at character 768
+1771030734000,"2026-02-14 00:58:54 UTC:10.0.0.186(35812):yukpo_admin@yukpo:[7372]:STATEMENT:  CREATE TABLE IF NOT EXISTS reservation_qr_codes (
+	    id SERIAL PRIMARY KEY,
+	    reservation_id INTEGER NOT NULL REFERENCES specialized_reservations(id) ON DELETE CASCADE,  -- ✅ Corrigé: utiliser specialized_reservations
+	    qr_code TEXT NOT NULL UNIQUE, -- Code QR unique
+	    qr_code_url TEXT, -- URL image QR code
+	    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'validated', 'expired', 'cancelled')),
+	    validated_at TIMESTAMPTZ,
+	    validated_by INTEGER REFERENCES users(id) ON DELETE SET NULL, -- Conducteur qui valide
+	    expires_at TIMESTAMPTZ NOT NULL, -- Expiration (ex: 2h après départ prévu)
+	    metadata JSONB DEFAULT '{}'::jsonb,
+	    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()"
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35812):yukpo_admin@yukpo:[7372]:ERROR:  syntax error at end of input at character 104
+1771030734000,"2026-02-14 00:58:54 UTC:10.0.0.186(35812):yukpo_admin@yukpo:[7372]:STATEMENT:  ALTER TABLE specialized_reservations
+	ADD COLUMN IF NOT EXISTS insurance_included BOOLEAN DEFAULT FALSE,"
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35836):yukpo_admin@yukpo:[7374]:ERROR:  syntax error at end of input at character 468
+1771030734000,"2026-02-14 00:58:54 UTC:10.0.0.186(35836):yukpo_admin@yukpo:[7374]:STATEMENT:  CREATE TABLE IF NOT EXISTS loyalty_transactions (
+	    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+	    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+	    type VARCHAR(20) NOT NULL CHECK (type IN ('earned', 'redeemed', 'expired')),
+	    points INTEGER NOT NULL CHECK (points > 0),
+	    description TEXT NOT NULL,
+	    timestamp BIGINT NOT NULL DEFAULT EXTRACT(EPOCH FROM NOW())::BIGINT,
+	    expiry_date BIGINT,
+	    created_at TIMESTAMPTZ DEFAULT NOW()"
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35800):yukpo_admin@yukpo:[7371]:ERROR:  syntax error at end of input at character 570
+1771030734000,"2026-02-14 00:58:54 UTC:10.0.0.186(35800):yukpo_admin@yukpo:[7371]:STATEMENT:  CREATE TABLE IF NOT EXISTS loyalty_rewards (
+	    id VARCHAR(100) PRIMARY KEY,
+	    name VARCHAR(200) NOT NULL,
+	    description TEXT NOT NULL,
+	    points_cost INTEGER NOT NULL CHECK (points_cost > 0),
+	    discount_percent INTEGER CHECK (discount_percent >= 0 AND discount_percent <= 100),
+	    discount_amount INTEGER CHECK (discount_amount >= 0),
+	    category VARCHAR(50) NOT NULL CHECK (category IN ('discount', 'free_ticket', 'upgrade', 'cashback')),
+	    available BOOLEAN DEFAULT TRUE,
+	    created_at TIMESTAMPTZ DEFAULT NOW(),
+	    updated_at TIMESTAMPTZ DEFAULT NOW()"
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35836):yukpo_admin@yukpo:[7374]:ERROR:  syntax error at end of input at character 538
+1771030734000,"2026-02-14 00:58:54 UTC:10.0.0.186(35836):yukpo_admin@yukpo:[7374]:STATEMENT:  CREATE TABLE IF NOT EXISTS chat_support_sessions (
+	    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+	    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+	    status VARCHAR(20) NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'resolved', 'closed')),
+	    topic VARCHAR(200),
+	    agent_name VARCHAR(200),
+	    agent_avatar TEXT,
+	    rating INTEGER CHECK (rating >= 1 AND rating <= 5),
+	    feedback TEXT,
+	    created_at TIMESTAMPTZ DEFAULT NOW(),
+	    last_message_at TIMESTAMPTZ DEFAULT NOW(),
+	    closed_at TIMESTAMPTZ"
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35812):yukpo_admin@yukpo:[7372]:ERROR:  syntax error at end of input at character 446
+1771030734000,"2026-02-14 00:58:54 UTC:10.0.0.186(35812):yukpo_admin@yukpo:[7372]:STATEMENT:  CREATE TABLE IF NOT EXISTS chat_support_messages (
+	    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+	    session_id UUID NOT NULL REFERENCES chat_support_sessions(id) ON DELETE CASCADE,
+	    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+	    text TEXT NOT NULL,
+	    sender VARCHAR(20) NOT NULL CHECK (sender IN ('user', 'support')),
+	    timestamp TIMESTAMPTZ DEFAULT NOW(),
+	    read BOOLEAN DEFAULT FALSE,
+	    attachments JSONB"
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35824):yukpo_admin@yukpo:[7373]:ERROR:  syntax error at end of input at character 507
+1771030734000,"2026-02-14 00:58:54 UTC:10.0.0.186(35824):yukpo_admin@yukpo:[7373]:STATEMENT:  CREATE TABLE IF NOT EXISTS bus_ticket_ratings (
+	    id SERIAL PRIMARY KEY,
+	    ticket_id VARCHAR(100) NOT NULL,
+	    payment_id VARCHAR(100) NOT NULL,
+	    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+	    rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+	    comment TEXT,
+	    categories JSONB, -- ['punctuality', 'comfort', 'cleanliness', 'staff', 'value']
+	    created_at TIMESTAMPTZ DEFAULT NOW(),
+	    updated_at TIMESTAMPTZ DEFAULT NOW(),
+	    UNIQUE(ticket_id, user_id)"
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35824):yukpo_admin@yukpo:[7373]:ERROR:  syntax error at end of input at character 49
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35824):yukpo_admin@yukpo:[7373]:STATEMENT:  COMMENT ON INDEX idx_services_data_search_gin IS
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35800):yukpo_admin@yukpo:[7371]:ERROR:  syntax error at end of input at character 46
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35800):yukpo_admin@yukpo:[7371]:STATEMENT:  COMMENT ON INDEX idx_services_produits_gin IS
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35812):yukpo_admin@yukpo:[7372]:ERROR:  syntax error at end of input at character 64
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35812):yukpo_admin@yukpo:[7372]:STATEMENT:  COMMENT ON INDEX idx_autocomplete_characteristics_vector_gin IS
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35836):yukpo_admin@yukpo:[7374]:ERROR:  syntax error at end of input at character 50
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35836):yukpo_admin@yukpo:[7374]:STATEMENT:  COMMENT ON INDEX idx_products_lifecycle_active IS
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35812):yukpo_admin@yukpo:[7372]:ERROR:  syntax error at end of input at character 66
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35812):yukpo_admin@yukpo:[7372]:STATEMENT:  CREATE INDEX IF NOT EXISTS idx_products_lifecycle_service_product
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35836):yukpo_admin@yukpo:[7374]:ERROR:  syntax error at end of input at character 73
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35836):yukpo_admin@yukpo:[7374]:STATEMENT:  CREATE INDEX IF NOT EXISTS idx_products_lifecycle_service_product_active
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35842):yukpo_admin@yukpo:[7375]:ERROR:  syntax error at end of input at character 64
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35842):yukpo_admin@yukpo:[7375]:STATEMENT:  CREATE INDEX IF NOT EXISTS idx_services_user_id_created_at_desc
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35824):yukpo_admin@yukpo:[7373]:ERROR:  syntax error at end of input at character 59
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35824):yukpo_admin@yukpo:[7373]:STATEMENT:  COMMENT ON INDEX idx_products_lifecycle_service_product IS
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35800):yukpo_admin@yukpo:[7371]:ERROR:  syntax error at end of input at character 66
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35800):yukpo_admin@yukpo:[7371]:STATEMENT:  COMMENT ON INDEX idx_products_lifecycle_service_product_active IS
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35824):yukpo_admin@yukpo:[7373]:ERROR:  syntax error at end of input at character 291
+1771030734000,"2026-02-14 00:58:54 UTC:10.0.0.186(35824):yukpo_admin@yukpo:[7373]:STATEMENT:  CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_services_products_fulltext_gin
+	ON services USING GIN (
+	    to_tsvector('french', 
+	        COALESCE(data->'titre_service'->>'valeur', '') || ' ' ||
+	        COALESCE(data->'description'->>'valeur', '') || ' ' ||
+	        COALESCE(category, '')
+	    )"
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35800):yukpo_admin@yukpo:[7371]:ERROR:  syntax error at end of input at character 368
+1771030734000,"2026-02-14 00:58:54 UTC:10.0.0.186(35800):yukpo_admin@yukpo:[7371]:STATEMENT:  CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_services_products_array_gin
+	ON services USING GIN (
+	    (
+	        CASE 
+	            WHEN jsonb_typeof(data->'produits') = 'array' 
+	            THEN data->'produits'
+	            WHEN jsonb_typeof(data->'produits'->'valeur') = 'array'
+	            THEN data->'produits'->'valeur'
+	            ELSE '[]'::jsonb
+	        END
+	    )"
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35836):yukpo_admin@yukpo:[7374]:ERROR:  syntax error at end of input at character 57
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35836):yukpo_admin@yukpo:[7374]:STATEMENT:  CREATE INDEX IF NOT EXISTS idx_deliveries_creator_status
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35824):yukpo_admin@yukpo:[7373]:ERROR:  syntax error at end of input at character 63
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35824):yukpo_admin@yukpo:[7373]:STATEMENT:  CREATE INDEX IF NOT EXISTS idx_tracking_points_recent_delivery
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35836):yukpo_admin@yukpo:[7374]:ERROR:  syntax error at end of input at character 54
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35836):yukpo_admin@yukpo:[7374]:STATEMENT:  CREATE INDEX IF NOT EXISTS idx_video_jobs_user_status
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35824):yukpo_admin@yukpo:[7373]:ERROR:  syntax error at end of input at character 70
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35824):yukpo_admin@yukpo:[7373]:STATEMENT:  CREATE UNIQUE INDEX IF NOT EXISTS idx_services_search_cache_id_unique
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35800):yukpo_admin@yukpo:[7371]:ERROR:  syntax error at end of input at character 60
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35800):yukpo_admin@yukpo:[7371]:STATEMENT:  CREATE INDEX IF NOT EXISTS idx_services_search_cache_vector
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35812):yukpo_admin@yukpo:[7372]:ERROR:  syntax error at end of input at character 62
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35812):yukpo_admin@yukpo:[7372]:STATEMENT:  CREATE INDEX IF NOT EXISTS idx_services_search_cache_category
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35842):yukpo_admin@yukpo:[7375]:ERROR:  syntax error at end of input at character 749
+1771030734000,"2026-02-14 00:58:54 UTC:10.0.0.186(35842):yukpo_admin@yukpo:[7375]:STATEMENT:  CREATE MATERIALIZED VIEW IF NOT EXISTS active_products_cache AS
+	SELECT 
+	    (s.id::bigint * 1000000 + jsonb_array_elements.pos) as cache_id,
+	    s.id as service_id,
+	    s.user_id,
+	    s.category,
+	    s.gps,
+	    jsonb_array_elements.product,
+	    s.created_at
+	FROM services s
+	CROSS JOIN LATERAL jsonb_array_elements(
+	    CASE 
+	        WHEN jsonb_typeof(s.data->'produits') = 'array' 
+	        THEN s.data->'produits'
+	        WHEN jsonb_typeof(s.data->'produits'->'valeur') = 'array'
+	        THEN s.data->'produits'->'valeur'
+	        ELSE '[]'::jsonb
+	    END
+	) WITH ORDINALITY AS jsonb_array_elements(product, pos)
+	WHERE s.is_active = TRUE
+	AND (
+	    jsonb_typeof(s.data->'produits') = 'array' OR
+	    jsonb_typeof(s.data->'produits'->'valeur') = 'array'"
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35824):yukpo_admin@yukpo:[7373]:ERROR:  syntax error at end of input at character 70
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35824):yukpo_admin@yukpo:[7373]:STATEMENT:  CREATE UNIQUE INDEX IF NOT EXISTS idx_active_products_cache_id_unique
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35800):yukpo_admin@yukpo:[7371]:ERROR:  syntax error at end of input at character 64
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35800):yukpo_admin@yukpo:[7371]:STATEMENT:  CREATE INDEX IF NOT EXISTS idx_active_products_service_category
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35812):yukpo_admin@yukpo:[7372]:ERROR:  syntax error at end of input at character 225
+1771030734000,"2026-02-14 00:58:54 UTC:10.0.0.186(35812):yukpo_admin@yukpo:[7372]:STATEMENT:  CREATE INDEX IF NOT EXISTS idx_active_products_product_name
+	ON active_products_cache USING GIN (
+	    to_tsvector('french', 
+	        COALESCE(product->>'name', '') || ' ' ||
+	        COALESCE(product->>'description', '')
+	    )"
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35800):yukpo_admin@yukpo:[7371]:ERROR:  syntax error at end of input at character 956
+1771030734000,"2026-02-14 00:58:54 UTC:10.0.0.186(35800):yukpo_admin@yukpo:[7371]:STATEMENT:  CREATE TABLE IF NOT EXISTS videos (
+	    id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+	    content_id TEXT NOT NULL UNIQUE,
+	    service_id INTEGER REFERENCES services(id) ON DELETE CASCADE,
+	    titre TEXT NOT NULL,
+	    description TEXT,
+	    video_url TEXT NOT NULL,
+	    thumbnail TEXT,
+	    hashtags TEXT[] DEFAULT ARRAY[]::TEXT[],
+	    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+	    is_sponsored BOOLEAN NOT NULL DEFAULT FALSE,
+	    studio_session_id TEXT,
+	    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	    -- Métadonnées vidéo
+	    duration_ms INTEGER,
+	    video_format TEXT,
+	    video_source TEXT,
+	    -- Embedding vectoriel pour ML (stocké en TEXT, pgvector non utilisé)
+	    embedding TEXT, -- JSON array ou base64 pour stockage temporaire
+	    -- Statistiques
+	    view_count INTEGER DEFAULT 0,
+	    like_count INTEGER DEFAULT 0,
+	    save_count INTEGER DEFAULT 0,
+	    share_count INTEGER DEFAULT 0"
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35836):yukpo_admin@yukpo:[7374]:ERROR:  syntax error at end of input at character 53
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35836):yukpo_admin@yukpo:[7374]:STATEMENT:  CREATE INDEX IF NOT EXISTS idx_videos_title_fulltext
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35842):yukpo_admin@yukpo:[7375]:ERROR:  syntax error at end of input at character 59
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35842):yukpo_admin@yukpo:[7375]:STATEMENT:  CREATE INDEX IF NOT EXISTS idx_videos_description_fulltext
+1771030734000,"2026-02-14 00:58:54 UTC:10.0.0.186(35842):yukpo_admin@yukpo:[7375]:ERROR:  column ""tag.tag"" must appear in the GROUP BY clause or be used in an aggregate function at character 82"
+1771030734000,"2026-02-14 00:58:54 UTC:10.0.0.186(35842):yukpo_admin@yukpo:[7375]:STATEMENT:  CREATE MATERIALIZED VIEW IF NOT EXISTS hashtag_stats_materialized AS
+	SELECT 
+	    tag,
+	    COUNT(DISTINCT v.id) as video_count,
+	    SUM(v.view_count) as total_views,
+	    SUM(v.like_count) as total_likes,
+	    SUM(v.save_count) as total_saves,
+	    (
+	        SUM(v.like_count * 2 + v.save_count * 1.5 + v.view_count * 0.1) 
+	        / GREATEST(EXTRACT(EPOCH FROM (NOW() - MIN(v.created_at))) / 3600, 1)
+	    ) as trend_score,
+	    MAX(v.created_at) as last_video_at
+	FROM videos v
+	CROSS JOIN LATERAL unnest(v.hashtags) tag
+	WHERE v.is_active = TRUE"
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35824):yukpo_admin@yukpo:[7373]:ERROR:  syntax error at end of input at character 285
+1771030734000,"2026-02-14 00:58:54 UTC:10.0.0.186(35824):yukpo_admin@yukpo:[7373]:STATEMENT:  ALTER TABLE content_engagement 
+	ADD COLUMN IF NOT EXISTS watch_duration_ms INTEGER,
+	ADD COLUMN IF NOT EXISTS video_duration_ms INTEGER,
+	ADD COLUMN IF NOT EXISTS completion_rate REAL,
+	ADD COLUMN IF NOT EXISTS device_type VARCHAR(50),
+	ADD COLUMN IF NOT EXISTS location_gps VARCHAR(255),"
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35842):yukpo_admin@yukpo:[7375]:ERROR:  syntax error at end of input at character 673
+1771030734000,"2026-02-14 00:58:54 UTC:10.0.0.186(35842):yukpo_admin@yukpo:[7375]:STATEMENT:  CREATE TABLE IF NOT EXISTS user_preferences (
+	    user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+	    preferred_categories TEXT[] DEFAULT ARRAY[]::TEXT[],
+	    preferred_hashtags TEXT[] DEFAULT ARRAY[]::TEXT[],
+	    preferred_creators INTEGER[] DEFAULT ARRAY[]::INTEGER[],
+	    preferred_video_length_min INTEGER DEFAULT 0,
+	    preferred_video_length_max INTEGER DEFAULT 600000, -- 10 minutes max par défaut
+	    avg_watch_duration_ms INTEGER DEFAULT 0,
+	    most_active_hour INTEGER, -- Heure de la journée la plus active (0-23)
+	    most_active_day INTEGER,   -- Jour de la semaine le plus actif (0-6, dimanche=0)
+	    last_updated TIMESTAMPTZ DEFAULT NOW()"
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35824):yukpo_admin@yukpo:[7373]:ERROR:  syntax error at end of input at character 59
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35824):yukpo_admin@yukpo:[7373]:STATEMENT:  CREATE INDEX IF NOT EXISTS idx_user_preferences_categories
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35800):yukpo_admin@yukpo:[7371]:ERROR:  syntax error at end of input at character 57
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35800):yukpo_admin@yukpo:[7371]:STATEMENT:  CREATE INDEX IF NOT EXISTS idx_user_preferences_hashtags
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35836):yukpo_admin@yukpo:[7374]:ERROR:  syntax error at end of input at character 67
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35836):yukpo_admin@yukpo:[7374]:STATEMENT:  CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_video_jobs_user_status
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35842):yukpo_admin@yukpo:[7375]:ERROR:  syntax error at end of input at character 73
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35842):yukpo_admin@yukpo:[7375]:STATEMENT:  CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_studio_sessions_user_updated
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35812):yukpo_admin@yukpo:[7372]:ERROR:  syntax error at end of input at character 262
+1771030734000,"2026-02-14 00:58:54 UTC:10.0.0.186(35812):yukpo_admin@yukpo:[7372]:STATEMENT:  CREATE TABLE IF NOT EXISTS video_generation_metrics (
+	    id BIGSERIAL,
+	    job_id UUID NOT NULL,
+	    user_id INTEGER NOT NULL,
+	    status TEXT NOT NULL,
+	    duration_ms BIGINT,
+	    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	    PRIMARY KEY (id, created_at)"
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35836):yukpo_admin@yukpo:[7374]:ERROR:  syntax error at end of input at character 103
+1771030734000,"2026-02-14 00:58:54 UTC:10.0.0.186(35836):yukpo_admin@yukpo:[7374]:STATEMENT:  CREATE TABLE IF NOT EXISTS video_generation_metrics_2025_01 
+	    PARTITION OF video_generation_metrics"
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35842):yukpo_admin@yukpo:[7375]:ERROR:  syntax error at end of input at character 103
+1771030734000,"2026-02-14 00:58:54 UTC:10.0.0.186(35842):yukpo_admin@yukpo:[7375]:STATEMENT:  CREATE TABLE IF NOT EXISTS video_generation_metrics_2025_02 
+	    PARTITION OF video_generation_metrics"
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35824):yukpo_admin@yukpo:[7373]:ERROR:  syntax error at end of input at character 49
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35824):yukpo_admin@yukpo:[7373]:STATEMENT:  CREATE INDEX IF NOT EXISTS idx_video_metrics_job
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35800):yukpo_admin@yukpo:[7371]:ERROR:  syntax error at end of input at character 50
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35800):yukpo_admin@yukpo:[7371]:STATEMENT:  CREATE INDEX IF NOT EXISTS idx_video_metrics_user
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35812):yukpo_admin@yukpo:[7372]:ERROR:  syntax error at end of input at character 331
+1771030734000,"2026-02-14 00:58:54 UTC:10.0.0.186(35812):yukpo_admin@yukpo:[7372]:STATEMENT:  CREATE TABLE IF NOT EXISTS rate_limit_tracking (
+	    id BIGSERIAL PRIMARY KEY,
+	    user_id INTEGER NOT NULL,
+	    endpoint TEXT NOT NULL,
+	    request_count INTEGER NOT NULL DEFAULT 1,
+	    window_start TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	    UNIQUE(user_id, endpoint, window_start)"
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35836):yukpo_admin@yukpo:[7374]:ERROR:  syntax error at end of input at character 56
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35836):yukpo_admin@yukpo:[7374]:STATEMENT:  CREATE INDEX IF NOT EXISTS idx_rate_limit_user_endpoint
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35824):yukpo_admin@yukpo:[7373]:ERROR:  syntax error at end of input at character 430
+1771030734000,"2026-02-14 00:58:54 UTC:10.0.0.186(35824):yukpo_admin@yukpo:[7373]:STATEMENT:  CREATE TABLE IF NOT EXISTS message_reactions (
+	    id SERIAL PRIMARY KEY,
+	    message_id VARCHAR(255) NOT NULL,
+	    user_id INTEGER NOT NULL,
+	    emoji VARCHAR(10) NOT NULL,
+	    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+	    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+	    -- Contrainte unique: un utilisateur ne peut réagir qu'une fois avec le même emoji sur un message
+	    UNIQUE(message_id, user_id, emoji)"
+1771030734000,"2026-02-14 00:58:54 UTC:10.0.0.186(35824):yukpo_admin@yukpo:[7373]:ERROR:  column ""last_synced_at"" does not exist"
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35824):yukpo_admin@yukpo:[7373]:STATEMENT:  CREATE INDEX IF NOT EXISTS idx_live_session_analytics_last_synced ON live_session_analytics(last_synced_at)
+1771030734000,"2026-02-14 00:58:54 UTC:10.0.0.186(35824):yukpo_admin@yukpo:[7373]:ERROR:  column ""status"" does not exist at character 147"
+1771030734000,"2026-02-14 00:58:54 UTC:10.0.0.186(35824):yukpo_admin@yukpo:[7373]:STATEMENT:  CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_global_promo_entries_event_status 
+	         ON global_promo_entries(event_id, status) 
+	         WHERE status IN ('approved', 'published')"
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35824):yukpo_admin@yukpo:[7373]:ERROR:  syntax error at end of input at character 249
+1771030734000,"2026-02-14 00:58:54 UTC:10.0.0.186(35824):yukpo_admin@yukpo:[7373]:STATEMENT:  ALTER TABLE media 
+	ADD COLUMN IF NOT EXISTS normalized_ai_tags TEXT[] 
+	GENERATED ALWAYS AS (
+	    CASE 
+	        WHEN ai_tags IS NULL OR array_length(ai_tags, 1) IS NULL 
+	        THEN ARRAY[]::TEXT[]
+	        ELSE normalize_word_array(ai_tags)
+	    END"
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35812):yukpo_admin@yukpo:[7372]:ERROR:  syntax error at end of input at character 361
+1771030734000,"2026-02-14 00:58:54 UTC:10.0.0.186(35812):yukpo_admin@yukpo:[7372]:STATEMENT:  ALTER TABLE media 
+	ADD COLUMN IF NOT EXISTS normalized_ai_description TEXT
+	GENERATED ALWAYS AS (
+	    CASE 
+	        WHEN ai_description IS NULL OR ai_description = ''
+	        THEN ''
+	        ELSE LOWER(
+	            translate(
+	                ai_description,
+	                'àâäéèêëîïôöùûüÿç',
+	                'aaaeeeeiiioouuuyc'
+	            )
+	        )
+	    END"
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35800):yukpo_admin@yukpo:[7371]:ERROR:  syntax error at end of input at character 60
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35800):yukpo_admin@yukpo:[7371]:STATEMENT:  CREATE INDEX IF NOT EXISTS idx_media_normalized_ai_tags_gin
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35836):yukpo_admin@yukpo:[7374]:ERROR:  syntax error at end of input at character 72
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35836):yukpo_admin@yukpo:[7374]:STATEMENT:  CREATE INDEX IF NOT EXISTS idx_media_normalized_ai_description_fulltext
+1771030734000,2026-02-14 00:58:54 UTC:10.0.0.186(35824):yukpo_admin@yukpo:[7373]:ERROR:  cannot insert multiple commands into a prepared statement
+1771030734000,"2026-02-14 00:58:54 UTC:10.0.0.186(35824):yukpo_admin@yukpo:[7373]:STATEMENT:  
+	        DROP FUNCTION IF EXISTS run_audio_cache_cleanup();
+	        CREATE OR REPLACE FUNCTION run_audio_cache_cleanup()
+	        RETURNS TABLE(
+	            deleted_count INTEGER,
+	            kept_count INTEGER,
+	            total_before INTEGER,
+	            total_after INTEGER
+	        ) AS $$
+	        DECLARE
+	            deleted_count_var INTEGER := 0;
+	            kept_count_var INTEGER := 0;
+	            total_before_var INTEGER := 0;
+	            total_after_var INTEGER := 0;
+	        BEGIN
+	            -- Vérifier si la fonction cleanup_old_audio_transcriptions existe
+	            IF EXISTS (
+	                SELECT 1 FROM pg_proc 
+	                WHERE proname = 'cleanup_old_audio_transcriptions'
+	            ) THEN
+	                -- Exécuter le nettoyage et récupérer les résultats dans des variables explicites
+	                -- Utiliser COALESCE pour garantir des valeurs non-NULL
+	                SELECT 
+	                    COALESCE(deleted_count, 0),
+	                    COALESCE(kept_count, 0),
+	                    COALESCE(total_before, 0),
+	                    COALESCE(total_after, 0)
+	                INTO 
+	                    deleted_count_var,
+	                    kept_count_var,
+	                    total_before_var,
+	                    total_after_var
+	                FROM cleanup_old_audio_transcriptions()
+	                LIMIT 1;
+	            ELSE
+	                -- Si la fonction n'existe pas, retourner des valeurs par défaut (0)
+	                RAISE NOTICE 'Fonction cleanup_old_audio_transcriptions non trouvée, retour de valeurs par défaut';
+	            END IF;
+	            -- Log (peut être envoyé à un système de monitoring)
+	            RAISE NOTICE 'Audio cache cleanup: deleted %, kept %, total before %, after %', 
+	                deleted_count_var, kept_count_var, total_before_var, total_after_var;
+	            -- Retourner les résultats comme une table (toujours des valeurs non-NULL)
+	            RETURN QUERY SELECT deleted_count_var, kept_count_var, total_before_var, total_after_var;
+	        END;
+	        $$ LANGUAGE plpgsql;"
+1771030735000,2026-02-14 00:58:55 UTC:10.0.0.186(35836):yukpo_admin@yukpo:[7374]:ERROR:  syntax error at end of input at character 33
+1771030735000,2026-02-14 00:58:55 UTC:10.0.0.186(35836):yukpo_admin@yukpo:[7374]:STATEMENT:  ALTER TABLE courier_applications
+1771030735000,2026-02-14 00:58:55 UTC:10.0.0.186(35824):yukpo_admin@yukpo:[7373]:ERROR:  syntax error at end of input at character 27
+1771030735000,2026-02-14 00:58:55 UTC:10.0.0.186(35824):yukpo_admin@yukpo:[7373]:STATEMENT:  ALTER TABLE courier_assets
+1771030735000,2026-02-14 00:58:55 UTC:10.0.0.186(35836):yukpo_admin@yukpo:[7374]:ERROR:  syntax error at end of input at character 813
+1771030735000,"2026-02-14 00:58:55 UTC:10.0.0.186(35836):yukpo_admin@yukpo:[7374]:STATEMENT:  CREATE TABLE IF NOT EXISTS family_profiles (
+	    id SERIAL PRIMARY KEY,
+	    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+	    family_name VARCHAR(255),
+	    total_members INTEGER NOT NULL DEFAULT 1,
+	    children_count INTEGER DEFAULT 0,
+	    adults_count INTEGER DEFAULT 1,
+	    preferences JSONB DEFAULT '{}', -- végétarien, vegan, halal, etc.
+	    allergies TEXT[], -- liste allergies
+	    dietary_restrictions TEXT[], -- diabète, hypertension, etc.
+	    budget_monthly DECIMAL(10,2),
+	    cuisine_styles TEXT[], -- africaine, camerounaise, occidentale, etc.
+	    cooking_level VARCHAR(50), -- débutant, intermédiaire, avancé
+	    time_available_hours DECIMAL(4,2), -- heures disponibles par jour
+	    created_at TIMESTAMPTZ DEFAULT NOW(),
+	    updated_at TIMESTAMPTZ DEFAULT NOW(),
+	    UNIQUE(user_id)"
+1771030735000,2026-02-14 00:58:55 UTC:10.0.0.186(35842):yukpo_admin@yukpo:[7375]:ERROR:  syntax error at end of input at character 985
+1771030735000,"2026-02-14 00:58:55 UTC:10.0.0.186(35842):yukpo_admin@yukpo:[7375]:STATEMENT:  CREATE TABLE IF NOT EXISTS recipes (
+	    id SERIAL PRIMARY KEY,
+	    name VARCHAR(255) NOT NULL,
+	    description TEXT,
+	    cuisine_style VARCHAR(100), -- africaine, camerounaise, occidentale, etc.
+	    meal_type TEXT[], -- petit_dejeuner, dejeuner, diner
+	    difficulty VARCHAR(50), -- facile, moyen, difficile
+	    prep_time_minutes INTEGER,
+	    cook_time_minutes INTEGER,
+	    servings INTEGER DEFAULT 1,
+	    ingredients JSONB NOT NULL, -- [{name, quantity, unit}, ...]
+	    instructions TEXT[] NOT NULL, -- étapes de préparation
+	    nutrition_per_serving JSONB, -- {calories, proteins, carbs, fats, fiber}
+	    tags TEXT[], -- végétarien, vegan, rapide, économique, etc.
+	    image_url TEXT,
+	    video_url TEXT, -- vidéo recette optionnelle
+	    source VARCHAR(255), -- ""yukpo_ai"", ""community"", ""premium""
+	    is_premium BOOLEAN DEFAULT FALSE,
+	    created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+	    created_at TIMESTAMPTZ DEFAULT NOW(),
+	    updated_at TIMESTAMPTZ DEFAULT NOW()"
+1771030735000,2026-02-14 00:58:55 UTC:10.0.0.186(35824):yukpo_admin@yukpo:[7373]:ERROR:  syntax error at end of input at character 506
+1771030735000,"2026-02-14 00:58:55 UTC:10.0.0.186(35824):yukpo_admin@yukpo:[7373]:STATEMENT:  CREATE TABLE IF NOT EXISTS menu_plans (
+	    id SERIAL PRIMARY KEY,
+	    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+	    week_start DATE NOT NULL, -- lundi de la semaine
+	    week_end DATE NOT NULL, -- dimanche de la semaine
+	    status VARCHAR(50) DEFAULT 'draft', -- draft, active, completed
+	    total_budget DECIMAL(10,2),
+	    actual_cost DECIMAL(10,2),
+	    notes TEXT,
+	    created_at TIMESTAMPTZ DEFAULT NOW(),
+	    updated_at TIMESTAMPTZ DEFAULT NOW(),
+	    UNIQUE(user_id, week_start)"
+1771030735000,2026-02-14 00:58:55 UTC:10.0.0.186(35812):yukpo_admin@yukpo:[7372]:ERROR:  syntax error at end of input at character 516
+1771030735000,"2026-02-14 00:58:55 UTC:10.0.0.186(35812):yukpo_admin@yukpo:[7372]:STATEMENT:  CREATE TABLE IF NOT EXISTS planned_meals (
+	    id SERIAL PRIMARY KEY,
+	    menu_plan_id INTEGER NOT NULL REFERENCES menu_plans(id) ON DELETE CASCADE,
+	    day_of_week INTEGER NOT NULL, -- 1=lundi, 7=dimanche
+	    meal_type VARCHAR(50) NOT NULL, -- petit_dejeuner, dejeuner, diner, gouter
+	    recipe_id INTEGER REFERENCES recipes(id) ON DELETE SET NULL,
+	    custom_name VARCHAR(255), -- nom personnalisé si pas de recette
+	    servings INTEGER NOT NULL DEFAULT 1,
+	    notes TEXT,
+	    created_at TIMESTAMPTZ DEFAULT NOW()"
+1771030735000,2026-02-14 00:58:55 UTC:10.0.0.186(35800):yukpo_admin@yukpo:[7371]:ERROR:  syntax error at end of input at character 288
+1771030735000,"2026-02-14 00:58:55 UTC:10.0.0.186(35800):yukpo_admin@yukpo:[7371]:STATEMENT:  CREATE TABLE IF NOT EXISTS recipe_favorites (
+	    id SERIAL PRIMARY KEY,
+	    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+	    recipe_id INTEGER NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
+	    created_at TIMESTAMPTZ DEFAULT NOW(),
+	    UNIQUE(user_id, recipe_id)"
+1771030735000,2026-02-14 00:58:55 UTC:10.0.0.186(35836):yukpo_admin@yukpo:[7374]:ERROR:  syntax error at end of input at character 533
+1771030735000,"2026-02-14 00:58:55 UTC:10.0.0.186(35836):yukpo_admin@yukpo:[7374]:STATEMENT:  CREATE TABLE IF NOT EXISTS shopping_lists (
+	    id SERIAL PRIMARY KEY,
+	    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+	    menu_plan_id INTEGER REFERENCES menu_plans(id) ON DELETE SET NULL,
+	    week_start DATE NOT NULL,
+	    status VARCHAR(50) DEFAULT 'pending', -- pending, in_progress, completed
+	    organized_by_store BOOLEAN DEFAULT FALSE,
+	    organized_by_aisle BOOLEAN DEFAULT FALSE,
+	    total_estimated_cost DECIMAL(10,2),
+	    created_at TIMESTAMPTZ DEFAULT NOW(),
+	    updated_at TIMESTAMPTZ DEFAULT NOW()"
+1771030735000,2026-02-14 00:58:55 UTC:10.0.0.186(35842):yukpo_admin@yukpo:[7375]:ERROR:  syntax error at end of input at character 739
+1771030735000,"2026-02-14 00:58:55 UTC:10.0.0.186(35842):yukpo_admin@yukpo:[7375]:STATEMENT:  CREATE TABLE IF NOT EXISTS shopping_list_items (
+	    id SERIAL PRIMARY KEY,
+	    shopping_list_id INTEGER NOT NULL REFERENCES shopping_lists(id) ON DELETE CASCADE,
+	    ingredient_name VARCHAR(255) NOT NULL,
+	    quantity DECIMAL(10,2) NOT NULL,
+	    unit VARCHAR(50) NOT NULL,
+	    category VARCHAR(100), -- fruits, légumes, viande, épicerie, etc.
+	    store_section VARCHAR(100), -- rayon magasin
+	    preferred_store VARCHAR(255), -- magasin préféré
+	    is_checked BOOLEAN DEFAULT FALSE,
+	    actual_price DECIMAL(10,2),
+	    notes TEXT,
+	    order_placed BOOLEAN DEFAULT FALSE, -- commande via Yukpo
+	    order_id INTEGER, -- Référence vers commande (peut être lié à shopping_orders ou delivery_requests)
+	    created_at TIMESTAMPTZ DEFAULT NOW()"
+1771030735000,2026-02-14 00:58:55 UTC:10.0.0.186(35824):yukpo_admin@yukpo:[7373]:ERROR:  syntax error at end of input at character 550
+1771030735000,"2026-02-14 00:58:55 UTC:10.0.0.186(35824):yukpo_admin@yukpo:[7373]:STATEMENT:  CREATE TABLE IF NOT EXISTS nutrition_analytics (
+	    id SERIAL PRIMARY KEY,
+	    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+	    menu_plan_id INTEGER NOT NULL REFERENCES menu_plans(id) ON DELETE CASCADE,
+	    week_start DATE NOT NULL,
+	    total_calories DECIMAL(10,2),
+	    total_proteins DECIMAL(10,2),
+	    total_carbs DECIMAL(10,2),
+	    total_fats DECIMAL(10,2),
+	    total_fiber DECIMAL(10,2),
+	    daily_average JSONB, -- moyenne par jour
+	    recommendations TEXT[], -- recommandations IA
+	    created_at TIMESTAMPTZ DEFAULT NOW()"
+1771030746000,2026-02-14 00:59:06 UTC:10.0.0.186(53638):yukpo_admin@yukpo:[7390]:ERROR:  column lfs.promo_price_cfa does not exist at character 130
+1771030746000,"2026-02-14 00:59:06 UTC:10.0.0.186(53638):yukpo_admin@yukpo:[7390]:STATEMENT:  
+	            SELECT
+	                lfs.id,
+	                lfs.live_session_id,
+	                lfs.service_id,
+	                lfs.promo_price_cfa,
+	                lfs.start_at,
+	                lfs.scheduled_notification_sent_at,
+	                ls.host_user_id,
+	                ls.service_id AS primary_service_id,
+	                ls.metadata,
+	                ls.title
+	            FROM live_flash_sales lfs
+	            JOIN live_sessions ls ON ls.id = lfs.live_session_id
+	            WHERE lfs.status = 'scheduled'
+	              AND lfs.start_at <= $1
+	              AND lfs.scheduled_notification_sent_at IS NULL"
+1771030746000,"2026-02-14 00:59:06 UTC:10.0.0.186(53674):yukpo_admin@yukpo:[7392]:ERROR:  column ""display_name"" does not exist at character 21"
+1771030746000,"2026-02-14 00:59:06 UTC:10.0.0.186(53674):yukpo_admin@yukpo:[7392]:STATEMENT:  
+	        SELECT id, display_name
+	        FROM global_promo_events
+	        WHERE status = 'scheduled' AND starts_at <= $1"
+1771030746000,"2026-02-14 00:59:06 UTC:10.0.0.186(53646):yukpo_admin@yukpo:[7391]:ERROR:  invalid input value for enum delivery_status: ""awaiting_courier_confirmation"" at character 77"
+1771030746000,"2026-02-14 00:59:06 UTC:10.0.0.186(53646):yukpo_admin@yukpo:[7391]:STATEMENT:  
+	        SELECT id, metadata
+	        FROM deliveries
+	        WHERE status = 'awaiting_courier_confirmation'
+	        AND metadata->>'notifications_stopped' IS NULL
+	        AND metadata->>'notified_user_ids' IS NOT NULL
+	        AND metadata->>'notification_sent_at' IS NOT NULL
+	        AND (metadata->>'notification_repeat_interval_seconds')::int = 30
+	        AND NOW() - (metadata->>'notification_sent_at')::timestamp < INTERVAL '5 minutes'
+	        ORDER BY requested_at DESC
+	        LIMIT 50"
+1771030746000,2026-02-14 00:59:06 UTC:10.0.0.186(35836):yukpo_admin@yukpo:[7374]:LOG:  could not receive data from client: Connection reset by peer
+1771030746000,2026-02-14 00:59:06 UTC:10.0.0.186(53690):yukpo_admin@yukpo:[7395]:LOG:  could not receive data from client: Connection reset by peer
+1771030746000,2026-02-14 00:59:06 UTC:10.0.0.186(35812):yukpo_admin@yukpo:[7372]:LOG:  could not receive data from client: Connection reset by peer
+1771030746000,2026-02-14 00:59:06 UTC:10.0.0.186(35872):yukpo_admin@yukpo:[7377]:LOG:  could not receive data from client: Connection reset by peer
+1771030746000,"2026-02-14 00:59:06 UTC:10.0.0.186(53674):yukpo_admin@yukpo:[7392]:ERROR:  column ""suggested_status"" does not exist at character 55"
+1771030746000,"2026-02-14 00:59:06 UTC:10.0.0.186(53674):yukpo_admin@yukpo:[7392]:STATEMENT:  
+	        SELECT 
+	            delivery_id,
+	            suggested_status,
+	            created_at,
+	            auto_confirm_after_seconds
+	        FROM delivery_proximity_suggestions
+	        WHERE 
+	            status = 'pending'
+	            AND auto_confirm_after_seconds IS NOT NULL
+	            AND created_at + (auto_confirm_after_seconds || ' seconds')::interval <= NOW()
+	        LIMIT 50"
+1771030746000,2026-02-14 00:59:06 UTC:10.0.0.186(35856):yukpo_admin@yukpo:[7376]:LOG:  could not receive data from client: Connection reset by peer
+1771030746000,2026-02-14 00:59:06 UTC:10.0.0.186(53674):yukpo_admin@yukpo:[7392]:LOG:  could not receive data from client: Connection reset by peer
+1771030746000,2026-02-14 00:59:06 UTC:10.0.0.186(35824):yukpo_admin@yukpo:[7373]:LOG:  could not receive data from client: Connection reset by peer
+1771030746000,2026-02-14 00:59:06 UTC:10.0.0.186(35842):yukpo_admin@yukpo:[7375]:LOG:  could not receive data from client: Connection reset by peer
+1771030746000,2026-02-14 00:59:06 UTC:10.0.0.186(35800):yukpo_admin@yukpo:[7371]:LOG:  could not receive data from client: Connection reset by peer
+1771030746000,2026-02-14 00:59:06 UTC:10.0.0.186(53682):yukpo_admin@yukpo:[7394]:LOG:  could not receive data from client: Connection reset by peer
+1771030746000,2026-02-14 00:59:06 UTC:10.0.0.186(53646):yukpo_admin@yukpo:[7391]:LOG:  could not receive data from client: Connection reset by peer
+1771030746000,2026-02-14 00:59:06 UTC:10.0.0.186(53638):yukpo_admin@yukpo:[7390]:LOG:  could not receive data from client: Connection reset by peer
+1771030746000,2026-02-14 00:59:06 UTC:10.0.0.186(53702):[unknown]@[unknown]:[7396]:LOG:  could not receive data from client: Connection reset by peer
+1771030746000,2026-02-14 00:59:06 UTC:10.0.0.186(53662):yukpo_admin@yukpo:[7393]:LOG:  could not receive data from client: Connection reset by peer
+1771030761000,"2026-02-14 00:59:21 UTC::@:[1342]:LOG:  checkpoint complete: wrote 438 buffers (0.8%); 0 WAL file(s) added, 0 removed, 1 recycled; write=43.875 s, sync=0.003 s, total=43.885 s; sync files=104, longest=0.002 s, average=0.001 s; distance=65412 kB, estimate=65852 kB"

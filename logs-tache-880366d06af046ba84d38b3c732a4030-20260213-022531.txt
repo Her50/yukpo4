@@ -1,0 +1,5 @@
+﻿Logs de la tache 880366d06af046ba84d38b3c732a4030
+Stopped At: 
+Stopped Reason: 
+Exit Code: 
+

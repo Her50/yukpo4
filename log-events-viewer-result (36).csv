@@ -1,0 +1,201 @@
+timestamp,message
+1771022252986,[2m2026-02-13T22:37:32.986887Z[0m [32m INFO[0m [2myukpomnang_backend[0m[2m:[0m 🔍 [DIAGNOSTIC] SQLX_OFFLINE au runtime: None
+1771022252986,"[2m2026-02-13T22:37:32.986906Z[0m [32m INFO[0m [2myukpomnang_backend[0m[2m:[0m 🔍 [DIAGNOSTIC] Current working directory: Ok(""/app"")"
+1771022252986,[2m2026-02-13T22:37:32.986936Z[0m [32m INFO[0m [2myukpomnang_backend[0m[2m:[0m 🔍 [DIAGNOSTIC] Pool de connexions créé avec succès
+1771022252987,[2m2026-02-13T22:37:32.987019Z[0m [32m INFO[0m [2myukpomnang_backend[0m[2m:[0m 📁 Dossier migrations trouvé: /app/migrations
+1771022252999,[2m2026-02-13T22:37:32.999797Z[0m [32m INFO[0m [2myukpomnang_backend[0m[2m:[0m ✅ Pool pré-chauffé: 5/5 connexions prêtes
+1771022253004,[2m2026-02-13T22:37:33.004758Z[0m [32m INFO[0m [2myukpomnang_backend[0m[2m:[0m 📊 Migrations déjà appliquées: 0
+1771022253004,[2m2026-02-13T22:37:33.004910Z[0m [32m INFO[0m [2myukpomnang_backend[0m[2m:[0m 🔍 [DIAGNOSTIC] Avant application des migrations - Chemin: ./migrations
+1771022253004,[2m2026-02-13T22:37:33.004949Z[0m [32m INFO[0m [2myukpomnang_backend[0m[2m:[0m 🔍 [DIAGNOSTIC] Vérification existence dossier migrations...
+1771022253005,[2m2026-02-13T22:37:33.005045Z[0m [32m INFO[0m [2myukpomnang_backend[0m[2m:[0m 🔍 [DIAGNOSTIC] Dossier ./migrations existe: true
+1771022253005,[2m2026-02-13T22:37:33.005055Z[0m [32m INFO[0m [2myukpomnang_backend[0m[2m:[0m 🔄 [MIGRATIONS CORRECTION] Application FORCÉE des migrations de correction AVANT la migration 0...
+1771022253005,[2m2026-02-13T22:37:33.005058Z[0m [32m INFO[0m [2myukpomnang_backend[0m[2m:[0m 💡 Cette approche garantit que les corrections sont en place avant que la migration 0 ne crée des objets
+1771022253005,"[2m2026-02-13T22:37:33.005061Z[0m [32m INFO[0m [2myukpomnang_backend[0m[2m:[0m 🔍 [MIGRATION CORRECTION 002] Fichier chargé, taille: 12867 caractères"
+1771022253007,"[2m2026-02-13T22:37:33.006978Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m view ""product_comments_view"" does not exist, skipping"
+1771022253014,"[2m2026-02-13T22:37:33.014193Z[0m [31mERROR[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ❌ [MIGRATION] Erreur critique non ignorée: error returned from database: missing FROM-clause entry for table ""u"" | Commande: CREATE VIEW product_comments_view AS"
+1771022253014,SELECT
+1771022253014,"    pc.id,"
+1771022253014,"    pc.service_id,"
+1771022253014,"    pc.user_id,"
+1771022253014,"    pc.parent_comment_id,"
+1771022253014,"    pc.rating,"
+1771022253014,"    pc.content,"
+1771022253014,"    pc.mentions,"
+1771022253014,"    pc.reaction_counts,"
+1771022253014,    pc.creat...
+1771022253014,"[2m2026-02-13T22:37:33.014212Z[0m [31mERROR[0m [2myukpomnang_backend[0m[2m:[0m ❌ [MIGRATION CORRECTION 002] Erreur lors de l'application: error returned from database: missing FROM-clause entry for table ""u"""
+1771022253014,"[2m2026-02-13T22:37:33.014226Z[0m [32m INFO[0m [2myukpomnang_backend[0m[2m:[0m 🔍 [MIGRATION CORRECTION 003] Fichier chargé, taille: 9906 caractères"
+1771022253016,"[2m2026-02-13T22:37:33.016424Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m function get_product_reactions_count(pg_catalog.int4,text) does not exist, skipping"
+1771022253017,"[2m2026-02-13T22:37:33.017616Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m function cleanup_expired_cache() does not exist, skipping"
+1771022253018,"[2m2026-02-13T22:37:33.018354Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m index ""idx_cache_expires_at"" does not exist, skipping"
+1771022253019,[2m2026-02-13T22:37:33.018969Z[0m [33m WARN[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ⚠️ [MIGRATION] Fragment de commande détecté (syntax error at end of input): error returned from database: syntax error at end of input | Commande: CREATE INDEX IF NOT EXISTS idx_cache_expires_at
+1771022253019,[2m2026-02-13T22:37:33.019048Z[0m [32m INFO[0m [2myukpomnang_backend[0m[2m:[0m ✅ [MIGRATION CORRECTION 003] Migration de correction appliquée avec succès
+1771022253019,"[2m2026-02-13T22:37:33.019086Z[0m [32m INFO[0m [2myukpomnang_backend[0m[2m:[0m 🔍 [MIGRATION CORRECTION 004] Fichier chargé, taille: 18019 caractères"
+1771022253019,[2m2026-02-13T22:37:33.019251Z[0m [32m INFO[0m [2myukpomnang_backend[0m[2m:[0m ✅ [MIGRATION CORRECTION 004] Migration de correction FINALE appliquée avec succès
+1771022253019,"[2m2026-02-13T22:37:33.019260Z[0m [32m INFO[0m [2myukpomnang_backend[0m[2m:[0m 🔍 [MIGRATION CORRECTION 005] Fichier chargé, taille: 13175 caractères"
+1771022253019,[2m2026-02-13T22:37:33.019337Z[0m [32m INFO[0m [2myukpomnang_backend[0m[2m:[0m ✅ [MIGRATION CORRECTION 005] Migration de correction des erreurs restantes appliquée avec succès
+1771022253019,"[2m2026-02-13T22:37:33.019349Z[0m [32m INFO[0m [2myukpomnang_backend[0m[2m:[0m 🔍 [MIGRATION CORRECTION 006] Fichier chargé, taille: 1654 caractères"
+1771022253019,[2m2026-02-13T22:37:33.019360Z[0m [32m INFO[0m [2myukpomnang_backend[0m[2m:[0m ✅ [MIGRATION CORRECTION 006] Colonnes partner_type et partner_status ajoutées à users
+1771022253019,"[2m2026-02-13T22:37:33.019363Z[0m [32m INFO[0m [2myukpomnang_backend[0m[2m:[0m 🔍 [MIGRATION CORRECTION 007] Fichier chargé, taille: 3899 caractères"
+1771022253019,[2m2026-02-13T22:37:33.019384Z[0m [32m INFO[0m [2myukpomnang_backend[0m[2m:[0m ✅ [MIGRATION CORRECTION 007] Table users garantie d'exister
+1771022253028,[2m2026-02-13T22:37:33.028578Z[0m [32m INFO[0m [2myukpomnang_backend[0m[2m:[0m ✅ [MIGRATION CORRECTION 007] Vérification: Table users existe bien
+1771022253028,"[2m2026-02-13T22:37:33.028672Z[0m [32m INFO[0m [2myukpomnang_backend[0m[2m:[0m 🔍 [MIGRATION CORRECTION 008] Fichier chargé, taille: 6111 caractères"
+1771022253028,[2m2026-02-13T22:37:33.028760Z[0m [32m INFO[0m [2myukpomnang_backend[0m[2m:[0m ✅ [MIGRATION CORRECTION 008] Tables services et media garanties d'exister
+1771022253040,[2m2026-02-13T22:37:33.040300Z[0m [32m INFO[0m [2myukpomnang_backend[0m[2m:[0m ✅ [MIGRATION CORRECTION 008] Vérification: Tables services et media existent bien
+1771022253040,"[2m2026-02-13T22:37:33.040368Z[0m [32m INFO[0m [2myukpomnang_backend[0m[2m:[0m 🔍 [MIGRATION CORRECTION 20260206] Fichier chargé, taille: 12045 caractères"
+1771022253040,[2m2026-02-13T22:37:33.040476Z[0m [32m INFO[0m [2myukpomnang_backend[0m[2m:[0m ✅ [MIGRATION CORRECTION 20260206] Migration de correction COMPLÈTE appliquée avec succès
+1771022253040,[2m2026-02-13T22:37:33.040486Z[0m [32m INFO[0m [2myukpomnang_backend[0m[2m:[0m 🔄 [MIGRATIONS SQLX] Application de toutes les migrations SQLx standard...
+1771022253042,[2m2026-02-13T22:37:33.042384Z[0m [33m WARN[0m [2myukpomnang_backend[0m[2m:[0m ⚠️ [MIGRATIONS] Table _sqlx_migrations est vide - Toutes les migrations seront appliquées
+1771022253045,"[2m2026-02-13T22:37:33.045073Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""_sqlx_migrations"" already exists, skipping"
+1771022253063,"[2m2026-02-13T22:37:33.063593Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m extension ""uuid-ossp"" already exists, skipping"
+1771022253063,"[2m2026-02-13T22:37:33.063820Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m extension ""pg_trgm"" already exists, skipping"
+1771022253063,"[2m2026-02-13T22:37:33.063861Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m extension ""unaccent"" already exists, skipping"
+1771022253063,"[2m2026-02-13T22:37:33.063886Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m extension ""pgcrypto"" already exists, skipping"
+1771022253063,"[2m2026-02-13T22:37:33.063912Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m extension ""postgis"" already exists, skipping"
+1771022253064,"[2m2026-02-13T22:37:33.064667Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m extension ""vector"" already exists, skipping"
+1771022253064,[2m2026-02-13T22:37:33.064765Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m ✅ Extension pgvector installée avec succès
+1771022253064,"[2m2026-02-13T22:37:33.064798Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""users"" already exists, skipping"
+1771022253066,"[2m2026-02-13T22:37:33.066542Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""user_documents"" already exists, skipping"
+1771022253066,"[2m2026-02-13T22:37:33.066793Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_user_documents_user_id"" already exists, skipping"
+1771022253066,"[2m2026-02-13T22:37:33.066960Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_user_documents_status"" already exists, skipping"
+1771022253067,"[2m2026-02-13T22:37:33.067000Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_user_documents_type"" already exists, skipping"
+1771022253067,"[2m2026-02-13T22:37:33.067085Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_user_documents_user_status"" already exists, skipping"
+1771022253067,"[2m2026-02-13T22:37:33.067454Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m trigger ""trigger_update_user_documents_updated_at"" for relation ""user_documents"" does not exist, skipping"
+1771022253068,"[2m2026-02-13T22:37:33.068026Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""services"" already exists, skipping"
+1771022253068,"[2m2026-02-13T22:37:33.068095Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""media"" already exists, skipping"
+1771022253077,"[2m2026-02-13T22:37:33.077629Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_media_product_id"" already exists, skipping"
+1771022253077,"[2m2026-02-13T22:37:33.077652Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_media_product_index"" already exists, skipping"
+1771022253077,"[2m2026-02-13T22:37:33.077741Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_media_service_product"" already exists, skipping"
+1771022253077,"[2m2026-02-13T22:37:33.077876Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_media_main_image"" already exists, skipping"
+1771022253077,"[2m2026-02-13T22:37:33.077940Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_media_product_display"" already exists, skipping"
+1771022253078,"[2m2026-02-13T22:37:33.078219Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_media_ai_description_fulltext"" already exists, skipping"
+1771022253078,"[2m2026-02-13T22:37:33.078239Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_media_ai_tags_gin"" already exists, skipping"
+1771022253078,"[2m2026-02-13T22:37:33.078510Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_media_ai_category"" already exists, skipping"
+1771022253078,"[2m2026-02-13T22:37:33.078530Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_media_ai_metadata_gin"" already exists, skipping"
+1771022253079,"[2m2026-02-13T22:37:33.078964Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""google_places_data"" already exists, skipping"
+1771022253079,"[2m2026-02-13T22:37:33.079151Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_google_places_data_service_id"" already exists, skipping"
+1771022253079,"[2m2026-02-13T22:37:33.079171Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_google_places_data_place_id"" already exists, skipping"
+1771022253079,"[2m2026-02-13T22:37:33.079267Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_google_places_data_location_vector"" already exists, skipping"
+1771022253079,"[2m2026-02-13T22:37:33.079313Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_google_places_data_types"" already exists, skipping"
+1771022253079,"[2m2026-02-13T22:37:33.079372Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_google_places_data_cuisine"" already exists, skipping"
+1771022253079,"[2m2026-02-13T22:37:33.079518Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""consultation_historique"" already exists, skipping"
+1771022253079,"[2m2026-02-13T22:37:33.079608Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""token_packs"" already exists, skipping"
+1771022253079,"[2m2026-02-13T22:37:33.079756Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""service_logs"" already exists, skipping"
+1771022253079,"[2m2026-02-13T22:37:33.079805Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""payment_transactions"" already exists, skipping"
+1771022253079,"[2m2026-02-13T22:37:33.079862Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""token_transactions"" already exists, skipping"
+1771022253079,"[2m2026-02-13T22:37:33.079888Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_payment_transactions_user_id"" already exists, skipping"
+1771022253079,"[2m2026-02-13T22:37:33.079907Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_payment_transactions_status"" already exists, skipping"
+1771022253080,"[2m2026-02-13T22:37:33.080059Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_payment_transactions_created_at"" already exists, skipping"
+1771022253080,"[2m2026-02-13T22:37:33.080203Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_token_transactions_user_id"" already exists, skipping"
+1771022253080,"[2m2026-02-13T22:37:33.080263Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_token_transactions_type"" already exists, skipping"
+1771022253080,"[2m2026-02-13T22:37:33.080333Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""autocomplete_characteristics"" already exists, skipping"
+1771022253080,"[2m2026-02-13T22:37:33.080456Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_autocomplete_identifiant_base"" already exists, skipping"
+1771022253080,"[2m2026-02-13T22:37:33.080511Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_autocomplete_sous_caracteristique"" already exists, skipping"
+1771022253080,"[2m2026-02-13T22:37:33.080618Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_autocomplete_base_sous"" already exists, skipping"
+1771022253082,"[2m2026-02-13T22:37:33.082716Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_autocomplete_valeur_lower"" already exists, skipping"
+1771022253082,"[2m2026-02-13T22:37:33.082836Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_autocomplete_origine"" already exists, skipping"
+1771022253083,"[2m2026-02-13T22:37:33.082976Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_autocomplete_usage_count"" already exists, skipping"
+1771022253083,"[2m2026-02-13T22:37:33.083018Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_autochar_characteristic_vector_gin"" already exists, skipping"
+1771022253083,"[2m2026-02-13T22:37:33.083112Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_autochar_location_vector_gin"" already exists, skipping"
+1771022253083,"[2m2026-02-13T22:37:33.083165Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_autochar_full_vector_gin"" already exists, skipping"
+1771022253083,"[2m2026-02-13T22:37:33.083251Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_autochar_product_id"" already exists, skipping"
+1771022253083,"[2m2026-02-13T22:37:33.083265Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_autochar_geoname_id"" already exists, skipping"
+1771022253083,"[2m2026-02-13T22:37:33.083350Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_autochar_location_usage"" already exists, skipping"
+1771022253083,"[2m2026-02-13T22:37:33.083816Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_autocomplete_real_product_composite"" already exists, skipping"
+1771022253083,"[2m2026-02-13T22:37:33.083905Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_autocomplete_relevance_sort"" already exists, skipping"
+1771022253083,"[2m2026-02-13T22:37:33.083935Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_autocomplete_full_vector_gin_filtered"" already exists, skipping"
+1771022253084,"[2m2026-02-13T22:37:33.083983Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_autocomplete_chosen_location_filtered"" already exists, skipping"
+1771022253084,"[2m2026-02-13T22:37:33.084920Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""autocomplete_combinations"" already exists, skipping"
+1771022253085,"[2m2026-02-13T22:37:33.085194Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_combinations_session"" already exists, skipping"
+1771022253085,"[2m2026-02-13T22:37:33.085256Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_combinations_usage_count"" already exists, skipping"
+1771022253085,"[2m2026-02-13T22:37:33.085292Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_combinations_variant"" already exists, skipping"
+1771022253085,"[2m2026-02-13T22:37:33.085411Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_combinations_product_vector_gin"" already exists, skipping"
+1771022253085,"[2m2026-02-13T22:37:33.085438Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_combinations_full_vector_gin"" already exists, skipping"
+1771022253086,"[2m2026-02-13T22:37:33.086027Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""service_products"" already exists, skipping"
+1771022253086,"[2m2026-02-13T22:37:33.086194Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_service_products_service_id"" already exists, skipping"
+1771022253086,"[2m2026-02-13T22:37:33.086278Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_service_products_active"" already exists, skipping"
+1771022253086,"[2m2026-02-13T22:37:33.086350Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_service_products_type"" already exists, skipping"
+1771022253086,"[2m2026-02-13T22:37:33.086405Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_service_products_name_gin"" already exists, skipping"
+1771022253086,"[2m2026-02-13T22:37:33.086457Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_service_products_data_gin"" already exists, skipping"
+1771022253086,"[2m2026-02-13T22:37:33.086521Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_service_products_service_index"" already exists, skipping"
+1771022253086,"[2m2026-02-13T22:37:33.086590Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_service_products_created_at"" already exists, skipping"
+1771022253088,"[2m2026-02-13T22:37:33.088239Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""products_lifecycle"" already exists, skipping"
+1771022253088,"[2m2026-02-13T22:37:33.088334Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_products_lifecycle_service_id"" already exists, skipping"
+1771022253088,"[2m2026-02-13T22:37:33.088429Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_products_lifecycle_active"" already exists, skipping"
+1771022253088,"[2m2026-02-13T22:37:33.088507Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_products_lifecycle_service_product"" already exists, skipping"
+1771022253088,"[2m2026-02-13T22:37:33.088567Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_products_lifecycle_service_product_active"" already exists, skipping"
+1771022253089,"[2m2026-02-13T22:37:33.089152Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_services_user_id_created_at_desc"" already exists, skipping"
+1771022253126,"[2m2026-02-13T22:37:33.126488Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""product_reactions"" already exists, skipping"
+1771022253130,"[2m2026-02-13T22:37:33.130721Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""product_comments"" already exists, skipping"
+1771022253130,"[2m2026-02-13T22:37:33.130924Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_product_comments_service"" already exists, skipping"
+1771022253131,"[2m2026-02-13T22:37:33.131008Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_product_comments_parent"" already exists, skipping"
+1771022253131,"[2m2026-02-13T22:37:33.131054Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_product_comments_user"" already exists, skipping"
+1771022253131,"[2m2026-02-13T22:37:33.131738Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""product_comment_reactions"" already exists, skipping"
+1771022253131,"[2m2026-02-13T22:37:33.131877Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_product_comment_reactions_comment"" already exists, skipping"
+1771022253131,"[2m2026-02-13T22:37:33.131938Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_product_comment_reactions_user"" already exists, skipping"
+1771022253132,"[2m2026-02-13T22:37:33.131984Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m view ""product_comments_view"" does not exist, skipping"
+1771022253134,"[2m2026-02-13T22:37:33.134547Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""private_conversations"" already exists, skipping"
+1771022253141,"[2m2026-02-13T22:37:33.141580Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m function get_product_reactions_count(pg_catalog.int4,text) does not exist, skipping"
+1771022253142,"[2m2026-02-13T22:37:33.142810Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""publicites"" already exists, skipping"
+1771022253143,"[2m2026-02-13T22:37:33.143128Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_publicites_user_id"" already exists, skipping"
+1771022253143,"[2m2026-02-13T22:37:33.143172Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_publicites_status"" already exists, skipping"
+1771022253143,"[2m2026-02-13T22:37:33.143229Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_publicites_zone"" already exists, skipping"
+1771022253143,"[2m2026-02-13T22:37:33.143313Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_publicites_date_fin"" already exists, skipping"
+1771022253143,"[2m2026-02-13T22:37:33.143467Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_publicites_produits_gin"" already exists, skipping"
+1771022253143,"[2m2026-02-13T22:37:33.143480Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_publicites_targeting_gin"" already exists, skipping"
+1771022253143,"[2m2026-02-13T22:37:33.143509Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_publicites_ab_testing_gin"" already exists, skipping"
+1771022253143,"[2m2026-02-13T22:37:33.143518Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_publicites_placements_gin"" already exists, skipping"
+1771022253143,"[2m2026-02-13T22:37:33.143521Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_publicites_retargeting_gin"" already exists, skipping"
+1771022253143,"[2m2026-02-13T22:37:33.143828Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_publicites_schedule_start"" already exists, skipping"
+1771022253143,"[2m2026-02-13T22:37:33.143839Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_publicites_schedule_end"" already exists, skipping"
+1771022253143,"[2m2026-02-13T22:37:33.143842Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""publicite_versions"" already exists, skipping"
+1771022253143,"[2m2026-02-13T22:37:33.143925Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_publicite_versions_publicite_id"" already exists, skipping"
+1771022253144,"[2m2026-02-13T22:37:33.144023Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_publicite_versions_user_id"" already exists, skipping"
+1771022253144,"[2m2026-02-13T22:37:33.144105Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_publicite_versions_created_at"" already exists, skipping"
+1771022253144,"[2m2026-02-13T22:37:33.144133Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_publicite_versions_change_type"" already exists, skipping"
+1771022253146,"[2m2026-02-13T22:37:33.146092Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""user_push_tokens"" already exists, skipping"
+1771022253146,"[2m2026-02-13T22:37:33.146253Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_user_push_tokens_user_id"" already exists, skipping"
+1771022253146,"[2m2026-02-13T22:37:33.146268Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_user_push_tokens_push_token"" already exists, skipping"
+1771022253146,"[2m2026-02-13T22:37:33.146355Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_user_push_tokens_is_active"" already exists, skipping"
+1771022253146,"[2m2026-02-13T22:37:33.146428Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_user_push_tokens_device"" already exists, skipping"
+1771022253147,"[2m2026-02-13T22:37:33.146997Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""notifications"" already exists, skipping"
+1771022253147,"[2m2026-02-13T22:37:33.147101Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_notifications_user_id"" already exists, skipping"
+1771022253147,"[2m2026-02-13T22:37:33.147205Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_notifications_is_read"" already exists, skipping"
+1771022253147,"[2m2026-02-13T22:37:33.147219Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_notifications_created_at"" already exists, skipping"
+1771022253155,"[2m2026-02-13T22:37:33.154885Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""publicite_impressions"" already exists, skipping"
+1771022253155,"[2m2026-02-13T22:37:33.155017Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_publicite_impressions_publicite_user"" already exists, skipping"
+1771022253155,"[2m2026-02-13T22:37:33.155894Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_publicite_impressions_user_date"" already exists, skipping"
+1771022253156,"[2m2026-02-13T22:37:33.155957Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_publicite_impressions_publicite_date"" already exists, skipping"
+1771022253156,"[2m2026-02-13T22:37:33.156024Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_publicite_impressions_placement"" already exists, skipping"
+1771022253156,"[2m2026-02-13T22:37:33.156125Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_publicite_impressions_user_publicite_date"" already exists, skipping"
+1771022253159,[2m2026-02-13T22:37:33.158944Z[0m [31mERROR[0m [2myukpomnang_backend[0m[2m:[0m ❌ ERREUR DÉTAILLÉE lors de l'application des migrations SQLx standard:
+1771022253159,"[2m2026-02-13T22:37:33.158975Z[0m [31mERROR[0m [2myukpomnang_backend[0m[2m:[0m    Type: ExecuteMigration(Database(PgDatabaseError { severity: Error, code: ""42P13"", message: ""cannot change return type of existing function"", detail: None, hint: Some(""Use DROP FUNCTION record_publicite_impression(integer,integer,character varying) first.""), position: None, where: None, schema: None, table: None, column: None, data_type: None, constraint: None, file: Some(""pg_proc.c""), line: Some(411), routine: Some(""ProcedureCreate"") }), 0)"
+1771022253159,[2m2026-02-13T22:37:33.159032Z[0m [31mERROR[0m [2myukpomnang_backend[0m[2m:[0m    Message: while executing migration 0: error returned from database: cannot change return type of existing function
+1771022253159,[2m2026-02-13T22:37:33.159050Z[0m [31mERROR[0m [2myukpomnang_backend[0m[2m:[0m    Source: error returned from database: cannot change return type of existing function
+1771022253163,[2m2026-02-13T22:37:33.163787Z[0m [31mERROR[0m [2myukpomnang_backend[0m[2m:[0m ❌ [MIGRATIONS] Nombre de migrations enregistrées après erreur: 0
+1771022253167,[2m2026-02-13T22:37:33.166901Z[0m [33m WARN[0m [2myukpomnang_backend[0m[2m:[0m ⚠️ [MIGRATIONS] SQLx a échoué. Vérifiez les logs ci-dessus pour plus de détails.
+1771022253167,[2m2026-02-13T22:37:33.166955Z[0m [33m WARN[0m [2myukpomnang_backend[0m[2m:[0m ⚠️ [MIGRATIONS] Les migrations individuelles doivent être appliquées avant sqlx::migrate!()
+1771022253167,[2m2026-02-13T22:37:33.166971Z[0m [33m WARN[0m [2myukpomnang_backend[0m[2m:[0m ⚠️ [MIGRATIONS] Action recommandée: Appliquer les migrations manuellement via psql ou script PowerShell
+1771022253167,[2m2026-02-13T22:37:33.166991Z[0m [31mERROR[0m [2myukpomnang_backend[0m[2m:[0m ❌ ERREUR CRITIQUE lors de l'application des migrations SQLx standard: while executing migration 0: error returned from database: cannot change return type of existing function
+1771022253167,"[2m2026-02-13T22:37:33.167015Z[0m [31mERROR[0m [2myukpomnang_backend[0m[2m:[0m ❌ Les migrations SQLx standard sont OBLIGATOIRES pour créer les tables de base (users, services)"
+1771022253167,[2m2026-02-13T22:37:33.167095Z[0m [31mERROR[0m [2myukpomnang_backend[0m[2m:[0m ❌ Les migrations automatiques ne pourront pas s'exécuter correctement sans ces tables
+1771022253167,[2m2026-02-13T22:37:33.167117Z[0m [31mERROR[0m [2myukpomnang_backend[0m[2m:[0m 🔍 DIAGNOSTIC COMPLET:
+1771022253330,[2m2026-02-13T22:37:33.330305Z[0m [31mERROR[0m [2myukpomnang_backend[0m[2m:[0m    📋 Tables manquantes (1/14):
+1771022253330,[2m2026-02-13T22:37:33.330322Z[0m [31mERROR[0m [2myukpomnang_backend[0m[2m:[0m       - delivery_proximity_suggestions
+1771022253330,[2m2026-02-13T22:37:33.330326Z[0m [31mERROR[0m [2myukpomnang_backend[0m[2m:[0m 🔍 VÉRIFICATIONS:
+1771022253330,[2m2026-02-13T22:37:33.330329Z[0m [31mERROR[0m [2myukpomnang_backend[0m[2m:[0m    1. Que le dossier 'migrations' existe et contient des fichiers .sql
+1771022253330,[2m2026-02-13T22:37:33.330331Z[0m [31mERROR[0m [2myukpomnang_backend[0m[2m:[0m    2. Que la connexion à la base de données fonctionne
+1771022253330,[2m2026-02-13T22:37:33.330334Z[0m [31mERROR[0m [2myukpomnang_backend[0m[2m:[0m    3. Que l'utilisateur PostgreSQL a les permissions CREATE TABLE
+1771022253330,[2m2026-02-13T22:37:33.330336Z[0m [31mERROR[0m [2myukpomnang_backend[0m[2m:[0m    4. Que la migration 0 n'a pas été modifiée après application
+1771022253330,[2m2026-02-13T22:37:33.330469Z[0m [31mERROR[0m [2myukpomnang_backend[0m[2m:[0m    5. Les logs PostgreSQL pour plus de détails
+1771022253330,[2m2026-02-13T22:37:33.330501Z[0m [31mERROR[0m [2myukpomnang_backend[0m[2m:[0m 🔧 SOLUTION: Exécuter manuellement les migrations:
+1771022253330,[2m2026-02-13T22:37:33.330532Z[0m [31mERROR[0m [2myukpomnang_backend[0m[2m:[0m    cd backend && sqlx migrate run
+1771022253330,[2m2026-02-13T22:37:33.330543Z[0m [31mERROR[0m [2myukpomnang_backend[0m[2m:[0m ❌ ERREUR CRITIQUE: 1 table(s) critique(s) manquante(s) après échec SQLx:
+1771022253330,[2m2026-02-13T22:37:33.330547Z[0m [31mERROR[0m [2myukpomnang_backend[0m[2m:[0m    - delivery_proximity_suggestions
+1771022253330,[2m2026-02-13T22:37:33.330550Z[0m [31mERROR[0m [2myukpomnang_backend[0m[2m:[0m ❌ ARRÊT DE L'APPLICATION: Tables critiques manquantes en production
+1771022253330,[2m2026-02-13T22:37:33.330557Z[0m [31mERROR[0m [2myukpomnang_backend[0m[2m:[0m ❌ Les workers et services ne peuvent pas fonctionner sans ces tables
+1771022253330,[2m2026-02-13T22:37:33.330560Z[0m [31mERROR[0m [2myukpomnang_backend[0m[2m:[0m ❌ ACTION REQUISE: Exécuter les migrations manuellement ou corriger les erreurs de migration
+1771022253330,"Error: ""Tables critiques manquantes après échec SQLx: delivery_proximity_suggestions"""
+1771022253331,🔍 Point de contrôle: L'exécutable a quitté avec le code 1
+1771022253331,❌ ERREUR: L'application backend a quitté avec le code 1
+1771022253332,   Vérifiez les logs ci-dessus pour plus de détails

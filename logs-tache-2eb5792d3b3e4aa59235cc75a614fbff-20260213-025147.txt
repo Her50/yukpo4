@@ -1,0 +1,5 @@
+﻿Logs de la tache 2eb5792d3b3e4aa59235cc75a614fbff
+Stopped At: 
+Stopped Reason: 
+Exit Code: 
+

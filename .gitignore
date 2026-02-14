@@ -60,3 +60,8 @@ scripts/final-migrate-with-render-vars.ps1
 scripts/migrate-final-complete.ps1
 scripts/migrate-direct.ps1
 scripts/migrate-simple-fast.ps1
+
+# GCP Credentials
+gcp-sa-key.json
+gcp-env-vars.json
+*.json.key

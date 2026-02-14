@@ -1,0 +1,5 @@
+﻿Logs ECS - 2026-02-13 03:27:41
+Cluster: yukpo-cluster
+Service: yukpo-backend-service
+Log Group: /ecs/yukpo-backend
+

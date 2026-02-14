@@ -1,0 +1,201 @@
+timestamp,message
+1771032850358,[2m2026-02-14T01:34:10.358866Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Tables livraison vérifiées
+1771032850358,[2m2026-02-14T01:34:10.358874Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Migration auto: tables livraison OK
+1771032850358,[2m2026-02-14T01:34:10.358878Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m 🔍 Vérification des seeds livraison (parcel_types alignés avec véhicules)...
+1771032850364,[2m2026-02-14T01:34:10.364128Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Seeds livraison (types alignés avec véhicules) vérifiés
+1771032850364,[2m2026-02-14T01:34:10.364188Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Migration auto: seeds livraison OK
+1771032850364,[2m2026-02-14T01:34:10.364205Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m 🔍 Vérification de la table product_reactions...
+1771032850366,[2m2026-02-14T01:34:10.366506Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Table product_reactions déjà présente
+1771032850378,"[2m2026-02-14T01:34:10.378296Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m function get_product_reactions_count(pg_catalog.int4,text) does not exist, skipping"
+1771032850380,[2m2026-02-14T01:34:10.380718Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Table product_reactions et ses composants vérifiés/créés avec succès !
+1771032850380,[2m2026-02-14T01:34:10.380797Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Migration auto: product_reactions table OK
+1771032850380,[2m2026-02-14T01:34:10.380804Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m 🔍 Vérification du système de mentions dans chat...
+1771032850391,[2m2026-02-14T01:34:10.391774Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Migration auto: chat mentions OK
+1771032850391,[2m2026-02-14T01:34:10.391798Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m 🔍 Vérification de la table search_history...
+1771032850393,[2m2026-02-14T01:34:10.393741Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Table search_history déjà présente
+1771032850393,[2m2026-02-14T01:34:10.393878Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Migration auto: search_history OK
+1771032850393,[2m2026-02-14T01:34:10.393909Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m 🔍 Vérification de la table alerts...
+1771032850396,[2m2026-02-14T01:34:10.396214Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Table alerts déjà présente
+1771032850396,[2m2026-02-14T01:34:10.396291Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Migration auto: alerts OK
+1771032850396,[2m2026-02-14T01:34:10.396315Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m 🔍 Vérification des tables signalements...
+1771032850398,[2m2026-02-14T01:34:10.398196Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Table signalements déjà présente
+1771032850398,[2m2026-02-14T01:34:10.398270Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Migration auto: signalements OK
+1771032850398,[2m2026-02-14T01:34:10.398298Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m 🔍 Vérification de la table private_conversations...
+1771032850400,[2m2026-02-14T01:34:10.400472Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Table private_conversations déjà présente
+1771032850400,[2m2026-02-14T01:34:10.400533Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Migration auto: private_conversations OK
+1771032850400,[2m2026-02-14T01:34:10.400561Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m 🔍 Vérification de la table bus_reservations...
+1771032850402,[2m2026-02-14T01:34:10.402723Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Table bus_reservations déjà présente
+1771032850402,[2m2026-02-14T01:34:10.402791Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Migration auto: bus_reservations OK
+1771032850404,"[2m2026-02-14T01:34:10.404773Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ℹ️ Aucun service actif à indexer, réindexation non nécessaire"
+1771032850404,[2m2026-02-14T01:34:10.404814Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Migration auto: réindexation services existants OK
+1771032850404,[2m2026-02-14T01:34:10.404833Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m 🔍 Création/Mise à jour des fonctions de visibilité...
+1771032850411,[2m2026-02-14T01:34:10.411758Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Fonctions de visibilité créées avec succès !
+1771032850411,[2m2026-02-14T01:34:10.411816Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Migration auto: fonctions visibilité OK
+1771032850411,[2m2026-02-14T01:34:10.411830Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m 🧹 Nettoyage des combinaisons invalides...
+1771032850415,"[2m2026-02-14T01:34:10.415740Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Table autocomplete_combinations vide, rien à nettoyer"
+1771032850415,[2m2026-02-14T01:34:10.415801Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Migration auto: nettoyage combinaisons invalides OK
+1771032850415,[2m2026-02-14T01:34:10.415818Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m 🔍 Vérification/création des tables planification menus...
+1771032850416,[2m2026-02-14T01:34:10.416777Z[0m [33m WARN[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ⚠️ [MIGRATION] Fragment de commande détecté (syntax error at end of input): error returned from database: syntax error at end of input | Commande: CREATE TABLE IF NOT EXISTS family_profiles (
+1771032850416,"    id SERIAL PRIMARY KEY,"
+1771032850416,"    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,"
+1771032850416,"    family_name VARCHAR(255),"
+1771032850416,    total_members INTEGER NOT...
+1771032850417,[2m2026-02-14T01:34:10.417669Z[0m [33m WARN[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ⚠️ [MIGRATION] Fragment de commande détecté (syntax error at end of input): error returned from database: syntax error at end of input | Commande: CREATE TABLE IF NOT EXISTS recipes (
+1771032850417,"    id SERIAL PRIMARY KEY,"
+1771032850417,"    name VARCHAR(255) NOT NULL,"
+1771032850417,"    description TEXT,"
+1771032850417,"    cuisine_style VARCHAR(100), -- africaine, camerounaise, occidentale, etc."
+1771032850417,    ...
+1771032850418,[2m2026-02-14T01:34:10.418735Z[0m [33m WARN[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ⚠️ [MIGRATION] Fragment de commande détecté (syntax error at end of input): error returned from database: syntax error at end of input | Commande: CREATE TABLE IF NOT EXISTS menu_plans (
+1771032850418,"    id SERIAL PRIMARY KEY,"
+1771032850418,"    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,"
+1771032850418,"    week_start DATE NOT NULL, -- lundi de la semaine"
+1771032850418,    week_en...
+1771032850419,[2m2026-02-14T01:34:10.419522Z[0m [33m WARN[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ⚠️ [MIGRATION] Fragment de commande détecté (syntax error at end of input): error returned from database: syntax error at end of input | Commande: CREATE TABLE IF NOT EXISTS planned_meals (
+1771032850419,"    id SERIAL PRIMARY KEY,"
+1771032850419,"    menu_plan_id INTEGER NOT NULL REFERENCES menu_plans(id) ON DELETE CASCADE,"
+1771032850419,"    day_of_week INTEGER NOT NULL, -- 1=lundi, 7=dim..."
+1771032850420,[2m2026-02-14T01:34:10.420206Z[0m [33m WARN[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ⚠️ [MIGRATION] Fragment de commande détecté (syntax error at end of input): error returned from database: syntax error at end of input | Commande: CREATE TABLE IF NOT EXISTS recipe_favorites (
+1771032850420,"    id SERIAL PRIMARY KEY,"
+1771032850420,"    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,"
+1771032850420,    recipe_id INTEGER NOT NULL REFERENCES recipes(id) ON D...
+1771032850420,[2m2026-02-14T01:34:10.420892Z[0m [33m WARN[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ⚠️ [MIGRATION] Fragment de commande détecté (syntax error at end of input): error returned from database: syntax error at end of input | Commande: CREATE TABLE IF NOT EXISTS shopping_lists (
+1771032850420,"    id SERIAL PRIMARY KEY,"
+1771032850420,"    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,"
+1771032850420,    menu_plan_id INTEGER REFERENCES menu_plans(id) ON DELETE...
+1771032850421,[2m2026-02-14T01:34:10.421787Z[0m [33m WARN[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ⚠️ [MIGRATION] Fragment de commande détecté (syntax error at end of input): error returned from database: syntax error at end of input | Commande: CREATE TABLE IF NOT EXISTS shopping_list_items (
+1771032850421,"    id SERIAL PRIMARY KEY,"
+1771032850421,"    shopping_list_id INTEGER NOT NULL REFERENCES shopping_lists(id) ON DELETE CASCADE,"
+1771032850421,    ingredient_name VARCHAR(255) NOT ...
+1771032850423,[2m2026-02-14T01:34:10.423415Z[0m [33m WARN[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ⚠️ [MIGRATION] Fragment de commande détecté (syntax error at end of input): error returned from database: syntax error at end of input | Commande: CREATE TABLE IF NOT EXISTS nutrition_analytics (
+1771032850423,"    id SERIAL PRIMARY KEY,"
+1771032850423,"    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,"
+1771032850423,    menu_plan_id INTEGER NOT NULL REFERENCES menu_plans...
+1771032850424,"[2m2026-02-14T01:34:10.424947Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_menu_plans_user_week"" already exists, skipping"
+1771032850425,"[2m2026-02-14T01:34:10.425927Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_planned_meals_menu_plan"" already exists, skipping"
+1771032850427,"[2m2026-02-14T01:34:10.427197Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_shopping_lists_user_week"" already exists, skipping"
+1771032850429,"[2m2026-02-14T01:34:10.428942Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_recipes_tags"" already exists, skipping"
+1771032850431,"[2m2026-02-14T01:34:10.431119Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_recipes_cuisine"" already exists, skipping"
+1771032850433,"[2m2026-02-14T01:34:10.433591Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_shopping_list_items_list"" already exists, skipping"
+1771032850434,"[2m2026-02-14T01:34:10.434422Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_family_profiles_user"" already exists, skipping"
+1771032850435,"[2m2026-02-14T01:34:10.435276Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_recipe_favorites_user"" already exists, skipping"
+1771032850436,"[2m2026-02-14T01:34:10.436706Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_nutrition_analytics_user_week"" already exists, skipping"
+1771032850448,[2m2026-02-14T01:34:10.448713Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Tables planification menus créées
+1771032850448,[2m2026-02-14T01:34:10.448784Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Migration auto: menu planning tables OK
+1771032850448,[2m2026-02-14T01:34:10.448798Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m 🔍 Vérification de la table product_creation_queue...
+1771032850450,[2m2026-02-14T01:34:10.450901Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Table product_creation_queue existe déjà
+1771032850450,[2m2026-02-14T01:34:10.450918Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Migration auto: product_creation_queue OK
+1771032850450,[2m2026-02-14T01:34:10.450922Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m 🔍 Vérification des tables phase de lancement...
+1771032850455,[2m2026-02-14T01:34:10.455390Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Colonne free_product_created existe déjà dans users
+1771032850457,[2m2026-02-14T01:34:10.457582Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Table launch_phase_config existe déjà
+1771032850462,[2m2026-02-14T01:34:10.462210Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Fonctions phase de lancement créées/vérifiées
+1771032850462,[2m2026-02-14T01:34:10.462228Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Migration auto: launch_phase_tables OK
+1771032850462,[2m2026-02-14T01:34:10.462231Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Migrations automatiques terminées
+1771032850462,[2m2026-02-14T01:34:10.462240Z[0m [32m INFO[0m [2myukpomnang_backend::utils::db_monitor[0m[2m:[0m ✅ DB Health Monitor démarré (vérification toutes les 30s)
+1771032850462,[MAIN] 🔌 Début de la connexion à MongoDB...
+1771032850462,[MAIN] MONGODB_URL: mongodb+srv://yukpomnang:DENQG9aru56Ixaqi@cluster1...
+1771032850462,[2m2026-02-14T01:34:10.462336Z[0m [32m INFO[0m [2myukpomnang_backend[0m[2m:[0m 🔌 Connexion à MongoDB...
+1771032850465,[MAIN] ✅ Client MongoDB créé avec succès
+1771032850465,[2m2026-02-14T01:34:10.465514Z[0m [32m INFO[0m [2myukpomnang_backend[0m[2m:[0m ✅ Client MongoDB initialisé
+1771032850465,[2m2026-02-14T01:34:10.465531Z[0m [32m INFO[0m [2myukpomnang_backend[0m[2m:[0m 🔍 Tentative de connexion Redis: redis://master.yukpo-redis.hbcyaa.euw1.cache.amazo...
+1771032860466,[2m2026-02-14T01:34:20.466670Z[0m [33m WARN[0m [2myukpomnang_backend[0m[2m:[0m ⚠️ Redis: Timeout de connexion (10s) - Redis non accessible
+1771032860466,[2m2026-02-14T01:34:20.466701Z[0m [33m WARN[0m [2myukpomnang_backend[0m[2m:[0m ⚠️ Redis: Échec de connexion après retry - URL: redis://master.yukpo-redis.hbcyaa.euw1.cache.amazo...
+1771032860466,[2m2026-02-14T01:34:20.466708Z[0m [33m WARN[0m [2myukpomnang_backend[0m[2m:[0m    🔍 Détails de l'erreur: Connection timeout after 10 seconds
+1771032860466,[2m2026-02-14T01:34:20.466713Z[0m [33m WARN[0m [2myukpomnang_backend[0m[2m:[0m    💡 Problème de connexion réseau - Vérifiez:
+1771032860466,[2m2026-02-14T01:34:20.466716Z[0m [33m WARN[0m [2myukpomnang_backend[0m[2m:[0m       - Que le serveur Redis est accessible
+1771032860466,[2m2026-02-14T01:34:20.466719Z[0m [33m WARN[0m [2myukpomnang_backend[0m[2m:[0m       - Les credentials (username/password)
+1771032860466,[2m2026-02-14T01:34:20.466722Z[0m [33m WARN[0m [2myukpomnang_backend[0m[2m:[0m       - Les paramètres de firewall
+1771032860466,[2m2026-02-14T01:34:20.466725Z[0m [33m WARN[0m [2myukpomnang_backend[0m[2m:[0m    💡 Redis sera désactivé pour le WebSocket mais les services utiliseront retry automatique
+1771032860466,[2m2026-02-14T01:34:20.466729Z[0m [32m INFO[0m [2myukpomnang_backend[0m[2m:[0m ℹ️ Redis non disponible au démarrage (service optionnel). Les services réessayeront automatiquement.
+1771032860491,"[2m2026-02-14T01:34:20.491785Z[0m [32m INFO[0m [2myukpomnang_backend::state[0m[2m:[0m ✅ Pool Redis créé (max: 16, min: 4)"
+1771032860491,"[2m2026-02-14T01:34:20.491827Z[0m [33m WARN[0m [2myukpomnang_backend::services::geocoding_service[0m[2m:[0m GOOGLE_MAPS_API_KEY non definie, utilisation de la cle par defaut"
+1771032860513,"[2m2026-02-14T01:34:20.512924Z[0m [33m WARN[0m [2myukpomnang_backend::config::video_renderer[0m[2m:[0m [VideoRendererConfig] PROJECT_ROOT n'existe pas (""video-renderer"") et aucun RPC_URL configuré"
+1771032860523,"[2m2026-02-14T01:34:20.523689Z[0m [32m INFO[0m [2myukpomnang_backend::services::media_storage_service[0m[2m:[0m [MediaStorage] Stockage distant activé (bucket=yukpo-backend-media, endpoint=None)"
+1771032860523,[2m2026-02-14T01:34:20.523720Z[0m [33m WARN[0m [2myukpomnang_backend::state[0m[2m:[0m [AppState] ⚠️ VideoRendererConfig non disponible - Vérifiez VIDEO_RENDERER_PROJECT_ROOT et VIDEO_RENDERER_ENABLED
+1771032860523,[2m2026-02-14T01:34:20.523726Z[0m [33m WARN[0m [2myukpomnang_backend::state[0m[2m:[0m [AppState] ⚠️ VideoRenderDispatcher non disponible - Le service de prévisualisation vidéo sera indisponible
+1771032860545,[2m2026-02-14T01:34:20.545102Z[0m [32m INFO[0m [2myukpomnang_backend::state[0m[2m:[0m ℹ️ Service Spotify non configuré (SPOTIFY_CLIENT_ID et SPOTIFY_CLIENT_SECRET requis)
+1771032860545,"[2m2026-02-14T01:34:20.545133Z[0m [32m INFO[0m [2myukpomnang_backend::state[0m[2m:[0m ℹ️ Service YouTube Audio Library initialisé (bibliothèque statique, pas d'API key)"
+1771032860566,[2m2026-02-14T01:34:20.566331Z[0m [32m INFO[0m [2myukpomnang_backend::state[0m[2m:[0m ℹ️ DeliveryStateSharing non configuré (Redis non disponible)
+1771032860566,[2m2026-02-14T01:34:20.566366Z[0m [32m INFO[0m [2myukpomnang_backend::websocket::delivery_chat[0m[2m:[0m ✅ DeliveryChatWebSocketManager initialisé - Instance ID: backend-cda25bba-9742-45e2-b8f7-9f6397cd30e9
+1771032860566,[2m2026-02-14T01:34:20.566374Z[0m [32m INFO[0m [2myukpomnang_backend::websocket::chat_websocket[0m[2m:[0m ✅ ChatWebSocketManager initialisé - Instance ID: backend-a974c6bb-99e8-4357-b56c-05d07c15e94c
+1771032860566,[2m2026-02-14T01:34:20.566412Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m 🔍 Vérification de l'optimisation add_product_to_service_jsonb_v2...
+1771032860568,[2m2026-02-14T01:34:20.568454Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Fonction add_product_to_service_jsonb_v2 déjà optimisée
+1771032860568,[2m2026-02-14T01:34:20.568496Z[0m [32m INFO[0m [2myukpomnang_backend[0m[2m:[0m ✅ Optimisation add_product_to_service_jsonb_v2 appliquée
+1771032860568,[2m2026-02-14T01:34:20.568532Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m 🔍 Vérification de la table product_creation_queue...
+1771032860571,[2m2026-02-14T01:34:20.571017Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Table product_creation_queue existe déjà
+1771032860571,[2m2026-02-14T01:34:20.571060Z[0m [32m INFO[0m [2myukpomnang_backend[0m[2m:[0m ✅ Table product_creation_queue créée/appliquée
+1771032860571,[2m2026-02-14T01:34:20.571078Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m 🔍 Vérification de la table cache_table...
+1771032860573,[2m2026-02-14T01:34:20.573600Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Table cache_table existe déjà
+1771032860573,[2m2026-02-14T01:34:20.573693Z[0m [32m INFO[0m [2myukpomnang_backend[0m[2m:[0m ✅ Table cache_table créée/appliquée
+1771032860573,[2m2026-02-14T01:34:20.573704Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m 🔍 Vérification de la table navigation_saved_destinations...
+1771032860575,"[2m2026-02-14T01:34:20.575461Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""navigation_saved_destinations"" already exists, skipping"
+1771032860577,"[2m2026-02-14T01:34:20.576959Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_navigation_saved_destinations_user_id"" already exists, skipping"
+1771032860578,"[2m2026-02-14T01:34:20.578671Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_navigation_saved_destinations_label"" already exists, skipping"
+1771032860580,"[2m2026-02-14T01:34:20.580108Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_navigation_saved_destinations_default"" already exists, skipping"
+1771032860580,[2m2026-02-14T01:34:20.580133Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Table navigation_saved_destinations créée/vérifiée avec succès
+1771032860580,[2m2026-02-14T01:34:20.580181Z[0m [32m INFO[0m [2myukpomnang_backend[0m[2m:[0m ✅ Table navigation_saved_destinations créée/appliquée
+1771032860580,[2m2026-02-14T01:34:20.580227Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m 🔍 Vérification de la table navigation_trips...
+1771032860581,"[2m2026-02-14T01:34:20.581758Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""navigation_trips"" already exists, skipping"
+1771032860583,"[2m2026-02-14T01:34:20.583079Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_navigation_trips_user_id"" already exists, skipping"
+1771032860584,"[2m2026-02-14T01:34:20.584277Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_navigation_trips_created_at"" already exists, skipping"
+1771032860585,"[2m2026-02-14T01:34:20.585937Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_navigation_trips_destination"" already exists, skipping"
+1771032860587,"[2m2026-02-14T01:34:20.587619Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation ""idx_navigation_trips_user_created"" already exists, skipping"
+1771032860587,[2m2026-02-14T01:34:20.587649Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Table navigation_trips créée/vérifiée avec succès
+1771032860587,[2m2026-02-14T01:34:20.587670Z[0m [32m INFO[0m [2myukpomnang_backend[0m[2m:[0m ✅ Table navigation_trips créée/appliquée
+1771032860587,[2m2026-02-14T01:34:20.587714Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m 🔍 Création des index MongoDB pour optimiser les requêtes...
+1771032861825,[2m2026-02-14T01:34:21.825591Z[0m [32m INFO[0m [2myukpomnang_backend::migrations::auto_migrate[0m[2m:[0m ✅ Index MongoDB créés avec succès
+1771032861825,[2m2026-02-14T01:34:21.825616Z[0m [32m INFO[0m [2myukpomnang_backend[0m[2m:[0m ✅ Index MongoDB créés avec succès
+1771032861825,"[2m2026-02-14T01:34:21.825741Z[0m [32m INFO[0m [2myukpomnang_backend::services::gpu_optimizer[0m[2m:[0m [GPUOptimizer] Initialis? avec: GPU: Disabled, MaxSize: 1920px, Quality: 0.85, Parallel: Yes"
+1771032861825,[2m2026-02-14T01:34:21.825812Z[0m [32m INFO[0m [2myukpomnang_backend[0m[2m:[0m ?? Architecture cloud massive initialis?e
+1771032861825,[2m2026-02-14T01:34:21.825824Z[0m [32m INFO[0m [2myukpomnang_backend[0m[2m:[0m ? Massive Load Handler Stats:
+1771032861825,?? Cache entries: 0
+1771032861825,?? Connexions actives: 0/1000
+1771032861825,?? Permits disponibles: 10000
+1771032861825,"[2m2026-02-14T01:34:21.825830Z[0m [32m INFO[0m [2myukpomnang_backend[0m[2m:[0m ?? GPU Optimizer - Mode: CPU, MaxSize: 1920px, Quality: 0.85, Parallel: YES"
+1771032861826,[2m2026-02-14T01:34:21.825878Z[0m [32m INFO[0m [2myukpomnang_backend[0m[2m:[0m ✅ Worker de création de produits démarré
+1771032861826,[2m2026-02-14T01:34:21.825886Z[0m [32m INFO[0m [2myukpomnang_backend::tasks::audio_cache_cleanup[0m[2m:[0m 🕐 [Cron] Démarrage de la tâche de nettoyage du cache audio
+1771032861826,[2m2026-02-14T01:34:21.825892Z[0m [32m INFO[0m [2myukpomnang_backend::tasks::audio_cache_cleanup[0m[2m:[0m ⏰ [Cron] Premier nettoyage du cache audio...
+1771032861826,[2m2026-02-14T01:34:21.825919Z[0m [32m INFO[0m [2myukpomnang_backend[0m[2m:[0m ✅ Flash Sale Queue Worker démarré
+1771032861826,[2m2026-02-14T01:34:21.825924Z[0m [32m INFO[0m [2myukpomnang_backend[0m[2m:[0m ✅ Notification Queue Worker démarré
+1771032861826,[2m2026-02-14T01:34:21.825969Z[0m [32m INFO[0m [2myukpomnang_backend::services::product_creation_queue[0m[2m:[0m [ProductCreationQueue] 🚀 Worker démarré
+1771032861826,[2m2026-02-14T01:34:21.826115Z[0m [32m INFO[0m [2myukpomnang_backend::tasks::livekit_cleanup[0m[2m:[0m ⏳ LiveKit: Attente de 10 secondes avant la première tentative de connexion...
+1771032861826,[2m2026-02-14T01:34:21.826123Z[0m [32m INFO[0m [2myukpomnang_backend::tasks::live_analytics[0m[2m:[0m ⏳ LiveKit Analytics: Attente de 10 secondes avant la première tentative de connexion...
+1771032861826,[2m2026-02-14T01:34:21.826135Z[0m [32m INFO[0m [2myukpomnang_backend::tasks::delivery_notification_repeat[0m[2m:[0m 🔄 [DeliveryNotifications] Démarrage de la tâche de répétition des notifications
+1771032861826,[2m2026-02-14T01:34:21.826270Z[0m [32m INFO[0m [2myukpomnang_backend::tasks::notification_queue_worker[0m[2m:[0m 🚀 Notification Queue Worker démarré
+1771032861826,[2m2026-02-14T01:34:21.826289Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_notifications[0m[2m:[0m [check_and_notify_pharmacies_on_duty] Vérification pharmacies de garde...
+1771032861826,[2m2026-02-14T01:34:21.826336Z[0m [32m INFO[0m [2myukpomnang_backend::tasks::publicite_expiration[0m[2m:[0m 🕐 [Cron] Démarrage de la tâche de désactivation des publicités expirées
+1771032861826,[2m2026-02-14T01:34:21.826341Z[0m [32m INFO[0m [2myukpomnang_backend::tasks::matching_emploi_notifications[0m[2m:[0m 🕐 [Cron] Démarrage de la tâche de notifications de matchings emploi
+1771032861827,[2m2026-02-14T01:34:21.827170Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] 🔄 Démarrage tâche d'optimisation...
+1771032861827,[2m2026-02-14T01:34:21.827198Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_services_optimizer[0m[2m:[0m [Optimizer] Optimisation index base de données...
+1771032861827,[2m2026-02-14T01:34:21.827335Z[0m [32m INFO[0m [2myukpomnang_backend::tasks::publicite_expiration[0m[2m:[0m ⏰ [Cron] Vérification des publicités expirées...
+1771032861827,[2m2026-02-14T01:34:21.827462Z[0m [32m INFO[0m [2myukpomnang_backend::tasks::matching_emploi_notifications[0m[2m:[0m ⏰ [Cron] Vérification des nouveaux matchings emploi...
+1771032861827,[2m2026-02-14T01:34:21.827470Z[0m [32m INFO[0m [2myukpomnang_backend::services::notifications_matching_emploi[0m[2m:[0m [check_and_notify_new_matchings] Vérification des nouveaux matchings
+1771032861827,[2m2026-02-14T01:34:21.827659Z[0m [32m INFO[0m [2myukpomnang_backend[0m[2m:[0m 🔄 Démarrage de la désactivation automatique des produits...
+1771032861827,?? [INFO] [auto_deactivate] 🤖 Démarrage du job de désactivation automatique...
+1771032861828,"[2m2026-02-14T01:34:21.828365Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m Fonction cleanup_old_audio_transcriptions non trouvée, retour de valeurs par défaut"
+1771032861828,"[2m2026-02-14T01:34:21.828428Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m Audio cache cleanup: deleted 0, kept 0, total before 0, after 0"
+1771032861828,"[2m2026-02-14T01:34:21.828554Z[0m [32m INFO[0m [2myukpomnang_backend::tasks::audio_cache_cleanup[0m[2m:[0m 📊 [Cron] Cache audio nettoyé: 0 supprimés, 0 gardés, total: 0 -> 0"
+1771032861828,[2m2026-02-14T01:34:21.828600Z[0m [32m INFO[0m [2myukpomnang_backend::tasks::audio_cache_cleanup[0m[2m:[0m ✅ [Cron] Premier nettoyage terminé
+1771032861828,"[2m2026-02-14T01:34:21.828791Z[0m [31mERROR[0m [2myukpomnang_backend::services::live_flash_sale_service[0m[2m:[0m process_timers live flash sales failed: Database(""error returned from database: column lfs.scheduled_notification_sent_at does not exist"")"
+1771032861828,[2m2026-02-14T01:34:21.828913Z[0m [32m INFO[0m [2myukpomnang_backend::tasks::audio_cache_cleanup[0m[2m:[0m ⏰ [Cron] Nettoyage du cache audio...
+1771032861831,[2m2026-02-14T01:34:21.831048Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_notifications[0m[2m:[0m [check_and_notify_pharmacies_on_duty] Aucune pharmacie de garde trouvée
+1771032861831,[2m2026-02-14T01:34:21.831092Z[0m [32m INFO[0m [2myukpomnang_backend[0m[2m:[0m [Main] 🔔 Vérification pharmacies de garde...
+1771032861831,[2m2026-02-14T01:34:21.831109Z[0m [32m INFO[0m [2myukpomnang_backend::services::specialized_notifications[0m[2m:[0m [check_and_notify_pharmacies_on_duty] Vérification pharmacies de garde...
+1771032861866,"[2m2026-02-14T01:34:21.866473Z[0m [31mERROR[0m [2myukpomnang_backend::services::global_promo_service[0m[2m:[0m process_scheduler global promos failed: Database(""error returned from database: column \""status\"" does not exist"")"
+1771032861868,[2m2026-02-14T01:34:21.868447Z[0m [32m INFO[0m [2myukpomnang_backend::tasks::stats_recalculation[0m[2m:[0m 📊 [StatsRecalculation] Démarrage de la tâche de recalcul des stats d'annulation
+1771032861868,[2m2026-02-14T01:34:21.868531Z[0m [32m INFO[0m [2myukpomnang_backend::tasks::stats_recalculation[0m[2m:[0m ⏰ [StatsRecalculation] Attente de 3339 secondes avant le premier recalcul
+1771032861868,[2m2026-02-14T01:34:21.868553Z[0m [32m INFO[0m [2myukpomnang_backend::tasks::delivery_timeout_monitor[0m[2m:[0m 🚀 Démarrage du monitor de timeout pour les livraisons...
+1771032861868,[2m2026-02-14T01:34:21.868597Z[0m [32m INFO[0m [2myukpomnang_backend::tasks::order_timeout_monitor[0m[2m:[0m 🚀 Démarrage du monitor de timeout pour les commandes...
+1771032861868,[2m2026-02-14T01:34:21.868617Z[0m [32m INFO[0m [2myukpomnang_backend::tasks::delivery_archive_worker[0m[2m:[0m 🔄 [DeliveryArchive] Worker d'archivage démarré
+1771032861868,[2m2026-02-14T01:34:21.868636Z[0m [32m INFO[0m [2myukpomnang_backend::tasks::stats_recalculation[0m[2m:[0m 📊 [StatsRecalculation] Démarrage de la tâche de recalcul des stats de catégories
+1771032861868,[2m2026-02-14T01:34:21.868651Z[0m [32m INFO[0m [2myukpomnang_backend::tasks::stats_recalculation[0m[2m:[0m ⏰ [StatsRecalculation] Attente de 1539 secondes avant le premier recalcul
+1771032861868,?? [INFO] [SearchCacheRefresh] 🚀 Démarrage de la tâche de rafraîchissement automatique
+1771032861868,[2m2026-02-14T01:34:21.868700Z[0m [32m INFO[0m [2myukpomnang_backend::tasks::search_cache_refresh[0m[2m:[0m [SearchCacheRefresh] 🔄 Intervalle de refresh configuré: 900s (15 min) - Utilise pool séparé
+1771032861868,[2m2026-02-14T01:34:21.868723Z[0m [32m INFO[0m [2myukpomnang_backend[0m[2m:[0m 🔄 Refresh global_promo_catalog_cache configuré: intervalle = 300s (5 min) - Utilise pool séparé
+1771032861869,[2m2026-02-14T01:34:21.869006Z[0m [32m INFO[0m [2myukpomnang_backend[0m[2m:[0m 🔄 Refresh de services_search_cache...
+1771032861871,"[2m2026-02-14T01:34:21.871331Z[0m [31mERROR[0m [2myukpomnang_backend[0m[2m:[0m 🚨 PANIC détecté à src/routes/navigation_routes.rs:1065:10: Invalid route ""/api/navigation/destinations/{id}"": Insertion failed due to conflict with previously registered route: /api/navigation/destinations/{label}"
+1771032861871,"🚨 PANIC: Invalid route ""/api/navigation/destinations/{id}"": Insertion failed due to conflict with previously registered route: /api/navigation/destinations/{label} (src/routes/navigation_routes.rs:1065:10)"
+1771032861871,[2m2026-02-14T01:34:21.871596Z[0m [32m INFO[0m [2myukpomnang_backend::services::notifications_matching_emploi[0m[2m:[0m [check_and_notify_new_matchings] ✅ 0 notifications envoyées
+1771032861879,🔍 Point de contrôle: L'exécutable a quitté avec le code 101
+1771032861879,❌ ERREUR: L'application backend a quitté avec le code 101
+1771032861879,   Vérifiez les logs ci-dessus pour plus de détails

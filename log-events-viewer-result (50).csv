@@ -1,0 +1,1000 @@
+timestamp,message
+1771052493000,2026-02-14 07:01:33 UTC:10.0.1.9(39792):yukpo_admin@yukpo:[27088]:ERROR:  column lfs.ending_notification_sent_at does not exist at character 158
+1771052493000,"2026-02-14 07:01:33 UTC:10.0.1.9(39792):yukpo_admin@yukpo:[27088]:STATEMENT:  
+	            SELECT
+	                lfs.id,
+	                lfs.live_session_id,
+	                lfs.service_id,
+	                lfs.end_at,
+	                lfs.ending_notification_sent_at,
+	                ls.host_user_id,
+	                ls.service_id AS primary_service_id,
+	                ls.metadata,
+	                ls.title
+	            FROM live_flash_sales lfs
+	            JOIN live_sessions ls ON ls.id = lfs.live_session_id
+	            WHERE lfs.status = 'live'
+	              AND lfs.end_at <= $1
+	              AND lfs.ending_notification_sent_at IS NULL"
+1771052523000,"2026-02-14 07:02:03 UTC:10.0.1.9(39800):yukpo_admin@yukpo:[27095]:ERROR:  column ""starts_at"" does not exist at character 106"
+1771052523000,"2026-02-14 07:02:03 UTC:10.0.1.9(39800):yukpo_admin@yukpo:[27095]:HINT:  Perhaps you meant to reference the column ""global_promo_events.start_date""."
+1771052523000,"2026-02-14 07:02:03 UTC:10.0.1.9(39800):yukpo_admin@yukpo:[27095]:STATEMENT:  
+	        SELECT id, display_name
+	        FROM global_promo_events
+	        WHERE status = 'scheduled' AND starts_at <= $1"
+1771052523000,2026-02-14 07:02:03 UTC:10.0.1.9(49350):yukpo_admin@yukpo:[27079]:ERROR:  column lfs.ending_notification_sent_at does not exist at character 158
+1771052523000,"2026-02-14 07:02:03 UTC:10.0.1.9(49350):yukpo_admin@yukpo:[27079]:STATEMENT:  
+	            SELECT
+	                lfs.id,
+	                lfs.live_session_id,
+	                lfs.service_id,
+	                lfs.end_at,
+	                lfs.ending_notification_sent_at,
+	                ls.host_user_id,
+	                ls.service_id AS primary_service_id,
+	                ls.metadata,
+	                ls.title
+	            FROM live_flash_sales lfs
+	            JOIN live_sessions ls ON ls.id = lfs.live_session_id
+	            WHERE lfs.status = 'live'
+	              AND lfs.end_at <= $1
+	              AND lfs.ending_notification_sent_at IS NULL"
+1771052524000,"2026-02-14 07:02:04 UTC:10.0.1.9(60796):yukpo_admin@yukpo:[27122]:ERROR:  column ""platform"" does not exist at character 80"
+1771052524000,"2026-02-14 07:02:04 UTC:10.0.1.9(60796):yukpo_admin@yukpo:[27122]:STATEMENT:  SELECT id,
+	                             media_id,
+	                             platform,
+	                             payload,
+	                             status,
+	                             attempt,
+	                             last_error,
+	                             scheduled_for,
+	                             created_at,
+	                             updated_at
+	                     FROM social_publication_jobs
+	                     WHERE status = 'queued' AND scheduled_for <= NOW()
+	                     ORDER BY scheduled_for ASC
+	                     LIMIT $1"
+1771052553000,"2026-02-14 07:02:33 UTC:10.0.1.9(60796):yukpo_admin@yukpo:[27122]:ERROR:  column ""starts_at"" does not exist at character 106"
+1771052553000,"2026-02-14 07:02:33 UTC:10.0.1.9(60796):yukpo_admin@yukpo:[27122]:HINT:  Perhaps you meant to reference the column ""global_promo_events.start_date""."
+1771052553000,"2026-02-14 07:02:33 UTC:10.0.1.9(60796):yukpo_admin@yukpo:[27122]:STATEMENT:  
+	        SELECT id, display_name
+	        FROM global_promo_events
+	        WHERE status = 'scheduled' AND starts_at <= $1"
+1771052553000,2026-02-14 07:02:33 UTC:10.0.1.9(33146):yukpo_admin@yukpo:[27259]:ERROR:  column lfs.ending_notification_sent_at does not exist at character 158
+1771052553000,"2026-02-14 07:02:33 UTC:10.0.1.9(33146):yukpo_admin@yukpo:[27259]:STATEMENT:  
+	            SELECT
+	                lfs.id,
+	                lfs.live_session_id,
+	                lfs.service_id,
+	                lfs.end_at,
+	                lfs.ending_notification_sent_at,
+	                ls.host_user_id,
+	                ls.service_id AS primary_service_id,
+	                ls.metadata,
+	                ls.title
+	            FROM live_flash_sales lfs
+	            JOIN live_sessions ls ON ls.id = lfs.live_session_id
+	            WHERE lfs.status = 'live'
+	              AND lfs.end_at <= $1
+	              AND lfs.ending_notification_sent_at IS NULL"
+1771052583000,"2026-02-14 07:03:03 UTC:10.0.1.9(33134):yukpo_admin@yukpo:[27252]:ERROR:  column ""starts_at"" does not exist at character 106"
+1771052583000,"2026-02-14 07:03:03 UTC:10.0.1.9(33134):yukpo_admin@yukpo:[27252]:HINT:  Perhaps you meant to reference the column ""global_promo_events.start_date""."
+1771052583000,"2026-02-14 07:03:03 UTC:10.0.1.9(33134):yukpo_admin@yukpo:[27252]:STATEMENT:  
+	        SELECT id, display_name
+	        FROM global_promo_events
+	        WHERE status = 'scheduled' AND starts_at <= $1"
+1771052583000,2026-02-14 07:03:03 UTC:10.0.1.9(60788):yukpo_admin@yukpo:[27121]:ERROR:  column lfs.ending_notification_sent_at does not exist at character 158
+1771052583000,"2026-02-14 07:03:03 UTC:10.0.1.9(60788):yukpo_admin@yukpo:[27121]:STATEMENT:  
+	            SELECT
+	                lfs.id,
+	                lfs.live_session_id,
+	                lfs.service_id,
+	                lfs.end_at,
+	                lfs.ending_notification_sent_at,
+	                ls.host_user_id,
+	                ls.service_id AS primary_service_id,
+	                ls.metadata,
+	                ls.title
+	            FROM live_flash_sales lfs
+	            JOIN live_sessions ls ON ls.id = lfs.live_session_id
+	            WHERE lfs.status = 'live'
+	              AND lfs.end_at <= $1
+	              AND lfs.ending_notification_sent_at IS NULL"
+1771052584000,"2026-02-14 07:03:04 UTC:10.0.1.9(60788):yukpo_admin@yukpo:[27121]:ERROR:  column ""platform"" does not exist at character 80"
+1771052584000,"2026-02-14 07:03:04 UTC:10.0.1.9(60788):yukpo_admin@yukpo:[27121]:STATEMENT:  SELECT id,
+	                             media_id,
+	                             platform,
+	                             payload,
+	                             status,
+	                             attempt,
+	                             last_error,
+	                             scheduled_for,
+	                             created_at,
+	                             updated_at
+	                     FROM social_publication_jobs
+	                     WHERE status = 'queued' AND scheduled_for <= NOW()
+	                     ORDER BY scheduled_for ASC
+	                     LIMIT $1"
+1771052613000,"2026-02-14 07:03:33 UTC:10.0.1.9(33134):yukpo_admin@yukpo:[27252]:ERROR:  column ""starts_at"" does not exist at character 106"
+1771052613000,"2026-02-14 07:03:33 UTC:10.0.1.9(33134):yukpo_admin@yukpo:[27252]:HINT:  Perhaps you meant to reference the column ""global_promo_events.start_date""."
+1771052613000,"2026-02-14 07:03:33 UTC:10.0.1.9(33134):yukpo_admin@yukpo:[27252]:STATEMENT:  
+	        SELECT id, display_name
+	        FROM global_promo_events
+	        WHERE status = 'scheduled' AND starts_at <= $1"
+1771052613000,2026-02-14 07:03:33 UTC:10.0.1.9(33146):yukpo_admin@yukpo:[27259]:ERROR:  column lfs.ending_notification_sent_at does not exist at character 158
+1771052613000,"2026-02-14 07:03:33 UTC:10.0.1.9(33146):yukpo_admin@yukpo:[27259]:STATEMENT:  
+	            SELECT
+	                lfs.id,
+	                lfs.live_session_id,
+	                lfs.service_id,
+	                lfs.end_at,
+	                lfs.ending_notification_sent_at,
+	                ls.host_user_id,
+	                ls.service_id AS primary_service_id,
+	                ls.metadata,
+	                ls.title
+	            FROM live_flash_sales lfs
+	            JOIN live_sessions ls ON ls.id = lfs.live_session_id
+	            WHERE lfs.status = 'live'
+	              AND lfs.end_at <= $1
+	              AND lfs.ending_notification_sent_at IS NULL"
+1771052620000,2026-02-14 07:03:40 UTC::@:[1342]:LOG:  checkpoint starting: time
+1771052626000,"2026-02-14 07:03:46 UTC::@:[1342]:LOG:  checkpoint complete: wrote 52 buffers (0.1%); 0 WAL file(s) added, 0 removed, 1 recycled; write=5.141 s, sync=0.002 s, total=5.151 s; sync files=30, longest=0.001 s, average=0.001 s; distance=65650 kB, estimate=65698 kB"
+1771052643000,"2026-02-14 07:04:03 UTC:10.0.1.9(47572):yukpo_admin@yukpo:[27291]:ERROR:  column ""starts_at"" does not exist at character 106"
+1771052643000,"2026-02-14 07:04:03 UTC:10.0.1.9(47572):yukpo_admin@yukpo:[27291]:HINT:  Perhaps you meant to reference the column ""global_promo_events.start_date""."
+1771052643000,"2026-02-14 07:04:03 UTC:10.0.1.9(47572):yukpo_admin@yukpo:[27291]:STATEMENT:  
+	        SELECT id, display_name
+	        FROM global_promo_events
+	        WHERE status = 'scheduled' AND starts_at <= $1"
+1771052643000,2026-02-14 07:04:03 UTC:10.0.1.9(51708):yukpo_admin@yukpo:[27304]:ERROR:  column lfs.ending_notification_sent_at does not exist at character 158
+1771052643000,"2026-02-14 07:04:03 UTC:10.0.1.9(51708):yukpo_admin@yukpo:[27304]:STATEMENT:  
+	            SELECT
+	                lfs.id,
+	                lfs.live_session_id,
+	                lfs.service_id,
+	                lfs.end_at,
+	                lfs.ending_notification_sent_at,
+	                ls.host_user_id,
+	                ls.service_id AS primary_service_id,
+	                ls.metadata,
+	                ls.title
+	            FROM live_flash_sales lfs
+	            JOIN live_sessions ls ON ls.id = lfs.live_session_id
+	            WHERE lfs.status = 'live'
+	              AND lfs.end_at <= $1
+	              AND lfs.ending_notification_sent_at IS NULL"
+1771052644000,"2026-02-14 07:04:04 UTC:10.0.1.9(47572):yukpo_admin@yukpo:[27291]:ERROR:  column ""platform"" does not exist at character 80"
+1771052644000,"2026-02-14 07:04:04 UTC:10.0.1.9(47572):yukpo_admin@yukpo:[27291]:STATEMENT:  SELECT id,
+	                             media_id,
+	                             platform,
+	                             payload,
+	                             status,
+	                             attempt,
+	                             last_error,
+	                             scheduled_for,
+	                             created_at,
+	                             updated_at
+	                     FROM social_publication_jobs
+	                     WHERE status = 'queued' AND scheduled_for <= NOW()
+	                     ORDER BY scheduled_for ASC
+	                     LIMIT $1"
+1771052673000,"2026-02-14 07:04:33 UTC:10.0.1.9(33158):yukpo_admin@yukpo:[27260]:ERROR:  column ""starts_at"" does not exist at character 106"
+1771052673000,"2026-02-14 07:04:33 UTC:10.0.1.9(33158):yukpo_admin@yukpo:[27260]:HINT:  Perhaps you meant to reference the column ""global_promo_events.start_date""."
+1771052673000,"2026-02-14 07:04:33 UTC:10.0.1.9(33158):yukpo_admin@yukpo:[27260]:STATEMENT:  
+	        SELECT id, display_name
+	        FROM global_promo_events
+	        WHERE status = 'scheduled' AND starts_at <= $1"
+1771052673000,2026-02-14 07:04:33 UTC:10.0.1.9(47572):yukpo_admin@yukpo:[27291]:ERROR:  column lfs.ending_notification_sent_at does not exist at character 158
+1771052673000,"2026-02-14 07:04:33 UTC:10.0.1.9(47572):yukpo_admin@yukpo:[27291]:STATEMENT:  
+	            SELECT
+	                lfs.id,
+	                lfs.live_session_id,
+	                lfs.service_id,
+	                lfs.end_at,
+	                lfs.ending_notification_sent_at,
+	                ls.host_user_id,
+	                ls.service_id AS primary_service_id,
+	                ls.metadata,
+	                ls.title
+	            FROM live_flash_sales lfs
+	            JOIN live_sessions ls ON ls.id = lfs.live_session_id
+	            WHERE lfs.status = 'live'
+	              AND lfs.end_at <= $1
+	              AND lfs.ending_notification_sent_at IS NULL"
+1771052703000,"2026-02-14 07:05:03 UTC:10.0.1.9(33134):yukpo_admin@yukpo:[27252]:ERROR:  column ""starts_at"" does not exist at character 106"
+1771052703000,"2026-02-14 07:05:03 UTC:10.0.1.9(33134):yukpo_admin@yukpo:[27252]:HINT:  Perhaps you meant to reference the column ""global_promo_events.start_date""."
+1771052703000,"2026-02-14 07:05:03 UTC:10.0.1.9(33134):yukpo_admin@yukpo:[27252]:STATEMENT:  
+	        SELECT id, display_name
+	        FROM global_promo_events
+	        WHERE status = 'scheduled' AND starts_at <= $1"
+1771052703000,2026-02-14 07:05:03 UTC:10.0.1.9(33158):yukpo_admin@yukpo:[27260]:ERROR:  column lfs.ending_notification_sent_at does not exist at character 158
+1771052703000,"2026-02-14 07:05:03 UTC:10.0.1.9(33158):yukpo_admin@yukpo:[27260]:STATEMENT:  
+	            SELECT
+	                lfs.id,
+	                lfs.live_session_id,
+	                lfs.service_id,
+	                lfs.end_at,
+	                lfs.ending_notification_sent_at,
+	                ls.host_user_id,
+	                ls.service_id AS primary_service_id,
+	                ls.metadata,
+	                ls.title
+	            FROM live_flash_sales lfs
+	            JOIN live_sessions ls ON ls.id = lfs.live_session_id
+	            WHERE lfs.status = 'live'
+	              AND lfs.end_at <= $1
+	              AND lfs.ending_notification_sent_at IS NULL"
+1771052704000,"2026-02-14 07:05:04 UTC:10.0.1.9(47572):yukpo_admin@yukpo:[27291]:ERROR:  column ""platform"" does not exist at character 80"
+1771052704000,"2026-02-14 07:05:04 UTC:10.0.1.9(47572):yukpo_admin@yukpo:[27291]:STATEMENT:  SELECT id,
+	                             media_id,
+	                             platform,
+	                             payload,
+	                             status,
+	                             attempt,
+	                             last_error,
+	                             scheduled_for,
+	                             created_at,
+	                             updated_at
+	                     FROM social_publication_jobs
+	                     WHERE status = 'queued' AND scheduled_for <= NOW()
+	                     ORDER BY scheduled_for ASC
+	                     LIMIT $1"
+1771052733000,"2026-02-14 07:05:33 UTC:10.0.1.9(33146):yukpo_admin@yukpo:[27259]:ERROR:  column ""starts_at"" does not exist at character 106"
+1771052733000,"2026-02-14 07:05:33 UTC:10.0.1.9(33146):yukpo_admin@yukpo:[27259]:HINT:  Perhaps you meant to reference the column ""global_promo_events.start_date""."
+1771052733000,"2026-02-14 07:05:33 UTC:10.0.1.9(33146):yukpo_admin@yukpo:[27259]:STATEMENT:  
+	        SELECT id, display_name
+	        FROM global_promo_events
+	        WHERE status = 'scheduled' AND starts_at <= $1"
+1771052733000,2026-02-14 07:05:33 UTC:10.0.1.9(33134):yukpo_admin@yukpo:[27252]:ERROR:  column lfs.ending_notification_sent_at does not exist at character 158
+1771052733000,"2026-02-14 07:05:33 UTC:10.0.1.9(33134):yukpo_admin@yukpo:[27252]:STATEMENT:  
+	            SELECT
+	                lfs.id,
+	                lfs.live_session_id,
+	                lfs.service_id,
+	                lfs.end_at,
+	                lfs.ending_notification_sent_at,
+	                ls.host_user_id,
+	                ls.service_id AS primary_service_id,
+	                ls.metadata,
+	                ls.title
+	            FROM live_flash_sales lfs
+	            JOIN live_sessions ls ON ls.id = lfs.live_session_id
+	            WHERE lfs.status = 'live'
+	              AND lfs.end_at <= $1
+	              AND lfs.ending_notification_sent_at IS NULL"
+1771052763000,"2026-02-14 07:06:03 UTC:10.0.1.9(47572):yukpo_admin@yukpo:[27291]:ERROR:  column ""starts_at"" does not exist at character 106"
+1771052763000,"2026-02-14 07:06:03 UTC:10.0.1.9(47572):yukpo_admin@yukpo:[27291]:HINT:  Perhaps you meant to reference the column ""global_promo_events.start_date""."
+1771052763000,"2026-02-14 07:06:03 UTC:10.0.1.9(47572):yukpo_admin@yukpo:[27291]:STATEMENT:  
+	        SELECT id, display_name
+	        FROM global_promo_events
+	        WHERE status = 'scheduled' AND starts_at <= $1"
+1771052763000,2026-02-14 07:06:03 UTC:10.0.1.9(38222):yukpo_admin@yukpo:[27391]:ERROR:  column lfs.ending_notification_sent_at does not exist at character 158
+1771052763000,"2026-02-14 07:06:03 UTC:10.0.1.9(38222):yukpo_admin@yukpo:[27391]:STATEMENT:  
+	            SELECT
+	                lfs.id,
+	                lfs.live_session_id,
+	                lfs.service_id,
+	                lfs.end_at,
+	                lfs.ending_notification_sent_at,
+	                ls.host_user_id,
+	                ls.service_id AS primary_service_id,
+	                ls.metadata,
+	                ls.title
+	            FROM live_flash_sales lfs
+	            JOIN live_sessions ls ON ls.id = lfs.live_session_id
+	            WHERE lfs.status = 'live'
+	              AND lfs.end_at <= $1
+	              AND lfs.ending_notification_sent_at IS NULL"
+1771052764000,"2026-02-14 07:06:04 UTC:10.0.1.9(47572):yukpo_admin@yukpo:[27291]:ERROR:  column ""platform"" does not exist at character 80"
+1771052764000,"2026-02-14 07:06:04 UTC:10.0.1.9(47572):yukpo_admin@yukpo:[27291]:STATEMENT:  SELECT id,
+	                             media_id,
+	                             platform,
+	                             payload,
+	                             status,
+	                             attempt,
+	                             last_error,
+	                             scheduled_for,
+	                             created_at,
+	                             updated_at
+	                     FROM social_publication_jobs
+	                     WHERE status = 'queued' AND scheduled_for <= NOW()
+	                     ORDER BY scheduled_for ASC
+	                     LIMIT $1"
+1771052793000,"2026-02-14 07:06:33 UTC:10.0.1.9(38218):yukpo_admin@yukpo:[27390]:ERROR:  column ""starts_at"" does not exist at character 106"
+1771052793000,"2026-02-14 07:06:33 UTC:10.0.1.9(38218):yukpo_admin@yukpo:[27390]:HINT:  Perhaps you meant to reference the column ""global_promo_events.start_date""."
+1771052793000,"2026-02-14 07:06:33 UTC:10.0.1.9(38218):yukpo_admin@yukpo:[27390]:STATEMENT:  
+	        SELECT id, display_name
+	        FROM global_promo_events
+	        WHERE status = 'scheduled' AND starts_at <= $1"
+1771052793000,2026-02-14 07:06:33 UTC:10.0.1.9(41354):yukpo_admin@yukpo:[27461]:ERROR:  column lfs.ending_notification_sent_at does not exist at character 158
+1771052793000,"2026-02-14 07:06:33 UTC:10.0.1.9(41354):yukpo_admin@yukpo:[27461]:STATEMENT:  
+	            SELECT
+	                lfs.id,
+	                lfs.live_session_id,
+	                lfs.service_id,
+	                lfs.end_at,
+	                lfs.ending_notification_sent_at,
+	                ls.host_user_id,
+	                ls.service_id AS primary_service_id,
+	                ls.metadata,
+	                ls.title
+	            FROM live_flash_sales lfs
+	            JOIN live_sessions ls ON ls.id = lfs.live_session_id
+	            WHERE lfs.status = 'live'
+	              AND lfs.end_at <= $1
+	              AND lfs.ending_notification_sent_at IS NULL"
+1771052823000,"2026-02-14 07:07:03 UTC:10.0.1.9(38222):yukpo_admin@yukpo:[27391]:ERROR:  column ""starts_at"" does not exist at character 106"
+1771052823000,"2026-02-14 07:07:03 UTC:10.0.1.9(38222):yukpo_admin@yukpo:[27391]:HINT:  Perhaps you meant to reference the column ""global_promo_events.start_date""."
+1771052823000,"2026-02-14 07:07:03 UTC:10.0.1.9(38222):yukpo_admin@yukpo:[27391]:STATEMENT:  
+	        SELECT id, display_name
+	        FROM global_promo_events
+	        WHERE status = 'scheduled' AND starts_at <= $1"
+1771052823000,2026-02-14 07:07:03 UTC:10.0.1.9(56904):yukpo_admin@yukpo:[27423]:ERROR:  column lfs.ending_notification_sent_at does not exist at character 158
+1771052823000,"2026-02-14 07:07:03 UTC:10.0.1.9(56904):yukpo_admin@yukpo:[27423]:STATEMENT:  
+	            SELECT
+	                lfs.id,
+	                lfs.live_session_id,
+	                lfs.service_id,
+	                lfs.end_at,
+	                lfs.ending_notification_sent_at,
+	                ls.host_user_id,
+	                ls.service_id AS primary_service_id,
+	                ls.metadata,
+	                ls.title
+	            FROM live_flash_sales lfs
+	            JOIN live_sessions ls ON ls.id = lfs.live_session_id
+	            WHERE lfs.status = 'live'
+	              AND lfs.end_at <= $1
+	              AND lfs.ending_notification_sent_at IS NULL"
+1771052824000,"2026-02-14 07:07:04 UTC:10.0.1.9(56904):yukpo_admin@yukpo:[27423]:ERROR:  column ""platform"" does not exist at character 80"
+1771052824000,"2026-02-14 07:07:04 UTC:10.0.1.9(56904):yukpo_admin@yukpo:[27423]:STATEMENT:  SELECT id,
+	                             media_id,
+	                             platform,
+	                             payload,
+	                             status,
+	                             attempt,
+	                             last_error,
+	                             scheduled_for,
+	                             created_at,
+	                             updated_at
+	                     FROM social_publication_jobs
+	                     WHERE status = 'queued' AND scheduled_for <= NOW()
+	                     ORDER BY scheduled_for ASC
+	                     LIMIT $1"
+1771052853000,"2026-02-14 07:07:33 UTC:10.0.1.9(38218):yukpo_admin@yukpo:[27390]:ERROR:  column ""starts_at"" does not exist at character 106"
+1771052853000,"2026-02-14 07:07:33 UTC:10.0.1.9(38218):yukpo_admin@yukpo:[27390]:HINT:  Perhaps you meant to reference the column ""global_promo_events.start_date""."
+1771052853000,"2026-02-14 07:07:33 UTC:10.0.1.9(38218):yukpo_admin@yukpo:[27390]:STATEMENT:  
+	        SELECT id, display_name
+	        FROM global_promo_events
+	        WHERE status = 'scheduled' AND starts_at <= $1"
+1771052853000,2026-02-14 07:07:33 UTC:10.0.1.9(41354):yukpo_admin@yukpo:[27461]:ERROR:  column lfs.ending_notification_sent_at does not exist at character 158
+1771052853000,"2026-02-14 07:07:33 UTC:10.0.1.9(41354):yukpo_admin@yukpo:[27461]:STATEMENT:  
+	            SELECT
+	                lfs.id,
+	                lfs.live_session_id,
+	                lfs.service_id,
+	                lfs.end_at,
+	                lfs.ending_notification_sent_at,
+	                ls.host_user_id,
+	                ls.service_id AS primary_service_id,
+	                ls.metadata,
+	                ls.title
+	            FROM live_flash_sales lfs
+	            JOIN live_sessions ls ON ls.id = lfs.live_session_id
+	            WHERE lfs.status = 'live'
+	              AND lfs.end_at <= $1
+	              AND lfs.ending_notification_sent_at IS NULL"
+1771052883000,"2026-02-14 07:08:03 UTC:10.0.1.9(56904):yukpo_admin@yukpo:[27423]:ERROR:  column ""starts_at"" does not exist at character 106"
+1771052883000,"2026-02-14 07:08:03 UTC:10.0.1.9(56904):yukpo_admin@yukpo:[27423]:HINT:  Perhaps you meant to reference the column ""global_promo_events.start_date""."
+1771052883000,"2026-02-14 07:08:03 UTC:10.0.1.9(56904):yukpo_admin@yukpo:[27423]:STATEMENT:  
+	        SELECT id, display_name
+	        FROM global_promo_events
+	        WHERE status = 'scheduled' AND starts_at <= $1"
+1771052883000,2026-02-14 07:08:03 UTC:10.0.1.9(38222):yukpo_admin@yukpo:[27391]:ERROR:  column lfs.ending_notification_sent_at does not exist at character 158
+1771052883000,"2026-02-14 07:08:03 UTC:10.0.1.9(38222):yukpo_admin@yukpo:[27391]:STATEMENT:  
+	            SELECT
+	                lfs.id,
+	                lfs.live_session_id,
+	                lfs.service_id,
+	                lfs.end_at,
+	                lfs.ending_notification_sent_at,
+	                ls.host_user_id,
+	                ls.service_id AS primary_service_id,
+	                ls.metadata,
+	                ls.title
+	            FROM live_flash_sales lfs
+	            JOIN live_sessions ls ON ls.id = lfs.live_session_id
+	            WHERE lfs.status = 'live'
+	              AND lfs.end_at <= $1
+	              AND lfs.ending_notification_sent_at IS NULL"
+1771052884000,"2026-02-14 07:08:04 UTC:10.0.1.9(56904):yukpo_admin@yukpo:[27423]:ERROR:  column ""platform"" does not exist at character 80"
+1771052884000,"2026-02-14 07:08:04 UTC:10.0.1.9(56904):yukpo_admin@yukpo:[27423]:STATEMENT:  SELECT id,
+	                             media_id,
+	                             platform,
+	                             payload,
+	                             status,
+	                             attempt,
+	                             last_error,
+	                             scheduled_for,
+	                             created_at,
+	                             updated_at
+	                     FROM social_publication_jobs
+	                     WHERE status = 'queued' AND scheduled_for <= NOW()
+	                     ORDER BY scheduled_for ASC
+	                     LIMIT $1"
+1771052913000,"2026-02-14 07:08:33 UTC:10.0.1.9(57784):yukpo_admin@yukpo:[27463]:ERROR:  column ""starts_at"" does not exist at character 106"
+1771052913000,"2026-02-14 07:08:33 UTC:10.0.1.9(57784):yukpo_admin@yukpo:[27463]:HINT:  Perhaps you meant to reference the column ""global_promo_events.start_date""."
+1771052913000,"2026-02-14 07:08:33 UTC:10.0.1.9(57784):yukpo_admin@yukpo:[27463]:STATEMENT:  
+	        SELECT id, display_name
+	        FROM global_promo_events
+	        WHERE status = 'scheduled' AND starts_at <= $1"
+1771052913000,2026-02-14 07:08:33 UTC:10.0.1.9(56904):yukpo_admin@yukpo:[27423]:ERROR:  column lfs.ending_notification_sent_at does not exist at character 158
+1771052913000,"2026-02-14 07:08:33 UTC:10.0.1.9(56904):yukpo_admin@yukpo:[27423]:STATEMENT:  
+	            SELECT
+	                lfs.id,
+	                lfs.live_session_id,
+	                lfs.service_id,
+	                lfs.end_at,
+	                lfs.ending_notification_sent_at,
+	                ls.host_user_id,
+	                ls.service_id AS primary_service_id,
+	                ls.metadata,
+	                ls.title
+	            FROM live_flash_sales lfs
+	            JOIN live_sessions ls ON ls.id = lfs.live_session_id
+	            WHERE lfs.status = 'live'
+	              AND lfs.end_at <= $1
+	              AND lfs.ending_notification_sent_at IS NULL"
+1771052920000,2026-02-14 07:08:40 UTC::@:[1342]:LOG:  checkpoint starting: time
+1771052920000,"2026-02-14 07:08:40 UTC::@:[1342]:LOG:  checkpoint complete: wrote 3 buffers (0.0%); 0 WAL file(s) added, 0 removed, 1 recycled; write=0.203 s, sync=0.002 s, total=0.213 s; sync files=3, longest=0.002 s, average=0.001 s; distance=65421 kB, estimate=65670 kB"
+1771052943000,"2026-02-14 07:09:03 UTC:10.0.1.9(37550):yukpo_admin@yukpo:[27565]:ERROR:  column ""starts_at"" does not exist at character 106"
+1771052943000,"2026-02-14 07:09:03 UTC:10.0.1.9(37550):yukpo_admin@yukpo:[27565]:HINT:  Perhaps you meant to reference the column ""global_promo_events.start_date""."
+1771052943000,"2026-02-14 07:09:03 UTC:10.0.1.9(37550):yukpo_admin@yukpo:[27565]:STATEMENT:  
+	        SELECT id, display_name
+	        FROM global_promo_events
+	        WHERE status = 'scheduled' AND starts_at <= $1"
+1771052943000,2026-02-14 07:09:03 UTC:10.0.1.9(41354):yukpo_admin@yukpo:[27461]:ERROR:  column lfs.ending_notification_sent_at does not exist at character 158
+1771052943000,"2026-02-14 07:09:03 UTC:10.0.1.9(41354):yukpo_admin@yukpo:[27461]:STATEMENT:  
+	            SELECT
+	                lfs.id,
+	                lfs.live_session_id,
+	                lfs.service_id,
+	                lfs.end_at,
+	                lfs.ending_notification_sent_at,
+	                ls.host_user_id,
+	                ls.service_id AS primary_service_id,
+	                ls.metadata,
+	                ls.title
+	            FROM live_flash_sales lfs
+	            JOIN live_sessions ls ON ls.id = lfs.live_session_id
+	            WHERE lfs.status = 'live'
+	              AND lfs.end_at <= $1
+	              AND lfs.ending_notification_sent_at IS NULL"
+1771052944000,"2026-02-14 07:09:04 UTC:10.0.1.9(58468):yukpo_admin@yukpo:[27587]:ERROR:  column ""platform"" does not exist at character 80"
+1771052944000,"2026-02-14 07:09:04 UTC:10.0.1.9(58468):yukpo_admin@yukpo:[27587]:STATEMENT:  SELECT id,
+	                             media_id,
+	                             platform,
+	                             payload,
+	                             status,
+	                             attempt,
+	                             last_error,
+	                             scheduled_for,
+	                             created_at,
+	                             updated_at
+	                     FROM social_publication_jobs
+	                     WHERE status = 'queued' AND scheduled_for <= NOW()
+	                     ORDER BY scheduled_for ASC
+	                     LIMIT $1"
+1771052973000,"2026-02-14 07:09:33 UTC:10.0.1.9(41354):yukpo_admin@yukpo:[27461]:ERROR:  column ""starts_at"" does not exist at character 106"
+1771052973000,"2026-02-14 07:09:33 UTC:10.0.1.9(41354):yukpo_admin@yukpo:[27461]:HINT:  Perhaps you meant to reference the column ""global_promo_events.start_date""."
+1771052973000,"2026-02-14 07:09:33 UTC:10.0.1.9(41354):yukpo_admin@yukpo:[27461]:STATEMENT:  
+	        SELECT id, display_name
+	        FROM global_promo_events
+	        WHERE status = 'scheduled' AND starts_at <= $1"
+1771052973000,2026-02-14 07:09:33 UTC:10.0.1.9(51224):yukpo_admin@yukpo:[27625]:ERROR:  column lfs.ending_notification_sent_at does not exist at character 158
+1771052973000,"2026-02-14 07:09:33 UTC:10.0.1.9(51224):yukpo_admin@yukpo:[27625]:STATEMENT:  
+	            SELECT
+	                lfs.id,
+	                lfs.live_session_id,
+	                lfs.service_id,
+	                lfs.end_at,
+	                lfs.ending_notification_sent_at,
+	                ls.host_user_id,
+	                ls.service_id AS primary_service_id,
+	                ls.metadata,
+	                ls.title
+	            FROM live_flash_sales lfs
+	            JOIN live_sessions ls ON ls.id = lfs.live_session_id
+	            WHERE lfs.status = 'live'
+	              AND lfs.end_at <= $1
+	              AND lfs.ending_notification_sent_at IS NULL"
+1771053003000,"2026-02-14 07:10:03 UTC:10.0.1.9(37550):yukpo_admin@yukpo:[27565]:ERROR:  column ""starts_at"" does not exist at character 106"
+1771053003000,"2026-02-14 07:10:03 UTC:10.0.1.9(37550):yukpo_admin@yukpo:[27565]:HINT:  Perhaps you meant to reference the column ""global_promo_events.start_date""."
+1771053003000,"2026-02-14 07:10:03 UTC:10.0.1.9(37550):yukpo_admin@yukpo:[27565]:STATEMENT:  
+	        SELECT id, display_name
+	        FROM global_promo_events
+	        WHERE status = 'scheduled' AND starts_at <= $1"
+1771053003000,2026-02-14 07:10:03 UTC:10.0.1.9(51234):yukpo_admin@yukpo:[27626]:ERROR:  column lfs.ending_notification_sent_at does not exist at character 158
+1771053003000,"2026-02-14 07:10:03 UTC:10.0.1.9(51234):yukpo_admin@yukpo:[27626]:STATEMENT:  
+	            SELECT
+	                lfs.id,
+	                lfs.live_session_id,
+	                lfs.service_id,
+	                lfs.end_at,
+	                lfs.ending_notification_sent_at,
+	                ls.host_user_id,
+	                ls.service_id AS primary_service_id,
+	                ls.metadata,
+	                ls.title
+	            FROM live_flash_sales lfs
+	            JOIN live_sessions ls ON ls.id = lfs.live_session_id
+	            WHERE lfs.status = 'live'
+	              AND lfs.end_at <= $1
+	              AND lfs.ending_notification_sent_at IS NULL"
+1771053004000,"2026-02-14 07:10:04 UTC:10.0.1.9(58468):yukpo_admin@yukpo:[27587]:ERROR:  column ""platform"" does not exist at character 80"
+1771053004000,"2026-02-14 07:10:04 UTC:10.0.1.9(58468):yukpo_admin@yukpo:[27587]:STATEMENT:  SELECT id,
+	                             media_id,
+	                             platform,
+	                             payload,
+	                             status,
+	                             attempt,
+	                             last_error,
+	                             scheduled_for,
+	                             created_at,
+	                             updated_at
+	                     FROM social_publication_jobs
+	                     WHERE status = 'queued' AND scheduled_for <= NOW()
+	                     ORDER BY scheduled_for ASC
+	                     LIMIT $1"
+1771053033000,"2026-02-14 07:10:33 UTC:10.0.1.9(37550):yukpo_admin@yukpo:[27565]:ERROR:  column ""starts_at"" does not exist at character 106"
+1771053033000,"2026-02-14 07:10:33 UTC:10.0.1.9(37550):yukpo_admin@yukpo:[27565]:HINT:  Perhaps you meant to reference the column ""global_promo_events.start_date""."
+1771053033000,"2026-02-14 07:10:33 UTC:10.0.1.9(37550):yukpo_admin@yukpo:[27565]:STATEMENT:  
+	        SELECT id, display_name
+	        FROM global_promo_events
+	        WHERE status = 'scheduled' AND starts_at <= $1"
+1771053033000,2026-02-14 07:10:33 UTC:10.0.1.9(37534):yukpo_admin@yukpo:[27563]:ERROR:  column lfs.ending_notification_sent_at does not exist at character 158
+1771053033000,"2026-02-14 07:10:33 UTC:10.0.1.9(37534):yukpo_admin@yukpo:[27563]:STATEMENT:  
+	            SELECT
+	                lfs.id,
+	                lfs.live_session_id,
+	                lfs.service_id,
+	                lfs.end_at,
+	                lfs.ending_notification_sent_at,
+	                ls.host_user_id,
+	                ls.service_id AS primary_service_id,
+	                ls.metadata,
+	                ls.title
+	            FROM live_flash_sales lfs
+	            JOIN live_sessions ls ON ls.id = lfs.live_session_id
+	            WHERE lfs.status = 'live'
+	              AND lfs.end_at <= $1
+	              AND lfs.ending_notification_sent_at IS NULL"
+1771053063000,"2026-02-14 07:11:03 UTC:10.0.1.9(37550):yukpo_admin@yukpo:[27565]:ERROR:  column ""starts_at"" does not exist at character 106"
+1771053063000,"2026-02-14 07:11:03 UTC:10.0.1.9(37550):yukpo_admin@yukpo:[27565]:HINT:  Perhaps you meant to reference the column ""global_promo_events.start_date""."
+1771053063000,"2026-02-14 07:11:03 UTC:10.0.1.9(37550):yukpo_admin@yukpo:[27565]:STATEMENT:  
+	        SELECT id, display_name
+	        FROM global_promo_events
+	        WHERE status = 'scheduled' AND starts_at <= $1"
+1771053063000,2026-02-14 07:11:03 UTC:10.0.1.9(37534):yukpo_admin@yukpo:[27563]:ERROR:  column lfs.ending_notification_sent_at does not exist at character 158
+1771053063000,"2026-02-14 07:11:03 UTC:10.0.1.9(37534):yukpo_admin@yukpo:[27563]:STATEMENT:  
+	            SELECT
+	                lfs.id,
+	                lfs.live_session_id,
+	                lfs.service_id,
+	                lfs.end_at,
+	                lfs.ending_notification_sent_at,
+	                ls.host_user_id,
+	                ls.service_id AS primary_service_id,
+	                ls.metadata,
+	                ls.title
+	            FROM live_flash_sales lfs
+	            JOIN live_sessions ls ON ls.id = lfs.live_session_id
+	            WHERE lfs.status = 'live'
+	              AND lfs.end_at <= $1
+	              AND lfs.ending_notification_sent_at IS NULL"
+1771053064000,"2026-02-14 07:11:04 UTC:10.0.1.9(58468):yukpo_admin@yukpo:[27587]:ERROR:  column ""platform"" does not exist at character 80"
+1771053064000,"2026-02-14 07:11:04 UTC:10.0.1.9(58468):yukpo_admin@yukpo:[27587]:STATEMENT:  SELECT id,
+	                             media_id,
+	                             platform,
+	                             payload,
+	                             status,
+	                             attempt,
+	                             last_error,
+	                             scheduled_for,
+	                             created_at,
+	                             updated_at
+	                     FROM social_publication_jobs
+	                     WHERE status = 'queued' AND scheduled_for <= NOW()
+	                     ORDER BY scheduled_for ASC
+	                     LIMIT $1"
+1771053093000,"2026-02-14 07:11:33 UTC:10.0.1.9(37550):yukpo_admin@yukpo:[27565]:ERROR:  column ""starts_at"" does not exist at character 106"
+1771053093000,"2026-02-14 07:11:33 UTC:10.0.1.9(37550):yukpo_admin@yukpo:[27565]:HINT:  Perhaps you meant to reference the column ""global_promo_events.start_date""."
+1771053093000,"2026-02-14 07:11:33 UTC:10.0.1.9(37550):yukpo_admin@yukpo:[27565]:STATEMENT:  
+	        SELECT id, display_name
+	        FROM global_promo_events
+	        WHERE status = 'scheduled' AND starts_at <= $1"
+1771053093000,2026-02-14 07:11:33 UTC:10.0.1.9(58468):yukpo_admin@yukpo:[27587]:ERROR:  column lfs.ending_notification_sent_at does not exist at character 158
+1771053093000,"2026-02-14 07:11:33 UTC:10.0.1.9(58468):yukpo_admin@yukpo:[27587]:STATEMENT:  
+	            SELECT
+	                lfs.id,
+	                lfs.live_session_id,
+	                lfs.service_id,
+	                lfs.end_at,
+	                lfs.ending_notification_sent_at,
+	                ls.host_user_id,
+	                ls.service_id AS primary_service_id,
+	                ls.metadata,
+	                ls.title
+	            FROM live_flash_sales lfs
+	            JOIN live_sessions ls ON ls.id = lfs.live_session_id
+	            WHERE lfs.status = 'live'
+	              AND lfs.end_at <= $1
+	              AND lfs.ending_notification_sent_at IS NULL"
+1771053123000,"2026-02-14 07:12:03 UTC:10.0.1.9(51224):yukpo_admin@yukpo:[27625]:ERROR:  column ""starts_at"" does not exist at character 106"
+1771053123000,"2026-02-14 07:12:03 UTC:10.0.1.9(51224):yukpo_admin@yukpo:[27625]:HINT:  Perhaps you meant to reference the column ""global_promo_events.start_date""."
+1771053123000,"2026-02-14 07:12:03 UTC:10.0.1.9(51224):yukpo_admin@yukpo:[27625]:STATEMENT:  
+	        SELECT id, display_name
+	        FROM global_promo_events
+	        WHERE status = 'scheduled' AND starts_at <= $1"
+1771053123000,2026-02-14 07:12:03 UTC:10.0.1.9(57218):yukpo_admin@yukpo:[27734]:ERROR:  column lfs.ending_notification_sent_at does not exist at character 158
+1771053123000,"2026-02-14 07:12:03 UTC:10.0.1.9(57218):yukpo_admin@yukpo:[27734]:STATEMENT:  
+	            SELECT
+	                lfs.id,
+	                lfs.live_session_id,
+	                lfs.service_id,
+	                lfs.end_at,
+	                lfs.ending_notification_sent_at,
+	                ls.host_user_id,
+	                ls.service_id AS primary_service_id,
+	                ls.metadata,
+	                ls.title
+	            FROM live_flash_sales lfs
+	            JOIN live_sessions ls ON ls.id = lfs.live_session_id
+	            WHERE lfs.status = 'live'
+	              AND lfs.end_at <= $1
+	              AND lfs.ending_notification_sent_at IS NULL"
+1771053124000,"2026-02-14 07:12:04 UTC:10.0.1.9(51224):yukpo_admin@yukpo:[27625]:ERROR:  column ""platform"" does not exist at character 80"
+1771053124000,"2026-02-14 07:12:04 UTC:10.0.1.9(51224):yukpo_admin@yukpo:[27625]:STATEMENT:  SELECT id,
+	                             media_id,
+	                             platform,
+	                             payload,
+	                             status,
+	                             attempt,
+	                             last_error,
+	                             scheduled_for,
+	                             created_at,
+	                             updated_at
+	                     FROM social_publication_jobs
+	                     WHERE status = 'queued' AND scheduled_for <= NOW()
+	                     ORDER BY scheduled_for ASC
+	                     LIMIT $1"
+1771053153000,"2026-02-14 07:12:33 UTC:10.0.1.9(57218):yukpo_admin@yukpo:[27734]:ERROR:  column ""starts_at"" does not exist at character 106"
+1771053153000,"2026-02-14 07:12:33 UTC:10.0.1.9(57218):yukpo_admin@yukpo:[27734]:HINT:  Perhaps you meant to reference the column ""global_promo_events.start_date""."
+1771053153000,"2026-02-14 07:12:33 UTC:10.0.1.9(57218):yukpo_admin@yukpo:[27734]:STATEMENT:  
+	        SELECT id, display_name
+	        FROM global_promo_events
+	        WHERE status = 'scheduled' AND starts_at <= $1"
+1771053153000,2026-02-14 07:12:33 UTC:10.0.1.9(60134):yukpo_admin@yukpo:[27788]:ERROR:  column lfs.ending_notification_sent_at does not exist at character 158
+1771053153000,"2026-02-14 07:12:33 UTC:10.0.1.9(60134):yukpo_admin@yukpo:[27788]:STATEMENT:  
+	            SELECT
+	                lfs.id,
+	                lfs.live_session_id,
+	                lfs.service_id,
+	                lfs.end_at,
+	                lfs.ending_notification_sent_at,
+	                ls.host_user_id,
+	                ls.service_id AS primary_service_id,
+	                ls.metadata,
+	                ls.title
+	            FROM live_flash_sales lfs
+	            JOIN live_sessions ls ON ls.id = lfs.live_session_id
+	            WHERE lfs.status = 'live'
+	              AND lfs.end_at <= $1
+	              AND lfs.ending_notification_sent_at IS NULL"
+1771053183000,"2026-02-14 07:13:03 UTC:10.0.1.9(60134):yukpo_admin@yukpo:[27788]:ERROR:  column ""starts_at"" does not exist at character 106"
+1771053183000,"2026-02-14 07:13:03 UTC:10.0.1.9(60134):yukpo_admin@yukpo:[27788]:HINT:  Perhaps you meant to reference the column ""global_promo_events.start_date""."
+1771053183000,"2026-02-14 07:13:03 UTC:10.0.1.9(60134):yukpo_admin@yukpo:[27788]:STATEMENT:  
+	        SELECT id, display_name
+	        FROM global_promo_events
+	        WHERE status = 'scheduled' AND starts_at <= $1"
+1771053183000,2026-02-14 07:13:03 UTC:10.0.1.9(57218):yukpo_admin@yukpo:[27734]:ERROR:  column lfs.ending_notification_sent_at does not exist at character 158
+1771053183000,"2026-02-14 07:13:03 UTC:10.0.1.9(57218):yukpo_admin@yukpo:[27734]:STATEMENT:  
+	            SELECT
+	                lfs.id,
+	                lfs.live_session_id,
+	                lfs.service_id,
+	                lfs.end_at,
+	                lfs.ending_notification_sent_at,
+	                ls.host_user_id,
+	                ls.service_id AS primary_service_id,
+	                ls.metadata,
+	                ls.title
+	            FROM live_flash_sales lfs
+	            JOIN live_sessions ls ON ls.id = lfs.live_session_id
+	            WHERE lfs.status = 'live'
+	              AND lfs.end_at <= $1
+	              AND lfs.ending_notification_sent_at IS NULL"
+1771053184000,"2026-02-14 07:13:04 UTC:10.0.1.9(39900):yukpo_admin@yukpo:[27802]:ERROR:  column ""platform"" does not exist at character 80"
+1771053184000,"2026-02-14 07:13:04 UTC:10.0.1.9(39900):yukpo_admin@yukpo:[27802]:STATEMENT:  SELECT id,
+	                             media_id,
+	                             platform,
+	                             payload,
+	                             status,
+	                             attempt,
+	                             last_error,
+	                             scheduled_for,
+	                             created_at,
+	                             updated_at
+	                     FROM social_publication_jobs
+	                     WHERE status = 'queued' AND scheduled_for <= NOW()
+	                     ORDER BY scheduled_for ASC
+	                     LIMIT $1"
+1771053213000,"2026-02-14 07:13:33 UTC:10.0.1.9(57218):yukpo_admin@yukpo:[27734]:ERROR:  column ""starts_at"" does not exist at character 106"
+1771053213000,"2026-02-14 07:13:33 UTC:10.0.1.9(57218):yukpo_admin@yukpo:[27734]:HINT:  Perhaps you meant to reference the column ""global_promo_events.start_date""."
+1771053213000,"2026-02-14 07:13:33 UTC:10.0.1.9(57218):yukpo_admin@yukpo:[27734]:STATEMENT:  
+	        SELECT id, display_name
+	        FROM global_promo_events
+	        WHERE status = 'scheduled' AND starts_at <= $1"
+1771053213000,2026-02-14 07:13:33 UTC:10.0.1.9(45206):yukpo_admin@yukpo:[27825]:ERROR:  column lfs.ending_notification_sent_at does not exist at character 158
+1771053213000,"2026-02-14 07:13:33 UTC:10.0.1.9(45206):yukpo_admin@yukpo:[27825]:STATEMENT:  
+	            SELECT
+	                lfs.id,
+	                lfs.live_session_id,
+	                lfs.service_id,
+	                lfs.end_at,
+	                lfs.ending_notification_sent_at,
+	                ls.host_user_id,
+	                ls.service_id AS primary_service_id,
+	                ls.metadata,
+	                ls.title
+	            FROM live_flash_sales lfs
+	            JOIN live_sessions ls ON ls.id = lfs.live_session_id
+	            WHERE lfs.status = 'live'
+	              AND lfs.end_at <= $1
+	              AND lfs.ending_notification_sent_at IS NULL"
+1771053221000,2026-02-14 07:13:41 UTC::@:[1342]:LOG:  checkpoint starting: time
+1771053221000,"2026-02-14 07:13:41 UTC::@:[1342]:LOG:  checkpoint complete: wrote 3 buffers (0.0%); 0 WAL file(s) added, 0 removed, 1 recycled; write=0.204 s, sync=0.002 s, total=0.213 s; sync files=3, longest=0.001 s, average=0.001 s; distance=65535 kB, estimate=65657 kB"
+1771053243000,"2026-02-14 07:14:03 UTC:10.0.1.9(60134):yukpo_admin@yukpo:[27788]:ERROR:  column ""starts_at"" does not exist at character 106"
+1771053243000,"2026-02-14 07:14:03 UTC:10.0.1.9(60134):yukpo_admin@yukpo:[27788]:HINT:  Perhaps you meant to reference the column ""global_promo_events.start_date""."
+1771053243000,"2026-02-14 07:14:03 UTC:10.0.1.9(60134):yukpo_admin@yukpo:[27788]:STATEMENT:  
+	        SELECT id, display_name
+	        FROM global_promo_events
+	        WHERE status = 'scheduled' AND starts_at <= $1"
+1771053243000,2026-02-14 07:14:03 UTC:10.0.1.9(45206):yukpo_admin@yukpo:[27825]:ERROR:  column lfs.ending_notification_sent_at does not exist at character 158
+1771053243000,"2026-02-14 07:14:03 UTC:10.0.1.9(45206):yukpo_admin@yukpo:[27825]:STATEMENT:  
+	            SELECT
+	                lfs.id,
+	                lfs.live_session_id,
+	                lfs.service_id,
+	                lfs.end_at,
+	                lfs.ending_notification_sent_at,
+	                ls.host_user_id,
+	                ls.service_id AS primary_service_id,
+	                ls.metadata,
+	                ls.title
+	            FROM live_flash_sales lfs
+	            JOIN live_sessions ls ON ls.id = lfs.live_session_id
+	            WHERE lfs.status = 'live'
+	              AND lfs.end_at <= $1
+	              AND lfs.ending_notification_sent_at IS NULL"
+1771053244000,"2026-02-14 07:14:04 UTC:10.0.1.9(39328):yukpo_admin@yukpo:[27755]:ERROR:  column ""platform"" does not exist at character 80"
+1771053244000,"2026-02-14 07:14:04 UTC:10.0.1.9(39328):yukpo_admin@yukpo:[27755]:STATEMENT:  SELECT id,
+	                             media_id,
+	                             platform,
+	                             payload,
+	                             status,
+	                             attempt,
+	                             last_error,
+	                             scheduled_for,
+	                             created_at,
+	                             updated_at
+	                     FROM social_publication_jobs
+	                     WHERE status = 'queued' AND scheduled_for <= NOW()
+	                     ORDER BY scheduled_for ASC
+	                     LIMIT $1"
+1771053273000,"2026-02-14 07:14:33 UTC:10.0.1.9(39900):yukpo_admin@yukpo:[27802]:ERROR:  column ""starts_at"" does not exist at character 106"
+1771053273000,"2026-02-14 07:14:33 UTC:10.0.1.9(39900):yukpo_admin@yukpo:[27802]:HINT:  Perhaps you meant to reference the column ""global_promo_events.start_date""."
+1771053273000,"2026-02-14 07:14:33 UTC:10.0.1.9(39900):yukpo_admin@yukpo:[27802]:STATEMENT:  
+	        SELECT id, display_name
+	        FROM global_promo_events
+	        WHERE status = 'scheduled' AND starts_at <= $1"
+1771053273000,2026-02-14 07:14:33 UTC:10.0.1.9(39328):yukpo_admin@yukpo:[27755]:ERROR:  column lfs.ending_notification_sent_at does not exist at character 158
+1771053273000,"2026-02-14 07:14:33 UTC:10.0.1.9(39328):yukpo_admin@yukpo:[27755]:STATEMENT:  
+	            SELECT
+	                lfs.id,
+	                lfs.live_session_id,
+	                lfs.service_id,
+	                lfs.end_at,
+	                lfs.ending_notification_sent_at,
+	                ls.host_user_id,
+	                ls.service_id AS primary_service_id,
+	                ls.metadata,
+	                ls.title
+	            FROM live_flash_sales lfs
+	            JOIN live_sessions ls ON ls.id = lfs.live_session_id
+	            WHERE lfs.status = 'live'
+	              AND lfs.end_at <= $1
+	              AND lfs.ending_notification_sent_at IS NULL"
+1771053303000,"2026-02-14 07:15:03 UTC:10.0.1.9(45206):yukpo_admin@yukpo:[27825]:ERROR:  column ""starts_at"" does not exist at character 106"
+1771053303000,"2026-02-14 07:15:03 UTC:10.0.1.9(45206):yukpo_admin@yukpo:[27825]:HINT:  Perhaps you meant to reference the column ""global_promo_events.start_date""."
+1771053303000,"2026-02-14 07:15:03 UTC:10.0.1.9(45206):yukpo_admin@yukpo:[27825]:STATEMENT:  
+	        SELECT id, display_name
+	        FROM global_promo_events
+	        WHERE status = 'scheduled' AND starts_at <= $1"
+1771053303000,2026-02-14 07:15:03 UTC:10.0.1.9(53878):yukpo_admin@yukpo:[27901]:ERROR:  column lfs.ending_notification_sent_at does not exist at character 158
+1771053303000,"2026-02-14 07:15:03 UTC:10.0.1.9(53878):yukpo_admin@yukpo:[27901]:STATEMENT:  
+	            SELECT
+	                lfs.id,
+	                lfs.live_session_id,
+	                lfs.service_id,
+	                lfs.end_at,
+	                lfs.ending_notification_sent_at,
+	                ls.host_user_id,
+	                ls.service_id AS primary_service_id,
+	                ls.metadata,
+	                ls.title
+	            FROM live_flash_sales lfs
+	            JOIN live_sessions ls ON ls.id = lfs.live_session_id
+	            WHERE lfs.status = 'live'
+	              AND lfs.end_at <= $1
+	              AND lfs.ending_notification_sent_at IS NULL"
+1771053304000,"2026-02-14 07:15:04 UTC:10.0.1.9(45206):yukpo_admin@yukpo:[27825]:ERROR:  column ""platform"" does not exist at character 80"
+1771053304000,"2026-02-14 07:15:04 UTC:10.0.1.9(45206):yukpo_admin@yukpo:[27825]:STATEMENT:  SELECT id,
+	                             media_id,
+	                             platform,
+	                             payload,
+	                             status,
+	                             attempt,
+	                             last_error,
+	                             scheduled_for,
+	                             created_at,
+	                             updated_at
+	                     FROM social_publication_jobs
+	                     WHERE status = 'queued' AND scheduled_for <= NOW()
+	                     ORDER BY scheduled_for ASC
+	                     LIMIT $1"
+1771053333000,"2026-02-14 07:15:33 UTC:10.0.1.9(60134):yukpo_admin@yukpo:[27788]:ERROR:  column ""starts_at"" does not exist at character 106"
+1771053333000,"2026-02-14 07:15:33 UTC:10.0.1.9(60134):yukpo_admin@yukpo:[27788]:HINT:  Perhaps you meant to reference the column ""global_promo_events.start_date""."
+1771053333000,"2026-02-14 07:15:33 UTC:10.0.1.9(60134):yukpo_admin@yukpo:[27788]:STATEMENT:  
+	        SELECT id, display_name
+	        FROM global_promo_events
+	        WHERE status = 'scheduled' AND starts_at <= $1"
+1771053333000,2026-02-14 07:15:33 UTC:10.0.1.9(39900):yukpo_admin@yukpo:[27802]:ERROR:  column lfs.ending_notification_sent_at does not exist at character 158
+1771053333000,"2026-02-14 07:15:33 UTC:10.0.1.9(39900):yukpo_admin@yukpo:[27802]:STATEMENT:  
+	            SELECT
+	                lfs.id,
+	                lfs.live_session_id,
+	                lfs.service_id,
+	                lfs.end_at,
+	                lfs.ending_notification_sent_at,
+	                ls.host_user_id,
+	                ls.service_id AS primary_service_id,
+	                ls.metadata,
+	                ls.title
+	            FROM live_flash_sales lfs
+	            JOIN live_sessions ls ON ls.id = lfs.live_session_id
+	            WHERE lfs.status = 'live'
+	              AND lfs.end_at <= $1
+	              AND lfs.ending_notification_sent_at IS NULL"
+1771053363000,"2026-02-14 07:16:03 UTC:10.0.1.9(45206):yukpo_admin@yukpo:[27825]:ERROR:  column ""starts_at"" does not exist at character 106"
+1771053363000,"2026-02-14 07:16:03 UTC:10.0.1.9(45206):yukpo_admin@yukpo:[27825]:HINT:  Perhaps you meant to reference the column ""global_promo_events.start_date""."
+1771053363000,"2026-02-14 07:16:03 UTC:10.0.1.9(45206):yukpo_admin@yukpo:[27825]:STATEMENT:  
+	        SELECT id, display_name
+	        FROM global_promo_events
+	        WHERE status = 'scheduled' AND starts_at <= $1"
+1771053363000,2026-02-14 07:16:03 UTC:10.0.1.9(53878):yukpo_admin@yukpo:[27901]:ERROR:  column lfs.ending_notification_sent_at does not exist at character 158
+1771053363000,"2026-02-14 07:16:03 UTC:10.0.1.9(53878):yukpo_admin@yukpo:[27901]:STATEMENT:  
+	            SELECT
+	                lfs.id,
+	                lfs.live_session_id,
+	                lfs.service_id,
+	                lfs.end_at,
+	                lfs.ending_notification_sent_at,
+	                ls.host_user_id,
+	                ls.service_id AS primary_service_id,
+	                ls.metadata,
+	                ls.title
+	            FROM live_flash_sales lfs
+	            JOIN live_sessions ls ON ls.id = lfs.live_session_id
+	            WHERE lfs.status = 'live'
+	              AND lfs.end_at <= $1
+	              AND lfs.ending_notification_sent_at IS NULL"
+1771053364000,"2026-02-14 07:16:04 UTC:10.0.1.9(43056):yukpo_admin@yukpo:[27945]:ERROR:  column ""platform"" does not exist at character 80"
+1771053364000,"2026-02-14 07:16:04 UTC:10.0.1.9(43056):yukpo_admin@yukpo:[27945]:STATEMENT:  SELECT id,
+	                             media_id,
+	                             platform,
+	                             payload,
+	                             status,
+	                             attempt,
+	                             last_error,
+	                             scheduled_for,
+	                             created_at,
+	                             updated_at
+	                     FROM social_publication_jobs
+	                     WHERE status = 'queued' AND scheduled_for <= NOW()
+	                     ORDER BY scheduled_for ASC
+	                     LIMIT $1"
+1771053393000,"2026-02-14 07:16:33 UTC:10.0.1.9(60658):yukpo_admin@yukpo:[27912]:ERROR:  column ""starts_at"" does not exist at character 106"
+1771053393000,"2026-02-14 07:16:33 UTC:10.0.1.9(60658):yukpo_admin@yukpo:[27912]:HINT:  Perhaps you meant to reference the column ""global_promo_events.start_date""."
+1771053393000,"2026-02-14 07:16:33 UTC:10.0.1.9(60658):yukpo_admin@yukpo:[27912]:STATEMENT:  
+	        SELECT id, display_name
+	        FROM global_promo_events
+	        WHERE status = 'scheduled' AND starts_at <= $1"
+1771053393000,2026-02-14 07:16:33 UTC:10.0.1.9(57556):yukpo_admin@yukpo:[27989]:ERROR:  column lfs.ending_notification_sent_at does not exist at character 158
+1771053393000,"2026-02-14 07:16:33 UTC:10.0.1.9(57556):yukpo_admin@yukpo:[27989]:STATEMENT:  
+	            SELECT
+	                lfs.id,
+	                lfs.live_session_id,
+	                lfs.service_id,
+	                lfs.end_at,
+	                lfs.ending_notification_sent_at,
+	                ls.host_user_id,
+	                ls.service_id AS primary_service_id,
+	                ls.metadata,
+	                ls.title
+	            FROM live_flash_sales lfs
+	            JOIN live_sessions ls ON ls.id = lfs.live_session_id
+	            WHERE lfs.status = 'live'
+	              AND lfs.end_at <= $1
+	              AND lfs.ending_notification_sent_at IS NULL"
+1771053423000,"2026-02-14 07:17:03 UTC:10.0.1.9(37858):yukpo_admin@yukpo:[27964]:ERROR:  column ""starts_at"" does not exist at character 106"
+1771053423000,"2026-02-14 07:17:03 UTC:10.0.1.9(37858):yukpo_admin@yukpo:[27964]:HINT:  Perhaps you meant to reference the column ""global_promo_events.start_date""."
+1771053423000,"2026-02-14 07:17:03 UTC:10.0.1.9(37858):yukpo_admin@yukpo:[27964]:STATEMENT:  
+	        SELECT id, display_name
+	        FROM global_promo_events
+	        WHERE status = 'scheduled' AND starts_at <= $1"
+1771053423000,2026-02-14 07:17:03 UTC:10.0.1.9(43056):yukpo_admin@yukpo:[27945]:ERROR:  column lfs.ending_notification_sent_at does not exist at character 158
+1771053423000,"2026-02-14 07:17:03 UTC:10.0.1.9(43056):yukpo_admin@yukpo:[27945]:STATEMENT:  
+	            SELECT
+	                lfs.id,
+	                lfs.live_session_id,
+	                lfs.service_id,
+	                lfs.end_at,
+	                lfs.ending_notification_sent_at,
+	                ls.host_user_id,
+	                ls.service_id AS primary_service_id,
+	                ls.metadata,
+	                ls.title
+	            FROM live_flash_sales lfs
+	            JOIN live_sessions ls ON ls.id = lfs.live_session_id
+	            WHERE lfs.status = 'live'
+	              AND lfs.end_at <= $1
+	              AND lfs.ending_notification_sent_at IS NULL"
+1771053424000,"2026-02-14 07:17:04 UTC:10.0.1.9(43056):yukpo_admin@yukpo:[27945]:ERROR:  column ""platform"" does not exist at character 80"
+1771053424000,"2026-02-14 07:17:04 UTC:10.0.1.9(43056):yukpo_admin@yukpo:[27945]:STATEMENT:  SELECT id,
+	                             media_id,
+	                             platform,
+	                             payload,
+	                             status,
+	                             attempt,
+	                             last_error,
+	                             scheduled_for,
+	                             created_at,
+	                             updated_at
+	                     FROM social_publication_jobs
+	                     WHERE status = 'queued' AND scheduled_for <= NOW()
+	                     ORDER BY scheduled_for ASC
+	                     LIMIT $1"
+1771053453000,"2026-02-14 07:17:33 UTC:10.0.1.9(57556):yukpo_admin@yukpo:[27989]:ERROR:  column ""starts_at"" does not exist at character 106"
+1771053453000,"2026-02-14 07:17:33 UTC:10.0.1.9(57556):yukpo_admin@yukpo:[27989]:HINT:  Perhaps you meant to reference the column ""global_promo_events.start_date""."
+1771053453000,"2026-02-14 07:17:33 UTC:10.0.1.9(57556):yukpo_admin@yukpo:[27989]:STATEMENT:  
+	        SELECT id, display_name
+	        FROM global_promo_events
+	        WHERE status = 'scheduled' AND starts_at <= $1"
+1771053453000,2026-02-14 07:17:33 UTC:10.0.1.9(53878):yukpo_admin@yukpo:[27901]:ERROR:  column lfs.ending_notification_sent_at does not exist at character 158
+1771053453000,"2026-02-14 07:17:33 UTC:10.0.1.9(53878):yukpo_admin@yukpo:[27901]:STATEMENT:  
+	            SELECT
+	                lfs.id,
+	                lfs.live_session_id,
+	                lfs.service_id,
+	                lfs.end_at,
+	                lfs.ending_notification_sent_at,
+	                ls.host_user_id,
+	                ls.service_id AS primary_service_id,
+	                ls.metadata,
+	                ls.title
+	            FROM live_flash_sales lfs
+	            JOIN live_sessions ls ON ls.id = lfs.live_session_id
+	            WHERE lfs.status = 'live'
+	              AND lfs.end_at <= $1
+	              AND lfs.ending_notification_sent_at IS NULL"

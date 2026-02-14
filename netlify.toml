@@ -3,83 +3,83 @@
   command = "cd frontend && npm install && npm run build"
 
 [build.environment]
-  VITE_APP_API_URL = "https://yukpomnang.onrender.com"
+  VITE_API_BASE_URL = ""  # Utilise le proxy Netlify (redirects dans netlify.toml)
   VITE_APP_ENV = "production"
   VITE_APP_DEBUG = "false"
 
 [[redirects]]
   from = "/api/*"
-  to = "https://yukpomnang.onrender.com/api/:splat"
+  to = "https://api.yukpomnang.com/api/:splat"
   status = 200
   force = true
   headers = {Access-Control-Allow-Origin = "*"}
 
 [[redirects]]
   from = "/auth/*"
-  to = "https://yukpomnang.onrender.com/auth/:splat"
+  to = "https://api.yukpomnang.com/auth/:splat"
   status = 200
   force = true
   headers = {Access-Control-Allow-Origin = "*"}
 
 [[redirects]]
   from = "/services/*"
-  to = "https://yukpomnang.onrender.com/services/:splat"
+  to = "https://api.yukpomnang.com/services/:splat"
   status = 200
   force = true
   headers = {Access-Control-Allow-Origin = "*"}
 
 [[redirects]]
   from = "/healthz"
-  to = "https://yukpomnang.onrender.com/healthz"
+  to = "https://api.yukpomnang.com/healthz"
   status = 200
   force = true
   headers = {Access-Control-Allow-Origin = "*"}
 
 [[redirects]]
   from = "/prestataire/*"
-  to = "https://yukpomnang.onrender.com/prestataire/:splat"
+  to = "https://api.yukpomnang.com/prestataire/:splat"
   status = 200
   force = true
   headers = {Access-Control-Allow-Origin = "*"}
 
 [[redirects]]
   from = "/user/*"
-  to = "https://yukpomnang.onrender.com/user/:splat"
+  to = "https://api.yukpomnang.com/user/:splat"
   status = 200
   force = true
   headers = {Access-Control-Allow-Origin = "*"}
 
 [[redirects]]
   from = "/users/*"
-  to = "https://yukpomnang.onrender.com/users/:splat"
+  to = "https://api.yukpomnang.com/users/:splat"
   status = 200
   force = true
   headers = {Access-Control-Allow-Origin = "*"}
 
 [[redirects]]
   from = "/ia/*"
-  to = "https://yukpomnang.onrender.com/ia/:splat"
+  to = "https://api.yukpomnang.com/ia/:splat"
   status = 200
   force = true
   headers = {Access-Control-Allow-Origin = "*"}
 
 [[redirects]]
   from = "/ws/*"
-  to = "https://yukpomnang.onrender.com/ws/:splat"
+  to = "wss://api.yukpomnang.com/ws/:splat"
   status = 200
   force = true
   headers = {Access-Control-Allow-Origin = "*"}
 
 [[redirects]]
   from = "/fournitures/*"
-  to = "https://yukpomnang.onrender.com/fournitures/:splat"
+  to = "https://api.yukpomnang.com/fournitures/:splat"
   status = 200
   force = true
   headers = {Access-Control-Allow-Origin = "*"}
 
 [[redirects]]
   from = "/echange/*"
-  to = "https://yukpomnang.onrender.com/echange/:splat"
+  to = "https://api.yukpomnang.com/echange/:splat"
   status = 200
   force = true
   headers = {Access-Control-Allow-Origin = "*"}

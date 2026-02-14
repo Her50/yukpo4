@@ -1,0 +1,1075 @@
+timestamp,message
+1771032933000,2026-02-14 01:35:33 UTC:10.0.0.205(41032):yukpo_admin@yukpo:[9726]:ERROR:  syntax error at end of input at character 749
+1771032933000,"2026-02-14 01:35:33 UTC:10.0.0.205(41032):yukpo_admin@yukpo:[9726]:STATEMENT:  CREATE MATERIALIZED VIEW IF NOT EXISTS active_products_cache AS
+	SELECT 
+	    (s.id::bigint * 1000000 + jsonb_array_elements.pos) as cache_id,
+	    s.id as service_id,
+	    s.user_id,
+	    s.category,
+	    s.gps,
+	    jsonb_array_elements.product,
+	    s.created_at
+	FROM services s
+	CROSS JOIN LATERAL jsonb_array_elements(
+	    CASE 
+	        WHEN jsonb_typeof(s.data->'produits') = 'array' 
+	        THEN s.data->'produits'
+	        WHEN jsonb_typeof(s.data->'produits'->'valeur') = 'array'
+	        THEN s.data->'produits'->'valeur'
+	        ELSE '[]'::jsonb
+	    END
+	) WITH ORDINALITY AS jsonb_array_elements(product, pos)
+	WHERE s.is_active = TRUE
+	AND (
+	    jsonb_typeof(s.data->'produits') = 'array' OR
+	    jsonb_typeof(s.data->'produits'->'valeur') = 'array'"
+1771032933000,2026-02-14 01:35:33 UTC:10.0.0.205(41024):yukpo_admin@yukpo:[9725]:ERROR:  syntax error at end of input at character 70
+1771032933000,2026-02-14 01:35:33 UTC:10.0.0.205(41024):yukpo_admin@yukpo:[9725]:STATEMENT:  CREATE UNIQUE INDEX IF NOT EXISTS idx_active_products_cache_id_unique
+1771032933000,2026-02-14 01:35:33 UTC:10.0.0.205(41006):yukpo_admin@yukpo:[9723]:ERROR:  syntax error at end of input at character 64
+1771032933000,2026-02-14 01:35:33 UTC:10.0.0.205(41006):yukpo_admin@yukpo:[9723]:STATEMENT:  CREATE INDEX IF NOT EXISTS idx_active_products_service_category
+1771032933000,2026-02-14 01:35:33 UTC:10.0.0.205(41008):yukpo_admin@yukpo:[9724]:ERROR:  syntax error at end of input at character 225
+1771032933000,"2026-02-14 01:35:33 UTC:10.0.0.205(41008):yukpo_admin@yukpo:[9724]:STATEMENT:  CREATE INDEX IF NOT EXISTS idx_active_products_product_name
+	ON active_products_cache USING GIN (
+	    to_tsvector('french', 
+	        COALESCE(product->>'name', '') || ' ' ||
+	        COALESCE(product->>'description', '')
+	    )"
+1771032933000,2026-02-14 01:35:33 UTC:10.0.0.205(41006):yukpo_admin@yukpo:[9723]:ERROR:  syntax error at end of input at character 956
+1771032933000,"2026-02-14 01:35:33 UTC:10.0.0.205(41006):yukpo_admin@yukpo:[9723]:STATEMENT:  CREATE TABLE IF NOT EXISTS videos (
+	    id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+	    content_id TEXT NOT NULL UNIQUE,
+	    service_id INTEGER REFERENCES services(id) ON DELETE CASCADE,
+	    titre TEXT NOT NULL,
+	    description TEXT,
+	    video_url TEXT NOT NULL,
+	    thumbnail TEXT,
+	    hashtags TEXT[] DEFAULT ARRAY[]::TEXT[],
+	    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+	    is_sponsored BOOLEAN NOT NULL DEFAULT FALSE,
+	    studio_session_id TEXT,
+	    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	    -- Métadonnées vidéo
+	    duration_ms INTEGER,
+	    video_format TEXT,
+	    video_source TEXT,
+	    -- Embedding vectoriel pour ML (stocké en TEXT, pgvector non utilisé)
+	    embedding TEXT, -- JSON array ou base64 pour stockage temporaire
+	    -- Statistiques
+	    view_count INTEGER DEFAULT 0,
+	    like_count INTEGER DEFAULT 0,
+	    save_count INTEGER DEFAULT 0,
+	    share_count INTEGER DEFAULT 0"
+1771032933000,2026-02-14 01:35:33 UTC:10.0.0.205(41048):yukpo_admin@yukpo:[9727]:ERROR:  syntax error at end of input at character 53
+1771032933000,2026-02-14 01:35:33 UTC:10.0.0.205(41048):yukpo_admin@yukpo:[9727]:STATEMENT:  CREATE INDEX IF NOT EXISTS idx_videos_title_fulltext
+1771032933000,2026-02-14 01:35:33 UTC:10.0.0.205(41032):yukpo_admin@yukpo:[9726]:ERROR:  syntax error at end of input at character 59
+1771032933000,2026-02-14 01:35:33 UTC:10.0.0.205(41032):yukpo_admin@yukpo:[9726]:STATEMENT:  CREATE INDEX IF NOT EXISTS idx_videos_description_fulltext
+1771032933000,"2026-02-14 01:35:33 UTC:10.0.0.205(41048):yukpo_admin@yukpo:[9727]:ERROR:  column ""tag.tag"" must appear in the GROUP BY clause or be used in an aggregate function at character 82"
+1771032933000,"2026-02-14 01:35:33 UTC:10.0.0.205(41048):yukpo_admin@yukpo:[9727]:STATEMENT:  CREATE MATERIALIZED VIEW IF NOT EXISTS hashtag_stats_materialized AS
+	SELECT 
+	    tag,
+	    COUNT(DISTINCT v.id) as video_count,
+	    SUM(v.view_count) as total_views,
+	    SUM(v.like_count) as total_likes,
+	    SUM(v.save_count) as total_saves,
+	    (
+	        SUM(v.like_count * 2 + v.save_count * 1.5 + v.view_count * 0.1) 
+	        / GREATEST(EXTRACT(EPOCH FROM (NOW() - MIN(v.created_at))) / 3600, 1)
+	    ) as trend_score,
+	    MAX(v.created_at) as last_video_at
+	FROM videos v
+	CROSS JOIN LATERAL unnest(v.hashtags) tag
+	WHERE v.is_active = TRUE"
+1771032933000,2026-02-14 01:35:33 UTC:10.0.0.205(41024):yukpo_admin@yukpo:[9725]:ERROR:  syntax error at end of input at character 285
+1771032933000,"2026-02-14 01:35:33 UTC:10.0.0.205(41024):yukpo_admin@yukpo:[9725]:STATEMENT:  ALTER TABLE content_engagement 
+	ADD COLUMN IF NOT EXISTS watch_duration_ms INTEGER,
+	ADD COLUMN IF NOT EXISTS video_duration_ms INTEGER,
+	ADD COLUMN IF NOT EXISTS completion_rate REAL,
+	ADD COLUMN IF NOT EXISTS device_type VARCHAR(50),
+	ADD COLUMN IF NOT EXISTS location_gps VARCHAR(255),"
+1771032933000,2026-02-14 01:35:33 UTC:10.0.0.205(41048):yukpo_admin@yukpo:[9727]:ERROR:  syntax error at end of input at character 673
+1771032933000,"2026-02-14 01:35:33 UTC:10.0.0.205(41048):yukpo_admin@yukpo:[9727]:STATEMENT:  CREATE TABLE IF NOT EXISTS user_preferences (
+	    user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+	    preferred_categories TEXT[] DEFAULT ARRAY[]::TEXT[],
+	    preferred_hashtags TEXT[] DEFAULT ARRAY[]::TEXT[],
+	    preferred_creators INTEGER[] DEFAULT ARRAY[]::INTEGER[],
+	    preferred_video_length_min INTEGER DEFAULT 0,
+	    preferred_video_length_max INTEGER DEFAULT 600000, -- 10 minutes max par défaut
+	    avg_watch_duration_ms INTEGER DEFAULT 0,
+	    most_active_hour INTEGER, -- Heure de la journée la plus active (0-23)
+	    most_active_day INTEGER,   -- Jour de la semaine le plus actif (0-6, dimanche=0)
+	    last_updated TIMESTAMPTZ DEFAULT NOW()"
+1771032933000,2026-02-14 01:35:33 UTC:10.0.0.205(41024):yukpo_admin@yukpo:[9725]:ERROR:  syntax error at end of input at character 59
+1771032933000,2026-02-14 01:35:33 UTC:10.0.0.205(41024):yukpo_admin@yukpo:[9725]:STATEMENT:  CREATE INDEX IF NOT EXISTS idx_user_preferences_categories
+1771032933000,2026-02-14 01:35:33 UTC:10.0.0.205(41008):yukpo_admin@yukpo:[9724]:ERROR:  syntax error at end of input at character 57
+1771032933000,2026-02-14 01:35:33 UTC:10.0.0.205(41008):yukpo_admin@yukpo:[9724]:STATEMENT:  CREATE INDEX IF NOT EXISTS idx_user_preferences_hashtags
+1771032933000,2026-02-14 01:35:33 UTC:10.0.0.205(41032):yukpo_admin@yukpo:[9726]:ERROR:  syntax error at end of input at character 67
+1771032933000,2026-02-14 01:35:33 UTC:10.0.0.205(41032):yukpo_admin@yukpo:[9726]:STATEMENT:  CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_video_jobs_user_status
+1771032933000,2026-02-14 01:35:33 UTC:10.0.0.205(41048):yukpo_admin@yukpo:[9727]:ERROR:  syntax error at end of input at character 73
+1771032933000,2026-02-14 01:35:33 UTC:10.0.0.205(41048):yukpo_admin@yukpo:[9727]:STATEMENT:  CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_studio_sessions_user_updated
+1771032933000,2026-02-14 01:35:33 UTC:10.0.0.205(41006):yukpo_admin@yukpo:[9723]:ERROR:  syntax error at end of input at character 262
+1771032933000,"2026-02-14 01:35:33 UTC:10.0.0.205(41006):yukpo_admin@yukpo:[9723]:STATEMENT:  CREATE TABLE IF NOT EXISTS video_generation_metrics (
+	    id BIGSERIAL,
+	    job_id UUID NOT NULL,
+	    user_id INTEGER NOT NULL,
+	    status TEXT NOT NULL,
+	    duration_ms BIGINT,
+	    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	    PRIMARY KEY (id, created_at)"
+1771032933000,2026-02-14 01:35:33 UTC:10.0.0.205(41032):yukpo_admin@yukpo:[9726]:ERROR:  syntax error at end of input at character 103
+1771032933000,"2026-02-14 01:35:33 UTC:10.0.0.205(41032):yukpo_admin@yukpo:[9726]:STATEMENT:  CREATE TABLE IF NOT EXISTS video_generation_metrics_2025_01 
+	    PARTITION OF video_generation_metrics"
+1771032933000,2026-02-14 01:35:33 UTC:10.0.0.205(41048):yukpo_admin@yukpo:[9727]:ERROR:  syntax error at end of input at character 103
+1771032933000,"2026-02-14 01:35:33 UTC:10.0.0.205(41048):yukpo_admin@yukpo:[9727]:STATEMENT:  CREATE TABLE IF NOT EXISTS video_generation_metrics_2025_02 
+	    PARTITION OF video_generation_metrics"
+1771032933000,2026-02-14 01:35:33 UTC:10.0.0.205(41024):yukpo_admin@yukpo:[9725]:ERROR:  syntax error at end of input at character 49
+1771032933000,2026-02-14 01:35:33 UTC:10.0.0.205(41024):yukpo_admin@yukpo:[9725]:STATEMENT:  CREATE INDEX IF NOT EXISTS idx_video_metrics_job
+1771032933000,2026-02-14 01:35:33 UTC:10.0.0.205(41008):yukpo_admin@yukpo:[9724]:ERROR:  syntax error at end of input at character 50
+1771032933000,2026-02-14 01:35:33 UTC:10.0.0.205(41008):yukpo_admin@yukpo:[9724]:STATEMENT:  CREATE INDEX IF NOT EXISTS idx_video_metrics_user
+1771032933000,2026-02-14 01:35:33 UTC:10.0.0.205(41006):yukpo_admin@yukpo:[9723]:ERROR:  syntax error at end of input at character 331
+1771032933000,"2026-02-14 01:35:33 UTC:10.0.0.205(41006):yukpo_admin@yukpo:[9723]:STATEMENT:  CREATE TABLE IF NOT EXISTS rate_limit_tracking (
+	    id BIGSERIAL PRIMARY KEY,
+	    user_id INTEGER NOT NULL,
+	    endpoint TEXT NOT NULL,
+	    request_count INTEGER NOT NULL DEFAULT 1,
+	    window_start TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	    UNIQUE(user_id, endpoint, window_start)"
+1771032933000,2026-02-14 01:35:33 UTC:10.0.0.205(41032):yukpo_admin@yukpo:[9726]:ERROR:  syntax error at end of input at character 56
+1771032933000,2026-02-14 01:35:33 UTC:10.0.0.205(41032):yukpo_admin@yukpo:[9726]:STATEMENT:  CREATE INDEX IF NOT EXISTS idx_rate_limit_user_endpoint
+1771032933000,2026-02-14 01:35:33 UTC:10.0.0.205(41048):yukpo_admin@yukpo:[9727]:ERROR:  syntax error at end of input at character 430
+1771032933000,"2026-02-14 01:35:33 UTC:10.0.0.205(41048):yukpo_admin@yukpo:[9727]:STATEMENT:  CREATE TABLE IF NOT EXISTS message_reactions (
+	    id SERIAL PRIMARY KEY,
+	    message_id VARCHAR(255) NOT NULL,
+	    user_id INTEGER NOT NULL,
+	    emoji VARCHAR(10) NOT NULL,
+	    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+	    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+	    -- Contrainte unique: un utilisateur ne peut réagir qu'une fois avec le même emoji sur un message
+	    UNIQUE(message_id, user_id, emoji)"
+1771032934000,"2026-02-14 01:35:34 UTC:10.0.0.205(41048):yukpo_admin@yukpo:[9727]:ERROR:  column ""last_synced_at"" does not exist"
+1771032934000,2026-02-14 01:35:34 UTC:10.0.0.205(41048):yukpo_admin@yukpo:[9727]:STATEMENT:  CREATE INDEX IF NOT EXISTS idx_live_session_analytics_last_synced ON live_session_analytics(last_synced_at)
+1771032934000,"2026-02-14 01:35:34 UTC:10.0.0.205(41048):yukpo_admin@yukpo:[9727]:ERROR:  column ""status"" does not exist at character 147"
+1771032934000,"2026-02-14 01:35:34 UTC:10.0.0.205(41048):yukpo_admin@yukpo:[9727]:STATEMENT:  CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_global_promo_entries_event_status 
+	         ON global_promo_entries(event_id, status) 
+	         WHERE status IN ('approved', 'published')"
+1771032934000,2026-02-14 01:35:34 UTC:10.0.0.205(41048):yukpo_admin@yukpo:[9727]:ERROR:  syntax error at end of input at character 249
+1771032934000,"2026-02-14 01:35:34 UTC:10.0.0.205(41048):yukpo_admin@yukpo:[9727]:STATEMENT:  ALTER TABLE media 
+	ADD COLUMN IF NOT EXISTS normalized_ai_tags TEXT[] 
+	GENERATED ALWAYS AS (
+	    CASE 
+	        WHEN ai_tags IS NULL OR array_length(ai_tags, 1) IS NULL 
+	        THEN ARRAY[]::TEXT[]
+	        ELSE normalize_word_array(ai_tags)
+	    END"
+1771032934000,2026-02-14 01:35:34 UTC:10.0.0.205(41008):yukpo_admin@yukpo:[9724]:ERROR:  syntax error at end of input at character 361
+1771032934000,"2026-02-14 01:35:34 UTC:10.0.0.205(41008):yukpo_admin@yukpo:[9724]:STATEMENT:  ALTER TABLE media 
+	ADD COLUMN IF NOT EXISTS normalized_ai_description TEXT
+	GENERATED ALWAYS AS (
+	    CASE 
+	        WHEN ai_description IS NULL OR ai_description = ''
+	        THEN ''
+	        ELSE LOWER(
+	            translate(
+	                ai_description,
+	                'àâäéèêëîïôöùûüÿç',
+	                'aaaeeeeiiioouuuyc'
+	            )
+	        )
+	    END"
+1771032934000,2026-02-14 01:35:34 UTC:10.0.0.205(41006):yukpo_admin@yukpo:[9723]:ERROR:  syntax error at end of input at character 60
+1771032934000,2026-02-14 01:35:34 UTC:10.0.0.205(41006):yukpo_admin@yukpo:[9723]:STATEMENT:  CREATE INDEX IF NOT EXISTS idx_media_normalized_ai_tags_gin
+1771032934000,2026-02-14 01:35:34 UTC:10.0.0.205(41024):yukpo_admin@yukpo:[9725]:ERROR:  syntax error at end of input at character 72
+1771032934000,2026-02-14 01:35:34 UTC:10.0.0.205(41024):yukpo_admin@yukpo:[9725]:STATEMENT:  CREATE INDEX IF NOT EXISTS idx_media_normalized_ai_description_fulltext
+1771032934000,2026-02-14 01:35:34 UTC:10.0.0.205(41048):yukpo_admin@yukpo:[9727]:ERROR:  cannot insert multiple commands into a prepared statement
+1771032934000,"2026-02-14 01:35:34 UTC:10.0.0.205(41048):yukpo_admin@yukpo:[9727]:STATEMENT:  
+	        DROP FUNCTION IF EXISTS run_audio_cache_cleanup();
+	        CREATE OR REPLACE FUNCTION run_audio_cache_cleanup()
+	        RETURNS TABLE(
+	            deleted_count INTEGER,
+	            kept_count INTEGER,
+	            total_before INTEGER,
+	            total_after INTEGER
+	        ) AS $$
+	        DECLARE
+	            deleted_count_var INTEGER := 0;
+	            kept_count_var INTEGER := 0;
+	            total_before_var INTEGER := 0;
+	            total_after_var INTEGER := 0;
+	        BEGIN
+	            -- Vérifier si la fonction cleanup_old_audio_transcriptions existe
+	            IF EXISTS (
+	                SELECT 1 FROM pg_proc 
+	                WHERE proname = 'cleanup_old_audio_transcriptions'
+	            ) THEN
+	                -- Exécuter le nettoyage et récupérer les résultats dans des variables explicites
+	                -- Utiliser COALESCE pour garantir des valeurs non-NULL
+	                SELECT 
+	                    COALESCE(deleted_count, 0),
+	                    COALESCE(kept_count, 0),
+	                    COALESCE(total_before, 0),
+	                    COALESCE(total_after, 0)
+	                INTO 
+	                    deleted_count_var,
+	                    kept_count_var,
+	                    total_before_var,
+	                    total_after_var
+	                FROM cleanup_old_audio_transcriptions()
+	                LIMIT 1;
+	            ELSE
+	                -- Si la fonction n'existe pas, retourner des valeurs par défaut (0)
+	                RAISE NOTICE 'Fonction cleanup_old_audio_transcriptions non trouvée, retour de valeurs par défaut';
+	            END IF;
+	            -- Log (peut être envoyé à un système de monitoring)
+	            RAISE NOTICE 'Audio cache cleanup: deleted %, kept %, total before %, after %', 
+	                deleted_count_var, kept_count_var, total_before_var, total_after_var;
+	            -- Retourner les résultats comme une table (toujours des valeurs non-NULL)
+	            RETURN QUERY SELECT deleted_count_var, kept_count_var, total_before_var, total_after_var;
+	        END;
+	        $$ LANGUAGE plpgsql;"
+1771032934000,2026-02-14 01:35:34 UTC:10.0.0.205(41024):yukpo_admin@yukpo:[9725]:ERROR:  syntax error at end of input at character 33
+1771032934000,2026-02-14 01:35:34 UTC:10.0.0.205(41024):yukpo_admin@yukpo:[9725]:STATEMENT:  ALTER TABLE courier_applications
+1771032934000,2026-02-14 01:35:34 UTC:10.0.0.205(41048):yukpo_admin@yukpo:[9727]:ERROR:  syntax error at end of input at character 27
+1771032934000,2026-02-14 01:35:34 UTC:10.0.0.205(41048):yukpo_admin@yukpo:[9727]:STATEMENT:  ALTER TABLE courier_assets
+1771032934000,2026-02-14 01:35:34 UTC:10.0.0.205(41024):yukpo_admin@yukpo:[9725]:ERROR:  syntax error at end of input at character 813
+1771032934000,"2026-02-14 01:35:34 UTC:10.0.0.205(41024):yukpo_admin@yukpo:[9725]:STATEMENT:  CREATE TABLE IF NOT EXISTS family_profiles (
+	    id SERIAL PRIMARY KEY,
+	    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+	    family_name VARCHAR(255),
+	    total_members INTEGER NOT NULL DEFAULT 1,
+	    children_count INTEGER DEFAULT 0,
+	    adults_count INTEGER DEFAULT 1,
+	    preferences JSONB DEFAULT '{}', -- végétarien, vegan, halal, etc.
+	    allergies TEXT[], -- liste allergies
+	    dietary_restrictions TEXT[], -- diabète, hypertension, etc.
+	    budget_monthly DECIMAL(10,2),
+	    cuisine_styles TEXT[], -- africaine, camerounaise, occidentale, etc.
+	    cooking_level VARCHAR(50), -- débutant, intermédiaire, avancé
+	    time_available_hours DECIMAL(4,2), -- heures disponibles par jour
+	    created_at TIMESTAMPTZ DEFAULT NOW(),
+	    updated_at TIMESTAMPTZ DEFAULT NOW(),
+	    UNIQUE(user_id)"
+1771032934000,2026-02-14 01:35:34 UTC:10.0.0.205(41032):yukpo_admin@yukpo:[9726]:ERROR:  syntax error at end of input at character 985
+1771032934000,"2026-02-14 01:35:34 UTC:10.0.0.205(41032):yukpo_admin@yukpo:[9726]:STATEMENT:  CREATE TABLE IF NOT EXISTS recipes (
+	    id SERIAL PRIMARY KEY,
+	    name VARCHAR(255) NOT NULL,
+	    description TEXT,
+	    cuisine_style VARCHAR(100), -- africaine, camerounaise, occidentale, etc.
+	    meal_type TEXT[], -- petit_dejeuner, dejeuner, diner
+	    difficulty VARCHAR(50), -- facile, moyen, difficile
+	    prep_time_minutes INTEGER,
+	    cook_time_minutes INTEGER,
+	    servings INTEGER DEFAULT 1,
+	    ingredients JSONB NOT NULL, -- [{name, quantity, unit}, ...]
+	    instructions TEXT[] NOT NULL, -- étapes de préparation
+	    nutrition_per_serving JSONB, -- {calories, proteins, carbs, fats, fiber}
+	    tags TEXT[], -- végétarien, vegan, rapide, économique, etc.
+	    image_url TEXT,
+	    video_url TEXT, -- vidéo recette optionnelle
+	    source VARCHAR(255), -- ""yukpo_ai"", ""community"", ""premium""
+	    is_premium BOOLEAN DEFAULT FALSE,
+	    created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+	    created_at TIMESTAMPTZ DEFAULT NOW(),
+	    updated_at TIMESTAMPTZ DEFAULT NOW()"
+1771032934000,2026-02-14 01:35:34 UTC:10.0.0.205(41048):yukpo_admin@yukpo:[9727]:ERROR:  syntax error at end of input at character 506
+1771032934000,"2026-02-14 01:35:34 UTC:10.0.0.205(41048):yukpo_admin@yukpo:[9727]:STATEMENT:  CREATE TABLE IF NOT EXISTS menu_plans (
+	    id SERIAL PRIMARY KEY,
+	    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+	    week_start DATE NOT NULL, -- lundi de la semaine
+	    week_end DATE NOT NULL, -- dimanche de la semaine
+	    status VARCHAR(50) DEFAULT 'draft', -- draft, active, completed
+	    total_budget DECIMAL(10,2),
+	    actual_cost DECIMAL(10,2),
+	    notes TEXT,
+	    created_at TIMESTAMPTZ DEFAULT NOW(),
+	    updated_at TIMESTAMPTZ DEFAULT NOW(),
+	    UNIQUE(user_id, week_start)"
+1771032934000,2026-02-14 01:35:34 UTC:10.0.0.205(41008):yukpo_admin@yukpo:[9724]:ERROR:  syntax error at end of input at character 516
+1771032934000,"2026-02-14 01:35:34 UTC:10.0.0.205(41008):yukpo_admin@yukpo:[9724]:STATEMENT:  CREATE TABLE IF NOT EXISTS planned_meals (
+	    id SERIAL PRIMARY KEY,
+	    menu_plan_id INTEGER NOT NULL REFERENCES menu_plans(id) ON DELETE CASCADE,
+	    day_of_week INTEGER NOT NULL, -- 1=lundi, 7=dimanche
+	    meal_type VARCHAR(50) NOT NULL, -- petit_dejeuner, dejeuner, diner, gouter
+	    recipe_id INTEGER REFERENCES recipes(id) ON DELETE SET NULL,
+	    custom_name VARCHAR(255), -- nom personnalisé si pas de recette
+	    servings INTEGER NOT NULL DEFAULT 1,
+	    notes TEXT,
+	    created_at TIMESTAMPTZ DEFAULT NOW()"
+1771032934000,2026-02-14 01:35:34 UTC:10.0.0.205(41006):yukpo_admin@yukpo:[9723]:ERROR:  syntax error at end of input at character 288
+1771032934000,"2026-02-14 01:35:34 UTC:10.0.0.205(41006):yukpo_admin@yukpo:[9723]:STATEMENT:  CREATE TABLE IF NOT EXISTS recipe_favorites (
+	    id SERIAL PRIMARY KEY,
+	    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+	    recipe_id INTEGER NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
+	    created_at TIMESTAMPTZ DEFAULT NOW(),
+	    UNIQUE(user_id, recipe_id)"
+1771032934000,2026-02-14 01:35:34 UTC:10.0.0.205(41024):yukpo_admin@yukpo:[9725]:ERROR:  syntax error at end of input at character 533
+1771032934000,"2026-02-14 01:35:34 UTC:10.0.0.205(41024):yukpo_admin@yukpo:[9725]:STATEMENT:  CREATE TABLE IF NOT EXISTS shopping_lists (
+	    id SERIAL PRIMARY KEY,
+	    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+	    menu_plan_id INTEGER REFERENCES menu_plans(id) ON DELETE SET NULL,
+	    week_start DATE NOT NULL,
+	    status VARCHAR(50) DEFAULT 'pending', -- pending, in_progress, completed
+	    organized_by_store BOOLEAN DEFAULT FALSE,
+	    organized_by_aisle BOOLEAN DEFAULT FALSE,
+	    total_estimated_cost DECIMAL(10,2),
+	    created_at TIMESTAMPTZ DEFAULT NOW(),
+	    updated_at TIMESTAMPTZ DEFAULT NOW()"
+1771032934000,2026-02-14 01:35:34 UTC:10.0.0.205(41032):yukpo_admin@yukpo:[9726]:ERROR:  syntax error at end of input at character 739
+1771032934000,"2026-02-14 01:35:34 UTC:10.0.0.205(41032):yukpo_admin@yukpo:[9726]:STATEMENT:  CREATE TABLE IF NOT EXISTS shopping_list_items (
+	    id SERIAL PRIMARY KEY,
+	    shopping_list_id INTEGER NOT NULL REFERENCES shopping_lists(id) ON DELETE CASCADE,
+	    ingredient_name VARCHAR(255) NOT NULL,
+	    quantity DECIMAL(10,2) NOT NULL,
+	    unit VARCHAR(50) NOT NULL,
+	    category VARCHAR(100), -- fruits, légumes, viande, épicerie, etc.
+	    store_section VARCHAR(100), -- rayon magasin
+	    preferred_store VARCHAR(255), -- magasin préféré
+	    is_checked BOOLEAN DEFAULT FALSE,
+	    actual_price DECIMAL(10,2),
+	    notes TEXT,
+	    order_placed BOOLEAN DEFAULT FALSE, -- commande via Yukpo
+	    order_id INTEGER, -- Référence vers commande (peut être lié à shopping_orders ou delivery_requests)
+	    created_at TIMESTAMPTZ DEFAULT NOW()"
+1771032934000,2026-02-14 01:35:34 UTC:10.0.0.205(41048):yukpo_admin@yukpo:[9727]:ERROR:  syntax error at end of input at character 550
+1771032934000,"2026-02-14 01:35:34 UTC:10.0.0.205(41048):yukpo_admin@yukpo:[9727]:STATEMENT:  CREATE TABLE IF NOT EXISTS nutrition_analytics (
+	    id SERIAL PRIMARY KEY,
+	    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+	    menu_plan_id INTEGER NOT NULL REFERENCES menu_plans(id) ON DELETE CASCADE,
+	    week_start DATE NOT NULL,
+	    total_calories DECIMAL(10,2),
+	    total_proteins DECIMAL(10,2),
+	    total_carbs DECIMAL(10,2),
+	    total_fats DECIMAL(10,2),
+	    total_fiber DECIMAL(10,2),
+	    daily_average JSONB, -- moyenne par jour
+	    recommendations TEXT[], -- recommandations IA
+	    created_at TIMESTAMPTZ DEFAULT NOW()"
+1771032946000,2026-02-14 01:35:46 UTC:10.0.0.205(41006):yukpo_admin@yukpo:[9723]:ERROR:  column lfs.scheduled_notification_sent_at does not exist at character 197
+1771032946000,"2026-02-14 01:35:46 UTC:10.0.0.205(41006):yukpo_admin@yukpo:[9723]:STATEMENT:  
+	            SELECT
+	                lfs.id,
+	                lfs.live_session_id,
+	                lfs.service_id,
+	                lfs.promo_price_cfa,
+	                lfs.start_at,
+	                lfs.scheduled_notification_sent_at,
+	                ls.host_user_id,
+	                ls.service_id AS primary_service_id,
+	                ls.metadata,
+	                ls.title
+	            FROM live_flash_sales lfs
+	            JOIN live_sessions ls ON ls.id = lfs.live_session_id
+	            WHERE lfs.status = 'scheduled'
+	              AND lfs.start_at <= $1
+	              AND lfs.scheduled_notification_sent_at IS NULL"
+1771032946000,"2026-02-14 01:35:46 UTC:10.0.0.205(55068):yukpo_admin@yukpo:[9745]:ERROR:  column ""status"" does not exist at character 81"
+1771032946000,"2026-02-14 01:35:46 UTC:10.0.0.205(55068):yukpo_admin@yukpo:[9745]:STATEMENT:  
+	        SELECT id, display_name
+	        FROM global_promo_events
+	        WHERE status = 'scheduled' AND starts_at <= $1"
+1771032946000,"2026-02-14 01:35:46 UTC:10.0.0.205(55068):yukpo_admin@yukpo:[9745]:ERROR:  column ""auto_confirm_after_seconds"" does not exist at character 109"
+1771032946000,"2026-02-14 01:35:46 UTC:10.0.0.205(55068):yukpo_admin@yukpo:[9745]:STATEMENT:  
+	        SELECT 
+	            delivery_id,
+	            suggested_status,
+	            created_at,
+	            auto_confirm_after_seconds
+	        FROM delivery_proximity_suggestions
+	        WHERE 
+	            status = 'pending'
+	            AND auto_confirm_after_seconds IS NOT NULL
+	            AND created_at + (auto_confirm_after_seconds || ' seconds')::interval <= NOW()
+	        LIMIT 50"
+1771032976000,2026-02-14 01:36:16 UTC:10.0.0.205(41048):yukpo_admin@yukpo:[9727]:ERROR:  column lfs.scheduled_notification_sent_at does not exist at character 197
+1771032976000,"2026-02-14 01:36:16 UTC:10.0.0.205(41048):yukpo_admin@yukpo:[9727]:STATEMENT:  
+	            SELECT
+	                lfs.id,
+	                lfs.live_session_id,
+	                lfs.service_id,
+	                lfs.promo_price_cfa,
+	                lfs.start_at,
+	                lfs.scheduled_notification_sent_at,
+	                ls.host_user_id,
+	                ls.service_id AS primary_service_id,
+	                ls.metadata,
+	                ls.title
+	            FROM live_flash_sales lfs
+	            JOIN live_sessions ls ON ls.id = lfs.live_session_id
+	            WHERE lfs.status = 'scheduled'
+	              AND lfs.start_at <= $1
+	              AND lfs.scheduled_notification_sent_at IS NULL"
+1771032976000,"2026-02-14 01:36:16 UTC:10.0.0.205(55050):yukpo_admin@yukpo:[9743]:ERROR:  column ""status"" does not exist at character 81"
+1771032976000,"2026-02-14 01:36:16 UTC:10.0.0.205(55050):yukpo_admin@yukpo:[9743]:STATEMENT:  
+	        SELECT id, display_name
+	        FROM global_promo_events
+	        WHERE status = 'scheduled' AND starts_at <= $1"
+1771033006000,2026-02-14 01:36:46 UTC:10.0.0.205(41024):yukpo_admin@yukpo:[9725]:ERROR:  column lfs.scheduled_notification_sent_at does not exist at character 197
+1771033006000,"2026-02-14 01:36:46 UTC:10.0.0.205(41024):yukpo_admin@yukpo:[9725]:STATEMENT:  
+	            SELECT
+	                lfs.id,
+	                lfs.live_session_id,
+	                lfs.service_id,
+	                lfs.promo_price_cfa,
+	                lfs.start_at,
+	                lfs.scheduled_notification_sent_at,
+	                ls.host_user_id,
+	                ls.service_id AS primary_service_id,
+	                ls.metadata,
+	                ls.title
+	            FROM live_flash_sales lfs
+	            JOIN live_sessions ls ON ls.id = lfs.live_session_id
+	            WHERE lfs.status = 'scheduled'
+	              AND lfs.start_at <= $1
+	              AND lfs.scheduled_notification_sent_at IS NULL"
+1771033006000,"2026-02-14 01:36:46 UTC:10.0.0.205(41006):yukpo_admin@yukpo:[9723]:ERROR:  column ""media_id"" does not exist at character 41"
+1771033006000,"2026-02-14 01:36:46 UTC:10.0.0.205(41006):yukpo_admin@yukpo:[9723]:STATEMENT:  SELECT id,
+	                             media_id,
+	                             platform,
+	                             payload,
+	                             status,
+	                             attempt,
+	                             last_error,
+	                             scheduled_for,
+	                             created_at,
+	                             updated_at
+	                     FROM social_publication_jobs
+	                     WHERE status = 'queued' AND scheduled_for <= NOW()
+	                     ORDER BY scheduled_for ASC
+	                     LIMIT $1"
+1771033006000,"2026-02-14 01:36:46 UTC:10.0.0.205(55038):yukpo_admin@yukpo:[9742]:ERROR:  column ""status"" does not exist at character 81"
+1771033006000,"2026-02-14 01:36:46 UTC:10.0.0.205(55038):yukpo_admin@yukpo:[9742]:STATEMENT:  
+	        SELECT id, display_name
+	        FROM global_promo_events
+	        WHERE status = 'scheduled' AND starts_at <= $1"
+1771033006000,"2026-02-14 01:36:46 UTC:10.0.0.205(55058):yukpo_admin@yukpo:[9744]:ERROR:  column ""auto_confirm_after_seconds"" does not exist at character 109"
+1771033006000,"2026-02-14 01:36:46 UTC:10.0.0.205(55058):yukpo_admin@yukpo:[9744]:STATEMENT:  
+	        SELECT 
+	            delivery_id,
+	            suggested_status,
+	            created_at,
+	            auto_confirm_after_seconds
+	        FROM delivery_proximity_suggestions
+	        WHERE 
+	            status = 'pending'
+	            AND auto_confirm_after_seconds IS NOT NULL
+	            AND created_at + (auto_confirm_after_seconds || ' seconds')::interval <= NOW()
+	        LIMIT 50"
+1771033036000,2026-02-14 01:37:16 UTC:10.0.0.205(55058):yukpo_admin@yukpo:[9744]:ERROR:  column lfs.scheduled_notification_sent_at does not exist at character 197
+1771033036000,"2026-02-14 01:37:16 UTC:10.0.0.205(55058):yukpo_admin@yukpo:[9744]:STATEMENT:  
+	            SELECT
+	                lfs.id,
+	                lfs.live_session_id,
+	                lfs.service_id,
+	                lfs.promo_price_cfa,
+	                lfs.start_at,
+	                lfs.scheduled_notification_sent_at,
+	                ls.host_user_id,
+	                ls.service_id AS primary_service_id,
+	                ls.metadata,
+	                ls.title
+	            FROM live_flash_sales lfs
+	            JOIN live_sessions ls ON ls.id = lfs.live_session_id
+	            WHERE lfs.status = 'scheduled'
+	              AND lfs.start_at <= $1
+	              AND lfs.scheduled_notification_sent_at IS NULL"
+1771033036000,"2026-02-14 01:37:16 UTC:10.0.0.205(55076):yukpo_admin@yukpo:[9746]:ERROR:  column ""status"" does not exist at character 81"
+1771033036000,"2026-02-14 01:37:16 UTC:10.0.0.205(55076):yukpo_admin@yukpo:[9746]:STATEMENT:  
+	        SELECT id, display_name
+	        FROM global_promo_events
+	        WHERE status = 'scheduled' AND starts_at <= $1"
+1771033066000,2026-02-14 01:37:46 UTC:10.0.0.205(55068):yukpo_admin@yukpo:[9745]:ERROR:  column lfs.scheduled_notification_sent_at does not exist at character 197
+1771033066000,"2026-02-14 01:37:46 UTC:10.0.0.205(55068):yukpo_admin@yukpo:[9745]:STATEMENT:  
+	            SELECT
+	                lfs.id,
+	                lfs.live_session_id,
+	                lfs.service_id,
+	                lfs.promo_price_cfa,
+	                lfs.start_at,
+	                lfs.scheduled_notification_sent_at,
+	                ls.host_user_id,
+	                ls.service_id AS primary_service_id,
+	                ls.metadata,
+	                ls.title
+	            FROM live_flash_sales lfs
+	            JOIN live_sessions ls ON ls.id = lfs.live_session_id
+	            WHERE lfs.status = 'scheduled'
+	              AND lfs.start_at <= $1
+	              AND lfs.scheduled_notification_sent_at IS NULL"
+1771033066000,"2026-02-14 01:37:46 UTC:10.0.0.205(55076):yukpo_admin@yukpo:[9746]:ERROR:  column ""status"" does not exist at character 81"
+1771033066000,"2026-02-14 01:37:46 UTC:10.0.0.205(55076):yukpo_admin@yukpo:[9746]:STATEMENT:  
+	        SELECT id, display_name
+	        FROM global_promo_events
+	        WHERE status = 'scheduled' AND starts_at <= $1"
+1771033066000,"2026-02-14 01:37:46 UTC:10.0.0.205(55078):yukpo_admin@yukpo:[9747]:ERROR:  column ""media_id"" does not exist at character 41"
+1771033066000,"2026-02-14 01:37:46 UTC:10.0.0.205(55078):yukpo_admin@yukpo:[9747]:STATEMENT:  SELECT id,
+	                             media_id,
+	                             platform,
+	                             payload,
+	                             status,
+	                             attempt,
+	                             last_error,
+	                             scheduled_for,
+	                             created_at,
+	                             updated_at
+	                     FROM social_publication_jobs
+	                     WHERE status = 'queued' AND scheduled_for <= NOW()
+	                     ORDER BY scheduled_for ASC
+	                     LIMIT $1"
+1771033066000,"2026-02-14 01:37:46 UTC:10.0.0.205(41024):yukpo_admin@yukpo:[9725]:ERROR:  column ""auto_confirm_after_seconds"" does not exist at character 109"
+1771033066000,"2026-02-14 01:37:46 UTC:10.0.0.205(41024):yukpo_admin@yukpo:[9725]:STATEMENT:  
+	        SELECT 
+	            delivery_id,
+	            suggested_status,
+	            created_at,
+	            auto_confirm_after_seconds
+	        FROM delivery_proximity_suggestions
+	        WHERE 
+	            status = 'pending'
+	            AND auto_confirm_after_seconds IS NOT NULL
+	            AND created_at + (auto_confirm_after_seconds || ' seconds')::interval <= NOW()
+	        LIMIT 50"
+1771033096000,2026-02-14 01:38:16 UTC:10.0.0.205(55050):yukpo_admin@yukpo:[9743]:ERROR:  column lfs.scheduled_notification_sent_at does not exist at character 197
+1771033096000,"2026-02-14 01:38:16 UTC:10.0.0.205(55050):yukpo_admin@yukpo:[9743]:STATEMENT:  
+	            SELECT
+	                lfs.id,
+	                lfs.live_session_id,
+	                lfs.service_id,
+	                lfs.promo_price_cfa,
+	                lfs.start_at,
+	                lfs.scheduled_notification_sent_at,
+	                ls.host_user_id,
+	                ls.service_id AS primary_service_id,
+	                ls.metadata,
+	                ls.title
+	            FROM live_flash_sales lfs
+	            JOIN live_sessions ls ON ls.id = lfs.live_session_id
+	            WHERE lfs.status = 'scheduled'
+	              AND lfs.start_at <= $1
+	              AND lfs.scheduled_notification_sent_at IS NULL"
+1771033096000,"2026-02-14 01:38:16 UTC:10.0.0.205(41024):yukpo_admin@yukpo:[9725]:ERROR:  column ""status"" does not exist at character 81"
+1771033096000,"2026-02-14 01:38:16 UTC:10.0.0.205(41024):yukpo_admin@yukpo:[9725]:STATEMENT:  
+	        SELECT id, display_name
+	        FROM global_promo_events
+	        WHERE status = 'scheduled' AND starts_at <= $1"
+1771033117000,2026-02-14 01:38:37 UTC::@:[1342]:LOG:  checkpoint starting: time
+1771033126000,2026-02-14 01:38:46 UTC:10.0.0.205(41048):yukpo_admin@yukpo:[9727]:ERROR:  column lfs.scheduled_notification_sent_at does not exist at character 197
+1771033126000,"2026-02-14 01:38:46 UTC:10.0.0.205(41048):yukpo_admin@yukpo:[9727]:STATEMENT:  
+	            SELECT
+	                lfs.id,
+	                lfs.live_session_id,
+	                lfs.service_id,
+	                lfs.promo_price_cfa,
+	                lfs.start_at,
+	                lfs.scheduled_notification_sent_at,
+	                ls.host_user_id,
+	                ls.service_id AS primary_service_id,
+	                ls.metadata,
+	                ls.title
+	            FROM live_flash_sales lfs
+	            JOIN live_sessions ls ON ls.id = lfs.live_session_id
+	            WHERE lfs.status = 'scheduled'
+	              AND lfs.start_at <= $1
+	              AND lfs.scheduled_notification_sent_at IS NULL"
+1771033126000,"2026-02-14 01:38:46 UTC:10.0.0.205(55038):yukpo_admin@yukpo:[9742]:ERROR:  column ""status"" does not exist at character 81"
+1771033126000,"2026-02-14 01:38:46 UTC:10.0.0.205(55038):yukpo_admin@yukpo:[9742]:STATEMENT:  
+	        SELECT id, display_name
+	        FROM global_promo_events
+	        WHERE status = 'scheduled' AND starts_at <= $1"
+1771033126000,"2026-02-14 01:38:46 UTC:10.0.0.205(41032):yukpo_admin@yukpo:[9726]:ERROR:  column ""media_id"" does not exist at character 41"
+1771033126000,"2026-02-14 01:38:46 UTC:10.0.0.205(41032):yukpo_admin@yukpo:[9726]:STATEMENT:  SELECT id,
+	                             media_id,
+	                             platform,
+	                             payload,
+	                             status,
+	                             attempt,
+	                             last_error,
+	                             scheduled_for,
+	                             created_at,
+	                             updated_at
+	                     FROM social_publication_jobs
+	                     WHERE status = 'queued' AND scheduled_for <= NOW()
+	                     ORDER BY scheduled_for ASC
+	                     LIMIT $1"
+1771033126000,"2026-02-14 01:38:46 UTC:10.0.0.205(55076):yukpo_admin@yukpo:[9746]:ERROR:  column ""auto_confirm_after_seconds"" does not exist at character 109"
+1771033126000,"2026-02-14 01:38:46 UTC:10.0.0.205(55076):yukpo_admin@yukpo:[9746]:STATEMENT:  
+	        SELECT 
+	            delivery_id,
+	            suggested_status,
+	            created_at,
+	            auto_confirm_after_seconds
+	        FROM delivery_proximity_suggestions
+	        WHERE 
+	            status = 'pending'
+	            AND auto_confirm_after_seconds IS NOT NULL
+	            AND created_at + (auto_confirm_after_seconds || ' seconds')::interval <= NOW()
+	        LIMIT 50"
+1771033152000,"2026-02-14 01:39:12 UTC::@:[1342]:LOG:  checkpoint complete: wrote 345 buffers (0.6%); 0 WAL file(s) added, 0 removed, 1 recycled; write=34.526 s, sync=0.002 s, total=34.536 s; sync files=84, longest=0.002 s, average=0.001 s; distance=64922 kB, estimate=65861 kB"
+1771033156000,2026-02-14 01:39:16 UTC:10.0.0.205(42888):yukpo_admin@yukpo:[9911]:ERROR:  column lfs.scheduled_notification_sent_at does not exist at character 197
+1771033156000,"2026-02-14 01:39:16 UTC:10.0.0.205(42888):yukpo_admin@yukpo:[9911]:STATEMENT:  
+	            SELECT
+	                lfs.id,
+	                lfs.live_session_id,
+	                lfs.service_id,
+	                lfs.promo_price_cfa,
+	                lfs.start_at,
+	                lfs.scheduled_notification_sent_at,
+	                ls.host_user_id,
+	                ls.service_id AS primary_service_id,
+	                ls.metadata,
+	                ls.title
+	            FROM live_flash_sales lfs
+	            JOIN live_sessions ls ON ls.id = lfs.live_session_id
+	            WHERE lfs.status = 'scheduled'
+	              AND lfs.start_at <= $1
+	              AND lfs.scheduled_notification_sent_at IS NULL"
+1771033156000,"2026-02-14 01:39:16 UTC:10.0.0.205(60190):yukpo_admin@yukpo:[9924]:ERROR:  column ""status"" does not exist at character 81"
+1771033156000,"2026-02-14 01:39:16 UTC:10.0.0.205(60190):yukpo_admin@yukpo:[9924]:STATEMENT:  
+	        SELECT id, display_name
+	        FROM global_promo_events
+	        WHERE status = 'scheduled' AND starts_at <= $1"
+1771033186000,"2026-02-14 01:39:46 UTC:10.0.0.205(42884):yukpo_admin@yukpo:[9908]:ERROR:  column ""status"" does not exist at character 81"
+1771033186000,"2026-02-14 01:39:46 UTC:10.0.0.205(42884):yukpo_admin@yukpo:[9908]:STATEMENT:  
+	        SELECT id, display_name
+	        FROM global_promo_events
+	        WHERE status = 'scheduled' AND starts_at <= $1"
+1771033186000,2026-02-14 01:39:46 UTC:10.0.0.205(42888):yukpo_admin@yukpo:[9911]:ERROR:  column lfs.scheduled_notification_sent_at does not exist at character 197
+1771033186000,"2026-02-14 01:39:46 UTC:10.0.0.205(42888):yukpo_admin@yukpo:[9911]:STATEMENT:  
+	            SELECT
+	                lfs.id,
+	                lfs.live_session_id,
+	                lfs.service_id,
+	                lfs.promo_price_cfa,
+	                lfs.start_at,
+	                lfs.scheduled_notification_sent_at,
+	                ls.host_user_id,
+	                ls.service_id AS primary_service_id,
+	                ls.metadata,
+	                ls.title
+	            FROM live_flash_sales lfs
+	            JOIN live_sessions ls ON ls.id = lfs.live_session_id
+	            WHERE lfs.status = 'scheduled'
+	              AND lfs.start_at <= $1
+	              AND lfs.scheduled_notification_sent_at IS NULL"
+1771033186000,"2026-02-14 01:39:46 UTC:10.0.0.205(60184):yukpo_admin@yukpo:[9916]:ERROR:  column ""media_id"" does not exist at character 41"
+1771033186000,"2026-02-14 01:39:46 UTC:10.0.0.205(60184):yukpo_admin@yukpo:[9916]:STATEMENT:  SELECT id,
+	                             media_id,
+	                             platform,
+	                             payload,
+	                             status,
+	                             attempt,
+	                             last_error,
+	                             scheduled_for,
+	                             created_at,
+	                             updated_at
+	                     FROM social_publication_jobs
+	                     WHERE status = 'queued' AND scheduled_for <= NOW()
+	                     ORDER BY scheduled_for ASC
+	                     LIMIT $1"
+1771033186000,"2026-02-14 01:39:46 UTC:10.0.0.205(60190):yukpo_admin@yukpo:[9924]:ERROR:  column ""auto_confirm_after_seconds"" does not exist at character 109"
+1771033186000,"2026-02-14 01:39:46 UTC:10.0.0.205(60190):yukpo_admin@yukpo:[9924]:STATEMENT:  
+	        SELECT 
+	            delivery_id,
+	            suggested_status,
+	            created_at,
+	            auto_confirm_after_seconds
+	        FROM delivery_proximity_suggestions
+	        WHERE 
+	            status = 'pending'
+	            AND auto_confirm_after_seconds IS NOT NULL
+	            AND created_at + (auto_confirm_after_seconds || ' seconds')::interval <= NOW()
+	        LIMIT 50"
+1771033216000,2026-02-14 01:40:16 UTC:10.0.0.205(49790):yukpo_admin@yukpo:[9900]:ERROR:  column lfs.scheduled_notification_sent_at does not exist at character 197
+1771033216000,"2026-02-14 01:40:16 UTC:10.0.0.205(49790):yukpo_admin@yukpo:[9900]:STATEMENT:  
+	            SELECT
+	                lfs.id,
+	                lfs.live_session_id,
+	                lfs.service_id,
+	                lfs.promo_price_cfa,
+	                lfs.start_at,
+	                lfs.scheduled_notification_sent_at,
+	                ls.host_user_id,
+	                ls.service_id AS primary_service_id,
+	                ls.metadata,
+	                ls.title
+	            FROM live_flash_sales lfs
+	            JOIN live_sessions ls ON ls.id = lfs.live_session_id
+	            WHERE lfs.status = 'scheduled'
+	              AND lfs.start_at <= $1
+	              AND lfs.scheduled_notification_sent_at IS NULL"
+1771033216000,"2026-02-14 01:40:16 UTC:10.0.0.205(60184):yukpo_admin@yukpo:[9916]:ERROR:  column ""status"" does not exist at character 81"
+1771033216000,"2026-02-14 01:40:16 UTC:10.0.0.205(60184):yukpo_admin@yukpo:[9916]:STATEMENT:  
+	        SELECT id, display_name
+	        FROM global_promo_events
+	        WHERE status = 'scheduled' AND starts_at <= $1"
+1771033246000,"2026-02-14 01:40:46 UTC:10.0.0.205(42884):yukpo_admin@yukpo:[9908]:ERROR:  column ""status"" does not exist at character 81"
+1771033246000,"2026-02-14 01:40:46 UTC:10.0.0.205(42884):yukpo_admin@yukpo:[9908]:STATEMENT:  
+	        SELECT id, display_name
+	        FROM global_promo_events
+	        WHERE status = 'scheduled' AND starts_at <= $1"
+1771033246000,2026-02-14 01:40:46 UTC:10.0.0.205(42888):yukpo_admin@yukpo:[9911]:ERROR:  column lfs.scheduled_notification_sent_at does not exist at character 197
+1771033246000,"2026-02-14 01:40:46 UTC:10.0.0.205(42888):yukpo_admin@yukpo:[9911]:STATEMENT:  
+	            SELECT
+	                lfs.id,
+	                lfs.live_session_id,
+	                lfs.service_id,
+	                lfs.promo_price_cfa,
+	                lfs.start_at,
+	                lfs.scheduled_notification_sent_at,
+	                ls.host_user_id,
+	                ls.service_id AS primary_service_id,
+	                ls.metadata,
+	                ls.title
+	            FROM live_flash_sales lfs
+	            JOIN live_sessions ls ON ls.id = lfs.live_session_id
+	            WHERE lfs.status = 'scheduled'
+	              AND lfs.start_at <= $1
+	              AND lfs.scheduled_notification_sent_at IS NULL"
+1771033246000,"2026-02-14 01:40:46 UTC:10.0.0.205(60190):yukpo_admin@yukpo:[9924]:ERROR:  column ""media_id"" does not exist at character 41"
+1771033246000,"2026-02-14 01:40:46 UTC:10.0.0.205(60190):yukpo_admin@yukpo:[9924]:STATEMENT:  SELECT id,
+	                             media_id,
+	                             platform,
+	                             payload,
+	                             status,
+	                             attempt,
+	                             last_error,
+	                             scheduled_for,
+	                             created_at,
+	                             updated_at
+	                     FROM social_publication_jobs
+	                     WHERE status = 'queued' AND scheduled_for <= NOW()
+	                     ORDER BY scheduled_for ASC
+	                     LIMIT $1"
+1771033246000,"2026-02-14 01:40:46 UTC:10.0.0.205(42060):yukpo_admin@yukpo:[10006]:ERROR:  column ""auto_confirm_after_seconds"" does not exist at character 109"
+1771033246000,"2026-02-14 01:40:46 UTC:10.0.0.205(42060):yukpo_admin@yukpo:[10006]:STATEMENT:  
+	        SELECT 
+	            delivery_id,
+	            suggested_status,
+	            created_at,
+	            auto_confirm_after_seconds
+	        FROM delivery_proximity_suggestions
+	        WHERE 
+	            status = 'pending'
+	            AND auto_confirm_after_seconds IS NOT NULL
+	            AND created_at + (auto_confirm_after_seconds || ' seconds')::interval <= NOW()
+	        LIMIT 50"
+1771033276000,2026-02-14 01:41:16 UTC:10.0.0.205(42884):yukpo_admin@yukpo:[9908]:ERROR:  column lfs.scheduled_notification_sent_at does not exist at character 197
+1771033276000,"2026-02-14 01:41:16 UTC:10.0.0.205(42884):yukpo_admin@yukpo:[9908]:STATEMENT:  
+	            SELECT
+	                lfs.id,
+	                lfs.live_session_id,
+	                lfs.service_id,
+	                lfs.promo_price_cfa,
+	                lfs.start_at,
+	                lfs.scheduled_notification_sent_at,
+	                ls.host_user_id,
+	                ls.service_id AS primary_service_id,
+	                ls.metadata,
+	                ls.title
+	            FROM live_flash_sales lfs
+	            JOIN live_sessions ls ON ls.id = lfs.live_session_id
+	            WHERE lfs.status = 'scheduled'
+	              AND lfs.start_at <= $1
+	              AND lfs.scheduled_notification_sent_at IS NULL"
+1771033276000,"2026-02-14 01:41:16 UTC:10.0.0.205(42888):yukpo_admin@yukpo:[9911]:ERROR:  column ""status"" does not exist at character 81"
+1771033276000,"2026-02-14 01:41:16 UTC:10.0.0.205(42888):yukpo_admin@yukpo:[9911]:STATEMENT:  
+	        SELECT id, display_name
+	        FROM global_promo_events
+	        WHERE status = 'scheduled' AND starts_at <= $1"
+1771033306000,"2026-02-14 01:41:46 UTC:10.0.0.205(60190):yukpo_admin@yukpo:[9924]:ERROR:  column ""status"" does not exist at character 81"
+1771033306000,"2026-02-14 01:41:46 UTC:10.0.0.205(60190):yukpo_admin@yukpo:[9924]:STATEMENT:  
+	        SELECT id, display_name
+	        FROM global_promo_events
+	        WHERE status = 'scheduled' AND starts_at <= $1"
+1771033306000,2026-02-14 01:41:46 UTC:10.0.0.205(60184):yukpo_admin@yukpo:[9916]:ERROR:  column lfs.scheduled_notification_sent_at does not exist at character 197
+1771033306000,"2026-02-14 01:41:46 UTC:10.0.0.205(60184):yukpo_admin@yukpo:[9916]:STATEMENT:  
+	            SELECT
+	                lfs.id,
+	                lfs.live_session_id,
+	                lfs.service_id,
+	                lfs.promo_price_cfa,
+	                lfs.start_at,
+	                lfs.scheduled_notification_sent_at,
+	                ls.host_user_id,
+	                ls.service_id AS primary_service_id,
+	                ls.metadata,
+	                ls.title
+	            FROM live_flash_sales lfs
+	            JOIN live_sessions ls ON ls.id = lfs.live_session_id
+	            WHERE lfs.status = 'scheduled'
+	              AND lfs.start_at <= $1
+	              AND lfs.scheduled_notification_sent_at IS NULL"
+1771033306000,"2026-02-14 01:41:46 UTC:10.0.0.205(49790):yukpo_admin@yukpo:[9900]:ERROR:  column ""media_id"" does not exist at character 41"
+1771033306000,"2026-02-14 01:41:46 UTC:10.0.0.205(49790):yukpo_admin@yukpo:[9900]:STATEMENT:  SELECT id,
+	                             media_id,
+	                             platform,
+	                             payload,
+	                             status,
+	                             attempt,
+	                             last_error,
+	                             scheduled_for,
+	                             created_at,
+	                             updated_at
+	                     FROM social_publication_jobs
+	                     WHERE status = 'queued' AND scheduled_for <= NOW()
+	                     ORDER BY scheduled_for ASC
+	                     LIMIT $1"
+1771033306000,"2026-02-14 01:41:46 UTC:10.0.0.205(60190):yukpo_admin@yukpo:[9924]:ERROR:  column ""auto_confirm_after_seconds"" does not exist at character 109"
+1771033306000,"2026-02-14 01:41:46 UTC:10.0.0.205(60190):yukpo_admin@yukpo:[9924]:STATEMENT:  
+	        SELECT 
+	            delivery_id,
+	            suggested_status,
+	            created_at,
+	            auto_confirm_after_seconds
+	        FROM delivery_proximity_suggestions
+	        WHERE 
+	            status = 'pending'
+	            AND auto_confirm_after_seconds IS NOT NULL
+	            AND created_at + (auto_confirm_after_seconds || ' seconds')::interval <= NOW()
+	        LIMIT 50"
+1771033336000,2026-02-14 01:42:16 UTC:10.0.0.205(42060):yukpo_admin@yukpo:[10006]:ERROR:  column lfs.scheduled_notification_sent_at does not exist at character 197
+1771033336000,"2026-02-14 01:42:16 UTC:10.0.0.205(42060):yukpo_admin@yukpo:[10006]:STATEMENT:  
+	            SELECT
+	                lfs.id,
+	                lfs.live_session_id,
+	                lfs.service_id,
+	                lfs.promo_price_cfa,
+	                lfs.start_at,
+	                lfs.scheduled_notification_sent_at,
+	                ls.host_user_id,
+	                ls.service_id AS primary_service_id,
+	                ls.metadata,
+	                ls.title
+	            FROM live_flash_sales lfs
+	            JOIN live_sessions ls ON ls.id = lfs.live_session_id
+	            WHERE lfs.status = 'scheduled'
+	              AND lfs.start_at <= $1
+	              AND lfs.scheduled_notification_sent_at IS NULL"
+1771033336000,"2026-02-14 01:42:16 UTC:10.0.0.205(45994):yukpo_admin@yukpo:[10086]:ERROR:  column ""status"" does not exist at character 81"
+1771033336000,"2026-02-14 01:42:16 UTC:10.0.0.205(45994):yukpo_admin@yukpo:[10086]:STATEMENT:  
+	        SELECT id, display_name
+	        FROM global_promo_events
+	        WHERE status = 'scheduled' AND starts_at <= $1"
+1771033366000,"2026-02-14 01:42:46 UTC:10.0.0.205(42060):yukpo_admin@yukpo:[10006]:ERROR:  column ""status"" does not exist at character 81"
+1771033366000,"2026-02-14 01:42:46 UTC:10.0.0.205(42060):yukpo_admin@yukpo:[10006]:STATEMENT:  
+	        SELECT id, display_name
+	        FROM global_promo_events
+	        WHERE status = 'scheduled' AND starts_at <= $1"
+1771033366000,2026-02-14 01:42:46 UTC:10.0.0.205(46006):yukpo_admin@yukpo:[10087]:ERROR:  column lfs.scheduled_notification_sent_at does not exist at character 197
+1771033366000,"2026-02-14 01:42:46 UTC:10.0.0.205(46006):yukpo_admin@yukpo:[10087]:STATEMENT:  
+	            SELECT
+	                lfs.id,
+	                lfs.live_session_id,
+	                lfs.service_id,
+	                lfs.promo_price_cfa,
+	                lfs.start_at,
+	                lfs.scheduled_notification_sent_at,
+	                ls.host_user_id,
+	                ls.service_id AS primary_service_id,
+	                ls.metadata,
+	                ls.title
+	            FROM live_flash_sales lfs
+	            JOIN live_sessions ls ON ls.id = lfs.live_session_id
+	            WHERE lfs.status = 'scheduled'
+	              AND lfs.start_at <= $1
+	              AND lfs.scheduled_notification_sent_at IS NULL"
+1771033366000,"2026-02-14 01:42:46 UTC:10.0.0.205(45994):yukpo_admin@yukpo:[10086]:ERROR:  column ""media_id"" does not exist at character 41"
+1771033366000,"2026-02-14 01:42:46 UTC:10.0.0.205(45994):yukpo_admin@yukpo:[10086]:STATEMENT:  SELECT id,
+	                             media_id,
+	                             platform,
+	                             payload,
+	                             status,
+	                             attempt,
+	                             last_error,
+	                             scheduled_for,
+	                             created_at,
+	                             updated_at
+	                     FROM social_publication_jobs
+	                     WHERE status = 'queued' AND scheduled_for <= NOW()
+	                     ORDER BY scheduled_for ASC
+	                     LIMIT $1"
+1771033366000,"2026-02-14 01:42:46 UTC:10.0.0.205(42060):yukpo_admin@yukpo:[10006]:ERROR:  column ""auto_confirm_after_seconds"" does not exist at character 109"
+1771033366000,"2026-02-14 01:42:46 UTC:10.0.0.205(42060):yukpo_admin@yukpo:[10006]:STATEMENT:  
+	        SELECT 
+	            delivery_id,
+	            suggested_status,
+	            created_at,
+	            auto_confirm_after_seconds
+	        FROM delivery_proximity_suggestions
+	        WHERE 
+	            status = 'pending'
+	            AND auto_confirm_after_seconds IS NOT NULL
+	            AND created_at + (auto_confirm_after_seconds || ' seconds')::interval <= NOW()
+	        LIMIT 50"
+1771033396000,2026-02-14 01:43:16 UTC:10.0.0.205(46006):yukpo_admin@yukpo:[10087]:ERROR:  column lfs.scheduled_notification_sent_at does not exist at character 197
+1771033396000,"2026-02-14 01:43:16 UTC:10.0.0.205(46006):yukpo_admin@yukpo:[10087]:STATEMENT:  
+	            SELECT
+	                lfs.id,
+	                lfs.live_session_id,
+	                lfs.service_id,
+	                lfs.promo_price_cfa,
+	                lfs.start_at,
+	                lfs.scheduled_notification_sent_at,
+	                ls.host_user_id,
+	                ls.service_id AS primary_service_id,
+	                ls.metadata,
+	                ls.title
+	            FROM live_flash_sales lfs
+	            JOIN live_sessions ls ON ls.id = lfs.live_session_id
+	            WHERE lfs.status = 'scheduled'
+	              AND lfs.start_at <= $1
+	              AND lfs.scheduled_notification_sent_at IS NULL"
+1771033396000,"2026-02-14 01:43:16 UTC:10.0.0.205(35322):yukpo_admin@yukpo:[10071]:ERROR:  column ""status"" does not exist at character 81"
+1771033396000,"2026-02-14 01:43:16 UTC:10.0.0.205(35322):yukpo_admin@yukpo:[10071]:STATEMENT:  
+	        SELECT id, display_name
+	        FROM global_promo_events
+	        WHERE status = 'scheduled' AND starts_at <= $1"
+1771033417000,2026-02-14 01:43:37 UTC::@:[1342]:LOG:  checkpoint starting: time
+1771033417000,"2026-02-14 01:43:37 UTC::@:[1342]:LOG:  checkpoint complete: wrote 6 buffers (0.0%); 0 WAL file(s) added, 0 removed, 1 recycled; write=0.505 s, sync=0.003 s, total=0.515 s; sync files=5, longest=0.002 s, average=0.001 s; distance=65208 kB, estimate=65796 kB"
+1771033426000,2026-02-14 01:43:46 UTC:10.0.0.205(46006):yukpo_admin@yukpo:[10087]:ERROR:  column lfs.scheduled_notification_sent_at does not exist at character 197
+1771033426000,"2026-02-14 01:43:46 UTC:10.0.0.205(46006):yukpo_admin@yukpo:[10087]:STATEMENT:  
+	            SELECT
+	                lfs.id,
+	                lfs.live_session_id,
+	                lfs.service_id,
+	                lfs.promo_price_cfa,
+	                lfs.start_at,
+	                lfs.scheduled_notification_sent_at,
+	                ls.host_user_id,
+	                ls.service_id AS primary_service_id,
+	                ls.metadata,
+	                ls.title
+	            FROM live_flash_sales lfs
+	            JOIN live_sessions ls ON ls.id = lfs.live_session_id
+	            WHERE lfs.status = 'scheduled'
+	              AND lfs.start_at <= $1
+	              AND lfs.scheduled_notification_sent_at IS NULL"
+1771033426000,"2026-02-14 01:43:46 UTC:10.0.0.205(45994):yukpo_admin@yukpo:[10086]:ERROR:  column ""status"" does not exist at character 81"
+1771033426000,"2026-02-14 01:43:46 UTC:10.0.0.205(45994):yukpo_admin@yukpo:[10086]:STATEMENT:  
+	        SELECT id, display_name
+	        FROM global_promo_events
+	        WHERE status = 'scheduled' AND starts_at <= $1"
+1771033426000,"2026-02-14 01:43:46 UTC:10.0.0.205(42060):yukpo_admin@yukpo:[10006]:ERROR:  column ""media_id"" does not exist at character 41"
+1771033426000,"2026-02-14 01:43:46 UTC:10.0.0.205(42060):yukpo_admin@yukpo:[10006]:STATEMENT:  SELECT id,
+	                             media_id,
+	                             platform,
+	                             payload,
+	                             status,
+	                             attempt,
+	                             last_error,
+	                             scheduled_for,
+	                             created_at,
+	                             updated_at
+	                     FROM social_publication_jobs
+	                     WHERE status = 'queued' AND scheduled_for <= NOW()
+	                     ORDER BY scheduled_for ASC
+	                     LIMIT $1"
+1771033426000,"2026-02-14 01:43:46 UTC:10.0.0.205(42060):yukpo_admin@yukpo:[10006]:ERROR:  column ""auto_confirm_after_seconds"" does not exist at character 109"
+1771033426000,"2026-02-14 01:43:46 UTC:10.0.0.205(42060):yukpo_admin@yukpo:[10006]:STATEMENT:  
+	        SELECT 
+	            delivery_id,
+	            suggested_status,
+	            created_at,
+	            auto_confirm_after_seconds
+	        FROM delivery_proximity_suggestions
+	        WHERE 
+	            status = 'pending'
+	            AND auto_confirm_after_seconds IS NOT NULL
+	            AND created_at + (auto_confirm_after_seconds || ' seconds')::interval <= NOW()
+	        LIMIT 50"
+1771033456000,2026-02-14 01:44:16 UTC:10.0.0.205(46006):yukpo_admin@yukpo:[10087]:ERROR:  column lfs.scheduled_notification_sent_at does not exist at character 197
+1771033456000,"2026-02-14 01:44:16 UTC:10.0.0.205(46006):yukpo_admin@yukpo:[10087]:STATEMENT:  
+	            SELECT
+	                lfs.id,
+	                lfs.live_session_id,
+	                lfs.service_id,
+	                lfs.promo_price_cfa,
+	                lfs.start_at,
+	                lfs.scheduled_notification_sent_at,
+	                ls.host_user_id,
+	                ls.service_id AS primary_service_id,
+	                ls.metadata,
+	                ls.title
+	            FROM live_flash_sales lfs
+	            JOIN live_sessions ls ON ls.id = lfs.live_session_id
+	            WHERE lfs.status = 'scheduled'
+	              AND lfs.start_at <= $1
+	              AND lfs.scheduled_notification_sent_at IS NULL"
+1771033456000,"2026-02-14 01:44:16 UTC:10.0.0.205(41244):yukpo_admin@yukpo:[10183]:ERROR:  column ""status"" does not exist at character 81"
+1771033456000,"2026-02-14 01:44:16 UTC:10.0.0.205(41244):yukpo_admin@yukpo:[10183]:STATEMENT:  
+	        SELECT id, display_name
+	        FROM global_promo_events
+	        WHERE status = 'scheduled' AND starts_at <= $1"
+1771033486000,2026-02-14 01:44:46 UTC:10.0.0.205(45994):yukpo_admin@yukpo:[10086]:ERROR:  column lfs.scheduled_notification_sent_at does not exist at character 197
+1771033486000,"2026-02-14 01:44:46 UTC:10.0.0.205(45994):yukpo_admin@yukpo:[10086]:STATEMENT:  
+	            SELECT
+	                lfs.id,
+	                lfs.live_session_id,
+	                lfs.service_id,
+	                lfs.promo_price_cfa,
+	                lfs.start_at,
+	                lfs.scheduled_notification_sent_at,
+	                ls.host_user_id,
+	                ls.service_id AS primary_service_id,
+	                ls.metadata,
+	                ls.title
+	            FROM live_flash_sales lfs
+	            JOIN live_sessions ls ON ls.id = lfs.live_session_id
+	            WHERE lfs.status = 'scheduled'
+	              AND lfs.start_at <= $1
+	              AND lfs.scheduled_notification_sent_at IS NULL"
+1771033486000,"2026-02-14 01:44:46 UTC:10.0.0.205(45988):yukpo_admin@yukpo:[10078]:ERROR:  column ""status"" does not exist at character 81"
+1771033486000,"2026-02-14 01:44:46 UTC:10.0.0.205(45988):yukpo_admin@yukpo:[10078]:STATEMENT:  
+	        SELECT id, display_name
+	        FROM global_promo_events
+	        WHERE status = 'scheduled' AND starts_at <= $1"
+1771033486000,"2026-02-14 01:44:46 UTC:10.0.0.205(35322):yukpo_admin@yukpo:[10071]:ERROR:  column ""media_id"" does not exist at character 41"
+1771033486000,"2026-02-14 01:44:46 UTC:10.0.0.205(35322):yukpo_admin@yukpo:[10071]:STATEMENT:  SELECT id,
+	                             media_id,
+	                             platform,
+	                             payload,
+	                             status,
+	                             attempt,
+	                             last_error,
+	                             scheduled_for,
+	                             created_at,
+	                             updated_at
+	                     FROM social_publication_jobs
+	                     WHERE status = 'queued' AND scheduled_for <= NOW()
+	                     ORDER BY scheduled_for ASC
+	                     LIMIT $1"
+1771033486000,"2026-02-14 01:44:46 UTC:10.0.0.205(45994):yukpo_admin@yukpo:[10086]:ERROR:  column ""auto_confirm_after_seconds"" does not exist at character 109"
+1771033486000,"2026-02-14 01:44:46 UTC:10.0.0.205(45994):yukpo_admin@yukpo:[10086]:STATEMENT:  
+	        SELECT 
+	            delivery_id,
+	            suggested_status,
+	            created_at,
+	            auto_confirm_after_seconds
+	        FROM delivery_proximity_suggestions
+	        WHERE 
+	            status = 'pending'
+	            AND auto_confirm_after_seconds IS NOT NULL
+	            AND created_at + (auto_confirm_after_seconds || ' seconds')::interval <= NOW()
+	        LIMIT 50"
+1771033516000,2026-02-14 01:45:16 UTC:10.0.0.205(46006):yukpo_admin@yukpo:[10087]:ERROR:  column lfs.scheduled_notification_sent_at does not exist at character 197
+1771033516000,"2026-02-14 01:45:16 UTC:10.0.0.205(46006):yukpo_admin@yukpo:[10087]:STATEMENT:  
+	            SELECT
+	                lfs.id,
+	                lfs.live_session_id,
+	                lfs.service_id,
+	                lfs.promo_price_cfa,
+	                lfs.start_at,
+	                lfs.scheduled_notification_sent_at,
+	                ls.host_user_id,
+	                ls.service_id AS primary_service_id,
+	                ls.metadata,
+	                ls.title
+	            FROM live_flash_sales lfs
+	            JOIN live_sessions ls ON ls.id = lfs.live_session_id
+	            WHERE lfs.status = 'scheduled'
+	              AND lfs.start_at <= $1
+	              AND lfs.scheduled_notification_sent_at IS NULL"
+1771033516000,"2026-02-14 01:45:16 UTC:10.0.0.205(48072):yukpo_admin@yukpo:[10249]:ERROR:  column ""status"" does not exist at character 81"
+1771033516000,"2026-02-14 01:45:16 UTC:10.0.0.205(48072):yukpo_admin@yukpo:[10249]:STATEMENT:  
+	        SELECT id, display_name
+	        FROM global_promo_events
+	        WHERE status = 'scheduled' AND starts_at <= $1"
