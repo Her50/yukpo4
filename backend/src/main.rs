@@ -1698,16 +1698,40 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         mongo_url.chars().take(50).collect::<String>()
     );
     log::info!("🔌 Connexion à MongoDB...");
-    let mongo_client = MongoClient::with_uri_str(&mongo_url).await.map_err(|e| {
-        eprintln!(
-            "[MAIN] ❌ ERREUR CRITIQUE: Impossible de créer le client MongoDB: {}",
+    let is_cloud_run = env::var("CLOUD_RUN").unwrap_or_default() == "true";
+    let mongo_client = if is_cloud_run {
+        // Pour Cloud Run: créer le client sans attendre la connexion (démarrage rapide)
+        eprintln!("[MAIN] 🚀 Cloud Run: Création client MongoDB sans connexion bloquante");
+        log::info!("🚀 Cloud Run: Création client MongoDB sans connexion bloquante");
+        match MongoClient::with_uri_str(&mongo_url).await {
+            Ok(client) => {
+                eprintln!("[MAIN] ✅ Client MongoDB créé avec succès");
+                log::info!("✅ Client MongoDB initialisé");
+                client
+            }
+            Err(e) => {
+                eprintln!(
+                    "[MAIN] ⚠️ WARNING Cloud Run: Impossible de créer le client MongoDB: {}",
+                    e
+                );
+                log::warn!("⚠️ Cloud Run: Impossible de créer le client MongoDB: {} - Utilisation d'un client factice", e);
+                // Créer un client factice pour Cloud Run
+                MongoClient::with_uri_str("mongodb://localhost:27017")
+                    .await
+                    .unwrap_or_else(|_| panic!("Impossible de créer un client MongoDB factice"))
+            }
+        }
+    } else {
+        // Pour autres environnements: connexion bloquante
+        MongoClient::with_uri_str(&mongo_url).await.map_err(|e| {
+            eprintln!(
+                "[MAIN] ❌ ERREUR CRITIQUE: Impossible de créer le client MongoDB: {}",
+                e
+            );
+            log::error!("❌ Impossible de créer le client MongoDB: {}", e);
             e
-        );
-        log::error!("❌ Impossible de créer le client MongoDB: {}", e);
-        e
-    })?;
-    eprintln!("[MAIN] ✅ Client MongoDB créé avec succès");
-    log::info!("✅ Client MongoDB initialisé");
+        })?
+    };
 
     // Configuration Redis avec test de connexion
     let mut redis_url =
@@ -1823,18 +1847,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             // ✅ CORRIGÉ: Ajouter un timeout de 10 secondes pour éviter que l'application bloque indéfiniment
             // get_redis_connection a maintenant un timeout de 10s par tentative (3 tentatives = max 30s)
             // Ce timeout de 10s est une sécurité supplémentaire
+            // ✅ OPTIMISÉ Cloud Run: Réduire timeout à 2s pour démarrage rapide
+            let timeout_secs = if is_cloud_run { 2 } else { 10 };
             let (is_available, error_detail) = match timeout(
-                Duration::from_secs(10),
+                Duration::from_secs(timeout_secs),
                 redis_helper::check_redis_health_with_error(&client),
             )
             .await
             {
                 Ok(result) => result,
                 Err(_) => {
-                    log::warn!("⚠️ Redis: Timeout de connexion (10s) - Redis non accessible");
+                    log::warn!(
+                        "⚠️ Redis: Timeout de connexion ({}s) - Redis non accessible",
+                        timeout_secs
+                    );
                     (
                         false,
-                        Some("Connection timeout after 10 seconds".to_string()),
+                        Some(format!("Connection timeout after {} seconds", timeout_secs)),
                     )
                 }
             };
