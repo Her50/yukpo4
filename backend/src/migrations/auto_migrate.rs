@@ -12210,7 +12210,7 @@ pub async fn execute_migration_sql_safe(pool: &PgPool, sql: &str) -> Result<(), 
         // 1. ✅ AMÉLIORATION 2026-02-01: Si on trouve un ';' et qu'on n'est pas dans un bloc $$ ou une parenthèse
         // CRITIQUE: Ne jamais terminer une commande si on est dans un bloc $$ (même avec ';')
         // Exception: Ne pas terminer certaines commandes multi-lignes si elles ne sont pas complètes
-        if trimmed.ends_with(';') && !in_dollar_block && paren_depth == 0 {
+        if trimmed.ends_with(';') && !in_dollar_block {
             let cmd_upper = current.to_uppercase();
             let is_create_table = cmd_upper.contains("CREATE TABLE");
             let is_create_index =
@@ -12218,7 +12218,7 @@ pub async fn execute_migration_sql_safe(pool: &PgPool, sql: &str) -> Result<(), 
             let is_comment_on = cmd_upper.contains("COMMENT ON");
             let is_create_materialized_view = cmd_upper.contains("CREATE MATERIALIZED VIEW");
 
-            // ✅ AMÉLIORATION 2026-02-13: Si c'est une CREATE TABLE, vérifier qu'elle a ');' avant de terminer
+            // ✅ AMÉLIORATION 2026-02-14: Si c'est une CREATE TABLE, vérifier qu'elle est complète AVANT de vérifier paren_depth
             // CRITIQUE: Les CREATE TABLE doivent se terminer par ');' même si c'est sur plusieurs lignes
             // CRITIQUE: Ne JAMAIS terminer une CREATE TABLE si elle n'a pas ');' même si paren_depth == 0
             if is_create_table {
@@ -12227,17 +12227,24 @@ pub async fn execute_migration_sql_safe(pool: &PgPool, sql: &str) -> Result<(), 
 
                 // Compter les parenthèses pour vérifier l'équilibre
                 let mut depth = 0i32;
+                let mut has_opening_paren = false;
                 for ch in cmd_upper.chars() {
                     if ch == '(' {
                         depth += 1;
+                        has_opening_paren = true;
                     } else if ch == ')' {
                         depth -= 1;
                     }
                 }
                 let has_balanced_parens = depth == 0;
 
-                // ✅ CRITIQUE: Ne terminer que si on a ');' ET que les parenthèses sont équilibrées
-                if has_table_closing && has_balanced_parens {
+                // ✅ CRITIQUE 2026-02-14: Ne terminer que si :
+                // 1. On a une parenthèse ouvrante (CREATE TABLE IF NOT EXISTS table_name (...))
+                // 2. On a ');' (fermeture complète)
+                // 3. Les parenthèses sont équilibrées
+                // 4. paren_depth == 0 (pas de parenthèse ouverte en cours)
+                if has_opening_paren && has_table_closing && has_balanced_parens && paren_depth == 0
+                {
                     should_end_command = true;
                 } else {
                     // Si la CREATE TABLE n'est pas complète, NE PAS terminer même si on a un ';'
@@ -12277,9 +12284,15 @@ pub async fn execute_migration_sql_safe(pool: &PgPool, sql: &str) -> Result<(), 
                     should_end_command = true;
                 }
             }
-            // Pour les autres commandes, terminer normalement
+            // Pour les autres commandes, terminer normalement SEULEMENT si paren_depth == 0
             else {
-                should_end_command = true;
+                // ✅ AMÉLIORATION 2026-02-14: Ne terminer que si paren_depth == 0
+                // Cela évite de terminer des commandes avec des parenthèses non fermées
+                if paren_depth == 0 {
+                    should_end_command = true;
+                } else {
+                    should_end_command = false;
+                }
             }
         }
 
@@ -12333,16 +12346,18 @@ pub async fn execute_migration_sql_safe(pool: &PgPool, sql: &str) -> Result<(), 
                 if sql_keywords.iter().any(|kw| next_upper.starts_with(kw)) {
                     let cmd_upper = current.to_uppercase();
 
-                    // ✅ CRITIQUE: Ne pas terminer une CREATE TABLE si elle n'a pas de ');' final
+                    // ✅ CRITIQUE 2026-02-14: Ne pas terminer une CREATE TABLE si elle n'a pas de ');' final
                     // Les CREATE TABLE doivent se terminer par ');' même si c'est sur plusieurs lignes
                     let is_create_table = cmd_upper.contains("CREATE TABLE");
                     let has_table_closing = cmd_upper.contains(");") || trimmed.contains(");");
 
-                    // ✅ AMÉLIORATION 2026-02-13: Vérifier que les parenthèses sont équilibrées
+                    // ✅ AMÉLIORATION 2026-02-14: Vérifier que les parenthèses sont équilibrées ET qu'on a une parenthèse ouvrante
                     let mut depth = 0i32;
+                    let mut has_opening_paren = false;
                     for ch in cmd_upper.chars() {
                         if ch == '(' {
                             depth += 1;
+                            has_opening_paren = true;
                         } else if ch == ')' {
                             depth -= 1;
                         }
@@ -12384,11 +12399,15 @@ pub async fn execute_migration_sql_safe(pool: &PgPool, sql: &str) -> Result<(), 
                         && cmd_upper.contains(" FROM ")
                         && trimmed.ends_with(';');
 
-                    // ✅ AMÉLIORATION 2026-02-13: Vérifier que la commande actuelle est complète
-                    // CRITIQUE: Pour CREATE TABLE, ne terminer QUE si elle a ');' ET que les parenthèses sont équilibrées
-                    // Ne pas terminer une CREATE TABLE incomplète même si elle se termine par ';'
-                    let table_complete =
-                        is_create_table && has_table_closing && has_balanced_parens;
+                    // ✅ AMÉLIORATION 2026-02-14: Vérifier que la commande actuelle est complète
+                    // CRITIQUE: Pour CREATE TABLE, ne terminer QUE si :
+                    // 1. Elle a une parenthèse ouvrante (CREATE TABLE ... (...))
+                    // 2. Elle a ');' (fermeture complète)
+                    // 3. Les parenthèses sont équilibrées
+                    let table_complete = is_create_table
+                        && has_opening_paren
+                        && has_table_closing
+                        && has_balanced_parens;
                     let other_command_complete = !is_create_table && trimmed.ends_with(';');
 
                     if other_command_complete
@@ -12441,19 +12460,22 @@ pub async fn execute_migration_sql_safe(pool: &PgPool, sql: &str) -> Result<(), 
                 "COMMIT", "ROLLBACK",
             ];
             if valid_keywords.iter().any(|kw| cmd_upper.starts_with(kw)) {
-                // ✅ AMÉLIORATION 2026-02-13: Pour CREATE TABLE, vérifier qu'elle est complète
+                // ✅ AMÉLIORATION 2026-02-14: Pour CREATE TABLE, vérifier qu'elle est complète
                 if cmd_upper.contains("CREATE TABLE") {
                     let has_table_closing = cmd_upper.contains(");");
                     let mut depth = 0i32;
+                    let mut has_opening_paren = false;
                     for ch in cmd_upper.chars() {
                         if ch == '(' {
                             depth += 1;
+                            has_opening_paren = true;
                         } else if ch == ')' {
                             depth -= 1;
                         }
                     }
-                    // Si la table n'est pas complète, ne pas l'ajouter (elle sera tronquée)
-                    if !has_table_closing || depth != 0 {
+                    let has_balanced_parens = depth == 0;
+                    // ✅ CRITIQUE 2026-02-14: Si la table n'est pas complète (pas de ');' ou parenthèses non équilibrées), ne pas l'ajouter
+                    if !has_opening_paren || !has_table_closing || !has_balanced_parens {
                         warn!("⚠️ [MIGRATION] CREATE TABLE incomplète détectée (manque ');' ou parenthèses non équilibrées), ignorée");
                         warn!(
                             "   Preview: {}",

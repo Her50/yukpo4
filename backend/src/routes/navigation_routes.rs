@@ -1059,7 +1059,7 @@ pub fn navigation_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             post(save_destination).layer(middleware::from_fn(jwt_auth)),
         )
         .route(
-            "/api/navigation/destinations/{label}",
+            "/api/navigation/destinations/by-label/{label}",
             get(get_destination_by_label).layer(middleware::from_fn(jwt_auth)),
         )
         .route(
