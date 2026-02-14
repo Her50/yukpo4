@@ -1,4 +1,4 @@
-// Mise à jour: 2026-01-30 - Déclenchement workflow GitHub Actions
+// Mise à jour: 2026-02-14 - Configuration GCP complète (Artifact Registry, Cloud Run, permissions)
 use std::error::Error;
 use std::{env, fs, net::SocketAddr, path::Path, sync::Arc};
 
