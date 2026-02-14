@@ -1637,51 +1637,116 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     if enable_auto_migrations {
-        // ✅ CORRIGÉ 2026-01-28: Vérifier que les tables de base existent AVANT d'exécuter les migrations automatiques
-        log::info!("🔍 Vérification des tables de base avant migrations automatiques...");
+        if is_cloud_run {
+            // Pour Cloud Run: lancer les migrations en arrière-plan (non-bloquant)
+            log::info!("🚀 Cloud Run: Migrations automatiques lancées en arrière-plan");
+            eprintln!("[MAIN] 🚀 Cloud Run: Migrations automatiques lancées en arrière-plan");
+            let pool_for_migrations = pg_pool.clone();
+            tokio::spawn(async move {
+                // Attendre un peu que la connexion DB soit prête
+                tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
-        let users_exists: bool = sqlx::query_scalar(
-            "SELECT EXISTS (
-                SELECT FROM information_schema.tables 
-                WHERE table_schema = 'public' 
-                AND table_name = 'users'
-            )",
-        )
-        .fetch_one(&pg_pool)
-        .await
-        .unwrap_or(false);
+                log::info!("🔍 Vérification des tables de base avant migrations automatiques...");
+                let users_exists: bool = match tokio::time::timeout(
+                    std::time::Duration::from_secs(5),
+                    sqlx::query_scalar::<_, bool>(
+                        "SELECT EXISTS (
+                            SELECT FROM information_schema.tables 
+                            WHERE table_schema = 'public' 
+                            AND table_name = 'users'
+                        )",
+                    )
+                    .fetch_one(&pool_for_migrations),
+                )
+                .await
+                {
+                    Ok(Ok(exists)) => exists,
+                    _ => false,
+                };
 
-        let services_exists: bool = sqlx::query_scalar(
-            "SELECT EXISTS (
-                SELECT FROM information_schema.tables 
-                WHERE table_schema = 'public' 
-                AND table_name = 'services'
-            )",
-        )
-        .fetch_one(&pg_pool)
-        .await
-        .unwrap_or(false);
+                let services_exists: bool = match tokio::time::timeout(
+                    std::time::Duration::from_secs(5),
+                    sqlx::query_scalar::<_, bool>(
+                        "SELECT EXISTS (
+                            SELECT FROM information_schema.tables 
+                            WHERE table_schema = 'public' 
+                            AND table_name = 'services'
+                        )",
+                    )
+                    .fetch_one(&pool_for_migrations),
+                )
+                .await
+                {
+                    Ok(Ok(exists)) => exists,
+                    _ => false,
+                };
 
-        if !users_exists || !services_exists {
-            log::error!("❌ ERREUR CRITIQUE: Impossible d'exécuter les migrations automatiques");
-            log::error!(
-                "❌ Tables de base manquantes: users={}, services={}",
-                users_exists,
-                services_exists
-            );
-            log::error!("❌ Les migrations SQLx standard doivent être appliquées AVANT les migrations automatiques");
-            log::error!("❌ Vérifiez que:");
-            log::error!("   1. Les migrations SQLx standard ont été exécutées avec succès");
-            log::error!(
-                "   2. La table _sqlx_migrations existe et contient les migrations appliquées"
-            );
-            log::error!("   3. Les fichiers de migration dans backend/migrations/ sont corrects");
-            log::error!(
-                "❌ Les migrations automatiques sont ANNULÉES pour éviter des erreurs en cascade"
-            );
+                if !users_exists || !services_exists {
+                    log::warn!(
+                        "⚠️ Cloud Run: Tables de base manquantes: users={}, services={}",
+                        users_exists,
+                        services_exists
+                    );
+                    log::warn!("⚠️ Les migrations automatiques seront réessayées plus tard");
+                } else {
+                    log::info!("✅ Tables de base (users, services) vérifiées - Exécution des migrations automatiques...");
+                    yukpomnang_backend::migrations::auto_migrate::run_auto_migrations(
+                        &pool_for_migrations,
+                    )
+                    .await;
+                }
+            });
         } else {
-            log::info!("✅ Tables de base (users, services) vérifiées - Exécution des migrations automatiques...");
-            yukpomnang_backend::migrations::auto_migrate::run_auto_migrations(&pg_pool).await;
+            // Pour autres environnements: migrations bloquantes (comportement normal)
+            log::info!("🔍 Vérification des tables de base avant migrations automatiques...");
+
+            let users_exists: bool = sqlx::query_scalar(
+                "SELECT EXISTS (
+                    SELECT FROM information_schema.tables 
+                    WHERE table_schema = 'public' 
+                    AND table_name = 'users'
+                )",
+            )
+            .fetch_one(&pg_pool)
+            .await
+            .unwrap_or(false);
+
+            let services_exists: bool = sqlx::query_scalar(
+                "SELECT EXISTS (
+                    SELECT FROM information_schema.tables 
+                    WHERE table_schema = 'public' 
+                    AND table_name = 'services'
+                )",
+            )
+            .fetch_one(&pg_pool)
+            .await
+            .unwrap_or(false);
+
+            if !users_exists || !services_exists {
+                log::error!(
+                    "❌ ERREUR CRITIQUE: Impossible d'exécuter les migrations automatiques"
+                );
+                log::error!(
+                    "❌ Tables de base manquantes: users={}, services={}",
+                    users_exists,
+                    services_exists
+                );
+                log::error!("❌ Les migrations SQLx standard doivent être appliquées AVANT les migrations automatiques");
+                log::error!("❌ Vérifiez que:");
+                log::error!("   1. Les migrations SQLx standard ont été exécutées avec succès");
+                log::error!(
+                    "   2. La table _sqlx_migrations existe et contient les migrations appliquées"
+                );
+                log::error!(
+                    "   3. Les fichiers de migration dans backend/migrations/ sont corrects"
+                );
+                log::error!(
+                    "❌ Les migrations automatiques sont ANNULÉES pour éviter des erreurs en cascade"
+                );
+            } else {
+                log::info!("✅ Tables de base (users, services) vérifiées - Exécution des migrations automatiques...");
+                yukpomnang_backend::migrations::auto_migrate::run_auto_migrations(&pg_pool).await;
+            }
         }
     } else {
         log::info!("⏭️ Migrations automatiques désactivées (ENABLE_AUTO_MIGRATIONS={}) - Pour activer: ENABLE_AUTO_MIGRATIONS=true", enable_auto_migrations_raw);
