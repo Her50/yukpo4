@@ -15,12 +15,11 @@ const EXPO_WS_URL = process.env.EXPO_PUBLIC_WS_URL;
 const EXPO_ENV = process.env.EXPO_PUBLIC_ENVIRONMENT || 'production';
 
 // ✅ Utiliser les variables d'environnement en priorité, avec fallback sécurisé
-// ✅ 2026-02-13: Mise à jour pour backend AWS ECS avec IP publique directe
-// IP publique actuelle: 18.201.235.152 (peut changer à chaque redémarrage)
-// Pour une URL stable, activer le Load Balancer: terraform apply avec enable_load_balancer = true
-// Ou utiliser un domaine personnalisé: https://api.yukpomnang.com
-export const API_BASE_URL = EXPO_API_URL || 'http://18.201.235.152:8080';
-export const WS_BASE_URL = EXPO_WS_URL || 'ws://18.201.235.152:8080';
+// ✅ 2026-02-14: Mise à jour pour utiliser le domaine Cloudflare api.yukpomnang.com
+// Le DNS Cloudflare pointe automatiquement vers l'IP ECS actuelle (mise à jour automatique)
+// HTTPS fourni automatiquement par Cloudflare
+export const API_BASE_URL = EXPO_API_URL || 'https://api.yukpomnang.com';
+export const WS_BASE_URL = EXPO_WS_URL || 'wss://api.yukpomnang.com';
 
 // Log pour vérifier la configuration chargée (seulement en développement)
 if (__DEV__) {

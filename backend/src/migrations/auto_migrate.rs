@@ -9918,6 +9918,42 @@ async fn ensure_global_promo_entries_columns(pool: &PgPool) -> Result<(), sqlx::
     .execute(pool)
     .await?;
 
+    // Ajouter status si n'existe pas
+    sqlx::query(
+        r#"
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1 FROM information_schema.columns
+                WHERE table_name = 'global_promo_entries' AND column_name = 'status'
+            ) THEN
+                ALTER TABLE global_promo_entries ADD COLUMN status VARCHAR(32) NOT NULL DEFAULT 'draft' CHECK (
+                    status IN ('draft', 'pending_review', 'approved', 'rejected', 'published', 'ended')
+                );
+            END IF;
+        END $$;
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    // Ajouter metadata si n'existe pas
+    sqlx::query(
+        r#"
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1 FROM information_schema.columns
+                WHERE table_name = 'global_promo_entries' AND column_name = 'metadata'
+            ) THEN
+                ALTER TABLE global_promo_entries ADD COLUMN metadata JSONB NOT NULL DEFAULT '{}'::JSONB;
+            END IF;
+        END $$;
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
     Ok(())
 }
 
@@ -10060,6 +10096,23 @@ async fn ensure_social_publication_jobs_columns(pool: &PgPool) -> Result<(), sql
                 WHERE table_name = 'social_publication_jobs' AND column_name = 'attempt'
             ) THEN
                 ALTER TABLE social_publication_jobs ADD COLUMN attempt INTEGER NOT NULL DEFAULT 0;
+            END IF;
+        END $$;
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    // Ajouter last_error si n'existe pas
+    sqlx::query(
+        r#"
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1 FROM information_schema.columns
+                WHERE table_name = 'social_publication_jobs' AND column_name = 'last_error'
+            ) THEN
+                ALTER TABLE social_publication_jobs ADD COLUMN last_error TEXT;
             END IF;
         END $$;
         "#,
