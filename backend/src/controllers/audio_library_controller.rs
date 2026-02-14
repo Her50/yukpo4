@@ -18,11 +18,11 @@ use crate::{
 };
 
 #[derive(Debug, Serialize)]
-pub struct AudioLibraryResponse<'a> {
-    pub loops: &'a [crate::services::audio_library_service::CuratedAudioLoop],
+pub struct AudioLibraryResponse {
+    pub loops: Vec<crate::services::audio_library_service::CuratedAudioLoop>,
 }
 
-pub async fn get_audio_library() -> AppResult<Json<AudioLibraryResponse<'static>>> {
+pub async fn get_audio_library() -> AppResult<Json<AudioLibraryResponse>> {
     Ok(Json(AudioLibraryResponse {
         loops: list_curated_audio_loops(),
     }))

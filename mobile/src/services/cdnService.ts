@@ -101,34 +101,62 @@ class CDNService {
     async detectBestEndpoint(): Promise<CDNEndpoint> {
         const endpoints = CDN_ENDPOINTS.filter(e => e.region !== 'fallback');
 
-        // Prioriser Cloudflare (CDN global)
-        const cloudflareEndpoint = endpoints.find(e => e.name === 'Cloudflare');
-        if (cloudflareEndpoint) {
+        // ✅ Prioriser GCP Cloud CDN (nouveau)
+        const gcpCdnEndpoint = endpoints.find(e => e.name === 'GCP Cloud CDN');
+        if (gcpCdnEndpoint) {
             try {
-                // Tester Cloudflare avec une requête légère
+                // Tester GCP Cloud CDN avec une requête légère
                 const start = Date.now();
-                const response = await fetch(`${cloudflareEndpoint.url}/favicon.ico`, {
+                const response = await fetch(`${gcpCdnEndpoint.url}/favicon.ico`, {
                     method: 'HEAD',
                     signal: AbortSignal.timeout(3000),
                 });
                 const latency = Date.now() - start;
 
                 if (response.ok || response.status === 404) { // 404 OK car on teste juste la connectivité
-                    cloudflareEndpoint.latency = latency;
-                    this.selectedEndpoint = cloudflareEndpoint;
+                    gcpCdnEndpoint.latency = latency;
+                    this.selectedEndpoint = gcpCdnEndpoint;
                     this.config = {
-                        primary: cloudflareEndpoint.url,
-                        fallback: endpoints.filter(e => e.name !== 'Cloudflare').map(e => e.url),
-                        region: cloudflareEndpoint.region,
+                        primary: gcpCdnEndpoint.url,
+                        fallback: endpoints.filter(e => e.name !== 'GCP Cloud CDN').map(e => e.url),
+                        region: gcpCdnEndpoint.region,
                     };
                     await SafeStorage.setItem('cdn_config', JSON.stringify(this.config));
-                    return cloudflareEndpoint;
+                    return gcpCdnEndpoint;
                 }
             } catch (error) {
                 // ✅ OPTIMISATION: Logger en debug au lieu de warn (fallback automatique fonctionnel)
                 console.debug('[CDNService] GCP Cloud CDN non disponible, test GCP Storage Direct...');
             }
         }
+        
+        // ⚠️ AWS/Cloudflare (ancien, commenté pour utilisation future)
+        // // Prioriser Cloudflare (CDN global)
+        // const cloudflareEndpoint = endpoints.find(e => e.name === 'Cloudflare');
+        // if (cloudflareEndpoint) {
+        //     try {
+        //         // Tester Cloudflare avec une requête légère
+        //         const start = Date.now();
+        //         const response = await fetch(`${cloudflareEndpoint.url}/favicon.ico`, {
+        //             method: 'HEAD',
+        //             signal: AbortSignal.timeout(3000),
+        //         });
+        //         const latency = Date.now() - start;
+        //         if (response.ok || response.status === 404) {
+        //             cloudflareEndpoint.latency = latency;
+        //             this.selectedEndpoint = cloudflareEndpoint;
+        //             this.config = {
+        //                 primary: cloudflareEndpoint.url,
+        //                 fallback: endpoints.filter(e => e.name !== 'Cloudflare').map(e => e.url),
+        //                 region: cloudflareEndpoint.region,
+        //             };
+        //             await SafeStorage.setItem('cdn_config', JSON.stringify(this.config));
+        //             return cloudflareEndpoint;
+        //         }
+        //     } catch (error) {
+        //         console.debug('[CDNService] Cloudflare non disponible, test Wasabi...');
+        //     }
+        // }
 
         // ✅ Fallback vers GCP Storage Direct (remplace Wasabi Direct)
         const gcpStorageEndpoint = endpoints.find(e => e.name === 'GCP Storage Direct');

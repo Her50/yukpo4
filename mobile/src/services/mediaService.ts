@@ -1,6 +1,7 @@
 /**
  * Service unifié pour la gestion des médias (images et vidéos)
- * Intègre automatiquement le CDN Cloudflare et gère les fallbacks
+ * ✅ 2026-02-14: Intègre automatiquement le CDN GCP et gère les fallbacks
+ * ⚠️ AWS/Cloudflare (ancien): Intègre automatiquement le CDN Cloudflare et gère les fallbacks
  */
 
 import { cdnService } from './cdnService';
@@ -160,11 +161,14 @@ class MediaService {
     }
 
     /**
-     * Vérifie si une URL utilise le CDN
+     * Vérifie si une URL utilise le CDN GCP (remplace Cloudflare)
      */
     isCDNUrl(url: string): boolean {
         if (!url) return false;
-        return url.includes(ENVIRONMENT.CDN_CLOUDFLARE_URL || 'cdn.yukpomnang.com');
+        // ✅ GCP Cloud CDN (nouveau)
+        return url.includes(ENVIRONMENT.CDN_GCP_URL || '34.54.117.97') || url.includes('storage.googleapis.com');
+        // ⚠️ AWS/Cloudflare (ancien, commenté pour utilisation future)
+        // return url.includes(ENVIRONMENT.CDN_CLOUDFLARE_URL || 'cdn.yukpomnang.com');
     }
 
     /**
@@ -185,10 +189,13 @@ class MediaService {
     }
 
     /**
-     * Obtient l'URL de base du CDN
+     * Obtient l'URL de base du CDN GCP (remplace Cloudflare)
      */
     getCDNBaseUrl(): string {
-        return ENVIRONMENT.CDN_CLOUDFLARE_URL || 'https://cdn.yukpomnang.com';
+        // ✅ GCP Cloud CDN (nouveau)
+        return ENVIRONMENT.CDN_GCP_URL || 'http://34.54.117.97';
+        // ⚠️ AWS/Cloudflare (ancien, commenté pour utilisation future)
+        // return ENVIRONMENT.CDN_CLOUDFLARE_URL || 'https://cdn.yukpomnang.com';
     }
 
     /**

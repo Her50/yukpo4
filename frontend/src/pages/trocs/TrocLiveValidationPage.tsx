@@ -99,7 +99,8 @@ const TrocLiveValidationPage: React.FC = () => {
             setUploading(true);
             setStep('uploading');
 
-            // TODO: Uploader la vidéo vers le serveur (S3/Cloudflare)
+            // ✅ TODO: Uploader la vidéo vers le serveur (Cloud Storage GCP / Cloud CDN GCP)
+            // ⚠️ AWS/Cloudflare (ancien): Uploader la vidéo vers le serveur (S3/Cloudflare)
             // const formData = new FormData();
             // formData.append('video', videoFile);
             // formData.append('troc_id', trocId || '');

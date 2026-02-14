@@ -29,7 +29,9 @@ pub struct CuratedAudioLoop {
     pub genre: &'static str,
     pub mood: &'static str,
     pub bpm: u16,
-    pub url: &'static str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub url: Option<String>, // ✅ Modifié pour être dynamique
+    pub audio_path: &'static str, // ✅ Chemin relatif du fichier audio
     pub license: &'static str,
 }
 
@@ -40,7 +42,10 @@ const AUDIO_LIBRARY: &[CuratedAudioLoop] = &[
         genre: "Electro Pop",
         mood: "Énergique",
         bpm: 120,
-        url: "https://cdn.yukpomnang.com/audio/pulse_groove_120.mp3",
+        url: None, // ✅ Sera construit dynamiquement
+        audio_path: "audio/pulse_groove_120.mp3",
+        // ⚠️ AWS/Cloudflare (ancien, commenté pour utilisation future)
+        // audio_path: "https://cdn.yukpomnang.com/audio/pulse_groove_120.mp3",
         license: "CC-BY 4.0",
     },
     CuratedAudioLoop {
@@ -49,7 +54,10 @@ const AUDIO_LIBRARY: &[CuratedAudioLoop] = &[
         genre: "Lofi",
         mood: "Relax",
         bpm: 80,
-        url: "https://cdn.yukpomnang.com/audio/lofi_sunset_80.mp3",
+        url: None, // ✅ Sera construit dynamiquement
+        audio_path: "audio/lofi_sunset_80.mp3",
+        // ⚠️ AWS/Cloudflare (ancien, commenté pour utilisation future)
+        // audio_path: "https://cdn.yukpomnang.com/audio/lofi_sunset_80.mp3",
         license: "CC-BY 4.0",
     },
     CuratedAudioLoop {
@@ -58,7 +66,10 @@ const AUDIO_LIBRARY: &[CuratedAudioLoop] = &[
         genre: "Ambient",
         mood: "Aérien",
         bpm: 95,
-        url: "https://cdn.yukpomnang.com/audio/ambient_wave_95.mp3",
+        url: None, // ✅ Sera construit dynamiquement
+        audio_path: "audio/ambient_wave_95.mp3",
+        // ⚠️ AWS/Cloudflare (ancien, commenté pour utilisation future)
+        // audio_path: "https://cdn.yukpomnang.com/audio/ambient_wave_95.mp3",
         license: "CC-BY 4.0",
     },
     CuratedAudioLoop {
@@ -67,13 +78,43 @@ const AUDIO_LIBRARY: &[CuratedAudioLoop] = &[
         genre: "Cinematic",
         mood: "Épique",
         bpm: 100,
-        url: "https://cdn.yukpomnang.com/audio/cinematic_rise_100.mp3",
+        url: None, // ✅ Sera construit dynamiquement
+        audio_path: "audio/cinematic_rise_100.mp3",
+        // ⚠️ AWS/Cloudflare (ancien, commenté pour utilisation future)
+        // audio_path: "https://cdn.yukpomnang.com/audio/cinematic_rise_100.mp3",
         license: "CC0",
     },
 ];
 
-pub fn list_curated_audio_loops() -> &'static [CuratedAudioLoop] {
+/// ✅ 2026-02-14: Construit l'URL complète depuis le chemin relatif
+/// Utilise PUBLIC_BASE_URL ou UPLOAD_BASE_URL (GCP Cloud CDN)
+pub fn build_audio_url(audio_path: &str) -> String {
+    let base_url = std::env::var("PUBLIC_BASE_URL")
+        .or_else(|_| std::env::var("UPLOAD_BASE_URL"))
+        .unwrap_or_else(|_| "http://34.54.117.97".to_string()); // ✅ GCP Cloud CDN par défaut
+
+    format!(
+        "{}/{}",
+        base_url.trim_end_matches('/'),
+        audio_path.trim_start_matches('/')
+    )
+}
+
+/// ✅ Obtient l'URL complète d'une boucle audio
+pub fn get_audio_loop_url(loop_item: &CuratedAudioLoop) -> String {
+    loop_item.url.clone().unwrap_or_else(|| build_audio_url(loop_item.audio_path))
+}
+
+/// ✅ Retourne les boucles audio avec URLs construites dynamiquement
+pub fn list_curated_audio_loops() -> Vec<CuratedAudioLoop> {
     AUDIO_LIBRARY
+        .iter()
+        .map(|loop_item| {
+            let mut loop_clone = loop_item.clone();
+            loop_clone.url = Some(build_audio_url(loop_item.audio_path));
+            loop_clone
+        })
+        .collect()
 }
 
 pub async fn attach_loop_to_service(
@@ -104,6 +145,9 @@ pub async fn attach_loop_to_service(
         .find(|loop_item| loop_item.id == loop_id)
         .ok_or_else(|| AppError::NotFound("Boucle audio introuvable".to_string()))?;
 
+    // ✅ Construire l'URL complète depuis le chemin relatif
+    let audio_url = build_audio_url(audio_loop.audio_path);
+
     // ✅ CORRECTION À LA SOURCE: Retry avec timeout et fallback vers stockage local si CDN inaccessible
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(10))
@@ -116,7 +160,7 @@ pub async fn attach_loop_to_service(
 
     // Tentative avec retry (3 tentatives)
     for attempt in 1..=3 {
-        match client.get(audio_loop.url).send().await {
+        match client.get(&audio_url).send().await {
             Ok(resp) => {
                 if resp.status().is_success() {
                     response = Some(resp);
@@ -149,7 +193,7 @@ pub async fn attach_loop_to_service(
                     is_dns_error = true;
                     warn!(
                         "[AudioLibrary] Erreur DNS pour {}: {}. Tentative fallback local...",
-                        audio_loop.url, error_msg
+                        audio_url, error_msg
                     );
                     break; // Sortir de la boucle pour essayer le fallback
                 }
@@ -195,7 +239,7 @@ pub async fn attach_loop_to_service(
             );
             warn!(
                 "[AudioLibrary] 💡 Pour résoudre ce problème:\n\
-                1. Vérifiez que le CDN (cdn.yukpomnang.com) est accessible\n\
+                1. Vérifiez que le CDN GCP (http://34.54.117.97) est accessible\n\
                 2. Ou ajoutez le fichier audio dans: assets/audio/{}.mp3\n\
                 3. Les fichiers audio requis: ambient_wave.mp3, pulse_groove.mp3, lofi_sunset.mp3, cinematic_rise.mp3",
                 loop_id
@@ -222,7 +266,7 @@ pub async fn attach_loop_to_service(
             .to_vec()
     };
 
-    let file_extension = audio_loop.url.rsplit('.').next().unwrap_or("mp3");
+    let file_extension = audio_loop.audio_path.rsplit('.').next().unwrap_or("mp3");
 
     let filename = format!(
         "audio_loop_{}_{}.{}",

@@ -79,7 +79,8 @@ const TrocLiveValidationScreen: React.FC = () => {
             setUploading(true);
             setStep('uploading');
 
-            // TODO: Uploader la vidéo vers le serveur (S3/Cloudflare)
+            // ✅ TODO: Uploader la vidéo vers le serveur (Cloud Storage GCP / Cloud CDN GCP)
+            // ⚠️ AWS/Cloudflare (ancien): Uploader la vidéo vers le serveur (S3/Cloudflare)
             // Pour l'instant, on simule l'upload
             // const formData = new FormData();
             // formData.append('video', {

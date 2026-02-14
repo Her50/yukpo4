@@ -27,6 +27,8 @@
                                               "EXPO_PUBLIC_GCP_STORAGE_DIRECT_URL":  "http://34.54.117.97",
                                               "EXPO_PUBLIC_CDN_GCP_URL":  "http://34.54.117.97",
                                               "EXPO_PUBLIC_UPLOAD_BASE_URL":  "http://34.54.117.97",
+                                              // ⚠️ Pour compatibilité avec ancien code (même valeur que GCP)
+                                              "EXPO_PUBLIC_WASABI_DIRECT_URL":  "http://34.54.117.97",
                                               // ⚠️ AWS/Wasabi (ancien, commenté pour utilisation future)
                                               // "EXPO_PUBLIC_WASABI_DIRECT_URL":  "https://yukpo-backend-media.s3.eu-west-1.amazonaws.com",
                                               // "EXPO_PUBLIC_WASABI_DIRECT_URL":  "https://yukpo-video-prod.s3.eu-central-1.wasabisys.com"
@@ -59,6 +61,8 @@
                                                  "EXPO_PUBLIC_GCP_STORAGE_DIRECT_URL":  "http://34.54.117.97",
                                                  "EXPO_PUBLIC_CDN_GCP_URL":  "http://34.54.117.97",
                                                  "EXPO_PUBLIC_UPLOAD_BASE_URL":  "http://34.54.117.97",
+                                                 // ⚠️ Pour compatibilité avec ancien code (même valeur que GCP)
+                                                 "EXPO_PUBLIC_WASABI_DIRECT_URL":  "http://34.54.117.97",
                                                  // ⚠️ AWS/Wasabi (ancien, commenté pour utilisation future)
                                                  // "EXPO_PUBLIC_WASABI_DIRECT_URL":  "https://yukpo-backend-media.s3.eu-west-1.amazonaws.com",
                                                  // "EXPO_PUBLIC_WASABI_DIRECT_URL":  "https://yukpo-video-prod.s3.eu-central-1.wasabisys.com"

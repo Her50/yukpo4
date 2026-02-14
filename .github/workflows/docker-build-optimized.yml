@@ -474,7 +474,9 @@ jobs:
                 "SQLX_OFFLINE": "true",
                 "RUST_LOG": "info",
                 "ENVIRONMENT": "production",
-                "ALLOWED_ORIGINS": $allowed_origins
+                "ALLOWED_ORIGINS": $allowed_origins,
+                "CLOUD_RUN": "true",
+                "PORT": "8080"
               }' > env-vars.json
           else
             # Fallback: construire JSON manuellement avec échappement
@@ -486,7 +488,9 @@ jobs:
             "SQLX_OFFLINE": "true",
             "RUST_LOG": "info",
             "ENVIRONMENT": "production",
-            "ALLOWED_ORIGINS": "https://api.yukpo.com,https://yukpo.com"
+            "ALLOWED_ORIGINS": "https://api.yukpo.com,https://yukpo.com",
+            "CLOUD_RUN": "true",
+            "PORT": "8080"
           }
           EOF
           fi
@@ -521,12 +525,14 @@ jobs:
             --allow-unauthenticated \
             --env-vars-file ${{ steps.prepare-env.outputs.env_file }} \
             --add-cloudsql-instances ${{ secrets.GCP_PROJECT_ID }}:${{ env.GCP_REGION }}:yukpo-db \
-            --memory 512Mi \
-            --cpu 1 \
+            --memory 1Gi \
+            --cpu 2 \
             --timeout 300 \
             --max-instances 10 \
+            --startup-cpu-boost \
+            --cpu-throttling \
             --service-account ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }} \
-            --project ${{ secrets.GCP_PROJECT_ID }}
+            --project ${{ secrets.GCP_PROJECT_ID }} \
           
           echo "✅ Cloud Run deployment completed"
 

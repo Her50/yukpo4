@@ -4646,13 +4646,16 @@ async fn download_curated_audio(
         .build()
         .map_err(|err| AppError::Internal(format!("Impossible de créer le client HTTP: {err}")))?;
 
+    // ✅ 2026-02-14: Construire l'URL depuis le chemin relatif (GCP Cloud CDN)
+    let audio_url = audio_library_service::build_audio_url(loop_info.audio_path);
+
     let mut last_error = None;
     let mut response = None;
     let mut is_dns_error = false;
 
     // Tentative avec retry (3 tentatives)
     for attempt in 1..=3 {
-        match client.get(loop_info.url).send().await {
+        match client.get(&audio_url).send().await {
             Ok(resp) => {
                 if resp.status().is_success() {
                     response = Some(resp);
@@ -4682,7 +4685,7 @@ async fn download_curated_audio(
                     is_dns_error = true;
                     log::warn!(
                         "[VideoGeneration] Erreur DNS pour {}: {}. Tentative fallback local...",
-                        loop_info.url,
+                        audio_url,
                         error_msg
                     );
                     break; // Sortir de la boucle pour essayer le fallback
@@ -4738,7 +4741,7 @@ async fn download_curated_audio(
             .to_vec()
     };
 
-    let extension = loop_info.url.rsplit('.').next().unwrap_or("mp3").to_lowercase();
+    let extension = loop_info.audio_path.rsplit('.').next().unwrap_or("mp3").to_lowercase();
     let filename = format!(
         "curated_loop_{}_{}.{}",
         loop_info.id,

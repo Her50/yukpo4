@@ -97,7 +97,9 @@ pub async fn store_uploaded_file(
                     location.public_url
                 );
                 warn!(
-                    "[upload_service] ⚠️ Vérifiez que UPLOAD_BASE_URL ou PUBLIC_BASE_URL est configuré avec une URL complète (ex: https://cdn.yukpomnang.com)"
+                    "[upload_service] ⚠️ Vérifiez que UPLOAD_BASE_URL ou PUBLIC_BASE_URL est configuré avec une URL complète (ex: http://34.54.117.97)"
+                    // ⚠️ AWS/Cloudflare (ancien, commenté pour utilisation future)
+                    // "[upload_service] ⚠️ Vérifiez que UPLOAD_BASE_URL ou PUBLIC_BASE_URL est configuré avec une URL complète (ex: https://cdn.yukpomnang.com)"
                 );
             }
 
