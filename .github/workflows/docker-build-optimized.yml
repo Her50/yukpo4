@@ -529,8 +529,7 @@ jobs:
             --cpu 2 \
             --timeout 300 \
             --max-instances 10 \
-            --startup-cpu-boost \
-            --cpu-throttling \
+            --cpu-boost \
             --service-account ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }} \
             --project ${{ secrets.GCP_PROJECT_ID }} \
           
