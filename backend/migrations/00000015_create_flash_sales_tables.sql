@@ -4,26 +4,31 @@ CREATE TABLE IF NOT EXISTS live_flash_sales (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     live_session_id UUID NOT NULL REFERENCES live_sessions(id) ON DELETE CASCADE,
     service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
-    product_index INTEGER NOT NULL,
-    original_price NUMERIC(12,2) NOT NULL,
-    flash_price NUMERIC(12,2) NOT NULL,
-    discount_percentage INTEGER NOT NULL,
-    stock_available INTEGER NOT NULL,
-    stock_reserved INTEGER DEFAULT 0,
+    promo_price_cfa NUMERIC(14,2) NOT NULL CHECK (promo_price_cfa >= 0),
+    stock_target INTEGER NOT NULL CHECK (stock_target > 0),
     start_at TIMESTAMPTZ NOT NULL,
     end_at TIMESTAMPTZ NOT NULL,
-    status VARCHAR(32) NOT NULL DEFAULT 'scheduled',
+    status VARCHAR(32) NOT NULL DEFAULT 'scheduled' CHECK (
+        status IN ('scheduled', 'live', 'ended', 'cancelled')
+    ),
+    commentary_mode VARCHAR(20) NOT NULL DEFAULT 'host' CHECK (
+        commentary_mode IN ('host', 'ai_voice')
+    ),
+    commentary_interval_seconds INTEGER NOT NULL DEFAULT 60 CHECK (commentary_interval_seconds >= 15),
+    ai_voice_profile TEXT,
+    scheduled_notification_sent_at TIMESTAMPTZ,
+    live_notification_sent_at TIMESTAMPTZ,
+    ending_notification_sent_at TIMESTAMPTZ,
+    last_commentary_sent_at TIMESTAMPTZ,
+    metadata JSONB DEFAULT '{}'::JSONB,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    CONSTRAINT check_flash_price_lower CHECK (flash_price < original_price),
-    CONSTRAINT check_stock_positive CHECK (stock_available >= 0),
-    CONSTRAINT check_discount_valid CHECK (discount_percentage > 0 AND discount_percentage <= 100)
+    CHECK (end_at > start_at)
 );
 
 CREATE INDEX IF NOT EXISTS idx_live_flash_sales_session ON live_flash_sales(live_session_id);
-CREATE INDEX IF NOT EXISTS idx_live_flash_sales_service ON live_flash_sales(service_id, product_index);
 CREATE INDEX IF NOT EXISTS idx_live_flash_sales_status ON live_flash_sales(status);
-CREATE INDEX IF NOT EXISTS idx_live_flash_sales_time ON live_flash_sales(start_at, end_at) WHERE status = 'active';
+CREATE INDEX IF NOT EXISTS idx_live_flash_sales_timing ON live_flash_sales(start_at, end_at);
 
 CREATE TABLE IF NOT EXISTS live_flash_sale_reservations (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),

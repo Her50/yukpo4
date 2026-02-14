@@ -47,21 +47,18 @@ CREATE INDEX IF NOT EXISTS idx_social_publications_scheduled ON social_publicati
 
 CREATE TABLE IF NOT EXISTS social_publication_jobs (
     id SERIAL PRIMARY KEY,
-    publication_id INTEGER NOT NULL REFERENCES social_publications(id) ON DELETE CASCADE,
-    job_status VARCHAR(50) NOT NULL DEFAULT 'pending', -- 'pending', 'processing', 'completed', 'failed'
-    error_message TEXT,
-    retry_count INTEGER DEFAULT 0,
-    max_retries INTEGER DEFAULT 3,
-    scheduled_for TIMESTAMPTZ NOT NULL,
-    started_at TIMESTAMPTZ,
-    completed_at TIMESTAMPTZ,
+    media_id INTEGER NOT NULL REFERENCES media(id) ON DELETE CASCADE,
+    platform TEXT NOT NULL,
+    payload JSONB NOT NULL,
+    status TEXT NOT NULL DEFAULT 'queued',
+    attempt INTEGER NOT NULL DEFAULT 0,
+    last_error TEXT,
+    scheduled_for TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_social_publication_jobs_publication ON social_publication_jobs(publication_id);
-CREATE INDEX IF NOT EXISTS idx_social_publication_jobs_status ON social_publication_jobs(job_status);
-CREATE INDEX IF NOT EXISTS idx_social_publication_jobs_scheduled ON social_publication_jobs(scheduled_for) WHERE job_status IN ('pending', 'processing');
+CREATE INDEX IF NOT EXISTS idx_social_publication_jobs_status ON social_publication_jobs(status, scheduled_for);
 
 
 
