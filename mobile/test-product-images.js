@@ -13,7 +13,10 @@ const https = require('https');
 const http = require('http');
 
 // Configuration
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://api.yukpomnang.com';
+// ✅ GCP Cloud Run (nouveau backend)
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://yukpo-backend-yukpo-project.a.run.app';
+// ⚠️ AWS (ancien backend, commenté pour utilisation future)
+// const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://api.yukpomnang.com';
 // Tester avec quelques service_ids connus (à adapter selon votre base de données)
 const TEST_SERVICE_IDS = [1, 2, 3, 4, 5]; // Tester avec les premiers services
 

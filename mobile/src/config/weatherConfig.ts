@@ -2,7 +2,9 @@
 
 // URL de votre backend (ajustez selon votre configuration)
 // ✅ HARMONISÉ: Utiliser la même variable que eas.json
-const BACKEND_URL = process.env.EXPO_PUBLIC_API_URL || 'https://api.yukpomnang.com';
+// ✅ 2026-02-14: Migration vers GCP Cloud Run
+// ⚠️ AWS (ancien backend, commenté pour utilisation future): 'https://api.yukpomnang.com'
+const BACKEND_URL = process.env.EXPO_PUBLIC_API_URL || 'https://yukpo-backend-yukpo-project.a.run.app';
 
 // Fonction pour récupérer la clé API depuis le backend
 export const getWeatherApiKey = async (): Promise<string> => {

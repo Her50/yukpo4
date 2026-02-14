@@ -8,25 +8,37 @@ export const WEBSOCKET_CONFIG = {
   urls: {
     // WebSocket pour les notifications
     notifications: (userId: string | number) => {
-      const baseUrl = process.env.EXPO_PUBLIC_WS_URL || 'wss://api.yukpomnang.com';
+      // ✅ GCP Cloud Run (nouveau backend)
+      const baseUrl = process.env.EXPO_PUBLIC_WS_URL || 'wss://yukpo-backend-yukpo-project.a.run.app';
+      // ⚠️ AWS (ancien backend, commenté pour utilisation future)
+      // const baseUrl = process.env.EXPO_PUBLIC_WS_URL || 'wss://api.yukpomnang.com';
       return `${baseUrl}/ws/notifications/${userId}`;
     },
 
     // WebSocket pour le chat
     chat: (clientId: string | number) => {
-      const baseUrl = process.env.EXPO_PUBLIC_WS_URL || 'wss://api.yukpomnang.com';
+      // ✅ GCP Cloud Run (nouveau backend)
+      const baseUrl = process.env.EXPO_PUBLIC_WS_URL || 'wss://yukpo-backend-yukpo-project.a.run.app';
+      // ⚠️ AWS (ancien backend, commenté pour utilisation future)
+      // const baseUrl = process.env.EXPO_PUBLIC_WS_URL || 'wss://api.yukpomnang.com';
       return `${baseUrl}/ws/chat/${clientId}`;
     },
 
     // WebSocket pour le statut des prestataires
     status: (userId: string | number) => {
-      const baseUrl = process.env.EXPO_PUBLIC_WS_URL || 'wss://api.yukpomnang.com';
+      // ✅ GCP Cloud Run (nouveau backend)
+      const baseUrl = process.env.EXPO_PUBLIC_WS_URL || 'wss://yukpo-backend-yukpo-project.a.run.app';
+      // ⚠️ AWS (ancien backend, commenté pour utilisation future)
+      // const baseUrl = process.env.EXPO_PUBLIC_WS_URL || 'wss://api.yukpomnang.com';
       return `${baseUrl}/ws/status/${userId}`;
     },
 
     // WebSocket pour les paiements
     payments: (userId: string | number) => {
-      const baseUrl = process.env.EXPO_PUBLIC_WS_URL || 'wss://api.yukpomnang.com';
+      // ✅ GCP Cloud Run (nouveau backend)
+      const baseUrl = process.env.EXPO_PUBLIC_WS_URL || 'wss://yukpo-backend-yukpo-project.a.run.app';
+      // ⚠️ AWS (ancien backend, commenté pour utilisation future)
+      // const baseUrl = process.env.EXPO_PUBLIC_WS_URL || 'wss://api.yukpomnang.com';
       return `${baseUrl}/ws/payments/${userId}`;
     }
   },

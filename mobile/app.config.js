@@ -184,8 +184,10 @@ module.exports = {
             // ✅ Variables d'environnement chargées depuis .env ou variables système
             // Pour le build local, créer un fichier .env avec ces variables
             // Pour EAS Build, elles sont chargées depuis eas.json
-            apiUrl: getEnvVar('EXPO_PUBLIC_API_URL', 'https://api.yukpomnang.com'),
-            wsUrl: getEnvVar('EXPO_PUBLIC_WS_URL', 'wss://api.yukpomnang.com'),
+            // ✅ 2026-02-14: Migration vers GCP Cloud Run
+            // ⚠️ AWS (ancien backend, commenté pour utilisation future): 'https://api.yukpomnang.com'
+            apiUrl: getEnvVar('EXPO_PUBLIC_API_URL', 'https://yukpo-backend-yukpo-project.a.run.app'),
+            wsUrl: getEnvVar('EXPO_PUBLIC_WS_URL', 'wss://yukpo-backend-yukpo-project.a.run.app'),
             shareUrl: getEnvVar('EXPO_PUBLIC_SHARE_URL', 'https://yukpomnang.com'),
             environment: getEnvVar('EXPO_PUBLIC_ENVIRONMENT', 'production'),
             googleMapsApiKey: getEnvVar('EXPO_PUBLIC_GOOGLE_MAPS_API_KEY', 'AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ'),

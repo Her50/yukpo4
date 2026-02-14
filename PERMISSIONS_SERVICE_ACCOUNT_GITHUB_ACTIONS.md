@@ -14,7 +14,10 @@
 ### 2. Cloud Run
 - ✅ `roles/run.admin` - Gestion complète des services Cloud Run (déploiement, mise à jour, etc.)
 
-### 3. Cloud Storage (si nécessaire)
+### 3. Service Account (actAs)
+- ✅ `roles/iam.serviceAccountUser` - Permission d'utiliser un Service Account (actAs) pour Cloud Run
+
+### 4. Cloud Storage (si nécessaire)
 - ✅ `roles/storage.objectAdmin` - Gestion des objets Cloud Storage
 
 ---
@@ -37,6 +40,11 @@ gcloud projects add-iam-policy-binding yukpo-project \
 gcloud projects add-iam-policy-binding yukpo-project \
   --member="serviceAccount:github-actions@yukpo-project.iam.gserviceaccount.com" \
   --role="roles/run.admin"
+
+# Service Account User (pour actAs)
+gcloud projects add-iam-policy-binding yukpo-project \
+  --member="serviceAccount:github-actions@yukpo-project.iam.gserviceaccount.com" \
+  --role="roles/iam.serviceAccountUser"
 ```
 
 ---
@@ -57,6 +65,7 @@ gcloud projects get-iam-policy yukpo-project \
 ROLE
 roles/artifactregistry.reader
 roles/artifactregistry.writer
+roles/iam.serviceAccountUser
 roles/run.admin
 ```
 
@@ -70,6 +79,8 @@ roles/run.admin
 ### Déploiement Cloud Run
 - ✅ `roles/run.admin` - Pour créer/mettre à jour les services Cloud Run
   - Inclut : `run.services.get`, `run.services.create`, `run.services.update`, etc.
+- ✅ `roles/iam.serviceAccountUser` - Pour utiliser un Service Account dans Cloud Run (actAs)
+  - Nécessaire quand `--service-account` est spécifié dans `gcloud run deploy`
 
 ### Lecture d'images
 - ✅ `roles/artifactregistry.reader` - Pour lire les images existantes
@@ -92,7 +103,13 @@ Si vous rencontrez des erreurs de permissions, vérifiez :
    ```
    → Ajouter `roles/artifactregistry.writer`
 
-3. **Cloud SQL** (si utilisé) :
+3. **Service Account actAs** :
+   ```
+   ERROR: Permission 'iam.serviceaccounts.actAs' denied on service account
+   ```
+   → Ajouter `roles/iam.serviceAccountUser`
+
+4. **Cloud SQL** (si utilisé) :
    ```
    ERROR: Permission 'cloudsql.instances.connect' denied
    ```

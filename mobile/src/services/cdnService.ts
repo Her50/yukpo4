@@ -21,23 +21,36 @@ interface CDNEndpoint {
 }
 
 // Configuration des CDN disponibles
-// ✅ CONFIGURATION CLOUDFLARE: Cloudflare lit depuis Wasabi (Origin Pull)
-// Cloudflare = CDN qui distribue | Wasabi = Stockage source
+// ✅ 2026-02-14: Migration vers GCP Cloud CDN
+// GCP Cloud CDN: http://34.54.117.97 (Load Balancer → Cloud Storage)
+// ⚠️ AWS/Wasabi (ancien, commenté pour utilisation future):
+// - Cloudflare CDN: https://cdn.yukpomnang.com (Cloudflare → Wasabi)
+// - Wasabi Direct: https://yukpo-video-prod.s3.eu-central-1.wasabisys.com
+// - AWS S3 Direct: https://yukpo-backend-media.s3.eu-west-1.amazonaws.com
 const CDN_ENDPOINTS: CDNEndpoint[] = [
     {
-        name: 'Cloudflare',
-        // URL Cloudflare CDN (configurez dans Cloudflare Dashboard)
-        // Cloudflare pointera vers Wasabi comme "Origin"
-        // ⚠️ Configurez dans Cloudflare : Origin = Wasabi URL
-        url: ENVIRONMENT.CDN_CLOUDFLARE_URL || 'https://cdn.yukpomnang.com',
-        region: 'global',
+        name: 'GCP Cloud CDN',
+        // ✅ GCP Cloud CDN (nouveau)
+        url: ENVIRONMENT.CDN_GCP_URL || 'http://34.54.117.97',
+        region: 'europe-west1',
     },
     {
-        name: 'Wasabi Direct',
-        // Fallback direct vers Wasabi si Cloudflare indisponible
-        url: ENVIRONMENT.WASABI_DIRECT_URL || 'https://yukpo-video-prod.s3.eu-central-1.wasabisys.com',
-        region: 'eu-central',
+        name: 'GCP Storage Direct',
+        // ✅ Fallback direct vers GCP Cloud Storage si CDN indisponible
+        url: ENVIRONMENT.GCP_STORAGE_DIRECT_URL || 'http://34.54.117.97',
+        region: 'europe-west1',
     },
+    // ⚠️ AWS/Wasabi (ancien, commenté pour utilisation future)
+    // {
+    //     name: 'Cloudflare',
+    //     url: ENVIRONMENT.CDN_CLOUDFLARE_URL || 'https://cdn.yukpomnang.com',
+    //     region: 'global',
+    // },
+    // {
+    //     name: 'Wasabi Direct',
+    //     url: ENVIRONMENT.WASABI_DIRECT_URL || 'https://yukpo-video-prod.s3.eu-central-1.wasabisys.com',
+    //     region: 'eu-central',
+    // },
     {
         name: 'Backend Direct',
         url: '', // Sera rempli avec l'URL du backend
@@ -82,7 +95,8 @@ class CDNService {
 
     /**
      * Détecte le meilleur endpoint CDN en mesurant la latence
-     * Priorité : Cloudflare > Wasabi Direct > Backend
+     * Priorité : GCP Cloud CDN > GCP Storage Direct > Backend
+     * ⚠️ AWS/Wasabi (ancien): Cloudflare > Wasabi Direct > Backend
      */
     async detectBestEndpoint(): Promise<CDNEndpoint> {
         const endpoints = CDN_ENDPOINTS.filter(e => e.region !== 'fallback');
@@ -112,35 +126,35 @@ class CDNService {
                 }
             } catch (error) {
                 // ✅ OPTIMISATION: Logger en debug au lieu de warn (fallback automatique fonctionnel)
-                console.debug('[CDNService] Cloudflare non disponible, test Wasabi...');
+                console.debug('[CDNService] GCP Cloud CDN non disponible, test GCP Storage Direct...');
             }
         }
 
-        // Fallback vers Wasabi Direct
-        const wasabiEndpoint = endpoints.find(e => e.name === 'Wasabi Direct');
-        if (wasabiEndpoint) {
+        // ✅ Fallback vers GCP Storage Direct (remplace Wasabi Direct)
+        const gcpStorageEndpoint = endpoints.find(e => e.name === 'GCP Storage Direct');
+        if (gcpStorageEndpoint) {
             try {
                 const start = Date.now();
-                const response = await fetch(`${wasabiEndpoint.url}/favicon.ico`, {
+                const response = await fetch(`${gcpStorageEndpoint.url}/favicon.ico`, {
                     method: 'HEAD',
                     signal: AbortSignal.timeout(3000),
                 });
                 const latency = Date.now() - start;
 
                 if (response.ok || response.status === 404) {
-                    wasabiEndpoint.latency = latency;
-                    this.selectedEndpoint = wasabiEndpoint;
+                    gcpStorageEndpoint.latency = latency;
+                    this.selectedEndpoint = gcpStorageEndpoint;
                     this.config = {
-                        primary: wasabiEndpoint.url,
-                        fallback: [cloudflareEndpoint?.url || ''].filter(Boolean),
-                        region: wasabiEndpoint.region,
+                        primary: gcpStorageEndpoint.url,
+                        fallback: [gcpCdnEndpoint?.url || ''].filter(Boolean),
+                        region: gcpStorageEndpoint.region,
                     };
                     await SafeStorage.setItem('cdn_config', JSON.stringify(this.config));
-                    return wasabiEndpoint;
+                    return gcpStorageEndpoint;
                 }
             } catch (error) {
                 // ✅ OPTIMISATION: Logger en debug au lieu de warn (fallback automatique fonctionnel)
-                console.debug('[CDNService] Wasabi non disponible, fallback backend...');
+                console.debug('[CDNService] GCP Storage Direct non disponible, fallback backend...');
             }
         }
 

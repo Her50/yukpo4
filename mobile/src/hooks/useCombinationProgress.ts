@@ -2,7 +2,10 @@
 import axios from 'axios';
 import { useEffect, useState } from 'react';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || process.env.REACT_APP_API_URL || 'https://api.yukpomnang.com';
+// ✅ GCP Cloud Run (nouveau backend)
+const API_URL = process.env.EXPO_PUBLIC_API_URL || process.env.REACT_APP_API_URL || 'https://yukpo-backend-yukpo-project.a.run.app';
+// ⚠️ AWS (ancien backend, commenté pour utilisation future)
+// const API_URL = process.env.EXPO_PUBLIC_API_URL || process.env.REACT_APP_API_URL || 'https://api.yukpomnang.com';
 
 export interface CombinationProgress {
   status: 'in_progress' | 'completed' | 'error' | 'not_found';

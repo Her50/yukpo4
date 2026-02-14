@@ -29,11 +29,15 @@ if (Test-Path $envFile) {
 }
 
 # Variables par defaut si non definies
+# ✅ 2026-02-14: Migration vers GCP Cloud Run
+# ⚠️ AWS (ancien backend, commenté pour utilisation future): "https://api.yukpomnang.com"
 if (-not $env:EXPO_PUBLIC_API_URL) {
-    $env:EXPO_PUBLIC_API_URL = "https://api.yukpomnang.com"
+    $env:EXPO_PUBLIC_API_URL = "https://yukpo-backend-yukpo-project.a.run.app"
+    # $env:EXPO_PUBLIC_API_URL = "https://api.yukpomnang.com"  # ⚠️ AWS (ancien)
 }
 if (-not $env:EXPO_PUBLIC_WS_URL) {
-    $env:EXPO_PUBLIC_WS_URL = "wss://api.yukpomnang.com"
+    $env:EXPO_PUBLIC_WS_URL = "wss://yukpo-backend-yukpo-project.a.run.app"
+    # $env:EXPO_PUBLIC_WS_URL = "wss://api.yukpomnang.com"  # ⚠️ AWS (ancien)
 }
 if (-not $env:EXPO_PUBLIC_SHARE_URL) {
     $env:EXPO_PUBLIC_SHARE_URL = "https://yukpomnang.com"

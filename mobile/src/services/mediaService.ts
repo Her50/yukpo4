@@ -137,10 +137,14 @@ class MediaService {
         // URL CDN primaire
         urls.push(this.getImageUrl(normalizedPath, options));
         
-        // Fallback Wasabi direct
-        if (ENVIRONMENT.WASABI_DIRECT_URL) {
-            urls.push(`${ENVIRONMENT.WASABI_DIRECT_URL}${normalizedPath}`);
+        // ✅ Fallback GCP Cloud Storage Direct (remplace Wasabi)
+        if (ENVIRONMENT.GCP_STORAGE_DIRECT_URL) {
+            urls.push(`${ENVIRONMENT.GCP_STORAGE_DIRECT_URL}${normalizedPath}`);
         }
+        // ⚠️ AWS/Wasabi (ancien, commenté pour utilisation future)
+        // if (ENVIRONMENT.WASABI_DIRECT_URL) {
+        //     urls.push(`${ENVIRONMENT.WASABI_DIRECT_URL}${normalizedPath}`);
+        // }
         
         // Fallback backend direct
         urls.push(`${this.backendUrl}${normalizedPath}`);
@@ -164,11 +168,20 @@ class MediaService {
     }
 
     /**
+     * Vérifie si une URL utilise GCP Cloud Storage (remplace Wasabi)
+     */
+    isGCPStorageUrl(url: string): boolean {
+        if (!url) return false;
+        return url.includes(ENVIRONMENT.GCP_STORAGE_DIRECT_URL || '34.54.117.97') || url.includes('storage.googleapis.com');
+    }
+    
+    /**
+     * ⚠️ AWS/Wasabi (ancien, commenté pour utilisation future)
      * Vérifie si une URL utilise Wasabi
      */
     isWasabiUrl(url: string): boolean {
         if (!url) return false;
-        return url.includes(ENVIRONMENT.WASABI_DIRECT_URL || 'wasabisys.com');
+        return url.includes(ENVIRONMENT.WASABI_DIRECT_URL || 'wasabisys.com') || url.includes('yukpo-backend-media.s3.eu-west-1.amazonaws.com');
     }
 
     /**
@@ -179,6 +192,14 @@ class MediaService {
     }
 
     /**
+     * Obtient l'URL de base de GCP Cloud Storage (remplace Wasabi)
+     */
+    getGCPStorageBaseUrl(): string {
+        return ENVIRONMENT.GCP_STORAGE_DIRECT_URL || 'http://34.54.117.97';
+    }
+    
+    /**
+     * ⚠️ AWS/Wasabi (ancien, commenté pour utilisation future)
      * Obtient l'URL de base de Wasabi
      */
     getWasabiBaseUrl(): string {

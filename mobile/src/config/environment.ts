@@ -28,10 +28,14 @@ export const ENVIRONMENT = {
     // ⚠️ AWS/Wasabi (ancien, commenté pour utilisation future):
     // - Cloudflare CDN: https://cdn.yukpomnang.com (Cloudflare → Wasabi)
     // - Wasabi Direct: https://yukpo-video-prod.s3.eu-central-1.wasabisys.com
+    // - AWS S3 Direct: https://yukpo-backend-media.s3.eu-west-1.amazonaws.com
     CDN_GCP_URL: process.env.EXPO_PUBLIC_CDN_GCP_URL || 'http://34.54.117.97',
+    // ✅ GCP Cloud Storage Direct (remplace WASABI_DIRECT_URL)
+    GCP_STORAGE_DIRECT_URL: process.env.EXPO_PUBLIC_GCP_STORAGE_DIRECT_URL || process.env.EXPO_PUBLIC_WASABI_DIRECT_URL || 'http://34.54.117.97',
     // ⚠️ AWS/Wasabi (ancien, commenté pour utilisation future)
     // CDN_CLOUDFLARE_URL: process.env.EXPO_PUBLIC_CDN_CLOUDFLARE_URL || 'https://cdn.yukpomnang.com',
     // WASABI_DIRECT_URL: process.env.EXPO_PUBLIC_WASABI_DIRECT_URL || 'https://yukpo-video-prod.s3.eu-central-1.wasabisys.com',
+    // AWS_S3_DIRECT_URL: process.env.EXPO_PUBLIC_AWS_S3_DIRECT_URL || 'https://yukpo-backend-media.s3.eu-west-1.amazonaws.com',
 
     // Configuration de traduction
     TRANSLATION: {
