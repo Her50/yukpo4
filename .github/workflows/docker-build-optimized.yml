@@ -546,6 +546,7 @@ jobs:
             --memory 1Gi \
             --cpu 2 \
             --timeout 900 \
+            --startup-timeout 600 \
             --max-instances 10 \
             --cpu-boost \
             --cpu-throttling \
