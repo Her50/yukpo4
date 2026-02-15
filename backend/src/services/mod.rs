@@ -169,6 +169,7 @@ pub mod push_notification_service; // ✅ Service de push notifications Expo
 pub mod query_monitor; // ✅ NOUVEAU 2025-11-28: Monitoring avancé des requêtes SQL
 pub mod real_estate_ai_service; // ✅ Service IA immobilier (estimation prix, recommandations, simulation prêt)
 pub mod rechercher_besoin;
+pub mod redis_scaling_service; // ✅ NOUVEAU: Service de gestion Redis Memorystore automatisé GCP avec scaling
 pub mod remotion_renderer_service;
 pub mod scalability_service; // ✅ NOUVEAU 2025-12-XX: Service centralisé de scalabilité pour millions d'interactions
 pub mod scheduling_search_service;

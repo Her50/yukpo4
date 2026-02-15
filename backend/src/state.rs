@@ -16,6 +16,7 @@ use crate::controllers::ia_status_controller::IAStats;
 use crate::services::app_ia::AppIA;
 use crate::services::gpu_service::{GpuConfig, GpuService};
 use crate::services::mongo_history_service::MongoHistoryService;
+use crate::services::redis_scaling_service::{RedisScalingConfig, RedisScalingService};
 use crate::websocket::delivery_tracking::DeliveryTrackingManager;
 // Imports d'optimisation
 use crate::services::cache_service::CacheService; // ✅ Phase 10 - Service de cache générique
@@ -124,6 +125,8 @@ pub struct AppState {
     pub products_service: Arc<crate::services::products_service::ProductsService>,
     /// ✅ NOUVEAU 2026-02-14: Service de gestion GPU automatisé GCP
     pub gpu_service: Option<Arc<GpuService>>,
+    /// ✅ NOUVEAU 2026-02-15: Service de gestion Redis Memorystore automatisé GCP
+    pub redis_scaling_service: Option<Arc<RedisScalingService>>,
 }
 
 impl AppState {
@@ -552,6 +555,23 @@ impl AppState {
                     None
                 }
             },
+            // ✅ NOUVEAU 2026-02-15: Initialiser le service Redis scaling si configuré
+            redis_scaling_service: {
+                if let Some(config) = RedisScalingConfig::from_env() {
+                    let service = RedisScalingService::new(
+                        config,
+                        Arc::new(pg.clone()),
+                        Some(Arc::new(redis_client.clone())),
+                    );
+                    log::info!("✅ Service Redis scaling initialisé");
+                    Some(Arc::new(service))
+                } else {
+                    log::info!(
+                        "ℹ️ Service Redis scaling non configuré (REDIS_SCALING_ENABLED=false ou variables manquantes)"
+                    );
+                    None
+                }
+            },
         }
     }
 
@@ -808,6 +828,7 @@ impl AppState {
             )),
             // ✅ NOUVEAU 2026-02-14: Service GPU désactivé pour les tests
             gpu_service: None,
+            redis_scaling_service: None,
         }
     }
 }

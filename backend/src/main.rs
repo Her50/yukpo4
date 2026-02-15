@@ -2502,6 +2502,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     } else {
         log::info!("ℹ️ Service GPU non configuré - Monitoring désactivé");
     }
+
+    // ✅ NOUVEAU 2026-02-15: Démarrer le monitoring Redis scaling si configuré
+    if let Some(redis_scaling_service) = &app_state.redis_scaling_service {
+        log::info!("🚀 Démarrage du monitoring Redis scaling automatisé...");
+        redis_scaling_service.clone().start_monitoring().await;
+        log::info!("✅ Monitoring Redis scaling démarré (scaling automatique activé)");
+    } else {
+        log::info!("ℹ️ Service Redis scaling non configuré - Monitoring désactivé");
+    }
     // ✅ Phase 2 : Archivage automatique des livraisons complétées
     tasks::delivery_archive_worker::start_delivery_archive_worker(app_state.clone());
 
