@@ -477,35 +477,43 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // ✅ NOUVEAU 2025-11-27: Pré-chauffer le pool pour avoir des connexions prêtes
     log::info!("🔥 Pré-chauffage du pool de connexions...");
-    let warmup_pool = pg_pool.clone();
-    let warmup_min = min_connections;
-    let _ = tokio::spawn(async move {
-        let mut success_count = 0;
-        for i in 0..warmup_min {
-            match tokio::time::timeout(
-                std::time::Duration::from_secs(5),
-                sqlx::query("SELECT 1").execute(&warmup_pool),
-            )
-            .await
-            {
-                Ok(Ok(_)) => {
-                    success_count += 1;
-                    log::debug!("[Pool Warmup] Connexion {} pré-chauffée", i + 1);
-                }
-                Ok(Err(e)) => {
-                    log::warn!("[Pool Warmup] Erreur connexion {}: {}", i + 1, e);
-                }
-                Err(_) => {
-                    log::warn!("[Pool Warmup] Timeout connexion {}", i + 1);
+    // ✅ CORRIGÉ 2026-02-15: Pour Cloud Run, sauter le warmup si min_connections=0
+    // Le warmup peut bloquer si la DB n'est pas accessible
+    if !is_cloud_run || min_connections > 0 {
+        let warmup_pool = pg_pool.clone();
+        let warmup_min = if is_cloud_run { 0 } else { min_connections };
+        let _ = tokio::spawn(async move {
+            let mut success_count = 0;
+            for i in 0..warmup_min {
+                match tokio::time::timeout(
+                    std::time::Duration::from_secs(5),
+                    sqlx::query("SELECT 1").execute(&warmup_pool),
+                )
+                .await
+                {
+                    Ok(Ok(_)) => {
+                        success_count += 1;
+                        log::debug!("[Pool Warmup] Connexion {} pré-chauffée", i + 1);
+                    }
+                    Ok(Err(e)) => {
+                        log::warn!("[Pool Warmup] Erreur connexion {}: {}", i + 1, e);
+                    }
+                    Err(_) => {
+                        log::warn!("[Pool Warmup] Timeout connexion {}", i + 1);
+                    }
                 }
             }
-        }
-        log::info!(
-            "✅ Pool pré-chauffé: {}/{} connexions prêtes",
-            success_count,
-            warmup_min
-        );
-    });
+            if warmup_min > 0 {
+                log::info!(
+                    "✅ Pool pré-chauffé: {}/{} connexions prêtes",
+                    success_count,
+                    warmup_min
+                );
+            }
+        });
+    } else {
+        log::info!("🚀 Cloud Run: Warmup pool sauté (min_connections=0, démarrage non-bloquant)");
+    }
 
     // 🔄 Exécuter les migrations SQLx standard au démarrage
     // ✅ CORRIGÉ 2026-01-28: Les migrations SQLx standard sont OBLIGATOIRES pour créer les tables de base
