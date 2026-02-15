@@ -178,13 +178,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let is_cloud_run = env::var("CLOUD_RUN").unwrap_or_default() == "true";
     let pg_pool = if is_cloud_run {
         // Pour Cloud Run: utiliser connect_lazy pour démarrage immédiat (connexion en arrière-plan)
-        // ✅ CORRIGÉ: Pool augmenté pour éviter saturation (50 max, 10 min)
+        // ✅ CORRIGÉ 2026-02-15: min_connections=0 pour éviter blocage si DB non accessible
         eprintln!("[MAIN] 🚀 Cloud Run: Utilisation de connect_lazy pour démarrage rapide");
         log::info!("🚀 Cloud Run: Utilisation de connect_lazy pour démarrage rapide");
         let cloud_run_max = 50; // Pool augmenté pour Cloud Run (évite saturation)
-        let cloud_run_min = 10; // Min augmenté pour Cloud Run
+        let cloud_run_min = 0; // ✅ CORRIGÉ: 0 pour démarrage rapide même si DB non accessible
         log::info!(
-            "🔧 Cloud Run: Pool configuré (max={}, min={})",
+            "🔧 Cloud Run: Pool configuré (max={}, min={}) - Démarrage non-bloquant",
             cloud_run_max,
             cloud_run_min
         );

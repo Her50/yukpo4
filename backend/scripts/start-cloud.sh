@@ -23,39 +23,44 @@ export DB_POOL_SIZE=${DB_POOL_SIZE:-100}
 export DB_POOL_MIN_SIZE=${DB_POOL_MIN_SIZE:-5}  # ✅ Optimisé: Réduit de 20 à 5 pour démarrage plus rapide
 export DB_ACQUIRE_TIMEOUT_SECS=${DB_ACQUIRE_TIMEOUT_SECS:-30}
 
-# Vérifier la connectivité à la base de données (AWS RDS)
-echo "🔍 Vérification de la connectivité à la base de données AWS RDS..."
-MAX_RETRIES=30
-RETRY_COUNT=0
+# ✅ CORRIGÉ 2026-02-15: Pour Cloud Run, sauter la vérification DB (non-bloquante)
+if [ "$CLOUD_RUN" != "true" ]; then
+    # Vérifier la connectivité à la base de données (AWS RDS)
+    echo "🔍 Vérification de la connectivité à la base de données AWS RDS..."
+    MAX_RETRIES=30
+    RETRY_COUNT=0
 
-# Extraire les informations de connexion de DATABASE_URL
-DB_HOST=$(echo $DATABASE_URL | sed -n 's/.*@\([^:]*\):.*/\1/p')
-DB_PORT=$(echo $DATABASE_URL | sed -n 's/.*:\([0-9]*\)\/.*/\1/p' || echo "5432")
+    # Extraire les informations de connexion de DATABASE_URL
+    DB_HOST=$(echo $DATABASE_URL | sed -n 's/.*@\([^:]*\):.*/\1/p')
+    DB_PORT=$(echo $DATABASE_URL | sed -n 's/.*:\([0-9]*\)\/.*/\1/p' || echo "5432")
 
-if [ -z "$DB_HOST" ]; then
-    echo "⚠️ Impossible d'extraire DB_HOST de DATABASE_URL, tentative directe..."
-    until pg_isready -d "$DATABASE_URL" 2>/dev/null || [ $RETRY_COUNT -ge $MAX_RETRIES ]; do
-        RETRY_COUNT=$((RETRY_COUNT + 1))
-        echo "⏳ En attente de la base de données AWS RDS... (tentative $RETRY_COUNT/$MAX_RETRIES)"
-        sleep 2
-    done
+    if [ -z "$DB_HOST" ]; then
+        echo "⚠️ Impossible d'extraire DB_HOST de DATABASE_URL, tentative directe..."
+        until pg_isready -d "$DATABASE_URL" 2>/dev/null || [ $RETRY_COUNT -ge $MAX_RETRIES ]; do
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+            echo "⏳ En attente de la base de données AWS RDS... (tentative $RETRY_COUNT/$MAX_RETRIES)"
+            sleep 2
+        done
+    else
+        until pg_isready -h "$DB_HOST" -p "$DB_PORT" 2>/dev/null || [ $RETRY_COUNT -ge $MAX_RETRIES ]; do
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+            echo "⏳ En attente de la base de données AWS RDS ($DB_HOST:$DB_PORT)... (tentative $RETRY_COUNT/$MAX_RETRIES)"
+            sleep 2
+        done
+    fi
+
+    if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
+        echo "❌ ERREUR: Impossible de se connecter à la base de données après $MAX_RETRIES tentatives"
+        echo "   DB_HOST: ${DB_HOST:-non défini}"
+        echo "   DB_PORT: ${DB_PORT:-non défini}"
+        echo "   DATABASE_URL: ${DATABASE_URL:0:50}... (tronqué pour sécurité)"
+        exit 1
+    fi
+
+    echo "✅ Base de données AWS RDS accessible"
 else
-    until pg_isready -h "$DB_HOST" -p "$DB_PORT" 2>/dev/null || [ $RETRY_COUNT -ge $MAX_RETRIES ]; do
-        RETRY_COUNT=$((RETRY_COUNT + 1))
-        echo "⏳ En attente de la base de données AWS RDS ($DB_HOST:$DB_PORT)... (tentative $RETRY_COUNT/$MAX_RETRIES)"
-        sleep 2
-    done
+    echo "🚀 Cloud Run: Vérification DB sautée (connexion non-bloquante via connect_lazy)"
 fi
-
-if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
-    echo "❌ ERREUR: Impossible de se connecter à la base de données après $MAX_RETRIES tentatives"
-    echo "   DB_HOST: ${DB_HOST:-non défini}"
-    echo "   DB_PORT: ${DB_PORT:-non défini}"
-    echo "   DATABASE_URL: ${DATABASE_URL:0:50}... (tronqué pour sécurité)"
-    exit 1
-fi
-
-echo "✅ Base de données AWS RDS accessible"
 
 # 🛠️ S'assurer que la base applicative existe
 # Si DATABASE_URL pointe vers une DB qui n'existe pas encore, l'app crashe (sqlx).
