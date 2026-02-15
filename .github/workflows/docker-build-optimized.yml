@@ -525,9 +525,10 @@ jobs:
             --add-cloudsql-instances ${{ secrets.GCP_PROJECT_ID }}:${{ env.GCP_REGION }}:yukpo-db \
             --memory 1Gi \
             --cpu 2 \
-            --timeout 300 \
+            --timeout 900 \
             --max-instances 10 \
             --cpu-boost \
+            --cpu-throttling \
             --service-account ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }} \
             --project ${{ secrets.GCP_PROJECT_ID }} \
           
