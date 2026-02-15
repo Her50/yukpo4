@@ -37,7 +37,12 @@ DECLARE
     radius_adjusted double precision;
 BEGIN
     -- Ajuster le rayon
-    radius_adjusted := COALESCE(calculate_intelligent_radius(radius_km::double precision), radius_km::double precision);
+    BEGIN
+        radius_adjusted := COALESCE(calculate_intelligent_radius(radius_km::double precision), radius_km::double precision);
+    EXCEPTION
+        WHEN OTHERS THEN
+            radius_adjusted := radius_km::double precision;
+    END;
     
     -- Extraire les coordonnées GPS si fournies
     IF user_gps_zone IS NOT NULL AND user_gps_zone != '' AND user_gps_zone != 'null' THEN

@@ -234,3 +234,4 @@ Exécutez ces commandes dans l'ordre:
 - Configuration S3: `CONFIGURER_S3_AWS_POUR_MEDIAS.md`
 - Configuration Backend: `CONFIGURATION_BACKEND_AWS.md`
 
+

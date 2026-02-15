@@ -76,3 +76,4 @@
 **Date** : 2026-02-14  
 **Réponse** : ✅ Laisser en "DNS uniquement" - Ne pas modifier
 
+

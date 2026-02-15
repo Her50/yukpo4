@@ -6,9 +6,23 @@
 -- 4. Scores trop élevés pour correspondances partielles
 -- Date: 2025-12-24
 
--- Supprimer l'ancienne fonction
--- ✅ Corrigé: Spécifier la signature complète
-DROP FUNCTION IF EXISTS hybrid_image_search(TEXT[], TEXT, TEXT, TEXT, TEXT, FLOAT, FLOAT, INTEGER, INTEGER, TEXT) CASCADE;
+-- Supprimer toutes les versions de la fonction
+-- ✅ CORRIGÉ 2026-02-15: Supprimer toutes les versions avant de recréer
+DO $$
+DECLARE
+    func_record RECORD;
+BEGIN
+    FOR func_record IN 
+        SELECT oid, proname, pg_get_function_identity_arguments(oid) as args
+        FROM pg_proc 
+        WHERE proname = 'hybrid_image_search'
+    LOOP
+        EXECUTE format('DROP FUNCTION IF EXISTS %s(%s) CASCADE', 
+            func_record.proname, 
+            func_record.args
+        );
+    END LOOP;
+END $$;
 
 CREATE FUNCTION hybrid_image_search(
     search_tags TEXT[],

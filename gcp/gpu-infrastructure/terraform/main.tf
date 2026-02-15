@@ -285,3 +285,4 @@ output "gpu_autoscaler" {
   value = google_compute_autoscaler.gpu_workers.id
 }
 
+

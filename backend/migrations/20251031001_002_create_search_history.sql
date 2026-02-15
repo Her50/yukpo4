@@ -5,40 +5,53 @@
 -- Note: Compatible avec SQLx offline mode
 
 -- Vérifier et créer la table search_history
+-- ✅ CORRIGÉ 2026-02-15: Vérifier si la table existe avec un schéma différent
 DO $$
 BEGIN
-    IF NOT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'search_history') THEN
+    IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'search_history') THEN
+        -- La table existe, ajouter les colonnes manquantes
+        -- Ajouter query_text si elle n'existe pas
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'search_history' AND column_name = 'query_text') THEN
+            ALTER TABLE search_history ADD COLUMN query_text TEXT;
+            -- Copier les valeurs de 'query' vers 'query_text' si 'query' existe
+            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'search_history' AND column_name = 'query') THEN
+                UPDATE search_history SET query_text = query WHERE query_text IS NULL;
+            END IF;
+            UPDATE search_history SET query_text = '' WHERE query_text IS NULL;
+            ALTER TABLE search_history ALTER COLUMN query_text SET NOT NULL;
+        END IF;
+        -- Ajouter les autres colonnes manquantes
+        ALTER TABLE search_history ADD COLUMN IF NOT EXISTS query_type VARCHAR(50) DEFAULT 'text';
+        ALTER TABLE search_history ADD COLUMN IF NOT EXISTS category VARCHAR(255);
+        ALTER TABLE search_history ADD COLUMN IF NOT EXISTS filters JSONB;
+        ALTER TABLE search_history ADD COLUMN IF NOT EXISTS location_lat DOUBLE PRECISION;
+        ALTER TABLE search_history ADD COLUMN IF NOT EXISTS location_lon DOUBLE PRECISION;
+        ALTER TABLE search_history ADD COLUMN IF NOT EXISTS results_count INTEGER DEFAULT 0;
+        ALTER TABLE search_history ADD COLUMN IF NOT EXISTS clicked_result_id INTEGER;
+        ALTER TABLE search_history ADD COLUMN IF NOT EXISTS clicked_at TIMESTAMP WITH TIME ZONE;
+        ALTER TABLE search_history ADD COLUMN IF NOT EXISTS session_id VARCHAR(255);
+        ALTER TABLE search_history ADD COLUMN IF NOT EXISTS device_type VARCHAR(50);
+        ALTER TABLE search_history ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
+    ELSE
+        -- Créer la table seulement si elle n'existe pas
         CREATE TABLE search_history (
             id SERIAL PRIMARY KEY,
             user_id INTEGER,
-            -- NULL si recherche anonyme, sinon ID de l'utilisateur
             query_text TEXT NOT NULL,
-            -- Texte de la recherche
             query_type VARCHAR(50) DEFAULT 'text',
-            -- 'text', 'image', 'voice', 'autocomplete'
             category VARCHAR(255),
-            -- Catégorie filtrée (optionnel)
             filters JSONB,
-            -- Filtres appliqués (ex: {"prix_min": 10000, "prix_max": 50000, "ville": "Yaoundé"})
             location_lat DOUBLE PRECISION,
             location_lon DOUBLE PRECISION,
-            -- Coordonnées GPS si recherche géolocalisée
             results_count INTEGER DEFAULT 0,
-            -- Nombre de résultats trouvés
             clicked_result_id INTEGER,
-            -- ID du résultat sur lequel l'utilisateur a cliqué (optionnel)
             clicked_at TIMESTAMP WITH TIME ZONE,
-            -- Timestamp du clic sur un résultat
             session_id VARCHAR(255),
-            -- ID de session pour regrouper les recherches d'une même session
             device_type VARCHAR(50),
-            -- 'mobile', 'web', 'tablet'
             created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
         );
         
         RAISE NOTICE 'Table search_history créée avec succès';
-    ELSE
-        RAISE NOTICE 'Table search_history existe déjà';
     END IF;
 END $$;
 

@@ -107,3 +107,4 @@ curl -v https://yukpomnang.com/api/health
 **Date** : 2026-02-14  
 **Statut** : Guide de redéploiement créé
 
+

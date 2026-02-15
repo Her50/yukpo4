@@ -2,7 +2,10 @@
 -- Date: 2025-11-27
 -- Description: Fonction pour récupérer le décompte des réactions par type pour un produit
 
--- Créer la fonction si elle n'existe pas
+-- ✅ CORRIGÉ 2026-02-15: Supprimer la fonction avant de la recréer pour éviter les erreurs de changement de type de retour
+DROP FUNCTION IF EXISTS get_product_reactions_count(INTEGER, TEXT);
+
+-- Créer la fonction
 CREATE OR REPLACE FUNCTION get_product_reactions_count(
     p_service_id INTEGER,
     p_product_id TEXT

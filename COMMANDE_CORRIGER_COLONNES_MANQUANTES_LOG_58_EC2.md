@@ -67,3 +67,4 @@ EOFSQL
 
 **Pour une solution complète**, il faut améliorer le parsing SQL dans `auto_migrate.rs`.
 
+

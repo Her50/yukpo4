@@ -37,7 +37,7 @@ CREATE INDEX IF NOT EXISTS idx_pharmacy_orders_created ON pharmacy_orders(create
 CREATE TABLE IF NOT EXISTS pharmacy_order_items (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     order_id UUID NOT NULL REFERENCES pharmacy_orders(id) ON DELETE CASCADE,
-    medication_id UUID NOT NULL REFERENCES pharmacy_products(id) ON DELETE CASCADE,
+    medication_id INTEGER NOT NULL REFERENCES pharmacy_products(id) ON DELETE CASCADE,
     medication_name VARCHAR(200) NOT NULL, -- Nom du médicament (copié pour historique)
     quantity INTEGER NOT NULL DEFAULT 1,
     unit_price DECIMAL(10,2) NOT NULL,
@@ -57,7 +57,7 @@ CREATE TABLE IF NOT EXISTS pharmacy_reservations (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     pharmacy_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    medication_id UUID NOT NULL REFERENCES pharmacy_products(id) ON DELETE CASCADE,
+    medication_id INTEGER NOT NULL REFERENCES pharmacy_products(id) ON DELETE CASCADE,
     quantity INTEGER NOT NULL DEFAULT 1,
     status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'available', 'collected', 'expired', 'cancelled')),
     expiry_time TIMESTAMPTZ NOT NULL, -- Date limite de validité de la réservation

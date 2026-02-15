@@ -9,28 +9,29 @@
 -- =====================================================
 
 -- Index GIN pour recherche full-text sur titre_service
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_services_titre_service_gin 
+-- ✅ CORRIGÉ 2026-02-15: Supprimé CONCURRENTLY car SQLx exécute dans des transactions
+CREATE INDEX IF NOT EXISTS idx_services_titre_service_gin 
 ON services USING GIN (
     to_tsvector('french', COALESCE(data->'titre_service'->>'valeur', ''))
 )
 WHERE is_active = true;
 
 -- Index GIN pour recherche full-text sur description
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_services_description_gin 
+CREATE INDEX IF NOT EXISTS idx_services_description_gin 
 ON services USING GIN (
     to_tsvector('french', COALESCE(data->'description'->>'valeur', ''))
 )
 WHERE is_active = true;
 
 -- Index GIN pour recherche full-text sur category
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_services_category_gin 
+CREATE INDEX IF NOT EXISTS idx_services_category_gin 
 ON services USING GIN (
     to_tsvector('french', COALESCE(data->'category'->>'valeur', ''))
 )
 WHERE is_active = true;
 
 -- Index composite pour recherche combinée (OPTIMAL)
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_services_fulltext_combined_gin 
+CREATE INDEX IF NOT EXISTS idx_services_fulltext_combined_gin 
 ON services USING GIN (
     to_tsvector('french', 
         COALESCE(data->'titre_service'->>'valeur', '') || ' ' ||
@@ -45,22 +46,22 @@ WHERE is_active = true;
 -- =====================================================
 
 -- Index GIN sur full_vector pour recherche rapide
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_autocomplete_full_vector_gin 
+CREATE INDEX IF NOT EXISTS idx_autocomplete_full_vector_gin 
 ON autocomplete_characteristics USING GIN (full_vector);
 
 -- Index GIN sur characteristic_vector
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_autocomplete_characteristic_vector_gin 
+CREATE INDEX IF NOT EXISTS idx_autocomplete_characteristic_vector_gin 
 ON autocomplete_characteristics USING GIN (characteristic_vector);
 
 -- Index GIN sur valeur pour recherche tsvector
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_autocomplete_valeur_tsvector_gin 
+CREATE INDEX IF NOT EXISTS idx_autocomplete_valeur_tsvector_gin 
 ON autocomplete_characteristics USING GIN (
     to_tsvector('french', valeur)
 )
 WHERE identifiant_base = 'produits' AND is_real_product = TRUE;
 
 -- Index composite pour filtres fréquents
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_autocomplete_product_search 
+CREATE INDEX IF NOT EXISTS idx_autocomplete_product_search 
 ON autocomplete_characteristics (
     identifiant_base, 
     is_real_product,
@@ -73,11 +74,11 @@ WHERE identifiant_base = 'produits' AND is_real_product = TRUE;
 -- =====================================================
 
 -- Index composite pour requêtes fréquentes (delivery_id + occurred_at)
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_delivery_status_events_delivery_occurred 
+CREATE INDEX IF NOT EXISTS idx_delivery_status_events_delivery_occurred 
 ON delivery_status_events (delivery_id, occurred_at);
 
 -- Index sur delivery_id seul (si pas déjà présent)
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_delivery_status_events_delivery_id 
+CREATE INDEX IF NOT EXISTS idx_delivery_status_events_delivery_id 
 ON delivery_status_events (delivery_id);
 
 -- =====================================================
@@ -85,13 +86,13 @@ ON delivery_status_events (delivery_id);
 -- =====================================================
 
 -- Index composite pour is_active + category
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_services_active_category 
+CREATE INDEX IF NOT EXISTS idx_services_active_category 
 ON services (is_active, category)
 WHERE is_active = true;
 
 -- Index sur gps pour recherches géographiques (si format standardisé)
 -- Note: Nécessite que gps soit au format "lat,lng" ou utiliser PostGIS
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_services_gps_btree 
+CREATE INDEX IF NOT EXISTS idx_services_gps_btree 
 ON services (gps)
 WHERE is_active = true AND gps IS NOT NULL AND gps != '';
 
@@ -108,16 +109,19 @@ ANALYZE delivery_status_events;
 -- VÉRIFICATION DES INDEX CRÉÉS
 -- =====================================================
 
+-- ✅ CORRIGÉ 2026-02-15: Requêtes de vérification commentées car non essentielles
+-- Les index sont créés avec IF NOT EXISTS, donc pas besoin de vérification
+/*
 -- Vérifier que les index ont été créés
 SELECT 
     schemaname,
-    tablename::text,
+    tablename,
     indexname,
     indexdef
 FROM pg_indexes
-WHERE tablename::text IN ('services', 'autocomplete_characteristics', 'delivery_status_events')
+WHERE tablename IN ('services', 'autocomplete_characteristics', 'delivery_status_events')
 AND indexname LIKE 'idx_%'
-ORDER BY tablename::text, indexname;
+ORDER BY tablename, indexname;
 
 -- =====================================================
 -- STATISTIQUES SUR LES INDEX
@@ -126,13 +130,14 @@ ORDER BY tablename::text, indexname;
 -- Vérifier la taille des index
 SELECT
     schemaname,
-    tablename::text,
+    tablename,
     indexrelname AS indexname,
     pg_size_pretty(pg_relation_size(indexrelid)) AS index_size
 FROM pg_stat_user_indexes
-WHERE tablename::text IN ('services', 'autocomplete_characteristics', 'delivery_status_events')
+WHERE tablename IN ('services', 'autocomplete_characteristics', 'delivery_status_events')
 AND indexrelname LIKE 'idx_%'
 ORDER BY pg_relation_size(indexrelid) DESC;
+*/
 
 -- =====================================================
 -- NOTES D'UTILISATION
@@ -156,17 +161,17 @@ ORDER BY pg_relation_size(indexrelid) DESC;
 
 -- Pour supprimer les index si nécessaire:
 /*
-DROP INDEX CONCURRENTLY IF EXISTS idx_services_titre_service_gin;
-DROP INDEX CONCURRENTLY IF EXISTS idx_services_description_gin;
-DROP INDEX CONCURRENTLY IF EXISTS idx_services_category_gin;
-DROP INDEX CONCURRENTLY IF EXISTS idx_services_fulltext_combined_gin;
-DROP INDEX CONCURRENTLY IF EXISTS idx_autocomplete_full_vector_gin;
-DROP INDEX CONCURRENTLY IF EXISTS idx_autocomplete_characteristic_vector_gin;
-DROP INDEX CONCURRENTLY IF EXISTS idx_autocomplete_valeur_tsvector_gin;
-DROP INDEX CONCURRENTLY IF EXISTS idx_autocomplete_product_search;
-DROP INDEX CONCURRENTLY IF EXISTS idx_delivery_status_events_delivery_occurred;
-DROP INDEX CONCURRENTLY IF EXISTS idx_delivery_status_events_delivery_id;
-DROP INDEX CONCURRENTLY IF EXISTS idx_services_active_category;
-DROP INDEX CONCURRENTLY IF EXISTS idx_services_gps_btree;
+DROP INDEX IF EXISTS idx_services_titre_service_gin;
+DROP INDEX IF EXISTS idx_services_description_gin;
+DROP INDEX IF EXISTS idx_services_category_gin;
+DROP INDEX IF EXISTS idx_services_fulltext_combined_gin;
+DROP INDEX IF EXISTS idx_autocomplete_full_vector_gin;
+DROP INDEX IF EXISTS idx_autocomplete_characteristic_vector_gin;
+DROP INDEX IF EXISTS idx_autocomplete_valeur_tsvector_gin;
+DROP INDEX IF EXISTS idx_autocomplete_product_search;
+DROP INDEX IF EXISTS idx_delivery_status_events_delivery_occurred;
+DROP INDEX IF EXISTS idx_delivery_status_events_delivery_id;
+DROP INDEX IF EXISTS idx_services_active_category;
+DROP INDEX IF EXISTS idx_services_gps_btree;
 */
 

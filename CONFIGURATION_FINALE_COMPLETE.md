@@ -176,3 +176,4 @@ powershell -ExecutionPolicy Bypass -File scripts\verifier-route53-dns.ps1
 - ✅ Frontend/Mobile utilisent le domaine Cloudflare
 - ✅ HTTPS fourni automatiquement
 
+

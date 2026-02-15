@@ -190,3 +190,4 @@ SELECT 'delivery_proximity_suggestions.status', EXISTS (SELECT 1 FROM informatio
 - ✅ Le backend **fonctionne** car les colonnes existent
 - ⚠️ Il faut **améliorer le parsing SQL** pour éviter les erreurs dans les logs
 
+

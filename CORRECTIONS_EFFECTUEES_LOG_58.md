@@ -166,3 +166,4 @@ WHERE routine_schema = 'public';
 **Dernière mise à jour** : 2026-02-14  
 **Statut** : Corrections effectuées, en attente de déploiement et tests
 
+

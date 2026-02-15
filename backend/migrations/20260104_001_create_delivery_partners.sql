@@ -57,5 +57,5 @@ ADD COLUMN IF NOT EXISTS vehicle_image_url TEXT;
 COMMENT ON TABLE delivery_partners IS 'Partenaires de livraison (gestionnaires de logistique) qui peuvent être associés aux coursiers';
 COMMENT ON COLUMN delivery_partners.partner_type IS 'Type de partenaire: Livraison, pharmacie, hopital, laboratoire, agence de voyage, demenagement, transport';
 COMMENT ON COLUMN courier_applications.partner_id IS 'Référence au partenaire de livraison auquel appartient le coursier';
-COMMENT ON COLUMN courier_assets.vehicle_image_url IS 'URL de l\'image du moyen de transport du coursier';
+COMMENT ON COLUMN courier_assets.vehicle_image_url IS 'URL de l''image du moyen de transport du coursier';
 

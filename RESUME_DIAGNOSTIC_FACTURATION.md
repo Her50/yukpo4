@@ -137,3 +137,4 @@ aws ecs describe-services \
 **Date** : 2026-02-14  
 **Statut** : Diagnostic en cours - Attente du démarrage de la tâche
 
+

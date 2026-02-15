@@ -79,11 +79,12 @@ WHERE identifiant_base = 'produits' AND is_real_product = TRUE;
 -- 6. Vérifier que les fonctions helper existent
 -- =====================================================
 
+-- ✅ CORRIGÉ 2026-02-15: Utiliser le nom de paramètre original 'full_vec' pour éviter l'erreur
 -- Fonction full_vector_to_tsvector (doit exister)
-CREATE OR REPLACE FUNCTION full_vector_to_tsvector(char_vec TEXT[])
+CREATE OR REPLACE FUNCTION full_vector_to_tsvector(full_vec TEXT[])
 RETURNS tsvector AS $$
 BEGIN
-    RETURN to_tsvector('french', array_to_string(COALESCE(char_vec, ARRAY[]::TEXT[]), ' '));
+    RETURN to_tsvector('french', array_to_string(COALESCE(full_vec, ARRAY[]::TEXT[]), ' '));
 END;
 $$ LANGUAGE plpgsql IMMUTABLE;
 

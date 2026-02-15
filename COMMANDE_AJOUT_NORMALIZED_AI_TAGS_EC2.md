@@ -118,3 +118,4 @@ D'après votre vérification :
 2. Vérifier que toutes les colonnes sont présentes
 3. Redémarrer le backend pour que les changements prennent effet
 
+

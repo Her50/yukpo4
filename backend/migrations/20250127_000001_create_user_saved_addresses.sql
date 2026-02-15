@@ -65,6 +65,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- ✅ CORRIGÉ 2026-02-15: Supprimer le trigger s'il existe déjà avant de le créer
+DROP TRIGGER IF EXISTS trigger_update_user_saved_addresses_updated_at ON user_saved_addresses;
 CREATE TRIGGER trigger_update_user_saved_addresses_updated_at
     BEFORE UPDATE ON user_saved_addresses
     FOR EACH ROW

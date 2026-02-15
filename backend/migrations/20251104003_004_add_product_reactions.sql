@@ -46,6 +46,8 @@ BEGIN
 END $$;
 
 -- Fonction pour obtenir le décompte des réactions par produit
+-- ✅ CORRIGÉ 2026-02-15: Supprimer toutes les versions de la fonction avant de la recréer
+DROP FUNCTION IF EXISTS get_product_reactions_count(INTEGER, TEXT) CASCADE;
 CREATE OR REPLACE FUNCTION get_product_reactions_count(
     p_service_id INTEGER,
     p_product_id TEXT

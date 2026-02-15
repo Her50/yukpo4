@@ -96,3 +96,4 @@ SELECT 'live_flash_sales.ending_notification_sent_at', EXISTS (SELECT 1 FROM inf
 UNION ALL
 SELECT 'social_publication_jobs.platform', EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'social_publication_jobs' AND column_name = 'platform');
 
+

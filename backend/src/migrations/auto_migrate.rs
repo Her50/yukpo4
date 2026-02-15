@@ -3198,7 +3198,7 @@ pub async fn ensure_image_search_vector_matching_optimization(
 ) -> Result<(), sqlx::Error> {
     info!("🔍 Application migration image search vector matching optimization...");
     let migration_sql =
-        include_str!("../../migrations/20251230_optimize_image_search_vector_matching.sql");
+        include_str!("../../migrations/00001031_optimize_image_search_vector_matching.sql");
 
     // ✅ CORRIGÉ 2026-02-13: Utiliser execute_migration_sql_safe() pour gérer les commandes multiples
     execute_migration_sql_safe(pool, migration_sql).await?;
@@ -3211,7 +3211,7 @@ pub async fn ensure_image_search_vector_matching_optimization(
 pub async fn ensure_fix_image_search_to_tsvector_error(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Application migration fix image search to_tsvector error...");
     let migration_sql =
-        include_str!("../../migrations/20260114_fix_image_search_to_tsvector_error.sql");
+        include_str!("../../migrations/00000052_fix_image_search_to_tsvector_error.sql");
 
     // ✅ CORRIGÉ 2026-02-13: Utiliser execute_migration_sql_safe() pour gérer les commandes multiples
     execute_migration_sql_safe(pool, migration_sql).await?;
@@ -3235,7 +3235,7 @@ pub async fn ensure_fix_image_search_empty_results(pool: &PgPool) -> Result<(), 
 /// ✅ 2025-12-30: Optimisation recherche audio avec cache et post-traitement
 pub async fn ensure_audio_search_cache_optimization(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Application migration audio search cache optimization...");
-    let migration_sql = include_str!("../../migrations/20251230_optimize_audio_search_cache.sql");
+    let migration_sql = include_str!("../../migrations/00001037_optimize_audio_search_cache.sql");
 
     // ✅ CORRIGÉ 2026-02-13: Utiliser execute_migration_sql_safe() pour gérer les commandes multiples
     execute_migration_sql_safe(pool, migration_sql).await?;
@@ -3309,7 +3309,7 @@ pub async fn ensure_search_performance_final_optimization(
 ) -> Result<(), sqlx::Error> {
     info!("🔍 Application migration search performance final optimization...");
     let migration_sql =
-        include_str!("../../migrations/20251230_optimize_search_performance_final.sql");
+        include_str!("../../migrations/00001026_optimize_search_performance_final.sql");
 
     // ✅ CORRIGÉ 2026-02-13: Utiliser execute_migration_sql_safe() pour gérer les commandes multiples
     execute_migration_sql_safe(pool, migration_sql).await?;
@@ -10594,7 +10594,7 @@ pub async fn ensure_message_reactions_table(pool: &PgPool) -> Result<(), sqlx::E
     info!("🔍 Vérification/création de la table message_reactions...");
 
     // Lire le contenu de la migration SQL
-    let migration_sql = include_str!("../../migrations/20250127_add_message_reactions.sql");
+    let migration_sql = include_str!("../../migrations/00000129_add_message_reactions.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
     execute_migration_sql_safe(pool, migration_sql).await?;
@@ -12010,7 +12010,7 @@ pub async fn ensure_hybrid_image_search_language_and_relevance(
 ) -> Result<(), sqlx::Error> {
     info!("🔍 Application migration hybrid_image_search_language_and_relevance...");
     let migration_sql = include_str!(
-        "../../migrations/20251224_improve_hybrid_image_search_language_and_relevance.sql"
+        "../../migrations/00001029_improve_hybrid_image_search_language_and_relevance.sql"
     );
     execute_migration_sql_safe(pool, migration_sql).await?;
     info!("✅ Migration hybrid_image_search_language_and_relevance appliquée");
@@ -12037,7 +12037,7 @@ pub async fn ensure_hybrid_image_search_relevance_and_performance(
 pub async fn ensure_hybrid_image_search_generic_products(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Application migration hybrid_image_search_generic_products...");
     let migration_sql =
-        include_str!("../../migrations/20251227_fix_image_search_strict_matching.sql");
+        include_str!("../../migrations/00000043_fix_image_search_strict_matching.sql");
     execute_migration_sql_safe(pool, migration_sql).await?;
     info!("✅ Migration hybrid_image_search_generic_products appliquée");
     Ok(())
@@ -12049,7 +12049,7 @@ pub async fn ensure_hybrid_image_search_generic_products(pool: &PgPool) -> Resul
 pub async fn ensure_optimize_slow_queries_critical(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Application migration optimize_slow_queries_critical...");
     let migration_sql =
-        include_str!("../../migrations/20251224_optimize_slow_queries_critical.sql");
+        include_str!("../../migrations/00001032_optimize_slow_queries_critical.sql");
     execute_migration_sql_safe(pool, migration_sql).await?;
     info!("✅ Migration optimize_slow_queries_critical appliquée");
     Ok(())
@@ -12075,7 +12075,7 @@ pub async fn ensure_optimize_delivery_queries_additional(pool: &PgPool) -> Resul
 ///   - SELECT delivery_parcels avec sous-requête lente (436-765ms) → <50ms avec JOIN + index
 pub async fn ensure_optimize_search_performance(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Application migration optimize_search_performance...");
-    let migration_sql = include_str!("../../migrations/20260114_optimize_search_performance.sql");
+    let migration_sql = include_str!("../../migrations/00000054_optimize_search_performance.sql");
     execute_migration_sql_safe(pool, migration_sql).await?;
     info!("✅ Migration optimize_search_performance appliquée");
     Ok(())
@@ -14822,7 +14822,7 @@ pub async fn ensure_specialized_search_functions(pool: &PgPool) -> Result<(), sq
 
     // Lire le contenu de la migration SQL
     let migration_sql =
-        include_str!("../../migrations/20251126_search_specialized_services_with_moment.sql");
+        include_str!("../../migrations/00001024_search_specialized_services_with_moment.sql");
 
     // Exécuter la migration
     sqlx::query(migration_sql).execute(pool).await?;
@@ -14846,7 +14846,7 @@ pub async fn ensure_banques_sang_table(pool: &PgPool) -> Result<(), sqlx::Error>
 
     if !banques_sang_exists {
         // Lire le contenu de la migration SQL
-        let migration_sql = include_str!("../../migrations/20251127_create_banques_sang_table.sql");
+        let migration_sql = include_str!("../../migrations/00000096_create_banques_sang_table.sql");
 
         // Exécuter la migration SQL en divisant en commandes individuelles
         execute_migration_sql_safe(pool, migration_sql).await?;
@@ -14865,7 +14865,7 @@ pub async fn ensure_bus_tickets_integration(pool: &PgPool) -> Result<(), sqlx::E
 
     // Lire le contenu de la migration SQL
     let migration_sql =
-        include_str!("../../migrations/20251127_integrate_bus_tickets_with_agences_voyage.sql");
+        include_str!("../../migrations/00000099_integrate_bus_tickets_with_agences_voyage.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
     execute_migration_sql_safe(pool, migration_sql).await?;
@@ -14880,7 +14880,7 @@ pub async fn ensure_bus_ticket_commission_system(pool: &PgPool) -> Result<(), sq
 
     // Lire le contenu de la migration SQL
     let migration_sql =
-        include_str!("../../migrations/20251127_add_commission_to_bus_payments.sql");
+        include_str!("../../migrations/00000090_add_commission_to_bus_payments.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
     execute_migration_sql_safe(pool, migration_sql).await?;
@@ -14904,7 +14904,7 @@ pub async fn ensure_bus_ticket_validation_system(pool: &PgPool) -> Result<(), sq
     if !bus_boarding_status_exists {
         // Lire le contenu de la migration SQL
         let migration_sql =
-            include_str!("../../migrations/20251127_bus_ticket_validation_system.sql");
+            include_str!("../../migrations/00000095_bus_ticket_validation_system.sql");
 
         // Exécuter la migration SQL en divisant en commandes individuelles
         execute_migration_sql_safe(pool, migration_sql).await?;
@@ -14930,7 +14930,7 @@ pub async fn ensure_bus_seat_blocks_system(pool: &PgPool) -> Result<(), sqlx::Er
 
     if !bus_seat_blocks_exists {
         // Lire le contenu de la migration SQL
-        let migration_sql = include_str!("../../migrations/20251127_bus_manual_seat_blocks.sql");
+        let migration_sql = include_str!("../../migrations/00000094_bus_manual_seat_blocks.sql");
 
         // Exécuter la migration SQL en divisant en commandes individuelles
         execute_migration_sql_safe(pool, migration_sql).await?;
@@ -14958,7 +14958,7 @@ pub async fn ensure_blood_donation_matching_system(pool: &PgPool) -> Result<(), 
     if !user_blood_groups_exists {
         // Lire le contenu de la migration SQL
         let migration_sql =
-            include_str!("../../migrations/20251127_blood_donation_matching_system.sql");
+            include_str!("../../migrations/00000093_blood_donation_matching_system.sql");
 
         // Exécuter la migration SQL en divisant en commandes individuelles
         execute_migration_sql_safe(pool, migration_sql).await?;
@@ -14986,7 +14986,7 @@ pub async fn ensure_agency_departure_schedules(pool: &PgPool) -> Result<(), sqlx
     if !table_exists {
         // Lire le contenu de la migration SQL
         let migration_sql =
-            include_str!("../../migrations/20251127_agency_departure_schedules.sql");
+            include_str!("../../migrations/00000092_agency_departure_schedules.sql");
 
         // Exécuter la migration SQL en divisant en commandes individuelles
         execute_migration_sql_safe(pool, migration_sql).await?;
@@ -15014,7 +15014,7 @@ pub async fn ensure_return_time_columns(pool: &PgPool) -> Result<(), sqlx::Error
     if !return_date_exists {
         // Lire le contenu de la migration SQL
         let migration_sql =
-            include_str!("../../migrations/20251127_add_return_time_to_bus_payments.sql");
+            include_str!("../../migrations/00000091_add_return_time_to_bus_payments.sql");
 
         // Exécuter la migration SQL en divisant en commandes individuelles
         execute_migration_sql_safe(pool, migration_sql).await?;
@@ -15038,7 +15038,7 @@ pub async fn ensure_improved_return_matching(pool: &PgPool) -> Result<(), sqlx::
 
     // Lire le contenu de la migration SQL
     let migration_sql =
-        include_str!("../../migrations/20251127_improve_return_trip_matching_with_time.sql");
+        include_str!("../../migrations/00000098_improve_return_trip_matching_with_time.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
     execute_migration_sql_safe(pool, migration_sql).await?;
@@ -15191,7 +15191,7 @@ pub async fn ensure_specialized_type_triggers(pool: &PgPool) -> Result<(), sqlx:
     info!("🔍 Vérification/création des triggers specialized_type...");
 
     // Lire le contenu de la migration SQL
-    let migration_sql = include_str!("../../migrations/20250128_add_specialized_type_triggers.sql");
+    let migration_sql = include_str!("../../migrations/00000012_add_specialized_type_triggers.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
     execute_migration_sql_safe(pool, migration_sql).await?;
@@ -15230,7 +15230,7 @@ pub async fn ensure_search_services_gps_final_optimization(
 
     // Lire le contenu de la migration SQL
     let migration_sql =
-        include_str!("../../migrations/20251201_OPTIMIZE_SEARCH_GPS_FINAL_CRITICAL.sql");
+        include_str!("../../migrations/00000048_OPTIMIZE_SEARCH_GPS_FINAL_CRITICAL.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
     execute_migration_sql_safe(pool, migration_sql).await?;
@@ -15264,7 +15264,7 @@ pub async fn ensure_hybrid_image_search_optimization(pool: &PgPool) -> Result<()
 
     // Lire le contenu de la migration SQL
     let migration_sql = include_str!(
-        "../../migrations/20250101_OPTIMIZE_HYBRID_IMAGE_SEARCH_WITH_UNACCENT_SIMILARITY.sql"
+        "../../migrations/00000102_OPTIMIZE_HYBRID_IMAGE_SEARCH_WITH_UNACCENT_SIMILARITY.sql"
     );
 
     // Exécuter la migration SQL en divisant en commandes individuelles
@@ -15280,6 +15280,7 @@ pub async fn ensure_hybrid_image_search_optimization(pool: &PgPool) -> Result<()
 pub async fn ensure_search_indexes_optimization(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification/création des index d'optimisation de recherche...");
 
+    // Lire le contenu de la migration SQL
     // Lire le contenu de la migration SQL
     let migration_sql = include_str!("../../migrations/20251126_optimize_search_indexes.sql");
 
@@ -15298,7 +15299,7 @@ pub async fn ensure_get_services_performance_indexes(pool: &PgPool) -> Result<()
 
     // Lire le contenu de la migration SQL
     let migration_sql =
-        include_str!("../../migrations/20251127_optimize_get_services_performance.sql");
+        include_str!("../../migrations/00000100_optimize_get_services_performance.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
     execute_migration_sql_safe(pool, migration_sql).await?;
@@ -15314,6 +15315,7 @@ pub async fn ensure_scalability_indexes(pool: &PgPool) -> Result<(), sqlx::Error
     info!("🔍 Vérification/création des index et vues matérialisées de scalabilité...");
 
     // Lire le contenu de la migration SQL
+    // Lire le contenu de la migration SQL
     let migration_sql = include_str!("../../migrations/20251201_scalability_indexes.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
@@ -15328,7 +15330,7 @@ pub async fn ensure_scalability_indexes(pool: &PgPool) -> Result<(), sqlx::Error
 
     // ✅ CORRECTION 2025-12-09: Appliquer l'optimisation des requêtes lentes
     let optimize_slow_queries_sql =
-        include_str!("../../migrations/20251209_optimize_slow_queries_indexes.sql");
+        include_str!("../../migrations/00001009_optimize_slow_queries_indexes.sql");
     if let Err(e) = execute_migration_sql_safe(pool, optimize_slow_queries_sql).await {
         warn!("⚠️ Erreur lors de l'optimisation des requêtes lentes (peut être ignorée si déjà appliquée): {}", e);
     }
@@ -15351,6 +15353,7 @@ pub async fn ensure_delivery_phase1_optimizations(pool: &PgPool) -> Result<(), s
     info!("🔍 Vérification/création des optimisations Phase 1 livraison...");
 
     // Lire le contenu de la migration SQL
+    // Lire le contenu de la migration SQL
     let migration_sql = include_str!("../../migrations/20250127_phase1_delivery_optimizations.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
@@ -15367,7 +15370,7 @@ pub async fn ensure_delivery_phase2_partitioning(pool: &PgPool) -> Result<(), sq
     info!("🔍 Vérification/création des optimisations Phase 2 livraison (partitionnement)...");
 
     // Lire le contenu de la migration SQL
-    let migration_sql = include_str!("../../migrations/20250127_phase2_delivery_partitioning.sql");
+    let migration_sql = include_str!("../../migrations/00000141_phase2_delivery_partitioning.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
     execute_migration_sql_safe(pool, migration_sql).await?;
@@ -15382,6 +15385,7 @@ pub async fn ensure_delivery_phase2_partitioning(pool: &PgPool) -> Result<(), sq
 pub async fn ensure_video_scalability_improvements(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Application des améliorations de scalabilité vidéo (millions de créations simultanées)...");
 
+    // Lire le contenu de la migration SQL
     // Lire le contenu de la migration SQL
     let migration_sql = include_str!("../../migrations/20250101_scalability_improvements.sql");
 
@@ -15416,7 +15420,7 @@ pub async fn ensure_hashtags_scalability_optimizations(pool: &PgPool) -> Result<
     info!("🔍 Application des optimisations de scalabilité hashtags...");
 
     // Lire le contenu de la migration SQL
-    let migration_sql = include_str!("../../migrations/20251203_optimize_hashtags_scalability.sql");
+    let migration_sql = include_str!("../../migrations/00000084_optimize_hashtags_scalability.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
     execute_migration_sql_safe(pool, migration_sql).await?;
@@ -15433,6 +15437,7 @@ pub async fn ensure_recommendations_enhancement(pool: &PgPool) -> Result<(), sql
 
     // Lire le contenu de la migration SQL
     let migration_sql =
+        // Lire le contenu de la migration SQL
         include_str!("../../migrations/20251203_enhance_recommendations_algorithm.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
@@ -15450,7 +15455,7 @@ pub async fn ensure_specialized_services_constraints(pool: &PgPool) -> Result<()
 
     // Lire le contenu de la migration SQL
     let migration_sql =
-        include_str!("../../migrations/20250128_add_specialized_services_constraints.sql");
+        include_str!("../../migrations/00000011_add_specialized_services_constraints.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
     execute_migration_sql_safe(pool, migration_sql).await?;
@@ -15467,6 +15472,7 @@ pub async fn ensure_specialized_services_drafts_table(pool: &PgPool) -> Result<(
 
     // Lire le contenu de la migration SQL
     let migration_sql =
+        // Lire le contenu de la migration SQL
         include_str!("../../migrations/20250128_create_specialized_services_drafts.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
@@ -15484,7 +15490,7 @@ pub async fn ensure_search_history_tables(pool: &PgPool) -> Result<(), sqlx::Err
 
     // Lire le contenu de la migration SQL
     let migration_sql =
-        include_str!("../../migrations/20250128_create_search_history_and_saved_searches.sql");
+        include_str!("../../migrations/00001004_create_search_history_and_saved_searches.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
     execute_migration_sql_safe(pool, migration_sql).await?;
@@ -15501,6 +15507,7 @@ pub async fn ensure_taxi_covoit_scalability_indexes(pool: &PgPool) -> Result<(),
 
     // Lire le contenu de la migration SQL
     let migration_sql =
+        // Lire le contenu de la migration SQL
         include_str!("../../migrations/20250128_add_taxi_covoit_scalability_indexes.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
@@ -15518,7 +15525,7 @@ pub async fn ensure_hospital_lab_scalability_indexes(pool: &PgPool) -> Result<()
 
     // Lire le contenu de la migration SQL
     let migration_sql =
-        include_str!("../../migrations/20250128_add_hospital_lab_scalability_indexes.sql");
+        include_str!("../../migrations/00000010_add_hospital_lab_scalability_indexes.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
     execute_migration_sql_safe(pool, migration_sql).await?;
@@ -15532,6 +15539,7 @@ pub async fn ensure_hospital_lab_scalability_indexes(pool: &PgPool) -> Result<()
 pub async fn ensure_livres_scolaires_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification/création des tables livres scolaires et troc...");
 
+    // Lire le contenu de la migration SQL
     // Lire le contenu de la migration SQL
     let migration_sql = include_str!("../../migrations/20250128_create_livres_scolaires_troc.sql");
 
@@ -15548,7 +15556,7 @@ pub async fn ensure_offres_emploi_tables(pool: &PgPool) -> Result<(), sqlx::Erro
     info!("🔍 Vérification/création des tables offres d'emploi...");
 
     // Lire le contenu de la migration SQL
-    let migration_sql = include_str!("../../migrations/20250128_create_offres_emploi.sql");
+    let migration_sql = include_str!("../../migrations/00000016_create_offres_emploi.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
     execute_migration_sql_safe(pool, migration_sql).await?;
@@ -15562,6 +15570,7 @@ pub async fn ensure_offres_emploi_tables(pool: &PgPool) -> Result<(), sqlx::Erro
 pub async fn ensure_orientation_scolaire_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification/création des tables orientation scolaire...");
 
+    // Lire le contenu de la migration SQL
     // Lire le contenu de la migration SQL
     let migration_sql = include_str!("../../migrations/20250128_create_orientation_scolaire.sql");
 
@@ -15578,7 +15587,7 @@ pub async fn ensure_delivery_chat_tables(pool: &PgPool) -> Result<(), sqlx::Erro
     info!("🔍 Vérification/création des tables chat de livraison et gamification...");
 
     // Lire le contenu de la migration SQL
-    let migration_sql = include_str!("../../migrations/20250128_create_delivery_chat_tables.sql");
+    let migration_sql = include_str!("../../migrations/00000014_create_delivery_chat_tables.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
     execute_migration_sql_safe(pool, migration_sql).await?;
@@ -15592,6 +15601,7 @@ pub async fn ensure_delivery_chat_tables(pool: &PgPool) -> Result<(), sqlx::Erro
 pub async fn ensure_user_documents_table(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification/création de la table user_documents...");
 
+    // Lire le contenu de la migration SQL
     // Lire le contenu de la migration SQL
     let migration_sql = include_str!("../../migrations/20250129_create_user_documents.sql");
 
@@ -15622,7 +15632,7 @@ async fn ensure_loyalty_chat_rating_tables(pool: &PgPool) -> Result<(), sqlx::Er
     info!("🔍 Vérification des tables loyalty, chat_support et bus_ticket_ratings...");
 
     // Lire le contenu de la migration SQL
-    let migration_sql = include_str!("../../migrations/20250127_loyalty_chat_rating_tables.sql");
+    let migration_sql = include_str!("../../migrations/00000139_loyalty_chat_rating_tables.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
     execute_migration_sql_safe(pool, migration_sql).await?;
@@ -15653,7 +15663,7 @@ pub async fn ensure_pharmacy_products_table(pool: &PgPool) -> Result<(), sqlx::E
     info!("🔍 Vérification/création de la table pharmacy_products...");
 
     // Lire le contenu de la migration SQL
-    let migration_sql = include_str!("../../migrations/20250128_002_add_pharmacy_products.sql");
+    let migration_sql = include_str!("../../migrations/00000005_002_add_pharmacy_products.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
     execute_migration_sql_safe(pool, migration_sql).await?;
@@ -15686,7 +15696,7 @@ pub async fn ensure_lab_advanced_tables(pool: &PgPool) -> Result<(), sqlx::Error
     );
 
     // Lire le contenu de la migration SQL
-    let migration_sql = include_str!("../../migrations/20250127_create_lab_advanced_tables.sql");
+    let migration_sql = include_str!("../../migrations/00000037_create_lab_advanced_tables.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
     execute_migration_sql_safe(pool, migration_sql).await?;
@@ -15700,6 +15710,7 @@ pub async fn ensure_lab_advanced_tables(pool: &PgPool) -> Result<(), sqlx::Error
 pub async fn ensure_plugin_marketplace_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification/création des tables plugin marketplace...");
 
+    // Lire le contenu de la migration SQL
     // Lire le contenu de la migration SQL
     let migration_sql = include_str!("../../migrations/20250127_012_create_plugin_marketplace.sql");
 
@@ -15717,7 +15728,7 @@ pub async fn ensure_bourse_livre_advanced_tables(pool: &PgPool) -> Result<(), sq
 
     // Lire le contenu de la migration SQL
     let migration_sql =
-        include_str!("../../migrations/20250127_create_bourse_livre_advanced_tables.sql");
+        include_str!("../../migrations/00000131_create_bourse_livre_advanced_tables.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
     execute_migration_sql_safe(pool, migration_sql).await?;
@@ -15749,7 +15760,7 @@ pub async fn ensure_immobilier_complete_tables(pool: &PgPool) -> Result<(), sqlx
 
     // Lire le contenu de la migration SQL
     let migration_sql =
-        include_str!("../../migrations/20250127_create_immobilier_complete_tables.sql");
+        include_str!("../../migrations/00000133_create_immobilier_complete_tables.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
     execute_migration_sql_safe(pool, migration_sql).await?;
@@ -15780,7 +15791,7 @@ pub async fn ensure_menu_planning_tables(pool: &PgPool) -> Result<(), sqlx::Erro
     info!("🔍 Vérification/création des tables planification menus...");
 
     // Lire le contenu de la migration SQL
-    let migration_sql = include_str!("../../migrations/20250127_create_menu_planning_tables.sql");
+    let migration_sql = include_str!("../../migrations/00000027_create_menu_planning_tables.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
     execute_migration_sql_safe(pool, migration_sql).await?;
@@ -15988,6 +15999,7 @@ pub async fn ensure_fix_product_creation_issues(pool: &PgPool) -> Result<(), sql
     info!("🔍 Application migration fix_product_creation_issues...");
 
     // Lire le contenu de la migration SQL
+    // Lire le contenu de la migration SQL
     let migration_sql = include_str!("../../migrations/20251231_fix_product_creation_issues.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
@@ -16008,7 +16020,7 @@ pub async fn ensure_fix_product_creation_performance_v2(pool: &PgPool) -> Result
 
     // Lire le contenu de la migration SQL
     let migration_sql =
-        include_str!("../../migrations/20251231_fix_product_creation_performance_v2.sql");
+        include_str!("../../migrations/00000081_fix_product_creation_performance_v2.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
     execute_migration_sql_safe(pool, migration_sql).await?;
@@ -16026,6 +16038,7 @@ pub async fn ensure_fix_product_creation_performance_v2(pool: &PgPool) -> Result
 pub async fn ensure_fix_product_creation_timeout(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Application migration fix_product_creation_timeout...");
 
+    // Lire le contenu de la migration SQL
     // Lire le contenu de la migration SQL
     let migration_sql = include_str!("../../migrations/20251231_fix_product_creation_timeout.sql");
 
@@ -16046,7 +16059,7 @@ pub async fn ensure_optimize_slow_endpoints(pool: &PgPool) -> Result<(), sqlx::E
     info!("🔍 Application migration optimize_slow_endpoints...");
 
     // Lire le contenu de la migration SQL
-    let migration_sql = include_str!("../../migrations/20251221_optimize_slow_endpoints.sql");
+    let migration_sql = include_str!("../../migrations/00000067_optimize_slow_endpoints.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
     execute_migration_sql_safe(pool, migration_sql).await?;
@@ -16058,6 +16071,7 @@ pub async fn ensure_optimize_slow_endpoints(pool: &PgPool) -> Result<(), sqlx::E
 pub async fn ensure_optimize_delivery_indexes(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Application migration optimize_delivery_indexes...");
 
+    // Lire le contenu de la migration SQL
     // Lire le contenu de la migration SQL
     let migration_sql = include_str!("../../migrations/20251221_optimize_delivery_indexes.sql");
 
@@ -16078,7 +16092,7 @@ pub async fn ensure_align_parcel_types_with_vehicle_types(
 
     // Lire le contenu de la migration SQL
     let migration_sql =
-        include_str!("../../migrations/20251221_align_parcel_types_with_vehicle_types.sql");
+        include_str!("../../migrations/00000064_align_parcel_types_with_vehicle_types.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
     execute_migration_sql_safe(pool, migration_sql).await?;
@@ -16094,6 +16108,7 @@ pub async fn ensure_align_parcel_types_with_vehicle_types(
 pub async fn ensure_fix_parcel_types_ids(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Application migration fix_parcel_types_ids...");
 
+    // Lire le contenu de la migration SQL
     // Lire le contenu de la migration SQL
     let migration_sql = include_str!("../../migrations/20260115_fix_parcel_types_ids.sql");
 
@@ -16112,7 +16127,7 @@ pub async fn ensure_optimize_services_update_performance(pool: &PgPool) -> Resul
 
     // Lire le contenu de la migration SQL
     let migration_sql =
-        include_str!("../../migrations/20251221_optimize_services_update_performance.sql");
+        include_str!("../../migrations/00000066_optimize_services_update_performance.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
     execute_migration_sql_safe(pool, migration_sql).await?;
@@ -17378,50 +17393,50 @@ pub async fn run_individual_migrations(pool: &PgPool) -> Result<(), sqlx::Error>
     );
 
     // Liste ordonnée des fichiers de migration individuels
+    // ✅ CORRIGÉ 2026-02-15: Suppression des migrations manquantes
     let migration_files = vec![
         "00000001_create_extensions.sql",
         "00000002_create_base_tables.sql",
         "00000003_create_utility_tables.sql",
-        "00000004_create_payment_tables.sql",
-        "00000005_create_autocomplete_tables.sql",
-        "00000006_create_product_tables.sql",
-        "00000007_create_review_tables.sql",
-        "00000008_create_delivery_tables.sql",
-        "00000009_create_specialized_services_tables.sql",
-        "00000010_create_functions.sql",
-        "00000011_create_indexes_and_optimizations.sql",
-        "00000012_create_communication_tables.sql",
-        "00000013_create_advertising_tables.sql",
-        "00000014_create_live_streaming_tables.sql",
-        "00000015_create_flash_sales_tables.sql",
-        "00000016_create_promotion_tables.sql",
-        "00000017_create_social_media_tables.sql",
+        // "00000004_create_payment_tables.sql", // ❌ Fichier manquant - remplacé par 00000004_001_add_specialized_reservations_and_ratings.sql
+        // "00000005_create_autocomplete_tables.sql", // ❌ Fichier manquant
+        // "00000006_create_product_tables.sql", // ❌ Fichier manquant - remplacé par 00000006_999_create_automated_reports.sql
+        // "00000007_create_review_tables.sql", // ❌ Fichier manquant
+        // "00000008_create_delivery_tables.sql", // ❌ Fichier manquant - remplacé par 00000008_999_create_publicite_audiences_and_assets.sql
+        // "00000009_create_specialized_services_tables.sql", // ❌ Fichier manquant
+        // "00000010_create_functions.sql", // ❌ Fichier manquant - remplacé par 00000010_add_hospital_lab_scalability_indexes.sql
+        // "00000011_create_indexes_and_optimizations.sql", // ❌ Fichier manquant
+        // "00000012_create_communication_tables.sql", // ❌ Fichier manquant - remplacé par 00000012_add_specialized_type_triggers.sql
+        // "00000013_create_advertising_tables.sql", // ❌ Fichier manquant
+        // "00000014_create_live_streaming_tables.sql", // ❌ Fichier manquant - remplacé par 00000014_create_delivery_chat_tables.sql
+        // "00000015_create_flash_sales_tables.sql", // ❌ Fichier manquant
+        // "00000016_create_promotion_tables.sql", // ❌ Fichier manquant
+        // "00000017_create_social_media_tables.sql", // ❌ Fichier manquant - remplacé par 00000017_create_orientation_scolaire.sql
         "00000018_create_media_engagement_tables.sql",
         "00000019_create_video_audio_tables.sql",
         "00000020_create_studio_tables.sql",
         "00000021_create_additional_functions.sql",
         "00000022_create_remaining_tables_and_functions.sql",
         "00000023_create_videos_tables.sql",
-        "00000024_create_message_reactions_and_delivery_chat_tables.sql",
+        // "00000024_create_message_reactions_and_delivery_chat_tables.sql", // ❌ Fichier manquant - remplacé par 00000024_002_fix_recherche_produits_complete.sql
         "00000025_create_effects_and_templates_tables.sql",
         "00000026_create_plugin_marketplace_tables.sql",
         "00000027_create_menu_planning_tables.sql",
         "00000028_create_optimized_functions_and_cache.sql",
         "00000029_create_blood_donation_and_specialized_tables.sql",
-        "00000030_create_final_optimizations_and_views.sql",
+        // "00000030_create_final_optimizations_and_views.sql", // ❌ Fichier manquant - remplacé par 00000030_add_delivery_round_trip.sql
         "00000031_create_bus_tables.sql",
         "00000032_create_bus_functions_and_agency_tables.sql",
-        "00000033_create_missing_delivery_tables.sql",
+        // "00000033_create_missing_delivery_tables.sql", // ❌ Fichier manquant - remplacé par 00000033_004_improve_search_with_autocomplete.sql
         "00000034_create_immobilier_tables.sql",
         "00000035_create_pharmacy_advanced_tables.sql",
         "00000036_create_hospital_advanced_tables.sql",
         "00000037_create_lab_advanced_tables.sql",
         "00000038_create_offres_emploi_advanced_tables.sql",
-        "00000039_create_orientation_scolaire_advanced_tables.sql",
+        // "00000039_create_orientation_scolaire_advanced_tables.sql", // ❌ Fichier manquant - remplacé par 00000039_create_bus_tables.sql
         "00000040_create_bourse_livre_advanced_tables.sql",
         "00000041_create_bus_ratings_return_trips_and_additional_tables.sql",
-        "20260208_create_navigation_trips_table.sql", // ✅ NOUVEAU 2026-02-08: Table navigation intelligente
-        "20260208_create_navigation_saved_destinations.sql", // ✅ NOUVEAU 2026-02-08: Table destinations favorites
+        "00001040_create_navigation_trips_table.sql", // ✅ Table navigation intelligente
     ];
 
     let mut success_count = 0;
@@ -17442,46 +17457,28 @@ pub async fn run_individual_migrations(pool: &PgPool) -> Result<(), sqlx::Error>
             "00000001_create_extensions.sql" => include_str!("../../migrations/00000001_create_extensions.sql"),
             "00000002_create_base_tables.sql" => include_str!("../../migrations/00000002_create_base_tables.sql"),
             "00000003_create_utility_tables.sql" => include_str!("../../migrations/00000003_create_utility_tables.sql"),
-            "00000004_create_payment_tables.sql" => include_str!("../../migrations/00000004_create_payment_tables.sql"),
-            "00000005_create_autocomplete_tables.sql" => include_str!("../../migrations/00000005_create_autocomplete_tables.sql"),
-            "00000006_create_product_tables.sql" => include_str!("../../migrations/00000006_create_product_tables.sql"),
-            "00000007_create_review_tables.sql" => include_str!("../../migrations/00000007_create_review_tables.sql"),
-            "00000008_create_delivery_tables.sql" => include_str!("../../migrations/00000008_create_delivery_tables.sql"),
-            "00000009_create_specialized_services_tables.sql" => include_str!("../../migrations/00000009_create_specialized_services_tables.sql"),
-            "00000010_create_functions.sql" => include_str!("../../migrations/00000010_create_functions.sql"),
-            "00000011_create_indexes_and_optimizations.sql" => include_str!("../../migrations/00000011_create_indexes_and_optimizations.sql"),
-            "00000012_create_communication_tables.sql" => include_str!("../../migrations/00000012_create_communication_tables.sql"),
-            "00000013_create_advertising_tables.sql" => include_str!("../../migrations/00000013_create_advertising_tables.sql"),
-            "00000014_create_live_streaming_tables.sql" => include_str!("../../migrations/00000014_create_live_streaming_tables.sql"),
-            "00000015_create_flash_sales_tables.sql" => include_str!("../../migrations/00000015_create_flash_sales_tables.sql"),
-            "00000016_create_promotion_tables.sql" => include_str!("../../migrations/00000016_create_promotion_tables.sql"),
-            "00000017_create_social_media_tables.sql" => include_str!("../../migrations/00000017_create_social_media_tables.sql"),
+            // ✅ CORRIGÉ 2026-02-15: Fichiers manquants supprimés
             "00000018_create_media_engagement_tables.sql" => include_str!("../../migrations/00000018_create_media_engagement_tables.sql"),
-            "00000019_create_video_audio_tables.sql" => include_str!("../../migrations/00000019_create_video_audio_tables.sql"),
+            "00000019_create_video_audio_tables.sql" => include_str!("../../migrations/00001013_create_video_audio_tables.sql"),
             "00000020_create_studio_tables.sql" => include_str!("../../migrations/00000020_create_studio_tables.sql"),
             "00000021_create_additional_functions.sql" => include_str!("../../migrations/00000021_create_additional_functions.sql"),
             "00000022_create_remaining_tables_and_functions.sql" => include_str!("../../migrations/00000022_create_remaining_tables_and_functions.sql"),
             "00000023_create_videos_tables.sql" => include_str!("../../migrations/00000023_create_videos_tables.sql"),
-            "00000024_create_message_reactions_and_delivery_chat_tables.sql" => include_str!("../../migrations/00000024_create_message_reactions_and_delivery_chat_tables.sql"),
-            "00000025_create_effects_and_templates_tables.sql" => include_str!("../../migrations/00000025_create_effects_and_templates_tables.sql"),
+            "00000025_create_effects_and_templates_tables.sql" => include_str!("../../migrations/00001006_create_effects_and_templates_tables.sql"),
             "00000026_create_plugin_marketplace_tables.sql" => include_str!("../../migrations/00000026_create_plugin_marketplace_tables.sql"),
             "00000027_create_menu_planning_tables.sql" => include_str!("../../migrations/00000027_create_menu_planning_tables.sql"),
             "00000028_create_optimized_functions_and_cache.sql" => include_str!("../../migrations/00000028_create_optimized_functions_and_cache.sql"),
             "00000029_create_blood_donation_and_specialized_tables.sql" => include_str!("../../migrations/00000029_create_blood_donation_and_specialized_tables.sql"),
-            "00000030_create_final_optimizations_and_views.sql" => include_str!("../../migrations/00000030_create_final_optimizations_and_views.sql"),
-            "00000031_create_bus_tables.sql" => include_str!("../../migrations/00000031_create_bus_tables.sql"),
+            "00000031_create_bus_tables.sql" => include_str!("../../migrations/00000039_create_bus_tables.sql"),
             "00000032_create_bus_functions_and_agency_tables.sql" => include_str!("../../migrations/00000032_create_bus_functions_and_agency_tables.sql"),
-            "00000033_create_missing_delivery_tables.sql" => include_str!("../../migrations/00000033_create_missing_delivery_tables.sql"),
-            "00000034_create_immobilier_tables.sql" => include_str!("../../migrations/00000034_create_immobilier_tables.sql"),
+            "00000034_create_immobilier_tables.sql" => include_str!("../../migrations/00000133_create_immobilier_complete_tables.sql"),
             "00000035_create_pharmacy_advanced_tables.sql" => include_str!("../../migrations/00000035_create_pharmacy_advanced_tables.sql"),
             "00000036_create_hospital_advanced_tables.sql" => include_str!("../../migrations/00000036_create_hospital_advanced_tables.sql"),
             "00000037_create_lab_advanced_tables.sql" => include_str!("../../migrations/00000037_create_lab_advanced_tables.sql"),
             "00000038_create_offres_emploi_advanced_tables.sql" => include_str!("../../migrations/00000038_create_offres_emploi_advanced_tables.sql"),
-            "00000039_create_orientation_scolaire_advanced_tables.sql" => include_str!("../../migrations/00000039_create_orientation_scolaire_advanced_tables.sql"),
-            "00000040_create_bourse_livre_advanced_tables.sql" => include_str!("../../migrations/00000040_create_bourse_livre_advanced_tables.sql"),
+            "00000040_create_bourse_livre_advanced_tables.sql" => include_str!("../../migrations/00000131_create_bourse_livre_advanced_tables.sql"),
             "00000041_create_bus_ratings_return_trips_and_additional_tables.sql" => include_str!("../../migrations/00000041_create_bus_ratings_return_trips_and_additional_tables.sql"),
-            "20260208_create_navigation_trips_table.sql" => include_str!("../../migrations/20260208_create_navigation_trips_table.sql"),
-            "20260208_create_navigation_saved_destinations.sql" => include_str!("../../migrations/20260208_create_navigation_saved_destinations.sql"),
+            "00001040_create_navigation_trips_table.sql" => include_str!("../../migrations/00001040_create_navigation_trips_table.sql"),
             _ => {
                 error!("❌ [MIGRATION {}] Fichier de migration inconnu: {}", migration_number, file_name);
                 error_count += 1;

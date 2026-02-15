@@ -46,3 +46,4 @@
 - **Script SQL** prêt pour correction immédiate sur EC2
 - **Redis timeout** sera corrigé automatiquement au prochain déploiement ECS
 
+

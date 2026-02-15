@@ -147,3 +147,4 @@ EOFSQL
 
 Le problème de parsing SQL persiste. Les CREATE TABLE sont toujours tronquées, ce qui empêche la création correcte des tables. Il faut continuer à améliorer la logique de parsing dans `auto_migrate.rs`.
 
+

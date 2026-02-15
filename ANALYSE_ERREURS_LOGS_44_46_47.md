@@ -139,3 +139,4 @@ Le parsing SQL dans `auto_migrate.rs` doit être amélioré pour gérer :
 3. **IMPORTANT** : Améliorer le parsing SQL
 4. **MOYEN** : Résoudre les problèmes Redis
 
+

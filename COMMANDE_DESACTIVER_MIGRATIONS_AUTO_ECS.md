@@ -115,3 +115,4 @@ Après avoir désactivé les migrations automatiques, vérifiez dans les logs :
 - Seules les **migrations automatiques** (`run_auto_migrations()`) seront désactivées
 - Vous pourrez exécuter les migrations manuellement depuis EC2 sans conflit
 
+

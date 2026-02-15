@@ -202,3 +202,4 @@ else
     echo -e "${YELLOW}⚠️  Vérifiez les logs pour plus de détails${NC}"
 fi
 
+

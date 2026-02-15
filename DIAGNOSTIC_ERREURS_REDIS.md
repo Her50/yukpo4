@@ -239,3 +239,4 @@ echo "✅ Diagnostic terminé"
 
 Si Redis n'est pas critique pour le fonctionnement de l'application, le mode dégradé permet de continuer à fonctionner. Cependant, certaines fonctionnalités (cache, notifications en temps réel) peuvent être affectées.
 
+

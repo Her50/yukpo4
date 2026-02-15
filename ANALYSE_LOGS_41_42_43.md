@@ -161,3 +161,4 @@ WHERE status = 'awaiting_courier_confirmation'
 
 **Note**: Les corrections précédentes ont amélioré la situation (détection des fragments, plus de PANIC initial), mais il reste des problèmes à résoudre.
 
+

@@ -124,3 +124,4 @@ Les erreurs dans les logs devraient disparaître car :
 2. ✅ `live_flash_sales.ending_notification_sent_at` existera
 3. ✅ `social_publication_jobs.platform` existera
 
+

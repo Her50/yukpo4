@@ -23,3 +23,4 @@ Faire en sorte que `auto_migrate.rs` vérifie et ajoute les colonnes manquantes 
 
 **Option 1 immédiate** + **Option 2 pour le long terme**
 
+

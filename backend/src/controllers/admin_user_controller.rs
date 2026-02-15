@@ -61,7 +61,7 @@ pub async fn list_users(
         })?;
 
     // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
-    ensure_admin_role_str(&user_role).inspect_err(|e| {
+    ensure_admin_role_str(&user_role).inspect_err(|_e| {
         warn!(
             "[list_users] Tentative d'accès non autorisée par user_id={}, role={}",
             user.id, user_role
@@ -214,7 +214,7 @@ pub async fn update_user_role(
         })?;
 
     // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
-    ensure_admin_role_str(&user_role).inspect_err(|e| {
+    ensure_admin_role_str(&user_role).inspect_err(|_e| {
         warn!(
             "[update_user_role] Tentative d'accès non autorisée par user_id={}, role={}",
             user.id, user_role

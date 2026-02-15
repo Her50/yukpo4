@@ -160,3 +160,4 @@ EOFSQL
 - Vérifiez que `ENABLE_AUTO_MIGRATIONS=true` dans la task definition
 - Vérifiez les logs de démarrage du backend
 
+

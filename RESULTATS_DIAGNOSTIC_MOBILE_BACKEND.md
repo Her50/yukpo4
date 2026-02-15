@@ -239,3 +239,4 @@ export const API_BASE_URL = EXPO_API_URL || 'http://api.yukpomnang.com';
 **Date** : 2026-02-14  
 **Statut** : ✅ Diagnostic terminé - 2 problèmes identifiés
 
+

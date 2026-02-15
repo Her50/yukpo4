@@ -34,3 +34,4 @@ SELECT 'social_publication_jobs' as table_name, column_name FROM information_sch
 EOFSQL
 ```
 
+

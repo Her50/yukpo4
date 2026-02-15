@@ -131,3 +131,4 @@ FROM information_schema.columns
 WHERE table_name = 'social_publication_jobs'
     AND column_name = 'attempt';
 
+

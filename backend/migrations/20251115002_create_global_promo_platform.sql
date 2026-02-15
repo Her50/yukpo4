@@ -56,18 +56,28 @@ CREATE INDEX IF NOT EXISTS idx_global_promo_entries_service
 CREATE INDEX IF NOT EXISTS idx_global_promo_entries_live_session
     ON global_promo_entries(live_session_id);
 
-CREATE TABLE IF NOT EXISTS global_promo_products (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    promo_entry_id UUID NOT NULL UNIQUE REFERENCES global_promo_entries(id) ON DELETE CASCADE,
-    snapshot JSONB NOT NULL DEFAULT '{}'::JSONB,
-    availability VARCHAR(20) NOT NULL DEFAULT 'online' CHECK (
-        availability IN ('online', 'live', 'both')
-    ),
-    priority_score INTEGER NOT NULL DEFAULT 0,
-    highlighted BOOLEAN NOT NULL DEFAULT FALSE,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
+-- ✅ CORRIGÉ 2026-02-15: Vérifier si la table existe avec un schéma différent
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'global_promo_products') THEN
+        CREATE TABLE global_promo_products (
+            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+            promo_entry_id UUID NOT NULL UNIQUE REFERENCES global_promo_entries(id) ON DELETE CASCADE,
+            snapshot JSONB NOT NULL DEFAULT '{}'::JSONB,
+            availability VARCHAR(20) NOT NULL DEFAULT 'online' CHECK (
+                availability IN ('online', 'live', 'both')
+            ),
+            priority_score INTEGER NOT NULL DEFAULT 0,
+            highlighted BOOLEAN NOT NULL DEFAULT FALSE,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
+    ELSE
+        -- La table existe, ajouter les colonnes manquantes
+        ALTER TABLE global_promo_products ADD COLUMN IF NOT EXISTS highlighted BOOLEAN NOT NULL DEFAULT FALSE;
+        ALTER TABLE global_promo_products ADD COLUMN IF NOT EXISTS priority_score INTEGER NOT NULL DEFAULT 0;
+    END IF;
+END $$;
 
 CREATE INDEX IF NOT EXISTS idx_global_promo_products_priority
     ON global_promo_products(highlighted DESC, priority_score DESC);

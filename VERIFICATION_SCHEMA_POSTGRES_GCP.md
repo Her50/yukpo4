@@ -5,19 +5,26 @@
 
 ---
 
-## ⚠️ Important : Migrations SQLx sur Cloud Run
+## ✅ Migrations SQLx sur Cloud Run - Activées via Variable d'Environnement
 
-**Le code actuel ne permet PAS l'exécution automatique des migrations SQLx sur Cloud Run.**
+**Le code permet maintenant l'exécution des migrations SQLx sur Cloud Run via une variable d'environnement.**
 
 Dans `backend/src/main.rs` (ligne ~596) :
 ```rust
-if !is_cloud_run {
+let enable_sqlx_migrations = env::var("ENABLE_SQLX_MIGRATIONS")
+    .unwrap_or_else(|_| "false".to_string())
+    .parse::<bool>()
+    .unwrap_or(false);
+
+let should_run_sqlx_migrations = !is_cloud_run || enable_sqlx_migrations;
+
+if should_run_sqlx_migrations {
     // Migrations SQLx standard
     sqlx::migrate!("./migrations").run(&pg_pool).await
 }
 ```
 
-**Cela signifie que les migrations SQLx ne s'exécutent PAS automatiquement sur Cloud Run.**
+**Pour activer les migrations SQLx sur Cloud Run, définissez `ENABLE_SQLX_MIGRATIONS=true`.**
 
 ---
 
@@ -47,34 +54,22 @@ gcloud sql connect yukpo-postgres --user=yukpo_user --database=yukpo_db --projec
    - Les migrations sont dans `backend/migrations/`
    - Exécutez-les dans l'ordre numérique (00000001, 00000002, etc.)
 
-### Option 2 : Modifier le Code
+### Option 2 : Activer via Variable d'Environnement (✅ Implémenté)
 
-Modifier `backend/src/main.rs` pour exécuter les migrations SQLx sur Cloud Run :
+**Le code a été modifié pour permettre l'exécution des migrations SQLx sur Cloud Run.**
 
-```rust
-// Avant
-if !is_cloud_run {
-    sqlx::migrate!("./migrations").run(&pg_pool).await
-}
-
-// Après
-let enable_sqlx_migrations = env::var("ENABLE_SQLX_MIGRATIONS")
-    .unwrap_or_else(|_| "false".to_string())
-    .parse::<bool>()
-    .unwrap_or(false);
-
-if !is_cloud_run || enable_sqlx_migrations {
-    sqlx::migrate!("./migrations").run(&pg_pool).await
-}
-```
-
-Puis ajouter dans Cloud Run :
+Pour activer, ajoutez la variable d'environnement dans Cloud Run :
 ```bash
 gcloud run services update yukpo-backend \
   --region=europe-west1 \
   --update-env-vars="ENABLE_SQLX_MIGRATIONS=true" \
   --project=yukpo-project
 ```
+
+**Comportement** :
+- Si `ENABLE_SQLX_MIGRATIONS=true` : Les migrations SQLx s'exécutent sur Cloud Run
+- Si `ENABLE_SQLX_MIGRATIONS=false` ou non défini : Les migrations SQLx sont désactivées sur Cloud Run (comportement par défaut)
+- En développement local : Les migrations SQLx s'exécutent toujours (indépendamment de la variable)
 
 ### Option 3 : Job Cloud Run pour Migrations
 

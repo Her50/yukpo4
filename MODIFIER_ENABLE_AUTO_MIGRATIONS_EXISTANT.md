@@ -76,3 +76,4 @@ Vous devriez voir :
 ✅ Tables de base (users, services) vérifiées - Exécution des migrations automatiques...
 ```
 
+

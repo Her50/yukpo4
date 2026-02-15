@@ -3,6 +3,23 @@
 -- Solution: Ajouter un fallback pour chercher directement dans services.data->'produits'
 -- Date: 2025-12-21
 
+-- ✅ CORRIGÉ 2026-02-15: Supprimer toutes les versions existantes de la fonction avant de la recréer
+DO $$
+DECLARE
+    func_record RECORD;
+BEGIN
+    FOR func_record IN 
+        SELECT oid, proname, pg_get_function_identity_arguments(oid) as args
+        FROM pg_proc 
+        WHERE proname = 'hybrid_image_search'
+    LOOP
+        EXECUTE format('DROP FUNCTION IF EXISTS %s(%s) CASCADE', 
+            func_record.proname, 
+            func_record.args
+        );
+    END LOOP;
+END $$;
+
 -- ✅ AMÉLIORATION: Ajouter une SOURCE 3 (fallback) pour chercher dans services.data->'produits'
 -- Cette source permet de trouver des produits même si leurs images n'ont pas été analysées par IA
 CREATE OR REPLACE FUNCTION hybrid_image_search(

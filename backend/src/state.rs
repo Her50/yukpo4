@@ -443,6 +443,9 @@ impl AppState {
         let pg_clone = pg.clone();
         let pg_clone_gpu = pg.clone();
 
+        // ✅ NOUVEAU 2026-02-15: Cloner pg avant de le déplacer dans AppState (pour redis_scaling_service)
+        let pg_for_redis_scaling = pg.clone();
+
         AppState {
             pg,
             pg_read, // ✅ NOUVEAU 2025-12-02: Read replica pour scaling horizontal
@@ -560,7 +563,7 @@ impl AppState {
                 if let Some(config) = RedisScalingConfig::from_env() {
                     let service = RedisScalingService::new(
                         config,
-                        Arc::new(pg.clone()),
+                        Arc::new(pg_for_redis_scaling),
                         Some(Arc::new(redis_client.clone())),
                     );
                     log::info!("✅ Service Redis scaling initialisé");

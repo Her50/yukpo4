@@ -165,3 +165,4 @@ else
     echo -e "${RED}⚠️  Certaines migrations ont échoué. Vérifiez les erreurs ci-dessus.${NC}"
 fi
 
+

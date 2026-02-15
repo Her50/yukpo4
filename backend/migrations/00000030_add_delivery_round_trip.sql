@@ -18,9 +18,8 @@ ADD COLUMN IF NOT EXISTS return_estimated_duration_seconds INTEGER,
 ADD COLUMN IF NOT EXISTS return_actual_duration_seconds INTEGER,
 ADD COLUMN IF NOT EXISTS return_requested_at TIMESTAMPTZ,
 ADD COLUMN IF NOT EXISTS round_trip_discount_percent INTEGER DEFAULT 0; -- Réduction en % pour aller-retour
-        ;
         
-                CREATE INDEX IF NOT EXISTS idx_deliveries_return_delivery_id ON deliveries(return_delivery_id) WHERE return_delivery_id IS NOT NULL;
+        CREATE INDEX IF NOT EXISTS idx_deliveries_return_delivery_id ON deliveries(return_delivery_id) WHERE return_delivery_id IS NOT NULL;
         CREATE INDEX IF NOT EXISTS idx_deliveries_is_round_trip ON deliveries(is_round_trip) WHERE is_round_trip = TRUE;
         CREATE INDEX IF NOT EXISTS idx_deliveries_return_pickup_location ON deliveries USING GIST(return_pickup_location) WHERE return_pickup_location IS NOT NULL;
         CREATE INDEX IF NOT EXISTS idx_deliveries_return_dropoff_location ON deliveries USING GIST(return_dropoff_location) WHERE return_dropoff_location IS NOT NULL;

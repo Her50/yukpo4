@@ -135,3 +135,4 @@ PGPASSWORD="PYvHBVetTuWIKNkXgqJcFiU48D39SLwd" psql \
 - ✅ Les migrations automatiques Git pourront s'exécuter sans erreur
 - ✅ Tout est idempotent, pas de doublons
 
+

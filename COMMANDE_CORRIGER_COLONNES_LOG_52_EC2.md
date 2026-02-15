@@ -139,3 +139,4 @@ Les erreurs Redis persistent. Vérifiez que :
 2. Les Security Groups permettent la connexion depuis ECS vers ElastiCache
 3. Le endpoint Redis est correct
 
+

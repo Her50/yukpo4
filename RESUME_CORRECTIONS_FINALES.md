@@ -53,3 +53,4 @@ Après 2-3 minutes, vérifiez les logs pour confirmer que :
 - ✅ **Redis** : Connexions réussies avec TLS et timeout augmenté
 - ✅ **Stabilité** : Plus d'erreurs récurrentes
 
+

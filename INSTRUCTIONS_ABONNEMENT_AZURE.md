@@ -70,3 +70,4 @@ Le script a détecté qu'**aucun abonnement Azure actif** n'est associé à votr
 **Date** : 2026-02-14  
 **Statut** : En attente de création d'abonnement Azure
 
+

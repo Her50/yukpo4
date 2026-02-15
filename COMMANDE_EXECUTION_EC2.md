@@ -186,3 +186,4 @@ ORDER BY table_name, column_name;
 sudo yum install postgresql15 -y
 ```
 
+

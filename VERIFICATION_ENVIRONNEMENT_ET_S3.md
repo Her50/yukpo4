@@ -245,3 +245,4 @@ Si des variables SSM sont manquantes, utilisez les commandes ci-dessus pour les 
 - [AWS SSM Parameter Store](https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-parameter-store.html)
 - [AWS Secrets Manager](https://docs.aws.amazon.com/secretsmanager/)
 
+

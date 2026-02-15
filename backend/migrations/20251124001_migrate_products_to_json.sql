@@ -49,8 +49,9 @@ BEGIN
     categorie := parts[2];
     
     -- Trouver le dernier élément numérique (prix)
+    -- ✅ CORRIGÉ 2026-02-15: PostgreSQL ne supporte pas DOWNTO, utiliser une boucle inversée
     last_numeric_index := NULL;
-    FOR i IN array_length(parts, 1) DOWNTO 1 LOOP
+    FOR i IN REVERSE array_length(parts, 1)..1 LOOP
         IF parts[i] ~ '^\d+\.?\d*$' THEN
             last_numeric_index := i;
             EXIT;
@@ -120,8 +121,8 @@ BEGIN
     WHERE jsonb_typeof(data->'produits'->'valeur') = 'array'
     AND EXISTS (
         SELECT 1
-        FROM jsonb_array_elements(data->'produits'->'valeur') AS elem
-        WHERE jsonb_typeof(elem) = 'string'
+        FROM jsonb_array_elements(data->'produits'->'valeur') AS elem_item
+        WHERE jsonb_typeof(elem_item) = 'string'
     );
     
     IF total_to_convert = 0 THEN
@@ -138,8 +139,8 @@ BEGIN
         WHERE jsonb_typeof(data->'produits'->'valeur') = 'array'
         AND EXISTS (
             SELECT 1
-            FROM jsonb_array_elements(data->'produits'->'valeur') AS elem
-            WHERE jsonb_typeof(elem) = 'string'
+            FROM jsonb_array_elements(data->'produits'->'valeur') AS elem_item
+            WHERE jsonb_typeof(elem_item) = 'string'
         )
     LOOP
         BEGIN

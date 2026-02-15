@@ -57,3 +57,4 @@ Les erreurs Redis persistent probablement à cause de :
 
 À traiter séparément si les erreurs de colonnes sont résolues.
 
+

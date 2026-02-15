@@ -122,3 +122,4 @@ PGPASSWORD="PYvHBVetTuWIKNkXgqJcFiU48D39SLwd" psql \
 
 **Le moyen le plus simple** : Vérifier via la console AWS CloudWatch (Méthode 1) ou vérifier que les tables sont créées via psql (Méthode 4).
 
+

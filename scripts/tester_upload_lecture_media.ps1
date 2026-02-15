@@ -152,3 +152,4 @@ if (Test-Path $testImagePath) {
 Write-Host ""
 Write-Host "✅ Test terminé !" -ForegroundColor Green
 
+

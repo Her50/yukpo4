@@ -141,3 +141,4 @@ https://console.cloud.google.com/billing
 **Date** : 2026-02-14  
 **Statut** : Solutions alternatives documentées
 
+

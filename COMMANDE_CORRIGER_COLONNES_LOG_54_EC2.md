@@ -58,3 +58,4 @@ EOFSQL
 
 Le timeout Redis est toujours à 3s dans les logs car le nouveau build (avec timeout 10s) n'a pas encore été déployé. Il faut attendre que le service ECS redémarre avec le nouveau code commité.
 
+

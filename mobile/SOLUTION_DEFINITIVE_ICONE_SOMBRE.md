@@ -172,3 +172,4 @@ eas build --platform android --local
 - [Android - Adaptive Icons](https://developer.android.com/guide/practices/ui_guidelines/icon_design_adaptive)
 - [Expo - Prebuild](https://docs.expo.dev/workflow/prebuild/)
 
+

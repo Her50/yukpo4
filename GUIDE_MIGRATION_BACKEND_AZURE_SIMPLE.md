@@ -289,3 +289,4 @@ AWS_SECRET_ACCESS_KEY=...
 **Date** : 2026-02-14  
 **Statut** : Guide simplifié créé - Prêt pour migration backend uniquement
 
+

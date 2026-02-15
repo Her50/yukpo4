@@ -174,3 +174,4 @@ curl https://api.yukpomnang.com/health
 **Date** : 2026-02-14  
 **Réponse** : ❌ `*` ne fonctionne pas - Utiliser une liste d'origines spécifiques
 
+

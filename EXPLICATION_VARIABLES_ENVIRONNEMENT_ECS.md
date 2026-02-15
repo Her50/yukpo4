@@ -83,3 +83,4 @@ Vous avez bien **13 variables d'environnement**, et c'est **normal**. Les variab
 2. **Mettre à jour le service** pour utiliser cette nouvelle révision
 3. **Vérifier les logs** pour confirmer que les auto-migrations sont activées
 
+

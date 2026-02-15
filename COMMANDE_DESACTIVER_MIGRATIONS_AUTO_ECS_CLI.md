@@ -174,3 +174,4 @@ Après la mise à jour, vérifier dans les logs CloudWatch :
 - Les migrations **SQLx standard** continueront de s'exécuter (elles fonctionnent correctement)
 - Seules les **migrations automatiques** (`run_auto_migrations()`) seront désactivées
 
+

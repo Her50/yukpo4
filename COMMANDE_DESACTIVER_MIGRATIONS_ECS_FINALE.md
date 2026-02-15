@@ -156,3 +156,4 @@ syntax error at end of input
 - Les migrations **SQLx standard** continueront de s'exécuter (elles fonctionnent)
 - Seules les **migrations automatiques** seront désactivées
 
+

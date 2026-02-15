@@ -36,3 +36,4 @@ aws ec2 describe-security-groups --group-ids sg-06e7d19f54d7fa191 --region eu-we
 
 Si vous obtenez une erreur "rule already exists", c'est que la règle existe déjà mais n'était pas détectée par la requête précédente (problème d'échappement JMESPath). Dans ce cas, Redis devrait fonctionner après le redéploiement du service.
 
+

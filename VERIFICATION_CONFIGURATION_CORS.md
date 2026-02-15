@@ -89,3 +89,4 @@ curl https://api.yukpomnang.com/health
 **Date** : 2026-02-14  
 **Statut** : ✅ Configuration CORS correcte - Vérifier que le service utilise la révision 6
 
+

@@ -60,3 +60,4 @@ Les migrations SQL sont maintenant alignées avec le code Rust.
 - Code Rust : `slug`, `theme`, `display_name`, `status` (identique)
 - ✅ Aligné → plus de conflits
 
+

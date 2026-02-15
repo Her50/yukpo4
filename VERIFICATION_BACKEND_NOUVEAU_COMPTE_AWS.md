@@ -224,3 +224,4 @@ aws s3 mb s3://yukpo-backend-media --region eu-west-1
 - Configuration Backend: `CONFIGURATION_BACKEND_AWS.md`
 - Mise à jour variables mobile: `MISE_A_JOUR_VARIABLES_AWS_NOUVEAU_COMPTE.md`
 
+

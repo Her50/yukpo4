@@ -113,3 +113,4 @@ $CLIENT_ID = "[votre-client-id]"
 **Date** : 2026-02-14  
 **Statut** : Commandes prêtes - Configuration Azure requise
 
+

@@ -3,18 +3,48 @@
 -- Description: Tables pour gérer les conversations et messages entre utilisateurs
 
 -- 1. Table pour les conversations
-CREATE TABLE IF NOT EXISTS conversations (
-    id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
-    client_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    prestataire_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    service_id INTEGER REFERENCES services(id) ON DELETE SET NULL,
-    service_title TEXT,
-    status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'completed', 'cancelled')),
-    is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    last_message_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
+-- ✅ CORRIGÉ 2026-02-15: Vérifier si la table existe avec un schéma différent
+DO $$
+BEGIN
+    -- Si la table existe mais n'a pas les colonnes nécessaires
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'conversations')
+       AND NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'conversations' AND column_name = 'client_id') THEN
+        -- Ajouter les colonnes manquantes
+        ALTER TABLE conversations
+        ADD COLUMN IF NOT EXISTS client_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        ADD COLUMN IF NOT EXISTS prestataire_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        ADD COLUMN IF NOT EXISTS service_id INTEGER REFERENCES services(id) ON DELETE SET NULL,
+        ADD COLUMN IF NOT EXISTS service_title TEXT,
+        ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'active',
+        ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE,
+        ADD COLUMN IF NOT EXISTS last_message_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
+        
+        -- Ajouter la contrainte CHECK si elle n'existe pas
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.constraint_column_usage 
+            WHERE table_name = 'conversations' 
+            AND constraint_name LIKE '%status%'
+        ) THEN
+            ALTER TABLE conversations
+            ADD CONSTRAINT conversations_status_check 
+            CHECK (status IN ('active', 'completed', 'cancelled'));
+        END IF;
+    ELSIF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'conversations') THEN
+        -- Créer la table seulement si elle n'existe pas
+        CREATE TABLE conversations (
+            id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+            client_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            prestataire_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            service_id INTEGER REFERENCES services(id) ON DELETE SET NULL,
+            service_title TEXT,
+            status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'completed', 'cancelled')),
+            is_active BOOLEAN DEFAULT TRUE,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+            last_message_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );
+    END IF;
+END $$;
 
 -- Index pour améliorer les performances
 CREATE INDEX IF NOT EXISTS idx_conversations_client_id ON conversations(client_id);

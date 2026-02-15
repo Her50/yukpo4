@@ -61,3 +61,4 @@ EOFSQL
 aws elasticache describe-replication-groups --replication-group-id yukpo-redis --region eu-west-1 --query 'ReplicationGroups[0].[Status,PrimaryEndpoint.Address]' --output table
 ```
 
+

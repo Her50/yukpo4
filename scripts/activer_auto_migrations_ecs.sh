@@ -82,3 +82,4 @@ echo "   aws ecs describe-services --cluster $CLUSTER --services $SERVICE --regi
 echo ""
 echo "⚠️ IMPORTANT: N'oubliez pas de désactiver les auto-migrations après les tests !"
 
+

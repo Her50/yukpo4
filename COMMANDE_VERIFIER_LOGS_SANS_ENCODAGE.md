@@ -62,3 +62,4 @@ Si vous voulez vérifier que les migrations ont bien été appliquées :
 # (Vous pouvez utiliser AWS Session Manager pour vous connecter à EC2)
 ```
 
+

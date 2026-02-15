@@ -70,3 +70,4 @@ Tous les redirects suivants doivent être mis à jour :
 **Date** : 2026-02-14  
 **Action** : ⚠️ Correction requise dans `netlify.toml`
 
+

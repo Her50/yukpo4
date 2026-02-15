@@ -90,3 +90,4 @@ Les migrations automatiques vont maintenant :
 3. ✅ Si elles n'existent pas → créer avec `IF NOT EXISTS`
 4. ✅ Résultat : Aucune erreur, aucun doublon
 
+

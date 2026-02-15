@@ -160,3 +160,4 @@ Write-Host "Verification:" -ForegroundColor Cyan
 Write-Host "   Liste des secrets: gh secret list --repo $GitHubRepo" -ForegroundColor Gray
 Write-Host ""
 
+

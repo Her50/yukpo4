@@ -139,3 +139,4 @@ SELECT
 - Toutes les colonnes critiques sont présentes
 - Le système est prêt pour le redémarrage du backend
 
+

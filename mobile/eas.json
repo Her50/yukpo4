@@ -22,6 +22,7 @@
                                               "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY":  "AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ",
                                               "EXPO_PUBLIC_GOOGLE_TRANSLATE_API_KEY":  "AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ",
                                               "EXPO_PUBLIC_GOOGLE_CLIENT_ID":  "738929393617-4kt4e9ed1g79j70dng7epskqn7rkqnm2.apps.googleusercontent.com",
+                                              "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID":  "738929393617-i2ss2ql4nr25hsffr5ri97gnesh0go3t.apps.googleusercontent.com",
                                               "GRADLE_OPTS":  "-Xmx6144m -XX:MaxMetaspaceSize=1024m",
                                               // ✅ GCP Cloud Storage Direct (remplace WASABI_DIRECT_URL)
                                               "EXPO_PUBLIC_GCP_STORAGE_DIRECT_URL":  "http://34.54.117.97",
@@ -31,7 +32,9 @@
                                               "EXPO_PUBLIC_WASABI_DIRECT_URL":  "http://34.54.117.97",
                                               // ⚠️ AWS/Wasabi (ancien, commenté pour utilisation future)
                                               // "EXPO_PUBLIC_WASABI_DIRECT_URL":  "https://yukpo-backend-media.s3.eu-west-1.amazonaws.com",
-                                              // "EXPO_PUBLIC_WASABI_DIRECT_URL":  "https://yukpo-video-prod.s3.eu-central-1.wasabisys.com"
+                                              // "EXPO_PUBLIC_WASABI_DIRECT_URL":  "https://yukpo-video-prod.s3.eu-central-1.wasabisys.com",
+                                              // Limiter à arm64-v8a uniquement (réduit la taille de ~50%)
+                                              "EXPO_ANDROID_ARCHITECTURES":  "arm64-v8a"
                                           },
                                   "android":  {
                                                   "buildType":  "apk",
@@ -55,6 +58,7 @@
                                                  "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY":  "AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ",
                                                  "EXPO_PUBLIC_GOOGLE_TRANSLATE_API_KEY":  "AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ",
                                                  "EXPO_PUBLIC_GOOGLE_CLIENT_ID":  "738929393617-4kt4e9ed1g79j70dng7epskqn7rkqnm2.apps.googleusercontent.com",
+                                                 "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID":  "738929393617-i2ss2ql4nr25hsffr5ri97gnesh0go3t.apps.googleusercontent.com",
                                                  "GRADLE_OPTS":  "-Xmx6144m -XX:MaxMetaspaceSize=1024m",
                                                  "EXPO_ANDROID_ARCHITECTURES":  "arm64-v8a",
                                                  // ✅ GCP Cloud Storage Direct (remplace WASABI_DIRECT_URL)

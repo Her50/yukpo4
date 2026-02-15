@@ -54,3 +54,4 @@ SELECT
     COUNT(*) as row_count
 FROM hashtag_stats_materialized;
 
+

@@ -70,3 +70,4 @@ aws ecs update-service \
 echo ""
 echo "✅ Service mis à jour, auto-migrations désactivées"
 
+

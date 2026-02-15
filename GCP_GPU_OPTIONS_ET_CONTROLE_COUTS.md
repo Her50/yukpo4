@@ -320,3 +320,4 @@ gcloud billing budgets list --billing-account=BILLING_ACCOUNT_ID
 
 **⚠️ Important** : Toujours configurer les budgets et alertes AVANT de créer la VM GPU pour éviter les surprises de facturation !
 
+

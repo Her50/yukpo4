@@ -234,3 +234,4 @@ Pour utiliser un domaine personnalisé (ex: `cdn.yukpo.app`) :
 **Date** : 2026-02-14  
 **Statut** : ✅ **CLOUD CDN CONFIGURÉ**
 
+

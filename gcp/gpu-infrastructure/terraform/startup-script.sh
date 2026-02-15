@@ -96,3 +96,4 @@ systemctl start yukpo-gpu
 
 echo "✅ GPU worker installé et démarré"
 
+

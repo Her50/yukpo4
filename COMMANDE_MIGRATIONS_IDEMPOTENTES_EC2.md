@@ -109,3 +109,4 @@ if !table_exists {
 - ✅ Pas de doublons, tout est idempotent
 - ✅ L'automatisation est conservée
 
+

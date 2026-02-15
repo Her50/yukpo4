@@ -65,3 +65,4 @@ if ($LASTEXITCODE -eq 0) {
    aws ecs update-service --cluster yukpo-cluster --service yukpo-backend-service --region eu-west-1 --force-new-deployment
    ```
 
+

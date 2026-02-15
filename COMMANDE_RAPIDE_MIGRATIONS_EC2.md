@@ -89,3 +89,4 @@ find ~ -type d -name "backend" 2>/dev/null
 
 Le script `executer_migrations_ec2_avec_verification.sh` cherche automatiquement le dossier migrations dans plusieurs emplacements possibles. Utilisez-le si vous n'êtes pas sûr de l'emplacement.
 
+

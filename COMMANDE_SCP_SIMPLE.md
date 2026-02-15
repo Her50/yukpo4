@@ -45,3 +45,4 @@ ls -la ~/migrations/*.sql | head -10
 ls -1 ~/migrations/*.sql | wc -l
 ```
 
+

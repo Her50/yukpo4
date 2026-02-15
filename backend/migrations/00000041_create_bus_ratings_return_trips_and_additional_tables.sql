@@ -277,7 +277,7 @@ COMMENT ON TABLE chat_support_messages IS 'Messages échangés dans les sessions
 
 CREATE TABLE IF NOT EXISTS negotiated_prices (
     id SERIAL PRIMARY KEY,
-    conversation_id TEXT NOT NULL REFERENCES private_conversations(id) ON DELETE CASCADE,
+    conversation_id TEXT NOT NULL,
     service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
     product_index INTEGER,
     merchant_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -464,7 +464,6 @@ $$ LANGUAGE plpgsql;
 COMMENT ON TABLE specialized_reservations IS 'Réservations pour services spécialisés (covoiturage, hôtels, pharmacie, etc.)';
 COMMENT ON TABLE specialized_ratings IS 'Avis et ratings pour services spécialisés';
 COMMENT ON TABLE rating_helpful_votes IS 'Votes "utile" sur les avis services spécialisés';
-COMMENT ON TABLE hotel_meuble_reservations IS 'Réservations pour hôtels et meublés';
 COMMENT ON TABLE covoiturage_insurance IS 'Assurance passagers pour trajets covoiturage';
 COMMENT ON TABLE reservation_qr_codes IS 'QR codes pour validation réservations covoiturage';
 COMMENT ON FUNCTION generate_reservation_qr_code(INTEGER) IS 'Génère un code QR unique pour une réservation';
@@ -493,6 +492,8 @@ CREATE INDEX IF NOT EXISTS idx_hotel_meuble_reservations_service ON hotel_meuble
 CREATE INDEX IF NOT EXISTS idx_hotel_meuble_reservations_user ON hotel_meuble_reservations(user_id);
 CREATE INDEX IF NOT EXISTS idx_hotel_meuble_reservations_dates ON hotel_meuble_reservations(check_in_date, check_out_date);
 CREATE INDEX IF NOT EXISTS idx_hotel_meuble_reservations_status ON hotel_meuble_reservations(status);
+
+COMMENT ON TABLE hotel_meuble_reservations IS 'Réservations pour hôtels et meublés';
 
 -- ============================================================================
 -- 9. QR CODES RÉSERVATIONS HÔTELS 🏨

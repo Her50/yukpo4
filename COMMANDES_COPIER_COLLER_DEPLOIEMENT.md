@@ -118,3 +118,4 @@ aws logs tail /ecs/yukpo-backend-service --since 10m --region eu-west-1 --format
 3. **Désactiver les auto-migrations** après avoir vérifié que tout fonctionne
 4. **Surveiller les logs** pendant au moins 1 heure après le déploiement
 
+

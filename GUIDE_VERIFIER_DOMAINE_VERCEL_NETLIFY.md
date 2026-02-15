@@ -188,3 +188,4 @@ TTL: Auto
 **Date** : 2026-02-14  
 **Statut** : Guide de vérification créé
 
+

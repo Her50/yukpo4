@@ -171,3 +171,4 @@ Les migrations utilisent `CREATE TABLE IF NOT EXISTS`, donc :
 2. **Utiliser `ALTER TABLE`** au lieu de `CREATE TABLE IF NOT EXISTS` pour les colonnes
 3. **Vérifier la cohérence** : Script de vérification après chaque migration
 
+

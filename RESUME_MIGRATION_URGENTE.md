@@ -187,3 +187,4 @@ curl https://api.yukpomnang.com/healthz
 **Date** : 2026-02-14  
 **Statut** : Migration urgente - Guides créés - Prêt pour déploiement
 
+

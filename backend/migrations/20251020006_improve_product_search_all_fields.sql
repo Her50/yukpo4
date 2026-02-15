@@ -204,6 +204,23 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_products_search_cache_unique
 ON products_search_cache(service_id, (product->>'id'));
 
 -- 8. Fonction de recherche optimisée utilisant le cache
+-- ✅ CORRIGÉ 2026-02-15: Supprimer toutes les versions de la fonction avant de la recréer
+DO $$
+DECLARE
+    func_record RECORD;
+BEGIN
+    FOR func_record IN 
+        SELECT oid, proname, pg_get_function_identity_arguments(oid) as args
+        FROM pg_proc 
+        WHERE proname = 'search_products_optimized'
+    LOOP
+        EXECUTE format('DROP FUNCTION IF EXISTS %s(%s) CASCADE', 
+            func_record.proname, 
+            func_record.args
+        );
+    END LOOP;
+END $$;
+
 CREATE OR REPLACE FUNCTION search_products_optimized(
     search_query TEXT,
     category_filter TEXT DEFAULT NULL,

@@ -61,3 +61,4 @@ SELECT 'live_flash_sales.stock_target', EXISTS (SELECT 1 FROM information_schema
 UNION ALL 
 SELECT 'social_publication_jobs.payload', EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'social_publication_jobs' AND column_name = 'payload');
 
+

@@ -100,3 +100,4 @@ aws logs filter-log-events --log-group-name /aws/rds/instance/yukpo-db/postgresq
 4. **Vérifier les logs** : Confirmer que les auto-migrations sont activées
 5. **Vérifier les erreurs PostgreSQL** : Voir si elles ont diminué
 
+

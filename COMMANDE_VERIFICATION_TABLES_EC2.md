@@ -178,3 +178,4 @@ PGPASSWORD="PYvHBVetTuWIKNkXgqJcFiU48D39SLwd" psql -h yukpo-db.cp4oq80ogckg.eu-w
 
 **Note** : La base de données RDS n'est probablement accessible que depuis EC2 (VPC privé), pas depuis votre machine locale.
 
+

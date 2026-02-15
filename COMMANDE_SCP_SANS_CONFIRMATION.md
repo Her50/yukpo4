@@ -127,3 +127,4 @@ $EC2_IP = aws ec2 describe-instances --filters "Name=tag:Name,Values=yukpo-temp-
 scp -i "C:\chemin\vers\votre-cle.pem" -o StrictHostKeyChecking=no -o UserKnownHostsFile=NUL -r backend\migrations ec2-user@${EC2_IP}:~/migrations/
 ```
 
+

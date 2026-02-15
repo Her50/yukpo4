@@ -74,3 +74,4 @@ Vous devriez voir tous les secrets listés.
 
 **C'est tout ! Une fois les secrets configurés, vous pouvez push vers GitHub pour déclencher le déploiement.**
 
+

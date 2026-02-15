@@ -131,3 +131,4 @@ Pour voir toutes les erreurs dans les logs backend, il faut :
 
 **Le fait que le backend continue de fonctionner ne signifie pas que tout est OK**. Les ~95 erreurs SQL dans les logs PostgreSQL indiquent que de nombreuses tables/indexes/fonctions ne sont pas créés correctement, ce qui peut causer des problèmes fonctionnels plus tard.
 
+

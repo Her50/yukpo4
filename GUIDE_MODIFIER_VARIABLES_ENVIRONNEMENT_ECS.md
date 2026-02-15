@@ -107,3 +107,4 @@ Vous devriez voir dans les logs :
 ✅ Tables de base (users, services) vérifiées - Exécution des migrations automatiques...
 ```
 
+

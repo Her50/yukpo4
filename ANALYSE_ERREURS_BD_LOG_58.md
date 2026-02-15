@@ -288,3 +288,4 @@ Pour la fonction `run_audio_cache_cleanup()`, exécuter séparément :
 - `backend/src/migrations/auto_migrate.rs` - Logique de parsing SQL
 - Toutes les migrations SQL dans `backend/migrations/` - Commandes tronquées
 
+

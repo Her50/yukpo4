@@ -165,3 +165,4 @@ else {
 
 **Note**: Ces améliorations devraient considérablement réduire les erreurs SQL dans les logs. Si des erreurs persistent, elles seront maintenant détectées et loggées comme warnings au lieu de causer des erreurs fatales.
 
+

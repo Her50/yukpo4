@@ -29,6 +29,7 @@ END $$;
 -- =====================================================
 
 -- Rechercher toutes les fonctions qui contiennent "u_client.name"
+-- ✅ CORRIGÉ 2026-02-15: Utiliser une sous-requête pour éviter l'erreur avec pg_get_functiondef dans WHERE
 DO $$
 DECLARE
     func_record RECORD;
@@ -38,14 +39,17 @@ BEGIN
         SELECT 
             n.nspname as schema_name, 
             p.proname as function_name,
-            pg_get_functiondef(p.oid) as definition
+            p.oid as func_oid
         FROM pg_proc p
         JOIN pg_namespace n ON p.pronamespace = n.oid
-        WHERE pg_get_functiondef(p.oid) ILIKE '%u_client.name%'
-           OR pg_get_functiondef(p.oid) ILIKE '%u_client%name%'
+        WHERE n.nspname = 'public'
     LOOP
         BEGIN
-            RAISE NOTICE 'Fonction trouvée avec u_client.name: %.%', func_record.schema_name, func_record.function_name;
+            -- Récupérer la définition dans le bloc BEGIN pour éviter l'erreur
+            SELECT pg_get_functiondef(func_record.func_oid) INTO func_definition;
+            IF func_definition ILIKE '%u_client.name%' OR func_definition ILIKE '%u_client%name%' THEN
+                RAISE NOTICE 'Fonction trouvée avec u_client.name: %.%', func_record.schema_name, func_record.function_name;
+            END IF;
         EXCEPTION
             WHEN OTHERS THEN
                 -- Ignorer les erreurs de formatage

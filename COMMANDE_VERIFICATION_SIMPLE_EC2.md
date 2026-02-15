@@ -168,3 +168,4 @@ ORDER BY table_name;
 ### **delivery_media** : ~19 colonnes
 ### **delivery_proof_media** : ~9 colonnes
 
+

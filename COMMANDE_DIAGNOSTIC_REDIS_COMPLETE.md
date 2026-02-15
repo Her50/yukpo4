@@ -129,3 +129,4 @@ Pour corriger définitivement, il faut :
 3. ✅ Mettre à jour REDIS_URL dans Secrets Manager
 4. ✅ Redémarrer le service ECS
 
+

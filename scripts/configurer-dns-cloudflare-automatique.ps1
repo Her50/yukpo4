@@ -190,3 +190,4 @@ Write-Host "[OK] Configuration DNS terminee!" -ForegroundColor Green
 Write-Host "[INFO] Attendez 2-5 minutes pour la propagation DNS" -ForegroundColor Yellow
 Write-Host "[INFO] Testez avec: nslookup ${Subdomain}.${Domain}" -ForegroundColor Cyan
 
+

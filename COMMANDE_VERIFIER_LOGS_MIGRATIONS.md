@@ -58,3 +58,4 @@ Write-Host "IP Publique: $PUBLIC_IP"
 curl http://${PUBLIC_IP}:8080/health
 ```
 
+

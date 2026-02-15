@@ -137,3 +137,4 @@ Write-Host "  1. Mettez à jour le workflow GitHub Actions pour utiliser Artifac
 Write-Host "  2. Remplacez 'gcr.io/$ProjectId/yukpo-backend' par '$repoUrl/yukpo-backend'" -ForegroundColor White
 Write-Host "  3. Configurez Docker avec: gcloud auth configure-docker $Region-docker.pkg.dev" -ForegroundColor White
 
+

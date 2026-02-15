@@ -348,3 +348,4 @@ curl https://api.yukpomnang.com/healthz
 **Date** : 2026-02-14  
 **Statut** : Comparaison complète - Azure recommandé pour Performance + Maîtrise Coûts
 
+

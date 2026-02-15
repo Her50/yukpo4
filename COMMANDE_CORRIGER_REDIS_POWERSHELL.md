@@ -41,3 +41,4 @@ aws ecs update-service --cluster yukpo-cluster --service yukpo-backend-service -
 Write-Host "✅ Service ECS redémarré. Attendez 2-3 minutes." -ForegroundColor Green
 ```
 
+

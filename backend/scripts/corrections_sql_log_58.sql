@@ -109,3 +109,4 @@ SELECT
     COUNT(*) as video_count 
 FROM hashtag_stats_materialized;
 
+

@@ -111,6 +111,8 @@ CREATE INDEX IF NOT EXISTS idx_prebooked_seats_product ON prebooked_return_seats
 CREATE INDEX IF NOT EXISTS idx_prebooked_seats_request ON prebooked_return_seats(return_request_id);
 
 -- 5. Fonction pour matcher automatiquement les demandes de retour
+-- ✅ CORRIGÉ 2026-02-15: Supprimer toutes les versions avant de recréer
+DROP FUNCTION IF EXISTS match_return_trip_requests(TEXT) CASCADE;
 CREATE OR REPLACE FUNCTION match_return_trip_requests(p_product_id TEXT)
 RETURNS TABLE(
     request_id TEXT,
@@ -143,6 +145,8 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- 6. Fonction pour pré-réserver les places du retour
+-- ✅ CORRIGÉ 2026-02-15: Supprimer toutes les versions avant de recréer
+DROP FUNCTION IF EXISTS prebook_return_seats(TEXT, TEXT, TEXT[], TEXT[]) CASCADE;
 CREATE OR REPLACE FUNCTION prebook_return_seats(
     p_request_id TEXT,
     p_product_id TEXT,
@@ -195,6 +199,8 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- 7. Fonction pour calculer frais de réservation selon devise
+-- ✅ CORRIGÉ 2026-02-15: Supprimer toutes les versions avant de recréer
+DROP FUNCTION IF EXISTS calculate_booking_fee(VARCHAR) CASCADE;
 CREATE OR REPLACE FUNCTION calculate_booking_fee(p_currency VARCHAR(10))
 RETURNS INTEGER AS $$
 BEGIN

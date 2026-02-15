@@ -141,3 +141,4 @@ aws ssm put-parameter `
 
 Le système de gestion des médias est prêt pour la production.
 
+

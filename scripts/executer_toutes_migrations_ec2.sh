@@ -156,3 +156,4 @@ else
     echo -e "${YELLOW}⚠️  Certaines migrations ont échoué. Vérifiez les logs ci-dessus.${NC}"
 fi
 
+

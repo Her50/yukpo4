@@ -35,6 +35,23 @@ $$ LANGUAGE plpgsql IMMUTABLE;
 COMMENT ON FUNCTION calculate_gps_distance_km_simple IS 'Calcule la distance GPS en km avec formule Haversine (compatible sqlx offline)';
 
 -- ✅ CORRECTION: Fonction de recherche hybride améliorée qui cherche dans DEUX sources
+-- ✅ CORRIGÉ 2026-02-15: Supprimer toutes les versions de la fonction avant de la recréer
+DO $$
+DECLARE
+    func_record RECORD;
+BEGIN
+    FOR func_record IN 
+        SELECT oid, proname, pg_get_function_identity_arguments(oid) as args
+        FROM pg_proc 
+        WHERE proname = 'hybrid_image_search'
+    LOOP
+        EXECUTE format('DROP FUNCTION IF EXISTS %s(%s) CASCADE', 
+            func_record.proname, 
+            func_record.args
+        );
+    END LOOP;
+END $$;
+
 CREATE OR REPLACE FUNCTION hybrid_image_search(
     search_tags TEXT[],
     search_category TEXT DEFAULT NULL,

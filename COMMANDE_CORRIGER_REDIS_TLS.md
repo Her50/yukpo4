@@ -34,3 +34,4 @@ Write-Host "⏱️  Attendez 2-3 minutes pour que le service redémarre" -Foregr
 
 Après 2-3 minutes, vérifiez les logs. Les erreurs Redis devraient disparaître.
 
+

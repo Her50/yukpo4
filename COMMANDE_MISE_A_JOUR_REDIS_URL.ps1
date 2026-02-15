@@ -32,3 +32,4 @@ if ($secret.REDIS_URL -ne $newRedisUrl) {
     Write-Host "✅ REDIS_URL déjà correct" -ForegroundColor Green
 }
 
+

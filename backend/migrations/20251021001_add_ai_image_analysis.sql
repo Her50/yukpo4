@@ -36,6 +36,23 @@ CREATE INDEX IF NOT EXISTS idx_media_ai_metadata_gin
 ON media USING GIN (ai_metadata);
 
 -- Fonction pour rechercher des images par analyse IA (compatible sqlx offline)
+-- ✅ CORRIGÉ 2026-02-15: Supprimer toutes les versions de la fonction avant de la recréer
+DO $$
+DECLARE
+    func_record RECORD;
+BEGIN
+    FOR func_record IN 
+        SELECT oid, proname, pg_get_function_identity_arguments(oid) as args
+        FROM pg_proc 
+        WHERE proname = 'search_images_by_ai_analysis'
+    LOOP
+        EXECUTE format('DROP FUNCTION IF EXISTS %s(%s) CASCADE', 
+            func_record.proname, 
+            func_record.args
+        );
+    END LOOP;
+END $$;
+
 CREATE OR REPLACE FUNCTION search_images_by_ai_analysis(
     search_query TEXT,
     search_tags TEXT[],

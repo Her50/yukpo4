@@ -183,52 +183,11 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- ============================================================================
--- 6. TRIGGERS : Mise à jour automatique des analytics
--- ============================================================================
-
--- Trigger pour mettre à jour les analytics quand une consultation change de statut
-CREATE OR REPLACE FUNCTION update_hospital_analytics_on_consultation()
-RETURNS TRIGGER AS $$
-BEGIN
-    INSERT INTO hospital_analytics (hospital_id, service_id, date, total_consultations, completed_consultations, cancelled_consultations, no_show_consultations)
-    VALUES (
-        NEW.hospital_id,
-        NEW.service_id,
-        DATE(NEW.appointment_date),
-        CASE WHEN NEW.status IN ('scheduled', 'confirmed', 'in_progress', 'completed') THEN 1 ELSE 0 END,
-        CASE WHEN NEW.status = 'completed' THEN 1 ELSE 0 END,
-        CASE WHEN NEW.status = 'cancelled' THEN 1 ELSE 0 END,
-        CASE WHEN NEW.status = 'no_show' THEN 1 ELSE 0 END
-    )
-    ON CONFLICT (hospital_id, date)
-    DO UPDATE SET
-        total_consultations = hospital_analytics.total_consultations + 
-            CASE WHEN NEW.status IN ('scheduled', 'confirmed', 'in_progress', 'completed') THEN 1 ELSE 0 END,
-        completed_consultations = hospital_analytics.completed_consultations + 
-            CASE WHEN NEW.status = 'completed' THEN 1 ELSE 0 END,
-        cancelled_consultations = hospital_analytics.cancelled_consultations + 
-            CASE WHEN NEW.status = 'cancelled' THEN 1 ELSE 0 END,
-        no_show_consultations = hospital_analytics.no_show_consultations + 
-            CASE WHEN NEW.status = 'no_show' THEN 1 ELSE 0 END,
-        updated_at = NOW();
-    
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
--- Pas de trigger automatique pour éviter la surcharge, on utilisera des jobs programmés
-
--- ============================================================================
--- 7. INDEX pour recherches fréquentes
--- ============================================================================
-
--- Index composé pour recherche de créneaux disponibles
+-- Index pour recherches fréquentes
 CREATE INDEX IF NOT EXISTS idx_hospital_slots_available_search 
     ON hospital_slots(hospital_id, slot_date, status, specialty) 
     WHERE status = 'available';
 
--- Index pour recherche urgences en attente
 CREATE INDEX IF NOT EXISTS idx_hospital_emergencies_waiting 
     ON hospital_emergencies(hospital_id, severity_level, arrival_time) 
     WHERE status IN ('pending', 'triaged');
@@ -237,4 +196,8 @@ COMMENT ON TABLE hospital_consultations IS 'Consultations médicales planifiées
 COMMENT ON TABLE hospital_emergencies IS 'Urgences médicales traitées dans les hôpitaux';
 COMMENT ON TABLE hospital_slots IS 'Créneaux horaires disponibles pour consultations';
 COMMENT ON TABLE hospital_analytics IS 'Statistiques quotidiennes des hôpitaux pour analytics';
+
+
+
+
 

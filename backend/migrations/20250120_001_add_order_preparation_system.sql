@@ -132,11 +132,12 @@ CREATE INDEX IF NOT EXISTS idx_product_cancellation_stats_rate
 ON product_cancellation_stats(cancellation_rate DESC);
 
 -- 3.4. Table pour vérification d'identité du coursier lors du pickup
+-- ✅ CORRIGÉ 2026-02-15: courier_id doit être UUID pour correspondre à couriers.id
 CREATE TABLE IF NOT EXISTS courier_verification_codes (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     delivery_id UUID NOT NULL REFERENCES deliveries(id) ON DELETE CASCADE,
     order_id UUID REFERENCES product_orders(id) ON DELETE CASCADE,
-    courier_id INTEGER NOT NULL REFERENCES couriers(id),
+    courier_id UUID NOT NULL REFERENCES couriers(id),
     verification_code VARCHAR(6) NOT NULL UNIQUE,
     -- Code à 6 chiffres pour vérification (ex: "123456")
     qr_code_data TEXT,
@@ -152,9 +153,10 @@ CREATE TABLE IF NOT EXISTS courier_verification_codes (
 CREATE INDEX IF NOT EXISTS idx_courier_verification_delivery 
 ON courier_verification_codes(delivery_id);
 
+-- ✅ CORRIGÉ 2026-02-15: Index partiel sans condition temporelle (NOW()/CURRENT_TIMESTAMP ne peut pas être utilisé dans les index partiels)
 CREATE INDEX IF NOT EXISTS idx_courier_verification_code 
 ON courier_verification_codes(verification_code) 
-WHERE verified_at IS NULL AND expires_at > NOW();
+WHERE verified_at IS NULL;
 
 CREATE INDEX IF NOT EXISTS idx_courier_verification_courier 
 ON courier_verification_codes(courier_id, delivery_id);

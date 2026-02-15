@@ -45,17 +45,28 @@ CREATE TABLE IF NOT EXISTS live_replays (
 
 CREATE INDEX IF NOT EXISTS idx_live_replays_session_id ON live_replays(live_session_id);
 
-CREATE TABLE IF NOT EXISTS live_session_analytics (
-    live_session_id UUID PRIMARY KEY REFERENCES live_sessions(id) ON DELETE CASCADE,
-    total_viewers INTEGER NOT NULL DEFAULT 0,
-    hls_viewers INTEGER NOT NULL DEFAULT 0,
-    webrtc_viewers INTEGER NOT NULL DEFAULT 0,
-    total_watch_time_seconds BIGINT NOT NULL DEFAULT 0,
-    average_watch_time_seconds NUMERIC(10,2) NOT NULL DEFAULT 0,
-    conversions INTEGER NOT NULL DEFAULT 0,
-    revenue_cfa NUMERIC(14,2) NOT NULL DEFAULT 0,
-    last_synced_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
+-- ✅ CORRIGÉ 2026-02-15: Vérifier si la table existe avec un schéma différent
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'live_session_analytics') THEN
+        CREATE TABLE live_session_analytics (
+            live_session_id UUID PRIMARY KEY REFERENCES live_sessions(id) ON DELETE CASCADE,
+            total_viewers INTEGER NOT NULL DEFAULT 0,
+            hls_viewers INTEGER NOT NULL DEFAULT 0,
+            webrtc_viewers INTEGER NOT NULL DEFAULT 0,
+            total_watch_time_seconds BIGINT NOT NULL DEFAULT 0,
+            average_watch_time_seconds NUMERIC(10,2) NOT NULL DEFAULT 0,
+            conversions INTEGER NOT NULL DEFAULT 0,
+            revenue_cfa NUMERIC(14,2) NOT NULL DEFAULT 0,
+            last_synced_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
+    ELSE
+        -- La table existe, ajouter la colonne last_synced_at si elle n'existe pas
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'live_session_analytics' AND column_name = 'last_synced_at') THEN
+            ALTER TABLE live_session_analytics ADD COLUMN last_synced_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+        END IF;
+    END IF;
+END $$;
 
 CREATE INDEX IF NOT EXISTS idx_live_session_analytics_last_synced ON live_session_analytics(last_synced_at);
 

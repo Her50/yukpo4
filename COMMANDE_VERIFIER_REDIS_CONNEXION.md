@@ -46,3 +46,4 @@ Write-Host "Service redémarré. Attendez 2-3 minutes." -ForegroundColor Yellow
 aws ecs describe-services --cluster yukpo-cluster --services yukpo-backend-service --region eu-west-1 --query 'services[0].[status,runningCount,desiredCount]' --output table
 ```
 
+

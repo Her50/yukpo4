@@ -576,6 +576,32 @@ CREATE INDEX IF NOT EXISTS idx_products_lifecycle_service_product_active ON prod
 -- Index pour optimiser la requête principale (user_id + created_at)
 CREATE INDEX IF NOT EXISTS idx_services_user_id_created_at_desc ON services (user_id, created_at DESC);
 
+-- ✅ CORRECTION 2026-02-15: Créer la table products avant les vues/fonctions qui la référencent
+-- Cette table est utilisée par les fonctions de bus (numero_bus) et doit exister avant migration 0
+CREATE TABLE IF NOT EXISTS products (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    type TEXT NOT NULL,
+    description TEXT,
+    price_cents BIGINT,
+    currency VARCHAR(10) DEFAULT 'XAF',
+    seat_map JSONB,
+    bus_configuration JSONB,
+    total_seats INTEGER,
+    numero_bus VARCHAR(50),
+    logo_agence TEXT,
+    conditions_voyage TEXT,
+    caution_reservation INTEGER DEFAULT 500,
+    metadata JSONB DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_products_service_id ON products(service_id);
+CREATE INDEX IF NOT EXISTS idx_products_type ON products(type);
+CREATE INDEX IF NOT EXISTS idx_products_created_at ON products(created_at DESC);
+
 DO $$
 BEGIN
     IF NOT EXISTS (
@@ -4994,6 +5020,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- ✅ CORRECTION 2026-02-15: DROP le trigger avant de le recréer
+DROP TRIGGER IF EXISTS trigger_update_templates_updated_at ON video_templates;
 CREATE TRIGGER trigger_update_templates_updated_at
     BEFORE UPDATE ON video_templates
     FOR EACH ROW
@@ -5570,20 +5598,12 @@ COMMENT ON FUNCTION delete_cache_pattern IS 'Supprime les clés du cache corresp
 -- =====================================================
 
 -- 1. Optimisation requête get_delivery_summary
--- Index GIST pour return_pickup_location (manquant)
-CREATE INDEX IF NOT EXISTS idx_deliveries_return_pickup_location_gist
-ON deliveries USING GIST(return_pickup_location)
-WHERE return_pickup_location IS NOT NULL;
-
--- Index GIST pour return_dropoff_location (manquant)
-CREATE INDEX IF NOT EXISTS idx_deliveries_return_dropoff_location_gist
-ON deliveries USING GIST(return_dropoff_location)
-WHERE return_dropoff_location IS NOT NULL;
-
--- Index composite pour is_round_trip (utilisé dans la requête)
-CREATE INDEX IF NOT EXISTS idx_deliveries_round_trip
-ON deliveries(id, is_round_trip)
-WHERE is_round_trip = true;
+-- ✅ CORRECTION 2026-02-15: Ces colonnes (return_pickup_location, return_dropoff_location, is_round_trip)
+-- sont ajoutées dans la migration 00000030_add_delivery_round_trip.sql
+-- Les index correspondants seront créés dans cette migration
+-- Index GIST pour return_pickup_location (créé dans migration 30)
+-- Index GIST pour return_dropoff_location (créé dans migration 30)
+-- Index composite pour is_round_trip (créé dans migration 30)
 
 -- 2. Optimisation find_nearby_couriers (amélioration)
 -- Index pour captured_at récent (utilisé dans find_nearby_couriers)
@@ -5663,10 +5683,21 @@ CREATE TABLE IF NOT EXISTS navigation_trips (
     distance_meters DOUBLE PRECISION NOT NULL,
     duration_seconds BIGINT NOT NULL,
     waypoints JSONB, -- Points d'arrêt optionnels
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    
-    CONSTRAINT navigation_trips_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- ✅ CORRECTION 2026-02-15: Ajouter la contrainte séparément pour éviter les erreurs si elle existe déjà
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'navigation_trips_user_id_fkey'
+    ) THEN
+        ALTER TABLE navigation_trips 
+        ADD CONSTRAINT navigation_trips_user_id_fkey 
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
+    END IF;
+END $$;
 
 -- Index pour optimiser les requêtes de statistiques
 CREATE INDEX IF NOT EXISTS idx_navigation_trips_user_id ON navigation_trips(user_id);

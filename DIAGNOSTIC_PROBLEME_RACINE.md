@@ -62,3 +62,4 @@ S'assurer que les fonctions `ensure_*_columns()` vérifient TOUTES les colonnes 
 
 **Option 1** : Aligner les migrations SQL avec le code Rust pour éviter les conflits futurs.
 
+

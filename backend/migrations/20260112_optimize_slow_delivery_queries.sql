@@ -170,11 +170,18 @@ ANALYZE deliveries;
 -- FIN DE LA MIGRATION
 -- ============================================================================
 
-COMMENT ON INDEX IF EXISTS idx_delivery_matching_queue_delivery_id_unique IS 
-'Index unique pour optimiser UPDATE delivery_matching_queue WHERE delivery_id';
-
-COMMENT ON INDEX IF EXISTS idx_courier_availability_snapshots_online_recent IS 
-'Index composite pour requêtes courier_availability_snapshots avec filtre captured_at >= NOW() - 30min AND is_online = TRUE';
-
-COMMENT ON INDEX IF EXISTS idx_courier_zone_assignments_lateral_join IS 
-'Index optimisé pour JOIN LATERAL sur courier_zone_assignments (courier_id, is_active, is_primary DESC, updated_at DESC)';
+-- ✅ CORRIGÉ 2026-02-15: COMMENT ON INDEX ne supporte pas IF EXISTS, utiliser DO $$ pour vérifier
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_delivery_matching_queue_delivery_id_unique') THEN
+        EXECUTE 'COMMENT ON INDEX idx_delivery_matching_queue_delivery_id_unique IS ''Index unique pour optimiser UPDATE delivery_matching_queue WHERE delivery_id''';
+    END IF;
+    
+    IF EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_courier_availability_snapshots_online_recent') THEN
+        EXECUTE 'COMMENT ON INDEX idx_courier_availability_snapshots_online_recent IS ''Index composite pour requêtes courier_availability_snapshots avec filtre captured_at >= NOW() - 30min AND is_online = TRUE''';
+    END IF;
+    
+    IF EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_courier_zone_assignments_lateral_join') THEN
+        EXECUTE 'COMMENT ON INDEX idx_courier_zone_assignments_lateral_join IS ''Index optimisé pour JOIN LATERAL sur courier_zone_assignments (courier_id, is_active, is_primary DESC, updated_at DESC)''';
+    END IF;
+END $$;

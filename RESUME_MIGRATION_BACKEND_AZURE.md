@@ -74,3 +74,4 @@ ALLOWED_ORIGINS=https://api.yukpomnang.com,https://yukpomnang.com
 **Date** : 2026-02-14  
 **Statut** : Guide simplifié créé - Prêt pour migration
 
+

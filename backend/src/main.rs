@@ -593,8 +593,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // ✅ OPTIMISÉ Cloud Run: Pour Cloud Run, on saute toutes les migrations SQLx ici
     // Elles seront lancées en arrière-plan après la création de l'AppState
-    if !is_cloud_run {
-        log::info!("🚀 Application des migrations SQLx standard...");
+    // ✅ NOUVEAU 2026-02-15: Permettre l'exécution des migrations SQLx sur Cloud Run via variable d'environnement
+    let enable_sqlx_migrations = env::var("ENABLE_SQLX_MIGRATIONS")
+        .unwrap_or_else(|_| "false".to_string())
+        .parse::<bool>()
+        .unwrap_or(false);
+
+    let should_run_sqlx_migrations = !is_cloud_run || enable_sqlx_migrations;
+
+    if should_run_sqlx_migrations {
+        if is_cloud_run && enable_sqlx_migrations {
+            log::info!("🚀 Cloud Run: Application des migrations SQLx standard (ENABLE_SQLX_MIGRATIONS=true)...");
+        } else {
+            log::info!("🚀 Application des migrations SQLx standard...");
+        }
         log::info!(
             "🔍 [DIAGNOSTIC] SQLX_OFFLINE au runtime: {:?}",
             env::var("SQLX_OFFLINE").ok()
@@ -1861,7 +1873,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         } else {
             log::info!("⏭️ Migrations automatiques désactivées (ENABLE_AUTO_MIGRATIONS={}) - Pour activer: ENABLE_AUTO_MIGRATIONS=true", enable_auto_migrations_raw);
         }
-    } // Fin du bloc if !is_cloud_run pour les migrations SQLx
+    } else {
+        if is_cloud_run {
+            log::info!("⏭️ Cloud Run: Migrations SQLx désactivées (ENABLE_SQLX_MIGRATIONS=false ou non défini)");
+            log::info!("ℹ️ Pour activer les migrations SQLx sur Cloud Run, définissez ENABLE_SQLX_MIGRATIONS=true");
+            log::info!("ℹ️ Note: Les migrations SQLx doivent être exécutées au moins une fois pour créer les tables de base");
+        }
+    } // Fin du bloc if should_run_sqlx_migrations pour les migrations SQLx
 
     // ✅ NOUVEAU 2025-11-27: Démarrer le monitoring de santé du pool
     yukpomnang_backend::utils::db_monitor::start_db_health_monitor(pg_pool.clone()).await;

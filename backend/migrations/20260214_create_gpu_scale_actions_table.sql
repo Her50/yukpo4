@@ -20,3 +20,4 @@ COMMENT ON COLUMN gpu_scale_actions.action IS 'Type d''action: scale_up, scale_d
 COMMENT ON COLUMN gpu_scale_actions.instances_from IS 'Nombre d''instances avant le scaling';
 COMMENT ON COLUMN gpu_scale_actions.instances_to IS 'Nombre d''instances après le scaling';
 
+
