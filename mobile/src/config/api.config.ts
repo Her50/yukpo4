@@ -20,12 +20,12 @@ const EXPO_ENV = process.env.EXPO_PUBLIC_ENVIRONMENT || 'production';
 // ⚠️ AWS (ancien backend, commenté pour utilisation future):
 // - https://api.yukpomnang.com (Cloudflare → AWS ECS)
 // - https://yukpomnang-backend-alb-2043939972.us-east-1.elb.amazonaws.com (AWS ALB direct)
-const GCP_BACKEND_URL = 'https://yukpo-backend-yukpo-project.a.run.app';
+const GCP_BACKEND_URL = 'https://yukpo-backend-376093909298.europe-west1.run.app';
 // ⚠️ AWS (ancien backend, commenté pour utilisation future)
 // const AWS_BACKEND_URL = 'https://api.yukpomnang.com';
 
 export const API_BASE_URL = EXPO_API_URL || GCP_BACKEND_URL;
-export const WS_BASE_URL = EXPO_WS_URL || `wss://yukpo-backend-yukpo-project.a.run.app`;
+export const WS_BASE_URL = EXPO_WS_URL || `wss://yukpo-backend-376093909298.europe-west1.run.app`;
 
 // Log pour vérifier la configuration chargée (seulement en développement)
 if (__DEV__) {

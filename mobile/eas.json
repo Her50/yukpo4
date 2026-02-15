@@ -12,8 +12,8 @@
                                   "distribution":  "internal",
                                   "env":  {
                                               // ✅ GCP Cloud Run (nouveau backend)
-                                              "EXPO_PUBLIC_API_URL":  "https://yukpo-backend-yukpo-project.a.run.app",
-                                              "EXPO_PUBLIC_WS_URL":  "wss://yukpo-backend-yukpo-project.a.run.app",
+                                              "EXPO_PUBLIC_API_URL":  "https://yukpo-backend-376093909298.europe-west1.run.app",
+                                              "EXPO_PUBLIC_WS_URL":  "wss://yukpo-backend-376093909298.europe-west1.run.app",
                                               // ⚠️ AWS (ancien backend, commenté pour utilisation future)
                                               // "EXPO_PUBLIC_API_URL":  "https://api.yukpomnang.com",
                                               // "EXPO_PUBLIC_WS_URL":  "wss://api.yukpomnang.com",
@@ -45,8 +45,8 @@
                   "production":  {
                                      "env":  {
                                                  // ✅ GCP Cloud Run (nouveau backend)
-                                                 "EXPO_PUBLIC_API_URL":  "https://yukpo-backend-yukpo-project.a.run.app",
-                                                 "EXPO_PUBLIC_WS_URL":  "wss://yukpo-backend-yukpo-project.a.run.app",
+                                                 "EXPO_PUBLIC_API_URL":  "https://yukpo-backend-376093909298.europe-west1.run.app",
+                                                 "EXPO_PUBLIC_WS_URL":  "wss://yukpo-backend-376093909298.europe-west1.run.app",
                                                  // ⚠️ AWS (ancien backend, commenté pour utilisation future)
                                                  // "EXPO_PUBLIC_API_URL":  "https://api.yukpomnang.com",
                                                  // "EXPO_PUBLIC_WS_URL":  "wss://api.yukpomnang.com",
