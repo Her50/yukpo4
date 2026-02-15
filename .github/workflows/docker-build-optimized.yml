@@ -475,7 +475,17 @@ jobs:
                 "RUST_LOG": "info",
                 "ENVIRONMENT": "production",
                 "ALLOWED_ORIGINS": $allowed_origins,
-                "CLOUD_RUN": "true"
+                "CLOUD_RUN": "true",
+                "GPU_ENABLED": "true",
+                "GPU_ENDPOINT": "http://yukpo-gpu-workers:8080",
+                "GPU_ZONE": "europe-west1-b",
+                "GPU_INSTANCE_NAME": "yukpo-gpu-worker",
+                "GCP_PROJECT_ID": "${{ secrets.GCP_PROJECT_ID }}",
+                "GPU_MONTHLY_BUDGET": "100.0",
+                "GPU_SCALE_UP_THRESHOLD": "70.0",
+                "GPU_SCALE_DOWN_THRESHOLD": "20.0",
+                "GPU_MAX_INSTANCES": "3",
+                "GPU_MIN_INSTANCES": "0"
               }' > env-vars.json
           else
             # Fallback: construire JSON manuellement avec échappement
@@ -488,7 +498,17 @@ jobs:
             "RUST_LOG": "info",
             "ENVIRONMENT": "production",
             "ALLOWED_ORIGINS": "https://api.yukpo.com,https://yukpo.com",
-            "CLOUD_RUN": "true"
+            "CLOUD_RUN": "true",
+            "GPU_ENABLED": "true",
+            "GPU_ENDPOINT": "http://yukpo-gpu-workers:8080",
+            "GPU_ZONE": "europe-west1-b",
+            "GPU_INSTANCE_NAME": "yukpo-gpu-worker",
+            "GCP_PROJECT_ID": "${{ secrets.GCP_PROJECT_ID }}",
+            "GPU_MONTHLY_BUDGET": "100.0",
+            "GPU_SCALE_UP_THRESHOLD": "70.0",
+            "GPU_SCALE_DOWN_THRESHOLD": "20.0",
+            "GPU_MAX_INSTANCES": "3",
+            "GPU_MIN_INSTANCES": "0"
           }
           EOF
           fi
