@@ -1,3 +1,9 @@
+# ⚠️ SCRIPT DÉSACTIVÉ - Migration vers GCP Cloud Run
+# Date: 2026-02-15
+# Ce script est désactivé car l'application a migré vers GCP Cloud Run
+Write-Host "Script désactivé - Migration vers GCP Cloud Run" -ForegroundColor Yellow
+exit 0
+
 # Script pour planifier la mise à jour automatique DNS Cloudflare
 # Date: 2026-02-14
 # Objectif: Créer une tâche planifiée Windows pour exécuter le script de mise à jour DNS

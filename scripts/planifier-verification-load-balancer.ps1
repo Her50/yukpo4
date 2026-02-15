@@ -1,3 +1,9 @@
+# ⚠️ SCRIPT DÉSACTIVÉ - Migration vers GCP Cloud Run
+# Date: 2026-02-15
+# Ce script est désactivé car l'application a migré vers GCP Cloud Run
+Write-Host "Script désactivé - Migration vers GCP Cloud Run" -ForegroundColor Yellow
+exit 0
+
 # Script pour planifier la vérification automatique du Load Balancer
 # Date: 2026-02-14
 # Objectif: Vérifier périodiquement si le Load Balancer est activé et configurer automatiquement
