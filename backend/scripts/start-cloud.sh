@@ -31,20 +31,24 @@ if [ "$CLOUD_RUN" != "true" ]; then
     RETRY_COUNT=0
 
     # Extraire les informations de connexion de DATABASE_URL
-    DB_HOST=$(echo $DATABASE_URL | sed -n 's/.*@\([^:]*\):.*/\1/p')
-    DB_PORT=$(echo $DATABASE_URL | sed -n 's/.*:\([0-9]*\)\/.*/\1/p' || echo "5432")
+    # ✅ CORRIGÉ 2026-02-15: Détecter format Cloud SQL Unix socket et sauter
+    if echo "$DATABASE_URL" | grep -q "/cloudsql/"; then
+        echo "✅ Format Cloud SQL Unix socket détecté - Vérification DB sautée"
+        DB_HOST=""
+        DB_PORT=""
+    else
+        DB_HOST=$(echo $DATABASE_URL | sed -n 's/.*@\([^:]*\):.*/\1/p')
+        DB_PORT=$(echo $DATABASE_URL | sed -n 's/.*:\([0-9]*\)\/.*/\1/p' || echo "5432")
+    fi
 
     if [ -z "$DB_HOST" ]; then
-        echo "⚠️ Impossible d'extraire DB_HOST de DATABASE_URL, tentative directe..."
-        until pg_isready -d "$DATABASE_URL" 2>/dev/null || [ $RETRY_COUNT -ge $MAX_RETRIES ]; do
-            RETRY_COUNT=$((RETRY_COUNT + 1))
-            echo "⏳ En attente de la base de données AWS RDS... (tentative $RETRY_COUNT/$MAX_RETRIES)"
-            sleep 2
-        done
+        # Format Cloud SQL Unix socket ou autre format sans host:port
+        echo "✅ Format Cloud SQL Unix socket ou connexion directe détecté - Vérification DB sautée"
+        echo "   L'application utilisera connect_lazy pour connexion non-bloquante"
     else
         until pg_isready -h "$DB_HOST" -p "$DB_PORT" 2>/dev/null || [ $RETRY_COUNT -ge $MAX_RETRIES ]; do
             RETRY_COUNT=$((RETRY_COUNT + 1))
-            echo "⏳ En attente de la base de données AWS RDS ($DB_HOST:$DB_PORT)... (tentative $RETRY_COUNT/$MAX_RETRIES)"
+            echo "⏳ En attente de la base de données ($DB_HOST:$DB_PORT)... (tentative $RETRY_COUNT/$MAX_RETRIES)"
             sleep 2
         done
     fi
