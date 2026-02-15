@@ -22,7 +22,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Lire le fichier SQL de migration complet
     let migration_sql =
-        include_str!("../../migrations/20260104_apply_delivery_partners_migrations.sql");
+        include_str!("../../migrations/00000042_apply_delivery_partners_migrations.sql");
 
     // Fonction pour diviser et exécuter plusieurs commandes SQL en gérant les blocs DO $$ ... $$
     async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(), sqlx::Error> {

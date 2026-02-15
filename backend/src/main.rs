@@ -747,7 +747,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         // Migration 20260130_002: Corrections critiques (vue, types, tables manquantes, etc.)
         let migration_fix_1_sql =
-            include_str!("../migrations/20260130_002_fix_critical_migration_errors.sql");
+            include_str!("../migrations/00000071_002_fix_critical_migration_errors.sql");
         log::info!(
             "🔍 [MIGRATION CORRECTION 002] Fichier chargé, taille: {} caractères",
             migration_fix_1_sql.len()
@@ -769,7 +769,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         // Migration 20260130_003: Corrections supplémentaires (fonctions, index, colonnes, etc.)
         let migration_fix_2_sql =
-            include_str!("../migrations/20260130_003_fix_additional_migration_errors.sql");
+            include_str!("../migrations/00000072_003_fix_additional_migration_errors.sql");
         log::info!(
             "🔍 [MIGRATION CORRECTION 003] Fichier chargé, taille: {} caractères",
             migration_fix_2_sql.len()
@@ -791,7 +791,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         // Migration 20260130_004: Correction FINALE de toutes les erreurs
         let migration_fix_3_sql =
-            include_str!("../migrations/20260130_004_fix_all_migration_errors_final.sql");
+            include_str!("../migrations/00000073_004_fix_all_migration_errors_final.sql");
         log::info!(
             "🔍 [MIGRATION CORRECTION 004] Fichier chargé, taille: {} caractères",
             migration_fix_3_sql.len()
@@ -811,7 +811,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         // Migration 20260130_005: Correction des erreurs restantes (log 10)
         let migration_fix_4_sql =
-            include_str!("../migrations/20260130_005_fix_remaining_migration_errors.sql");
+            include_str!("../migrations/00000074_005_fix_remaining_migration_errors.sql");
         log::info!(
             "🔍 [MIGRATION CORRECTION 005] Fichier chargé, taille: {} caractères",
             migration_fix_4_sql.len()
@@ -831,7 +831,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         // Migration 20260130_006: Ajout colonnes partner_type et partner_status à users (CRITIQUE pour inscription)
         let migration_fix_5_sql =
-            include_str!("../migrations/20260130_006_add_partner_columns_to_users.sql");
+            include_str!("../migrations/00000075_006_add_partner_columns_to_users.sql");
         log::info!(
             "🔍 [MIGRATION CORRECTION 006] Fichier chargé, taille: {} caractères",
             migration_fix_5_sql.len()
@@ -851,7 +851,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         // Migration 20260130_007: CRITIQUE - Garantir que la table users existe (AVANT migration 0)
         let migration_fix_6_sql =
-            include_str!("../migrations/20260130_007_ensure_users_table_exists.sql");
+            include_str!("../migrations/00000076_007_ensure_users_table_exists.sql");
         log::info!(
             "🔍 [MIGRATION CORRECTION 007] Fichier chargé, taille: {} caractères",
             migration_fix_6_sql.len()
@@ -887,7 +887,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         // Migration 20260130_008: CRITIQUE - Garantir que les tables services et media existent (APRÈS users)
         let migration_fix_7_sql =
-            include_str!("../migrations/20260130_008_ensure_services_and_media_tables.sql");
+            include_str!("../migrations/00000077_008_ensure_services_and_media_tables.sql");
         log::info!(
             "🔍 [MIGRATION CORRECTION 008] Fichier chargé, taille: {} caractères",
             migration_fix_7_sql.len()
@@ -1404,7 +1404,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 // Cette migration doit être exécutée APRÈS les migrations SQLx car la vue matérialisée
                 // doit exister avant de créer l'index unique
                 let migration_fix_index_sql =
-                    include_str!("../migrations/20260201_fix_materialized_view_index.sql");
+                    include_str!("../migrations/00000142_fix_materialized_view_index.sql");
                 log::info!(
                 "🔍 [MIGRATION CORRECTION INDEX] Application de la correction de l'index unique pour services_search_optimized_v2..."
             );
