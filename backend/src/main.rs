@@ -476,12 +476,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // ✅ NOUVEAU 2025-11-27: Pré-chauffer le pool pour avoir des connexions prêtes
-    log::info!("🔥 Pré-chauffage du pool de connexions...");
-    // ✅ CORRIGÉ 2026-02-15: Pour Cloud Run, sauter le warmup si min_connections=0
+    // ✅ CORRIGÉ 2026-02-15: Pour Cloud Run avec min_connections=0, sauter le warmup (non-bloquant)
     // Le warmup peut bloquer si la DB n'est pas accessible
-    if !is_cloud_run || min_connections > 0 {
+    let actual_min_connections = if is_cloud_run { 0 } else { min_connections };
+
+    if actual_min_connections > 0 {
+        log::info!("🔥 Pré-chauffage du pool de connexions...");
         let warmup_pool = pg_pool.clone();
-        let warmup_min = if is_cloud_run { 0 } else { min_connections };
+        let warmup_min = actual_min_connections;
         let _ = tokio::spawn(async move {
             let mut success_count = 0;
             for i in 0..warmup_min {
