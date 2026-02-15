@@ -42,6 +42,7 @@ pub mod extended_audio_controller; // ✅ NOUVEAU Phase 2.2: Contrôleur pour bi
 pub mod flash_promo_controller; // ✅ NOUVEAU: Contrôleur pour flash promotionnels de produits (gratuit)
 pub mod generative_video_controller; // ✅ NOUVEAU Phase 3.1: Contrôleur pour génération vidéo IA complète
 pub mod global_promo_controller;
+pub mod gpu_controller; // ✅ NOUVEAU 2026-02-14: Contrôleur pour gestion GPU GCP
 pub mod hashtag_controller; // ✅ NOUVEAU: Contrôleur pour gestion hashtags
 pub mod health_structure_controller; // ✅ NOUVEAU: Contrôleur pour structures de santé (autocomplete)
 pub mod history_controller;

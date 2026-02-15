@@ -316,6 +316,7 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
     let plugins = plugin_routes(state.clone()); // ✅ NOUVEAU Phase 2: Routes gestion des plugins
     let studio = studio_routes(state.clone()); // ✅ NOUVEAU: Routes Studio pour création vidéo immersive
     let feature_flags = feature_flags_routes(state.clone()); // ✅ NOUVEAU: Routes pour feature flags (résout 404 mobile)
+    let gpu = crate::routes::gpu_routes::gpu_routes(state.clone()); // ✅ NOUVEAU 2026-02-14: Routes pour gestion GPU GCP
 
     let app = Router::new()
         .route("/healthz", get(healthz))
@@ -399,6 +400,7 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .merge(ar_routes) // ✅ NOUVEAU Phase 3.2: Routes pour preview AR/VR
         .merge(studio) // ✅ NOUVEAU: Routes Studio pour création vidéo immersive
         .merge(feature_flags) // ✅ NOUVEAU: Routes pour feature flags (résout 404 mobile)
+        .merge(gpu) // ✅ NOUVEAU 2026-02-14: Routes pour gestion GPU GCP
         .merge(mobile_logs)
         .merge(navigation) // ✅ NOUVEAU: Routes navigation intelligente
         .merge(delivery_external)

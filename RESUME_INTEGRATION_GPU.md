@@ -108,12 +108,45 @@ La migration sera appliquée automatiquement au démarrage via :
 
 ---
 
-## 🎯 Prochaines étapes (optionnel)
+## 🎯 Prochaines étapes - ✅ INTÉGRÉES
 
-1. **Intégration AppIA** : Router automatiquement vers GPU
-2. **API REST** : Endpoints pour gestion manuelle
-3. **Tests** : Tests de scaling et budget
-4. **Optimisations** : Fine-tuning des seuils
+### ✅ 1. Intégration AppIA - COMPLÉTÉE
+
+Le service GPU est maintenant intégré dans `orchestration_ia.rs` avec routing intelligent :
+
+- **Priorité 1** : GPU GCP (instances distantes) si `GPU_ENABLED=true`
+- **Priorité 2** : GPU Local si `GPU_AVAILABLE=true`
+- **Priorité 3** : CPU (fallback)
+
+Le système route automatiquement les appels IA vers les instances GPU GCP avec fallback automatique.
+
+### ✅ 2. API REST - COMPLÉTÉE
+
+Routes API créées dans `gpu_routes.rs` et `gpu_controller.rs` :
+
+- `GET /api/gpu/metrics` - Métriques GPU en temps réel
+- `GET /api/gpu/status` - Statut du service GPU
+- `POST /api/gpu/scale` - Scaling manuel des instances
+- `POST /api/gpu/check-scale` - Force vérification de scaling
+- `POST /api/gpu/check-budget` - Force vérification de budget
+
+Routes publiques (metrics, status) et protégées (gestion) avec authentification JWT.
+
+### ✅ 3. Alignement Variables GPU - COMPLÉTÉ
+
+Document `VARIABLES_GPU_GCP_ALIGNEMENT.md` créé avec :
+- Liste complète des variables GPU (GCP + Local)
+- Tableau récapitulatif avec types et valeurs par défaut
+- Instructions d'activation dans GCP Cloud Run (3 méthodes)
+- Configuration recommandée pour production vs développement
+
+### 📋 4. Tests et Optimisations - À FAIRE
+
+- [ ] Tests unitaires pour `GpuService`
+- [ ] Tests d'intégration pour scaling automatique
+- [ ] Tests de budget et arrêt automatique
+- [ ] Fine-tuning des seuils selon métriques réelles
+- [ ] Tests de performance (latence GPU vs CPU)
 
 ---
 

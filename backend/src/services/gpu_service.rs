@@ -443,6 +443,11 @@ impl GpuService {
     pub async fn get_metrics(&self) -> GpuMetrics {
         self.metrics.read().await.clone()
     }
+
+    /// Récupère la configuration GPU
+    pub fn get_config(&self) -> &GpuConfig {
+        &self.config
+    }
 }
 
 impl Clone for GpuService {

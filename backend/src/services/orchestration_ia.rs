@@ -982,14 +982,49 @@ pub async fn orchestrer_intention_ia_ultra_optimisee(
         enriched_input.texte = Some(enriched_text);
     }
 
-    // ? NOUVEAU : Traitement avec optimisations GPU
-    let result = if production_config.gpu_enabled {
-        log_info("[orchestration_ia] ?? Pipeline GPU activ?");
+    // ✅ NOUVEAU 2026-02-14: Traitement avec routing intelligent GPU (GCP ou local)
+    let result = if let Some(gpu_service) = &state.gpu_service {
+        // GPU GCP disponible - router vers instances GPU distantes
+        log_info(
+            "[orchestration_ia] 🚀 Pipeline GPU GCP activé - Routing vers instances distantes",
+        );
+
+        // Extraire le prompt pour l'appel GPU
+        let prompt = enriched_input.texte.as_deref().unwrap_or("");
+
+        // Appeler le GPU GCP
+        match gpu_service
+            .process_ai_request(prompt, None, Some(serde_json::to_value(&enriched_input)?))
+            .await
+        {
+            Ok(gpu_result) => {
+                log_info("[orchestration_ia] ✅ Réponse GPU GCP reçue");
+                gpu_result
+            }
+            Err(e) => {
+                log::warn!(
+                    "[orchestration_ia] ⚠️ Erreur GPU GCP, fallback vers GPU local: {}",
+                    e
+                );
+                // Fallback vers GPU local
+                if production_config.gpu_enabled {
+                    optimized_ia
+                        .process_user_request_gpu_optimized(&enriched_input, &gpu_optimizer)
+                        .await?
+                } else {
+                    optimized_ia.process_user_request_immediate_response(&enriched_input).await?
+                }
+            }
+        }
+    } else if production_config.gpu_enabled {
+        // GPU local disponible
+        log_info("[orchestration_ia] 🎮 Pipeline GPU local activé");
         optimized_ia
             .process_user_request_gpu_optimized(&enriched_input, &gpu_optimizer)
             .await?
     } else {
-        log_info("[orchestration_ia] ?? Pipeline CPU activ?");
+        // CPU uniquement
+        log_info("[orchestration_ia] 💻 Pipeline CPU activé");
         optimized_ia.process_user_request_immediate_response(&enriched_input).await?
     };
 

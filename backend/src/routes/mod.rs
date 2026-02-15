@@ -30,6 +30,7 @@ pub mod flash_promo_routes;
 pub mod fournitures_routes;
 pub mod generative_routes;
 pub mod global_promo_routes;
+pub mod gpu_routes; // ✅ NOUVEAU 2026-02-14: Routes pour gestion GPU GCP
 pub mod health_routes;
 pub mod health_structure_routes;
 pub mod history_routes;
