@@ -1,7 +1,20 @@
 # Script de mise à jour automatique DNS Cloudflare
 # Date: 2026-02-14
 # Objectif: Vérifier l'IP ECS et mettre à jour Cloudflare automatiquement si elle a changé
+# ⚠️ DÉSACTIVÉ - Migration vers GCP Cloud Run (plus d'ECS/AWS)
+# Ce script n'est plus utilisé car l'application est maintenant sur GCP Cloud Run
 
+Write-Host "========================================" -ForegroundColor Yellow
+Write-Host "SCRIPT DÉSACTIVÉ" -ForegroundColor Yellow
+Write-Host "========================================" -ForegroundColor Yellow
+Write-Host ""
+Write-Host "Ce script est désactivé car l'application a migré vers GCP Cloud Run." -ForegroundColor Yellow
+Write-Host "L'application utilise maintenant Cloud Run avec une URL stable." -ForegroundColor Yellow
+Write-Host ""
+exit 0
+
+# Code désactivé ci-dessous
+<#
 param(
     [string]$CloudflareAPIKey = "SIlEiOG1y92DC2_Kg1u2_tlpCXiwi98kYlNzRsmL",
     [string]$CloudflareZoneID = "98970e23637def46d0a62c789ed66039",

@@ -128,7 +128,7 @@ jobs:
             --region ${{ env.REGION }} \
             --allow-unauthenticated \
             --env-vars-file ${{ steps.prepare-env.outputs.env_file }} \
-            --add-cloudsql-instances ${{ secrets.GCP_PROJECT_ID }}:${{ env.REGION }}:yukpo-db \
+            --add-cloudsql-instances ${{ secrets.GCP_PROJECT_ID }}:${{ env.REGION }}:yukpo-postgres \
             --memory 512Mi \
             --cpu 1 \
             --timeout 300 \

@@ -123,11 +123,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Render PostgreSQL nécessite SSL/TLS pour toutes les connexions
     // Le vrai problème: Render ferme les connexions idle après ~5 minutes
     // Solution: Réduire max_lifetime à 4 minutes pour renouveler avant fermeture
-    if !db_url.contains("sslmode=") {
+    // ✅ CORRIGÉ 2026-02-15: Ne pas ajouter sslmode=require pour Cloud SQL Unix socket
+    // Cloud SQL avec Unix socket (/cloudsql/) n'utilise pas SSL/TLS réseau
+    if !db_url.contains("sslmode=") && !db_url.contains("/cloudsql/") {
         let separator = if db_url.contains('?') { "&" } else { "?" };
         db_url.push_str(&format!("{}sslmode=require", separator));
         log::info!(
             "🔧 Paramètre sslmode=require ajouté à DATABASE_URL (requis pour Render PostgreSQL)"
+        );
+    } else if db_url.contains("/cloudsql/") {
+        log::info!(
+            "🔧 Cloud SQL Unix socket détecté - sslmode=require non ajouté (non nécessaire)"
         );
     }
 

@@ -1,7 +1,20 @@
 # Script de détection automatique et configuration du Load Balancer
 # Date: 2026-02-14
 # Objectif: Détecter quand le Load Balancer est activé et configurer automatiquement Route 53
+# ⚠️ DÉSACTIVÉ - Migration vers GCP Cloud Run (plus d'AWS Load Balancer)
+# Ce script n'est plus utilisé car l'application est maintenant sur GCP Cloud Run
 
+Write-Host "========================================" -ForegroundColor Yellow
+Write-Host "SCRIPT DÉSACTIVÉ" -ForegroundColor Yellow
+Write-Host "========================================" -ForegroundColor Yellow
+Write-Host ""
+Write-Host "Ce script est désactivé car l'application a migré vers GCP Cloud Run." -ForegroundColor Yellow
+Write-Host "L'application utilise maintenant Cloud Run avec une URL stable." -ForegroundColor Yellow
+Write-Host ""
+exit 0
+
+# Code désactivé ci-dessous
+<#
 param(
     [string]$Region = "eu-west-1",
     [string]$Domain = "api.yukpomnang.com",
