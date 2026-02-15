@@ -83,6 +83,7 @@ pub mod gps_matching;
 pub mod gpu_detector;
 pub mod gpu_optimizer;
 pub mod gpu_render_service; // ✅ NOUVEAU Phase 7: Service de rendu GPU optimisé
+pub mod gpu_service; // ✅ NOUVEAU: Service de gestion GPU automatisé GCP avec scaling
 pub mod hls_dash_service; // ✅ NOUVEAU: Service HLS/DASH pour qualité adaptative serveur
 pub mod hospital_ai_service; // ✅ 2025-01-27: Service IA hôpitaux (recommandations, triage)
 pub mod hybrid_image_search_service; // ✅ NOUVEAU: Recherche hybride intelligente

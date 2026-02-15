@@ -14,6 +14,7 @@ use crate::config::storage::MediaStorageConfig;
 use crate::config::video_renderer::VideoRendererConfig;
 use crate::controllers::ia_status_controller::IAStats;
 use crate::services::app_ia::AppIA;
+use crate::services::gpu_service::{GpuConfig, GpuService};
 use crate::services::mongo_history_service::MongoHistoryService;
 use crate::websocket::delivery_tracking::DeliveryTrackingManager;
 // Imports d'optimisation
@@ -121,6 +122,8 @@ pub struct AppState {
     pub youtube_audio_service: Option<Arc<YouTubeAudioService>>,
     /// ✅ NOUVEAU 2026-01-03: Service de gestion de la table products séparée
     pub products_service: Arc<crate::services::products_service::ProductsService>,
+    /// ✅ NOUVEAU 2026-02-14: Service de gestion GPU automatisé GCP
+    pub gpu_service: Option<Arc<GpuService>>,
 }
 
 impl AppState {
@@ -435,6 +438,7 @@ impl AppState {
 
         // Cloner pg avant de le déplacer dans AppState
         let pg_clone = pg.clone();
+        let pg_clone_gpu = pg.clone();
 
         AppState {
             pg,
@@ -535,6 +539,19 @@ impl AppState {
             products_service: Arc::new(crate::services::products_service::ProductsService::new(
                 Arc::new(pg_clone),
             )),
+            // ✅ NOUVEAU 2026-02-14: Initialiser le service GPU si configuré
+            gpu_service: {
+                if let Some(config) = GpuConfig::from_env() {
+                    let service = GpuService::new(config, Arc::new(pg_clone_gpu));
+                    log::info!("✅ Service GPU initialisé");
+                    Some(Arc::new(service))
+                } else {
+                    log::info!(
+                        "ℹ️ Service GPU non configuré (GPU_ENABLED=false ou variables manquantes)"
+                    );
+                    None
+                }
+            },
         }
     }
 
@@ -789,6 +806,8 @@ impl AppState {
             products_service: Arc::new(crate::services::products_service::ProductsService::new(
                 Arc::new(pg_clone),
             )),
+            // ✅ NOUVEAU 2026-02-14: Service GPU désactivé pour les tests
+            gpu_service: None,
         }
     }
 }

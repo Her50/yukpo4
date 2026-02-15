@@ -8670,6 +8670,12 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Err(e) => error!("❌ Erreur migration auto launch_phase_tables: {}", e),
     }
 
+    // ✅ NOUVEAU 2026-02-14 : Table GPU scale actions
+    match ensure_gpu_scale_actions_table(pool).await {
+        Ok(_) => info!("✅ Migration auto: gpu_scale_actions OK"),
+        Err(e) => error!("❌ Erreur migration auto gpu_scale_actions: {}", e),
+    }
+
     info!("✅ Migrations automatiques terminées");
 }
 
@@ -16518,6 +16524,81 @@ pub async fn ensure_launch_phase_tables(pool: &PgPool) -> Result<(), sqlx::Error
     .await?;
 
     info!("✅ Fonctions phase de lancement créées/vérifiées");
+    Ok(())
+}
+
+/// ✅ NOUVEAU 2026-02-14: Création de la table gpu_scale_actions pour tracking des actions de scaling GPU
+pub async fn ensure_gpu_scale_actions_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification de la table gpu_scale_actions...");
+
+    let table_exists = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(
+            SELECT 1 FROM information_schema.tables 
+            WHERE table_schema = 'public' 
+            AND table_name = 'gpu_scale_actions'
+        )",
+    )
+    .fetch_one(pool)
+    .await?;
+
+    if table_exists {
+        info!("✅ Table gpu_scale_actions existe déjà");
+        return Ok(());
+    }
+
+    info!("🔄 Création de la table gpu_scale_actions...");
+
+    sqlx::query(
+        r#"
+        CREATE TABLE gpu_scale_actions (
+            id SERIAL PRIMARY KEY,
+            action VARCHAR(50) NOT NULL,
+            instances_from INTEGER NOT NULL,
+            instances_to INTEGER NOT NULL,
+            created_at TIMESTAMP DEFAULT NOW()
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    // Créer les index
+    sqlx::query(
+        "CREATE INDEX idx_gpu_scale_actions_created_at ON gpu_scale_actions(created_at DESC)",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query("CREATE INDEX idx_gpu_scale_actions_action ON gpu_scale_actions(action)")
+        .execute(pool)
+        .await?;
+
+    // Ajouter les commentaires
+    sqlx::query(
+        "COMMENT ON TABLE gpu_scale_actions IS 'Historique des actions de scaling automatique des instances GPU'"
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "COMMENT ON COLUMN gpu_scale_actions.action IS 'Type d''action: scale_up, scale_down'",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "COMMENT ON COLUMN gpu_scale_actions.instances_from IS 'Nombre d''instances avant le scaling'"
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "COMMENT ON COLUMN gpu_scale_actions.instances_to IS 'Nombre d''instances après le scaling'"
+    )
+    .execute(pool)
+    .await?;
+
+    info!("✅ Table gpu_scale_actions créée avec succès");
     Ok(())
 }
 

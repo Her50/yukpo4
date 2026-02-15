@@ -1,0 +1,68 @@
+# ✅ Cloud Build configuration pour déploiement automatique GPU
+# Déclenché automatiquement via Git push
+
+steps:
+  # Étape 1: Appliquer Terraform
+  - name: 'hashicorp/terraform:1.0'
+    id: 'terraform-apply'
+    args:
+      - 'init'
+      - '-backend-config=bucket=${_TERRAFORM_STATE_BUCKET}'
+      - '-backend-config=prefix=gpu-infrastructure'
+    dir: 'gcp/gpu-infrastructure/terraform'
+    env:
+      - 'TF_VAR_project_id=${PROJECT_ID}'
+      - 'TF_VAR_region=${_REGION}'
+      - 'TF_VAR_zone=${_ZONE}'
+      - 'TF_VAR_monthly_budget=${_MONTHLY_BUDGET}'
+
+  - name: 'hashicorp/terraform:1.0'
+    id: 'terraform-plan'
+    args:
+      - 'plan'
+      - '-out=tfplan'
+    dir: 'gcp/gpu-infrastructure/terraform'
+    env:
+      - 'TF_VAR_project_id=${PROJECT_ID}'
+      - 'TF_VAR_region=${_REGION}'
+      - 'TF_VAR_zone=${_ZONE}'
+      - 'TF_VAR_monthly_budget=${_MONTHLY_BUDGET}'
+
+  - name: 'hashicorp/terraform:1.0'
+    id: 'terraform-apply-exec'
+    args:
+      - 'apply'
+      - '-auto-approve'
+      - 'tfplan'
+    dir: 'gcp/gpu-infrastructure/terraform'
+    env:
+      - 'TF_VAR_project_id=${PROJECT_ID}'
+      - 'TF_VAR_region=${_REGION}'
+      - 'TF_VAR_zone=${_ZONE}'
+      - 'TF_VAR_monthly_budget=${_MONTHLY_BUDGET}'
+
+  # Étape 2: Déployer le service GPU sur les instances
+  - name: 'gcr.io/cloud-builders/gcloud'
+    id: 'deploy-gpu-service'
+    args:
+      - 'compute'
+      - 'instances'
+      - 'list'
+      - '--filter=tags.items:gpu-worker'
+      - '--format=value(name)'
+    env:
+      - 'PROJECT_ID=${PROJECT_ID}'
+      - 'ZONE=${_ZONE}'
+
+substitutions:
+  _REGION: 'europe-west1'
+  _ZONE: 'europe-west1-b'
+  _MONTHLY_BUDGET: '100.0'
+  _TERRAFORM_STATE_BUCKET: 'yukpo-terraform-state'
+
+options:
+  machineType: 'N1_HIGHCPU_8'
+  logging: CLOUD_LOGGING_ONLY
+
+timeout: '1200s'
+

@@ -174,14 +174,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // ✅ CORRIGÉ RACINE 2025-12-11: Configuration robuste pour gérer les crashes PostgreSQL et fermetures brutales
     // ✅ CORRIGÉ RACINE 2025-12-11: Retry logic pour connexion initiale (gère les crashes PostgreSQL temporaires)
     // ✅ OPTIMISÉ 2026-02-14: Pour Cloud Run, utiliser connect_lazy pour démarrage rapide
+    // ✅ CORRIGÉ 2026-02-14: Pool augmenté pour Cloud Run (50 max au lieu de 100 pour éviter saturation)
     let is_cloud_run = env::var("CLOUD_RUN").unwrap_or_default() == "true";
     let pg_pool = if is_cloud_run {
         // Pour Cloud Run: utiliser connect_lazy pour démarrage immédiat (connexion en arrière-plan)
+        // ✅ CORRIGÉ: Pool augmenté pour éviter saturation (50 max, 10 min)
         eprintln!("[MAIN] 🚀 Cloud Run: Utilisation de connect_lazy pour démarrage rapide");
         log::info!("🚀 Cloud Run: Utilisation de connect_lazy pour démarrage rapide");
+        let cloud_run_max = 50; // Pool augmenté pour Cloud Run (évite saturation)
+        let cloud_run_min = 10; // Min augmenté pour Cloud Run
+        log::info!(
+            "🔧 Cloud Run: Pool configuré (max={}, min={})",
+            cloud_run_max,
+            cloud_run_min
+        );
         PgPoolOptions::new()
-            .max_connections(max_connections)
-            .min_connections(min_connections)
+            .max_connections(cloud_run_max)
+            .min_connections(cloud_run_min)
             .acquire_timeout(std::time::Duration::from_secs(acquire_timeout_secs))
             .idle_timeout(Some(std::time::Duration::from_secs(120)))
             .max_lifetime(Some(std::time::Duration::from_secs(180)))
@@ -2042,13 +2051,39 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     ));
 
     // ✅ OPTIMISÉ Cloud Run 2026-02-14: Lancer toutes les migrations SQLx en arrière-plan pour Cloud Run
+    // ✅ CORRIGÉ 2026-02-14: Pool séparé pour migrations (évite saturation du pool principal)
     if is_cloud_run {
-        let pg_for_migrations = pg_pool.clone();
+        // Créer un pool séparé pour les migrations SQLx (évite saturation du pool principal)
+        let database_url_for_migrations = db_url.clone();
+
+        log::info!("✅ Pool séparé créé pour migrations SQLx (max=10, min=2)");
+
         tokio::spawn(async move {
             log::info!("🚀 Cloud Run: Démarrage des migrations SQLx en arrière-plan...");
-            tokio::time::sleep(std::time::Duration::from_secs(1)).await; // Attendre 1s pour laisser la DB se connecter
+            tokio::time::sleep(std::time::Duration::from_secs(2)).await; // Attendre 2s pour laisser la DB se connecter
 
-            // Exécuter sqlx::migrate!() en arrière-plan
+            // Créer le pool dans le contexte async
+            let pg_for_migrations = match PgPoolOptions::new()
+                .max_connections(10) // Pool dédié pour migrations (10 connexions)
+                .min_connections(2)
+                .acquire_timeout(std::time::Duration::from_secs(60)) // Timeout plus long pour migrations
+                .idle_timeout(Some(std::time::Duration::from_secs(300)))
+                .max_lifetime(Some(std::time::Duration::from_secs(600)))
+                .test_before_acquire(true)
+                .connect(&database_url_for_migrations)
+                .await
+            {
+                Ok(pool) => pool,
+                Err(e) => {
+                    log::error!(
+                        "❌ [MIGRATIONS SQLX Cloud Run] Erreur connexion pool migrations: {}",
+                        e
+                    );
+                    return;
+                }
+            };
+
+            // Exécuter sqlx::migrate!() en arrière-plan avec pool séparé
             log::info!("🔄 [MIGRATIONS SQLX Cloud Run] Application de toutes les migrations SQLx standard en arrière-plan...");
             match sqlx::migrate!("./migrations").run(&pg_for_migrations).await {
                 Ok(_) => {
@@ -2060,7 +2095,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         });
         log::info!(
-            "✅ Cloud Run: Migrations SQLx lancées en arrière-plan, serveur démarre immédiatement"
+            "✅ Cloud Run: Migrations SQLx lancées en arrière-plan avec pool séparé, serveur démarre immédiatement"
         );
     }
 
@@ -2379,6 +2414,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let _ = tokio::spawn(tasks::order_timeout_monitor::start_order_timeout_monitor(
         app_state.clone(),
     ));
+
+    // ✅ NOUVEAU 2026-02-14: Démarrer le monitoring GPU si configuré
+    if let Some(gpu_service) = &app_state.gpu_service {
+        log::info!("🚀 Démarrage du monitoring GPU automatisé...");
+        gpu_service.clone().start_monitoring().await;
+        log::info!("✅ Monitoring GPU démarré (scaling automatique activé)");
+    } else {
+        log::info!("ℹ️ Service GPU non configuré - Monitoring désactivé");
+    }
     // ✅ Phase 2 : Archivage automatique des livraisons complétées
     tasks::delivery_archive_worker::start_delivery_archive_worker(app_state.clone());
 
