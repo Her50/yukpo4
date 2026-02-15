@@ -29,7 +29,7 @@ async fn main() -> Result<(), sqlx::Error> {
     println!(
         "🔄 Application de la migration SQL (version finale avec suppression/recréation des FK)..."
     );
-    let migration_sql = include_str!("../../migrations/20260115_fix_parcel_types_ids_final.sql");
+    let migration_sql = include_str!("../../migrations/00000060_fix_parcel_types_ids_final.sql");
 
     // ✅ CORRIGÉ: Utiliser execute_migration_sql_safe pour gérer les blocs DO $$
     // Cette fonction gère correctement les blocs PL/pgSQL avec points-virgules internes
