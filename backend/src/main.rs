@@ -5,7 +5,7 @@ use std::{env, fs, net::SocketAddr, path::Path, sync::Arc};
 use dotenvy::dotenv;
 use mongodb::Client as MongoClient;
 use redis::Client as RedisClient;
-use sqlx::postgres::PgPoolOptions;
+use sqlx::postgres::{PgConnectOptions, PgPoolOptions, PgSslMode};
 use tokio::sync::Mutex;
 
 use axum::serve;
@@ -181,6 +181,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // ✅ CORRIGÉ RACINE 2025-12-11: Retry logic pour connexion initiale (gère les crashes PostgreSQL temporaires)
     // ✅ OPTIMISÉ 2026-02-14: Pour Cloud Run, utiliser connect_lazy pour démarrage rapide
     // ✅ CORRIGÉ 2026-02-14: Pool augmenté pour Cloud Run (50 max au lieu de 100 pour éviter saturation)
+    // ✅ SOLUTION DÉFINITIVE 2026-02-15: Utiliser PgConnectOptions pour Cloud SQL Unix socket
     let is_cloud_run = env::var("CLOUD_RUN").unwrap_or_default() == "true";
     let pg_pool = if is_cloud_run {
         // Pour Cloud Run: utiliser connect_lazy pour démarrage immédiat (connexion en arrière-plan)
@@ -194,7 +195,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             cloud_run_max,
             cloud_run_min
         );
-        PgPoolOptions::new()
+
+        // ✅ SOLUTION DÉFINITIVE 2026-02-15: Détecter format Cloud SQL Unix socket et utiliser PgConnectOptions
+        let pool_options = PgPoolOptions::new()
             .max_connections(cloud_run_max)
             .min_connections(cloud_run_min)
             .acquire_timeout(std::time::Duration::from_secs(acquire_timeout_secs))
@@ -246,9 +249,68 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .await;
                     Ok(())
                 })
-            })
-            .connect_lazy(&db_url)
-            .map_err(|e| {
+            });
+
+        // ✅ SOLUTION DÉFINITIVE: Utiliser PgConnectOptions pour Cloud SQL Unix socket
+        if db_url.contains("/cloudsql/") {
+            log::info!("🔧 Format Cloud SQL Unix socket détecté - Utilisation de PgConnectOptions");
+
+            // Parser l'URL Cloud SQL: postgresql://user:pass@/db?host=/cloudsql/PROJECT:REGION:INSTANCE
+            let url_parts: Vec<&str> = db_url.split("://").collect();
+            if url_parts.len() != 2 {
+                return Err(
+                    format!("Format DATABASE_URL invalide pour Cloud SQL: {}", db_url).into(),
+                );
+            }
+
+            let auth_and_path = url_parts[1];
+            let (auth, query) = auth_and_path.split_once('?').unwrap_or((auth_and_path, ""));
+
+            // Extraire user:password
+            let (user_pass, db_name) = auth.split_once("@/").ok_or_else(|| {
+                format!("Format DATABASE_URL Cloud SQL invalide: pas de @/ trouvé")
+            })?;
+            let (user, password) = user_pass.split_once(':').unwrap_or((user_pass, ""));
+
+            // Extraire le socket path depuis ?host=/cloudsql/...
+            let socket_path = query
+                .split('&')
+                .find(|p| p.starts_with("host=/cloudsql/"))
+                .and_then(|p| p.strip_prefix("host="))
+                .ok_or_else(|| format!("Socket path Cloud SQL non trouvé dans DATABASE_URL"))?;
+
+            log::info!(
+                "🔧 Configuration Cloud SQL: user={}, db={}, socket={}",
+                user,
+                db_name,
+                socket_path
+            );
+
+            // Construire PgConnectOptions avec Unix socket
+            let connect_options = PgConnectOptions::new()
+                .username(user)
+                .password(password)
+                .database(db_name)
+                .socket(socket_path)
+                .ssl_mode(PgSslMode::Disable); // Unix socket n'utilise pas SSL/TLS réseau
+
+            pool_options
+                .connect_with(connect_options)
+                .await
+                .map_err(|e| {
+                    eprintln!(
+                        "[MAIN] ❌ ERREUR: Impossible de créer le pool PostgreSQL (Cloud SQL Unix socket): {}",
+                        e
+                    );
+                    log::error!(
+                        "❌ Impossible de créer le pool PostgreSQL (Cloud SQL Unix socket): {}",
+                        e
+                    );
+                    e
+                })?
+        } else {
+            // Format URL standard (IP/hostname)
+            pool_options.connect_lazy(&db_url).map_err(|e| {
                 eprintln!(
                     "[MAIN] ❌ ERREUR: Impossible de créer le pool PostgreSQL (connect_lazy): {}",
                     e
@@ -259,6 +321,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 );
                 e
             })?
+        }
     } else {
         // Pour autres environnements: connexion bloquante avec retry
         let mut last_error = None;
