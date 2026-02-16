@@ -994,8 +994,17 @@ async fn enrich_service_with_google(
 
     // Fallback: Récupérer depuis la table users si pas dans le JSON
     if nom_prestataire.is_none() {
+        // ✅ CORRIGÉ 2026-02-16: Utiliser nom_complet stocké (déjà normalisé) au lieu de le reconstruire
+        // Priorité: nom_complet > prenom + nom
         match sqlx::query_scalar::<_, Option<String>>(
-            "SELECT COALESCE(NULLIF(TRIM(nom_complet), ''), CONCAT(COALESCE(NULLIF(TRIM(prenom), ''), ''), ' ', COALESCE(NULLIF(TRIM(nom), ''), ''))) FROM users WHERE id = $1"
+            "SELECT COALESCE(
+                NULLIF(TRIM(nom_complet), ''),
+                CASE 
+                    WHEN TRIM(COALESCE(prenom, '') || ' ' || COALESCE(nom, '')) != '' 
+                    THEN TRIM(COALESCE(prenom, '') || ' ' || COALESCE(nom, ''))
+                    ELSE NULL
+                END
+            ) FROM users WHERE id = $1",
         )
         .bind(user_id)
         .fetch_optional(pool)

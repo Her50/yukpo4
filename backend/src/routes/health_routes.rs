@@ -346,6 +346,23 @@ async fn check_diagnostic(
 
     let start_time = Instant::now();
 
+    // ========== PARTIE 0: Vérification PostgreSQL ==========
+    let (pg_ok, pg_error, pg_query_time_ms) = {
+        let pg_start = Instant::now();
+        match sqlx::query("SELECT 1 as test").fetch_one(&state.pg).await {
+            Ok(_) => {
+                let query_time = pg_start.elapsed().as_millis() as u64;
+                (true, None, query_time)
+            }
+            Err(e) => {
+                let query_time = pg_start.elapsed().as_millis() as u64;
+                (false, Some(format!("{}", e)), query_time)
+            }
+        }
+    };
+
+    let pg_status = if pg_ok { "operational" } else { "unavailable" };
+
     // ========== PARTIE 1: Vérification Redis ==========
     let (redis_ping_ok, redis_error) =
         redis_helper::check_redis_health_with_error(&state.redis_client).await;
@@ -419,6 +436,18 @@ async fn check_diagnostic(
     Json(json!({
         "timestamp": chrono::Utc::now().to_rfc3339(),
         "diagnostic_time_ms": total_time_ms,
+        "database": {
+            "status": pg_status,
+            "connection_test": pg_ok,
+            "query_time_ms": pg_query_time_ms,
+            "error": pg_error,
+            "database_url_configured": std::env::var("DATABASE_URL").is_ok(),
+            "message": if pg_ok {
+                format!("✅ PostgreSQL opérationnel ({} ms)", pg_query_time_ms)
+            } else {
+                format!("❌ PostgreSQL non accessible: {}", pg_error.as_ref().map(|e| e.as_str()).unwrap_or("Erreur inconnue"))
+            }
+        },
         "redis": {
             "status": redis_status,
             "ping_test": redis_ping_ok,
@@ -436,12 +465,15 @@ async fn check_diagnostic(
         },
         "account": account_status,
         "summary": {
+            "database_ok": pg_status == "operational",
             "redis_ok": redis_status == "operational",
             "account_ok": account_status.get("account_active").and_then(|v| v.as_bool()).unwrap_or(false),
-            "overall_status": if redis_status == "operational" && account_status.get("account_active").and_then(|v| v.as_bool()).unwrap_or(false) {
+            "overall_status": if pg_status == "operational" && redis_status == "operational" && account_status.get("account_active").and_then(|v| v.as_bool()).unwrap_or(false) {
                 "✅ Tout fonctionne correctement"
-            } else if redis_status == "operational" {
-                "⚠️ Redis OK mais compte à vérifier"
+            } else if pg_status == "operational" && redis_status == "operational" {
+                "⚠️ Base de données et Redis OK mais compte à vérifier"
+            } else if pg_status == "operational" {
+                "⚠️ PostgreSQL OK mais Redis non accessible"
             } else {
                 "❌ Problème détecté (voir détails ci-dessus)"
             }

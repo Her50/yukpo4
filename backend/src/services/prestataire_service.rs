@@ -19,16 +19,21 @@ pub async fn get_prestataire_info(
     pool: &PgPool,
     user_id: i32,
 ) -> AppResult<Option<PrestataireInfo>> {
+    // ✅ CORRIGÉ 2026-02-16: Utiliser nom_complet stocké au lieu de le reconstruire
+    // Priorité: nom_complet > prenom + nom > email
     let result = sqlx::query_as!(
         PrestataireInfo,
         r#"
         SELECT 
             id,
-            CASE 
-                WHEN TRIM(COALESCE(nom, '') || ' ' || COALESCE(prenom, '')) = '' 
-                THEN split_part(email, '@', 1)
-                ELSE TRIM(COALESCE(nom, '') || ' ' || COALESCE(prenom, ''))
-            END as nom_complet,
+            COALESCE(
+                NULLIF(TRIM(nom_complet), ''),
+                CASE 
+                    WHEN TRIM(COALESCE(prenom, '') || ' ' || COALESCE(nom, '')) != '' 
+                    THEN TRIM(COALESCE(prenom, '') || ' ' || COALESCE(nom, ''))
+                    ELSE split_part(email, '@', 1)
+                END
+            ) as nom_complet,
             email,
             is_provider,
             gps,
@@ -55,16 +60,20 @@ pub async fn get_prestataires_info_batch(
         return Ok(Vec::new());
     }
 
+    // ✅ CORRIGÉ 2026-02-16: Utiliser nom_complet stocké au lieu de le reconstruire
     let result = sqlx::query_as!(
         PrestataireInfo,
         r#"
         SELECT 
             id,
-            CASE 
-                WHEN TRIM(COALESCE(nom, '') || ' ' || COALESCE(prenom, '')) = '' 
-                THEN split_part(email, '@', 1)
-                ELSE TRIM(COALESCE(nom, '') || ' ' || COALESCE(prenom, ''))
-            END as nom_complet,
+            COALESCE(
+                NULLIF(TRIM(nom_complet), ''),
+                CASE 
+                    WHEN TRIM(COALESCE(prenom, '') || ' ' || COALESCE(nom, '')) != '' 
+                    THEN TRIM(COALESCE(prenom, '') || ' ' || COALESCE(nom, ''))
+                    ELSE split_part(email, '@', 1)
+                END
+            ) as nom_complet,
             email,
             is_provider,
             gps,
@@ -85,16 +94,20 @@ pub async fn get_prestataires_info_batch(
 
 /// Récupère tous les prestataires avec leurs informations
 pub async fn get_all_prestataires(pool: &PgPool) -> AppResult<Vec<PrestataireInfo>> {
+    // ✅ CORRIGÉ 2026-02-16: Utiliser nom_complet stocké au lieu de le reconstruire
     let result = sqlx::query_as!(
         PrestataireInfo,
         r#"
         SELECT 
             id,
-            CASE 
-                WHEN TRIM(COALESCE(nom, '') || ' ' || COALESCE(prenom, '')) = '' 
-                THEN split_part(email, '@', 1)
-                ELSE TRIM(COALESCE(nom, '') || ' ' || COALESCE(prenom, ''))
-            END as nom_complet,
+            COALESCE(
+                NULLIF(TRIM(nom_complet), ''),
+                CASE 
+                    WHEN TRIM(COALESCE(prenom, '') || ' ' || COALESCE(nom, '')) != '' 
+                    THEN TRIM(COALESCE(prenom, '') || ' ' || COALESCE(nom, ''))
+                    ELSE split_part(email, '@', 1)
+                END
+            ) as nom_complet,
             email,
             is_provider,
             gps,
@@ -103,11 +116,14 @@ pub async fn get_all_prestataires(pool: &PgPool) -> AppResult<Vec<PrestataireInf
             created_at AS "created_at: chrono::DateTime<chrono::Utc>"
         FROM users 
         WHERE is_provider = true
-        ORDER BY CASE 
-                WHEN TRIM(COALESCE(nom, '') || ' ' || COALESCE(prenom, '')) = '' 
-                THEN split_part(email, '@', 1)
-                ELSE TRIM(COALESCE(nom, '') || ' ' || COALESCE(prenom, ''))
-            END, created_at
+        ORDER BY COALESCE(
+                NULLIF(TRIM(nom_complet), ''),
+                CASE 
+                    WHEN TRIM(COALESCE(prenom, '') || ' ' || COALESCE(nom, '')) != '' 
+                    THEN TRIM(COALESCE(prenom, '') || ' ' || COALESCE(nom, ''))
+                    ELSE split_part(email, '@', 1)
+                END
+            ), created_at
         "#
     )
     .fetch_all(pool)
@@ -123,12 +139,9 @@ pub async fn update_user_name(
     nom: Option<&str>,
     prenom: Option<&str>,
 ) -> AppResult<()> {
-    let nom_complet = match (nom, prenom) {
-        (Some(n), Some(p)) => Some(format!("{} {}", n, p)),
-        (Some(n), None) => Some(n.to_string()),
-        (None, Some(p)) => Some(p.to_string()),
-        (None, None) => None,
-    };
+    // ✅ CORRIGÉ 2026-02-16: Utiliser build_full_name pour éviter les duplications
+    use crate::utils::normalize_name::build_full_name;
+    let nom_complet = build_full_name(nom, prenom, None);
 
     sqlx::query(
         r#"

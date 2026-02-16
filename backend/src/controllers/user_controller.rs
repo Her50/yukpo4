@@ -12,6 +12,7 @@ use crate::core::types::{AppError, AppResult};
 use crate::middlewares::jwt::AuthenticatedUser;
 use crate::models::user_model::User;
 use crate::state::AppState;
+use crate::utils::normalize_name::{build_full_name, normalize_full_name};
 
 #[derive(Deserialize)]
 pub struct ChangePasswordRequest {
@@ -135,6 +136,24 @@ pub async fn update_user_profile(
     Json(input): Json<UpdateProfileInput>,
 ) -> AppResult<Json<User>> {
     info!("Appel update_user_profile pour user_id={}", user.id);
+
+    // ✅ CORRIGÉ 2026-02-16: Normaliser le nom_complet pour éviter les duplications
+    // Si nom ou prenom sont fournis, reconstruire nom_complet à partir d'eux
+    // Sinon, utiliser nom_complet fourni (après normalisation)
+    let nom_complet_normalized = if input.nom.is_some() || input.prenom.is_some() {
+        // Reconstruire à partir de nom et prenom (priorité)
+        build_full_name(
+            input.nom.as_deref(),
+            input.prenom.as_deref(),
+            input.nom_complet.as_deref(),
+        )
+    } else if let Some(ref nc) = input.nom_complet {
+        // Normaliser le nom_complet fourni directement
+        Some(normalize_full_name(nc))
+    } else {
+        None
+    };
+
     let updated = sqlx::query_as::<_, User>(
         r#"
         UPDATE users
@@ -157,7 +176,7 @@ pub async fn update_user_profile(
     .bind(input.photo_profil.as_deref())
     .bind(input.nom.as_deref())
     .bind(input.prenom.as_deref())
-    .bind(input.nom_complet.as_deref())
+    .bind(nom_complet_normalized.as_deref())
     .bind(user.id)
     .fetch_one(&state.pg)
     .await;

@@ -13,6 +13,7 @@ use crate::{
     core::types::{AppError, AppResult},
     utils::{
         jwt_manager::generate_jwt,
+        normalize_name::build_full_name,
         sanitize_logs::log_safe_email,
         validation::{validate_email, validate_name, validate_password_strength},
     },
@@ -89,7 +90,11 @@ pub async fn login_handler(
 
     // ✅ SÉCURITÉ: Vérifier le mot de passe AVANT de logger quoi que ce soit
     // Utiliser un message générique pour éviter l'énumération
-    if !verify(&payload.password, &user.password_hash)? {
+    let password_valid = verify(&payload.password, &user.password_hash).map_err(|e| {
+        error!("[login_handler] Erreur vérification mot de passe: {e:?}");
+        AppError::Internal("Erreur lors de la vérification du mot de passe".into())
+    })?;
+    if !password_valid {
         error!(
             "[login_handler] Tentative de connexion échouée pour utilisateur id={}",
             user.id
@@ -304,16 +309,13 @@ pub async fn register_user(
     let default_token_price_provider = 1.0_f64;
     let default_commission_pct = 0.0_f32;
 
-    // Calculer le nom_complet a partir de nom, prenom ou name
-    let nom_complet = match (&payload.nom, &payload.prenom, &payload.name) {
-        (Some(n), Some(p), _) if !n.trim().is_empty() && !p.trim().is_empty() => {
-            Some(format!("{} {}", n.trim(), p.trim()))
-        }
-        (Some(n), _, _) if !n.trim().is_empty() => Some(n.trim().to_string()),
-        (_, Some(p), _) if !p.trim().is_empty() => Some(p.trim().to_string()),
-        (_, _, Some(name)) if !name.trim().is_empty() => Some(name.trim().to_string()),
-        _ => None,
-    };
+    // ✅ CORRIGÉ 2026-02-16: Utiliser build_full_name pour éviter les duplications
+    // Calculer le nom_complet a partir de nom, prenom ou name (avec normalisation)
+    let nom_complet = build_full_name(
+        payload.nom.as_deref(),
+        payload.prenom.as_deref(),
+        payload.name.as_deref(),
+    );
 
     // Créer l'avatar_url si on a un nom
     let avatar_url = nom_complet.as_ref().map(|name| {
