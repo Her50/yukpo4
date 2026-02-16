@@ -90,7 +90,6 @@ jobs:
                 "CLOUD_RUN": "true",
                 "ENABLE_AUTO_MIGRATIONS": "true",
                 "SQLX_OFFLINE": "true",
-                "PORT": "8080",
                 "HOST": "0.0.0.0",
                 "RUST_LOG": "info",
                 "APP_ENV": "production"
@@ -103,7 +102,6 @@ jobs:
             "CLOUD_RUN": "true",
             "ENABLE_AUTO_MIGRATIONS": "true",
             "SQLX_OFFLINE": "true",
-            "PORT": "8080",
             "HOST": "0.0.0.0",
             "RUST_LOG": "info",
             "APP_ENV": "production"
