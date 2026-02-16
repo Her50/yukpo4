@@ -137,6 +137,7 @@ jobs:
             --allow-unauthenticated \
             --port 8080 \
             --env-vars-file ${{ steps.prepare-env.outputs.env_file }} \
+            --update-secrets="JWT_SECRET=jwt-secret:latest" \
             --add-cloudsql-instances ${{ secrets.GCP_PROJECT_ID }}:${{ env.REGION }}:yukpo-postgres \
             --memory 2Gi \
             --cpu 2 \
