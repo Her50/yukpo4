@@ -16,18 +16,20 @@
 --startup-probe=timeoutSeconds=5,periodSeconds=10,initialDelaySeconds=10,failureThreshold=10,httpGet.port=8080,httpGet.path=/health
 ```
 
-**Après**:
+**Après** (CORRIGÉ):
 ```yaml
---startup-probe=timeoutSeconds=10,periodSeconds=5,initialDelaySeconds=30,failureThreshold=20,httpGet.port=8080,httpGet.path=/health
+--startup-probe=timeoutSeconds=10,periodSeconds=15,initialDelaySeconds=30,failureThreshold=20,httpGet.port=8080,httpGet.path=/health
 ```
 
 **Améliorations**:
-- ✅ `timeoutSeconds`: 5s → **10s** (maximum autorisé par Cloud Run)
-- ✅ `periodSeconds`: 10s → **5s** (vérifications plus fréquentes)
+- ✅ `timeoutSeconds`: 5s → **10s** (maximum autorisé par Cloud Run, doit être < periodSeconds)
+- ✅ `periodSeconds`: 10s → **15s** (doit être > timeoutSeconds selon contrainte Cloud Run)
 - ✅ `initialDelaySeconds`: 10s → **30s** (délai initial augmenté)
 - ✅ `failureThreshold`: 10 → **20** (plus de tentatives)
 
-**Nouveau timeout total**: 30s + (20 × 5s) = **130 secondes** (au lieu de 110s)
+**Nouveau timeout total**: 30s + (20 × 15s) = **330 secondes** (au lieu de 110s)
+
+**⚠️ Correction importante**: `timeoutSeconds` doit être **inférieur** à `periodSeconds` (contrainte Cloud Run)
 
 ---
 

@@ -155,17 +155,19 @@ ENTRYPOINT ["/bin/bash", "-c", "if [ \"$CLOUD_RUN\" = \"true\" ]; then /app/star
 
 **Fichier**: `.github/workflows/gcp-deploy.yml`
 
-**Modification**:
+**Modification** (CORRIGÉ - respecte la contrainte `timeoutSeconds < periodSeconds`):
 ```yaml
---startup-probe=timeoutSeconds=10,periodSeconds=5,initialDelaySeconds=30,failureThreshold=20,httpGet.port=8080,httpGet.path=/health
+--startup-probe=timeoutSeconds=10,periodSeconds=15,initialDelaySeconds=30,failureThreshold=20,httpGet.port=8080,httpGet.path=/health
 ```
 
 **Explication**:
-- `timeoutSeconds=10`: Maximum autorisé par Cloud Run (10s)
-- `periodSeconds=5`: Intervalle réduit pour vérifications plus fréquentes
+- `timeoutSeconds=10`: Maximum autorisé par Cloud Run (10s), **doit être < periodSeconds**
+- `periodSeconds=15`: Intervalle entre tentatives (doit être > timeoutSeconds selon contrainte Cloud Run)
 - `initialDelaySeconds=30`: Délai initial augmenté pour laisser le temps au conteneur de démarrer
-- `failureThreshold=20`: Plus de tentatives (20 × 5s = 100s supplémentaires)
-- **Timeout total**: 30s + (20 × 5s) = **130 secondes**
+- `failureThreshold=20`: Plus de tentatives (20 × 15s = 300s supplémentaires)
+- **Timeout total**: 30s + (20 × 15s) = **330 secondes**
+
+**⚠️ Contrainte importante**: Cloud Run exige que `timeoutSeconds < periodSeconds`. La configuration précédente (timeoutSeconds=10, periodSeconds=5) était invalide.
 
 ---
 
