@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT \n            id,\n            CASE \n                WHEN TRIM(COALESCE(nom, '') || ' ' || COALESCE(prenom, '')) = '' \n                THEN split_part(email, '@', 1)\n                ELSE TRIM(COALESCE(nom, '') || ' ' || COALESCE(prenom, ''))\n            END as nom_complet,\n            email,\n            is_provider,\n            gps,\n            photo_profil,\n            avatar_url,\n            created_at AS \"created_at: chrono::DateTime<chrono::Utc>\"\n        FROM users \n        WHERE id = ANY($1)\n        ORDER BY id\n        ",
+  "query": "\n        SELECT \n            id,\n            COALESCE(\n                NULLIF(TRIM(nom_complet), ''),\n                CASE \n                    WHEN TRIM(COALESCE(prenom, '') || ' ' || COALESCE(nom, '')) != '' \n                    THEN TRIM(COALESCE(prenom, '') || ' ' || COALESCE(nom, ''))\n                    ELSE split_part(email, '@', 1)\n                END\n            ) as nom_complet,\n            email,\n            is_provider,\n            gps,\n            photo_profil,\n            avatar_url,\n            created_at AS \"created_at: chrono::DateTime<chrono::Utc>\"\n        FROM users \n        WHERE id = ANY($1)\n        ORDER BY id\n        ",
   "describe": {
     "columns": [
       {
@@ -60,5 +60,5 @@
       false
     ]
   },
-  "hash": "27dcc734c077759c56848aa41461ea764262eb228f692472013473e6650effb1"
+  "hash": "afb99794e21e8426f813dd4e627ba1d023595f31db4a40f4c8fc587f236877df"
 }
