@@ -110,20 +110,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         log::info!("🚀 Cloud Run: Démarrage serveur HTTP minimal pour health check...");
 
         // Créer un serveur minimal avec juste /health
-        use axum::{routing::get, Router};
+        use axum::{http::StatusCode, response::Response, routing::get, Router};
         let health_app = Router::new()
             .route(
                 "/health",
                 get(|| async {
                     eprintln!("[HEALTH] ✅ Requête /health reçue");
-                    "OK"
+                    (StatusCode::OK, "OK")
                 }),
             )
             .route(
                 "/healthz",
                 get(|| async {
                     eprintln!("[HEALTH] ✅ Requête /healthz reçue");
-                    "OK"
+                    (StatusCode::OK, "OK")
                 }),
             );
 
