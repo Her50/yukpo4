@@ -153,9 +153,31 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         });
 
-        // Attendre un peu pour s'assurer que le serveur est prêt
-        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-        eprintln!("[MAIN] ✅ Serveur HTTP minimal lancé, continuant les initialisations...");
+        // Attendre que le serveur soit vraiment prêt (augmenté pour Cloud Run)
+        tokio::time::sleep(std::time::Duration::from_millis(1000)).await;
+        eprintln!(
+            "[MAIN] ✅ Serveur HTTP minimal lancé et prêt, continuant les initialisations..."
+        );
+
+        // Vérifier que le serveur répond vraiment
+        let test_client = reqwest::Client::new();
+        let test_url = format!("http://localhost:{}/health", port);
+        match test_client
+            .get(&test_url)
+            .timeout(std::time::Duration::from_secs(2))
+            .send()
+            .await
+        {
+            Ok(resp) => {
+                eprintln!(
+                    "[MAIN] ✅ Test health check réussi: status {}",
+                    resp.status()
+                );
+            }
+            Err(e) => {
+                eprintln!("[MAIN] ⚠️ Test health check échoué (non bloquant): {}", e);
+            }
+        }
 
         Some(handle)
     } else {
