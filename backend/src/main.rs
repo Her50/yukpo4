@@ -286,17 +286,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 socket_path
             );
 
-            // ✅ CORRIGÉ 2026-02-16: Construire l'URL pour connect_lazy (non-bloquant)
-            // connect_lazy_with n'existe pas dans sqlx, donc on construit l'URL manuellement
-            let cloud_sql_url = format!(
-                "postgresql://{}:{}@/{}?host={}",
-                user, password, db_name, socket_path
+            // ✅ CORRIGÉ 2026-02-16: Utiliser l'URL originale directement
+            // connect_lazy accepte l'URL Cloud SQL Unix socket directement
+            // L'URL originale est déjà au bon format: postgresql://user:pass@/db?host=/cloudsql/...
+            log::info!(
+                "🔧 Utilisation de l'URL Cloud SQL originale pour connect_lazy (non-bloquant)"
             );
 
-            log::info!("🔧 URL Cloud SQL construite pour connect_lazy (non-bloquant)");
-
             pool_options
-                .connect_lazy(&cloud_sql_url)
+                .connect_lazy(&db_url)
                 .map_err(|e| {
                     eprintln!(
                         "[MAIN] ❌ ERREUR: Impossible de créer le pool PostgreSQL (Cloud SQL Unix socket): {}",
