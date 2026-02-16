@@ -87,16 +87,26 @@ jobs:
               --arg db_url "${{ secrets.GCP_DATABASE_URL }}" \
               '. + {
                 "DATABASE_URL": $db_url,
+                "CLOUD_RUN": "true",
                 "ENABLE_AUTO_MIGRATIONS": "true",
-                "SQLX_OFFLINE": "true"
+                "SQLX_OFFLINE": "true",
+                "PORT": "8080",
+                "HOST": "0.0.0.0",
+                "RUST_LOG": "info",
+                "APP_ENV": "production"
               }' > env-vars.json
           else
             DB_URL_ESCAPED=$(echo "${{ secrets.GCP_DATABASE_URL }}" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g')
             cat > env-vars.json << EOF
           {
             "DATABASE_URL": "$DB_URL_ESCAPED",
+            "CLOUD_RUN": "true",
             "ENABLE_AUTO_MIGRATIONS": "true",
-            "SQLX_OFFLINE": "true"
+            "SQLX_OFFLINE": "true",
+            "PORT": "8080",
+            "HOST": "0.0.0.0",
+            "RUST_LOG": "info",
+            "APP_ENV": "production"
           }
           EOF
           fi
@@ -129,9 +139,12 @@ jobs:
             --allow-unauthenticated \
             --env-vars-file ${{ steps.prepare-env.outputs.env_file }} \
             --add-cloudsql-instances ${{ secrets.GCP_PROJECT_ID }}:${{ env.REGION }}:yukpo-postgres \
-            --memory 512Mi \
-            --cpu 1 \
-            --timeout 300 \
+            --memory 1Gi \
+            --cpu 2 \
+            --timeout 900 \
+            --startup-timeout 600 \
+            --cpu-throttling \
+            --startup-cpu-boost \
             --max-instances 10 \
             --project ${{ secrets.GCP_PROJECT_ID }}
 
