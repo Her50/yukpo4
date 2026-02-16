@@ -40,6 +40,7 @@ fi
 chmod +x ./yukpomnang_backend
 
 # Démarrer l'application Rust (elle remplacera le serveur minimal)
+# ⚠️ Ne pas utiliser exec pour garder le serveur minimal en vie
 echo "🚀 Lancement application Rust sur port $PORT..."
-exec ./yukpomnang_backend
+./yukpomnang_backend
 
