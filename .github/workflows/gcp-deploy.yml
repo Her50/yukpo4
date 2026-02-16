@@ -142,9 +142,9 @@ jobs:
             --memory 1Gi \
             --cpu 2 \
             --timeout 900 \
-            --startup-timeout 600 \
+            --startup-probe=timeoutSeconds=600,httpGet.port=8080,httpGet.path=/health \
             --cpu-throttling \
-            --startup-cpu-boost \
+            --cpu-boost \
             --max-instances 10 \
             --project ${{ secrets.GCP_PROJECT_ID }}
 
