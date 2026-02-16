@@ -29,8 +29,14 @@ class HealthHandler(http.server.SimpleHTTPRequestHandler):
     
     def log_message(self, format, *args):
         # Log minimal pour éviter le spam
-        if '/health' in args[0] or '/healthz' in args[0]:
-            sys.stderr.write(f"[HEALTH] {args[0]}\n")
+        # ✅ CORRIGÉ Python 3.13: args[0] peut être HTTPStatus, convertir en string
+        try:
+            first_arg = str(args[0]) if args else ""
+            if '/health' in first_arg or '/healthz' in first_arg:
+                sys.stderr.write(f"[HEALTH] {first_arg}\n")
+        except Exception:
+            # Ignorer les erreurs de logging
+            pass
 
 if __name__ == '__main__':
     sys.stderr.write(f"🚀 [HEALTH] Démarrage serveur HTTP minimal Python sur port {PORT}...\n")
