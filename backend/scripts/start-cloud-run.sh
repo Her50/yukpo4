@@ -13,15 +13,15 @@ export RUST_LOG=${RUST_LOG:-info}
 
 # ✅ CRITIQUE: Démarrer un serveur HTTP minimal IMMÉDIATEMENT pour health check
 if [ "$CLOUD_RUN" = "true" ]; then
-    echo "🚀 [STARTUP] Démarrage serveur HTTP minimal pour health check..."
+    echo "🚀 [STARTUP] Démarrage serveur HTTP minimal Python pour health check..."
     
-    # Lancer le serveur minimal en arrière-plan
-    /app/health-server-simple.sh &
+    # Lancer le serveur minimal Python en arrière-plan (plus fiable que shell)
+    python3 /app/health-server-python.py &
     HEALTH_PID=$!
-    echo "✅ [STARTUP] Serveur HTTP minimal démarré (PID: $HEALTH_PID) sur port $PORT"
+    echo "✅ [STARTUP] Serveur HTTP minimal Python démarré (PID: $HEALTH_PID) sur port $PORT"
     
     # Attendre que le serveur soit prêt
-    sleep 1
+    sleep 2
     echo "✅ [STARTUP] Serveur HTTP minimal prêt pour health checks"
 fi
 
