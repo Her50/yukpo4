@@ -294,9 +294,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .socket(socket_path)
                 .ssl_mode(PgSslMode::Disable); // Unix socket n'utilise pas SSL/TLS réseau
 
+            // ✅ CORRIGÉ 2026-02-16: Utiliser connect_lazy_with pour démarrage non-bloquant
             pool_options
-                .connect_with(connect_options)
-                .await
+                .connect_lazy_with(connect_options)
                 .map_err(|e| {
                     eprintln!(
                         "[MAIN] ❌ ERREUR: Impossible de créer le pool PostgreSQL (Cloud SQL Unix socket): {}",
