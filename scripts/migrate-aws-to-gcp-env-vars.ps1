@@ -91,38 +91,43 @@ function Get-AwsSsmParameter {
 function Get-AwsSecret {
     param([string]$SecretName, [string]$SecretKey)
     
-    $secretArn = "arn:aws:secretsmanager:$AwsRegion`:*:secret:$AwsProjectName/backend/secrets-*"
-    $secrets = aws secretsmanager list-secrets `
-        --profile $AwsProfile `
-        --region $AwsRegion `
-        --query "SecretList[?contains(ARN, '$AwsProjectName/backend')].ARN" `
-        --output text 2>&1
-    
-    if ($LASTEXITCODE -ne 0) {
-        return $null
-    }
-    
-    foreach ($arn in $secrets) {
-        $secretValue = aws secretsmanager get-secret-value `
-            --secret-id $arn `
+    try {
+        # Lister tous les secrets et filtrer
+        $allSecrets = aws secretsmanager list-secrets `
             --profile $AwsProfile `
             --region $AwsRegion `
-            --query "SecretString" `
-            --output text 2>&1
+            --output json 2>&1 | ConvertFrom-Json
         
-        if ($LASTEXITCODE -eq 0 -and $secretValue) {
-            try {
-                $json = $secretValue | ConvertFrom-Json
-                if ($json.PSObject.Properties.Name -contains $SecretKey) {
-                    return $json.$SecretKey
-                }
-            } catch {
-                # Si ce n'est pas du JSON, retourner la valeur brute
-                if ($SecretKey -eq $SecretName) {
-                    return $secretValue
+        if ($LASTEXITCODE -ne 0) {
+            return $null
+        }
+        
+        foreach ($secret in $allSecrets.SecretList) {
+            if ($secret.ARN -like "*$AwsProjectName/backend*") {
+                $secretValue = aws secretsmanager get-secret-value `
+                    --secret-id $secret.ARN `
+                    --profile $AwsProfile `
+                    --region $AwsRegion `
+                    --query "SecretString" `
+                    --output text 2>&1
+                
+                if ($LASTEXITCODE -eq 0 -and $secretValue) {
+                    try {
+                        $json = $secretValue | ConvertFrom-Json
+                        if ($json.PSObject.Properties.Name -contains $SecretKey) {
+                            return $json.$SecretKey
+                        }
+                    } catch {
+                        # Si ce n'est pas du JSON, retourner la valeur brute
+                        if ($SecretKey -eq $SecretName) {
+                            return $secretValue
+                        }
+                    }
                 }
             }
         }
+    } catch {
+        Write-Host "  ⚠️  Erreur lors de la récupération du secret: $_" -ForegroundColor Yellow
     }
     return $null
 }
@@ -303,7 +308,6 @@ $envVars = @{
     "CLOUD_RUN" = "true"
     "SQLX_OFFLINE" = "true"
     "ENABLE_AUTO_MIGRATIONS" = "true"
-    "APP_ENV" = "production"
 }
 
 # Variables GPU GCP (à vérifier si déjà configurées)
