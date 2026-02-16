@@ -286,17 +286,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 socket_path
             );
 
-            // Construire PgConnectOptions avec Unix socket
-            let connect_options = PgConnectOptions::new()
-                .username(user)
-                .password(password)
-                .database(db_name)
-                .socket(socket_path)
-                .ssl_mode(PgSslMode::Disable); // Unix socket n'utilise pas SSL/TLS réseau
+            // ✅ CORRIGÉ 2026-02-16: Construire l'URL pour connect_lazy (non-bloquant)
+            // connect_lazy_with n'existe pas dans sqlx, donc on construit l'URL manuellement
+            let cloud_sql_url = format!(
+                "postgresql://{}:{}@/{}?host={}",
+                user, password, db_name, socket_path
+            );
 
-            // ✅ CORRIGÉ 2026-02-16: Utiliser connect_lazy_with pour démarrage non-bloquant
+            log::info!("🔧 URL Cloud SQL construite pour connect_lazy (non-bloquant)");
+
             pool_options
-                .connect_lazy_with(connect_options)
+                .connect_lazy(&cloud_sql_url)
                 .map_err(|e| {
                     eprintln!(
                         "[MAIN] ❌ ERREUR: Impossible de créer le pool PostgreSQL (Cloud SQL Unix socket): {}",
