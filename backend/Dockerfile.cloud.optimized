@@ -111,7 +111,8 @@ COPY --from=builder --chown=appuser:appuser /app/ia_intentions_instructions.md /
 COPY scripts/start-cloud.sh /app/start-cloud.sh
 COPY scripts/start-cloud-run.sh /app/start-cloud-run.sh
 COPY scripts/start-health-server.sh /app/start-health-server.sh
-RUN chmod +x /app/start-cloud.sh /app/start-cloud-run.sh /app/start-health-server.sh
+COPY scripts/health-server-simple.sh /app/health-server-simple.sh
+RUN chmod +x /app/start-cloud.sh /app/start-cloud-run.sh /app/start-health-server.sh /app/health-server-simple.sh
 
 # Variables d'environnement
 ENV RUST_LOG=info
