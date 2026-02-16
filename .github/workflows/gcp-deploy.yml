@@ -145,7 +145,7 @@ jobs:
             --cpu-boost \
             --cpu-throttling \
             --service-account ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }} \
-            --startup-probe=timeoutSeconds=10,periodSeconds=15,initialDelaySeconds=30,failureThreshold=20,httpGet.port=8080,httpGet.path=/health \
+            --startup-probe=timeoutSeconds=10,periodSeconds=15,initialDelaySeconds=10,failureThreshold=30,httpGet.port=8080,httpGet.path=/health \
             --project ${{ secrets.GCP_PROJECT_ID }}
 
       - name: Get Service URL
