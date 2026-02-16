@@ -2930,11 +2930,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // ✅ CRITIQUE Cloud Run 2026-02-16: Si serveur minimal est en cours, l'arrêter
     if let Some(handle) = health_server_handle {
-        eprintln!("[MAIN] 🛑 Arrêt du serveur HTTP minimal...");
-        log::info!("🛑 Arrêt du serveur HTTP minimal...");
+        eprintln!("[MAIN] 🛑 Arrêt du serveur HTTP minimal avant démarrage serveur complet...");
+        log::info!("🛑 Arrêt du serveur HTTP minimal avant démarrage serveur complet...");
         handle.abort();
         // Attendre un peu pour que le port soit libéré
+        eprintln!("[MAIN] ⏳ Attente libération du port...");
         tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+        eprintln!("[MAIN] ✅ Port libéré, démarrage serveur complet...");
+        log::info!("✅ Port libéré, démarrage serveur complet...");
     }
 
     log::info!("✅ Serveur lance sur http://{}:{}", host, port);
