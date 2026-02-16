@@ -91,7 +91,6 @@ jobs:
                 "ENABLE_AUTO_MIGRATIONS": "true",
                 "SQLX_OFFLINE": "true",
                 "HOST": "0.0.0.0",
-                "PORT": "8080",
                 "RUST_LOG": "info",
                 "APP_ENV": "production"
               }' > env-vars.json
@@ -104,7 +103,6 @@ jobs:
             "ENABLE_AUTO_MIGRATIONS": "true",
             "SQLX_OFFLINE": "true",
             "HOST": "0.0.0.0",
-            "PORT": "8080",
             "RUST_LOG": "info",
             "APP_ENV": "production"
           }
@@ -137,6 +135,7 @@ jobs:
             --platform managed \
             --region ${{ env.REGION }} \
             --allow-unauthenticated \
+            --port 8080 \
             --env-vars-file ${{ steps.prepare-env.outputs.env_file }} \
             --add-cloudsql-instances ${{ secrets.GCP_PROJECT_ID }}:${{ env.REGION }}:yukpo-postgres \
             --memory 2Gi \

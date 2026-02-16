@@ -42,23 +42,21 @@ ERROR: (gcloud.run.deploy) The user-provided container failed the configured sta
 
 ---
 
-### 2. Ajout de la variable PORT
+### 2. Configuration du port Cloud Run
 
 **Fichier**: `.github/workflows/gcp-deploy.yml`
 
-**Changement** : Ajout de `"PORT": "8080"` dans les variables d'environnement
+**Changement** : Ajout de `--port 8080` dans la commande de déploiement
 
-```json
-{
-  "DATABASE_URL": "...",
-  "CLOUD_RUN": "true",
-  "PORT": "8080",  // ✅ AJOUTÉ
-  "HOST": "0.0.0.0",
+```yaml
+gcloud run deploy ... \
+  --port 8080 \
   ...
-}
 ```
 
-**Raison** : Le serveur minimal a besoin de connaître le port pour démarrer correctement.
+**⚠️ Important** : Cloud Run réserve automatiquement la variable `PORT` et ne permet pas de la définir manuellement dans les variables d'environnement. Il faut utiliser `--port 8080` pour spécifier le port.
+
+**Raison** : Le serveur minimal a besoin de connaître le port pour démarrer correctement. Cloud Run définit automatiquement `PORT=8080` quand `--port 8080` est spécifié.
 
 ---
 
