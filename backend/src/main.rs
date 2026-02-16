@@ -94,11 +94,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // ✅ CRITIQUE Cloud Run 2026-02-16: Démarrer un serveur HTTP minimal IMMÉDIATEMENT
     // pour que le startup probe puisse répondre pendant les initialisations lourdes
     let is_cloud_run = env::var("CLOUD_RUN").unwrap_or_default() == "true";
+    eprintln!("[MAIN] 🔍 CLOUD_RUN détecté: {}", is_cloud_run);
+    log::info!("🔍 CLOUD_RUN détecté: {}", is_cloud_run);
+
     let port = env::var("PORT")
         .unwrap_or_else(|_| "8080".to_string())
         .parse::<u16>()
         .unwrap_or(8080);
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
+    eprintln!("[MAIN] 🔍 Port configuré: {}", port);
+    log::info!("🔍 Port configuré: {}", port);
 
     let health_server_handle = if is_cloud_run {
         eprintln!("[MAIN] 🚀 Cloud Run: Démarrage serveur HTTP minimal pour health check...");
@@ -107,8 +112,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         // Créer un serveur minimal avec juste /health
         use axum::{routing::get, Router};
         let health_app = Router::new()
-            .route("/health", get(|| async { "OK" }))
-            .route("/healthz", get(|| async { "OK" }));
+            .route(
+                "/health",
+                get(|| async {
+                    eprintln!("[HEALTH] ✅ Requête /health reçue");
+                    "OK"
+                }),
+            )
+            .route(
+                "/healthz",
+                get(|| async {
+                    eprintln!("[HEALTH] ✅ Requête /healthz reçue");
+                    "OK"
+                }),
+            );
+
+        eprintln!("[MAIN] 🔍 Tentative de bind sur {}:{}...", "0.0.0.0", port);
+        log::info!("🔍 Tentative de bind sur 0.0.0.0:{}...", port);
 
         let health_listener = match tokio::net::TcpListener::bind(addr).await {
             Ok(listener) => {
@@ -121,10 +141,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
             Err(e) => {
                 eprintln!(
-                    "[MAIN] ⚠️ WARNING: Impossible de bind serveur minimal: {}",
+                    "[MAIN] ❌ ERREUR CRITIQUE: Impossible de bind serveur minimal sur {}:{} - {}",
+                    "0.0.0.0", port, e
+                );
+                log::error!(
+                    "❌ ERREUR CRITIQUE: Impossible de bind serveur minimal: {}",
                     e
                 );
-                log::warn!("⚠️ Impossible de bind serveur minimal: {}", e);
                 return Err(
                     format!("Impossible de bind sur {}:{} - {}", "0.0.0.0", port, e).into(),
                 );
@@ -132,14 +155,31 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         };
 
         // Lancer le serveur minimal en arrière-plan
+        eprintln!("[MAIN] 🚀 Lancement du serveur HTTP minimal en arrière-plan...");
+        log::info!("🚀 Lancement du serveur HTTP minimal en arrière-plan...");
+
         let handle = tokio::spawn(async move {
+            eprintln!("[HEALTH_SERVER] 🚀 Serveur minimal démarré, en attente de requêtes...");
+            log::info!("🚀 Serveur minimal démarré, en attente de requêtes...");
+
             if let Err(e) = axum::serve(health_listener, health_app).await {
                 eprintln!("[HEALTH_SERVER] ❌ Erreur serveur minimal: {}", e);
                 log::error!("❌ Erreur serveur minimal: {}", e);
+            } else {
+                eprintln!("[HEALTH_SERVER] ✅ Serveur minimal arrêté proprement");
+                log::info!("✅ Serveur minimal arrêté proprement");
             }
         });
+
+        // Attendre un peu pour s'assurer que le serveur est prêt
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        eprintln!("[MAIN] ✅ Serveur HTTP minimal lancé, continuant les initialisations...");
+        log::info!("✅ Serveur HTTP minimal lancé, continuant les initialisations...");
+
         Some(handle)
     } else {
+        eprintln!("[MAIN] ℹ️ Pas Cloud Run, serveur minimal non démarré");
+        log::info!("ℹ️ Pas Cloud Run, serveur minimal non démarré");
         None
     };
 
