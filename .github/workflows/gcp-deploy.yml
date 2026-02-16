@@ -137,12 +137,13 @@ jobs:
             --allow-unauthenticated \
             --env-vars-file ${{ steps.prepare-env.outputs.env_file }} \
             --add-cloudsql-instances ${{ secrets.GCP_PROJECT_ID }}:${{ env.REGION }}:yukpo-postgres \
-            --memory 1Gi \
+            --memory 2Gi \
             --cpu 2 \
             --timeout 900 \
-            --cpu-throttling \
-            --cpu-boost \
             --max-instances 10 \
+            --cpu-boost \
+            --cpu-throttling \
+            --service-account ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }} \
             --project ${{ secrets.GCP_PROJECT_ID }}
 
       - name: Get Service URL
