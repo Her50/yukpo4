@@ -90,21 +90,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let is_cloud_run = env::var("CLOUD_RUN").unwrap_or_default() == "true";
     eprintln!("[MAIN] 🔍 CLOUD_RUN détecté: {}", is_cloud_run);
 
-    // Démarrer le serveur minimal IMMÉDIATEMENT si Cloud Run (avant dotenv et logging)
+    // Démarrer le serveur minimal IMMÉDIATEMENT si Cloud Run (AVANT dotenv et logging)
     let port = env::var("PORT")
         .unwrap_or_else(|_| "8080".to_string())
         .parse::<u16>()
         .unwrap_or(8080);
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
     eprintln!("[MAIN] 🔍 Port configuré: {}", port);
-
-    eprintln!("[MAIN] 🔧 Initialisation dotenv...");
-    dotenv().ok();
-    eprintln!("[MAIN] 🔧 Initialisation du logging...");
-    yukpomnang_backend::init_logging();
-    eprintln!("[MAIN] ✅ Logging initialisé");
-    log::info!("🔍 CLOUD_RUN détecté: {}", is_cloud_run);
-    log::info!("🔍 Port configuré: {}", port);
 
     let health_server_handle = if is_cloud_run {
         eprintln!("[MAIN] 🚀 Cloud Run: Démarrage serveur HTTP minimal pour health check...");
@@ -162,7 +154,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         });
 
         // Attendre un peu pour s'assurer que le serveur est prêt
-        tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
         eprintln!("[MAIN] ✅ Serveur HTTP minimal lancé, continuant les initialisations...");
 
         Some(handle)
@@ -170,6 +162,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         eprintln!("[MAIN] ℹ️ Pas Cloud Run, serveur minimal non démarré");
         None
     };
+
+    // Maintenant initialiser dotenv et logging (APRÈS le serveur minimal)
+    eprintln!("[MAIN] 🔧 Initialisation dotenv...");
+    dotenv().ok();
+    eprintln!("[MAIN] 🔧 Initialisation du logging...");
+    yukpomnang_backend::init_logging();
+    eprintln!("[MAIN] ✅ Logging initialisé");
+    if is_cloud_run {
+        log::info!("🔍 CLOUD_RUN détecté: {}", is_cloud_run);
+        log::info!("🔍 Port configuré: {}", port);
+    }
 
     // ✅ NOUVEAU 2026-01-29: Logs de diagnostic très tôt pour confirmer que le code s'exécute
     log::info!(
