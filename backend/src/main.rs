@@ -91,6 +91,58 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     yukpomnang_backend::init_logging();
     eprintln!("[MAIN] ✅ Logging initialisé");
 
+    // ✅ CRITIQUE Cloud Run 2026-02-16: Démarrer un serveur HTTP minimal IMMÉDIATEMENT
+    // pour que le startup probe puisse répondre pendant les initialisations lourdes
+    let is_cloud_run = env::var("CLOUD_RUN").unwrap_or_default() == "true";
+    let port = env::var("PORT")
+        .unwrap_or_else(|_| "8080".to_string())
+        .parse::<u16>()
+        .unwrap_or(8080);
+    let addr = SocketAddr::from(([0, 0, 0, 0], port));
+
+    let health_server_handle = if is_cloud_run {
+        eprintln!("[MAIN] 🚀 Cloud Run: Démarrage serveur HTTP minimal pour health check...");
+        log::info!("🚀 Cloud Run: Démarrage serveur HTTP minimal pour health check...");
+
+        // Créer un serveur minimal avec juste /health
+        use axum::{routing::get, Router};
+        let health_app = Router::new()
+            .route("/health", get(|| async { "OK" }))
+            .route("/healthz", get(|| async { "OK" }));
+
+        let health_listener = match tokio::net::TcpListener::bind(addr).await {
+            Ok(listener) => {
+                eprintln!(
+                    "[MAIN] ✅ Serveur HTTP minimal bind réussi sur port {}",
+                    port
+                );
+                log::info!("✅ Serveur HTTP minimal bind réussi sur port {}", port);
+                listener
+            }
+            Err(e) => {
+                eprintln!(
+                    "[MAIN] ⚠️ WARNING: Impossible de bind serveur minimal: {}",
+                    e
+                );
+                log::warn!("⚠️ Impossible de bind serveur minimal: {}", e);
+                return Err(
+                    format!("Impossible de bind sur {}:{} - {}", "0.0.0.0", port, e).into(),
+                );
+            }
+        };
+
+        // Lancer le serveur minimal en arrière-plan
+        let handle = tokio::spawn(async move {
+            if let Err(e) = axum::serve(health_listener, health_app).await {
+                eprintln!("[HEALTH_SERVER] ❌ Erreur serveur minimal: {}", e);
+                log::error!("❌ Erreur serveur minimal: {}", e);
+            }
+        });
+        Some(handle)
+    } else {
+        None
+    };
+
     // ✅ NOUVEAU 2026-01-29: Logs de diagnostic très tôt pour confirmer que le code s'exécute
     log::info!(
         "🔍 [STARTUP] Démarrage application - Version: {}",
@@ -2835,6 +2887,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .unwrap_or(8080);
     let host = env::var("HOST").unwrap_or_else(|_| "0.0.0.0".to_string());
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
+
+    // ✅ CRITIQUE Cloud Run 2026-02-16: Si serveur minimal est en cours, l'arrêter
+    if let Some(handle) = health_server_handle {
+        eprintln!("[MAIN] 🛑 Arrêt du serveur HTTP minimal...");
+        log::info!("🛑 Arrêt du serveur HTTP minimal...");
+        handle.abort();
+        // Attendre un peu pour que le port soit libéré
+        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+    }
+
     log::info!("✅ Serveur lance sur http://{}:{}", host, port);
     println!("✅ Serveur lance sur http://{}:{}", host, port);
 
@@ -2846,9 +2908,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         );
         e
     })?;
-    eprintln!("[MAIN] ✅ Bind réussi, démarrage du serveur HTTP...");
+    eprintln!("[MAIN] ✅ Bind réussi, démarrage du serveur HTTP complet...");
     eprintln!(
-        "[MAIN] 🚀 Serveur HTTP démarre sur http://{}:{}",
+        "[MAIN] 🚀 Serveur HTTP complet démarre sur http://{}:{}",
         host, port
     );
     serve(listener, app).await.map_err(|e| {
