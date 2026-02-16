@@ -121,24 +121,46 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         eprintln!("[MAIN] 🔍 Tentative de bind sur {}:{}...", "0.0.0.0", port);
 
-        let health_listener = match tokio::net::TcpListener::bind(addr).await {
-            Ok(listener) => {
-                eprintln!(
-                    "[MAIN] ✅ Serveur HTTP minimal bind réussi sur port {}",
-                    port
-                );
-                listener
+        // ✅ CORRIGÉ: Réessayer plusieurs fois si le port est occupé (serveur Python)
+        let mut health_listener = None;
+        let mut retries = 0;
+        const MAX_RETRIES: u32 = 10;
+
+        while health_listener.is_none() && retries < MAX_RETRIES {
+            match tokio::net::TcpListener::bind(addr).await {
+                Ok(listener) => {
+                    eprintln!(
+                        "[MAIN] ✅ Serveur HTTP minimal bind réussi sur port {} (tentative {})",
+                        port,
+                        retries + 1
+                    );
+                    health_listener = Some(listener);
+                }
+                Err(e) => {
+                    if retries < MAX_RETRIES - 1 {
+                        eprintln!(
+                            "[MAIN] ⏳ Port {} occupé (tentative {}), réessai dans 1s...",
+                            port,
+                            retries + 1
+                        );
+                        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+                        retries += 1;
+                    } else {
+                        eprintln!(
+                            "[MAIN] ❌ ERREUR CRITIQUE: Impossible de bind serveur minimal sur {}:{} après {} tentatives - {}",
+                            "0.0.0.0", port, MAX_RETRIES, e
+                        );
+                        return Err(format!(
+                            "Impossible de bind sur {}:{} - {}",
+                            "0.0.0.0", port, e
+                        )
+                        .into());
+                    }
+                }
             }
-            Err(e) => {
-                eprintln!(
-                    "[MAIN] ❌ ERREUR CRITIQUE: Impossible de bind serveur minimal sur {}:{} - {}",
-                    "0.0.0.0", port, e
-                );
-                return Err(
-                    format!("Impossible de bind sur {}:{} - {}", "0.0.0.0", port, e).into(),
-                );
-            }
-        };
+        }
+
+        let health_listener = health_listener.expect("health_listener should be set");
 
         // Lancer le serveur minimal en arrière-plan
         eprintln!("[MAIN] 🚀 Lancement du serveur HTTP minimal en arrière-plan...");
