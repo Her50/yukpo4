@@ -113,7 +113,8 @@ COPY scripts/start-cloud-run.sh /app/start-cloud-run.sh
 COPY scripts/start-health-server.sh /app/start-health-server.sh
 COPY scripts/health-server-simple.sh /app/health-server-simple.sh
 COPY scripts/health-server-python.py /app/health-server-python.py
-RUN chmod +x /app/start-cloud.sh /app/start-cloud-run.sh /app/start-health-server.sh /app/health-server-simple.sh /app/health-server-python.py
+COPY scripts/startup-wrapper.sh /app/startup-wrapper.sh
+RUN chmod +x /app/start-cloud.sh /app/start-cloud-run.sh /app/start-health-server.sh /app/health-server-simple.sh /app/health-server-python.py /app/startup-wrapper.sh
 
 # Variables d'environnement
 ENV RUST_LOG=info
@@ -129,8 +130,8 @@ USER appuser
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:8080/health || exit 1
 
-# Utiliser start-cloud-run.sh pour Cloud Run (démarrage plus rapide)
+# Utiliser startup-wrapper.sh pour Cloud Run (démarre serveur minimal puis Rust)
 # Pour AWS ECS, utiliser start-cloud.sh via variable d'environnement
-ENTRYPOINT ["/bin/bash", "-c", "if [ \"$CLOUD_RUN\" = \"true\" ]; then /app/start-cloud-run.sh; else /app/start-cloud.sh; fi"]
+ENTRYPOINT ["/bin/bash", "-c", "if [ \"$CLOUD_RUN\" = \"true\" ]; then /app/startup-wrapper.sh; else /app/start-cloud.sh; fi"]
 CMD ["./yukpomnang_backend"]
 
