@@ -140,7 +140,6 @@ jobs:
             --memory 1Gi \
             --cpu 2 \
             --timeout 900 \
-            --startup-probe=timeoutSeconds=10,periodSeconds=15,initialDelaySeconds=30,failureThreshold=20,httpGet.port=8080,httpGet.path=/health \
             --cpu-throttling \
             --cpu-boost \
             --max-instances 10 \
