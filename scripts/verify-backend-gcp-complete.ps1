@@ -1,4 +1,4 @@
-# Script de vérification complète du backend dans GCP
+﻿# Script de vérification complète du backend dans GCP
 # Vérifie toutes les fonctionnalités et services
 
 param(
@@ -232,9 +232,10 @@ if (-not $SkipDatabase) {
 Write-Host "`n🤖 5. VÉRIFICATION DES SERVICES IA" -ForegroundColor Yellow
 Write-Host "----------------------------------" -ForegroundColor Yellow
 
+$iaChatBody = '{"message":"test"}'
 $aiEndpoints = @(
     @{ Path = "/api/ia/status"; Name = "IA Status" },
-    @{ Path = "/api/ia/chat"; Method = "POST"; Body = '{"message":"test"}'; Name = "IA Chat" }
+    @{ Path = "/api/ia/chat"; Method = "POST"; Body = $iaChatBody; Name = "IA Chat" }
 )
 
 foreach ($endpoint in $aiEndpoints) {
