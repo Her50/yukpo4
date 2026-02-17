@@ -197,10 +197,11 @@ jobs:
           
           # ✅ CRITIQUE: Supprimer aussi DATABASE_URL comme secret pour éviter les conflits de type
           # Si DATABASE_URL est définie comme secret, on doit la supprimer avant de la redéfinir
-          echo "Suppression de DATABASE_URL comme secret (si elle existe)..."
+          # Note: --clear-secrets supprime TOUS les secrets, donc on doit les redéfinir après
+          echo "Suppression de tous les secrets existants pour éviter les conflits..."
           gcloud run services update ${{ env.SERVICE_NAME }} \
             --region ${{ env.REGION }} \
-            --remove-secrets="DATABASE_URL" \
+            --clear-secrets \
             --project ${{ secrets.GCP_PROJECT_ID }} 2>&1 | grep -v "does not exist\|not found" || true
           
           # Attendre un peu pour que les suppressions soient prises en compte
