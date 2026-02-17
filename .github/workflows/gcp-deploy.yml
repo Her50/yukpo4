@@ -173,6 +173,13 @@ jobs:
           # Le nettoyage a déjà été fait dans l'étape précédente
           echo "Déploiement vers Cloud Run..."
           
+          # ✅ CRITIQUE: Retirer les secrets des variables d'environnement AVANT de les ajouter comme secrets
+          echo "Suppression des secrets des variables d'environnement (s'ils existent)..."
+          gcloud run services update ${{ env.SERVICE_NAME }} \
+            --region ${{ env.REGION }} \
+            --remove-env-vars="DATABASE_URL,REDIS_URL,MONGODB_URL,JWT_SECRET" \
+            --project ${{ secrets.GCP_PROJECT_ID }} 2>&1 | grep -v "does not exist" || true
+          
           gcloud run deploy ${{ env.SERVICE_NAME }} \
             --image ${{ env.IMAGE_NAME }}:${{ github.sha }} \
             --platform managed \
