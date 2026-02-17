@@ -15,23 +15,19 @@ echo "✅ [WRAPPER] Serveur HTTP minimal démarré (PID: $HEALTH_PID)"
 sleep 5
 echo "✅ [WRAPPER] Serveur HTTP minimal prêt, Cloud Run devrait le détecter..."
 
-# Maintenant démarrer Rust en arrière-plan
-echo "🚀 [WRAPPER] Démarrage application Rust en arrière-plan..."
-/app/yukpomnang_backend &
-RUST_PID=$!
-echo "✅ [WRAPPER] Application Rust démarrée (PID: $RUST_PID)"
+# Attendre que Cloud Run détecte le serveur Python (startup probe)
+echo "⏳ [WRAPPER] Attente que Cloud Run détecte le serveur Python (5 secondes)..."
+sleep 5
 
-# Attendre que Rust démarre son serveur minimal (qui va échouer à bind car port occupé)
-# Mais Rust va attendre et réessayer
-sleep 10
-
-# Maintenant tuer le serveur Python pour libérer le port
+# Maintenant tuer le serveur Python pour libérer le port AVANT de démarrer Rust
 echo "🛑 [WRAPPER] Arrêt du serveur Python pour libérer le port..."
 kill $HEALTH_PID 2>/dev/null || true
-sleep 1
+sleep 2
+echo "✅ [WRAPPER] Port libéré, démarrage de Rust..."
 
-# Attendre que Rust prenne le relais
-echo "✅ [WRAPPER] Port libéré, Rust devrait prendre le relais..."
+# Maintenant démarrer Rust (qui va pouvoir bind sur le port libre)
+echo "🚀 [WRAPPER] Démarrage application Rust..."
+exec /app/yukpomnang_backend
 
 # Attendre Rust (processus principal)
 wait $RUST_PID
