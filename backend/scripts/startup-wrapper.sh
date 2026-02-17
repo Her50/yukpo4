@@ -103,13 +103,16 @@ echo "   MONGODB_URL: ${MONGODB_URL:+✅ Présente}"
 
 # Tester que le binaire peut s'exécuter (test basique)
 echo "🔍 [WRAPPER] Étape 3: Test d'exécution du binaire (version)..."
-if /app/yukpomnang_backend --version >/dev/null 2>&1; then
+echo "🔍 [WRAPPER] Exécution de: /app/yukpomnang_backend --version"
+VERSION_OUTPUT=$(/app/yukpomnang_backend --version 2>&1)
+VERSION_EXIT_CODE=$?
+
+if [ $VERSION_EXIT_CODE -eq 0 ]; then
     echo "✅ [WRAPPER] Binaire peut s'exécuter (test --version réussi)"
+    echo "🔍 [WRAPPER] Sortie de --version: $VERSION_OUTPUT"
 else
-    EXIT_CODE=$?
-    echo "⚠️ [WRAPPER] Binaire ne peut pas s'exécuter (code: $EXIT_CODE)"
-    echo "🔍 [WRAPPER] Tentative d'exécution avec affichage des erreurs:"
-    /app/yukpomnang_backend --version 2>&1 || true
+    echo "⚠️ [WRAPPER] Binaire ne peut pas s'exécuter (code: $VERSION_EXIT_CODE)"
+    echo "🔍 [WRAPPER] Sortie de --version (erreur): $VERSION_OUTPUT"
     echo "🔍 [WRAPPER] Informations système:"
     uname -a
     echo "🔍 [WRAPPER] Dépendances du binaire:"
@@ -118,11 +121,14 @@ else
     exit 1
 fi
 
+echo "✅ [WRAPPER] Étape 3 terminée avec succès"
+echo "🔍 [WRAPPER] Passage à l'Étape 4..."
+
 echo "🚀 [WRAPPER] Étape 4: Démarrage application Rust..."
 echo "🔍 [WRAPPER] Toutes les erreurs seront capturées ci-dessous..."
 
 # ✅ CRITIQUE 2026-02-17: Ajouter des vérifications finales avant exec
-echo "🔍 [WRAPPER] Vérification finale avant exec:"
+echo "🔍 [WRAPPER] Étape 4.1: Vérification finale avant exec..."
 echo "   - Chemin binaire: /app/yukpomnang_backend"
 echo "   - Existence: $([ -f /app/yukpomnang_backend ] && echo '✅ OUI' || echo '❌ NON')"
 echo "   - Exécutable: $([ -x /app/yukpomnang_backend ] && echo '✅ OUI' || echo '❌ NON')"
@@ -130,12 +136,17 @@ echo "   - Taille: $(ls -lh /app/yukpomnang_backend 2>/dev/null | awk '{print $5
 echo "   - Type: $(file /app/yukpomnang_backend 2>/dev/null || echo 'file non disponible')"
 
 # Test final d'exécution avec affichage des erreurs
-echo "🔍 [WRAPPER] Test final d'exécution (--version)..."
-if /app/yukpomnang_backend --version 2>&1; then
-    echo "✅ [WRAPPER] Test --version réussi, démarrage de l'application..."
+echo "🔍 [WRAPPER] Étape 4.2: Test final d'exécution (--version)..."
+FINAL_VERSION_OUTPUT=$(/app/yukpomnang_backend --version 2>&1)
+FINAL_VERSION_EXIT=$?
+
+if [ $FINAL_VERSION_EXIT -eq 0 ]; then
+    echo "✅ [WRAPPER] Test --version réussi"
+    echo "🔍 [WRAPPER] Sortie: $FINAL_VERSION_OUTPUT"
+    echo "✅ [WRAPPER] Tous les tests passés, démarrage de l'application..."
 else
-    EXIT_CODE=$?
-    echo "❌ [WRAPPER] ERREUR: Test --version a échoué avec le code $EXIT_CODE"
+    echo "❌ [WRAPPER] ERREUR: Test --version a échoué avec le code $FINAL_VERSION_EXIT"
+    echo "🔍 [WRAPPER] Sortie (erreur): $FINAL_VERSION_OUTPUT"
     echo "🔍 [WRAPPER] Tentative d'exécution directe pour voir l'erreur:"
     /app/yukpomnang_backend 2>&1 || true
     echo "❌ [WRAPPER] Impossible de démarrer l'application Rust"
@@ -145,7 +156,9 @@ fi
 # ✅ CRITIQUE 2026-02-17: Utiliser exec pour que Rust devienne le processus principal (PID 1)
 # Cloud Run nécessite que le processus principal reste actif
 # exec remplace le processus wrapper par Rust, ce qui est nécessaire pour Cloud Run
-echo "🚀 [WRAPPER] Exécution de: exec /app/yukpomnang_backend 2>&1"
+echo "🚀 [WRAPPER] Étape 4.3: Exécution de exec /app/yukpomnang_backend 2>&1"
+echo "🔍 [WRAPPER] Le processus wrapper va être remplacé par Rust maintenant..."
+echo "🔍 [WRAPPER] Si Rust démarre, vous devriez voir '[MAIN] 🚀 Application Rust démarre' ci-dessous..."
 exec /app/yukpomnang_backend 2>&1
 # Note: Le code après exec ne sera jamais exécuté car exec remplace le processus
 
