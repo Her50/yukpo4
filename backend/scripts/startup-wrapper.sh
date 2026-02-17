@@ -42,20 +42,26 @@ else
 fi
 
 # Maintenant démarrer Rust (qui va pouvoir bind sur le port libre)
-# Vérifier que le binaire existe et est exécutable
-echo "🔍 [WRAPPER] Vérification du binaire Rust..."
+# ✅ CRITIQUE 2026-02-17: Ajouter des logs détaillés pour diagnostiquer où le wrapper s'arrête
+echo "🔍 [WRAPPER] Étape 1: Vérification existence du binaire Rust..."
 if [ ! -f /app/yukpomnang_backend ]; then
     echo "❌ [WRAPPER] ERREUR: Le binaire /app/yukpomnang_backend n'existe pas!"
+    echo "📂 [WRAPPER] Contenu de /app/:"
     ls -la /app/ | head -20
     exit 1
 fi
+echo "✅ [WRAPPER] Binaire trouvé: /app/yukpomnang_backend"
 
+echo "🔍 [WRAPPER] Étape 2: Vérification exécutabilité du binaire..."
 if [ ! -x /app/yukpomnang_backend ]; then
     echo "⚠️ [WRAPPER] Le binaire n'est pas exécutable, tentative de correction..."
     chmod +x /app/yukpomnang_backend
+    if [ ! -x /app/yukpomnang_backend ]; then
+        echo "❌ [WRAPPER] ERREUR: Impossible de rendre le binaire exécutable!"
+        exit 1
+    fi
 fi
-
-echo "✅ [WRAPPER] Binaire trouvé et exécutable"
+echo "✅ [WRAPPER] Binaire est exécutable"
 
 # Vérifier le format de DATABASE_URL (sans afficher le contenu complet)
 echo "🔍 [WRAPPER] Variables d'environnement critiques:"
@@ -91,28 +97,28 @@ echo "   REDIS_URL: ${REDIS_URL:+✅ Présente}"
 echo "   MONGODB_URL: ${MONGODB_URL:+✅ Présente}"
 
 # Tester que le binaire peut s'exécuter (test basique)
-echo "🔍 [WRAPPER] Test d'exécution du binaire (version)..."
-if /app/yukpomnang_backend --version 2>&1; then
-    echo "✅ [WRAPPER] Binaire peut s'exécuter"
+echo "🔍 [WRAPPER] Étape 3: Test d'exécution du binaire (version)..."
+if /app/yukpomnang_backend --version >/dev/null 2>&1; then
+    echo "✅ [WRAPPER] Binaire peut s'exécuter (test --version réussi)"
 else
-    echo "⚠️ [WRAPPER] Binaire ne peut pas s'exécuter (code: $?)"
+    EXIT_CODE=$?
+    echo "⚠️ [WRAPPER] Binaire ne peut pas s'exécuter (code: $EXIT_CODE)"
+    echo "🔍 [WRAPPER] Tentative d'exécution avec affichage des erreurs:"
+    /app/yukpomnang_backend --version 2>&1 || true
     echo "🔍 [WRAPPER] Informations système:"
     uname -a
+    echo "🔍 [WRAPPER] Dépendances du binaire:"
     ldd /app/yukpomnang_backend 2>&1 | head -10 || echo "ldd non disponible"
+    echo "❌ [WRAPPER] ERREUR: Le binaire Rust ne peut pas s'exécuter!"
+    exit 1
 fi
 
-echo "🚀 [WRAPPER] Démarrage application Rust..."
+echo "🚀 [WRAPPER] Étape 4: Démarrage application Rust..."
 echo "🔍 [WRAPPER] Toutes les erreurs seront capturées ci-dessous..."
 
-# Utiliser exec pour que Rust devienne le processus principal (PID 1)
-# Rediriger stderr vers stdout pour capturer toutes les erreurs
-# Ne pas utiliser exec immédiatement pour pouvoir capturer les erreurs de démarrage
-/app/yukpomnang_backend 2>&1
-EXIT_CODE=$?
-
-if [ $EXIT_CODE -ne 0 ]; then
-    echo "❌ [WRAPPER] Application Rust a quitté avec le code: $EXIT_CODE"
-    echo "🔍 [WRAPPER] Dernières erreurs capturées ci-dessus"
-    exit $EXIT_CODE
-fi
+# ✅ CRITIQUE 2026-02-17: Utiliser exec pour que Rust devienne le processus principal (PID 1)
+# Cloud Run nécessite que le processus principal reste actif
+# exec remplace le processus wrapper par Rust, ce qui est nécessaire pour Cloud Run
+exec /app/yukpomnang_backend 2>&1
+# Note: Le code après exec ne sera jamais exécuté car exec remplace le processus
 
