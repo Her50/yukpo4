@@ -8,6 +8,8 @@ on:
     paths:
       - 'backend/**'
       - '.github/workflows/gcp-deploy.yml'
+      - 'scripts/**'
+      - '*.md'
   workflow_dispatch:
 
 env:
