@@ -173,6 +173,12 @@ jobs:
           # Le nettoyage a déjà été fait dans l'étape précédente
           echo "Déploiement vers Cloud Run..."
           
+          # ✅ CRITIQUE: Construire et nettoyer le nom de l'instance Cloud SQL (supprimer les retours à la ligne)
+          CLOUD_SQL_INSTANCE="${{ secrets.GCP_PROJECT_ID }}:${{ env.REGION }}:yukpo-postgres"
+          # Nettoyer les retours à la ligne (Windows \r\n et Unix \n)
+          CLOUD_SQL_INSTANCE=$(echo "$CLOUD_SQL_INSTANCE" | tr -d '\r\n' | tr -d '\n')
+          echo "Instance Cloud SQL (nettoyée): $CLOUD_SQL_INSTANCE"
+          
           # ✅ CRITIQUE: Supprimer toutes les variables d'environnement AVANT le déploiement
           # pour éviter les conflits entre variables et secrets
           echo "Suppression de toutes les variables d'environnement existantes..."
@@ -214,7 +220,7 @@ jobs:
                 --port 8080 \
                 --set-env-vars="$ENV_VARS" \
                 --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,MONGODB_URL=mongodb-url:latest" \
-                --add-cloudsql-instances ${{ secrets.GCP_PROJECT_ID }}:${{ env.REGION }}:yukpo-postgres \
+                --add-cloudsql-instances "$CLOUD_SQL_INSTANCE" \
                 --memory 2Gi \
                 --cpu 2 \
                 --timeout 900 \
@@ -233,7 +239,7 @@ jobs:
                 --allow-unauthenticated \
                 --port 8080 \
                 --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,MONGODB_URL=mongodb-url:latest" \
-                --add-cloudsql-instances ${{ secrets.GCP_PROJECT_ID }}:${{ env.REGION }}:yukpo-postgres \
+                --add-cloudsql-instances "$CLOUD_SQL_INSTANCE" \
                 --memory 2Gi \
                 --cpu 2 \
                 --timeout 900 \
@@ -259,7 +265,7 @@ jobs:
               --port 8080 \
               --env-vars-file ${{ steps.prepare-env.outputs.env_file }} \
               --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,MONGODB_URL=mongodb-url:latest" \
-              --add-cloudsql-instances ${{ secrets.GCP_PROJECT_ID }}:${{ env.REGION }}:yukpo-postgres \
+              --add-cloudsql-instances "$CLOUD_SQL_INSTANCE" \
               --memory 2Gi \
               --cpu 2 \
               --timeout 900 \
