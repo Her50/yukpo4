@@ -85,12 +85,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         eprintln!("🚨 PANIC: {} ({})", message, location);
     }));
 
-    // ✅ CRITIQUE Cloud Run 2026-02-16: Démarrer un serveur HTTP minimal AVANT toute initialisation
-    // pour que le startup probe puisse répondre immédiatement
+    // ✅ CRITIQUE Cloud Run 2026-02-17: Le wrapper Python gère déjà le serveur minimal
+    // Ne PAS démarrer de serveur minimal dans Rust si on est dans Cloud Run
     let is_cloud_run = env::var("CLOUD_RUN").unwrap_or_default() == "true";
     eprintln!("[MAIN] 🔍 CLOUD_RUN détecté: {}", is_cloud_run);
 
-    // Démarrer le serveur minimal IMMÉDIATEMENT si Cloud Run (AVANT dotenv et logging)
     let port = env::var("PORT")
         .unwrap_or_else(|_| "8080".to_string())
         .parse::<u16>()
@@ -98,8 +97,38 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
     eprintln!("[MAIN] 🔍 Port configuré: {}", port);
 
+    // ✅ CORRIGÉ: Ne PAS démarrer de serveur minimal si Cloud Run (le wrapper Python le gère)
     let health_server_handle = if is_cloud_run {
-        eprintln!("[MAIN] 🚀 Cloud Run: Démarrage serveur HTTP minimal pour health check...");
+        eprintln!("[MAIN] ℹ️  Cloud Run: Le wrapper Python gère le serveur minimal, on attend qu'il libère le port...");
+        
+        // Attendre que le wrapper Python libère le port (il le fait après ~15 secondes)
+        eprintln!("[MAIN] ⏳ Attente de libération du port 8080 par le wrapper Python...");
+        let mut retries = 0;
+        const MAX_RETRIES: u32 = 20; // Augmenter à 20 tentatives (20 secondes)
+        
+        loop {
+            match tokio::net::TcpListener::bind(addr).await {
+                Ok(_) => {
+                    eprintln!("[MAIN] ✅ Port 8080 libéré, on peut continuer");
+                    break;
+                }
+                Err(e) => {
+                    if retries < MAX_RETRIES - 1 {
+                        eprintln!("[MAIN] ⏳ Port 8080 encore occupé (tentative {}), attente...", retries + 1);
+                        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+                        retries += 1;
+                    } else {
+                        eprintln!("[MAIN] ⚠️  Port 8080 toujours occupé après {} tentatives, on continue quand même...", MAX_RETRIES);
+                        break;
+                    }
+                }
+            }
+        }
+        
+        // Ne PAS créer de serveur minimal dans Rust, le wrapper Python le gère
+        None
+    } else {
+        eprintln!("[MAIN] 🚀 Pas Cloud Run: Démarrage serveur HTTP minimal pour health check...");
 
         // Créer un serveur minimal avec juste /health
         use axum::{http::StatusCode, routing::get, Router};
