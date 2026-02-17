@@ -426,11 +426,42 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let (user, password) = user_pass.split_once(':').unwrap_or((user_pass, ""));
 
             // Extraire le socket path depuis ?host=/cloudsql/...
-            let socket_path = query
+            // ✅ CRITIQUE 2026-02-17: Ajouter des logs de diagnostic pour comprendre le parsing
+            eprintln!("[MAIN] 🔍 Debug parsing URL Cloud SQL:");
+            eprintln!("[MAIN]   auth_and_path: {}", auth_and_path);
+            eprintln!("[MAIN]   query: '{}'", query);
+            eprintln!("[MAIN]   query length: {}", query.len());
+
+            // Nettoyer la query des retours à la ligne (au cas où)
+            let query_clean = query.trim().replace("\r\n", "").replace("\n", "").replace("\r", "");
+            eprintln!("[MAIN]   query_clean: '{}'", query_clean);
+
+            let socket_path = query_clean
                 .split('&')
-                .find(|p| p.starts_with("host=/cloudsql/"))
-                .and_then(|p| p.strip_prefix("host="))
-                .ok_or_else(|| format!("Socket path Cloud SQL non trouvé dans DATABASE_URL"))?;
+                .find(|p| p.trim().starts_with("host=/cloudsql/"))
+                .and_then(|p| p.trim().strip_prefix("host="))
+                .map(|p| p.trim())
+                .ok_or_else(|| {
+                    eprintln!(
+                        "[MAIN] ❌ ERREUR: Socket path non trouvé dans query: '{}'",
+                        query_clean
+                    );
+                    format!(
+                        "Socket path Cloud SQL non trouvé dans DATABASE_URL (query: '{}')",
+                        query_clean
+                    )
+                })?;
+
+            eprintln!("[MAIN] ✅ Socket path extrait: '{}'", socket_path);
+            eprintln!("[MAIN]   Socket path length: {}", socket_path.len());
+
+            if socket_path.is_empty() {
+                return Err(format!(
+                    "Socket path Cloud SQL est vide après extraction (query: '{}')",
+                    query_clean
+                )
+                .into());
+            }
 
             log::info!(
                 "🔧 Configuration Cloud SQL: user={}, db={}, socket={}",
@@ -439,12 +470,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 socket_path
             );
 
-            // ✅ CORRIGÉ 2026-02-16: Utiliser l'URL originale directement
-            // connect_lazy accepte l'URL Cloud SQL Unix socket directement
-            // L'URL originale est déjà au bon format: postgresql://user:pass@/db?host=/cloudsql/...
+            // ✅ CORRIGÉ 2026-02-17: Utiliser l'URL directement avec connect_lazy
+            // sqlx/tokio-postgres peut parser l'URL Cloud SQL avec ?host=/cloudsql/... directement
+            // Il n'est PAS nécessaire de construire PgConnectOptions manuellement
+            // L'URL Cloud SQL est déjà au format correct pour sqlx
             log::info!(
                 "🔧 Utilisation de l'URL Cloud SQL originale pour connect_lazy (non-bloquant)"
             );
+
+            eprintln!(
+                "[MAIN] 🔍 URL finale utilisée pour connect_lazy: {}",
+                db_url
+            );
+            eprintln!("[MAIN]   Longueur URL: {}", db_url.len());
 
             pool_options
                 .connect_lazy(&db_url)
