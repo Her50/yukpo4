@@ -84,11 +84,10 @@ jobs:
           echo "Preparing environment variables from GitHub secrets..."
           
           # Créer un fichier JSON pour les variables d'environnement
+          # NOTE: DATABASE_URL, REDIS_URL, MONGODB_URL, JWT_SECRET sont gérés comme secrets, pas comme variables
           if command -v jq &> /dev/null; then
             echo '{}' | jq \
-              --arg db_url "${{ secrets.GCP_DATABASE_URL }}" \
               '. + {
-                "DATABASE_URL": $db_url,
                 "CLOUD_RUN": "true",
                 "ENABLE_AUTO_MIGRATIONS": "true",
                 "SQLX_OFFLINE": "true",
@@ -107,10 +106,9 @@ jobs:
                 "GPU_MIN_INSTANCES": "0"
               }' > env-vars.json
           else
-            DB_URL_ESCAPED=$(echo "${{ secrets.GCP_DATABASE_URL }}" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g')
+            # NOTE: DATABASE_URL est géré comme secret, pas comme variable
             cat > env-vars.json << EOF
           {
-            "DATABASE_URL": "$DB_URL_ESCAPED",
             "CLOUD_RUN": "true",
             "ENABLE_AUTO_MIGRATIONS": "true",
             "SQLX_OFFLINE": "true",
