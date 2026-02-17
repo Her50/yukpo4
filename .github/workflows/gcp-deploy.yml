@@ -173,13 +173,12 @@ jobs:
           # Le nettoyage a déjà été fait dans l'étape précédente
           echo "Déploiement vers Cloud Run..."
           
-          # ✅ CRITIQUE: Retirer les secrets des variables d'environnement AVANT de les ajouter comme secrets
-          # Note: On utilise maintenant --clear-env-vars dans le déploiement, donc cette étape est moins critique
-          # mais on la garde pour être sûr
-          echo "Suppression des secrets des variables d'environnement (s'ils existent)..."
+          # ✅ CRITIQUE: Supprimer toutes les variables d'environnement AVANT le déploiement
+          # pour éviter les conflits entre variables et secrets
+          echo "Suppression de toutes les variables d'environnement existantes..."
           gcloud run services update ${{ env.SERVICE_NAME }} \
             --region ${{ env.REGION }} \
-            --remove-env-vars="DATABASE_URL,REDIS_URL,MONGODB_URL,JWT_SECRET" \
+            --clear-env-vars \
             --project ${{ secrets.GCP_PROJECT_ID }} 2>&1 | grep -v "does not exist" || true
           
           # Construire la liste des variables d'environnement depuis env-vars.json (sans les secrets)
@@ -196,9 +195,7 @@ jobs:
               exit 1
             fi
             
-            # Déployer avec --set-env-vars au lieu de --env-vars-file pour éviter les conflits
-            # IMPORTANT: Utiliser --clear-env-vars d'abord pour supprimer toutes les variables existantes
-            # puis --set-env-vars pour définir uniquement les variables non-secrets
+            # Déployer avec --set-env-vars (après avoir clear les variables)
             if [ -n "$ENV_VARS" ] && [ "$ENV_VARS" != "null" ]; then
               echo "Déploiement avec variables d'environnement..."
               gcloud run deploy ${{ env.SERVICE_NAME }} \
@@ -207,7 +204,6 @@ jobs:
                 --region ${{ env.REGION }} \
                 --allow-unauthenticated \
                 --port 8080 \
-                --clear-env-vars \
                 --set-env-vars="$ENV_VARS" \
                 --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,MONGODB_URL=mongodb-url:latest" \
                 --add-cloudsql-instances ${{ secrets.GCP_PROJECT_ID }}:${{ env.REGION }}:yukpo-postgres \
@@ -220,7 +216,7 @@ jobs:
                 --service-account ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }} \
                 --project ${{ secrets.GCP_PROJECT_ID }}
             else
-              # Si aucune variable, déployer sans --set-env-vars mais avec --clear-env-vars
+              # Si aucune variable, déployer sans --set-env-vars
               echo "Déploiement sans variables d'environnement (seulement secrets)..."
               gcloud run deploy ${{ env.SERVICE_NAME }} \
                 --image ${{ env.IMAGE_NAME }}:${{ github.sha }} \
@@ -228,7 +224,6 @@ jobs:
                 --region ${{ env.REGION }} \
                 --allow-unauthenticated \
                 --port 8080 \
-                --clear-env-vars \
                 --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,MONGODB_URL=mongodb-url:latest" \
                 --add-cloudsql-instances ${{ secrets.GCP_PROJECT_ID }}:${{ env.REGION }}:yukpo-postgres \
                 --memory 2Gi \
