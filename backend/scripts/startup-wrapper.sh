@@ -1,7 +1,9 @@
 #!/bin/bash
 # Wrapper qui démarre un serveur HTTP minimal puis Rust
 
-set -e
+# Ne pas utiliser set -e car on veut capturer toutes les erreurs
+# set -e
+set -o pipefail  # Capturer les erreurs dans les pipes
 
 echo "🚀 [WRAPPER] Démarrage wrapper Cloud Run..."
 
@@ -28,6 +30,16 @@ wait $HEALTH_PID 2>/dev/null || true
 echo "⏳ [WRAPPER] Attente libération du port (5 secondes)..."
 sleep 5
 echo "✅ [WRAPPER] Port libéré, démarrage de Rust..."
+
+# Vérifier que le port est bien libre
+if lsof -i :8080 >/dev/null 2>&1; then
+    echo "⚠️ [WRAPPER] ATTENTION: Le port 8080 est encore occupé!"
+    lsof -i :8080 || true
+    echo "⏳ [WRAPPER] Attente supplémentaire (3 secondes)..."
+    sleep 3
+else
+    echo "✅ [WRAPPER] Port 8080 est libre"
+fi
 
 # Maintenant démarrer Rust (qui va pouvoir bind sur le port libre)
 # Vérifier que le binaire existe et est exécutable
