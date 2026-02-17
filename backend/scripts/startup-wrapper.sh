@@ -30,16 +30,28 @@ sleep 5
 echo "✅ [WRAPPER] Port libéré, démarrage de Rust..."
 
 # Maintenant démarrer Rust (qui va pouvoir bind sur le port libre)
-# Utiliser exec pour que Rust devienne le processus principal (PID 1)
-echo "🚀 [WRAPPER] Démarrage application Rust..."
-exec /app/yukpomnang_backend
-
-# Attendre Rust (processus principal)
-wait $RUST_PID
-EXIT_CODE=$?
-
-if [ $EXIT_CODE -ne 0 ]; then
-    echo "❌ [WRAPPER] Application Rust a quitté avec le code $EXIT_CODE"
-    exit $EXIT_CODE
+# Vérifier que le binaire existe et est exécutable
+echo "🔍 [WRAPPER] Vérification du binaire Rust..."
+if [ ! -f /app/yukpomnang_backend ]; then
+    echo "❌ [WRAPPER] ERREUR: Le binaire /app/yukpomnang_backend n'existe pas!"
+    ls -la /app/ | head -20
+    exit 1
 fi
+
+if [ ! -x /app/yukpomnang_backend ]; then
+    echo "⚠️ [WRAPPER] Le binaire n'est pas exécutable, tentative de correction..."
+    chmod +x /app/yukpomnang_backend
+fi
+
+echo "✅ [WRAPPER] Binaire trouvé et exécutable"
+echo "🚀 [WRAPPER] Démarrage application Rust..."
+echo "🔍 [WRAPPER] Variables d'environnement critiques:"
+echo "   DATABASE_URL: ${DATABASE_URL:+✅ Présente (longueur: ${#DATABASE_URL})}"
+echo "   JWT_SECRET: ${JWT_SECRET:+✅ Présente (longueur: ${#JWT_SECRET})}"
+echo "   REDIS_URL: ${REDIS_URL:+✅ Présente}"
+echo "   MONGODB_URL: ${MONGODB_URL:+✅ Présente}"
+
+# Utiliser exec pour que Rust devienne le processus principal (PID 1)
+# Rediriger stderr vers stdout pour capturer toutes les erreurs
+exec /app/yukpomnang_backend 2>&1
 
