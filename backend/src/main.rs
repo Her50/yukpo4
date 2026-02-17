@@ -25,6 +25,7 @@ use yukpomnang_backend::tasks;
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // ✅ CRITIQUE: Logs IMMÉDIATS sur stderr AVANT toute initialisation
     // Ces logs apparaîtront même si le logging n'est pas initialisé
+    // ✅ 2026-02-17: Ajout log de diagnostic pour vérifier que Rust démarre
     eprintln!("[MAIN] 🚀 Application Rust démarre - Point d'entrée atteint");
     eprintln!("[MAIN] 🔍 Vérification des variables d'environnement critiques...");
 
