@@ -56,14 +56,49 @@ if [ ! -x /app/yukpomnang_backend ]; then
 fi
 
 echo "✅ [WRAPPER] Binaire trouvé et exécutable"
-echo "🚀 [WRAPPER] Démarrage application Rust..."
+
+# Vérifier le format de DATABASE_URL (sans afficher le contenu complet)
 echo "🔍 [WRAPPER] Variables d'environnement critiques:"
 echo "   DATABASE_URL: ${DATABASE_URL:+✅ Présente (longueur: ${#DATABASE_URL})}"
+if [ -n "$DATABASE_URL" ]; then
+    # Vérifier s'il y a des retours à la ligne
+    if echo "$DATABASE_URL" | grep -q $'\r'; then
+        echo "   ⚠️ [WRAPPER] ATTENTION: DATABASE_URL contient des retours à la ligne (\\r)!"
+    fi
+    if echo "$DATABASE_URL" | grep -q $'\n'; then
+        echo "   ⚠️ [WRAPPER] ATTENTION: DATABASE_URL contient des retours à la ligne (\\n)!"
+    fi
+    # Afficher les premiers et derniers caractères pour debug
+    echo "   🔍 [WRAPPER] DATABASE_URL commence par: ${DATABASE_URL:0:50}..."
+    echo "   🔍 [WRAPPER] DATABASE_URL se termine par: ...${DATABASE_URL: -50}"
+fi
 echo "   JWT_SECRET: ${JWT_SECRET:+✅ Présente (longueur: ${#JWT_SECRET})}"
 echo "   REDIS_URL: ${REDIS_URL:+✅ Présente}"
 echo "   MONGODB_URL: ${MONGODB_URL:+✅ Présente}"
 
+# Tester que le binaire peut s'exécuter (test basique)
+echo "🔍 [WRAPPER] Test d'exécution du binaire (version)..."
+if /app/yukpomnang_backend --version 2>&1; then
+    echo "✅ [WRAPPER] Binaire peut s'exécuter"
+else
+    echo "⚠️ [WRAPPER] Binaire ne peut pas s'exécuter (code: $?)"
+    echo "🔍 [WRAPPER] Informations système:"
+    uname -a
+    ldd /app/yukpomnang_backend 2>&1 | head -10 || echo "ldd non disponible"
+fi
+
+echo "🚀 [WRAPPER] Démarrage application Rust..."
+echo "🔍 [WRAPPER] Toutes les erreurs seront capturées ci-dessous..."
+
 # Utiliser exec pour que Rust devienne le processus principal (PID 1)
 # Rediriger stderr vers stdout pour capturer toutes les erreurs
-exec /app/yukpomnang_backend 2>&1
+# Ne pas utiliser exec immédiatement pour pouvoir capturer les erreurs de démarrage
+/app/yukpomnang_backend 2>&1
+EXIT_CODE=$?
+
+if [ $EXIT_CODE -ne 0 ]; then
+    echo "❌ [WRAPPER] Application Rust a quitté avec le code: $EXIT_CODE"
+    echo "🔍 [WRAPPER] Dernières erreurs capturées ci-dessus"
+    exit $EXIT_CODE
+fi
 
