@@ -486,6 +486,34 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
                 .into());
             }
 
+            // ✅ CRITIQUE 2026-02-18: Vérifier que le socket existe AVANT de tenter la connexion
+            eprintln!(
+                "[MAIN] 🔍 Vérification existence du socket Unix: {}",
+                socket_path
+            );
+            if !Path::new(socket_path).exists() {
+                eprintln!(
+                    "[MAIN] ❌ ERREUR: Le socket Unix n'existe pas: {}",
+                    socket_path
+                );
+                eprintln!("[MAIN] 🔍 Vérification du répertoire /cloudsql/...");
+                if let Ok(entries) = fs::read_dir("/cloudsql") {
+                    eprintln!("[MAIN] 📂 Contenu de /cloudsql/:");
+                    for entry in entries.flatten() {
+                        eprintln!("[MAIN]   - {}", entry.path().display());
+                    }
+                } else {
+                    eprintln!("[MAIN] ❌ Le répertoire /cloudsql/ n'existe pas !");
+                    eprintln!("[MAIN] ⚠️ Cloud SQL Unix socket n'est pas monté dans le conteneur");
+                }
+                return Err(format!(
+                    "Socket Unix Cloud SQL n'existe pas: {} (vérifiez que Cloud Run a la connexion Cloud SQL configurée)",
+                    socket_path
+                )
+                .into());
+            }
+            eprintln!("[MAIN] ✅ Socket Unix existe: {}", socket_path);
+
             log::info!(
                 "🔧 Configuration Cloud SQL: user={}, db={}, socket={}",
                 user,
@@ -493,10 +521,10 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
                 socket_path
             );
 
-            // ✅ CORRIGÉ 2026-02-17: Utiliser PgConnectOptions avec host() pour socket Unix
-            // sqlx/tokio-postgres ne peut PAS parser l'URL avec ?host=/cloudsql/... directement
-            // Il faut construire PgConnectOptions manuellement avec le socket path
-            // Pour les sockets Unix, on utilise host() avec le chemin du socket
+            // ✅ CORRIGÉ 2026-02-18: Pour les sockets Unix, tokio-postgres nécessite un format spécial
+            // Le socket path doit être utilisé comme "host" mais avec un format d'URL spécial
+            // Format: postgresql://user:pass@/db?host=/path/to/socket
+            // Mais sqlx ne peut pas parser ça, donc on construit PgConnectOptions manuellement
             log::info!("🔧 Construction de PgConnectOptions pour Cloud SQL Unix socket");
 
             eprintln!("[MAIN] 🔍 Construction PgConnectOptions:");
@@ -504,10 +532,10 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
             eprintln!("[MAIN]   db_name: {}", db_name);
             eprintln!("[MAIN]   socket_path: {}", socket_path);
 
-            // Construire PgConnectOptions avec le socket Unix
-            // Pour les sockets Unix, on utilise host() avec le chemin du socket
+            // ✅ CORRIGÉ 2026-02-18: Pour les sockets Unix, on utilise host() avec le chemin absolu
+            // tokio-postgres détecte automatiquement que c'est un socket Unix si le chemin commence par /
             let mut connect_options = PgConnectOptions::new()
-                .host(socket_path) // Le socket path est utilisé comme "host" pour Unix socket
+                .host(socket_path) // Pour les sockets Unix, le chemin complet est utilisé comme "host"
                 .username(user)
                 .database(db_name);
 
