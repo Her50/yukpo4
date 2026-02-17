@@ -470,22 +470,43 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 socket_path
             );
 
-            // ✅ CORRIGÉ 2026-02-17: Utiliser l'URL directement avec connect_lazy
-            // sqlx/tokio-postgres peut parser l'URL Cloud SQL avec ?host=/cloudsql/... directement
-            // Il n'est PAS nécessaire de construire PgConnectOptions manuellement
-            // L'URL Cloud SQL est déjà au format correct pour sqlx
-            log::info!(
-                "🔧 Utilisation de l'URL Cloud SQL originale pour connect_lazy (non-bloquant)"
-            );
+            // ✅ CORRIGÉ 2026-02-17: Utiliser PgConnectOptions avec host() pour socket Unix
+            // sqlx/tokio-postgres ne peut PAS parser l'URL avec ?host=/cloudsql/... directement
+            // Il faut construire PgConnectOptions manuellement avec le socket path
+            // Pour les sockets Unix, on utilise host() avec le chemin du socket
+            log::info!("🔧 Construction de PgConnectOptions pour Cloud SQL Unix socket");
 
-            eprintln!(
-                "[MAIN] 🔍 URL finale utilisée pour connect_lazy: {}",
-                db_url
+            eprintln!("[MAIN] 🔍 Construction PgConnectOptions:");
+            eprintln!("[MAIN]   user: {}", user);
+            eprintln!("[MAIN]   db_name: {}", db_name);
+            eprintln!("[MAIN]   socket_path: {}", socket_path);
+
+            // Construire PgConnectOptions avec le socket Unix
+            // Pour les sockets Unix, on utilise host() avec le chemin du socket
+            let mut connect_options = PgConnectOptions::new()
+                .host(socket_path) // Le socket path est utilisé comme "host" pour Unix socket
+                .username(user)
+                .database(db_name);
+
+            // Ajouter le mot de passe si présent (décoder l'URL encoding)
+            if !password.is_empty() {
+                // Le mot de passe peut être URL-encodé (ex: %23 pour #, %25 pour %)
+                // tokio-postgres gère l'URL encoding automatiquement
+                connect_options = connect_options.password(password);
+            }
+
+            // Pour Cloud SQL Unix socket, pas besoin de SSL
+            connect_options = connect_options.ssl_mode(PgSslMode::Disable);
+
+            log::info!(
+                "🔧 PgConnectOptions configuré: socket={}, user={}, db={}",
+                socket_path,
+                user,
+                db_name
             );
-            eprintln!("[MAIN]   Longueur URL: {}", db_url.len());
 
             pool_options
-                .connect_lazy(&db_url)
+                .connect_lazy_with(connect_options)
                 .map_err(|e| {
                     eprintln!(
                         "[MAIN] ❌ ERREUR: Impossible de créer le pool PostgreSQL (Cloud SQL Unix socket): {}",
