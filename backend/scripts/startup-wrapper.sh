@@ -62,12 +62,26 @@ echo "🔍 [WRAPPER] Variables d'environnement critiques:"
 echo "   DATABASE_URL: ${DATABASE_URL:+✅ Présente (longueur: ${#DATABASE_URL})}"
 if [ -n "$DATABASE_URL" ]; then
     # Vérifier s'il y a des retours à la ligne
+    HAS_CR=false
+    HAS_LF=false
     if echo "$DATABASE_URL" | grep -q $'\r'; then
         echo "   ⚠️ [WRAPPER] ATTENTION: DATABASE_URL contient des retours à la ligne (\\r)!"
+        HAS_CR=true
     fi
     if echo "$DATABASE_URL" | grep -q $'\n'; then
         echo "   ⚠️ [WRAPPER] ATTENTION: DATABASE_URL contient des retours à la ligne (\\n)!"
+        HAS_LF=true
     fi
+    
+    # ✅ CRITIQUE 2026-02-17: Nettoyer DATABASE_URL des retours à la ligne
+    # Les retours à la ligne cassent le parsing de l'URL dans Rust et causent "empty host"
+    if [ "$HAS_CR" = true ] || [ "$HAS_LF" = true ]; then
+        ORIGINAL_LEN=${#DATABASE_URL}
+        DATABASE_URL=$(echo "$DATABASE_URL" | tr -d '\r\n' | tr -d '\n' | tr -d '\r')
+        export DATABASE_URL
+        echo "   ✅ [WRAPPER] DATABASE_URL nettoyée (${ORIGINAL_LEN} -> ${#DATABASE_URL} caractères)"
+    fi
+    
     # Afficher les premiers et derniers caractères pour debug
     echo "   🔍 [WRAPPER] DATABASE_URL commence par: ${DATABASE_URL:0:50}..."
     echo "   🔍 [WRAPPER] DATABASE_URL se termine par: ...${DATABASE_URL: -50}"
