@@ -13,7 +13,7 @@ if (-not $env:DATABASE_URL) {
     Write-Host "⚠️  DATABASE_URL non définie" -ForegroundColor Yellow
     Write-Host ""
     Write-Host "Format attendu:" -ForegroundColor Cyan
-    Write-Host "  postgresql://USER:PASSWORD@HOST:PORT/yukpo_postgres?sslmode=require" -ForegroundColor Gray
+    Write-Host "  postgresql://USER:PASSWORD@HOST:PORT/yukpo_db?sslmode=require" -ForegroundColor Gray
     Write-Host ""
     Write-Host "Exemple GCP Cloud SQL (IP publique):" -ForegroundColor Cyan
     Write-Host "  postgresql://yukpo_user:PASSWORD@34.79.199.41:5432/yukpo_postgres?sslmode=require" -ForegroundColor Gray
