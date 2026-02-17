@@ -195,6 +195,18 @@ jobs:
             --remove-env-vars="DATABASE_URL" \
             --project ${{ secrets.GCP_PROJECT_ID }} 2>&1 | grep -v "does not exist\|not found" || true
           
+          # ✅ CRITIQUE: Supprimer aussi DATABASE_URL comme secret pour éviter les conflits de type
+          # Si DATABASE_URL est définie comme secret, on doit la supprimer avant de la redéfinir
+          echo "Suppression de DATABASE_URL comme secret (si elle existe)..."
+          gcloud run services update ${{ env.SERVICE_NAME }} \
+            --region ${{ env.REGION }} \
+            --remove-secrets="DATABASE_URL" \
+            --project ${{ secrets.GCP_PROJECT_ID }} 2>&1 | grep -v "does not exist\|not found" || true
+          
+          # Attendre un peu pour que les suppressions soient prises en compte
+          echo "⏳ Attente que les suppressions soient prises en compte (2 secondes)..."
+          sleep 2
+          
           # Construire la liste des variables d'environnement depuis env-vars.json (sans les secrets)
           echo "Construction de la liste des variables d'environnement..."
           if command -v jq &> /dev/null; then
