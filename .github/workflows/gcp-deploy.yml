@@ -130,10 +130,17 @@ jobs:
           fi
           
           # Ajouter toutes les variables avec prefixe GCP_ENV_
+          # EXCLURE les variables qui sont gérées comme secrets: DATABASE_URL, REDIS_URL, MONGODB_URL, JWT_SECRET
+          SECRET_VARS="DATABASE_URL|REDIS_URL|MONGODB_URL|JWT_SECRET"
           if command -v gh &> /dev/null; then
             gh auth status || gh auth login --with-token <<< "${{ secrets.GITHUB_TOKEN }}"
             for secret in $(gh secret list --repo ${{ github.repository }} --json name -q '.[].name' | grep "^GCP_ENV_"); do
               VAR_NAME=$(echo $secret | sed 's/^GCP_ENV_//')
+              # Ignorer les variables qui sont des secrets
+              if echo "$VAR_NAME" | grep -qE "^($SECRET_VARS)$"; then
+                echo "Skipping $VAR_NAME (managed as secret)"
+                continue
+              fi
               VAR_VALUE=$(gh secret get $secret --repo ${{ github.repository }} 2>/dev/null || echo "")
               if [ -n "$VAR_VALUE" ]; then
                 if command -v jq &> /dev/null; then
