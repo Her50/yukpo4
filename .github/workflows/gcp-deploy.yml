@@ -181,6 +181,14 @@ jobs:
             --clear-env-vars \
             --project ${{ secrets.GCP_PROJECT_ID }} 2>&1 | grep -v "does not exist" || true
           
+          # ✅ CRITIQUE: Supprimer spécifiquement DATABASE_URL comme variable d'environnement si elle existe
+          # pour éviter le conflit "Cannot update environment variable [DATABASE_URL] to string literal because it has already been set with a different type"
+          echo "Suppression de DATABASE_URL comme variable d'environnement (si elle existe)..."
+          gcloud run services update ${{ env.SERVICE_NAME }} \
+            --region ${{ env.REGION }} \
+            --remove-env-vars="DATABASE_URL" \
+            --project ${{ secrets.GCP_PROJECT_ID }} 2>&1 | grep -v "does not exist\|not found" || true
+          
           # Construire la liste des variables d'environnement depuis env-vars.json (sans les secrets)
           echo "Construction de la liste des variables d'environnement..."
           if command -v jq &> /dev/null; then
