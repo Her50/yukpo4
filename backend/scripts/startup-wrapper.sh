@@ -24,23 +24,13 @@ echo "🛑 [WRAPPER] Arrêt du serveur Python pour libérer le port..."
 kill $HEALTH_PID 2>/dev/null || true
 # Attendre que le processus Python se termine complètement
 wait $HEALTH_PID 2>/dev/null || true
-# Attendre un peu plus pour que le port soit vraiment libéré par le système
-sleep 3
+# Attendre que le port soit vraiment libéré par le système
+echo "⏳ [WRAPPER] Attente libération du port (5 secondes)..."
+sleep 5
 echo "✅ [WRAPPER] Port libéré, démarrage de Rust..."
 
-# Vérifier que le port est vraiment libre avant de démarrer Rust
-echo "🔍 [WRAPPER] Vérification que le port 8080 est libre..."
-for i in {1..5}; do
-    if ! lsof -i :8080 >/dev/null 2>&1 && ! netstat -tuln 2>/dev/null | grep -q ":8080 "; then
-        echo "✅ [WRAPPER] Port 8080 est libre (vérification $i)"
-        break
-    else
-        echo "⏳ [WRAPPER] Port 8080 encore occupé, attente... (vérification $i)"
-        sleep 1
-    fi
-done
-
 # Maintenant démarrer Rust (qui va pouvoir bind sur le port libre)
+# Utiliser exec pour que Rust devienne le processus principal (PID 1)
 echo "🚀 [WRAPPER] Démarrage application Rust..."
 exec /app/yukpomnang_backend
 

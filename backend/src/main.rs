@@ -102,36 +102,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Donc Rust n'a pas besoin d'attendre, le port devrait être libre
     let health_server_handle = if is_cloud_run {
         eprintln!(
-            "[MAIN] ℹ️  Cloud Run: Le wrapper Python a déjà libéré le port, vérification rapide..."
+            "[MAIN] ℹ️  Cloud Run: Le wrapper Python a déjà libéré le port, on continue directement..."
         );
-
-        // Vérification rapide que le port est libre (le wrapper a déjà attendu)
-        let mut retries = 0;
-        const MAX_RETRIES: u32 = 5; // Seulement 5 secondes max (le wrapper a déjà attendu)
-
-        loop {
-            match tokio::net::TcpListener::bind(addr).await {
-                Ok(_) => {
-                    eprintln!("[MAIN] ✅ Port 8080 libre, on peut continuer");
-                    break;
-                }
-                Err(_) => {
-                    if retries < MAX_RETRIES - 1 {
-                        eprintln!(
-                            "[MAIN] ⏳ Port 8080 encore occupé (tentative {}), attente...",
-                            retries + 1
-                        );
-                        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-                        retries += 1;
-                    } else {
-                        eprintln!("[MAIN] ⚠️  Port 8080 toujours occupé après {} tentatives, on continue quand même...", MAX_RETRIES);
-                        break;
-                    }
-                }
-            }
-        }
-
         // Ne PAS créer de serveur minimal dans Rust, le wrapper Python le gère
+        // Le port est déjà libre, on peut continuer directement
         None
     } else {
         eprintln!("[MAIN] 🚀 Pas Cloud Run: Démarrage serveur HTTP minimal pour health check...");
