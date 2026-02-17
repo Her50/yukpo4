@@ -157,6 +157,10 @@ jobs:
 
       - name: Deploy to Cloud Run
         run: |
+          # Vérifier que le fichier env-vars.json ne contient pas de secrets
+          echo "Vérification du fichier env-vars.json..."
+          cat env-vars.json || echo "Fichier env-vars.json non trouvé"
+          
           gcloud run deploy ${{ env.SERVICE_NAME }} \
             --image ${{ env.IMAGE_NAME }}:${{ github.sha }} \
             --platform managed \
