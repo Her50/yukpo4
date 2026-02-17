@@ -153,18 +153,25 @@ jobs:
             done
           fi
           
-          echo "env_file=env-vars.json" >> $GITHUB_OUTPUT
-
-      - name: Deploy to Cloud Run
-        run: |
-          # Nettoyer env-vars.json pour retirer les secrets (au cas où ils seraient ajoutés via GCP_ENV_*)
-          echo "Nettoyage du fichier env-vars.json (retrait des secrets)..."
+          # ✅ CRITIQUE: Nettoyer env-vars.json pour retirer TOUS les secrets (au cas où ils seraient présents)
+          echo "Nettoyage final de env-vars.json (retrait des secrets)..."
           if command -v jq &> /dev/null; then
             jq 'del(.DATABASE_URL, .REDIS_URL, .MONGODB_URL, .JWT_SECRET)' env-vars.json > env-vars-clean.json && mv env-vars-clean.json env-vars.json
             echo "✅ Fichier env-vars.json nettoyé"
           else
             echo "⚠️ jq non disponible, nettoyage manuel impossible"
           fi
+          
+          # Afficher le contenu final pour debug
+          echo "Contenu final de env-vars.json:"
+          cat env-vars.json
+          
+          echo "env_file=env-vars.json" >> $GITHUB_OUTPUT
+
+      - name: Deploy to Cloud Run
+        run: |
+          # Le nettoyage a déjà été fait dans l'étape précédente
+          echo "Déploiement vers Cloud Run..."
           
           gcloud run deploy ${{ env.SERVICE_NAME }} \
             --image ${{ env.IMAGE_NAME }}:${{ github.sha }} \
