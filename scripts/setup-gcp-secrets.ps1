@@ -62,25 +62,36 @@ function Create-Secret {
     
     # Vérifier si le secret existe déjà
     $existing = gcloud secrets describe $SecretName --project=$ProjectId 2>&1
-    if ($LASTEXITCODE -eq 0) {
-        Write-Host "⚠️  Le secret $SecretName existe déjà" -ForegroundColor Yellow
-        $update = Read-Host "Voulez-vous le mettre à jour? (o/N)"
-        if ($update -eq "o" -or $update -eq "O") {
-            Write-Host "📝 Mise à jour du secret $SecretName..." -ForegroundColor Cyan
-            echo -n $SecretValue | gcloud secrets versions add $SecretName `
-                --data-file=- `
-                --project=$ProjectId
-            Write-Host "✅ Secret $SecretName mis à jour" -ForegroundColor Green
+    # ✅ CORRECTION: Utiliser un fichier temporaire pour éviter les retours à la ligne
+    # echo -n ne fonctionne pas dans PowerShell (le -n est ignoré)
+    $tempFile = [System.IO.Path]::GetTempFileName()
+    try {
+        [System.IO.File]::WriteAllText($tempFile, $SecretValue, [System.Text.Encoding]::UTF8)
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "⚠️  Le secret $SecretName existe déjà" -ForegroundColor Yellow
+            $update = Read-Host "Voulez-vous le mettre à jour? (o/N)"
+            if ($update -eq "o" -or $update -eq "O") {
+                Write-Host "📝 Mise à jour du secret $SecretName..." -ForegroundColor Cyan
+                gcloud secrets versions add $SecretName `
+                    --data-file=$tempFile `
+                    --project=$ProjectId
+                Write-Host "✅ Secret $SecretName mis à jour" -ForegroundColor Green
+            } else {
+                Write-Host "⏭️  Secret $SecretName ignoré" -ForegroundColor Yellow
+                return
+            }
         } else {
-            Write-Host "⏭️  Secret $SecretName ignoré" -ForegroundColor Yellow
-            return
+            # Créer le secret
+            gcloud secrets create $SecretName `
+                --data-file=$tempFile `
+                --replication-policy="automatic" `
+                --project=$ProjectId
         }
-    } else {
-        # Créer le secret
-        echo -n $SecretValue | gcloud secrets create $SecretName `
-            --data-file=- `
-            --replication-policy="automatic" `
-            --project=$ProjectId
+    } finally {
+        if (Test-Path $tempFile) {
+            Remove-Item $tempFile -Force
+        }
+    }
         
         if ($LASTEXITCODE -eq 0) {
             Write-Host "✅ Secret $SecretName créé" -ForegroundColor Green

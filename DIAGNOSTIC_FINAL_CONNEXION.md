@@ -1,88 +1,81 @@
-# 🔍 Diagnostic Final - Connexion Mobile → Backend
+# 🔍 Diagnostic Final - Échec de Connexion
 
-**Date**: 2026-02-02
+**Date** : 17 Février 2026 22:35
 
-## ✅ Configuration Réussie
+---
 
-### 1. CORS dans ECS ✅
-- Task Definition: `yukpomnang-backend:4`
-- `ALLOWED_ORIGINS=*` configuré
-- Service ECS: ACTIVE (2/2 tâches RUNNING et HEALTHY)
+## 🔍 Problème Identifié
 
-### 2. Security Groups ✅
-- HTTPS (443): Autorisé depuis 0.0.0.0/0
-- HTTP (80): Autorisé depuis 0.0.0.0/0
+### La Révision Active Utilise l'Ancienne Version du Secret
 
-### 3. Backend Opérationnel ✅
-- Targets: 2 healthy sur port 3001
-- Backend répond aux requêtes (401 pour credentials invalides = normal)
+**Découverte** :
+- **Révision active** : `yukpo-backend-00199-cfs`
+- **Créée** : 21:25 UTC (avant la version 10 du secret)
+- **Secret version 10** : Créée à 22:12 UTC
 
-## 🚨 Problème Principal Identifié
-
-### ALB Configuration Incomplète
-
-**Problème** :
-- ❌ **Pas de listener HTTPS (443)** sur l'ALB
-- ✅ Seulement listener HTTP (80) configuré
-
-**Impact** :
-- Le mobile utilise `https://` (port 443)
-- L'ALB n'écoute que sur HTTP (port 80)
-- **Résultat** : Connexions HTTPS échouent
-
-## 📊 Tests Effectués
-
-### Tests HTTP (port 80) ✅
-- `/api/auth/login` (POST): ✅ Backend répond (401 = credentials invalides, normal)
-- `/api/health`: ❌ 404 (endpoint peut ne pas exister)
-- CORS: ✅ Backend répond (pas de headers CORS visibles dans PowerShell mais backend fonctionne)
-
-### Tests HTTPS (port 443) ❌
-- Tous échouent : "Impossible de se connecter au serveur distant"
-- **Cause** : Pas de listener HTTPS configuré
-
-## 🔧 Solution Requise
-
-### Option 1: Ajouter Listener HTTPS (Recommandé)
-
-**Étapes** :
-1. Créer un certificat SSL/TLS dans AWS Certificate Manager (ACM)
-2. Ajouter un listener HTTPS (443) sur l'ALB
-3. Configurer la redirection HTTP → HTTPS (optionnel)
-
-**Commande AWS CLI** :
-```bash
-# 1. Créer/chercher certificat ACM
-aws acm list-certificates --region us-east-1
-
-# 2. Ajouter listener HTTPS
-aws elbv2 create-listener \
-  --load-balancer-arn <ALB_ARN> \
-  --protocol HTTPS \
-  --port 443 \
-  --certificates CertificateArn=<CERTIFICATE_ARN> \
-  --default-actions Type=forward,TargetGroupArn=<TARGET_GROUP_ARN> \
-  --region us-east-1
+**Logs observés** :
+```
+[2026-02-17T21:25:54] ⚠️ [WRAPPER] ATTENTION: DATABASE_URL contient des retours à la ligne (\n)!
+[2026-02-17T21:25:56] ✅ [WRAPPER] DATABASE_URL nettoyée (124 -> 124 caractères)
 ```
 
-### Option 2: Modifier Mobile pour HTTP (Non Recommandé)
+**Problème** :
+- La révision a été créée avec une ancienne version du secret
+- Même si le wrapper nettoie, le secret dans Secret Manager contient toujours des retours à la ligne
+- Cloud Run réutilise la même révision si l'image Docker n'a pas changé
 
-**⚠️ Non sécurisé** : Modifier `production.json` pour utiliser HTTP au lieu de HTTPS.
+---
 
-## 📝 Résumé
+## ✅ Solution Appliquée
 
-**Configuration** : ✅ CORS et Security Groups corrects  
-**Backend** : ✅ Opérationnel et répond  
-**Problème** : ❌ Pas de listener HTTPS sur ALB  
-**Solution** : Ajouter listener HTTPS (443) avec certificat SSL
+### 1. Forcer une Nouvelle Révision
 
-## 🎯 Actions Immédiates
+**Action** : Modifier une variable d'environnement pour forcer Cloud Run à créer une nouvelle révision
 
-1. ✅ CORS configuré dans ECS
-2. ✅ Security Groups vérifiés
-3. ⚠️ **Ajouter listener HTTPS (443) sur ALB** (action requise)
-4. ⏳ Tester depuis le mobile après ajout du listener
+**Commande** :
+```bash
+gcloud run services update yukpo-backend \
+  --region=europe-west1 \
+  --project=yukpo-project \
+  --update-env-vars="SECRET_VERSION_FORCE_RELOAD=$(date +%Y%m%d%H%M%S)"
+```
 
+**Résultat attendu** :
+- Nouvelle révision créée
+- Version 10 du secret chargée (propre, sans retours à la ligne)
+- Le wrapper ne devrait plus détecter de retours à la ligne
 
+---
 
+## 📊 Vérifications
 
+### 1. Secret Version 10
+
+- ✅ Longueur : 122 caractères
+- ✅ Contient CR : False
+- ✅ Contient LF : False
+- ✅ Vérifié via API REST
+
+### 2. Nouvelle Révision
+
+- ⏳ En cours de création
+- ⏳ Vérification des logs DATABASE_URL en cours
+
+### 3. Erreurs PostgreSQL
+
+- ⏳ Vérification des erreurs récentes en cours
+
+---
+
+## 🎯 Résultat Attendu
+
+Après création de la nouvelle révision :
+- ✅ Nouvelle révision avec version 10 du secret
+- ✅ Pas de retours à la ligne détectés par le wrapper
+- ✅ Connexion à PostgreSQL réussie
+- ✅ Login fonctionnel
+
+---
+
+**Date** : 17 Février 2026 22:35 UTC  
+**Statut** : 🔄 Nouvelle révision en cours de création

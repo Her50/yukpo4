@@ -147,20 +147,31 @@ function Create-GcpSecret {
     
     # Vérifier si le secret existe déjà
     $existing = gcloud secrets describe $SecretName --project=$GcpProjectId 2>&1
-    if ($LASTEXITCODE -eq 0) {
-        Write-Host "  ⚠️  Secret $SecretName existe déjà, ajout d'une nouvelle version..." -ForegroundColor Yellow
-        echo -n $SecretValue | gcloud secrets versions add $SecretName `
-            --data-file=- `
-            --project=$GcpProjectId 2>&1 | Out-Null
-    } else {
-        # Créer le secret
-        if ([string]::IsNullOrEmpty($Description)) {
-            $Description = "Migré depuis AWS - $SecretName"
+    # ✅ CORRECTION: Utiliser un fichier temporaire pour éviter les retours à la ligne
+    # echo -n ne fonctionne pas dans PowerShell (le -n est ignoré)
+    $tempFile = [System.IO.Path]::GetTempFileName()
+    try {
+        [System.IO.File]::WriteAllText($tempFile, $SecretValue, [System.Text.Encoding]::UTF8)
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "  ⚠️  Secret $SecretName existe déjà, ajout d'une nouvelle version..." -ForegroundColor Yellow
+            gcloud secrets versions add $SecretName `
+                --data-file=$tempFile `
+                --project=$GcpProjectId 2>&1 | Out-Null
+        } else {
+            # Créer le secret
+            if ([string]::IsNullOrEmpty($Description)) {
+                $Description = "Migré depuis AWS - $SecretName"
+            }
+            gcloud secrets create $SecretName `
+                --data-file=$tempFile `
+                --replication-policy="automatic" `
+                --project=$GcpProjectId 2>&1 | Out-Null
         }
-        echo -n $SecretValue | gcloud secrets create $SecretName `
-            --data-file=- `
-            --replication-policy="automatic" `
-            --project=$GcpProjectId 2>&1 | Out-Null
+    } finally {
+        if (Test-Path $tempFile) {
+            Remove-Item $tempFile -Force
+        }
+    }
         
         if ($LASTEXITCODE -ne 0) {
             Write-Host "  ❌ Erreur lors de la création du secret $SecretName" -ForegroundColor Red

@@ -43,19 +43,29 @@ function Create-Secret {
     
     # Verifier si existe
     $exists = gcloud secrets describe $SecretName --project=$GcpProjectId 2>&1
-    if ($LASTEXITCODE -eq 0) {
-        Write-Host "    Secret existe, ajout nouvelle version..." -ForegroundColor Yellow
-        echo -n $SecretValue | gcloud secrets versions add $SecretName `
-            --data-file=- `
-            --project=$GcpProjectId 2>&1 | Out-Null
-    } else {
-        if ([string]::IsNullOrEmpty($Description)) {
-            $Description = "Secret migre depuis GitHub - $SecretName"
+    # ✅ CORRECTION: Utiliser un fichier temporaire pour éviter les retours à la ligne
+    # echo -n ne fonctionne pas dans PowerShell (le -n est ignoré)
+    $tempFile = [System.IO.Path]::GetTempFileName()
+    try {
+        [System.IO.File]::WriteAllText($tempFile, $SecretValue, [System.Text.Encoding]::UTF8)
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "    Secret existe, ajout nouvelle version..." -ForegroundColor Yellow
+            gcloud secrets versions add $SecretName `
+                --data-file=$tempFile `
+                --project=$GcpProjectId 2>&1 | Out-Null
+        } else {
+            if ([string]::IsNullOrEmpty($Description)) {
+                $Description = "Secret migre depuis GitHub - $SecretName"
+            }
+            gcloud secrets create $SecretName `
+                --data-file=$tempFile `
+                --replication-policy="automatic" `
+                --project=$GcpProjectId 2>&1 | Out-Null
         }
-        echo -n $SecretValue | gcloud secrets create $SecretName `
-            --data-file=- `
-            --replication-policy="automatic" `
-            --project=$GcpProjectId 2>&1 | Out-Null
+    } finally {
+        if (Test-Path $tempFile) {
+            Remove-Item $tempFile -Force
+        }
     }
     
     if ($LASTEXITCODE -eq 0) {

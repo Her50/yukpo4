@@ -52,19 +52,29 @@ function Create-GcpSecretFromGitHub {
             
             # Verifier si le secret existe
             $exists = gcloud secrets describe $GcpSecretName --project=$GcpProjectId 2>&1
-            if ($LASTEXITCODE -eq 0) {
-                Write-Host "  Secret existe, ajout nouvelle version..." -ForegroundColor Yellow
-                echo -n $value | gcloud secrets versions add $GcpSecretName `
-                    --data-file=- `
-                    --project=$GcpProjectId 2>&1 | Out-Null
-            } else {
-                if ([string]::IsNullOrEmpty($Description)) {
-                    $Description = "Migre depuis GitHub - $GitHubSecretName"
+            # ✅ CORRECTION: Utiliser un fichier temporaire pour éviter les retours à la ligne
+            # echo -n ne fonctionne pas dans PowerShell (le -n est ignoré)
+            $tempFile = [System.IO.Path]::GetTempFileName()
+            try {
+                [System.IO.File]::WriteAllText($tempFile, $value, [System.Text.Encoding]::UTF8)
+                if ($LASTEXITCODE -eq 0) {
+                    Write-Host "  Secret existe, ajout nouvelle version..." -ForegroundColor Yellow
+                    gcloud secrets versions add $GcpSecretName `
+                        --data-file=$tempFile `
+                        --project=$GcpProjectId 2>&1 | Out-Null
+                } else {
+                    if ([string]::IsNullOrEmpty($Description)) {
+                        $Description = "Migre depuis GitHub - $GitHubSecretName"
+                    }
+                    gcloud secrets create $GcpSecretName `
+                        --data-file=$tempFile `
+                        --replication-policy="automatic" `
+                        --project=$GcpProjectId 2>&1 | Out-Null
                 }
-                echo -n $value | gcloud secrets create $GcpSecretName `
-                    --data-file=- `
-                    --replication-policy="automatic" `
-                    --project=$GcpProjectId 2>&1 | Out-Null
+            } finally {
+                if (Test-Path $tempFile) {
+                    Remove-Item $tempFile -Force
+                }
             }
             
             if ($LASTEXITCODE -eq 0) {

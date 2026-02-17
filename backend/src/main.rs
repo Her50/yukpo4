@@ -21,8 +21,26 @@ use yukpomnang_backend::services::specialized_notifications::check_and_notify_ph
 use yukpomnang_backend::services::specialized_services_optimizer::start_optimization_task;
 use yukpomnang_backend::tasks;
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+// ✅ CRITIQUE 2026-02-17: Gérer --version AVANT tokio::main
+// Le wrapper teste --version pour vérifier que le binaire fonctionne
+// Si --version n'est pas géré, le binaire essaie de démarrer normalement et peut crash
+fn main() {
+    // Gérer --version AVANT tokio::main pour éviter un crash silencieux
+    let args: Vec<String> = std::env::args().collect();
+    if args.len() > 1 && args[1] == "--version" {
+        println!("yukpomnang_backend {}", env!("CARGO_PKG_VERSION"));
+        std::process::exit(0);
+    }
+
+    // Maintenant initialiser tokio et exécuter async_main
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    if let Err(e) = rt.block_on(async_main()) {
+        eprintln!("[MAIN] ❌ Erreur fatale: {}", e);
+        std::process::exit(1);
+    }
+}
+
+async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
     // ✅ CRITIQUE: Logs IMMÉDIATS sur stderr AVANT toute initialisation
     // Ces logs apparaîtront même si le logging n'est pas initialisé
     // ✅ 2026-02-17: Ajout log de diagnostic pour vérifier que Rust démarre

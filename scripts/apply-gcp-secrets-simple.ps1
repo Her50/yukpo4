@@ -47,17 +47,27 @@ foreach ($secret in $secrets) {
         
         # Verifier si le secret existe
         $exists = gcloud secrets describe $secret.Name --project=$GcpProjectId 2>&1
-        if ($LASTEXITCODE -eq 0) {
-            Write-Host "  Secret existe deja, ajout d'une nouvelle version..." -ForegroundColor Yellow
-            echo -n $plainValue | gcloud secrets versions add $secret.Name `
-                --data-file=- `
-                --project=$GcpProjectId 2>&1 | Out-Null
-        } else {
-            Write-Host "  Creation du secret..." -ForegroundColor Cyan
-            echo -n $plainValue | gcloud secrets create $secret.Name `
-                --data-file=- `
-                --replication-policy="automatic" `
-                --project=$GcpProjectId 2>&1 | Out-Null
+        # ✅ CORRECTION: Utiliser un fichier temporaire pour éviter les retours à la ligne
+        # echo -n ne fonctionne pas dans PowerShell (le -n est ignoré)
+        $tempFile = [System.IO.Path]::GetTempFileName()
+        try {
+            [System.IO.File]::WriteAllText($tempFile, $plainValue, [System.Text.Encoding]::UTF8)
+            if ($LASTEXITCODE -eq 0) {
+                Write-Host "  Secret existe deja, ajout d'une nouvelle version..." -ForegroundColor Yellow
+                gcloud secrets versions add $secret.Name `
+                    --data-file=$tempFile `
+                    --project=$GcpProjectId 2>&1 | Out-Null
+            } else {
+                Write-Host "  Creation du secret..." -ForegroundColor Cyan
+                gcloud secrets create $secret.Name `
+                    --data-file=$tempFile `
+                    --replication-policy="automatic" `
+                    --project=$GcpProjectId 2>&1 | Out-Null
+            }
+        } finally {
+            if (Test-Path $tempFile) {
+                Remove-Item $tempFile -Force
+            }
         }
         
         if ($LASTEXITCODE -eq 0) {

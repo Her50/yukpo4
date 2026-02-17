@@ -52,7 +52,17 @@ Write-Host ""
 
 # Mettre à jour le secret
 Write-Host "Mise a jour du secret database-url..." -ForegroundColor Cyan
-echo -n $databaseUrl | gcloud secrets versions add database-url --data-file=- --project=$GcpProjectId 2>&1 | Out-Null
+# ✅ CORRECTION: Utiliser un fichier temporaire pour éviter les retours à la ligne
+# echo -n ne fonctionne pas dans PowerShell (le -n est ignoré)
+$tempFile = [System.IO.Path]::GetTempFileName()
+try {
+    [System.IO.File]::WriteAllText($tempFile, $databaseUrl, [System.Text.Encoding]::UTF8)
+    gcloud secrets versions add database-url --data-file=$tempFile --project=$GcpProjectId 2>&1 | Out-Null
+} finally {
+    if (Test-Path $tempFile) {
+        Remove-Item $tempFile -Force
+    }
+}
 
 if ($LASTEXITCODE -eq 0) {
     Write-Host "✅ Secret database-url mis a jour" -ForegroundColor Green
@@ -66,8 +76,12 @@ Write-Host "  - REDIS_URL: Doit pointer vers Cloud Memorystore Redis" -Foregroun
 Write-Host "  - MONGODB_URL: Doit pointer vers votre instance MongoDB" -ForegroundColor Yellow
 Write-Host "  - JWT_SECRET: Doit etre une cle secrete aleatoire (generer avec: openssl rand -hex 32)" -ForegroundColor Yellow
 Write-Host ""
-Write-Host "Commandes pour mettre a jour:" -ForegroundColor Cyan
-Write-Host "echo -n 'VOTRE_REDIS_URL' | gcloud secrets versions add redis-url --data-file=- --project=$GcpProjectId"
-Write-Host "echo -n 'VOTRE_MONGODB_URL' | gcloud secrets versions add mongodb-url --data-file=- --project=$GcpProjectId"
-Write-Host "echo -n 'VOTRE_JWT_SECRET' | gcloud secrets versions add jwt-secret --data-file=- --project=$GcpProjectId"
+Write-Host "Commandes pour mettre a jour (PowerShell):" -ForegroundColor Cyan
+Write-Host "# Utiliser un fichier temporaire pour eviter les retours a la ligne"
+Write-Host "`$tempFile = [System.IO.Path]::GetTempFileName()"
+Write-Host "[System.IO.File]::WriteAllText(`$tempFile, 'VOTRE_REDIS_URL', [System.Text.Encoding]::UTF8)"
+Write-Host "gcloud secrets versions add redis-url --data-file=`$tempFile --project=$GcpProjectId"
+Write-Host "Remove-Item `$tempFile -Force"
+Write-Host ""
+Write-Host "# Note: echo -n ne fonctionne PAS dans PowerShell (le -n est ignore)"
 
