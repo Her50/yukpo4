@@ -26,8 +26,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // ✅ CRITIQUE: Logs IMMÉDIATS sur stderr AVANT toute initialisation
     // Ces logs apparaîtront même si le logging n'est pas initialisé
     // ✅ 2026-02-17: Ajout log de diagnostic pour vérifier que Rust démarre
+    // ✅ CRITIQUE 2026-02-17: Forcer le flush immédiat pour Cloud Run
+    use std::io::Write;
+    let _ = std::io::stderr().flush();
     eprintln!("[MAIN] 🚀 Application Rust démarre - Point d'entrée atteint");
+    let _ = std::io::stderr().flush();
     eprintln!("[MAIN] 🔍 Vérification des variables d'environnement critiques...");
+    let _ = std::io::stderr().flush();
 
     // Vérifier les variables critiques AVANT toute autre opération
     let db_url_ok = std::env::var("DATABASE_URL").is_ok();

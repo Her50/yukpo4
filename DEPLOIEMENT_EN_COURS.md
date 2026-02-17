@@ -1,224 +1,165 @@
-# 🚀 DÉPLOIEMENT EN COURS
+# 🚀 Déploiement GCP en Cours
 
-## ✅ Actions Réalisées
+**Date** : 17 Février 2026  
+**Statut** : ✅ Déclenché
 
-### 1. **Commit Git** ✅
+---
+
+## 📦 Commit Déclencheur
+
+- **Commit** : `bca58c5`
+- **Message** : "chore: Trigger GCP deployment - apply latest compilation fixes"
+- **Branche** : `master`
+- **Poussé vers** : `origin/master`
+
+---
+
+## 🔄 Workflow Déclenché
+
+Le workflow **"Deploy to Google Cloud Platform"** devrait se déclencher automatiquement car :
+- ✅ Commit sur la branche `master`
+- ✅ Modification dans `backend/.deploy-trigger`
+- ✅ Le workflow surveille les changements dans `backend/**`
+
+---
+
+## ⏱️ Temps Estimé
+
+- **Build Docker** : ~5-8 minutes
+- **Push vers Artifact Registry** : ~1-2 minutes
+- **Déploiement Cloud Run** : ~2-3 minutes
+- **Total** : ~10-15 minutes
+
+---
+
+## 📊 Suivi du Déploiement
+
+### 1. GitHub Actions
+
+**URL** : https://github.com/Her50/yukpo4/actions
+
+**Workflow** : "Deploy to Google Cloud Platform"
+
+**Étapes à surveiller** :
+1. ✅ Checkout repository
+2. ✅ Authenticate to Google Cloud
+3. ✅ Build Docker image
+4. ✅ Push to Artifact Registry
+5. ✅ Deploy to Cloud Run
+6. ✅ Get Service URL
+
+### 2. Cloud Run
+
+**Vérifier la nouvelle révision** :
 ```bash
-git add .
-git commit -m "feat: Recherche image IA multi-modèles + facturation + config catégories intelligentes"
+gcloud run revisions list \
+  --service=yukpo-backend \
+  --region=europe-west1 \
+  --limit=3
 ```
 
-**Résultat**: 
-- 108 fichiers modifiés
-- 39,361 insertions
-- 1,817 suppressions
-
-**Fichiers principaux ajoutés**:
-- `backend/src/services/intelligent_image_analysis_service.rs`
-- `backend/migrations/20251021_add_ai_image_analysis.sql`
-- `mobile/src/config/categoryConfig.ts`
-- `frontend/src/config/categoryConfig.ts`
-- Documentation complète (30+ fichiers MD)
-
-### 2. **Push vers GitHub** ✅
+**Vérifier les logs** :
 ```bash
-git push origin master
+gcloud logging read \
+  "resource.type=cloud_run_revision AND resource.labels.service_name=yukpo-backend" \
+  --limit=20 \
+  --freshness=20m \
+  --format="table(timestamp,severity,textPayload)"
 ```
 
-**Résultat**: 
-- 137 objets compressés et envoyés
-- 343.15 KiB transférés
-- Push sur `master` → `origin/master`
+---
 
-### 3. **Configuration Netlify** ✅
+## ✅ Vérifications Post-Déploiement
 
-**Fichier**: `netlify.toml`
+### 1. Vérifier la Nouvelle Révision
 
-```toml
-[build]
-  publish = "frontend/dist"
-  command = "cd frontend && npm install && npm run build"
-
-[build.environment]
-  VITE_APP_API_URL = "https://yukpomnang.onrender.com"
-  VITE_APP_ENV = "production"
-```
-
-**Déploiement**: 
-- ✅ Automatique via GitHub webhook
-- ✅ Build frontend React + Vite
-- ✅ Redirections API vers backend Render
-- ✅ Headers CORS configurés
-
-### 4. **Build Mobile Android** 🔄 (EN COURS)
 ```bash
-cd mobile
-npx eas build --platform android --profile preview --non-interactive
+gcloud run services describe yukpo-backend \
+  --region=europe-west1 \
+  --format="value(status.latestReadyRevisionName)"
 ```
 
-**Status**: Build en cours d'exécution en arrière-plan
+**Attendu** : Une nouvelle révision (ex: `yukpo-backend-00174-xxx`)
 
----
+### 2. Tester l'Endpoint de Santé
 
-## 📦 Contenu du Déploiement
-
-### Backend (Rust + Axum)
-- ✅ Service d'analyse image IA multi-modèles
-- ✅ Recherche intelligente par image avec scoring
-- ✅ Facturation conditionnelle (×10 du coût IA)
-- ✅ Support multi-devises (XAF, EUR, USD)
-- ✅ Compatible `sqlx offline`
-- ✅ Migrations SQL pour colonnes IA dans `media`
-
-### Frontend (React + TypeScript)
-- ✅ Toast de confirmation recherche image
-- ✅ Gestion erreur solde insuffisant
-- ✅ Affichage analyse IA et billing
-- ✅ Configuration catégories intelligentes (16 catégories)
-
-### Mobile (React Native)
-- ✅ Alert de confirmation avec détails facturation
-- ✅ Configuration catégories par produit
-- ✅ Terminologie adaptée par catégorie
-- ✅ Filtres dynamiques par catégorie
-- ✅ Support WhatsApp pour contact prestataire
-
----
-
-## 🎯 Nouvelles Fonctionnalités
-
-### 1. **Recherche Image IA** 🖼️
-- Analyse automatique des images avec GPT-4o/Claude/Gemini
-- Prompts adaptés à 16 catégories de produits
-- Extraction: description, tags, marque, couleurs, caractéristiques
-- Recherche PostgreSQL full-text avec scoring multi-critères
-
-### 2. **Facturation Intelligente** 💰
-```
-Formule: Coût_User = (Coût_IA_USD × 10) × Taux_Change
-Exemple: $0.007 × 10 × 600 = 42 XAF (arrondi 50 XAF)
-Facturation: UNIQUEMENT si résultats > 0
-```
-
-### 3. **Configuration Catégories** 📋
-16 catégories configurées :
-1. Vêtement
-2. Chaussure
-3. Automobile
-4. Immobilier
-5. Électroménager
-6. Mobilier
-7. Aliments
-8. Pharmacie
-9. Bijoux
-10. Cosmétique & Parfum
-11. Coiffure & Beauté
-12. Hôpital/Clinique
-13. Quincaillerie
-14. Prestation de Service
-15. Déménagement
-16. Assurance
-
-**Pour chaque catégorie**:
-- ✅ Terminologie adaptée (productLabel, priceLabel, actionButton, etc.)
-- ✅ Filtres spécifiques (select, multiselect, range, toggle)
-- ✅ Champs d'affichage prioritaires et secondaires
-- ✅ Layout de carte (vertical, horizontal, grid)
-- ✅ Message WhatsApp personnalisé
-- ✅ Icône et couleur distinctive
-
----
-
-## 🌐 URLs de Déploiement
-
-### Frontend (Netlify)
-**URL**: À vérifier sur Netlify Dashboard
-- Se déclenche automatiquement après le push Git
-- Build: ~2-5 minutes
-- Logs disponibles sur: https://app.netlify.com
-
-### Backend (Render)
-**URL**: https://yukpomnang.onrender.com
-- Déjà déployé et fonctionnel
-- API endpoints: `/api/search/direct`, `/api/services/create`, etc.
-
-### Mobile (EAS Build)
-**Status**: Build en cours
-- Profil: `preview`
-- Plateforme: Android
-- Téléchargement: Lien fourni à la fin du build (~10-20 minutes)
-
----
-
-## 🔍 Vérifications à Faire
-
-### 1. **Netlify**
 ```bash
-# Vérifier le déploiement
-1. Ouvrir https://app.netlify.com
-2. Sélectionner le site Yukpomnang
-3. Vérifier le dernier build (commit a3dfc73)
-4. Tester l'URL de production
+curl https://yukpo-backend-376093909298.europe-west1.run.app/health
 ```
 
-### 2. **Backend (Render)**
+**Attendu** : `200 OK`
+
+### 3. Vérifier les Logs d'Erreur
+
 ```bash
-# Vérifier si le backend est à jour
-curl https://yukpomnang.onrender.com/healthz
+gcloud logging read \
+  "resource.type=cloud_run_revision AND resource.labels.service_name=yukpo-backend AND severity>=ERROR" \
+  --limit=10 \
+  --freshness=10m
 ```
 
-### 3. **Mobile (EAS)**
+**Attendu** : Aucune erreur d'authentification PostgreSQL
+
+---
+
+## 📝 Corrections Incluses dans ce Déploiement
+
+Le commit `d68a3f1` inclut :
+- ✅ Corrections des erreurs de compilation Rust
+- ✅ Ajout d'annotations de type explicites pour `sqlx::query_scalar`
+- ✅ Correction de la gestion du `Result` pour `connect_lazy()`
+- ✅ Corrections des erreurs d'inférence de type
+
+---
+
+## 🚨 En Cas de Problème
+
+### Si le Workflow Échoue
+
+1. **Vérifier les logs GitHub Actions** pour identifier l'erreur
+2. **Vérifier les permissions** du service account GCP
+3. **Vérifier les secrets GitHub** (GCP_SA_KEY, GCP_PROJECT_ID, etc.)
+4. **Vérifier les quotas GCP** (Artifact Registry, Cloud Run)
+
+### Si le Déploiement Échoue
+
+1. **Vérifier les logs Cloud Run** pour voir les erreurs au démarrage
+2. **Vérifier que les secrets** sont correctement chargés
+3. **Vérifier la connexion PostgreSQL** (mot de passe, format URL)
+4. **Vérifier les ressources** (mémoire, CPU, timeout)
+
+---
+
+## 📞 Commandes Utiles
+
+### Vérifier l'État du Service
+
 ```bash
-# Vérifier le statut du build
-eas build:list --platform android
+gcloud run services describe yukpo-backend \
+  --region=europe-west1 \
+  --format="yaml(status)"
+```
+
+### Voir les Révisions Récentes
+
+```bash
+gcloud run revisions list \
+  --service=yukpo-backend \
+  --region=europe-west1 \
+  --sort-by=~metadata.creationTimestamp \
+  --limit=5
+```
+
+### Voir les Logs en Temps Réel
+
+```bash
+gcloud logging tail \
+  "resource.type=cloud_run_revision AND resource.labels.service_name=yukpo-backend" \
+  --format="table(timestamp,severity,textPayload)"
 ```
 
 ---
 
-## 📊 Statistiques du Commit
-
-```
-Files Changed:   108 files
-Insertions:      +39,361 lines
-Deletions:       -1,817 lines
-Total Changes:   41,178 lines
-
-New Files:       87 files
-- Services Rust: 5 files
-- Controllers:   5 files
-- Migrations:    7 files
-- Mobile:        12 files
-- Frontend:      8 files
-- Documentation: 36 files
-```
-
----
-
-## ⏭️ Prochaines Étapes
-
-1. ✅ **Commit & Push** - Terminé
-2. 🔄 **Netlify Deploy** - En cours (automatique)
-3. 🔄 **EAS Build** - En cours (background)
-4. ⏳ **Test Frontend** - À faire après déploiement
-5. ⏳ **Test Mobile** - À faire après build
-6. ⏳ **Continuer ProductCard Intelligent** - En attente
-
----
-
-## 🎉 Résumé
-
-✅ **Code commité et poussé vers GitHub**
-✅ **Netlify configuré pour déploiement automatique**
-🔄 **Build mobile Android en cours d'exécution**
-⏳ **En attente des résultats de déploiement**
-
-**Temps estimé**:
-- Netlify: 2-5 minutes
-- EAS Build: 10-20 minutes
-
----
-
-**Date**: 2025-10-21
-**Commit**: a3dfc73
-**Branch**: master
-
+**Date de déclenchement** : 17 Février 2026  
+**Commit déclencheur** : `bca58c5`  
+**Statut** : ⏳ En cours de déploiement

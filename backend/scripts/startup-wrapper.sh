@@ -32,13 +32,18 @@ sleep 5
 echo "✅ [WRAPPER] Port libéré, démarrage de Rust..."
 
 # Vérifier que le port est bien libre
-if lsof -i :8080 >/dev/null 2>&1; then
-    echo "⚠️ [WRAPPER] ATTENTION: Le port 8080 est encore occupé!"
-    lsof -i :8080 || true
-    echo "⏳ [WRAPPER] Attente supplémentaire (3 secondes)..."
-    sleep 3
+echo "🔍 [WRAPPER] Vérification que le port 8080 est libre..."
+if command -v lsof >/dev/null 2>&1; then
+    if lsof -i :8080 >/dev/null 2>&1; then
+        echo "⚠️ [WRAPPER] ATTENTION: Le port 8080 est encore occupé!"
+        lsof -i :8080 || true
+        echo "⏳ [WRAPPER] Attente supplémentaire (3 secondes)..."
+        sleep 3
+    else
+        echo "✅ [WRAPPER] Port 8080 est libre (vérifié avec lsof)"
+    fi
 else
-    echo "✅ [WRAPPER] Port 8080 est libre"
+    echo "⚠️ [WRAPPER] lsof non disponible, on suppose que le port est libre"
 fi
 
 # Maintenant démarrer Rust (qui va pouvoir bind sur le port libre)
@@ -116,9 +121,31 @@ fi
 echo "🚀 [WRAPPER] Étape 4: Démarrage application Rust..."
 echo "🔍 [WRAPPER] Toutes les erreurs seront capturées ci-dessous..."
 
+# ✅ CRITIQUE 2026-02-17: Ajouter des vérifications finales avant exec
+echo "🔍 [WRAPPER] Vérification finale avant exec:"
+echo "   - Chemin binaire: /app/yukpomnang_backend"
+echo "   - Existence: $([ -f /app/yukpomnang_backend ] && echo '✅ OUI' || echo '❌ NON')"
+echo "   - Exécutable: $([ -x /app/yukpomnang_backend ] && echo '✅ OUI' || echo '❌ NON')"
+echo "   - Taille: $(ls -lh /app/yukpomnang_backend 2>/dev/null | awk '{print $5}' || echo 'inconnue')"
+echo "   - Type: $(file /app/yukpomnang_backend 2>/dev/null || echo 'file non disponible')"
+
+# Test final d'exécution avec affichage des erreurs
+echo "🔍 [WRAPPER] Test final d'exécution (--version)..."
+if /app/yukpomnang_backend --version 2>&1; then
+    echo "✅ [WRAPPER] Test --version réussi, démarrage de l'application..."
+else
+    EXIT_CODE=$?
+    echo "❌ [WRAPPER] ERREUR: Test --version a échoué avec le code $EXIT_CODE"
+    echo "🔍 [WRAPPER] Tentative d'exécution directe pour voir l'erreur:"
+    /app/yukpomnang_backend 2>&1 || true
+    echo "❌ [WRAPPER] Impossible de démarrer l'application Rust"
+    exit 1
+fi
+
 # ✅ CRITIQUE 2026-02-17: Utiliser exec pour que Rust devienne le processus principal (PID 1)
 # Cloud Run nécessite que le processus principal reste actif
 # exec remplace le processus wrapper par Rust, ce qui est nécessaire pour Cloud Run
+echo "🚀 [WRAPPER] Exécution de: exec /app/yukpomnang_backend 2>&1"
 exec /app/yukpomnang_backend 2>&1
 # Note: Le code après exec ne sera jamais exécuté car exec remplace le processus
 
