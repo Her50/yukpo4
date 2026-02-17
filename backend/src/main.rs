@@ -247,8 +247,27 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         log::error!("❌ DATABASE_URL manquante ou invalide: {}", e);
         e
     })?;
+
+    // ✅ CRITIQUE 2026-02-17: Nettoyer les retours à la ligne qui cassent le parsing
+    // Les retours à la ligne dans DATABASE_URL causent "error with configuration: empty host"
+    let original_len = db_url.len();
+    db_url = db_url.trim().to_string(); // Supprime les espaces et retours à la ligne en début/fin
+    db_url = db_url.replace("\r\n", "").replace("\n", "").replace("\r", "");
+    if db_url.len() != original_len {
+        eprintln!(
+            "[MAIN] ⚠️ ATTENTION: DATABASE_URL nettoyée (retours à la ligne supprimés: {} -> {} caractères)",
+            original_len,
+            db_url.len()
+        );
+        log::warn!(
+            "⚠️ DATABASE_URL nettoyée (retours à la ligne supprimés: {} -> {} caractères)",
+            original_len,
+            db_url.len()
+        );
+    }
+
     eprintln!(
-        "[MAIN] ✅ DATABASE_URL récupérée (longueur: {})",
+        "[MAIN] ✅ DATABASE_URL récupérée et nettoyée (longueur: {})",
         db_url.len()
     );
 
