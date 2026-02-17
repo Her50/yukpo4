@@ -100,12 +100,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // ✅ CORRIGÉ: Ne PAS démarrer de serveur minimal si Cloud Run (le wrapper Python le gère)
     let health_server_handle = if is_cloud_run {
         eprintln!("[MAIN] ℹ️  Cloud Run: Le wrapper Python gère le serveur minimal, on attend qu'il libère le port...");
-        
+
         // Attendre que le wrapper Python libère le port (il le fait après ~15 secondes)
         eprintln!("[MAIN] ⏳ Attente de libération du port 8080 par le wrapper Python...");
         let mut retries = 0;
         const MAX_RETRIES: u32 = 20; // Augmenter à 20 tentatives (20 secondes)
-        
+
         loop {
             match tokio::net::TcpListener::bind(addr).await {
                 Ok(_) => {
@@ -114,7 +114,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
                 Err(e) => {
                     if retries < MAX_RETRIES - 1 {
-                        eprintln!("[MAIN] ⏳ Port 8080 encore occupé (tentative {}), attente...", retries + 1);
+                        eprintln!(
+                            "[MAIN] ⏳ Port 8080 encore occupé (tentative {}), attente...",
+                            retries + 1
+                        );
                         tokio::time::sleep(std::time::Duration::from_secs(1)).await;
                         retries += 1;
                     } else {
@@ -124,7 +127,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             }
         }
-        
+
         // Ne PAS créer de serveur minimal dans Rust, le wrapper Python le gère
         None
     } else {
@@ -231,9 +234,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
 
         Some(handle)
-    } else {
-        eprintln!("[MAIN] ℹ️ Pas Cloud Run, serveur minimal non démarré");
-        None
     };
 
     // Maintenant initialiser dotenv et logging (APRÈS le serveur minimal)
