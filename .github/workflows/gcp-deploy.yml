@@ -180,23 +180,77 @@ jobs:
             --remove-env-vars="DATABASE_URL,REDIS_URL,MONGODB_URL,JWT_SECRET" \
             --project ${{ secrets.GCP_PROJECT_ID }} 2>&1 | grep -v "does not exist" || true
           
-          gcloud run deploy ${{ env.SERVICE_NAME }} \
-            --image ${{ env.IMAGE_NAME }}:${{ github.sha }} \
-            --platform managed \
-            --region ${{ env.REGION }} \
-            --allow-unauthenticated \
-            --port 8080 \
-            --env-vars-file ${{ steps.prepare-env.outputs.env_file }} \
-            --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,MONGODB_URL=mongodb-url:latest" \
-            --add-cloudsql-instances ${{ secrets.GCP_PROJECT_ID }}:${{ env.REGION }}:yukpo-postgres \
-            --memory 2Gi \
-            --cpu 2 \
-            --timeout 900 \
-            --max-instances 10 \
-            --cpu-boost \
-            --cpu-throttling \
-            --service-account ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }} \
-            --project ${{ secrets.GCP_PROJECT_ID }}
+          # Construire la liste des variables d'environnement depuis env-vars.json (sans les secrets)
+          echo "Construction de la liste des variables d'environnement..."
+          if command -v jq &> /dev/null; then
+            # Extraire toutes les clés sauf les secrets
+            ENV_VARS=$(jq -r 'to_entries | map(select(.key != "DATABASE_URL" and .key != "REDIS_URL" and .key != "MONGODB_URL" and .key != "JWT_SECRET")) | map("\(.key)=\(.value)") | join(",")' ${{ steps.prepare-env.outputs.env_file }})
+            echo "Variables d'environnement à définir: $ENV_VARS"
+            
+            # Déployer avec --set-env-vars au lieu de --env-vars-file pour éviter les conflits
+            if [ -n "$ENV_VARS" ]; then
+              gcloud run deploy ${{ env.SERVICE_NAME }} \
+                --image ${{ env.IMAGE_NAME }}:${{ github.sha }} \
+                --platform managed \
+                --region ${{ env.REGION }} \
+                --allow-unauthenticated \
+                --port 8080 \
+                --set-env-vars="$ENV_VARS" \
+                --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,MONGODB_URL=mongodb-url:latest" \
+                --add-cloudsql-instances ${{ secrets.GCP_PROJECT_ID }}:${{ env.REGION }}:yukpo-postgres \
+                --memory 2Gi \
+                --cpu 2 \
+                --timeout 900 \
+                --max-instances 10 \
+                --cpu-boost \
+                --cpu-throttling \
+                --service-account ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }} \
+                --project ${{ secrets.GCP_PROJECT_ID }}
+            else
+              # Si aucune variable, déployer sans --set-env-vars
+              gcloud run deploy ${{ env.SERVICE_NAME }} \
+                --image ${{ env.IMAGE_NAME }}:${{ github.sha }} \
+                --platform managed \
+                --region ${{ env.REGION }} \
+                --allow-unauthenticated \
+                --port 8080 \
+                --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,MONGODB_URL=mongodb-url:latest" \
+                --add-cloudsql-instances ${{ secrets.GCP_PROJECT_ID }}:${{ env.REGION }}:yukpo-postgres \
+                --memory 2Gi \
+                --cpu 2 \
+                --timeout 900 \
+                --max-instances 10 \
+                --cpu-boost \
+                --cpu-throttling \
+                --service-account ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }} \
+                --project ${{ secrets.GCP_PROJECT_ID }}
+            fi
+          else
+            # Fallback: utiliser env-vars-file mais avec nettoyage supplémentaire
+            echo "⚠️ jq non disponible, utilisation de env-vars-file avec nettoyage manuel..."
+            # Vérifier que le fichier ne contient pas les secrets
+            if grep -q "DATABASE_URL\|REDIS_URL\|MONGODB_URL\|JWT_SECRET" ${{ steps.prepare-env.outputs.env_file }}; then
+              echo "❌ ERREUR: Le fichier env-vars.json contient encore des secrets!"
+              exit 1
+            fi
+            gcloud run deploy ${{ env.SERVICE_NAME }} \
+              --image ${{ env.IMAGE_NAME }}:${{ github.sha }} \
+              --platform managed \
+              --region ${{ env.REGION }} \
+              --allow-unauthenticated \
+              --port 8080 \
+              --env-vars-file ${{ steps.prepare-env.outputs.env_file }} \
+              --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,MONGODB_URL=mongodb-url:latest" \
+              --add-cloudsql-instances ${{ secrets.GCP_PROJECT_ID }}:${{ env.REGION }}:yukpo-postgres \
+              --memory 2Gi \
+              --cpu 2 \
+              --timeout 900 \
+              --max-instances 10 \
+              --cpu-boost \
+              --cpu-throttling \
+              --service-account ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }} \
+              --project ${{ secrets.GCP_PROJECT_ID }}
+          fi
 
       - name: Get Service URL
         id: service-url
