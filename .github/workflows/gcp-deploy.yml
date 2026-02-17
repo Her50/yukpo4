@@ -179,34 +179,45 @@ jobs:
           CLOUD_SQL_INSTANCE=$(echo "$CLOUD_SQL_INSTANCE" | tr -d '\r\n' | tr -d '\n')
           echo "Instance Cloud SQL (nettoyée): $CLOUD_SQL_INSTANCE"
           
-          # ✅ CRITIQUE: Supprimer toutes les variables d'environnement AVANT le déploiement
-          # pour éviter les conflits entre variables et secrets
-          echo "Suppression de toutes les variables d'environnement existantes..."
-          gcloud run services update ${{ env.SERVICE_NAME }} \
-            --region ${{ env.REGION }} \
-            --clear-env-vars \
-            --project ${{ secrets.GCP_PROJECT_ID }} 2>&1 | grep -v "does not exist" || true
-          
-          # ✅ CRITIQUE: Supprimer spécifiquement DATABASE_URL comme variable d'environnement si elle existe
-          # pour éviter le conflit "Cannot update environment variable [DATABASE_URL] to string literal because it has already been set with a different type"
-          echo "Suppression de DATABASE_URL comme variable d'environnement (si elle existe)..."
+          # ✅ CRITIQUE 2026-02-17: Stratégie de nettoyage en plusieurs étapes pour éviter les conflits
+          # Étape 1: Supprimer DATABASE_URL comme variable d'environnement (si elle existe)
+          echo "Étape 1: Suppression de DATABASE_URL comme variable d'environnement..."
           gcloud run services update ${{ env.SERVICE_NAME }} \
             --region ${{ env.REGION }} \
             --remove-env-vars="DATABASE_URL" \
-            --project ${{ secrets.GCP_PROJECT_ID }} 2>&1 | grep -v "does not exist\|not found" || true
+            --project ${{ secrets.GCP_PROJECT_ID }} 2>&1 | grep -v "does not exist\|not found\|No change" || true
           
-          # ✅ CRITIQUE: Supprimer aussi DATABASE_URL comme secret pour éviter les conflits de type
-          # Si DATABASE_URL est définie comme secret, on doit la supprimer avant de la redéfinir
-          # Note: --clear-secrets supprime TOUS les secrets, donc on doit les redéfinir après
-          echo "Suppression de tous les secrets existants pour éviter les conflits..."
+          # Étape 2: Supprimer DATABASE_URL comme secret (si elle existe comme secret)
+          echo "Étape 2: Suppression de DATABASE_URL comme secret..."
+          gcloud run services update ${{ env.SERVICE_NAME }} \
+            --region ${{ env.REGION }} \
+            --remove-secrets="DATABASE_URL" \
+            --project ${{ secrets.GCP_PROJECT_ID }} 2>&1 | grep -v "does not exist\|not found\|No change" || true
+          
+          # Étape 3: Supprimer toutes les autres variables d'environnement pour repartir à zéro
+          echo "Étape 3: Suppression de toutes les variables d'environnement..."
+          gcloud run services update ${{ env.SERVICE_NAME }} \
+            --region ${{ env.REGION }} \
+            --clear-env-vars \
+            --project ${{ secrets.GCP_PROJECT_ID }} 2>&1 | grep -v "does not exist\|not found\|No change" || true
+          
+          # Étape 4: Supprimer tous les secrets pour repartir à zéro
+          echo "Étape 4: Suppression de tous les secrets..."
           gcloud run services update ${{ env.SERVICE_NAME }} \
             --region ${{ env.REGION }} \
             --clear-secrets \
-            --project ${{ secrets.GCP_PROJECT_ID }} 2>&1 | grep -v "does not exist\|not found" || true
+            --project ${{ secrets.GCP_PROJECT_ID }} 2>&1 | grep -v "does not exist\|not found\|No change" || true
           
-          # Attendre un peu pour que les suppressions soient prises en compte
-          echo "⏳ Attente que les suppressions soient prises en compte (2 secondes)..."
-          sleep 2
+          # Attendre que toutes les suppressions soient prises en compte
+          echo "⏳ Attente que les suppressions soient prises en compte (3 secondes)..."
+          sleep 3
+          
+          # Vérifier l'état actuel du service
+          echo "Vérification de l'état actuel du service..."
+          gcloud run services describe ${{ env.SERVICE_NAME }} \
+            --region ${{ env.REGION }} \
+            --format="value(spec.template.spec.containers[0].env)" \
+            --project ${{ secrets.GCP_PROJECT_ID }} 2>&1 | head -5 || true
           
           # Construire la liste des variables d'environnement depuis env-vars.json (sans les secrets)
           echo "Construction de la liste des variables d'environnement..."
