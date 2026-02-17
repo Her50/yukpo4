@@ -505,32 +505,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 db_name
             );
 
-            pool_options
-                .connect_lazy_with(connect_options)
-                .map_err(|e| {
-                    eprintln!(
-                        "[MAIN] ❌ ERREUR: Impossible de créer le pool PostgreSQL (Cloud SQL Unix socket): {}",
-                        e
-                    );
-                    log::error!(
-                        "❌ Impossible de créer le pool PostgreSQL (Cloud SQL Unix socket): {}",
-                        e
-                    );
-                    e
-                })?
+            // ✅ CORRIGÉ 2026-02-17: connect_lazy_with() retourne directement un Pool, pas un Result
+            pool_options.connect_lazy_with(connect_options)
         } else {
             // Format URL standard (IP/hostname)
-            pool_options.connect_lazy(&db_url).map_err(|e| {
-                eprintln!(
-                    "[MAIN] ❌ ERREUR: Impossible de créer le pool PostgreSQL (connect_lazy): {}",
-                    e
-                );
-                log::error!(
-                    "❌ Impossible de créer le pool PostgreSQL (connect_lazy): {}",
-                    e
-                );
-                e
-            })?
+            // ✅ CORRIGÉ 2026-02-17: connect_lazy() retourne directement un Pool, pas un Result
+            pool_options.connect_lazy(&db_url)
         }
     } else {
         // Pour autres environnements: connexion bloquante avec retry
@@ -730,24 +710,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             log::info!("✅ Read replica PostgreSQL configuré - Scaling horizontal activé");
 
-            // ✅ CORRIGÉ: Utiliser connect_lazy avec gestion d'erreur au lieu de expect
-            match PgPoolOptions::new()
-                .max_connections(30) // Plus de connexions pour lectures
-                .min_connections(5)
-                .acquire_timeout(std::time::Duration::from_secs(30))
-                .idle_timeout(Some(std::time::Duration::from_secs(600)))
-                .max_lifetime(Some(std::time::Duration::from_secs(1800)))
-                .test_before_acquire(true)
-                .connect_lazy(&read_url)
-            {
-                Ok(pool) => Some(pool),
-                Err(e) => {
-                    log::error!("❌ Échec de connexion à PostgreSQL read replica: {}", e);
-                    log::error!("   URL utilisée: {}...", read_url.chars().take(50).collect::<String>());
-                    log::warn!("⚠️ Read replica désactivé - Utilisation du master pour toutes les opérations");
-                    None
-                }
-            }
+            // ✅ CORRIGÉ 2026-02-17: connect_lazy() retourne directement un Pool, pas un Result
+            Some(
+                PgPoolOptions::new()
+                    .max_connections(30) // Plus de connexions pour lectures
+                    .min_connections(5)
+                    .acquire_timeout(std::time::Duration::from_secs(30))
+                    .idle_timeout(Some(std::time::Duration::from_secs(600)))
+                    .max_lifetime(Some(std::time::Duration::from_secs(1800)))
+                    .test_before_acquire(true)
+                    .connect_lazy(&read_url)
+            )
         });
 
     if pg_read_pool.is_none() {
@@ -852,7 +825,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
 
         // ✅ NOUVEAU 2026-01-29: Vérifier l'état des migrations avant exécution
-        let migrations_table_exists: bool = sqlx::query_scalar(
+        let migrations_table_exists: bool = sqlx::query_scalar::<_, bool>(
             "SELECT EXISTS (
             SELECT FROM information_schema.tables 
             WHERE table_schema = 'public' 
@@ -915,11 +888,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             }
 
-            let applied_count: i64 =
-                sqlx::query_scalar("SELECT COUNT(*) FROM _sqlx_migrations WHERE success = true")
-                    .fetch_one(&pg_pool)
-                    .await
-                    .unwrap_or(0);
+            let applied_count: i64 = sqlx::query_scalar::<_, i64>(
+                "SELECT COUNT(*) FROM _sqlx_migrations WHERE success = true",
+            )
+            .fetch_one(&pg_pool)
+            .await
+            .unwrap_or(0);
             log::info!("📊 Migrations déjà appliquées: {}", applied_count);
         } else {
             log::info!("📊 Aucune migration appliquée précédemment (première exécution)");
@@ -1070,7 +1044,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             Ok(_) => {
                 log::info!("✅ [MIGRATION CORRECTION 007] Table users garantie d'exister");
                 // Vérifier que la table existe maintenant
-                let users_exists_after: bool = sqlx::query_scalar(
+                let users_exists_after: bool = sqlx::query_scalar::<_, bool>(
                     "SELECT EXISTS (
                     SELECT FROM information_schema.tables 
                     WHERE table_schema = 'public' 
@@ -1108,7 +1082,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     "✅ [MIGRATION CORRECTION 008] Tables services et media garanties d'exister"
                 );
                 // Vérifier que les tables existent maintenant
-                let services_exists_after: bool = sqlx::query_scalar(
+                let services_exists_after: bool = sqlx::query_scalar::<_, bool>(
                     "SELECT EXISTS (
                     SELECT FROM information_schema.tables 
                     WHERE table_schema = 'public' 
@@ -1118,7 +1092,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .fetch_one(&pg_pool)
                 .await
                 .unwrap_or(false);
-                let media_exists_after: bool = sqlx::query_scalar(
+                let media_exists_after: bool = sqlx::query_scalar::<_, bool>(
                     "SELECT EXISTS (
                     SELECT FROM information_schema.tables 
                     WHERE table_schema = 'public' 
@@ -1186,10 +1160,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         log::info!("🔄 [MIGRATIONS SQLX] Application de toutes les migrations SQLx standard...");
 
         // ✅ NOUVEAU 2026-02-08: Vérifier si _sqlx_migrations est vide avant d'appliquer
-        let migration_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM _sqlx_migrations")
-            .fetch_one(&pg_pool)
-            .await
-            .unwrap_or(0);
+        let migration_count: i64 =
+            sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM _sqlx_migrations")
+                .fetch_one(&pg_pool)
+                .await
+                .unwrap_or(0);
 
         if migration_count == 0 {
             log::warn!("⚠️ [MIGRATIONS] Table _sqlx_migrations est vide - Toutes les migrations seront appliquées");
@@ -1205,7 +1180,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 log::info!("✅ Migrations SQLx standard appliquées avec succès");
 
                 // ✅ NOUVEAU 2026-02-08: Vérifier quelles migrations ont été appliquées
-                let applied_migrations: Vec<String> = sqlx::query_scalar(
+                let applied_migrations: Vec<String> = sqlx::query_scalar::<_, String>(
                 "SELECT version::text || ' - ' || description FROM _sqlx_migrations ORDER BY installed_on DESC LIMIT 10"
             )
             .fetch_all(&pg_pool)
@@ -1225,7 +1200,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 check_index_migration(&pg_pool).await;
 
                 // ✅ NOUVEAU 2026-01-28: Vérifier que les tables de base ont été créées
-                let users_exists: bool = sqlx::query_scalar(
+                let users_exists: bool = sqlx::query_scalar::<_, bool>(
                     "SELECT EXISTS (
                     SELECT FROM information_schema.tables 
                     WHERE table_schema = 'public' 
@@ -1236,7 +1211,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .await
                 .unwrap_or(false);
 
-                let services_exists: bool = sqlx::query_scalar(
+                let services_exists: bool = sqlx::query_scalar::<_, bool>(
                     "SELECT EXISTS (
                     SELECT FROM information_schema.tables 
                     WHERE table_schema = 'public' 
@@ -1248,7 +1223,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .unwrap_or(false);
 
                 // ✅ NOUVEAU 2026-01-29: Vérifier d'autres tables critiques
-                let deliveries_exists: bool = sqlx::query_scalar(
+                let deliveries_exists: bool = sqlx::query_scalar::<_, bool>(
                     "SELECT EXISTS (
                     SELECT FROM information_schema.tables 
                     WHERE table_schema = 'public' 
@@ -1259,7 +1234,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .await
                 .unwrap_or(false);
 
-                let product_creation_queue_exists: bool = sqlx::query_scalar(
+                let product_creation_queue_exists: bool = sqlx::query_scalar::<_, bool>(
                     "SELECT EXISTS (
                     SELECT FROM information_schema.tables 
                     WHERE table_schema = 'public' 
@@ -1270,7 +1245,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .await
                 .unwrap_or(false);
 
-                let publicites_exists: bool = sqlx::query_scalar(
+                let publicites_exists: bool = sqlx::query_scalar::<_, bool>(
                     "SELECT EXISTS (
                     SELECT FROM information_schema.tables 
                     WHERE table_schema = 'public' 
@@ -1303,7 +1278,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     log::warn!("⚠️ [MIGRATIONS] Tables de base manquantes. Vérifiez que les migrations SQLx ont été exécutées.");
 
                     // Vérifier à nouveau (sans migration consolidée)
-                    let users_exists_after: bool = sqlx::query_scalar(
+                    let users_exists_after: bool = sqlx::query_scalar::<_, bool>(
                         "SELECT EXISTS (
                                 SELECT FROM information_schema.tables 
                                 WHERE table_schema = 'public' 
@@ -1314,7 +1289,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .await
                     .unwrap_or(false);
 
-                    let services_exists_after: bool = sqlx::query_scalar(
+                    let services_exists_after: bool = sqlx::query_scalar::<_, bool>(
                         "SELECT EXISTS (
                                 SELECT FROM information_schema.tables 
                                 WHERE table_schema = 'public' 
@@ -1339,7 +1314,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
 
                 // ✅ NOUVEAU 2026-02-08: Vérifier les nouvelles tables critiques créées récemment
-                let user_saved_addresses_exists: bool = sqlx::query_scalar(
+                let user_saved_addresses_exists: bool = sqlx::query_scalar::<_, bool>(
                     "SELECT EXISTS (
                     SELECT FROM information_schema.tables 
                     WHERE table_schema = 'public' 
@@ -1350,7 +1325,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .await
                 .unwrap_or(false);
 
-                let courier_profiles_exists: bool = sqlx::query_scalar(
+                let courier_profiles_exists: bool = sqlx::query_scalar::<_, bool>(
                     "SELECT EXISTS (
                     SELECT FROM information_schema.tables 
                     WHERE table_schema = 'public' 
@@ -1361,7 +1336,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .await
                 .unwrap_or(false);
 
-                let delivery_requests_view_exists: bool = sqlx::query_scalar(
+                let delivery_requests_view_exists: bool = sqlx::query_scalar::<_, bool>(
                     "SELECT EXISTS (
                     SELECT FROM pg_views 
                     WHERE schemaname = 'public' 
@@ -1373,7 +1348,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .unwrap_or(false);
 
                 // ✅ NOUVEAU 2026-02-08: Vérifier les fonctions critiques
-                let calculate_best_vector_match_score_exists: bool = sqlx::query_scalar(
+                let calculate_best_vector_match_score_exists: bool = sqlx::query_scalar::<_, bool>(
                     "SELECT EXISTS (
                     SELECT FROM pg_proc p
                     LEFT JOIN pg_namespace n ON n.oid = p.pronamespace
@@ -1385,7 +1360,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .await
                 .unwrap_or(false);
 
-                let product_combination_exists_func: bool = sqlx::query_scalar(
+                let product_combination_exists_func: bool = sqlx::query_scalar::<_, bool>(
                     "SELECT EXISTS (
                     SELECT FROM pg_proc p
                     LEFT JOIN pg_namespace n ON n.oid = p.pronamespace
@@ -1456,7 +1431,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     ("courier_profiles", courier_profiles_exists),
                     (
                         "delivery_matching_queue",
-                        sqlx::query_scalar(
+                        sqlx::query_scalar::<_, bool>(
                             "SELECT EXISTS (
                         SELECT FROM information_schema.tables 
                         WHERE table_schema = 'public' 
@@ -1469,7 +1444,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     ),
                     (
                         "global_promo_events",
-                        sqlx::query_scalar(
+                        sqlx::query_scalar::<_, bool>(
                             "SELECT EXISTS (
                         SELECT FROM information_schema.tables 
                         WHERE table_schema = 'public' 
@@ -1482,7 +1457,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     ),
                     (
                         "live_flash_sales",
-                        sqlx::query_scalar(
+                        sqlx::query_scalar::<_, bool>(
                             "SELECT EXISTS (
                         SELECT FROM information_schema.tables 
                         WHERE table_schema = 'public' 
@@ -1495,7 +1470,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     ),
                     (
                         "product_orders",
-                        sqlx::query_scalar(
+                        sqlx::query_scalar::<_, bool>(
                             "SELECT EXISTS (
                         SELECT FROM information_schema.tables 
                         WHERE table_schema = 'public' 
@@ -1508,7 +1483,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     ),
                     (
                         "social_publication_jobs",
-                        sqlx::query_scalar(
+                        sqlx::query_scalar::<_, bool>(
                             "SELECT EXISTS (
                         SELECT FROM information_schema.tables 
                         WHERE table_schema = 'public' 
@@ -1521,7 +1496,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     ),
                     (
                         "video_generation_jobs",
-                        sqlx::query_scalar(
+                        sqlx::query_scalar::<_, bool>(
                             "SELECT EXISTS (
                         SELECT FROM information_schema.tables 
                         WHERE table_schema = 'public' 
@@ -1534,7 +1509,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     ),
                     (
                         "delivery_proximity_suggestions",
-                        sqlx::query_scalar(
+                        sqlx::query_scalar::<_, bool>(
                             "SELECT EXISTS (
                         SELECT FROM information_schema.tables 
                         WHERE table_schema = 'public' 
@@ -1670,7 +1645,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                 // ✅ NOUVEAU 2026-02-08: Vérifier l'état de _sqlx_migrations après erreur
                 let migration_count_after_error: i64 =
-                    sqlx::query_scalar("SELECT COUNT(*) FROM _sqlx_migrations")
+                    sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM _sqlx_migrations")
                         .fetch_one(&pg_pool)
                         .await
                         .unwrap_or(0);
@@ -1681,7 +1656,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 );
 
                 // ✅ NOUVEAU 2026-02-08: Vérifier les tables critiques même après erreur
-                let users_exists_after_error: bool = sqlx::query_scalar(
+                let users_exists_after_error: bool = sqlx::query_scalar::<_, bool>(
                     "SELECT EXISTS (
                     SELECT FROM information_schema.tables 
                     WHERE table_schema = 'public' 
@@ -1869,7 +1844,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                     let mut missing_tables: Vec<&str> = Vec::new();
                     for table in &critical_tables {
-                        let exists: bool = sqlx::query_scalar(&format!(
+                        let exists: bool = sqlx::query_scalar::<_, bool>(&format!(
                             "SELECT EXISTS (
                             SELECT FROM information_schema.tables 
                             WHERE table_schema = 'public' 
@@ -2031,7 +2006,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 // Pour autres environnements: migrations bloquantes (comportement normal)
                 log::info!("🔍 Vérification des tables de base avant migrations automatiques...");
 
-                let users_exists: bool = sqlx::query_scalar(
+                let users_exists: bool = sqlx::query_scalar::<_, bool>(
                     "SELECT EXISTS (
                     SELECT FROM information_schema.tables 
                     WHERE table_schema = 'public' 
@@ -2042,7 +2017,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .await
                 .unwrap_or(false);
 
-                let services_exists: bool = sqlx::query_scalar(
+                let services_exists: bool = sqlx::query_scalar::<_, bool>(
                     "SELECT EXISTS (
                     SELECT FROM information_schema.tables 
                     WHERE table_schema = 'public' 
