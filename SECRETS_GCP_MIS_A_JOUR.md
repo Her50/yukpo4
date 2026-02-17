@@ -17,8 +17,9 @@
 
 - **Secret** : `database-url`
 - **Format** : Unix socket (recommandé pour Cloud Run)
-- **Format** : `postgresql://yukpo_user:PASSWORD@/yukpo_postgres?host=/cloudsql/yukpo-project:europe-west1:yukpo-postgres`
-- **Statut** : ✅ Mis à jour
+- **Base de données** : `yukpo_db` (base avec toutes les migrations et tables)
+- **Format** : `postgresql://yukpo_user:PASSWORD@/yukpo_db?host=/cloudsql/yukpo-project:europe-west1:yukpo-postgres`
+- **Statut** : ✅ Mis à jour avec `yukpo_db`
 
 ### 3. Génération et Mise à Jour JWT_SECRET
 
