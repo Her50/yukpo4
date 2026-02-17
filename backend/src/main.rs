@@ -97,22 +97,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
     eprintln!("[MAIN] 🔍 Port configuré: {}", port);
 
-    // ✅ CORRIGÉ: Ne PAS démarrer de serveur minimal si Cloud Run (le wrapper Python le gère)
+    // ✅ CORRIGÉ 2026-02-17: Ne PAS démarrer de serveur minimal si Cloud Run (le wrapper Python le gère)
+    // Le wrapper tue Python et attend que le port soit libre avant de démarrer Rust
+    // Donc Rust n'a pas besoin d'attendre, le port devrait être libre
     let health_server_handle = if is_cloud_run {
-        eprintln!("[MAIN] ℹ️  Cloud Run: Le wrapper Python gère le serveur minimal, on attend qu'il libère le port...");
+        eprintln!(
+            "[MAIN] ℹ️  Cloud Run: Le wrapper Python a déjà libéré le port, vérification rapide..."
+        );
 
-        // Attendre que le wrapper Python libère le port (il le fait après ~15 secondes)
-        eprintln!("[MAIN] ⏳ Attente de libération du port 8080 par le wrapper Python...");
+        // Vérification rapide que le port est libre (le wrapper a déjà attendu)
         let mut retries = 0;
-        const MAX_RETRIES: u32 = 20; // Augmenter à 20 tentatives (20 secondes)
+        const MAX_RETRIES: u32 = 5; // Seulement 5 secondes max (le wrapper a déjà attendu)
 
         loop {
             match tokio::net::TcpListener::bind(addr).await {
                 Ok(_) => {
-                    eprintln!("[MAIN] ✅ Port 8080 libéré, on peut continuer");
+                    eprintln!("[MAIN] ✅ Port 8080 libre, on peut continuer");
                     break;
                 }
-                Err(e) => {
+                Err(_) => {
                     if retries < MAX_RETRIES - 1 {
                         eprintln!(
                             "[MAIN] ⏳ Port 8080 encore occupé (tentative {}), attente...",
