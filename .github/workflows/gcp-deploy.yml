@@ -201,14 +201,23 @@ jobs:
           
           # Étape 3: Supprimer TOUS les secrets pour repartir à zéro
           # Note: --clear-secrets supprime tous les secrets, on les redéfinira après
-          echo "Étape 3/4: Suppression de tous les secrets..."
+          echo "Étape 3/5: Suppression de tous les secrets..."
           gcloud run services update ${{ env.SERVICE_NAME }} \
             --region ${{ env.REGION }} \
             --clear-secrets \
             --project ${{ secrets.GCP_PROJECT_ID }} 2>&1 | grep -v "does not exist\|not found\|No change\|does not have" || true
           
-          # Étape 4: Attendre que toutes les suppressions soient propagées
-          echo "Étape 4/4: Attente que les suppressions soient propagées (5 secondes)..."
+          # Étape 4: Supprimer TOUTES les instances Cloud SQL pour repartir à zéro
+          # ✅ CRITIQUE 2026-02-17: Retirer toutes les instances Cloud SQL avant d'ajouter la bonne
+          # Cela évite d'avoir plusieurs instances configurées (yukpo-db + yukpo-postgres)
+          echo "Étape 4/5: Suppression de toutes les instances Cloud SQL..."
+          gcloud run services update ${{ env.SERVICE_NAME }} \
+            --region ${{ env.REGION }} \
+            --clear-cloudsql-instances \
+            --project ${{ secrets.GCP_PROJECT_ID }} 2>&1 | grep -v "does not exist\|not found\|No change\|does not have" || true
+          
+          # Étape 5: Attendre que toutes les suppressions soient propagées
+          echo "Étape 5/5: Attente que les suppressions soient propagées (5 secondes)..."
           sleep 5
           
           # Vérifier l'état actuel (debug)

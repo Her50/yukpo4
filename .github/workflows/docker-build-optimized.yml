@@ -541,6 +541,16 @@ jobs:
       - name: Deploy to Cloud Run
         run: |
           echo "🔄 Deploying to Cloud Run..."
+          
+          # ✅ CRITIQUE 2026-02-17: Nettoyer les instances Cloud SQL avant d'ajouter
+          # Cela évite d'avoir plusieurs instances configurées (yukpo-db + yukpo-postgres)
+          echo "🧹 Nettoyage des instances Cloud SQL existantes..."
+          gcloud run services update ${{ env.GCP_SERVICE_NAME }} \
+            --region ${{ env.GCP_REGION }} \
+            --clear-cloudsql-instances \
+            --project ${{ secrets.GCP_PROJECT_ID }} 2>&1 | grep -v "does not exist\|not found\|No change\|does not have" || true
+          
+          echo "🚀 Déploiement vers Cloud Run avec instance yukpo-postgres uniquement..."
           gcloud run deploy ${{ env.GCP_SERVICE_NAME }} \
             --image ${{ env.GCP_IMAGE_NAME }}:latest \
             --platform managed \
