@@ -168,16 +168,44 @@ jobs:
           
           echo "env_file=env-vars.json" >> $GITHUB_OUTPUT
 
+      - name: Verify Cloud SQL Instance
+        run: |
+          echo "🔍 Vérification de l'instance Cloud SQL..."
+          CLOUD_SQL_INSTANCE="${{ secrets.GCP_PROJECT_ID }}:${{ env.REGION }}:yukpo-postgres"
+          CLOUD_SQL_INSTANCE=$(echo "$CLOUD_SQL_INSTANCE" | tr -d '\r\n' | tr -d '\n')
+          
+          # Vérifier que l'instance existe
+          if gcloud sql instances describe yukpo-postgres \
+            --project=${{ secrets.GCP_PROJECT_ID }} >/dev/null 2>&1; then
+            echo "✅ Instance Cloud SQL 'yukpo-postgres' existe"
+            
+            # Vérifier l'état
+            SQL_STATE=$(gcloud sql instances describe yukpo-postgres \
+              --project=${{ secrets.GCP_PROJECT_ID }} \
+              --format="value(state)" 2>/dev/null || echo "UNKNOWN")
+            
+            if [ "$SQL_STATE" = "RUNNABLE" ]; then
+              echo "✅ Instance Cloud SQL en état RUNNABLE"
+            else
+              echo "⚠️ Instance Cloud SQL en état: $SQL_STATE"
+            fi
+          else
+            echo "❌ ERREUR: Instance Cloud SQL 'yukpo-postgres' non trouvée!"
+            echo "   Créez l'instance avec: gcloud sql instances create yukpo-postgres ..."
+            exit 1
+          fi
+          
+          echo "Instance Cloud SQL (nettoyée): $CLOUD_SQL_INSTANCE"
+          echo "CLOUD_SQL_INSTANCE=$CLOUD_SQL_INSTANCE" >> $GITHUB_ENV
+
       - name: Deploy to Cloud Run
         run: |
           # Le nettoyage a déjà été fait dans l'étape précédente
           echo "Déploiement vers Cloud Run..."
           
-          # ✅ CRITIQUE: Construire et nettoyer le nom de l'instance Cloud SQL (supprimer les retours à la ligne)
-          CLOUD_SQL_INSTANCE="${{ secrets.GCP_PROJECT_ID }}:${{ env.REGION }}:yukpo-postgres"
-          # Nettoyer les retours à la ligne (Windows \r\n et Unix \n)
-          CLOUD_SQL_INSTANCE=$(echo "$CLOUD_SQL_INSTANCE" | tr -d '\r\n' | tr -d '\n')
-          echo "Instance Cloud SQL (nettoyée): $CLOUD_SQL_INSTANCE"
+          # Utiliser la variable d'environnement définie dans l'étape précédente
+          CLOUD_SQL_INSTANCE="$CLOUD_SQL_INSTANCE"
+          echo "Instance Cloud SQL: $CLOUD_SQL_INSTANCE"
           
           # ✅ CRITIQUE 2026-02-18: Stratégie de nettoyage complète pour éviter les conflits de type
           # Cloud Run ne permet pas de changer le type d'une variable (secret <-> env var)
@@ -283,12 +311,15 @@ jobs:
             # Déployer avec --set-env-vars (après avoir clear les variables)
             if [ -n "$ENV_VARS" ] && [ "$ENV_VARS" != "null" ]; then
               echo "Déploiement avec variables d'environnement..."
+              # ✅ CORRIGÉ: Ajout du startup probe pour Cloud Run
+              # Timeout total: 60s (initial) + (20 × 15s) = 360 secondes maximum
               gcloud run deploy ${{ env.SERVICE_NAME }} \
                 --image ${{ env.IMAGE_NAME }}:${{ github.sha }} \
                 --platform managed \
                 --region ${{ env.REGION }} \
                 --allow-unauthenticated \
                 --port 8080 \
+                --startup-probe=timeoutSeconds=10,periodSeconds=15,initialDelaySeconds=60,failureThreshold=20,httpGet.port=8080,httpGet.path=/health \
                 --set-env-vars="$ENV_VARS" \
                 --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,MONGODB_URL=mongodb-url:latest" \
                 --add-cloudsql-instances "$CLOUD_SQL_INSTANCE" \
@@ -303,12 +334,14 @@ jobs:
             else
               # Si aucune variable, déployer sans --set-env-vars
               echo "Déploiement sans variables d'environnement (seulement secrets)..."
+              # ✅ CORRIGÉ: Ajout du startup probe pour Cloud Run
               gcloud run deploy ${{ env.SERVICE_NAME }} \
                 --image ${{ env.IMAGE_NAME }}:${{ github.sha }} \
                 --platform managed \
                 --region ${{ env.REGION }} \
                 --allow-unauthenticated \
                 --port 8080 \
+                --startup-probe=timeoutSeconds=10,periodSeconds=15,initialDelaySeconds=60,failureThreshold=20,httpGet.port=8080,httpGet.path=/health \
                 --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,MONGODB_URL=mongodb-url:latest" \
                 --add-cloudsql-instances "$CLOUD_SQL_INSTANCE" \
                 --memory 2Gi \
@@ -328,12 +361,14 @@ jobs:
               echo "❌ ERREUR: Le fichier env-vars.json contient encore des secrets!"
               exit 1
             fi
+            # ✅ CORRIGÉ: Ajout du startup probe pour Cloud Run
             gcloud run deploy ${{ env.SERVICE_NAME }} \
               --image ${{ env.IMAGE_NAME }}:${{ github.sha }} \
               --platform managed \
               --region ${{ env.REGION }} \
               --allow-unauthenticated \
               --port 8080 \
+              --startup-probe=timeoutSeconds=10,periodSeconds=15,initialDelaySeconds=60,failureThreshold=20,httpGet.port=8080,httpGet.path=/health \
               --env-vars-file ${{ steps.prepare-env.outputs.env_file }} \
               --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,MONGODB_URL=mongodb-url:latest" \
               --add-cloudsql-instances "$CLOUD_SQL_INSTANCE" \

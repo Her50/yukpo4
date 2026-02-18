@@ -27,8 +27,9 @@ kill $HEALTH_PID 2>/dev/null || true
 # Attendre que le processus Python se termine complètement
 wait $HEALTH_PID 2>/dev/null || true
 # Attendre que le port soit vraiment libéré par le système
-echo "⏳ [WRAPPER] Attente libération du port (5 secondes)..."
-sleep 5
+# ✅ CORRIGÉ: Augmenter le délai de 5s à 10s pour s'assurer que le port est bien libéré
+echo "⏳ [WRAPPER] Attente libération du port (10 secondes)..."
+sleep 10
 echo "✅ [WRAPPER] Port libéré, démarrage de Rust..."
 
 # Vérifier que le port est bien libre
@@ -37,8 +38,9 @@ if command -v lsof >/dev/null 2>&1; then
     if lsof -i :8080 >/dev/null 2>&1; then
         echo "⚠️ [WRAPPER] ATTENTION: Le port 8080 est encore occupé!"
         lsof -i :8080 || true
-        echo "⏳ [WRAPPER] Attente supplémentaire (3 secondes)..."
-        sleep 3
+        # ✅ CORRIGÉ: Augmenter l'attente supplémentaire de 3s à 5s
+        echo "⏳ [WRAPPER] Attente supplémentaire (5 secondes)..."
+        sleep 5
     else
         echo "✅ [WRAPPER] Port 8080 est libre (vérifié avec lsof)"
     fi

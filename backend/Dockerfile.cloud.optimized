@@ -114,7 +114,8 @@ COPY scripts/start-health-server.sh /app/start-health-server.sh
 COPY scripts/health-server-simple.sh /app/health-server-simple.sh
 COPY scripts/health-server-python.py /app/health-server-python.py
 COPY scripts/startup-wrapper.sh /app/startup-wrapper.sh
-RUN chmod +x /app/start-cloud.sh /app/start-cloud-run.sh /app/start-health-server.sh /app/health-server-simple.sh /app/health-server-python.py /app/startup-wrapper.sh
+COPY scripts/docker-entrypoint.sh /app/docker-entrypoint.sh
+RUN chmod +x /app/start-cloud.sh /app/start-cloud-run.sh /app/start-health-server.sh /app/health-server-simple.sh /app/health-server-python.py /app/startup-wrapper.sh /app/docker-entrypoint.sh
 
 # Variables d'environnement
 ENV RUST_LOG=info
@@ -130,8 +131,8 @@ USER appuser
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:8080/health || exit 1
 
-# Utiliser startup-wrapper.sh pour Cloud Run (démarre serveur minimal puis Rust)
-# Pour AWS ECS, utiliser start-cloud.sh via variable d'environnement
-ENTRYPOINT ["/bin/bash", "-c", "if [ \"$CLOUD_RUN\" = \"true\" ]; then /app/startup-wrapper.sh; else /app/start-cloud.sh; fi"]
+# ✅ CORRIGÉ: Utiliser un script d'entrée unifié qui gère la détection d'environnement
+# Plus robuste que la logique bash inline dans ENTRYPOINT
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
 CMD ["./yukpomnang_backend"]
 
