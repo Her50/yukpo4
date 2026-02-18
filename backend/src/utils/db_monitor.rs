@@ -25,6 +25,15 @@ pub async fn start_db_health_monitor(pool: PgPool) {
             // ✅ CORRECTION: Convertir usize en u32 pour saturating_sub
             let active_connections = pool_size.saturating_sub(idle_connections as u32);
 
+            // ✅ CRITIQUE 2026-02-18: Log détaillé pour diagnostiquer le problème de pool (4 connexions au lieu de 20)
+            log::info!(
+                "[DB Monitor] 📊 Pool metrics - Size: {}, Active: {}, Idle: {}, Max configuré: {}",
+                pool_size,
+                active_connections,
+                idle_connections,
+                std::env::var("DB_POOL_SIZE").unwrap_or_else(|_| "20".to_string())
+            );
+
             // Tester une connexion avec timeout
             let test_result = tokio::time::timeout(
                 Duration::from_secs(5),

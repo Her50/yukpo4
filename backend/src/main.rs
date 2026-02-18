@@ -364,13 +364,22 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
         // ✅ CORRIGÉ 2026-02-15: min_connections=0 pour éviter blocage si DB non accessible
         eprintln!("[MAIN] 🚀 Cloud Run: Utilisation de connect_lazy pour démarrage rapide");
         log::info!("🚀 Cloud Run: Utilisation de connect_lazy pour démarrage rapide");
-        // ✅ CORRIGÉ 2026-02-18: Réduit de 50 à 20 pour éviter saturation Cloud SQL (limite ~100, slots réservés pour superusers)
-        let cloud_run_max = 20; // ✅ CORRIGÉ 2026-02-18: Réduit de 50 à 20 pour éviter saturation
+        // ✅ CORRIGÉ 2026-02-18: Pool configuré pour Cloud Run
+        // ✅ CRITIQUE 2026-02-18: Le pool n'a que 4 connexions au lieu de 20 dans les logs
+        // Vérifier si c'est une limite Cloud SQL ou un problème de configuration
+        let cloud_run_max = env::var("DB_POOL_SIZE")
+            .unwrap_or_else(|_| "20".to_string())
+            .parse()
+            .unwrap_or(20);
         let cloud_run_min = 0; // ✅ CORRIGÉ: 0 pour démarrage rapide même si DB non accessible
         log::info!(
             "🔧 Cloud Run: Pool configuré (max={}, min={}) - Démarrage non-bloquant",
             cloud_run_max,
             cloud_run_min
+        );
+        eprintln!(
+            "[MAIN] 🔧 Cloud Run: Pool configuré (max={}, min={})",
+            cloud_run_max, cloud_run_min
         );
 
         // ✅ SOLUTION DÉFINITIVE 2026-02-15: Détecter format Cloud SQL Unix socket et utiliser PgConnectOptions
@@ -568,7 +577,21 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
             );
 
             // ✅ CORRIGÉ 2026-02-17: connect_lazy_with() retourne directement un Pool, pas un Result
-            pool_options.connect_lazy_with(connect_options)
+            let pool = pool_options.connect_lazy_with(connect_options);
+
+            // ✅ CRITIQUE 2026-02-18: Log la configuration du pool après création
+            log::info!(
+                "✅ Pool PostgreSQL créé avec connect_lazy (max={}, min={})",
+                cloud_run_max,
+                cloud_run_min
+            );
+            eprintln!(
+                "[MAIN] ✅ Pool PostgreSQL créé (max={}, min={}) - Le pool se connectera en arrière-plan",
+                cloud_run_max,
+                cloud_run_min
+            );
+
+            pool
         } else {
             // Format URL standard (IP/hostname)
             // ✅ CORRIGÉ 2026-02-17: connect_lazy() peut retourner un Result dans certaines versions
