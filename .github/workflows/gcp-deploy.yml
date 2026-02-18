@@ -213,43 +213,8 @@ jobs:
           
           echo "🧹 Nettoyage sera fait lors du déploiement final (évite les revisions multiples)..."
           
-          # Vérifier l'état actuel (debug) - Vérifier qu'il n'y a plus de DATABASE_URL comme variable
-          echo "📊 État actuel du service (debug):"
-          CURRENT_ENV=$(gcloud run services describe ${{ env.SERVICE_NAME }} \
-            --region ${{ env.REGION }} \
-            --format="yaml(spec.template.spec.containers[0].env)" \
-            --project ${{ secrets.GCP_PROJECT_ID }} 2>&1 || echo "")
-          
-          # Vérifier plusieurs fois et forcer la suppression si nécessaire
-          MAX_RETRIES=3
-          RETRY_COUNT=0
-          while echo "$CURRENT_ENV" | grep -q "DATABASE_URL" && [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-            echo "⚠️ ATTENTION (tentative $((RETRY_COUNT+1))/$MAX_RETRIES): DATABASE_URL est encore présent!"
-            echo "$CURRENT_ENV" | grep -A 2 -B 2 "DATABASE_URL" || true
-            echo "Tentative de suppression supplémentaire..."
-            gcloud run services update ${{ env.SERVICE_NAME }} \
-              --region ${{ env.REGION }} \
-              --remove-env-vars="DATABASE_URL" \
-              --project ${{ secrets.GCP_PROJECT_ID }} 2>&1 || true
-            sleep 5
-            CURRENT_ENV=$(gcloud run services describe ${{ env.SERVICE_NAME }} \
-              --region ${{ env.REGION }} \
-              --format="yaml(spec.template.spec.containers[0].env)" \
-              --project ${{ secrets.GCP_PROJECT_ID }} 2>&1 || echo "")
-            RETRY_COUNT=$((RETRY_COUNT+1))
-          done
-          
-          if echo "$CURRENT_ENV" | grep -q "DATABASE_URL"; then
-            echo "❌ ERREUR: DATABASE_URL est toujours présent après $MAX_RETRIES tentatives!"
-            echo "Tentative de clear-env-vars supplémentaire..."
-            gcloud run services update ${{ env.SERVICE_NAME }} \
-              --region ${{ env.REGION }} \
-              --clear-env-vars \
-              --project ${{ secrets.GCP_PROJECT_ID }} 2>&1 || true
-            sleep 5
-          else
-            echo "✅ DATABASE_URL n'est plus présent comme variable d'environnement"
-          fi
+          # ✅ CORRIGÉ 2026-02-18: DATABASE_URL est géré comme secret, pas besoin de vérifier comme variable
+          # Le nettoyage avec --clear-env-vars et --clear-secrets dans le déploiement final suffit
           
           # Construire la liste des variables d'environnement depuis env-vars.json (sans les secrets)
           echo "Construction de la liste des variables d'environnement..."
@@ -281,8 +246,7 @@ jobs:
                 --set-env-vars="$ENV_VARS" \
                 --clear-secrets \
                 --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,MONGODB_URL=mongodb-url:latest" \
-                --clear-cloudsql-instances \
-                --add-cloudsql-instances "$CLOUD_SQL_INSTANCE" \
+                --set-cloudsql-instances="$CLOUD_SQL_INSTANCE" \
                 --memory 2Gi \
                 --cpu 2 \
                 --timeout 900 \
@@ -305,8 +269,7 @@ jobs:
                 --clear-env-vars \
                 --clear-secrets \
                 --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,MONGODB_URL=mongodb-url:latest" \
-                --clear-cloudsql-instances \
-                --add-cloudsql-instances "$CLOUD_SQL_INSTANCE" \
+                --set-cloudsql-instances="$CLOUD_SQL_INSTANCE" \
                 --memory 2Gi \
                 --cpu 2 \
                 --timeout 900 \
@@ -335,9 +298,8 @@ jobs:
               --clear-env-vars \
               --env-vars-file ${{ steps.prepare-env.outputs.env_file }} \
               --clear-secrets \
-              --clear-cloudsql-instances \
               --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,MONGODB_URL=mongodb-url:latest" \
-              --add-cloudsql-instances "$CLOUD_SQL_INSTANCE" \
+              --set-cloudsql-instances="$CLOUD_SQL_INSTANCE" \
               --memory 2Gi \
               --cpu 2 \
               --timeout 900 \

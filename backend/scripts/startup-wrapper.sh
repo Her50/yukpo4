@@ -13,35 +13,20 @@ python3 /app/health-server-python.py &
 HEALTH_PID=$!
 echo "✅ [WRAPPER] Serveur HTTP minimal démarré (PID: $HEALTH_PID)"
 
-# ✅ CORRIGÉ 2026-02-18: Attendre que Cloud Run détecte le serveur Python
-# Le startup probe a initialDelaySeconds=60, donc on attend au moins 60s
+# ✅ CORRIGÉ 2026-02-18: Attendre que Cloud Run valide le startup probe
+# Le startup probe a initialDelaySeconds=90, donc on attend 90s
 # pour que Cloud Run commence les health checks et valide le probe
-echo "⏳ [WRAPPER] Attente que Cloud Run détecte le serveur Python (70 secondes pour startup probe)..."
-sleep 70
-echo "✅ [WRAPPER] Cloud Run devrait avoir validé le startup probe, démarrage de Rust en arrière-plan..."
+echo "⏳ [WRAPPER] Attente que Cloud Run valide le startup probe (90 secondes)..."
+sleep 90
+echo "✅ [WRAPPER] Cloud Run devrait avoir validé le startup probe"
 
-# ✅ CRITIQUE: Démarrer Rust en arrière-plan SANS tuer Python
-# Python continue de répondre aux health checks pendant que Rust s'initialise
-# Une fois Rust prêt, il prendra le relais (le wrapper Python sera tué par Rust ou restera en vie)
-echo "🚀 [WRAPPER] Démarrage de Rust en arrière-plan (Python continue de répondre)..."
-
-# Vérifier que le port est bien libre
-echo "🔍 [WRAPPER] Vérification que le port 8080 est libre..."
-if command -v lsof >/dev/null 2>&1; then
-    if lsof -i :8080 >/dev/null 2>&1; then
-        echo "⚠️ [WRAPPER] ATTENTION: Le port 8080 est encore occupé!"
-        lsof -i :8080 || true
-        # ✅ CORRIGÉ: Augmenter l'attente supplémentaire de 3s à 5s
-        echo "⏳ [WRAPPER] Attente supplémentaire (5 secondes)..."
-        sleep 5
-    else
-        echo "✅ [WRAPPER] Port 8080 est libre (vérifié avec lsof)"
-    fi
-else
-    echo "⚠️ [WRAPPER] lsof non disponible, on suppose que le port est libre"
-fi
-
-# Maintenant démarrer Rust (qui va pouvoir bind sur le port libre)
+# Maintenant tuer Python et démarrer Rust
+echo "🛑 [WRAPPER] Arrêt du serveur Python pour libérer le port..."
+kill $HEALTH_PID 2>/dev/null || true
+wait $HEALTH_PID 2>/dev/null || true
+echo "⏳ [WRAPPER] Attente libération du port (5 secondes)..."
+sleep 5
+echo "✅ [WRAPPER] Port libéré, démarrage de Rust..."
 # ✅ CRITIQUE 2026-02-17: Ajouter des logs détaillés pour diagnostiquer où le wrapper s'arrête
 echo "🔍 [WRAPPER] Étape 1: Vérification existence du binaire Rust..."
 if [ ! -f /app/yukpomnang_backend ]; then
