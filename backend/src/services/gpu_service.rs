@@ -303,26 +303,66 @@ impl GpuService {
     }
 
     /// Récupère l'utilisation actuelle du GPU
+    /// ✅ CORRIGÉ 2026-02-18: Ajout retry avec backoff exponentiel et logs détaillés
     async fn get_current_utilization(&self) -> AppResult<f64> {
-        // Essayer de récupérer depuis l'endpoint GPU
-        let response = self
-            .http
-            .get(&format!("{}/api/v1/metrics", self.config.gpu_endpoint))
-            .send()
-            .await;
+        let endpoint = format!("{}/api/v1/metrics", self.config.gpu_endpoint);
+        let max_retries = 3;
+        let mut last_error = None;
 
-        match response {
-            Ok(resp) if resp.status().is_success() => {
-                if let Ok(json) = resp.json::<Value>().await {
-                    if let Some(util) = json.get("utilization").and_then(|v| v.as_f64()) {
-                        return Ok(util);
+        // Retry avec backoff exponentiel
+        for attempt in 0..max_retries {
+            let response =
+                self.http.get(&endpoint).timeout(std::time::Duration::from_secs(5)).send().await;
+
+            match response {
+                Ok(resp) if resp.status().is_success() => match resp.json::<Value>().await {
+                    Ok(json) => {
+                        if let Some(util) = json.get("utilization").and_then(|v| v.as_f64()) {
+                            if attempt > 0 {
+                                info!(
+                                        "[GpuService] ✅ Métriques GPU récupérées après {} tentative(s)",
+                                        attempt + 1
+                                    );
+                            }
+                            return Ok(util);
+                        } else {
+                            last_error =
+                                Some(format!("Réponse JSON invalide: pas de champ 'utilization'"));
+                        }
                     }
+                    Err(e) => {
+                        last_error = Some(format!("Erreur parsing JSON: {}", e));
+                    }
+                },
+                Ok(resp) => {
+                    let status = resp.status();
+                    let error_text = resp.text().await.unwrap_or_default();
+                    last_error = Some(format!("HTTP {}: {}", status, error_text));
+                }
+                Err(e) => {
+                    last_error = Some(format!("Erreur réseau: {}", e));
                 }
             }
-            _ => {
-                warn!("[GpuService] Impossible de récupérer métriques GPU, utilisation par défaut");
+
+            // Si ce n'est pas la dernière tentative, attendre avant de réessayer
+            if attempt < max_retries - 1 {
+                let delay_ms = 100 * (1 << attempt); // Backoff exponentiel: 100ms, 200ms, 400ms
+                tokio::time::sleep(std::time::Duration::from_millis(delay_ms)).await;
             }
         }
+
+        // Toutes les tentatives ont échoué
+        let error_msg = last_error.unwrap_or_else(|| "Erreur inconnue".to_string());
+        warn!(
+            "[GpuService] ⚠️ Impossible de récupérer métriques GPU après {} tentatives: {} - Utilisation par défaut",
+            max_retries,
+            error_msg
+        );
+        log::debug!(
+            "[GpuService] Endpoint GPU: {}, Dernière erreur: {}",
+            endpoint,
+            error_msg
+        );
 
         // Fallback: utiliser les métriques locales
         let metrics = self.metrics.read().await;
