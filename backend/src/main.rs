@@ -825,6 +825,34 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
     // Le warmup peut bloquer si la DB n'est pas accessible
     let actual_min_connections = if is_cloud_run { 0 } else { min_connections };
 
+    // ✅ CRITIQUE 2026-02-18: Log la taille réelle du pool après création
+    let initial_pool_size = pg_pool.size();
+    log::info!(
+        "📊 Pool PostgreSQL initial - Size: {}, Configuré max: {}, min: {}",
+        initial_pool_size,
+        if is_cloud_run {
+            env::var("DB_POOL_SIZE")
+                .unwrap_or_else(|_| "20".to_string())
+                .parse()
+                .unwrap_or(20)
+        } else {
+            max_connections
+        },
+        actual_min_connections
+    );
+    eprintln!(
+        "[MAIN] 📊 Pool PostgreSQL initial - Size: {}, Configuré max: {}",
+        initial_pool_size,
+        if is_cloud_run {
+            env::var("DB_POOL_SIZE")
+                .unwrap_or_else(|_| "20".to_string())
+                .parse()
+                .unwrap_or(20)
+        } else {
+            max_connections
+        }
+    );
+
     if actual_min_connections > 0 {
         log::info!("🔥 Pré-chauffage du pool de connexions...");
         let warmup_pool = pg_pool.clone();
