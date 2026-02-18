@@ -3,7 +3,14 @@
 # 🚀 Script de démarrage optimisé pour AWS ECS/Fargate
 set -e
 
-echo "🚀 Démarrage de Yukpomnang Backend - AWS Cloud..."
+# Détecter l'environnement cloud
+if [ "$CLOUD_RUN" = "true" ]; then
+    echo "🚀 Démarrage de Yukpomnang Backend - Google Cloud Run..."
+elif [ -n "$AWS_REGION" ] || [ -n "$ECS_CONTAINER_METADATA_URI" ]; then
+    echo "🚀 Démarrage de Yukpomnang Backend - AWS Cloud..."
+else
+    echo "🚀 Démarrage de Yukpomnang Backend..."
+fi
 
 # Vérifier les variables d'environnement critiques
 if [ -z "$DATABASE_URL" ]; then
