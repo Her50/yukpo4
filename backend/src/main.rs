@@ -364,7 +364,8 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
         // ✅ CORRIGÉ 2026-02-15: min_connections=0 pour éviter blocage si DB non accessible
         eprintln!("[MAIN] 🚀 Cloud Run: Utilisation de connect_lazy pour démarrage rapide");
         log::info!("🚀 Cloud Run: Utilisation de connect_lazy pour démarrage rapide");
-        let cloud_run_max = 50; // Pool augmenté pour Cloud Run (évite saturation)
+        // ✅ CORRIGÉ 2026-02-18: Réduit de 50 à 20 pour éviter saturation Cloud SQL (limite ~100, slots réservés pour superusers)
+        let cloud_run_max = 20; // ✅ CORRIGÉ 2026-02-18: Réduit de 50 à 20 pour éviter saturation
         let cloud_run_min = 0; // ✅ CORRIGÉ: 0 pour démarrage rapide même si DB non accessible
         log::info!(
             "🔧 Cloud Run: Pool configuré (max={}, min={}) - Démarrage non-bloquant",
@@ -774,9 +775,10 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
             log::info!("✅ Read replica PostgreSQL configuré - Scaling horizontal activé");
 
             // ✅ CORRIGÉ 2026-02-17: connect_lazy() peut retourner un Result dans certaines versions
+            // ✅ CORRIGÉ 2026-02-18: Réduit de 30 à 10 pour éviter saturation Cloud SQL
             match PgPoolOptions::new()
-                .max_connections(30) // Plus de connexions pour lectures
-                .min_connections(5)
+                .max_connections(10) // ✅ CORRIGÉ 2026-02-18: Réduit de 30 à 10 pour éviter saturation
+                .min_connections(2) // ✅ CORRIGÉ 2026-02-18: Réduit de 5 à 2
                 .acquire_timeout(std::time::Duration::from_secs(30))
                 .idle_timeout(Some(std::time::Duration::from_secs(600)))
                 .max_lifetime(Some(std::time::Duration::from_secs(1800)))
@@ -2435,7 +2437,7 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
 
             // Créer le pool dans le contexte async
             let pg_for_migrations = match PgPoolOptions::new()
-                .max_connections(10) // Pool dédié pour migrations (10 connexions)
+                .max_connections(5) // ✅ CORRIGÉ 2026-02-18: Réduit de 10 à 5 pour éviter saturation (migrations rares)
                 .min_connections(2)
                 .acquire_timeout(std::time::Duration::from_secs(60)) // Timeout plus long pour migrations
                 .idle_timeout(Some(std::time::Duration::from_secs(300)))
