@@ -541,9 +541,19 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
 
             // Ajouter le mot de passe si présent (décoder l'URL encoding)
             if !password.is_empty() {
-                // Le mot de passe peut être URL-encodé (ex: %23 pour #, %25 pour %)
-                // tokio-postgres gère l'URL encoding automatiquement
-                connect_options = connect_options.password(password);
+                // ✅ CRITIQUE 2026-02-18: Le mot de passe est URL-encodé dans DATABASE_URL
+                // Il faut le décoder avant de l'utiliser (ex: %23 pour #, %25 pour %, %3D pour =)
+                let password_decoded = urlencoding::decode(password)
+                    .map_err(|e| format!("Erreur décodage mot de passe URL: {}", e))?
+                    .to_string();
+
+                eprintln!(
+                    "[MAIN] 🔍 Mot de passe décodé (longueur: {})",
+                    password_decoded.len()
+                );
+                log::debug!("Mot de passe décodé pour user: {}", user);
+
+                connect_options = connect_options.password(&password_decoded);
             }
 
             // Pour Cloud SQL Unix socket, pas besoin de SSL
@@ -2179,6 +2189,21 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
     // Configuration Redis avec test de connexion
     let mut redis_url =
         env::var("REDIS_URL").unwrap_or_else(|_| "redis://127.0.0.1:6379/0".to_string());
+
+    // ✅ CRITIQUE 2026-02-18: Détecter et rejeter les placeholders
+    if redis_url.contains("PLACEHOLDER")
+        || redis_url.contains("REMPLACER")
+        || redis_url.contains("VRAIE_VALEUR")
+    {
+        log::error!(
+            "❌ ERREUR CRITIQUE: REDIS_URL contient un placeholder au lieu d'une vraie URL !"
+        );
+        log::error!("   Valeur actuelle: {}", redis_url);
+        log::error!("   Veuillez mettre à jour le secret redis-url dans Secret Manager avec une vraie URL Redis.");
+        log::warn!("⚠️ Redis sera désactivé jusqu'à ce que le secret soit corrigé.");
+        // Utiliser une URL invalide mais qui ne causera pas de crash immédiat
+        redis_url = "redis://invalid-placeholder:6379/0".to_string();
+    }
 
     // ✅ CORRECTION: Convertir automatiquement redis:// en rediss:// pour Upstash avec TLS
     // Note: Si l'URL a déjà rediss://, cette conversion ne fait rien
