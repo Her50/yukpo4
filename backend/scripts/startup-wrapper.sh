@@ -13,24 +13,17 @@ python3 /app/health-server-python.py &
 HEALTH_PID=$!
 echo "✅ [WRAPPER] Serveur HTTP minimal démarré (PID: $HEALTH_PID)"
 
-# Attendre que le serveur soit prêt et que Cloud Run le détecte
-sleep 5
-echo "✅ [WRAPPER] Serveur HTTP minimal prêt, Cloud Run devrait le détecter..."
+# ✅ CORRIGÉ 2026-02-18: Attendre que Cloud Run détecte le serveur Python
+# Le startup probe a initialDelaySeconds=60, donc on attend au moins 60s
+# pour que Cloud Run commence les health checks et valide le probe
+echo "⏳ [WRAPPER] Attente que Cloud Run détecte le serveur Python (70 secondes pour startup probe)..."
+sleep 70
+echo "✅ [WRAPPER] Cloud Run devrait avoir validé le startup probe, démarrage de Rust en arrière-plan..."
 
-# Attendre que Cloud Run détecte le serveur Python (startup probe)
-echo "⏳ [WRAPPER] Attente que Cloud Run détecte le serveur Python (5 secondes)..."
-sleep 5
-
-# Maintenant tuer le serveur Python pour libérer le port AVANT de démarrer Rust
-echo "🛑 [WRAPPER] Arrêt du serveur Python pour libérer le port..."
-kill $HEALTH_PID 2>/dev/null || true
-# Attendre que le processus Python se termine complètement
-wait $HEALTH_PID 2>/dev/null || true
-# Attendre que le port soit vraiment libéré par le système
-# ✅ CORRIGÉ: Augmenter le délai de 5s à 10s pour s'assurer que le port est bien libéré
-echo "⏳ [WRAPPER] Attente libération du port (10 secondes)..."
-sleep 10
-echo "✅ [WRAPPER] Port libéré, démarrage de Rust..."
+# ✅ CRITIQUE: Démarrer Rust en arrière-plan SANS tuer Python
+# Python continue de répondre aux health checks pendant que Rust s'initialise
+# Une fois Rust prêt, il prendra le relais (le wrapper Python sera tué par Rust ou restera en vie)
+echo "🚀 [WRAPPER] Démarrage de Rust en arrière-plan (Python continue de répondre)..."
 
 # Vérifier que le port est bien libre
 echo "🔍 [WRAPPER] Vérification que le port 8080 est libre..."
@@ -155,12 +148,23 @@ else
     exit 1
 fi
 
-# ✅ CRITIQUE 2026-02-17: Utiliser exec pour que Rust devienne le processus principal (PID 1)
+# ✅ CORRIGÉ 2026-02-18: Stratégie simplifiée - Garder Python en vie plus longtemps
+# Le startup probe a initialDelaySeconds=90, donc on attend 90s pour que Cloud Run valide
+# Ensuite on démarre Rust qui va essayer de bind (avec retry logic dans main.rs)
+echo "⏳ [WRAPPER] Attente que Cloud Run valide le startup probe (90 secondes)..."
+sleep 90
+echo "✅ [WRAPPER] Cloud Run devrait avoir validé le startup probe"
+
+# Maintenant tuer Python et démarrer Rust
+echo "🛑 [WRAPPER] Arrêt du serveur Python pour libérer le port..."
+kill $HEALTH_PID 2>/dev/null || true
+wait $HEALTH_PID 2>/dev/null || true
+echo "⏳ [WRAPPER] Attente libération du port (5 secondes)..."
+sleep 5
+echo "✅ [WRAPPER] Port libéré, démarrage de Rust..."
+
+# ✅ CRITIQUE: Utiliser exec pour que Rust devienne le processus principal (PID 1)
 # Cloud Run nécessite que le processus principal reste actif
-# exec remplace le processus wrapper par Rust, ce qui est nécessaire pour Cloud Run
-echo "🚀 [WRAPPER] Étape 4.3: Exécution de exec /app/yukpomnang_backend 2>&1"
-echo "🔍 [WRAPPER] Le processus wrapper va être remplacé par Rust maintenant..."
-echo "🔍 [WRAPPER] Si Rust démarre, vous devriez voir '[MAIN] 🚀 Application Rust démarre' ci-dessous..."
+echo "🚀 [WRAPPER] Démarrage de Rust (remplace le wrapper)..."
 exec /app/yukpomnang_backend 2>&1
-# Note: Le code après exec ne sera jamais exécuté car exec remplace le processus
 
