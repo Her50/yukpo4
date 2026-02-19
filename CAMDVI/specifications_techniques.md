@@ -110,12 +110,67 @@ CREATE TABLE amortissements (
     mensualite DECIMAL(15,2) NOT NULL,
     date_paiement DATE,
     montant_paye DECIMAL(15,2) DEFAULT 0,
-    statut VARCHAR(50) DEFAULT 'en_attente', -- en_attente, paye, en_retard, partiel
+    statut VARCHAR(50) DEFAULT 'en_attente', -- en_attente, paye, en_retard, partiel, defaut
     jours_retard INTEGER DEFAULT 0,
     penalite DECIMAL(15,2) DEFAULT 0,
+    sanction_financiere DECIMAL(15,2) DEFAULT 0,
+    niveau_sanction INTEGER DEFAULT 0, -- 0: aucune, 1-3: niveaux de sanction
+    date_derniere_alerte DATE, -- Date dernière notification envoyée
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW(),
     UNIQUE(pret_id, numero_echeance)
+);
+
+-- Preuves de Paiement (envoyées par clients)
+CREATE TABLE preuves_paiement (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    client_id UUID REFERENCES clients(id) NOT NULL,
+    pret_id UUID REFERENCES prets(id),
+    amortissement_id UUID REFERENCES amortissements(id),
+    type_preuve VARCHAR(50) NOT NULL, -- photo, pdf, scan
+    fichier_path VARCHAR(500) NOT NULL,
+    fichier_url VARCHAR(500),
+    montant_extrait DECIMAL(15,2), -- Montant extrait par OCR
+    date_extrait DATE, -- Date extraite par OCR
+    reference_extrait VARCHAR(255), -- Référence extraite par OCR
+    statut_ocr VARCHAR(50) DEFAULT 'en_attente', -- en_attente, traite, erreur
+    confiance_ocr DECIMAL(5,2), -- Score de confiance OCR (0-100)
+    valide BOOLEAN DEFAULT FALSE,
+    valide_par UUID REFERENCES users(id),
+    date_validation TIMESTAMP,
+    motif_rejet TEXT,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Configuration Sanctions
+CREATE TABLE configuration_sanctions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    nombre_mensualites_seuil INTEGER NOT NULL, -- Seuil déclenchant sanction
+    niveau_sanction INTEGER NOT NULL, -- 1, 2, 3
+    type_sanction VARCHAR(50) NOT NULL, -- pourcentage_capital, montant_fixe, pourcentage_mensualite
+    valeur_sanction DECIMAL(10,2) NOT NULL, -- Pourcentage ou montant
+    description TEXT,
+    actif BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE(nombre_mensualites_seuil, niveau_sanction)
+);
+
+-- Historique Sanctions
+CREATE TABLE historique_sanctions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    pret_id UUID REFERENCES prets(id) NOT NULL,
+    client_id UUID REFERENCES clients(id) NOT NULL,
+    niveau_sanction INTEGER NOT NULL,
+    nombre_mensualites_manquees INTEGER NOT NULL,
+    montant_sanction DECIMAL(15,2) NOT NULL,
+    capital_restant_du DECIMAL(15,2) NOT NULL,
+    date_application DATE NOT NULL,
+    applique_par UUID REFERENCES users(id), -- NULL si automatique
+    applique_automatiquement BOOLEAN DEFAULT TRUE,
+    notification_envoyee BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT NOW()
 );
 
 -- Versements
@@ -123,14 +178,16 @@ CREATE TABLE versements (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     pret_id UUID REFERENCES prets(id),
     amortissement_id UUID REFERENCES amortissements(id),
+    preuve_paiement_id UUID REFERENCES preuves_paiement(id), -- Lien vers preuve envoyée par client
     client_id UUID REFERENCES clients(id) NOT NULL,
     type_versement VARCHAR(50) NOT NULL, -- remboursement, epargne, dividende, interet_epargne
     montant DECIMAL(15,2) NOT NULL,
     date_versement DATE NOT NULL,
     mode_paiement VARCHAR(50), -- mobile_money, virement, especes, cheque
     reference_paiement VARCHAR(255),
-    reçu_path VARCHAR(500), -- Chemin fichier reçu scanné
+    reçu_path VARCHAR(500), -- Chemin fichier reçu scanné (si upload gestionnaire)
     reçu_ocr_data JSONB, -- Données extraites par OCR
+    source_versement VARCHAR(50) DEFAULT 'gestionnaire', -- gestionnaire, client_app, systeme_externe
     valide BOOLEAN DEFAULT FALSE,
     valide_par UUID REFERENCES users(id),
     date_validation TIMESTAMP,
@@ -473,12 +530,136 @@ impl WorkflowService {
 }
 ```
 
-### 3.3 Service Fintech
+### 3.3 Service Contrôle Échéances
+
+```rust
+pub struct ControleEcheancesService;
+
+impl ControleEcheancesService {
+    pub async fn verifier_echeances_retard() -> Result<Vec<EcheanceRetard>, Error> {
+        // Vérifier toutes échéances en retard
+        // Calculer jours de retard
+        // Mettre à jour statuts
+    }
+    
+    pub async fn envoyer_alertes_proactives() -> Result<(), Error> {
+        // Envoyer alertes J-7, J-3, J-1
+        // Notifications push + email
+    }
+    
+    pub async fn calculer_retard(
+        echeance: &Amortissement,
+    ) -> Result<i32, Error> {
+        // Calculer jours de retard depuis date échéance
+    }
+    
+    pub async fn mettre_a_jour_statut_echeance(
+        echeance_id: Uuid,
+    ) -> Result<(), Error> {
+        // Mettre à jour statut selon retard
+        // en_attente -> en_retard -> defaut
+    }
+}
+```
+
+### 3.4 Service Sanctions Financières
+
+```rust
+pub struct SanctionsService;
+
+impl SanctionsService {
+    pub async fn verifier_et_appliquer_sanctions(
+        pret_id: Uuid,
+    ) -> Result<Vec<Sanction>, Error> {
+        // Compter mensualités non payées
+        // Vérifier seuils configurés
+        // Appliquer sanctions automatiquement
+        // Notifier client et gestionnaire
+    }
+    
+    pub async fn calculer_sanction(
+        niveau: i32,
+        capital_restant: Decimal,
+        config: &ConfigurationSanction,
+    ) -> Result<Decimal, Error> {
+        // Calculer montant sanction selon type
+        // Pourcentage capital ou montant fixe
+    }
+    
+    pub async fn compter_mensualites_manquees(
+        pret_id: Uuid,
+    ) -> Result<i32, Error> {
+        // Compter échéances consécutives non payées
+    }
+    
+    pub async fn enregistrer_sanction(
+        sanction: Sanction,
+    ) -> Result<Uuid, Error> {
+        // Enregistrer dans historique
+        // Ajouter au solde client
+        // Générer notification
+    }
+}
+```
+
+### 3.5 Service Preuves de Paiement
+
+```rust
+pub struct PreuvePaiementService;
+
+impl PreuvePaiementService {
+    pub async fn upload_preuve(
+        client_id: Uuid,
+        pret_id: Option<Uuid>,
+        echeance_id: Option<Uuid>,
+        fichier: Vec<u8>,
+        type_fichier: String,
+    ) -> Result<Uuid, Error> {
+        // Sauvegarder fichier
+        // Créer enregistrement preuve
+        // Lancer traitement OCR
+        // Notifier gestionnaire
+    }
+    
+    pub async fn traiter_ocr(
+        preuve_id: Uuid,
+    ) -> Result<DonneesOCR, Error> {
+        // Appeler service OCR
+        // Extraire montant, date, référence
+        // Calculer score confiance
+        // Mettre à jour preuve
+    }
+    
+    pub async fn valider_preuve(
+        preuve_id: Uuid,
+        gestionnaire_id: Uuid,
+    ) -> Result<(), Error> {
+        // Valider preuve
+        // Créer versement associé
+        // Mettre à jour échéance
+        // Notifier client
+    }
+    
+    pub async fn rejeter_preuve(
+        preuve_id: Uuid,
+        gestionnaire_id: Uuid,
+        motif: String,
+    ) -> Result<(), Error> {
+        // Rejeter preuve avec motif
+        // Notifier client
+    }
+}
+```
+
+### 3.6 Service Fintech (Phase Future)
 
 ```rust
 pub struct FintechService;
 
 impl FintechService {
+    // Note: Service prévu pour phase future
+    // Architecture préparée mais non implémentée initialement
+    
     pub async fn virer_pret(
         pret_id: Uuid,
         montant: Decimal,

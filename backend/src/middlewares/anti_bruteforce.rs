@@ -6,6 +6,7 @@ use axum::{http::Request, middleware::Next, response::Response};
 use http::{HeaderValue, StatusCode};
 use log::{error, warn};
 use std::sync::Arc;
+use tokio::time::{timeout, Duration as TokioDuration};
 
 use crate::state::AppState;
 
@@ -48,14 +49,27 @@ pub async fn anti_bruteforce(
     // Vérifier si l'IP est bloquée
     let block_key = format!("bruteforce:blocked:{}", client_ip);
 
-    let mut redis_conn = match state.redis_client.get_multiplexed_async_connection().await {
-        Ok(conn) => conn,
-        Err(e) => {
+    // ✅ CRITIQUE 2026-02-19: Ajouter un timeout explicite pour éviter les blocages de 90s
+    // Si Redis n'est pas accessible, le timeout par défaut peut être très long
+    // Timeout de 2 secondes maximum pour ne pas bloquer les requêtes de login
+    let mut redis_conn = match timeout(
+        TokioDuration::from_secs(2),
+        state.redis_client.get_multiplexed_async_connection(),
+    )
+    .await
+    {
+        Ok(Ok(conn)) => conn,
+        Ok(Err(e)) => {
             warn!(
                 "[anti_bruteforce] Redis indisponible: {} - Protection désactivée",
                 e
             );
             // Fail-open si Redis est indisponible
+            return Ok(next.run(req).await);
+        }
+        Err(_) => {
+            warn!("[anti_bruteforce] Redis timeout (2s) - Protection désactivée");
+            // Fail-open si Redis timeout
             return Ok(next.run(req).await);
         }
     };

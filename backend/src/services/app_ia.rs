@@ -255,23 +255,33 @@ impl AppIA {
         let mut models = Vec::new();
 
         // OpenAI GPT-4o (priorit? haute) - Mod?le multimodal le plus avanc?
-        if let Ok(api_key) = std::env::var("OPENAI_API_KEY") {
-            models.push(ModelConfig {
-                name: "openai-gpt4o".to_string(),
-                api_key,
-                base_url: "https://api.openai.com/v1".to_string(),
-                model: "gpt-4o".to_string(),
-                temperature: 0.2,       // R?duit pour plus de coh?rence et rapidit?
-                max_tokens: 1500,       // R?duit pour acc?l?rer
-                top_p: 0.8,             // R?duit pour plus de pr?cision
-                frequency_penalty: 0.0, // Supprim? pour acc?l?rer
-                presence_penalty: 0.0,  // Supprim? pour acc?l?rer
-                timeout: 60, // ✅ Augmenté à 60s pour analyse complète des images (éviter timeouts)
-                retry_count: 2, // R?duit ? 2 tentatives
-                priority: 10,
-                cost_per_token: 0.000005, // GPT-4o est moins cher que GPT-4 Turbo
-                enabled: true,
-            });
+        match std::env::var("OPENAI_API_KEY") {
+            Ok(api_key) => {
+                log::info!(
+                    "[AppIA] ✅ OPENAI_API_KEY chargée (longueur: {}, préfixe: {}...)",
+                    api_key.len(),
+                    &api_key[..std::cmp::min(20, api_key.len())]
+                );
+                models.push(ModelConfig {
+                    name: "openai-gpt4o".to_string(),
+                    api_key,
+                    base_url: "https://api.openai.com/v1".to_string(),
+                    model: "gpt-4o".to_string(),
+                    temperature: 0.2, // R?duit pour plus de coh?rence et rapidit?
+                    max_tokens: 1500, // R?duit pour acc?l?rer
+                    top_p: 0.8,       // R?duit pour plus de pr?cision
+                    frequency_penalty: 0.0, // Supprim? pour acc?l?rer
+                    presence_penalty: 0.0, // Supprim? pour acc?l?rer
+                    timeout: 60, // ✅ Augmenté à 60s pour analyse complète des images (éviter timeouts)
+                    retry_count: 2, // R?duit ? 2 tentatives
+                    priority: 10,
+                    cost_per_token: 0.000005, // GPT-4o est moins cher que GPT-4 Turbo
+                    enabled: true,
+                });
+            }
+            Err(e) => {
+                log::error!("[AppIA] ❌ OPENAI_API_KEY non trouvée: {} - Les modèles OpenAI ne seront pas disponibles", e);
+            }
         }
 
         // OpenAI GPT-4 Turbo (fallback)
@@ -480,6 +490,26 @@ impl AppIA {
 
         // Trier par priorit? d?croissante
         models.sort_by(|a, b| b.priority.cmp(&a.priority));
+
+        // Log de debug pour voir quels modèles ont été initialisés
+        let openai_models: Vec<&str> = models
+            .iter()
+            .filter(|m| m.name.starts_with("openai-"))
+            .map(|m| m.name.as_str())
+            .collect();
+        if !openai_models.is_empty() {
+            log::info!(
+                "[AppIA] ✅ Modèles OpenAI initialisés: {:?} (total: {} modèles)",
+                openai_models,
+                models.len()
+            );
+        } else {
+            log::warn!(
+                "[AppIA] ⚠️ Aucun modèle OpenAI initialisé (total: {} modèles)",
+                models.len()
+            );
+        }
+
         models
     }
 

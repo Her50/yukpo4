@@ -11,7 +11,8 @@ if (Test-Path $htmlFile) {
     Write-Host "  1. Dans le navigateur, appuyez sur Ctrl+P" -ForegroundColor Cyan
     Write-Host "  2. Choisissez 'Enregistrer au format PDF'" -ForegroundColor Cyan
     Write-Host "  3. Enregistrez le fichier" -ForegroundColor Cyan
-} else {
+}
+else {
     Write-Host "Erreur : Fichier non trouvé : $htmlFile" -ForegroundColor Red
     exit 1
 }

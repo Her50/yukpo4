@@ -1,56 +1,58 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Application Mobile de Gestion Microfinance - Présentation Actionnaires</title>
+    <!-- Document mis à jour : Février 2026 - Version avec contrôle échéances et sanctions automatiques -->
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
-        
+
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             line-height: 1.6;
             color: #333;
             background: #f5f5f5;
         }
-        
+
         .container {
             max-width: 1200px;
             margin: 0 auto;
             background: white;
             padding: 40px;
-            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
         }
-        
+
         .header {
             text-align: center;
             border-bottom: 4px solid #2c3e50;
             padding-bottom: 30px;
             margin-bottom: 40px;
         }
-        
+
         .header h1 {
             color: #2c3e50;
             font-size: 2.5em;
             margin-bottom: 10px;
         }
-        
+
         .header .subtitle {
             color: #7f8c8d;
             font-size: 1.2em;
             font-style: italic;
         }
-        
+
         .header .date {
             color: #95a5a6;
             margin-top: 10px;
             font-size: 0.9em;
         }
-        
+
         .section {
             margin: 40px 0;
             padding: 30px;
@@ -58,7 +60,7 @@
             border-left: 5px solid #3498db;
             border-radius: 5px;
         }
-        
+
         .section h2 {
             color: #2c3e50;
             font-size: 1.8em;
@@ -66,29 +68,29 @@
             border-bottom: 2px solid #ecf0f1;
             padding-bottom: 10px;
         }
-        
+
         .section h3 {
             color: #34495e;
             font-size: 1.4em;
             margin-top: 25px;
             margin-bottom: 15px;
         }
-        
+
         .section h4 {
             color: #34495e;
             font-size: 1.2em;
             margin-top: 20px;
             margin-bottom: 10px;
         }
-        
+
         .workflow {
             background: white;
             padding: 20px;
             border-radius: 8px;
             margin: 20px 0;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
         }
-        
+
         .workflow-step {
             display: flex;
             align-items: center;
@@ -98,7 +100,7 @@
             border-radius: 5px;
             border-left: 4px solid #3498db;
         }
-        
+
         .workflow-step .step-number {
             background: #3498db;
             color: white;
@@ -112,77 +114,77 @@
             margin-right: 15px;
             flex-shrink: 0;
         }
-        
+
         .workflow-step .step-content {
             flex: 1;
         }
-        
+
         .workflow-step .step-title {
             font-weight: bold;
             color: #2c3e50;
             margin-bottom: 5px;
         }
-        
+
         .workflow-step .step-description {
             color: #7f8c8d;
             font-size: 0.95em;
         }
-        
+
         .workflow-step.approval {
             border-left-color: #f39c12;
         }
-        
+
         .workflow-step.approval .step-number {
             background: #f39c12;
         }
-        
+
         .workflow-step.decision {
             border-left-color: #e74c3c;
         }
-        
+
         .workflow-step.decision .step-number {
             background: #e74c3c;
         }
-        
+
         .workflow-step.completed {
             border-left-color: #27ae60;
         }
-        
+
         .workflow-step.completed .step-number {
             background: #27ae60;
         }
-        
+
         .feature-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
             gap: 20px;
             margin: 20px 0;
         }
-        
+
         .feature-card {
             background: white;
             padding: 20px;
             border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
             border-top: 4px solid #3498db;
         }
-        
+
         .feature-card h4 {
             color: #2c3e50;
             margin-bottom: 10px;
         }
-        
+
         .feature-card ul {
             list-style: none;
             padding-left: 0;
         }
-        
+
         .feature-card ul li {
             padding: 5px 0;
             padding-left: 25px;
             position: relative;
         }
-        
+
         .feature-card ul li:before {
             content: "✓";
             position: absolute;
@@ -190,35 +192,35 @@
             color: #27ae60;
             font-weight: bold;
         }
-        
+
         .table-container {
             overflow-x: auto;
             margin: 20px 0;
         }
-        
+
         table {
             width: 100%;
             border-collapse: collapse;
             background: white;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
         }
-        
+
         th {
             background: #2c3e50;
             color: white;
             padding: 15px;
             text-align: left;
         }
-        
+
         td {
             padding: 12px 15px;
             border-bottom: 1px solid #ecf0f1;
         }
-        
+
         tr:hover {
             background: #f8f9fa;
         }
-        
+
         .highlight {
             background: #fff3cd;
             padding: 20px;
@@ -226,35 +228,35 @@
             border-radius: 5px;
             margin: 20px 0;
         }
-        
+
         .highlight h4 {
             color: #856404;
             margin-bottom: 10px;
         }
-        
+
         .benefits {
             background: #e8f5e9;
             padding: 20px;
             border-radius: 8px;
             margin: 20px 0;
         }
-        
+
         .benefits h4 {
             color: #2e7d32;
             margin-bottom: 15px;
         }
-        
+
         .benefits ul {
             list-style: none;
             padding-left: 0;
         }
-        
+
         .benefits ul li {
             padding: 8px 0;
             padding-left: 30px;
             position: relative;
         }
-        
+
         .benefits ul li:before {
             content: "★";
             position: absolute;
@@ -262,18 +264,18 @@
             color: #2e7d32;
             font-size: 1.2em;
         }
-        
+
         .timeline {
             position: relative;
             padding-left: 40px;
             margin: 30px 0;
         }
-        
+
         .timeline-item {
             position: relative;
             padding-bottom: 30px;
         }
-        
+
         .timeline-item:before {
             content: "";
             position: absolute;
@@ -283,11 +285,11 @@
             height: 100%;
             background: #3498db;
         }
-        
+
         .timeline-item:last-child:before {
             display: none;
         }
-        
+
         .timeline-item .timeline-dot {
             position: absolute;
             left: -33px;
@@ -299,16 +301,16 @@
             border: 3px solid white;
             box-shadow: 0 0 0 3px #3498db;
         }
-        
+
         .timeline-item h4 {
             color: #2c3e50;
             margin-bottom: 5px;
         }
-        
+
         .timeline-item p {
             color: #7f8c8d;
         }
-        
+
         .footer {
             text-align: center;
             margin-top: 50px;
@@ -316,20 +318,23 @@
             border-top: 2px solid #ecf0f1;
             color: #7f8c8d;
         }
-        
+
         @media print {
             body {
                 background: white;
             }
+
             .container {
                 box-shadow: none;
             }
+
             .section {
                 page-break-inside: avoid;
             }
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <div class="header">
@@ -341,18 +346,19 @@
         <div class="section">
             <h2>1. Résumé Exécutif</h2>
             <p style="font-size: 1.1em; line-height: 1.8;">
-                Ce document présente une proposition complète pour le développement d'une application mobile 
-                de gestion microfinance visant à <strong>digitaliser l'ensemble du processus</strong> de bout en bout, 
-                depuis la demande de prêt jusqu'au suivi des remboursements et de l'épargne. L'application permettra 
-                aux gestionnaires de <strong>valider les étapes critiques</strong> du processus directement sur la plateforme, 
+                Ce document présente une proposition complète pour le développement d'une application mobile
+                de gestion microfinance visant à <strong>digitaliser l'ensemble du processus</strong> de bout en bout,
+                depuis la demande de prêt jusqu'au suivi des remboursements et de l'épargne. L'application permettra
+                aux gestionnaires de <strong>valider les étapes critiques</strong> du processus directement sur la
+                plateforme,
                 tout en automatisant les calculs financiers et en assurant une traçabilité complète des transactions.
             </p>
-            
+
             <div class="highlight">
                 <h4>Objectif Principal</h4>
                 <p>
-                    Transformer le système de gestion actuel (basé sur Excel) en une plateforme digitale moderne, 
-                    sécurisée et accessible depuis mobile, permettant une gestion efficace, transparente et traçable 
+                    Transformer le système de gestion actuel (basé sur Excel) en une plateforme digitale moderne,
+                    sécurisée et accessible depuis mobile, permettant une gestion efficace, transparente et traçable
                     de tous les processus microfinance.
                 </p>
             </div>
@@ -360,7 +366,7 @@
 
         <div class="section">
             <h2>2. Workflow Complet de Gestion des Prêts</h2>
-            
+
             <div class="workflow">
                 <div class="workflow-step">
                     <div class="step-number">1</div>
@@ -368,7 +374,7 @@
                         <div class="step-title">Demande de Prêt par le Client</div>
                         <div class="step-description">
                             Le client soumet sa demande via l'application mobile en renseignant :
-                            montant souhaité, durée, objectif du prêt, garanties. Le système enregistre 
+                            montant souhaité, durée, objectif du prêt, garanties. Le système enregistre
                             automatiquement la date et l'heure de la demande avec un numéro unique de suivi.
                         </div>
                     </div>
@@ -379,8 +385,8 @@
                     <div class="step-content">
                         <div class="step-title">Validation par le Chef de Secteur</div>
                         <div class="step-description">
-                            Le chef de secteur reçoit une notification sur son interface gestionnaire. 
-                            Il peut consulter le dossier client, vérifier l'historique, et approuver ou rejeter 
+                            Le chef de secteur reçoit une notification sur son interface gestionnaire.
+                            Il peut consulter le dossier client, vérifier l'historique, et approuver ou rejeter
                             la demande. L'approbation déclenche automatiquement l'envoi au comité de crédit.
                         </div>
                     </div>
@@ -391,9 +397,9 @@
                     <div class="step-content">
                         <div class="step-title">Analyse et Décision par le Comité de Crédit</div>
                         <div class="step-description">
-                            Le comité de crédit analyse la demande avec accès à toutes les données client 
-                            (historique épargne, prêts précédents, capacité de remboursement). Le système 
-                            génère automatiquement un score de crédit basé sur des critères prédéfinis. 
+                            Le comité de crédit analyse la demande avec accès à toutes les données client
+                            (historique épargne, prêts précédents, capacité de remboursement). Le système
+                            génère automatiquement un score de crédit basé sur des critères prédéfinis.
                             Décision : Accord ou Refus avec justification.
                         </div>
                     </div>
@@ -404,9 +410,9 @@
                     <div class="step-content">
                         <div class="step-title">Validation de la Reconnaissance de Dette</div>
                         <div class="step-description">
-                            Si le prêt est accordé, le client doit valider électroniquement la reconnaissance 
-                            de dette via l'application. Le document est généré automatiquement avec toutes les 
-                            conditions (montant, taux, durée, échéances). Signature électronique sécurisée 
+                            Si le prêt est accordé, le client doit valider électroniquement la reconnaissance
+                            de dette via l'application. Le document est généré automatiquement avec toutes les
+                            conditions (montant, taux, durée, échéances). Signature électronique sécurisée
                             avec horodatage et empreinte numérique.
                         </div>
                     </div>
@@ -417,10 +423,12 @@
                     <div class="step-content">
                         <div class="step-title">Virement du Prêt</div>
                         <div class="step-description">
-                            Une fois la reconnaissance de dette validée, le système initie le virement automatique 
-                            via intégration fintech (voir section dédiée). Le client reçoit une notification de 
-                            réception des fonds. Le tableau d'amortissement est généré automatiquement avec période 
-                            de différé si applicable.
+                            Une fois la reconnaissance de dette validée, le gestionnaire financier initie le virement
+                            du prêt (virement manuel ou via système bancaire existant). Le client reçoit une
+                            notification
+                            de réception des fonds. Le tableau d'amortissement est généré automatiquement avec période
+                            de différé si applicable. <em>(Intégration fintech automatique prévue pour phase
+                                future)</em>
                         </div>
                     </div>
                 </div>
@@ -429,57 +437,194 @@
 
         <div class="section">
             <h2>3. Gestion des Remboursements</h2>
-            
+
             <h3>3.1 Tableau d'Amortissement</h3>
             <p>
-                Le système génère automatiquement un tableau d'amortissement personnalisé pour chaque prêt, 
+                Le système génère automatiquement un tableau d'amortissement personnalisé pour chaque prêt,
                 tenant compte de :
             </p>
             <ul style="margin: 15px 0; padding-left: 30px;">
-                <li><strong>Période de différé</strong> : Période avant le début des remboursements (configurable par prêt)</li>
+                <li><strong>Période de différé</strong> : Période avant le début des remboursements (configurable par
+                    prêt)</li>
                 <li><strong>Calcul automatique des taux</strong> : 1.5% si montant < 1,000,000, sinon 1%</li>
                 <li><strong>Échéances mensuelles</strong> : Capital + Intérêts calculés automatiquement</li>
                 <li><strong>Solde restant</strong> : Mise à jour en temps réel après chaque paiement</li>
             </ul>
 
-            <h3>3.2 Suivi Mensuel des Remboursements</h3>
+            <h3>3.2 Envoi de Preuve de Paiement par le Client</h3>
+            <p>
+                Les clients peuvent directement envoyer leur preuve de paiement via l'application mobile :
+            </p>
             <div class="feature-grid">
                 <div class="feature-card">
-                    <h4>Enregistrement des Versements</h4>
+                    <h4>Upload de Preuve</h4>
                     <ul>
-                        <li>Saisie manuelle par gestionnaire</li>
-                        <li>Scan de reçu de versement</li>
-                        <li>Intégration système externe (mobile money, banque)</li>
-                        <li>Validation automatique des montants</li>
+                        <li>Photo du reçu de paiement</li>
+                        <li>Scan PDF du document</li>
+                        <li>Capture depuis l'appareil photo</li>
+                        <li>Association automatique à l'échéance</li>
                     </ul>
                 </div>
-                
+
                 <div class="feature-card">
-                    <h4>Traçabilité Complète</h4>
-                    <ul>
-                        <li>Horodatage de chaque transaction</li>
-                        <li>Historique complet des versements</li>
-                        <li>Photos/PDF des reçus archivés</li>
-                        <li>Audit trail pour conformité</li>
-                    </ul>
-                </div>
-                
-                <div class="feature-card">
-                    <h4>Analyse des Reçus</h4>
+                    <h4>Traitement Intelligent</h4>
                     <ul>
                         <li>Reconnaissance automatique (OCR)</li>
                         <li>Extraction montant, date, référence</li>
                         <li>Vérification contre échéances</li>
-                        <li>Alertes en cas d'écart</li>
+                        <li>Validation automatique si conforme</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card">
+                    <h4>Suivi pour le Client</h4>
+                    <ul>
+                        <li>Statut de validation en temps réel</li>
+                        <li>Notifications de confirmation</li>
+                        <li>Historique des preuves envoyées</li>
+                        <li>Alertes si rejet (avec motif)</li>
                     </ul>
                 </div>
             </div>
+            <p style="margin-top: 15px;">
+                Une fois la preuve envoyée, le gestionnaire reçoit une notification pour validation.
+                Le système analyse automatiquement le document et pré-remplit les informations
+                (montant, date, référence) pour accélérer le processus de validation.
+            </p>
 
-            <h3>3.3 Intégration Systèmes Externes</h3>
+            <h3>3.3 Système Intelligent de Contrôle des Échéances</h3>
             <p>
-                L'application peut s'intégrer avec des systèmes de paiement externes (Mobile Money, 
-                services bancaires) pour automatiser la réconciliation des versements. Les transactions 
-                sont synchronisées en temps réel et validées automatiquement.
+                Le système surveille automatiquement toutes les échéances et détecte les retards :
+            </p>
+            <div class="highlight">
+                <h4>Détection Automatique</h4>
+                <ul style="margin: 10px 0; padding-left: 30px;">
+                    <li><strong>Surveillance quotidienne</strong> : Vérification automatique chaque jour</li>
+                    <li><strong>Calcul des retards</strong> : Jours de retard calculés automatiquement</li>
+                    <li><strong>Classification</strong> : En attente, En retard, En défaut</li>
+                    <li><strong>Alertes proactives</strong> : Notifications avant échéance (J-7, J-3, J-1)</li>
+                </ul>
+            </div>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Statut Échéance</th>
+                            <th>Critère</th>
+                            <th>Action Système</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>En attente</strong></td>
+                            <td>Date échéance non atteinte</td>
+                            <td>Rappel automatique J-7, J-3, J-1</td>
+                        </tr>
+                        <tr>
+                            <td><strong>En retard</strong></td>
+                            <td>1-30 jours après échéance</td>
+                            <td>Notification client + gestionnaire, calcul pénalité</td>
+                        </tr>
+                        <tr>
+                            <td><strong>En défaut</strong></td>
+                            <td>Plus de 30 jours</td>
+                            <td>Escalade automatique, sanctions appliquées</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Défaut grave</strong></td>
+                            <td>X mensualités cumulées non payées</td>
+                            <td>Sanction financière automatique (voir section 3.4)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3>3.4 Système de Sanctions Financières Automatiques</h3>
+            <p>
+                Pour encourager le respect des engagements, le système applique automatiquement des sanctions
+                financières lorsque plusieurs mensualités consécutives ne sont pas reversées :
+            </p>
+
+            <div class="highlight">
+                <h4>Règles de Sanction</h4>
+                <ul style="margin: 10px 0; padding-left: 30px;">
+                    <li><strong>Seuil configurable</strong> : Nombre de mensualités non payées déclenchant la sanction
+                    </li>
+                    <li><strong>Calcul automatique</strong> : Sanction appliquée automatiquement au dépassement du seuil
+                    </li>
+                    <li><strong>Notification obligatoire</strong> : Client et gestionnaire informés immédiatement</li>
+                    <li><strong>Traçabilité complète</strong> : Historique des sanctions dans le dossier client</li>
+                </ul>
+            </div>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Nombre de Mensualités Non Payées</th>
+                            <th>Type de Sanction</th>
+                            <th>Montant/Calcul</th>
+                            <th>Application</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>1-2 mensualités</td>
+                            <td>Pénalité de retard</td>
+                            <td>X% du montant par mois de retard</td>
+                            <td>Automatique</td>
+                        </tr>
+                        <tr>
+                            <td>3 mensualités</td>
+                            <td>Sanction financière niveau 1</td>
+                            <td>Y% du capital restant dû</td>
+                            <td>Automatique + Validation gestionnaire</td>
+                        </tr>
+                        <tr>
+                            <td>4-5 mensualités</td>
+                            <td>Sanction financière niveau 2</td>
+                            <td>Z% du capital restant dû</td>
+                            <td>Automatique + Escalade comité crédit</td>
+                        </tr>
+                        <tr>
+                            <td>6+ mensualités</td>
+                            <td>Sanction financière niveau 3</td>
+                            <td>W% du capital restant dû + frais</td>
+                            <td>Automatique + Décision comité crédit</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p style="margin-top: 15px;">
+                <strong>Exemple de configuration</strong> : Si le seuil est fixé à 3 mensualités non payées,
+                dès que le client atteint ce seuil, une sanction de 5% du capital restant dû est automatiquement
+                ajoutée à son solde. Le système génère une notification immédiate et enregistre l'événement dans
+                l'audit trail.
+            </p>
+
+            <div class="benefits">
+                <h4>Avantages du Système de Sanctions Automatiques</h4>
+                <ul>
+                    <li><strong>Objectivité</strong> : Application uniforme des règles, sans subjectivité</li>
+                    <li><strong>Rapidité</strong> : Détection et application immédiates</li>
+                    <li><strong>Transparence</strong> : Client informé en temps réel des sanctions</li>
+                    <li><strong>Dissuasion</strong> : Encourage le respect des échéances</li>
+                    <li><strong>Protection</strong> : Protège l'institution contre les impayés</li>
+                </ul>
+            </div>
+
+            <h3>3.5 Intégration Systèmes Externes (Optionnel - Phase Future)</h3>
+            <p>
+                <em>Note : L'intégration fintech pour transactions automatiques est prévue pour une phase future.
+                    Pour l'instant, le système se concentre sur la gestion manuelle avec validation par les
+                    gestionnaires.</em>
+            </p>
+            <p>
+                À terme, l'application pourra s'intégrer avec des systèmes de paiement externes (Mobile Money,
+                services bancaires) pour automatiser la réconciliation des versements. Les transactions
+                seront synchronisées en temps réel et validées automatiquement.
             </p>
         </div>
 
@@ -522,14 +667,14 @@
                 </table>
             </div>
             <p style="margin-top: 15px;">
-                Le processus de rachat suit le même workflow que la création de prêt, avec validation 
+                Le processus de rachat suit le même workflow que la création de prêt, avec validation
                 par les gestionnaires autorisés.
             </p>
         </div>
 
         <div class="section">
             <h2>5. Gestion de l'Épargne</h2>
-            
+
             <h3>5.1 Versements d'Épargne</h3>
             <p>
                 Les clients peuvent verser de l'argent dans leur compte épargne à tout moment via :
@@ -543,7 +688,7 @@
             <div class="highlight">
                 <h4>Règle Importante : Pas de Retrait</h4>
                 <p>
-                    Les clients <strong>ne peuvent jamais retirer</strong> de leur compte épargne. 
+                    Les clients <strong>ne peuvent jamais retirer</strong> de leur compte épargne.
                     L'épargne sert uniquement de garantie et de fonds pour les prêts futurs.
                 </p>
             </div>
@@ -563,14 +708,25 @@
         </div>
 
         <div class="section">
-            <h2>6. Intégration Fintech pour Transactions Autonomes</h2>
-            
-            <h3>6.1 Vision Stratégique</h3>
+            <h2>6. Intégration Fintech pour Transactions Autonomes (Phase Future)</h2>
+
+            <div class="highlight">
+                <h4>Note Importante</h4>
+                <p>
+                    L'intégration fintech pour transactions automatiques est prévue pour une <strong>phase
+                        future</strong>
+                    du projet. La première phase se concentre sur la digitalisation des processus avec validation
+                    manuelle par les gestionnaires. Le système est conçu pour être facilement extensible vers
+                    l'intégration fintech lorsque l'institution sera prête.
+                </p>
+            </div>
+
+            <h3>6.1 Vision Stratégique (Phase Future)</h3>
             <p>
-                Pour gérer de manière autonome les transactions financières, l'application intégrera 
+                Pour gérer de manière autonome les transactions financières, l'application pourra intégrer
                 des services fintech permettant :
             </p>
-            
+
             <div class="feature-grid">
                 <div class="feature-card">
                     <h4>Virements Automatiques</h4>
@@ -581,7 +737,7 @@
                         <li>Réconciliation en temps réel</li>
                     </ul>
                 </div>
-                
+
                 <div class="feature-card">
                     <h4>Collecte de Paiements</h4>
                     <ul>
@@ -591,7 +747,7 @@
                         <li>Points de service</li>
                     </ul>
                 </div>
-                
+
                 <div class="feature-card">
                     <h4>Sécurité & Conformité</h4>
                     <ul>
@@ -654,7 +810,7 @@
 
         <div class="section">
             <h2>7. Rôles et Permissions des Gestionnaires</h2>
-            
+
             <div class="table-container">
                 <table>
                     <thead>
@@ -733,7 +889,7 @@
 
         <div class="section">
             <h2>8. Architecture Technique</h2>
-            
+
             <h3>8.1 Stack Technologique</h3>
             <div class="feature-grid">
                 <div class="feature-card">
@@ -745,7 +901,7 @@
                         <li>Notifications push</li>
                     </ul>
                 </div>
-                
+
                 <div class="feature-card">
                     <h4>Backend</h4>
                     <ul>
@@ -755,7 +911,7 @@
                         <li>Haute performance</li>
                     </ul>
                 </div>
-                
+
                 <div class="feature-card">
                     <h4>Base de Données</h4>
                     <ul>
@@ -779,7 +935,7 @@
 
         <div class="section">
             <h2>9. Fonctionnalités Clés de l'Application</h2>
-            
+
             <div class="feature-grid">
                 <div class="feature-card">
                     <h4>Pour les Clients</h4>
@@ -793,7 +949,7 @@
                         <li>Versement épargne mobile</li>
                     </ul>
                 </div>
-                
+
                 <div class="feature-card">
                     <h4>Pour les Gestionnaires</h4>
                     <ul>
@@ -806,7 +962,7 @@
                         <li>Alertes et notifications</li>
                     </ul>
                 </div>
-                
+
                 <div class="feature-card">
                     <h4>Calculs Automatiques</h4>
                     <ul>
@@ -824,7 +980,7 @@
 
         <div class="section">
             <h2>10. Avantages et Bénéfices</h2>
-            
+
             <div class="benefits">
                 <h4>Efficacité Opérationnelle</h4>
                 <ul>
@@ -834,7 +990,7 @@
                     <li>Réconciliation automatique des transactions</li>
                 </ul>
             </div>
-            
+
             <div class="benefits">
                 <h4>Transparence et Traçabilité</h4>
                 <ul>
@@ -844,7 +1000,7 @@
                     <li>Documents numériques signés et horodatés</li>
                 </ul>
             </div>
-            
+
             <div class="benefits">
                 <h4>Expérience Client Améliorée</h4>
                 <ul>
@@ -854,7 +1010,7 @@
                     <li>Accès 24/7 aux informations</li>
                 </ul>
             </div>
-            
+
             <div class="benefits">
                 <h4>Croissance et Scalabilité</h4>
                 <ul>
@@ -868,67 +1024,67 @@
 
         <div class="section">
             <h2>11. Plan de Développement</h2>
-            
+
             <div class="timeline">
                 <div class="timeline-item">
                     <div class="timeline-dot"></div>
                     <h4>Phase 1 : Conception et Architecture (4 semaines)</h4>
                     <p>
-                        Définition détaillée des spécifications, modélisation base de données, 
+                        Définition détaillée des spécifications, modélisation base de données,
                         architecture API, design interface utilisateur, plan de sécurité.
                     </p>
                 </div>
-                
+
                 <div class="timeline-item">
                     <div class="timeline-dot"></div>
                     <h4>Phase 2 : Développement Backend (6 semaines)</h4>
                     <p>
-                        Implémentation API, services de calcul, intégration base de données, 
+                        Implémentation API, services de calcul, intégration base de données,
                         système d'authentification, logs et audit.
                     </p>
                 </div>
-                
+
                 <div class="timeline-item">
                     <div class="timeline-dot"></div>
                     <h4>Phase 3 : Développement Mobile (6 semaines)</h4>
                     <p>
-                        Interface utilisateur, workflows de validation, intégration API, 
+                        Interface utilisateur, workflows de validation, intégration API,
                         fonctionnalités offline, notifications push.
                     </p>
                 </div>
-                
+
                 <div class="timeline-item">
                     <div class="timeline-dot"></div>
                     <h4>Phase 4 : Intégration Fintech (4 semaines)</h4>
                     <p>
-                        Intégration services de paiement, tests de transactions, 
+                        Intégration services de paiement, tests de transactions,
                         réconciliation automatique, sécurité renforcée.
                     </p>
                 </div>
-                
+
                 <div class="timeline-item">
                     <div class="timeline-dot"></div>
                     <h4>Phase 5 : Migration et Tests (4 semaines)</h4>
                     <p>
-                        Import données Excel, validation calculs, tests utilisateurs, 
+                        Import données Excel, validation calculs, tests utilisateurs,
                         formation équipe, déploiement progressif.
                     </p>
                 </div>
-                
+
                 <div class="timeline-item">
                     <div class="timeline-dot"></div>
                     <h4>Phase 6 : Lancement et Support (2 semaines)</h4>
                     <p>
-                        Lancement production, support utilisateurs, corrections bugs, 
+                        Lancement production, support utilisateurs, corrections bugs,
                         optimisation performance, documentation finale.
                     </p>
                 </div>
             </div>
-            
+
             <div class="highlight" style="margin-top: 30px;">
                 <h4>Durée Totale Estimée : 26 semaines (6.5 mois)</h4>
                 <p>
-                    Le développement peut être accéléré avec une équipe plus large ou 
+                    Le développement peut être accéléré avec une équipe plus large ou
                     certaines phases peuvent être parallélisées.
                 </p>
             </div>
@@ -936,7 +1092,7 @@
 
         <div class="section">
             <h2>12. Investissement et ROI</h2>
-            
+
             <h3>12.1 Coûts de Développement</h3>
             <div class="table-container">
                 <table>
@@ -992,9 +1148,9 @@
             <div class="highlight">
                 <h4>ROI Estimé</h4>
                 <p>
-                    Le retour sur investissement est généralement atteint en <strong>12-18 mois</strong> 
-                    grâce aux gains d'efficacité et à la réduction des coûts opérationnels. 
-                    L'investissement permet également une <strong>croissance durable</strong> de l'activité 
+                    Le retour sur investissement est généralement atteint en <strong>12-18 mois</strong>
+                    grâce aux gains d'efficacité et à la réduction des coûts opérationnels.
+                    L'investissement permet également une <strong>croissance durable</strong> de l'activité
                     sans augmentation proportionnelle des coûts.
                 </p>
             </div>
@@ -1002,7 +1158,7 @@
 
         <div class="section">
             <h2>13. Risques et Mitigation</h2>
-            
+
             <div class="table-container">
                 <table>
                     <thead>
@@ -1045,13 +1201,13 @@
 
         <div class="section">
             <h2>14. Conclusion et Recommandations</h2>
-            
+
             <p style="font-size: 1.1em; margin-bottom: 20px;">
-                Le développement d'une application mobile de gestion microfinance représente un 
-                <strong>investissement stratégique</strong> pour moderniser les opérations, améliorer 
+                Le développement d'une application mobile de gestion microfinance représente un
+                <strong>investissement stratégique</strong> pour moderniser les opérations, améliorer
                 l'efficacité et offrir une meilleure expérience aux clients.
             </p>
-            
+
             <div class="highlight">
                 <h4>Recommandations</h4>
                 <ol style="margin: 15px 0; padding-left: 30px;">
@@ -1062,10 +1218,10 @@
                     <li><strong>Planifier la migration</strong> avec période de transition Excel/Application</li>
                 </ol>
             </div>
-            
+
             <p style="margin-top: 20px; font-size: 1.05em;">
-                Cette digitalisation positionnera l'institution comme <strong>leader technologique</strong> 
-                dans le secteur de la microfinance, permettant une croissance durable et une meilleure 
+                Cette digitalisation positionnera l'institution comme <strong>leader technologique</strong>
+                dans le secteur de la microfinance, permettant une croissance durable et une meilleure
                 satisfaction client.
             </p>
         </div>
@@ -1074,11 +1230,11 @@
             <p><strong>Document confidentiel - Présentation aux Actionnaires</strong></p>
             <p>Application Mobile de Gestion Microfinance - Février 2026</p>
             <p style="margin-top: 10px; font-size: 0.9em;">
-                Pour toute question ou demande d'informations complémentaires, 
+                Pour toute question ou demande d'informations complémentaires,
                 veuillez contacter l'équipe projet.
             </p>
         </div>
     </div>
 </body>
-</html>
 
+</html>
