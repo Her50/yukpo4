@@ -150,3 +150,4 @@ Quand AWS Support activera le Load Balancer :
 **En résumé** : Préparer Route 53 maintenant = Gain de temps plus tard + Aucun coût supplémentaire
 
 
+

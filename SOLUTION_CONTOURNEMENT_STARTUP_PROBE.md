@@ -111,3 +111,4 @@ https://console.cloud.google.com/logs/viewer?project=***&resource=cloud_run_revi
 
 **💡 Recommandation** : Appliquer l'Option 1 (supprimer le startup probe explicite) pour permettre au déploiement de réussir, puis analyser les logs pour comprendre le problème et le corriger.
 
+

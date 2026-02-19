@@ -113,3 +113,4 @@ Les erreurs Redis (timeout) sont un problème de configuration séparé. Vérifi
 Les erreurs de colonnes manquantes sont plus critiques et doivent être corrigées en premier.
 
 
+

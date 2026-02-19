@@ -196,3 +196,4 @@ LIMIT 20;
 ✅ Contrôle total sur l'ordre d'exécution  
 
 
+

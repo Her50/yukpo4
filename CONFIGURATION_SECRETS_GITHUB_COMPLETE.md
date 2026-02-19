@@ -155,3 +155,4 @@ Cloud Storage + Cloud CDN
 **Statut** : ✅ **CONFIGURATION TERMINÉE - PRÊT POUR DÉPLOIEMENT**
 
 
+

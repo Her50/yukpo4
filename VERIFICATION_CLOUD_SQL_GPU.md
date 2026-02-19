@@ -201,3 +201,4 @@ Le service GPU utilise le **même pool PostgreSQL** (`PgPool`) que le reste de l
 Le backend GCP est bien connecté à Cloud SQL, et le système GPU intelligent est intégré avec la base de données PostgreSQL.
 
 
+

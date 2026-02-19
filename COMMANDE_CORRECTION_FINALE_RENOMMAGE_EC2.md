@@ -125,3 +125,4 @@ Les erreurs dans les logs devraient disparaître car :
 3. ✅ `social_publication_jobs.platform` existera
 
 
+

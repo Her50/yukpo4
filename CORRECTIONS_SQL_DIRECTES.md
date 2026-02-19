@@ -196,3 +196,4 @@ Après exécution, vous devriez voir :
 - ✅ Résultats des vérifications montrant les colonnes/index créés
 
 
+

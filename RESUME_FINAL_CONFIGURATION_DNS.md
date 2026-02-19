@@ -168,3 +168,4 @@ powershell -ExecutionPolicy Bypass -File scripts\mettre-a-jour-dns-route53.ps1
 **Aucune intervention manuelle nécessaire** - Le DNS se mettra à jour automatiquement quand l'IP ECS change.
 
 
+

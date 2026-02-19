@@ -37,3 +37,4 @@ EOFSQL
 Si l'erreur persiste après cette correction, il faudra chercher dans les fonctions SQL ou les vues qui utilisent `e` comme alias pour `global_promo_events`.
 
 
+

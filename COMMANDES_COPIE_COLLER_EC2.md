@@ -264,3 +264,4 @@ echo "✅ ENABLE_AUTO_MIGRATIONS=true réactivé - Service redémarre..."
 4. **Réactiver** (optionnel) : Quand vous serez prêt, réactivez les migrations auto
 
 
+

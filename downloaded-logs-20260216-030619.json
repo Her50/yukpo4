@@ -1,0 +1,310 @@
+[
+  {
+    "textPayload": "The request failed because the instance failed the readiness check.",
+    "insertId": "69927abb0003132f0a600334",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://yukpo-backend-376093909298.europe-west1.run.app/api/auth/login",
+      "requestSize": "438",
+      "status": 503,
+      "responseSize": "77",
+      "userAgent": "Yukpo-Mobile/1.0.0",
+      "remoteIp": "129.0.99.185",
+      "serverIp": "34.143.72.2",
+      "latency": "1.070260s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00049-nvr",
+        "service_name": "yukpo-backend",
+        "configuration_name": "yukpo-backend"
+      }
+    },
+    "timestamp": "2026-02-16T02:02:33.962930Z",
+    "severity": "ERROR",
+    "labels": {
+      "instanceId": "00da6cd2c4fe83fba066867901e5895331a7ac2c26ddccb432da727b4dc884a56545fe39742c2233b1023d515a4312dbd0c7a4e90b39d2eefc8099ff4db7a66a2ee14220f282ac59e5c03fe97b6f08"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/yukpo-project/traces/ac0b1c0495707a2b2f6dd3181a5dbc20",
+    "receiveTimestamp": "2026-02-16T02:02:35.205499613Z",
+    "spanId": "572fef3633af3f22",
+    "traceSampled": true
+  },
+  {
+    "textPayload": "The request failed because the instance could not start successfully.",
+    "insertId": "69927abb000ed6199827403e",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://yukpo-backend-376093909298.europe-west1.run.app/api/mobile-logs",
+      "requestSize": "19805",
+      "status": 500,
+      "userAgent": "Yukpo-Mobile/1.0.0",
+      "remoteIp": "129.0.99.185",
+      "serverIp": "34.143.72.2",
+      "latency": "0s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "europe-west1",
+        "service_name": "yukpo-backend",
+        "revision_name": "yukpo-backend-00049-nvr",
+        "configuration_name": "yukpo-backend",
+        "project_id": "yukpo-project"
+      }
+    },
+    "timestamp": "2026-02-16T02:02:33.965890Z",
+    "severity": "ERROR",
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/yukpo-project/traces/1e524b5c874732802f6dd3181a5db042",
+    "receiveTimestamp": "2026-02-16T02:02:36.204395446Z",
+    "spanId": "a6783538303292bc"
+  },
+  {
+    "textPayload": "The request failed because the instance could not start successfully.",
+    "insertId": "69927abb000ed613a22f8ee7",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://yukpo-backend-376093909298.europe-west1.run.app/api/mobile-logs",
+      "requestSize": "2742",
+      "status": 500,
+      "userAgent": "Yukpo-Mobile/1.0.0",
+      "remoteIp": "129.0.99.185",
+      "serverIp": "34.143.72.2",
+      "latency": "0s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "revision_name": "yukpo-backend-00049-nvr",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "service_name": "yukpo-backend"
+      }
+    },
+    "timestamp": "2026-02-16T02:02:33.971442Z",
+    "severity": "ERROR",
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/yukpo-project/traces/cfbf180e729192472f6dd3181a5db857",
+    "receiveTimestamp": "2026-02-16T02:02:36.204395446Z",
+    "spanId": "bb09059ccf550bea"
+  },
+  {
+    "textPayload": "2026-02-16 02:02:34.442 UTC [41779]: [1-1] db=yukpo_db,user=yukpo_user FATAL:  password authentication failed for user \"yukpo_user\"",
+    "insertId": "s=67945bb738ad4a2fab406482c550b6a5;i=42e8f;b=bc0eac41248a4c87997dd5939075e6dc;m=f3607de1c;t=64ae7592f67ad;x=9588a0c042ee7b00-0@a1",
+    "resource": {
+      "type": "cloudsql_database",
+      "labels": {
+        "project_id": "yukpo-project",
+        "region": "europe",
+        "database_id": "yukpo-project:yukpo-postgres"
+      }
+    },
+    "timestamp": "2026-02-16T02:02:34.443693Z",
+    "severity": "ALERT",
+    "labels": {
+      "INSTANCE_UID": "2-24deff79-2f6f-49c3-9eee-896d1e18cfbd",
+      "SOURCE_ID": "66613735376565636264363463326266e3b0c442",
+      "LOG_BUCKET_NUM": "45",
+      "PROJECT_NUMBER": "376093909298"
+    },
+    "logName": "projects/yukpo-project/logs/cloudsql.googleapis.com%2Fpostgres.log",
+    "receiveTimestamp": "2026-02-16T02:02:49.110949962Z"
+  },
+  {
+    "textPayload": "2026-02-16 02:02:34.450 UTC [41780]: [1-1] db=yukpo_db,user=yukpo_user FATAL:  password authentication failed for user \"yukpo_user\"",
+    "insertId": "s=67945bb738ad4a2fab406482c550b6a5;i=42e8f;b=bc0eac41248a4c87997dd5939075e6dc;m=f3607de1c;t=64ae7592f67ad;x=9588a0c042ee7b00-0@a3",
+    "resource": {
+      "type": "cloudsql_database",
+      "labels": {
+        "database_id": "yukpo-project:yukpo-postgres",
+        "project_id": "yukpo-project",
+        "region": "europe"
+      }
+    },
+    "timestamp": "2026-02-16T02:02:34.450353Z",
+    "severity": "ALERT",
+    "labels": {
+      "LOG_BUCKET_NUM": "45",
+      "PROJECT_NUMBER": "376093909298",
+      "INSTANCE_UID": "2-24deff79-2f6f-49c3-9eee-896d1e18cfbd",
+      "SOURCE_ID": "66613735376565636264363463326266e3b0c442"
+    },
+    "logName": "projects/yukpo-project/logs/cloudsql.googleapis.com%2Fpostgres.log",
+    "receiveTimestamp": "2026-02-16T02:02:49.110949962Z"
+  },
+  {
+    "textPayload": "Default STARTUP TCP probe failed 1 time consecutively for container \"yukpo-backend-1\" on port 8080. The instance was not started.\nConnection failed with status CANCELLED.",
+    "insertId": "69927abb000319872bb66453",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "europe-west1",
+        "service_name": "yukpo-backend",
+        "configuration_name": "yukpo-backend",
+        "revision_name": "yukpo-backend-00049-nvr",
+        "project_id": "yukpo-project"
+      }
+    },
+    "timestamp": "2026-02-16T02:02:35.203143Z",
+    "severity": "ERROR",
+    "labels": {
+      "instanceId": "00da6cd2c46f01ad5a84c7ffd3010ccdc3a4c2598efb19507d1d64ee179526e4608f66fadeff23fb8966c6c98628ba9249d27cebbd387d1c0ef94a619be6bf4bb846b044d5f57c645c84c9074e399a"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fvarlog%2Fsystem",
+    "receiveTimestamp": "2026-02-16T02:02:35.303198732Z"
+  },
+  {
+    "textPayload": "Default STARTUP TCP probe failed 1 time consecutively for container \"yukpo-backend-1\" on port 8080. The instance was not started.\nConnection failed with status CANCELLED.",
+    "insertId": "69927abb00031b882300ef36",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "yukpo-project",
+        "service_name": "yukpo-backend",
+        "location": "europe-west1",
+        "configuration_name": "yukpo-backend",
+        "revision_name": "yukpo-backend-00049-nvr"
+      }
+    },
+    "timestamp": "2026-02-16T02:02:35.203656Z",
+    "severity": "ERROR",
+    "labels": {
+      "instanceId": "00da6cd2c4fe83fba066867901e5895331a7ac2c26ddccb432da727b4dc884a56545fe39742c2233b1023d515a4312dbd0c7a4e90b39d2eefc8099ff4db7a66a2ee14220f282ac59e5c03fe97b6f08"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fvarlog%2Fsystem",
+    "receiveTimestamp": "2026-02-16T02:02:35.303198732Z"
+  },
+  {
+    "textPayload": "The request failed because the instance could not start successfully.",
+    "insertId": "69927abb000800efe997be75",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://yukpo-backend-376093909298.europe-west1.run.app/api/mobile-logs",
+      "requestSize": "2443",
+      "status": 500,
+      "userAgent": "Yukpo-Mobile/1.0.0",
+      "remoteIp": "129.0.99.185",
+      "serverIp": "34.143.72.2",
+      "latency": "0s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "revision_name": "yukpo-backend-00049-nvr",
+        "location": "europe-west1",
+        "service_name": "yukpo-backend",
+        "configuration_name": "yukpo-backend",
+        "project_id": "yukpo-project"
+      }
+    },
+    "timestamp": "2026-02-16T02:02:35.523380Z",
+    "severity": "ERROR",
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/yukpo-project/traces/6155dea9feadd8da599a9bd548033c4c",
+    "receiveTimestamp": "2026-02-16T02:02:35.543422269Z",
+    "spanId": "c341b1b09e80e258"
+  },
+  {
+    "textPayload": "The request failed because the instance could not start successfully.",
+    "insertId": "69927abb0008b2f9f2776433",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://yukpo-backend-376093909298.europe-west1.run.app/api/mobile-logs",
+      "requestSize": "2858",
+      "status": 500,
+      "userAgent": "Yukpo-Mobile/1.0.0",
+      "remoteIp": "129.0.99.185",
+      "serverIp": "34.143.72.2",
+      "latency": "0s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "yukpo-project",
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "service_name": "yukpo-backend",
+        "revision_name": "yukpo-backend-00049-nvr"
+      }
+    },
+    "timestamp": "2026-02-16T02:02:35.568728Z",
+    "severity": "ERROR",
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/yukpo-project/traces/6f6348fad84a44e9599a9bd548033c71",
+    "receiveTimestamp": "2026-02-16T02:02:35.871910393Z",
+    "spanId": "7c2aa9ed118faca2"
+  },
+  {
+    "textPayload": "The request failed because the instance could not start successfully.",
+    "insertId": "69927abb0009769a89e70e04",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://yukpo-backend-376093909298.europe-west1.run.app/api/mobile-logs",
+      "requestSize": "2558",
+      "status": 500,
+      "userAgent": "Yukpo-Mobile/1.0.0",
+      "remoteIp": "129.0.99.185",
+      "serverIp": "34.143.72.2",
+      "latency": "0s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "yukpo-project",
+        "service_name": "yukpo-backend",
+        "revision_name": "yukpo-backend-00049-nvr",
+        "location": "europe-west1",
+        "configuration_name": "yukpo-backend"
+      }
+    },
+    "timestamp": "2026-02-16T02:02:35.618833Z",
+    "severity": "ERROR",
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/yukpo-project/traces/1d820fadbce532ab599a9bd54803358a",
+    "receiveTimestamp": "2026-02-16T02:02:35.871910393Z",
+    "spanId": "a62608156b569832"
+  },
+  {
+    "textPayload": "The request failed because the instance could not start successfully.",
+    "insertId": "69927abb000afef4dcaa9cf7",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://yukpo-backend-376093909298.europe-west1.run.app/api/mobile-logs",
+      "requestSize": "3807",
+      "status": 500,
+      "userAgent": "Yukpo-Mobile/1.0.0",
+      "remoteIp": "129.0.99.185",
+      "serverIp": "34.143.72.2",
+      "latency": "0s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00049-nvr",
+        "configuration_name": "yukpo-backend",
+        "service_name": "yukpo-backend"
+      }
+    },
+    "timestamp": "2026-02-16T02:02:35.719526Z",
+    "severity": "ERROR",
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/yukpo-project/traces/92351745f2598dd1599a9bd548033411",
+    "receiveTimestamp": "2026-02-16T02:02:35.871910393Z",
+    "spanId": "75b639e68c61ad26"
+  }
+]

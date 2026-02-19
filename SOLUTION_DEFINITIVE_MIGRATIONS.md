@@ -38,3 +38,4 @@ Les migrations sont maintenant **idempotentes** et **cohérentes** entre :
 Plus besoin de corriger manuellement sur EC2 - les migrations automatiques fonctionneront correctement !
 
 
+

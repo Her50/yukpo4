@@ -1,0 +1,548 @@
+================================================================================
+RAPPORT D'ANALYSE EXCEL
+================================================================================
+
+Fichier analysé: gestion_microfinance2025_2027_test.xlsx
+
+STRUCTURE GÉNÉRALE
+--------------------------------------------------------------------------------
+  total_sheets: 36
+  visible_sheets: 30
+  hidden_sheets: 6
+  total_formulas: 6101
+  total_cross_references: 2978
+
+FEUILLES MASQUÉES
+--------------------------------------------------------------------------------
+  • fond_dispo_rep_interet
+  • epargne_mensuelle_ancien
+  • epargne_mensuelle_reelle
+  • Feuil5
+  • Feuil3
+  • Feuil2
+
+RÉFÉRENCES CROISÉES ENTRE FEUILLES
+--------------------------------------------------------------------------------
+  apport_mensuel_calcul!A2 → epargne_mensuelle!A2
+    Formule: =epargne_mensuelle!A2
+
+  apport_mensuel_calcul!B2 → epargne_mensuelle!B2
+    Formule: =epargne_mensuelle!B2
+
+  apport_mensuel_calcul!C2 → epargne_mensuelle!C2
+    Formule: =SUM(epargne_mensuelle!C2:E2)
+
+  apport_mensuel_calcul!C2 → epargne_mensuelle!C2
+    Formule: =SUM(epargne_mensuelle!C2:E2)
+
+  apport_mensuel_calcul!E2 → epargne_mensuelle!F2
+    Formule: =epargne_mensuelle!F2
+
+  apport_mensuel_calcul!H2 → epargne_mensuelle!G2
+    Formule: =epargne_mensuelle!G2
+
+  apport_mensuel_calcul!K2 → epargne_mensuelle!H2
+    Formule: =epargne_mensuelle!H2
+
+  apport_mensuel_calcul!N2 → epargne_mensuelle!I2
+    Formule: =epargne_mensuelle!I2
+
+  apport_mensuel_calcul!Q2 → epargne_mensuelle!J2
+    Formule: =epargne_mensuelle!J2
+
+  apport_mensuel_calcul!T2 → epargne_mensuelle!K2
+    Formule: =epargne_mensuelle!K2
+
+  apport_mensuel_calcul!W2 → epargne_mensuelle!L2
+    Formule: =epargne_mensuelle!L2
+
+  apport_mensuel_calcul!Z2 → epargne_mensuelle!M2
+    Formule: =epargne_mensuelle!M2
+
+  apport_mensuel_calcul!AC2 → epargne_mensuelle!N2
+    Formule: =epargne_mensuelle!N2
+
+  apport_mensuel_calcul!AF2 → epargne_mensuelle!O2
+    Formule: =epargne_mensuelle!O2
+
+  apport_mensuel_calcul!AI2 → epargne_mensuelle!P2
+    Formule: =epargne_mensuelle!P2
+
+  apport_mensuel_calcul!AL2 → epargne_mensuelle!Q2
+    Formule: =epargne_mensuelle!Q2
+
+  apport_mensuel_calcul!AO2 → epargne_mensuelle!R2
+    Formule: =epargne_mensuelle!R2
+
+  apport_mensuel_calcul!AR2 → epargne_mensuelle!S2
+    Formule: =epargne_mensuelle!S2
+
+  apport_mensuel_calcul!AU2 → epargne_mensuelle!T2
+    Formule: =epargne_mensuelle!T2
+
+  apport_mensuel_calcul!AX2 → epargne_mensuelle!U2
+    Formule: =epargne_mensuelle!U2
+
+
+FORMULES PAR FEUILLE
+--------------------------------------------------------------------------------
+
+fond_dispo_rep_interet:
+  Dimensions: 31 lignes x 24 colonnes
+  Formules: 22
+    C31: =SUM(C2:C30)
+    D31: =SUM(D2:D30)
+    E31: =SUM(E2:E30)
+    F31: =SUM(F2:F30)
+    G31: =SUM(G2:G30)
+    H31: =SUM(H2:H30)
+    I31: =SUM(I2:I30)
+    J31: =SUM(J2:J30)
+    K31: =SUM(K2:K30)
+    L31: =SUM(L2:L30)
+
+epargne_mensuelle_ancien:
+  Dimensions: 31 lignes x 24 colonnes
+  Formules: 22
+    C31: =SUM(C2:C30)
+    D31: =SUM(D2:D30)
+    E31: =SUM(E2:E30)
+    F31: =SUM(F2:F30)
+    G31: =SUM(G2:G30)
+    H31: =SUM(H2:H30)
+    I31: =SUM(I2:I30)
+    J31: =SUM(J2:J30)
+    K31: =SUM(K2:K30)
+    L31: =SUM(L2:L30)
+
+epargne_mensuelle_reelle:
+  Dimensions: 35 lignes x 24 colonnes
+  Formules: 26
+    C31: =SUM(C2:C30)
+    D31: =SUM(D2:D30)
+    E31: =SUM(E2:E30)
+    F31: =SUM(F2:F30)
+    G31: =SUM(G2:G30)
+    H31: =SUM(H2:H30)
+    I31: =SUM(I2:I30)
+    J31: =SUM(J2:J30)
+    K31: =SUM(K2:K30)
+    L31: =SUM(L2:L30)
+
+apport_mensuel_calcul:
+  Dimensions: 59 lignes x 82 colonnes
+  Formules: 3961
+    A2: =epargne_mensuelle!A2
+    B2: =epargne_mensuelle!B2
+    C2: =SUM(epargne_mensuelle!C2:E2)
+    D2: =(C2/C$48)*C$53
+    E2: =epargne_mensuelle!F2
+    F2: =C2-(C2/C$48)*C$52+(C2/C$48)*C$53+E2+(C2/C$48)*C$54
+    G2: =(F2/F$48)*E$53
+    H2: =epargne_mensuelle!G2
+    I2: =IF(F$48=0,F2+H2+((C2+E2)/(C$48+E$48))*E$54,F2-((F2/F$48)*E$52)+(F2/F$48)*E$53+H2+((C2+E2)/(C$48+E$4
+    J2: =(I2/I$48)*H$53
+
+Feuil5:
+  Dimensions: 1 lignes x 1 colonnes
+  Formules: 0
+
+epargne_mensuelle:
+  Dimensions: 51 lignes x 28 colonnes
+  Formules: 26
+    C48: =SUM(C2:C47)
+    D48: =SUM(D2:D47)
+    E48: =SUM(E2:E47)
+    F48: =SUM(F2:F47)
+    G48: =SUM(G2:G47)
+    H48: =SUM(H2:H47)
+    I48: =SUM(I2:I47)
+    J48: =SUM(J2:J47)
+    K48: =SUM(K2:K47)
+    L48: =SUM(L2:L47)
+
+cumul_epargne:
+  Dimensions: 48 lignes x 6 colonnes
+  Formules: 139
+    A2: =IF(epargne_mensuelle!A2="","",epargne_mensuelle!A2)
+    B2: =IF(epargne_mensuelle!B2="","",epargne_mensuelle!B2)
+    C2: =IF(A2="","",SUM(epargne_mensuelle!C2:AB2))
+    A3: =IF(epargne_mensuelle!A3="","",epargne_mensuelle!A3)
+    B3: =IF(epargne_mensuelle!B3="","",epargne_mensuelle!B3)
+    C3: =IF(A3="","",SUM(epargne_mensuelle!C3:AB3))
+    A4: =IF(epargne_mensuelle!A4="","",epargne_mensuelle!A4)
+    B4: =IF(epargne_mensuelle!B4="","",epargne_mensuelle!B4)
+    C4: =IF(A4="","",SUM(epargne_mensuelle!C4:AB4))
+    A5: =IF(epargne_mensuelle!A5="","",epargne_mensuelle!A5)
+
+recouvrement_dette:
+  Dimensions: 43 lignes x 33 colonnes
+  Formules: 67
+    G3: =IF(E3<1000000,F3*1.5%,F3*1%)
+    H3: =G3*E3
+    G4: =IF(E4<1000000,F4*1.5%,F4*1%)
+    H4: =G4*E4
+    G5: =IF(E5<1000000,F5*1.5%,F5*1%)
+    H5: =G5*E5
+    G6: =IF(E6<1000000,F6*1.5%,F6*1%)
+    H6: =G6*E6
+    G7: =IF(E7<1000000,F7*1.5%,F7*1%)
+    H7: =G7*E7
+
+recap_prêt:
+  Dimensions: 50 lignes x 15 colonnes
+  Formules: 421
+    C1: =cumul_epargne!C48-recap_prêt!B45+recap_prêt!H45-SUM(recouvrement_dette!I43:AG43)+SUM(recouvrement_d
+    A7: =recouvrement_dette!B2
+    B7: =recouvrement_dette!E2
+    E7: =recouvrement_dette!G2
+    F7: =E7*B7
+    H7: =SUM(recouvrement_dette!I2:AG2)
+    I7: =H7/G7
+    J7: =G7-H7
+    A8: =recouvrement_dette!B3
+    B8: =recouvrement_dette!E3
+
+Synthese_cassation:
+  Dimensions: 60 lignes x 12 colonnes
+  Formules: 456
+    I1: =recap_prêt!L4
+    A4: =IF(apport_mensuel_calcul!A2=0,"",apport_mensuel_calcul!A2)
+    B4: =IF(apport_mensuel_calcul!B2=0,"",apport_mensuel_calcul!B2)
+    C4: =IF(apport_mensuel_calcul!BV2=0,"",apport_mensuel_calcul!BV2)
+    D4: =IF(apport_mensuel_calcul!BW2=0,"",apport_mensuel_calcul!BW2)
+    E4: =IF(apport_mensuel_calcul!BX2=0,"",apport_mensuel_calcul!BX2)
+    F4: =IF(apport_mensuel_calcul!BY2=0,"",apport_mensuel_calcul!BY2)
+    G4: =IF(apport_mensuel_calcul!BZ2=0,"",apport_mensuel_calcul!BZ2)
+    H4: =IF(apport_mensuel_calcul!CA2=0,"",apport_mensuel_calcul!CA2)
+    I4: =IF(apport_mensuel_calcul!CB2=0,"",apport_mensuel_calcul!CB2)
+
+Feuil10:
+  Dimensions: 3 lignes x 3 colonnes
+  Formules: 2
+    C2: =A2+C1
+    C3: =C2-apport_mensuel_calcul!BX48
+
+pret:
+  Dimensions: 41 lignes x 33 colonnes
+  Formules: 149
+    G2: =H2/E2
+    H3: =G3*E3
+    B4: =recouvrement_dette!B4
+    G4: =IF(E4<1000000,F4*1.5%,F4*1%)
+    H4: =G4*E4
+    B5: =recouvrement_dette!B5
+    G5: =IF(E5<1000000,F5*1.5%,F5*1%)
+    H5: =G5*E5
+    B6: =recouvrement_dette!B6
+    G6: =IF(E6<1000000,F6*1.5%,F6*1%)
+
+_interet:
+  Dimensions: 43 lignes x 33 colonnes
+  Formules: 136
+    B2: =+recouvrement_dette!B2
+    B3: =+recouvrement_dette!B3
+    G3: =IF(E3<1000000,F3*1.5%,F3*1%)
+    H3: =G3*E3
+    J3: =$E3*$G3
+    B4: =+recouvrement_dette!B4
+    G4: =IF(E4<1000000,F4*1.5%,F4*1%)
+    H4: =G4*E4
+    J4: =$E4*$G4
+    B5: =+recouvrement_dette!B5
+
+Feuil3:
+  Dimensions: 28 lignes x 14 colonnes
+  Formules: 4
+    M25: =+SUM(M14:M22)
+    N25: =+SUM(N14:N23)
+    N26: =+N25-M25
+    N28: =+M27+N26
+
+Feuil2:
+  Dimensions: 7 lignes x 1 colonnes
+  Formules: 0
+
+Tableau_amortissement_Franklin:
+  Dimensions: 407 lignes x 13 colonnes
+  Formules: 32
+    J13: =IF(C13<1000000,F13*1.5%,F13%)
+    J15: =C13*J13
+    J17: =C13+J15
+    E20: =C20-D20
+    E21: =C21-D21
+    E22: =C22-D22
+    E23: =C23-D23
+    E24: =C24-D24
+    E25: =C25-D25
+    E26: =C26-D26
+
+Tableau_amortissement_Sainclair:
+  Dimensions: 387 lignes x 13 colonnes
+  Formules: 16
+    J13: =IF(C13<1000000,F13*1.5%,F13%)
+    J15: =C13*J13
+    J17: =C13+J15
+    E20: =C20-D20
+    E21: =C21-D21
+    C22: =J$17/F$13
+    E22: =C22-D22
+    C23: =J$17/F$13
+    E23: =C23-D23
+    C24: =J$17/F$13
+
+Tableau_amortissement_Narcisse:
+  Dimensions: 395 lignes x 13 colonnes
+  Formules: 32
+    J13: =IF(C13<1000000,F13*1.5%,F13%)
+    J15: =C13*J13
+    J17: =C13+J15
+    E20: =C20-D20
+    E21: =C21-D21
+    C22: =J$17/F$13
+    E22: =C22-D22
+    C23: =J$17/F$13
+    E23: =C23-D23
+    C24: =J$17/F$13
+
+Tableau_amortissement_Valdese:
+  Dimensions: 386 lignes x 13 colonnes
+  Formules: 14
+    J13: =IF(C13<1000000,F13*1.5%,F13%)
+    J15: =C13*J13
+    J17: =C13+J15
+    E20: =C20-D20
+    E21: =C21-D21
+    C22: =J$17/F$13
+    E22: =C22-D22
+    C23: =J$17/F$13
+    E23: =C23-D23
+    C24: =J$17/F$13
+
+Tableau_amortissement_Sammuel:
+  Dimensions: 386 lignes x 13 colonnes
+  Formules: 14
+    J13: =IF(C13<1000000,F13*1.5%,F13%)
+    J15: =C13*J13
+    J17: =C13+J15
+    E20: =C20-D20
+    E21: =C21-D21
+    C22: =J$17/F$13
+    E22: =C22-D22
+    C23: =J$17/F$13
+    E23: =C23-D23
+    C24: =J$17/F$13
+
+Tableau_amortissement_Clemence:
+  Dimensions: 393 lignes x 13 colonnes
+  Formules: 28
+    J13: =IF(C13<1000000,F13*1.5%,F13%)
+    J15: =C13*J13
+    J17: =C13+J15
+    E20: =C20-D20
+    E21: =C21-D21
+    C22: =J$17/F$13
+    E22: =C22-D22
+    C23: =J$17/F$13
+    E23: =C23-D23
+    C24: =J$17/F$13
+
+Tableau_amortissement_Michel:
+  Dimensions: 401 lignes x 13 colonnes
+  Formules: 44
+    J13: =IF(C13<1000000,F13*1.5%,F13%)
+    J15: =C13*J13
+    J17: =C13+J15
+    E20: =C20-D20
+    E21: =C21-D21
+    C22: =J$17/F$13
+    E22: =C22-D22
+    C23: =J$17/F$13
+    E23: =C23-D23
+    C24: =J$17/F$13
+
+Tableau_amortissement_Kelly:
+  Dimensions: 393 lignes x 13 colonnes
+  Formules: 28
+    J13: =IF(C13<1000000,F13*1.5%,F13%)
+    J15: =C13*J13
+    J17: =C13+J15
+    E20: =C20-D20
+    E21: =C21-D21
+    C22: =J$17/F$13
+    E22: =C22-D22
+    C23: =J$17/F$13
+    E23: =C23-D23
+    C24: =J$17/F$13
+
+Tableau_amortissement_Dagober:
+  Dimensions: 395 lignes x 13 colonnes
+  Formules: 32
+    J13: =IF(C13<1000000,F13*1.5%,F13%)
+    J15: =C13*J13
+    J17: =C13+J15
+    E20: =C20-D20
+    E21: =C21-D21
+    C22: =J$17/F$13
+    E22: =C22-D22
+    C23: =J$17/F$13
+    E23: =C23-D23
+    C24: =J$17/F$13
+
+Tableau_amortissement_Brice:
+  Dimensions: 395 lignes x 13 colonnes
+  Formules: 32
+    J13: =IF(C13<1000000,F13*1.5%,F13%)
+    J15: =C13*J13
+    J17: =C13+J15
+    E20: =C20-D20
+    E21: =C21-D21
+    C22: =J$17/F$13
+    E22: =C22-D22
+    C23: =J$17/F$13
+    E23: =C23-D23
+    C24: =J$17/F$13
+
+Tableau_amortissement_Ricard:
+  Dimensions: 395 lignes x 13 colonnes
+  Formules: 32
+    J13: =IF(C13<1000000,F13*1.5%,F13%)
+    J15: =C13*J13
+    J17: =C13+J15
+    E20: =C20-D20
+    E21: =C21-D21
+    C22: =J$17/F$13
+    E22: =C22-D22
+    C23: =J$17/F$13
+    E23: =C23-D23
+    C24: =J$17/F$13
+
+Tableau_amortissement_Tony:
+  Dimensions: 395 lignes x 13 colonnes
+  Formules: 32
+    J13: =IF(C13<1000000,F13*1.5%,F13%)
+    J15: =C13*J13
+    J17: =C13+J15
+    E20: =C20-D20
+    E21: =C21-D21
+    C22: =J$17/F$13
+    E22: =C22-D22
+    C23: =J$17/F$13
+    E23: =C23-D23
+    C24: =J$17/F$13
+
+Tableau_amortissement_Moise:
+  Dimensions: 392 lignes x 13 colonnes
+  Formules: 26
+    J13: =IF(C13<1000000,F13*1.5%,F13%)
+    J15: =C13*J13
+    J17: =C13+J15
+    E20: =C20-D20
+    E21: =C21-D21
+    C22: =J$17/F$13
+    E22: =C22-D22
+    C23: =J$17/F$13
+    E23: =C23-D23
+    C24: =J$17/F$13
+
+Tableau_amortissement_appol:
+  Dimensions: 407 lignes x 13 colonnes
+  Formules: 56
+    J13: =IF(C13<1000000,F13*1.5%,F13%)
+    J15: =C13*J13
+    J17: =C13+J15
+    E20: =C20-D20
+    E21: =C21-D21
+    C22: =J$17/F$13
+    E22: =C22-D22
+    C23: =J$17/F$13
+    E23: =C23-D23
+    C24: =J$17/F$13
+
+Tableau_amortissement_Cheval:
+  Dimensions: 402 lignes x 13 colonnes
+  Formules: 47
+    J13: =IF(C13<1000000,F13*1.5%,F13%)
+    J15: =C13*J13
+    J17: =C13+J15
+    E20: =C20-D20
+    C21: =J$17/F$13
+    E21: =C21-D21
+    C22: =J$17/F$13
+    E22: =C22-D22
+    C23: =J$17/F$13
+    E23: =C23-D23
+
+Tableau_amortissement_Rodine:
+  Dimensions: 395 lignes x 13 colonnes
+  Formules: 32
+    J13: =IF(C13<1000000,F13*1.5%,F13%)
+    J15: =C13*J13
+    J17: =C13+J15
+    E20: =C20-D20
+    E21: =C21-D21
+    C22: =J$17/F$13
+    E22: =C22-D22
+    C23: =J$17/F$13
+    E23: =C23-D23
+    C24: =J$17/F$13
+
+Tableau_amortissement_Fidel:
+  Dimensions: 395 lignes x 13 colonnes
+  Formules: 32
+    J13: =IF(C13<1000000,F13*1.5%,F13%)
+    J15: =C13*J13
+    J17: =C13+J15
+    E20: =C20-D20
+    E21: =C21-D21
+    C22: =J$17/F$13
+    E22: =C22-D22
+    C23: =J$17/F$13
+    E23: =C23-D23
+    C24: =J$17/F$13
+
+Tableau_amortissement_Hernandez:
+  Dimensions: 393 lignes x 13 colonnes
+  Formules: 28
+    J13: =IF(C13<1000000,F13*1.5%,F13%)
+    J15: =C13*J13
+    J17: =C13+J15
+    E20: =C20-D20
+    E21: =C21-D21
+    C22: =J$17/F$13
+    E22: =C22-D22
+    C23: =J$17/F$13
+    E23: =C23-D23
+    C24: =J$17/F$13
+
+Tableau_amortissement_Jackson:
+  Dimensions: 393 lignes x 13 colonnes
+  Formules: 28
+    J13: =IF(C13<1000000,F13*1.5%,F13%)
+    J15: =C13*J13
+    J17: =C13+J15
+    E20: =C20-D20
+    E21: =C21-D21
+    C22: =J$17/F$13
+    E22: =C22-D22
+    C23: =J$17/F$13
+    E23: =C23-D23
+    C24: =J$17/F$13
+
+Feuil1:
+  Dimensions: 1 lignes x 1 colonnes
+  Formules: 0
+
+Feuil4:
+  Dimensions: 81 lignes x 8 colonnes
+  Formules: 85
+    E1: =C1&"-"&D1
+    E2: =C2&"-"&D2
+    E3: =C3&"-"&D3
+    E4: =C4&"-"&D4
+    H4: =re
+    E5: =C5&"-"&D5
+    E6: =C6&"-"&D6
+    E7: =C7&"-"&D7
+    E8: =C8&"-"&D8
+    E9: =C9&"-"&D9

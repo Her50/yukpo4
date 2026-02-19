@@ -78,3 +78,4 @@ gcloud logging read "resource.type=cloud_run_revision AND resource.labels.servic
 **⚠️ NOTE** : Cette solution est temporaire. Il faut corriger le format Unix socket pour une solution de production sécurisée.
 
 
+

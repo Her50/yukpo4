@@ -1,0 +1,1 @@
+﻿postgresql://yukpo_user:VTWc%23%25vKZt%3DqewDIfaB!n97y@/yukpo_db?host=/cloudsql/yukpo-project:europe-west1:yukpo-postgres

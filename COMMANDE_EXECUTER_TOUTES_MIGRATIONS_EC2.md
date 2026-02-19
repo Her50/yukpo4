@@ -168,3 +168,4 @@ LIMIT 10;
 5. **Surveiller** les logs pour confirmer qu'il n'y a plus d'erreurs de parsing
 
 
+

@@ -226,3 +226,4 @@ Une fois les credentials corrigés :
 
 **💡 Note** : Si vous n'utilisez plus AWS ECR/ECS, vous pouvez désactiver les jobs AWS dans le workflow pour éviter cette erreur.
 
+

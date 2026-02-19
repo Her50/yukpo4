@@ -169,3 +169,4 @@ gcloud logging read \
 **⏳ Vérifiez les logs pour confirmer la connexion PostgreSQL.**
 
 
+

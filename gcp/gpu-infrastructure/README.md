@@ -301,3 +301,4 @@ gcloud compute project-info describe --project=yukpo-project
 **⚠️ Important** : Toujours configurer les budgets et alertes AVANT de créer les instances GPU pour éviter les surprises de facturation !
 
 
+

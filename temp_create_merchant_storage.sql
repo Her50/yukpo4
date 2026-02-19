@@ -11,3 +11,4 @@ CREATE TABLE IF NOT EXISTS merchant_storage_locations (
 );
 
 
+

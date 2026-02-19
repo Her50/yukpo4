@@ -116,3 +116,4 @@ Après avoir désactivé les migrations automatiques, vérifiez dans les logs :
 - Vous pourrez exécuter les migrations manuellement depuis EC2 sans conflit
 
 
+

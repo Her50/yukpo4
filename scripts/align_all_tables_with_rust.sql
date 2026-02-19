@@ -132,3 +132,4 @@ WHERE table_name = 'social_publication_jobs'
     AND column_name = 'attempt';
 
 
+

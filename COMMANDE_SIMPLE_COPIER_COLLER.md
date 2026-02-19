@@ -80,3 +80,4 @@ Le script fait automatiquement :
 **Temps d'exécution** : ~30 secondes + 2-3 minutes pour le redémarrage ECS
 
 
+

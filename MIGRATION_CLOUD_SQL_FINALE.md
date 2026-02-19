@@ -177,3 +177,4 @@ Les scripts suivants ont été désactivés car l'application a migré vers GCP 
 **🔴 ACTION REQUISE** : Mettre à jour le secret GitHub `GCP_DATABASE_URL` avec le format Unix socket.
 
 
+

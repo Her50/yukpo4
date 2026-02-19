@@ -142,3 +142,4 @@ CREATE INDEX IF NOT EXISTS idx_ma_table_name ON ma_table(name);
 - ✅ L'automatisation est conservée et fonctionne correctement
 
 
+

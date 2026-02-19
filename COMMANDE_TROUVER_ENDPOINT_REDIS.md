@@ -53,3 +53,4 @@ Cela peut signifier :
 **Pour corriger** : Vérifiez dans la console AWS ElastiCache si le cluster a bien des nœuds actifs.
 
 
+

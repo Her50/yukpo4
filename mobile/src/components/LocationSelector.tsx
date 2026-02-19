@@ -544,8 +544,30 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
         return formatted;
     }, [value]);
 
-    // Debounce query
-    const debouncedQuery = useMemo(() => query.trim(), [query]);
+    // ✅ CRITIQUE: Vrai debounce pour éviter les appels API excessifs
+    // ⚠️ CORRECTION 2026-02-19: Remplacer useMemo par un vrai debounce avec setTimeout
+    const [debouncedQuery, setDebouncedQuery] = useState('');
+    const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Debounce query avec délai de 500ms
+    useEffect(() => {
+        // ✅ ANNULER le timer précédent si l'utilisateur continue à taper
+        if (debounceTimerRef.current) {
+            clearTimeout(debounceTimerRef.current);
+        }
+
+        // ✅ ATTENDRE 500ms avant de mettre à jour debouncedQuery
+        debounceTimerRef.current = setTimeout(() => {
+            setDebouncedQuery(query.trim());
+        }, 500); // ✅ DEBOUNCE 500ms - Réduit drastiquement les appels API
+
+        // ✅ NETTOYER le timer au démontage
+        return () => {
+            if (debounceTimerRef.current) {
+                clearTimeout(debounceTimerRef.current);
+            }
+        };
+    }, [query]);
 
     useEffect(() => {
         let cancelled = false;

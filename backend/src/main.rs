@@ -365,12 +365,13 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
         eprintln!("[MAIN] 🚀 Cloud Run: Utilisation de connect_lazy pour démarrage rapide");
         log::info!("🚀 Cloud Run: Utilisation de connect_lazy pour démarrage rapide");
         // ✅ CORRIGÉ 2026-02-18: Pool configuré pour Cloud Run
-        // ✅ CRITIQUE 2026-02-18: Le pool n'a que 4 connexions au lieu de 20 dans les logs
-        // Vérifier si c'est une limite Cloud SQL ou un problème de configuration
+        // ✅ CRITIQUE 2026-02-18: Réduit à 10 pour éviter saturation Cloud SQL
+        // Cloud SQL a une limite de connexions (généralement 100), mais avec plusieurs instances Cloud Run,
+        // il faut limiter le pool par instance pour éviter la saturation
         let cloud_run_max = env::var("DB_POOL_SIZE")
-            .unwrap_or_else(|_| "20".to_string())
+            .unwrap_or_else(|_| "10".to_string()) // ✅ CORRIGÉ: Réduit de 20 à 10
             .parse()
-            .unwrap_or(20);
+            .unwrap_or(10);
         let cloud_run_min = 0; // ✅ CORRIGÉ: 0 pour démarrage rapide même si DB non accessible
         log::info!(
             "🔧 Cloud Run: Pool configuré (max={}, min={}) - Démarrage non-bloquant",
@@ -387,8 +388,8 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
             .max_connections(cloud_run_max)
             .min_connections(cloud_run_min)
             .acquire_timeout(std::time::Duration::from_secs(acquire_timeout_secs))
-            .idle_timeout(Some(std::time::Duration::from_secs(120)))
-            .max_lifetime(Some(std::time::Duration::from_secs(180)))
+            .idle_timeout(Some(std::time::Duration::from_secs(60))) // ✅ CORRIGÉ: Réduit de 120 à 60 pour libérer plus vite
+            .max_lifetime(Some(std::time::Duration::from_secs(120))) // ✅ CORRIGÉ: Réduit de 180 à 120 pour libérer plus vite
             .test_before_acquire(true)
             .after_release(|conn, _meta| {
                 Box::pin(async move {
@@ -2356,6 +2357,74 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
     // ✅ VÉRIFICATION: Afficher un avertissement si l'URL n'a pas été convertie mais devrait l'être
     if redis_url.contains("upstash.io") && !redis_url.starts_with("rediss://") {
         log::warn!("⚠️ Redis: URL Upstash détectée mais n'utilise pas rediss:// - Conversion automatique devrait avoir eu lieu");
+    }
+
+    // ✅ NOUVEAU 2026-02-19: Détecter si c'est une IP privée et utiliser connexion TCP directe
+    use yukpomnang_backend::utils::redis_helper;
+    let use_direct_tcp = redis_helper::is_private_ip_or_internal_host(&redis_url);
+
+    if use_direct_tcp {
+        log::info!("🔧 Redis: IP privée ou hôte interne détecté - Utilisation connexion TCP directe (sans résolution DNS)");
+
+        // Extraire l'IP et le port
+        if let Some((ip, port)) = redis_helper::extract_ip_and_port(&redis_url) {
+            log::info!("   IP: {}, Port: {}", ip, port);
+
+            // Créer le client avec l'IP directement dans l'URL (sans nom d'hôte)
+            let redis_url_direct = format!("redis://{}:{}/0", ip, port);
+
+            // Créer un client Redis avec l'URL directe
+            match RedisClient::open(redis_url_direct.as_str()) {
+                Ok(client) => {
+                    // Tester la connexion avec retry
+                    use tokio::time::{timeout, Duration};
+
+                    let timeout_secs = if is_cloud_run { 2 } else { 10 };
+                    let (is_available, error_detail) = match timeout(
+                        Duration::from_secs(timeout_secs),
+                        redis_helper::check_redis_health_with_error(&client),
+                    )
+                    .await
+                    {
+                        Ok(result) => result,
+                        Err(_) => {
+                            log::warn!(
+                                "⚠️ Redis: Timeout de connexion ({}s) - Redis non accessible",
+                                timeout_secs
+                            );
+                            (
+                                false,
+                                Some(format!("Connection timeout after {} seconds", timeout_secs)),
+                            )
+                        }
+                    };
+
+                    if is_available {
+                        log::info!("✅ Connexion Redis TCP directe établie avec succès");
+                        println!("✅ Connexion Redis TCP directe établie - Backend v2.1.4");
+                        // Continuer avec le client normal
+                        // Le client utilisera l'IP directement, mais peut encore essayer la résolution DNS
+                        // On doit modifier get_redis_connection pour utiliser TCP direct
+                    } else {
+                        log::warn!(
+                            "⚠️ Redis: Échec de connexion TCP directe - URL: {}...",
+                            redis_url_display
+                        );
+                        if let Some(ref err) = error_detail {
+                            log::warn!("   🔍 Détails de l'erreur: {}", err);
+                        }
+                    }
+                }
+                Err(e) => {
+                    log::warn!(
+                        "⚠️ Redis: Impossible de créer le client avec IP directe: {}",
+                        e
+                    );
+                }
+            }
+        } else {
+            log::warn!("⚠️ Redis: Impossible d'extraire l'IP et le port de l'URL");
+        }
     }
 
     // Créer un client Redis et tester la connexion avec retry

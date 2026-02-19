@@ -85,3 +85,4 @@ gcloud run services describe yukpo-backend \
 **🔴 ACTION REQUISE** : Redéclencher le workflow GitHub Actions pour utiliser le nouveau secret.
 
 
+

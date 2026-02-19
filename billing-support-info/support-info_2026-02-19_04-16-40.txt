@@ -1,0 +1,157 @@
+﻿========================================
+INFORMATIONS POUR SUPPORT GOOGLE CLOUD
+Date: 2026-02-19 04:16:47
+Projet: yukpo-project (ID: 738929393617)
+========================================
+
+COMPTE DE FACTURATION:- ID: billingAccounts/0117B7-CA43F5-8DFA8E
+- Nom: yukpo
+- Ã‰tat: False
+- Pays: 
+- ID: billingAccounts/0170A7-131E2B-21B4A1
+- Nom: Yukpo
+- Ã‰tat: False
+- Pays: 
+
+INSTANCES COMPUTE ENGINE: Aucune instance trouvÃ©e
+
+SERVICES CLOUD RUN:
+Total: 1
+- Nom: yukpo-backend
+- RÃ©gion: 376093909298
+- URL: https://yukpo-backend-mkzqhoqhaq-ew.a.run.app
+- RÃ©visions: 3
+
+BUCKETS CLOUD STORAGE:
+Total: 1
+- gs://yukpo-project-yukpo-backend-media/
+
+INSTANCES CLOUD SQL:
+Total: 2
+- Nom: yukpo-postgres
+- RÃ©gion: europe-west1
+- Type: POSTGRES_15
+- Tier: db-f1-micro
+- Ã‰tat: RUNNABLE
+- Nom: yukpo-db
+- RÃ©gion: europe-west1
+- Type: POSTGRES_15
+- Tier: db-f1-micro
+- Ã‰tat: RUNNABLE
+
+APIS ACTIVÃ‰ES:
+Total: 41
+- analyticshub.googleapis.com
+- artifactregistry.googleapis.com
+- autoscaling.googleapis.com
+- bigquery.googleapis.com
+- bigqueryconnection.googleapis.com
+- bigquerydatapolicy.googleapis.com
+- bigquerydatatransfer.googleapis.com
+- bigquerymigration.googleapis.com
+- bigqueryreservation.googleapis.com
+- bigquerystorage.googleapis.com
+- cloudapis.googleapis.com
+- cloudbuild.googleapis.com
+- cloudtrace.googleapis.com
+- compute.googleapis.com
+- container.googleapis.com
+- containerfilesystem.googleapis.com
+- containerregistry.googleapis.com
+- dataform.googleapis.com
+- dataplex.googleapis.com
+- datastore.googleapis.com
+- deploymentmanager.googleapis.com
+- dns.googleapis.com
+- gkebackup.googleapis.com
+- iam.googleapis.com
+- iamcredentials.googleapis.com
+- logging.googleapis.com
+- monitoring.googleapis.com
+- networkconnectivity.googleapis.com
+- oslogin.googleapis.com
+- pubsub.googleapis.com
+- redis.googleapis.com
+- run.googleapis.com
+- secretmanager.googleapis.com
+- servicemanagement.googleapis.com
+- serviceusage.googleapis.com
+- sql-component.googleapis.com
+- sqladmin.googleapis.com
+- storage-api.googleapis.com
+- storage-component.googleapis.com
+- storage.googleapis.com
+- vpcaccess.googleapis.com
+
+PERMISSIONS IAM:
+Total bindings: 20
+- RÃ´le: roles/artifactregistry.reader
+  Membres: serviceAccount:github-actions@yukpo-project.iam.gserviceaccount.com
+- RÃ´le: roles/artifactregistry.serviceAgent
+  Membres: serviceAccount:service-376093909298@gcp-sa-artifactregistry.iam.gserviceaccount.com
+- RÃ´le: roles/artifactregistry.writer
+  Membres: serviceAccount:github-actions@yukpo-project.iam.gserviceaccount.com
+- RÃ´le: roles/cloudbuild.builds.builder
+  Membres: serviceAccount:376093909298@cloudbuild.gserviceaccount.com
+- RÃ´le: roles/cloudbuild.serviceAgent
+  Membres: serviceAccount:service-376093909298@gcp-sa-cloudbuild.iam.gserviceaccount.com
+- RÃ´le: roles/cloudsql.client
+  Membres: serviceAccount:github-actions@yukpo-project.iam.gserviceaccount.com
+- RÃ´le: roles/compute.instanceGroupManagerServiceAgent
+  Membres: serviceAccount:376093909298@cloudservices.gserviceaccount.com
+- RÃ´le: roles/compute.serviceAgent
+  Membres: serviceAccount:service-376093909298@compute-system.iam.gserviceaccount.com
+- RÃ´le: roles/container.serviceAgent
+  Membres: serviceAccount:service-376093909298@container-engine-robot.iam.gserviceaccount.com
+- RÃ´le: roles/containerregistry.ServiceAgent
+  Membres: serviceAccount:service-376093909298@containerregistry.iam.gserviceaccount.com
+- RÃ´le: roles/editor
+  Membres: serviceAccount:376093909298-compute@developer.gserviceaccount.com, serviceAccount:376093909298@cloudservices.gserviceaccount.com
+- RÃ´le: roles/iam.serviceAccountUser
+  Membres: serviceAccount:github-actions@yukpo-project.iam.gserviceaccount.com
+- RÃ´le: roles/owner
+  Membres: user:lelehernandez2007@gmail.com
+- RÃ´le: roles/pubsub.serviceAgent
+  Membres: serviceAccount:service-376093909298@gcp-sa-pubsub.iam.gserviceaccount.com
+- RÃ´le: roles/redis.serviceAgent
+  Membres: serviceAccount:service-376093909298@cloud-redis.iam.gserviceaccount.com
+- RÃ´le: roles/run.admin
+  Membres: serviceAccount:github-actions@yukpo-project.iam.gserviceaccount.com
+- RÃ´le: roles/run.serviceAgent
+  Membres: serviceAccount:service-376093909298@serverless-robot-prod.iam.gserviceaccount.com
+- RÃ´le: roles/secretmanager.secretAccessor
+  Membres: serviceAccount:github-actions@yukpo-project.iam.gserviceaccount.com
+- RÃ´le: roles/storage.objectAdmin
+  Membres: serviceAccount:cloud-storage-sa@yukpo-project.iam.gserviceaccount.com
+- RÃ´le: roles/vpcaccess.serviceAgent
+  Membres: serviceAccount:service-376093909298@gcp-sa-vpcaccess.iam.gserviceaccount.com
+
+
+========================================
+INSTRUCTIONS POUR CONTACTER LE SUPPORT
+========================================
+
+1. ACCÃˆS AU SUPPORT:
+   - URL: https://console.cloud.google.com/support
+   - Ou: billing-support@google.com
+
+2. INFORMATIONS Ã€ FOURNIR:
+   - Projet ID: 738929393617
+   - Nom du projet: yukpo-project
+   - Ce fichier contient toutes les informations nÃ©cessaires
+
+3. DEMANDES:
+   - Annulation de la facture pour coÃ»ts non autorisÃ©s
+   - Explication dÃ©taillÃ©e de l'utilisation
+   - Identification de la source des anomalies
+   - Mise en place de protections (budgets, alertes)
+
+4. PROCHAINES Ã‰TAPES:
+   - Exporter les rapports de facturation depuis Console GCP
+   - VÃ©rifier les budgets et alertes configurÃ©s
+   - PrÃ©parer le template de demande (voir CONTACT_SUPPORT_GOOGLE_CLOUD_ANOMALIES_COUTS.md)
+
+========================================
+Fichier gÃ©nÃ©rÃ©: billing-support-info\support-info_2026-02-19_04-16-40.txt
+Date: 2026-02-19 04:17:36
+========================================

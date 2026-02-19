@@ -71,3 +71,4 @@ Comme les migrations ont déjà été exécutées et les colonnes renommées, et
 **Recommandation** : Corrigez quand même `00000016_create_promotion_tables.sql` pour éviter toute confusion future, mais ce n'est pas urgent car les migrations ont déjà été appliquées.
 
 
+

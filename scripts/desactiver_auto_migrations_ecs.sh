@@ -71,3 +71,4 @@ echo ""
 echo "✅ Service mis à jour, auto-migrations désactivées"
 
 
+

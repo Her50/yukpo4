@@ -106,3 +106,4 @@ buildTypes {
 - Google Play optimise automatiquement les App Bundles par architecture
 
 
+

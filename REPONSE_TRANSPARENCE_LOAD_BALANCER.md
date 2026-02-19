@@ -156,3 +156,4 @@ powershell -ExecutionPolicy Bypass -File scripts\detecter-et-configurer-load-bal
 **Voulez-vous que je crée la tâche planifiée pour la vérification automatique du Load Balancer ?**
 
 
+

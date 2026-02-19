@@ -68,3 +68,4 @@ Le workflow `gcp-deploy.yml` devrait maintenant fonctionner comme `docker-build-
 
 **💡 Note** : Si le secret `GCP_SERVICE_ACCOUNT_EMAIL` n'existe pas, il faudra le créer ou retirer cette ligne.
 
+

@@ -117,3 +117,4 @@ postgresql://yukpo_user:NOUVEAU_MOT_DE_PASSE@/yukpo_db?host=/cloudsql/yukpo-proj
 **🔴 ACTION URGENTE** : Mettre à jour le secret GitHub maintenant pour que Cloud Run fonctionne !
 
 
+

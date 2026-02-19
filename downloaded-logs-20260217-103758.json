@@ -1,0 +1,1794 @@
+[
+  {
+    "insertId": "699436c5000a6c62eeab98c0",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://yukpo-backend-376093909298.europe-west1.run.app/api/mobile-logs",
+      "requestSize": "19676",
+      "status": 502,
+      "responseSize": "144",
+      "userAgent": "Yukpo-Mobile/1.0.0",
+      "remoteIp": "129.0.99.163",
+      "serverIp": "34.143.76.2",
+      "latency": "11.007278820s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "configuration_name": "yukpo-backend",
+        "revision_name": "yukpo-backend-00125-w59",
+        "service_name": "yukpo-backend"
+      }
+    },
+    "timestamp": "2026-02-17T09:36:56.931912Z",
+    "severity": "ERROR",
+    "labels": {
+      "instanceId": "00da6cd2c4d1e748ee31ca26ef85375826107e9e9eec1d9477f42f94d4ccfab1e50e5fa3ca4c405131cfe02e577760654549a4971c53c8166732e1622743786059d12210202028816fcadd25d3845f"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/yukpo-project/traces/442e5aa89844b5bef580bbb435791153",
+    "receiveTimestamp": "2026-02-17T09:37:09.961785430Z",
+    "spanId": "9c6944a5ddb7f020",
+    "traceSampled": true
+  },
+  {
+    "textPayload": "Starting new instance. Reason: AUTOSCALING - Instance started due to configured scaling factors (e.g. CPU utilization, request throughput, etc.) or no existing capacity for current traffic.",
+    "insertId": "699436b8000e52d48b044a11",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "yukpo-project",
+        "service_name": "yukpo-backend",
+        "revision_name": "yukpo-backend-00125-w59",
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1"
+      }
+    },
+    "timestamp": "2026-02-17T09:36:56.938708Z",
+    "severity": "INFO",
+    "labels": {
+      "scaling_reason": "AUTOSCALING",
+      "instanceId": "00da6cd2c4d1e748ee31ca26ef85375826107e9e9eec1d9477f42f94d4ccfab1e50e5fa3ca4c405131cfe02e577760654549a4971c53c8166732e1622743786059d12210202028816fcadd25d3845f"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fvarlog%2Fsystem",
+    "receiveTimestamp": "2026-02-17T09:36:56.942747174Z"
+  },
+  {
+    "textPayload": "🚀 [WRAPPER] Démarrage wrapper Cloud Run...",
+    "insertId": "699436b90002d0d3b5c5fe13",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "europe-west1",
+        "configuration_name": "yukpo-backend",
+        "revision_name": "yukpo-backend-00125-w59",
+        "service_name": "yukpo-backend",
+        "project_id": "yukpo-project"
+      }
+    },
+    "timestamp": "2026-02-17T09:36:57.184531Z",
+    "labels": {
+      "instanceId": "00da6cd2c4d1e748ee31ca26ef85375826107e9e9eec1d9477f42f94d4ccfab1e50e5fa3ca4c405131cfe02e577760654549a4971c53c8166732e1622743786059d12210202028816fcadd25d3845f"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-17T09:36:57.188796221Z"
+  },
+  {
+    "textPayload": "🚀 [WRAPPER] Démarrage serveur HTTP minimal Python...",
+    "insertId": "699436b90002d0dd2ff3490e",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "service_name": "yukpo-backend",
+        "revision_name": "yukpo-backend-00125-w59",
+        "project_id": "yukpo-project",
+        "location": "europe-west1"
+      }
+    },
+    "timestamp": "2026-02-17T09:36:57.184541Z",
+    "labels": {
+      "instanceId": "00da6cd2c4d1e748ee31ca26ef85375826107e9e9eec1d9477f42f94d4ccfab1e50e5fa3ca4c405131cfe02e577760654549a4971c53c8166732e1622743786059d12210202028816fcadd25d3845f"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-17T09:36:57.188796221Z"
+  },
+  {
+    "textPayload": "✅ [WRAPPER] Serveur HTTP minimal démarré (PID: 3)",
+    "insertId": "699436b90002d367e032b011",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "yukpo-project",
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "revision_name": "yukpo-backend-00125-w59",
+        "service_name": "yukpo-backend"
+      }
+    },
+    "timestamp": "2026-02-17T09:36:57.185191Z",
+    "labels": {
+      "instanceId": "00da6cd2c4d1e748ee31ca26ef85375826107e9e9eec1d9477f42f94d4ccfab1e50e5fa3ca4c405131cfe02e577760654549a4971c53c8166732e1622743786059d12210202028816fcadd25d3845f"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-17T09:36:57.521894441Z"
+  },
+  {
+    "textPayload": "🚀 [HEALTH] Démarrage serveur HTTP minimal Python sur port 8080...",
+    "insertId": "699436b900067afe63f8f873",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "service_name": "yukpo-backend",
+        "location": "europe-west1",
+        "configuration_name": "yukpo-backend",
+        "revision_name": "yukpo-backend-00125-w59",
+        "project_id": "yukpo-project"
+      }
+    },
+    "timestamp": "2026-02-17T09:36:57.424702Z",
+    "labels": {
+      "instanceId": "00da6cd2c4d1e748ee31ca26ef85375826107e9e9eec1d9477f42f94d4ccfab1e50e5fa3ca4c405131cfe02e577760654549a4971c53c8166732e1622743786059d12210202028816fcadd25d3845f"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-17T09:36:57.428346107Z"
+  },
+  {
+    "textPayload": "✅ [HEALTH] Serveur HTTP minimal prêt sur port 8080",
+    "insertId": "699436b900067e63a648afef",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "europe-west1",
+        "configuration_name": "yukpo-backend",
+        "service_name": "yukpo-backend",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00125-w59"
+      }
+    },
+    "timestamp": "2026-02-17T09:36:57.425571Z",
+    "labels": {
+      "instanceId": "00da6cd2c4d1e748ee31ca26ef85375826107e9e9eec1d9477f42f94d4ccfab1e50e5fa3ca4c405131cfe02e577760654549a4971c53c8166732e1622743786059d12210202028816fcadd25d3845f"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-17T09:36:57.760827545Z"
+  },
+  {
+    "textPayload": "The request failed because either the HTTP response was malformed or connection to the instance had an error. Additional troubleshooting documentation can be found at: https://cloud.google.com/run/docs/troubleshooting#malformed-response-or-connection-error",
+    "insertId": "699436c30004817e53d09a24",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://yukpo-backend-376093909298.europe-west1.run.app/api/mobile-logs",
+      "requestSize": "976",
+      "status": 503,
+      "responseSize": "68",
+      "userAgent": "Yukpo-Mobile/1.0.0",
+      "remoteIp": "129.0.99.163",
+      "serverIp": "34.143.76.2",
+      "latency": "0.000763050s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "service_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00125-w59",
+        "configuration_name": "yukpo-backend"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:00.478076Z",
+    "severity": "ERROR",
+    "labels": {
+      "instanceId": "00da6cd2c4d1e748ee31ca26ef85375826107e9e9eec1d9477f42f94d4ccfab1e50e5fa3ca4c405131cfe02e577760654549a4971c53c8166732e1622743786059d12210202028816fcadd25d3845f"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/yukpo-project/traces/e9c172aa5e45c646e1acc32b18a92cb6",
+    "receiveTimestamp": "2026-02-17T09:37:07.298395888Z",
+    "spanId": "8e26d0f0990fb5ae"
+  },
+  {
+    "textPayload": "✅ [WRAPPER] Serveur HTTP minimal prêt, Cloud Run devrait le détecter...",
+    "insertId": "699436be0002e38e65a2c4b8",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "europe-west1",
+        "revision_name": "yukpo-backend-00125-w59",
+        "configuration_name": "yukpo-backend",
+        "project_id": "yukpo-project",
+        "service_name": "yukpo-backend"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:02.189326Z",
+    "labels": {
+      "instanceId": "00da6cd2c4d1e748ee31ca26ef85375826107e9e9eec1d9477f42f94d4ccfab1e50e5fa3ca4c405131cfe02e577760654549a4971c53c8166732e1622743786059d12210202028816fcadd25d3845f"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-17T09:37:02.515490834Z"
+  },
+  {
+    "textPayload": "⏳ [WRAPPER] Attente que Cloud Run détecte le serveur Python (5 secondes)...",
+    "insertId": "699436be0002e39551d62f3b",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00125-w59",
+        "service_name": "yukpo-backend",
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:02.189333Z",
+    "labels": {
+      "instanceId": "00da6cd2c4d1e748ee31ca26ef85375826107e9e9eec1d9477f42f94d4ccfab1e50e5fa3ca4c405131cfe02e577760654549a4971c53c8166732e1622743786059d12210202028816fcadd25d3845f"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-17T09:37:02.515490834Z"
+  },
+  {
+    "textPayload": "The request failed because either the HTTP response was malformed or connection to the instance had an error. Additional troubleshooting documentation can be found at: https://cloud.google.com/run/docs/troubleshooting#malformed-response-or-connection-error",
+    "insertId": "699436c30004818bb33aa652",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://yukpo-backend-376093909298.europe-west1.run.app/api/auth/login",
+      "requestSize": "439",
+      "status": 503,
+      "responseSize": "68",
+      "userAgent": "Yukpo-Mobile/1.0.0",
+      "remoteIp": "129.0.99.163",
+      "serverIp": "34.143.76.2",
+      "latency": "0.000635620s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00125-w59",
+        "service_name": "yukpo-backend",
+        "location": "europe-west1"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:04.597966Z",
+    "severity": "ERROR",
+    "labels": {
+      "instanceId": "00da6cd2c4d1e748ee31ca26ef85375826107e9e9eec1d9477f42f94d4ccfab1e50e5fa3ca4c405131cfe02e577760654549a4971c53c8166732e1622743786059d12210202028816fcadd25d3845f"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/yukpo-project/traces/82853de34de3848162d68034f1ea609a",
+    "receiveTimestamp": "2026-02-17T09:37:07.298395888Z",
+    "spanId": "4fe798260efc98ec"
+  },
+  {
+    "textPayload": "The request failed because either the HTTP response was malformed or connection to the instance had an error. Additional troubleshooting documentation can be found at: https://cloud.google.com/run/docs/troubleshooting#malformed-response-or-connection-error",
+    "insertId": "699436c300048179d9150d7a",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://yukpo-backend-376093909298.europe-west1.run.app/api/mobile-logs",
+      "requestSize": "2620",
+      "status": 503,
+      "responseSize": "68",
+      "userAgent": "Yukpo-Mobile/1.0.0",
+      "remoteIp": "129.0.99.163",
+      "serverIp": "34.143.76.2",
+      "latency": "0.000692970s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "europe-west1",
+        "revision_name": "yukpo-backend-00125-w59",
+        "configuration_name": "yukpo-backend",
+        "project_id": "yukpo-project",
+        "service_name": "yukpo-backend"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:04.761968Z",
+    "severity": "ERROR",
+    "labels": {
+      "instanceId": "00da6cd2c4d1e748ee31ca26ef85375826107e9e9eec1d9477f42f94d4ccfab1e50e5fa3ca4c405131cfe02e577760654549a4971c53c8166732e1622743786059d12210202028816fcadd25d3845f"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/yukpo-project/traces/e717a50d5aa2eadb62d68034f1ea6e46",
+    "receiveTimestamp": "2026-02-17T09:37:07.298395888Z",
+    "spanId": "1e113884c1d713cf"
+  },
+  {
+    "textPayload": "The request failed because either the HTTP response was malformed or connection to the instance had an error. Additional troubleshooting documentation can be found at: https://cloud.google.com/run/docs/troubleshooting#malformed-response-or-connection-error",
+    "insertId": "699436c300048186487e0938",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://yukpo-backend-376093909298.europe-west1.run.app/api/mobile-logs",
+      "requestSize": "1476",
+      "status": 503,
+      "responseSize": "68",
+      "userAgent": "Yukpo-Mobile/1.0.0",
+      "remoteIp": "129.0.99.163",
+      "serverIp": "34.143.76.2",
+      "latency": "0.000662260s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "revision_name": "yukpo-backend-00125-w59",
+        "service_name": "yukpo-backend",
+        "project_id": "yukpo-project",
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:05.293112Z",
+    "severity": "ERROR",
+    "labels": {
+      "instanceId": "00da6cd2c4d1e748ee31ca26ef85375826107e9e9eec1d9477f42f94d4ccfab1e50e5fa3ca4c405131cfe02e577760654549a4971c53c8166732e1622743786059d12210202028816fcadd25d3845f"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/yukpo-project/traces/9c3b264c1ee6f5f862d68034f1ea6ed8",
+    "receiveTimestamp": "2026-02-17T09:37:07.298395888Z",
+    "spanId": "2aa70b72f53db328"
+  },
+  {
+    "textPayload": "[HEALTH] GET /health HTTP/1.1",
+    "insertId": "699436c300029291d558023b",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "revision_name": "yukpo-backend-00125-w59",
+        "service_name": "yukpo-backend",
+        "project_id": "yukpo-project",
+        "location": "europe-west1"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:07.168593Z",
+    "labels": {
+      "instanceId": "00da6cd2c4d1e748ee31ca26ef85375826107e9e9eec1d9477f42f94d4ccfab1e50e5fa3ca4c405131cfe02e577760654549a4971c53c8166732e1622743786059d12210202028816fcadd25d3845f"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-17T09:37:07.419816097Z"
+  },
+  {
+    "textPayload": "STARTUP HTTP probe succeeded after 1 attempt for container \"yukpo-backend-1\" on port 8080 path \"/health\".",
+    "insertId": "699436c30002952e6befe442",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "revision_name": "yukpo-backend-00125-w59",
+        "location": "europe-west1",
+        "service_name": "yukpo-backend",
+        "configuration_name": "yukpo-backend",
+        "project_id": "yukpo-project"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:07.169262Z",
+    "severity": "INFO",
+    "labels": {
+      "instanceId": "00da6cd2c4d1e748ee31ca26ef85375826107e9e9eec1d9477f42f94d4ccfab1e50e5fa3ca4c405131cfe02e577760654549a4971c53c8166732e1622743786059d12210202028816fcadd25d3845f"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fvarlog%2Fsystem",
+    "receiveTimestamp": "2026-02-17T09:37:07.265208765Z"
+  },
+  {
+    "textPayload": "🛑 [WRAPPER] Arrêt du serveur Python pour libérer le port...",
+    "insertId": "699436c30002f2a62a6ac0bf",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "service_name": "yukpo-backend",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00125-w59",
+        "location": "europe-west1"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:07.193190Z",
+    "labels": {
+      "instanceId": "00da6cd2c4d1e748ee31ca26ef85375826107e9e9eec1d9477f42f94d4ccfab1e50e5fa3ca4c405131cfe02e577760654549a4971c53c8166732e1622743786059d12210202028816fcadd25d3845f"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-17T09:37:07.510970700Z"
+  },
+  {
+    "textPayload": "⏳ [WRAPPER] Attente libération du port (5 secondes)...",
+    "insertId": "699436c30002fc253c3a5bba",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "europe-west1",
+        "configuration_name": "yukpo-backend",
+        "service_name": "yukpo-backend",
+        "revision_name": "yukpo-backend-00125-w59",
+        "project_id": "yukpo-project"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:07.195621Z",
+    "labels": {
+      "instanceId": "00da6cd2c4d1e748ee31ca26ef85375826107e9e9eec1d9477f42f94d4ccfab1e50e5fa3ca4c405131cfe02e577760654549a4971c53c8166732e1622743786059d12210202028816fcadd25d3845f"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-17T09:37:07.510970700Z"
+  },
+  {
+    "insertId": "699436cd000d27d05dfeb130",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://yukpo-backend-376093909298.europe-west1.run.app/api/mobile-logs",
+      "requestSize": "2739",
+      "status": 501,
+      "responseSize": "501",
+      "userAgent": "Yukpo-Mobile/1.0.0",
+      "remoteIp": "129.0.99.163",
+      "serverIp": "34.143.76.2",
+      "latency": "10.009530890s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "service_name": "yukpo-backend",
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "revision_name": "yukpo-backend-00125-w59",
+        "project_id": "yukpo-project"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:07.629380Z",
+    "severity": "ERROR",
+    "labels": {
+      "instanceId": "00da6cd2c4fb80d8515e1d55593cb655e33ea90350a0b9b514b6f647677b06be98039d3f9ead9fec9a75658aee78d2dae3fbdd6d6ef3f6985dccf938696f90c5420610d77917e3f41f393b06801f73"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/yukpo-project/traces/caeb7b1563d1e57062d68034f1ea63c0",
+    "receiveTimestamp": "2026-02-17T09:37:17.955122500Z",
+    "spanId": "23bf72c01992f498",
+    "traceSampled": true
+  },
+  {
+    "textPayload": "Starting new instance. Reason: AUTOSCALING - Instance started due to configured scaling factors (e.g. CPU utilization, request throughput, etc.) or no existing capacity for current traffic.",
+    "insertId": "699436c30009a31f334515df",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "revision_name": "yukpo-backend-00125-w59",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "configuration_name": "yukpo-backend",
+        "service_name": "yukpo-backend"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:07.631583Z",
+    "severity": "INFO",
+    "labels": {
+      "scaling_reason": "AUTOSCALING",
+      "instanceId": "00da6cd2c4fb80d8515e1d55593cb655e33ea90350a0b9b514b6f647677b06be98039d3f9ead9fec9a75658aee78d2dae3fbdd6d6ef3f6985dccf938696f90c5420610d77917e3f41f393b06801f73"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fvarlog%2Fsystem",
+    "receiveTimestamp": "2026-02-17T09:37:07.933270446Z"
+  },
+  {
+    "insertId": "699436cd000d2e0b1f7353b0",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://yukpo-backend-376093909298.europe-west1.run.app/api/mobile-logs",
+      "requestSize": "2684",
+      "status": 501,
+      "responseSize": "501",
+      "userAgent": "Yukpo-Mobile/1.0.0",
+      "remoteIp": "129.0.99.163",
+      "serverIp": "34.143.76.2",
+      "latency": "0.001424879s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "revision_name": "yukpo-backend-00125-w59",
+        "project_id": "yukpo-project",
+        "location": "europe-west1",
+        "service_name": "yukpo-backend",
+        "configuration_name": "yukpo-backend"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:07.668374Z",
+    "severity": "ERROR",
+    "labels": {
+      "instanceId": "00da6cd2c4fb80d8515e1d55593cb655e33ea90350a0b9b514b6f647677b06be98039d3f9ead9fec9a75658aee78d2dae3fbdd6d6ef3f6985dccf938696f90c5420610d77917e3f41f393b06801f73"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/yukpo-project/traces/a6fa849e5f2dafac62d68034f1ea6afb",
+    "receiveTimestamp": "2026-02-17T09:37:17.955122500Z",
+    "spanId": "ee4ac8d9c5451f25"
+  },
+  {
+    "insertId": "699436cd000d3226d7f0cf5f",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://yukpo-backend-376093909298.europe-west1.run.app/api/mobile-logs",
+      "requestSize": "2649",
+      "status": 501,
+      "responseSize": "501",
+      "userAgent": "Yukpo-Mobile/1.0.0",
+      "remoteIp": "129.0.99.163",
+      "serverIp": "34.143.76.2",
+      "latency": "0.002325239s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "revision_name": "yukpo-backend-00125-w59",
+        "service_name": "yukpo-backend",
+        "location": "europe-west1",
+        "configuration_name": "yukpo-backend",
+        "project_id": "yukpo-project"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:07.716519Z",
+    "severity": "ERROR",
+    "labels": {
+      "instanceId": "00da6cd2c4fb80d8515e1d55593cb655e33ea90350a0b9b514b6f647677b06be98039d3f9ead9fec9a75658aee78d2dae3fbdd6d6ef3f6985dccf938696f90c5420610d77917e3f41f393b06801f73"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/yukpo-project/traces/2e616af08ae205bc62d68034f1ea642a",
+    "receiveTimestamp": "2026-02-17T09:37:17.955122500Z",
+    "spanId": "ff81b7ca075f747b"
+  },
+  {
+    "insertId": "699436cd000d323803988f9a",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://yukpo-backend-376093909298.europe-west1.run.app/api/mobile-logs",
+      "requestSize": "3803",
+      "status": 501,
+      "responseSize": "501",
+      "userAgent": "Yukpo-Mobile/1.0.0",
+      "remoteIp": "129.0.99.163",
+      "serverIp": "34.143.76.2",
+      "latency": "0.002410319s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "service_name": "yukpo-backend",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00125-w59",
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:07.764493Z",
+    "severity": "ERROR",
+    "labels": {
+      "instanceId": "00da6cd2c4fb80d8515e1d55593cb655e33ea90350a0b9b514b6f647677b06be98039d3f9ead9fec9a75658aee78d2dae3fbdd6d6ef3f6985dccf938696f90c5420610d77917e3f41f393b06801f73"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/yukpo-project/traces/9376cf7b9233ce0f62d68034f1ea6ad0",
+    "receiveTimestamp": "2026-02-17T09:37:17.955122500Z",
+    "spanId": "72b5c9db65e0d8fa"
+  },
+  {
+    "textPayload": "🚀 [WRAPPER] Démarrage wrapper Cloud Run...",
+    "insertId": "699436c3000d170c6b1a0212",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "service_name": "yukpo-backend",
+        "revision_name": "yukpo-backend-00125-w59",
+        "location": "europe-west1",
+        "project_id": "yukpo-project"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:07.857868Z",
+    "labels": {
+      "instanceId": "00da6cd2c4fb80d8515e1d55593cb655e33ea90350a0b9b514b6f647677b06be98039d3f9ead9fec9a75658aee78d2dae3fbdd6d6ef3f6985dccf938696f90c5420610d77917e3f41f393b06801f73"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-17T09:37:08.176810259Z"
+  },
+  {
+    "textPayload": "🚀 [WRAPPER] Démarrage serveur HTTP minimal Python...",
+    "insertId": "699436c3000d1713fbb5d369",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "europe-west1",
+        "revision_name": "yukpo-backend-00125-w59",
+        "project_id": "yukpo-project",
+        "service_name": "yukpo-backend",
+        "configuration_name": "yukpo-backend"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:07.857875Z",
+    "labels": {
+      "instanceId": "00da6cd2c4fb80d8515e1d55593cb655e33ea90350a0b9b514b6f647677b06be98039d3f9ead9fec9a75658aee78d2dae3fbdd6d6ef3f6985dccf938696f90c5420610d77917e3f41f393b06801f73"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-17T09:37:08.176810259Z"
+  },
+  {
+    "textPayload": "✅ [WRAPPER] Serveur HTTP minimal démarré (PID: 3)",
+    "insertId": "699436c3000d191b7c3ad364",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "service_name": "yukpo-backend",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00125-w59",
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:07.858395Z",
+    "labels": {
+      "instanceId": "00da6cd2c4fb80d8515e1d55593cb655e33ea90350a0b9b514b6f647677b06be98039d3f9ead9fec9a75658aee78d2dae3fbdd6d6ef3f6985dccf938696f90c5420610d77917e3f41f393b06801f73"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-17T09:37:08.176810259Z"
+  },
+  {
+    "textPayload": "🚀 [HEALTH] Démarrage serveur HTTP minimal Python sur port 8080...",
+    "insertId": "699436c3000ea882e7c537bd",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00125-w59",
+        "service_name": "yukpo-backend",
+        "location": "europe-west1",
+        "configuration_name": "yukpo-backend"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:07.960642Z",
+    "labels": {
+      "instanceId": "00da6cd2c4fb80d8515e1d55593cb655e33ea90350a0b9b514b6f647677b06be98039d3f9ead9fec9a75658aee78d2dae3fbdd6d6ef3f6985dccf938696f90c5420610d77917e3f41f393b06801f73"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-17T09:37:08.086127222Z"
+  },
+  {
+    "textPayload": "✅ [HEALTH] Serveur HTTP minimal prêt sur port 8080",
+    "insertId": "699436c3000eac18cbc4f4c7",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "service_name": "yukpo-backend",
+        "project_id": "yukpo-project",
+        "location": "europe-west1",
+        "revision_name": "yukpo-backend-00125-w59"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:07.961560Z",
+    "labels": {
+      "instanceId": "00da6cd2c4fb80d8515e1d55593cb655e33ea90350a0b9b514b6f647677b06be98039d3f9ead9fec9a75658aee78d2dae3fbdd6d6ef3f6985dccf938696f90c5420610d77917e3f41f393b06801f73"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-17T09:37:08.086127222Z"
+  },
+  {
+    "textPayload": "Truncated response body. Usually implies that the request timed out or the application exited before the response was finished.",
+    "insertId": "699436c5000a41ed6ff14a9e",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "revision_name": "yukpo-backend-00125-w59",
+        "service_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "configuration_name": "yukpo-backend"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:09.672237Z",
+    "severity": "WARNING",
+    "labels": {
+      "instanceId": "00da6cd2c4d1e748ee31ca26ef85375826107e9e9eec1d9477f42f94d4ccfab1e50e5fa3ca4c405131cfe02e577760654549a4971c53c8166732e1622743786059d12210202028816fcadd25d3845f"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fvarlog%2Fsystem",
+    "trace": "projects/yukpo-project/traces/442e5aa89844b5bef580bbb435791153",
+    "receiveTimestamp": "2026-02-17T09:37:09.931274707Z"
+  },
+  {
+    "insertId": "699436cd000d2fc988d06f07",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://yukpo-backend-376093909298.europe-west1.run.app/api/mobile-logs",
+      "requestSize": "3806",
+      "status": 501,
+      "responseSize": "501",
+      "userAgent": "Yukpo-Mobile/1.0.0",
+      "remoteIp": "129.0.99.163",
+      "serverIp": "34.143.76.2",
+      "latency": "0.001599449s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "service_name": "yukpo-backend",
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00125-w59"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:09.972829Z",
+    "severity": "ERROR",
+    "labels": {
+      "instanceId": "00da6cd2c4fb80d8515e1d55593cb655e33ea90350a0b9b514b6f647677b06be98039d3f9ead9fec9a75658aee78d2dae3fbdd6d6ef3f6985dccf938696f90c5420610d77917e3f41f393b06801f73"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/yukpo-project/traces/cf8f71b8d01c467662d68034f1ea65bf",
+    "receiveTimestamp": "2026-02-17T09:37:17.955122500Z",
+    "spanId": "750e5cc3b36c3f59"
+  },
+  {
+    "textPayload": "✅ [WRAPPER] Serveur HTTP minimal prêt, Cloud Run devrait le détecter...",
+    "insertId": "699436c8000d26a412c30018",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "project_id": "yukpo-project",
+        "location": "europe-west1",
+        "service_name": "yukpo-backend",
+        "revision_name": "yukpo-backend-00125-w59"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:12.861860Z",
+    "labels": {
+      "instanceId": "00da6cd2c4fb80d8515e1d55593cb655e33ea90350a0b9b514b6f647677b06be98039d3f9ead9fec9a75658aee78d2dae3fbdd6d6ef3f6985dccf938696f90c5420610d77917e3f41f393b06801f73"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-17T09:37:13.175049561Z"
+  },
+  {
+    "textPayload": "⏳ [WRAPPER] Attente que Cloud Run détecte le serveur Python (5 secondes)...",
+    "insertId": "699436c8000d26ab72cc2fed",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "service_name": "yukpo-backend",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00125-w59",
+        "location": "europe-west1"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:12.861867Z",
+    "labels": {
+      "instanceId": "00da6cd2c4fb80d8515e1d55593cb655e33ea90350a0b9b514b6f647677b06be98039d3f9ead9fec9a75658aee78d2dae3fbdd6d6ef3f6985dccf938696f90c5420610d77917e3f41f393b06801f73"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-17T09:37:13.175049561Z"
+  },
+  {
+    "textPayload": "[HEALTH] GET /health HTTP/1.1",
+    "insertId": "699436cd000ceb0911c5ff3f",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00125-w59",
+        "configuration_name": "yukpo-backend",
+        "service_name": "yukpo-backend"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:17.846601Z",
+    "labels": {
+      "instanceId": "00da6cd2c4fb80d8515e1d55593cb655e33ea90350a0b9b514b6f647677b06be98039d3f9ead9fec9a75658aee78d2dae3fbdd6d6ef3f6985dccf938696f90c5420610d77917e3f41f393b06801f73"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-17T09:37:18.073875077Z"
+  },
+  {
+    "textPayload": "STARTUP HTTP probe succeeded after 1 attempt for container \"yukpo-backend-1\" on port 8080 path \"/health\".",
+    "insertId": "699436cd000cedd518170168",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "yukpo-project",
+        "service_name": "yukpo-backend",
+        "revision_name": "yukpo-backend-00125-w59",
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:17.847317Z",
+    "severity": "INFO",
+    "labels": {
+      "instanceId": "00da6cd2c4fb80d8515e1d55593cb655e33ea90350a0b9b514b6f647677b06be98039d3f9ead9fec9a75658aee78d2dae3fbdd6d6ef3f6985dccf938696f90c5420610d77917e3f41f393b06801f73"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fvarlog%2Fsystem",
+    "receiveTimestamp": "2026-02-17T09:37:17.924103305Z"
+  },
+  {
+    "textPayload": "🛑 [WRAPPER] Arrêt du serveur Python pour libérer le port...",
+    "insertId": "699436cd000d337cf0f2f7d1",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "revision_name": "yukpo-backend-00125-w59",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "service_name": "yukpo-backend"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:17.865148Z",
+    "labels": {
+      "instanceId": "00da6cd2c4fb80d8515e1d55593cb655e33ea90350a0b9b514b6f647677b06be98039d3f9ead9fec9a75658aee78d2dae3fbdd6d6ef3f6985dccf938696f90c5420610d77917e3f41f393b06801f73"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-17T09:37:18.168750132Z"
+  },
+  {
+    "textPayload": "⏳ [WRAPPER] Attente libération du port (5 secondes)...",
+    "insertId": "699436cd000d3bd3dc6e4e20",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "project_id": "yukpo-project",
+        "location": "europe-west1",
+        "service_name": "yukpo-backend",
+        "revision_name": "yukpo-backend-00125-w59"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:17.867283Z",
+    "labels": {
+      "instanceId": "00da6cd2c4fb80d8515e1d55593cb655e33ea90350a0b9b514b6f647677b06be98039d3f9ead9fec9a75658aee78d2dae3fbdd6d6ef3f6985dccf938696f90c5420610d77917e3f41f393b06801f73"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-17T09:37:18.168750132Z"
+  },
+  {
+    "textPayload": "The request failed because either the HTTP response was malformed or connection to the instance had an error. Additional troubleshooting documentation can be found at: https://cloud.google.com/run/docs/troubleshooting#malformed-response-or-connection-error",
+    "insertId": "699436ce0002bf0e02a167f1",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://yukpo-backend-376093909298.europe-west1.run.app/api/mobile-logs",
+      "requestSize": "21517",
+      "status": 503,
+      "responseSize": "68",
+      "userAgent": "Yukpo-Mobile/1.0.0",
+      "remoteIp": "129.0.99.163",
+      "serverIp": "34.143.76.2",
+      "latency": "0.000671380s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "revision_name": "yukpo-backend-00125-w59",
+        "service_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "configuration_name": "yukpo-backend"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:18.178097Z",
+    "severity": "ERROR",
+    "labels": {
+      "instanceId": "00da6cd2c4fb80d8515e1d55593cb655e33ea90350a0b9b514b6f647677b06be98039d3f9ead9fec9a75658aee78d2dae3fbdd6d6ef3f6985dccf938696f90c5420610d77917e3f41f393b06801f73"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/yukpo-project/traces/b799e82f338091c388e76b7613e04c2f",
+    "receiveTimestamp": "2026-02-17T09:37:18.288567822Z",
+    "spanId": "8a6e9e0e4ca510e9",
+    "traceSampled": true
+  },
+  {
+    "insertId": "699436d80005f03458bfa692",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://yukpo-backend-376093909298.europe-west1.run.app/api/mobile-logs",
+      "requestSize": "977",
+      "status": 501,
+      "responseSize": "501",
+      "userAgent": "Yukpo-Mobile/1.0.0",
+      "remoteIp": "129.0.99.163",
+      "serverIp": "34.143.76.2",
+      "latency": "10.004694070s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "yukpo-project",
+        "service_name": "yukpo-backend",
+        "revision_name": "yukpo-backend-00125-w59",
+        "location": "europe-west1",
+        "configuration_name": "yukpo-backend"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:18.180496Z",
+    "severity": "ERROR",
+    "labels": {
+      "instanceId": "00da6cd2c455507bc0bf94f46bb416e50b4f377e6d1eb2bed1408cf62a398c69dd379a0c81c4487e08cca2c47df67ce35fdfc329374d31c8a03d4df620376d3aa80ad83e9a770617085e18bb2c75ba"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/yukpo-project/traces/f4d8a02a803b22ca88e76b7613e043a9",
+    "receiveTimestamp": "2026-02-17T09:37:28.611835555Z",
+    "spanId": "99f4ae437742761e"
+  },
+  {
+    "textPayload": "Starting new instance. Reason: AUTOSCALING - Instance started due to configured scaling factors (e.g. CPU utilization, request throughput, etc.) or no existing capacity for current traffic.",
+    "insertId": "699436ce0002c9b6ee7582c2",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "revision_name": "yukpo-backend-00125-w59",
+        "location": "europe-west1",
+        "service_name": "yukpo-backend",
+        "project_id": "yukpo-project"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:18.182710Z",
+    "severity": "INFO",
+    "labels": {
+      "instanceId": "00da6cd2c455507bc0bf94f46bb416e50b4f377e6d1eb2bed1408cf62a398c69dd379a0c81c4487e08cca2c47df67ce35fdfc329374d31c8a03d4df620376d3aa80ad83e9a770617085e18bb2c75ba",
+      "scaling_reason": "AUTOSCALING"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fvarlog%2Fsystem",
+    "receiveTimestamp": "2026-02-17T09:37:18.256240854Z"
+  },
+  {
+    "textPayload": "🚀 [WRAPPER] Démarrage wrapper Cloud Run...",
+    "insertId": "699436ce0005ed7fa9e025cf",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "yukpo-project",
+        "service_name": "yukpo-backend",
+        "revision_name": "yukpo-backend-00125-w59",
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:18.388479Z",
+    "labels": {
+      "instanceId": "00da6cd2c455507bc0bf94f46bb416e50b4f377e6d1eb2bed1408cf62a398c69dd379a0c81c4487e08cca2c47df67ce35fdfc329374d31c8a03d4df620376d3aa80ad83e9a770617085e18bb2c75ba"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-17T09:37:18.501409465Z"
+  },
+  {
+    "textPayload": "🚀 [WRAPPER] Démarrage serveur HTTP minimal Python...",
+    "insertId": "699436ce0005ed877c27bfca",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "project_id": "yukpo-project",
+        "service_name": "yukpo-backend",
+        "revision_name": "yukpo-backend-00125-w59",
+        "location": "europe-west1"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:18.388487Z",
+    "labels": {
+      "instanceId": "00da6cd2c455507bc0bf94f46bb416e50b4f377e6d1eb2bed1408cf62a398c69dd379a0c81c4487e08cca2c47df67ce35fdfc329374d31c8a03d4df620376d3aa80ad83e9a770617085e18bb2c75ba"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-17T09:37:18.501409465Z"
+  },
+  {
+    "textPayload": "✅ [WRAPPER] Serveur HTTP minimal démarré (PID: 3)",
+    "insertId": "699436ce0005efe8e582a2ce",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "configuration_name": "yukpo-backend",
+        "service_name": "yukpo-backend",
+        "revision_name": "yukpo-backend-00125-w59"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:18.389096Z",
+    "labels": {
+      "instanceId": "00da6cd2c455507bc0bf94f46bb416e50b4f377e6d1eb2bed1408cf62a398c69dd379a0c81c4487e08cca2c47df67ce35fdfc329374d31c8a03d4df620376d3aa80ad83e9a770617085e18bb2c75ba"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-17T09:37:18.501409465Z"
+  },
+  {
+    "textPayload": "🚀 [HEALTH] Démarrage serveur HTTP minimal Python sur port 8080...",
+    "insertId": "699436ce0007863fb9f8d805",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "yukpo-project",
+        "service_name": "yukpo-backend",
+        "revision_name": "yukpo-backend-00125-w59",
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:18.493119Z",
+    "labels": {
+      "instanceId": "00da6cd2c455507bc0bf94f46bb416e50b4f377e6d1eb2bed1408cf62a398c69dd379a0c81c4487e08cca2c47df67ce35fdfc329374d31c8a03d4df620376d3aa80ad83e9a770617085e18bb2c75ba"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-17T09:37:18.740548088Z"
+  },
+  {
+    "textPayload": "✅ [HEALTH] Serveur HTTP minimal prêt sur port 8080",
+    "insertId": "699436ce0007897d7d3fc9ae",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "revision_name": "yukpo-backend-00125-w59",
+        "configuration_name": "yukpo-backend",
+        "project_id": "yukpo-project",
+        "service_name": "yukpo-backend",
+        "location": "europe-west1"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:18.493949Z",
+    "labels": {
+      "instanceId": "00da6cd2c455507bc0bf94f46bb416e50b4f377e6d1eb2bed1408cf62a398c69dd379a0c81c4487e08cca2c47df67ce35fdfc329374d31c8a03d4df620376d3aa80ad83e9a770617085e18bb2c75ba"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-17T09:37:18.740548088Z"
+  },
+  {
+    "insertId": "699436da000d9fee01e86687",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://yukpo-backend-376093909298.europe-west1.run.app/api/mobile-logs",
+      "requestSize": "35593",
+      "status": 502,
+      "responseSize": "144",
+      "userAgent": "Yukpo-Mobile/1.0.0",
+      "remoteIp": "129.0.99.163",
+      "serverIp": "34.143.76.2",
+      "latency": "1.002339068s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "service_name": "yukpo-backend",
+        "revision_name": "yukpo-backend-00125-w59"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:19.901729Z",
+    "severity": "ERROR",
+    "labels": {
+      "instanceId": "00da6cd2c455507bc0bf94f46bb416e50b4f377e6d1eb2bed1408cf62a398c69dd379a0c81c4487e08cca2c47df67ce35fdfc329374d31c8a03d4df620376d3aa80ad83e9a770617085e18bb2c75ba"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/yukpo-project/traces/96cb499ae2028b3d88e76b7613e040a5",
+    "receiveTimestamp": "2026-02-17T09:37:30.946470448Z",
+    "spanId": "336117d055feb86b"
+  },
+  {
+    "textPayload": "✅ [WRAPPER] Serveur HTTP minimal prêt, Cloud Run devrait le détecter...",
+    "insertId": "699436d30005fdb27fffb48f",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "europe-west1",
+        "revision_name": "yukpo-backend-00125-w59",
+        "service_name": "yukpo-backend",
+        "configuration_name": "yukpo-backend",
+        "project_id": "yukpo-project"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:23.392626Z",
+    "labels": {
+      "instanceId": "00da6cd2c455507bc0bf94f46bb416e50b4f377e6d1eb2bed1408cf62a398c69dd379a0c81c4487e08cca2c47df67ce35fdfc329374d31c8a03d4df620376d3aa80ad83e9a770617085e18bb2c75ba"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-17T09:37:23.495497005Z"
+  },
+  {
+    "textPayload": "⏳ [WRAPPER] Attente que Cloud Run détecte le serveur Python (5 secondes)...",
+    "insertId": "699436d30005fdbc2a4a78a1",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "revision_name": "yukpo-backend-00125-w59",
+        "service_name": "yukpo-backend",
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:23.392636Z",
+    "labels": {
+      "instanceId": "00da6cd2c455507bc0bf94f46bb416e50b4f377e6d1eb2bed1408cf62a398c69dd379a0c81c4487e08cca2c47df67ce35fdfc329374d31c8a03d4df620376d3aa80ad83e9a770617085e18bb2c75ba"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-17T09:37:23.495497005Z"
+  },
+  {
+    "insertId": "699436d80005f8480f8233d1",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://yukpo-backend-376093909298.europe-west1.run.app/api/mobile-logs",
+      "requestSize": "977",
+      "status": 501,
+      "responseSize": "501",
+      "userAgent": "Yukpo-Mobile/1.0.0",
+      "remoteIp": "129.0.99.163",
+      "serverIp": "34.143.76.2",
+      "latency": "0.001573060s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "yukpo-project",
+        "service_name": "yukpo-backend",
+        "revision_name": "yukpo-backend-00125-w59",
+        "location": "europe-west1",
+        "configuration_name": "yukpo-backend"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:24.514165Z",
+    "severity": "ERROR",
+    "labels": {
+      "instanceId": "00da6cd2c455507bc0bf94f46bb416e50b4f377e6d1eb2bed1408cf62a398c69dd379a0c81c4487e08cca2c47df67ce35fdfc329374d31c8a03d4df620376d3aa80ad83e9a770617085e18bb2c75ba"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/yukpo-project/traces/6397d1c4082140fc56308769bc1a5640",
+    "receiveTimestamp": "2026-02-17T09:37:28.611835555Z",
+    "spanId": "fa5c5be9d95d59ad"
+  },
+  {
+    "textPayload": "[HEALTH] GET /health HTTP/1.1",
+    "insertId": "699436d80005c15936b80f68",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "service_name": "yukpo-backend",
+        "revision_name": "yukpo-backend-00125-w59",
+        "location": "europe-west1",
+        "configuration_name": "yukpo-backend",
+        "project_id": "yukpo-project"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:28.377177Z",
+    "labels": {
+      "instanceId": "00da6cd2c455507bc0bf94f46bb416e50b4f377e6d1eb2bed1408cf62a398c69dd379a0c81c4487e08cca2c47df67ce35fdfc329374d31c8a03d4df620376d3aa80ad83e9a770617085e18bb2c75ba"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-17T09:37:28.400580700Z"
+  },
+  {
+    "textPayload": "STARTUP HTTP probe succeeded after 1 attempt for container \"yukpo-backend-1\" on port 8080 path \"/health\".",
+    "insertId": "699436d80005c42ed11ec4d1",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "revision_name": "yukpo-backend-00125-w59",
+        "location": "europe-west1",
+        "configuration_name": "yukpo-backend",
+        "service_name": "yukpo-backend",
+        "project_id": "yukpo-project"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:28.377902Z",
+    "severity": "INFO",
+    "labels": {
+      "instanceId": "00da6cd2c455507bc0bf94f46bb416e50b4f377e6d1eb2bed1408cf62a398c69dd379a0c81c4487e08cca2c47df67ce35fdfc329374d31c8a03d4df620376d3aa80ad83e9a770617085e18bb2c75ba"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fvarlog%2Fsystem",
+    "receiveTimestamp": "2026-02-17T09:37:28.580781592Z"
+  },
+  {
+    "textPayload": "🛑 [WRAPPER] Arrêt du serveur Python pour libérer le port...",
+    "insertId": "699436d8000609cbb3ee355c",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "revision_name": "yukpo-backend-00125-w59",
+        "service_name": "yukpo-backend",
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:28.395723Z",
+    "labels": {
+      "instanceId": "00da6cd2c455507bc0bf94f46bb416e50b4f377e6d1eb2bed1408cf62a398c69dd379a0c81c4487e08cca2c47df67ce35fdfc329374d31c8a03d4df620376d3aa80ad83e9a770617085e18bb2c75ba"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-17T09:37:28.491214900Z"
+  },
+  {
+    "textPayload": "⏳ [WRAPPER] Attente libération du port (5 secondes)...",
+    "insertId": "699436d800061253340a3902",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "service_name": "yukpo-backend",
+        "revision_name": "yukpo-backend-00125-w59",
+        "project_id": "yukpo-project",
+        "location": "europe-west1",
+        "configuration_name": "yukpo-backend"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:28.397907Z",
+    "labels": {
+      "instanceId": "00da6cd2c455507bc0bf94f46bb416e50b4f377e6d1eb2bed1408cf62a398c69dd379a0c81c4487e08cca2c47df67ce35fdfc329374d31c8a03d4df620376d3aa80ad83e9a770617085e18bb2c75ba"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-17T09:37:28.491214900Z"
+  },
+  {
+    "textPayload": "The request failed because either the HTTP response was malformed or connection to the instance had an error. Additional troubleshooting documentation can be found at: https://cloud.google.com/run/docs/troubleshooting#malformed-response-or-connection-error",
+    "insertId": "699436d90004afc3788f4ff6",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://yukpo-backend-376093909298.europe-west1.run.app/api/mobile-logs",
+      "requestSize": "2070",
+      "status": 503,
+      "responseSize": "68",
+      "userAgent": "Yukpo-Mobile/1.0.0",
+      "remoteIp": "129.0.99.163",
+      "serverIp": "34.143.76.2",
+      "latency": "0.000584470s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "revision_name": "yukpo-backend-00125-w59",
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "service_name": "yukpo-backend"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:29.305528Z",
+    "severity": "ERROR",
+    "labels": {
+      "instanceId": "00da6cd2c455507bc0bf94f46bb416e50b4f377e6d1eb2bed1408cf62a398c69dd379a0c81c4487e08cca2c47df67ce35fdfc329374d31c8a03d4df620376d3aa80ad83e9a770617085e18bb2c75ba"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/yukpo-project/traces/0a2ab4c47eb28e1eb6a54b5b311cbb45",
+    "receiveTimestamp": "2026-02-17T09:37:29.608225765Z",
+    "spanId": "908323371f9aea3c",
+    "traceSampled": true
+  },
+  {
+    "textPayload": "Truncated response body. Usually implies that the request timed out or the application exited before the response was finished.",
+    "insertId": "699436da000d9f541e32efd3",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "configuration_name": "yukpo-backend",
+        "service_name": "yukpo-backend",
+        "revision_name": "yukpo-backend-00125-w59"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:30.892756Z",
+    "severity": "WARNING",
+    "labels": {
+      "instanceId": "00da6cd2c455507bc0bf94f46bb416e50b4f377e6d1eb2bed1408cf62a398c69dd379a0c81c4487e08cca2c47df67ce35fdfc329374d31c8a03d4df620376d3aa80ad83e9a770617085e18bb2c75ba"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fvarlog%2Fsystem",
+    "trace": "projects/yukpo-project/traces/96cb499ae2028b3d88e76b7613e040a5",
+    "receiveTimestamp": "2026-02-17T09:37:30.908568918Z"
+  },
+  {
+    "textPayload": "Starting new instance. Reason: AUTOSCALING - Instance started due to configured scaling factors (e.g. CPU utilization, request throughput, etc.) or no existing capacity for current traffic.",
+    "insertId": "699436db000059725f21d922",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "service_name": "yukpo-backend",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00125-w59",
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:31.022898Z",
+    "severity": "INFO",
+    "labels": {
+      "instanceId": "00da6cd2c4893bab610624e992f7c9070fc77597f8d573cddcca3b2efd2ebe571b4fb6782b70ab9c6fa5daba9e1545fa9197bdcdbb0383b005943e5608d81e9620bc13f2dbe10d67f9c4dad50dbd17",
+      "scaling_reason": "AUTOSCALING"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fvarlog%2Fsystem",
+    "receiveTimestamp": "2026-02-17T09:37:31.243338320Z"
+  },
+  {
+    "textPayload": "🚀 [WRAPPER] Démarrage wrapper Cloud Run...",
+    "insertId": "699436db0005a9e7b3230bd3",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00125-w59",
+        "configuration_name": "yukpo-backend",
+        "service_name": "yukpo-backend",
+        "location": "europe-west1"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:31.371175Z",
+    "labels": {
+      "instanceId": "00da6cd2c4893bab610624e992f7c9070fc77597f8d573cddcca3b2efd2ebe571b4fb6782b70ab9c6fa5daba9e1545fa9197bdcdbb0383b005943e5608d81e9620bc13f2dbe10d67f9c4dad50dbd17"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-17T09:37:31.489873417Z"
+  },
+  {
+    "textPayload": "🚀 [WRAPPER] Démarrage serveur HTTP minimal Python...",
+    "insertId": "699436db0005a9ede9989bb8",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "revision_name": "yukpo-backend-00125-w59",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "service_name": "yukpo-backend"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:31.371181Z",
+    "labels": {
+      "instanceId": "00da6cd2c4893bab610624e992f7c9070fc77597f8d573cddcca3b2efd2ebe571b4fb6782b70ab9c6fa5daba9e1545fa9197bdcdbb0383b005943e5608d81e9620bc13f2dbe10d67f9c4dad50dbd17"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-17T09:37:31.489873417Z"
+  },
+  {
+    "textPayload": "✅ [WRAPPER] Serveur HTTP minimal démarré (PID: 3)",
+    "insertId": "699436db0005ac2df282619e",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "service_name": "yukpo-backend",
+        "revision_name": "yukpo-backend-00125-w59",
+        "location": "europe-west1",
+        "configuration_name": "yukpo-backend",
+        "project_id": "yukpo-project"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:31.371757Z",
+    "labels": {
+      "instanceId": "00da6cd2c4893bab610624e992f7c9070fc77597f8d573cddcca3b2efd2ebe571b4fb6782b70ab9c6fa5daba9e1545fa9197bdcdbb0383b005943e5608d81e9620bc13f2dbe10d67f9c4dad50dbd17"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-17T09:37:31.489873417Z"
+  },
+  {
+    "textPayload": "🚀 [HEALTH] Démarrage serveur HTTP minimal Python sur port 8080...",
+    "insertId": "699436db00074d15b1b98170",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "yukpo-project",
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "service_name": "yukpo-backend",
+        "revision_name": "yukpo-backend-00125-w59"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:31.478485Z",
+    "labels": {
+      "instanceId": "00da6cd2c4893bab610624e992f7c9070fc77597f8d573cddcca3b2efd2ebe571b4fb6782b70ab9c6fa5daba9e1545fa9197bdcdbb0383b005943e5608d81e9620bc13f2dbe10d67f9c4dad50dbd17"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-17T09:37:31.730180674Z"
+  },
+  {
+    "textPayload": "✅ [HEALTH] Serveur HTTP minimal prêt sur port 8080",
+    "insertId": "699436db0007502b3d5f6d60",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "service_name": "yukpo-backend",
+        "configuration_name": "yukpo-backend",
+        "project_id": "yukpo-project",
+        "location": "europe-west1",
+        "revision_name": "yukpo-backend-00125-w59"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:31.479275Z",
+    "labels": {
+      "instanceId": "00da6cd2c4893bab610624e992f7c9070fc77597f8d573cddcca3b2efd2ebe571b4fb6782b70ab9c6fa5daba9e1545fa9197bdcdbb0383b005943e5608d81e9620bc13f2dbe10d67f9c4dad50dbd17"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-17T09:37:31.730180674Z"
+  },
+  {
+    "insertId": "699436e7000d5300ab55eb87",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://yukpo-backend-376093909298.europe-west1.run.app/api/mobile-logs",
+      "requestSize": "37780",
+      "status": 502,
+      "responseSize": "144",
+      "userAgent": "Yukpo-Mobile/1.0.0",
+      "remoteIp": "129.0.99.163",
+      "serverIp": "34.143.76.2",
+      "latency": "1.001447329s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "service_name": "yukpo-backend",
+        "location": "europe-west1",
+        "configuration_name": "yukpo-backend",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00125-w59"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:34.303350Z",
+    "severity": "ERROR",
+    "labels": {
+      "instanceId": "00da6cd2c4893bab610624e992f7c9070fc77597f8d573cddcca3b2efd2ebe571b4fb6782b70ab9c6fa5daba9e1545fa9197bdcdbb0383b005943e5608d81e9620bc13f2dbe10d67f9c4dad50dbd17"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/yukpo-project/traces/5c22b35cbe94ca40b6a54b5b311cbdc5",
+    "receiveTimestamp": "2026-02-17T09:37:43.875790728Z",
+    "spanId": "a0ca76b2a9ad662e"
+  },
+  {
+    "textPayload": "✅ [WRAPPER] Serveur HTTP minimal prêt, Cloud Run devrait le détecter...",
+    "insertId": "699436e00005bf81ee1045a1",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "yukpo-project",
+        "location": "europe-west1",
+        "service_name": "yukpo-backend",
+        "configuration_name": "yukpo-backend",
+        "revision_name": "yukpo-backend-00125-w59"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:36.376705Z",
+    "labels": {
+      "instanceId": "00da6cd2c4893bab610624e992f7c9070fc77597f8d573cddcca3b2efd2ebe571b4fb6782b70ab9c6fa5daba9e1545fa9197bdcdbb0383b005943e5608d81e9620bc13f2dbe10d67f9c4dad50dbd17"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-17T09:37:36.485180475Z"
+  },
+  {
+    "textPayload": "⏳ [WRAPPER] Attente que Cloud Run détecte le serveur Python (5 secondes)...",
+    "insertId": "699436e00005bf87913d5904",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "service_name": "yukpo-backend",
+        "configuration_name": "yukpo-backend",
+        "revision_name": "yukpo-backend-00125-w59",
+        "project_id": "yukpo-project",
+        "location": "europe-west1"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:36.376711Z",
+    "labels": {
+      "instanceId": "00da6cd2c4893bab610624e992f7c9070fc77597f8d573cddcca3b2efd2ebe571b4fb6782b70ab9c6fa5daba9e1545fa9197bdcdbb0383b005943e5608d81e9620bc13f2dbe10d67f9c4dad50dbd17"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-17T09:37:36.485180475Z"
+  },
+  {
+    "textPayload": "[HEALTH] GET /health HTTP/1.1",
+    "insertId": "699436e500057fab7096c013",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "service_name": "yukpo-backend",
+        "location": "europe-west1",
+        "configuration_name": "yukpo-backend",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00125-w59"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:41.360363Z",
+    "labels": {
+      "instanceId": "00da6cd2c4893bab610624e992f7c9070fc77597f8d573cddcca3b2efd2ebe571b4fb6782b70ab9c6fa5daba9e1545fa9197bdcdbb0383b005943e5608d81e9620bc13f2dbe10d67f9c4dad50dbd17"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-17T09:37:41.384848554Z"
+  },
+  {
+    "textPayload": "STARTUP HTTP probe succeeded after 1 attempt for container \"yukpo-backend-1\" on port 8080 path \"/health\".",
+    "insertId": "699436e50005824c8045a5f3",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "yukpo-project",
+        "location": "europe-west1",
+        "revision_name": "yukpo-backend-00125-w59",
+        "configuration_name": "yukpo-backend",
+        "service_name": "yukpo-backend"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:41.361036Z",
+    "severity": "INFO",
+    "labels": {
+      "instanceId": "00da6cd2c4893bab610624e992f7c9070fc77597f8d573cddcca3b2efd2ebe571b4fb6782b70ab9c6fa5daba9e1545fa9197bdcdbb0383b005943e5608d81e9620bc13f2dbe10d67f9c4dad50dbd17"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fvarlog%2Fsystem",
+    "receiveTimestamp": "2026-02-17T09:37:41.366091891Z"
+  },
+  {
+    "textPayload": "🛑 [WRAPPER] Arrêt du serveur Python pour libérer le port...",
+    "insertId": "699436e50005d1507a93324f",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "revision_name": "yukpo-backend-00125-w59",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "service_name": "yukpo-backend"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:41.381264Z",
+    "labels": {
+      "instanceId": "00da6cd2c4893bab610624e992f7c9070fc77597f8d573cddcca3b2efd2ebe571b4fb6782b70ab9c6fa5daba9e1545fa9197bdcdbb0383b005943e5608d81e9620bc13f2dbe10d67f9c4dad50dbd17"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-17T09:37:41.480419119Z"
+  },
+  {
+    "textPayload": "⏳ [WRAPPER] Attente libération du port (5 secondes)...",
+    "insertId": "699436e50005dbd96aee2e0b",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "project_id": "yukpo-project",
+        "service_name": "yukpo-backend",
+        "location": "europe-west1",
+        "revision_name": "yukpo-backend-00125-w59"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:41.383961Z",
+    "labels": {
+      "instanceId": "00da6cd2c4893bab610624e992f7c9070fc77597f8d573cddcca3b2efd2ebe571b4fb6782b70ab9c6fa5daba9e1545fa9197bdcdbb0383b005943e5608d81e9620bc13f2dbe10d67f9c4dad50dbd17"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-17T09:37:41.480419119Z"
+  },
+  {
+    "textPayload": "Truncated response body. Usually implies that the request timed out or the application exited before the response was finished.",
+    "insertId": "699436e7000d528067813a09",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "configuration_name": "yukpo-backend",
+        "revision_name": "yukpo-backend-00125-w59",
+        "service_name": "yukpo-backend"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:43.873088Z",
+    "severity": "WARNING",
+    "labels": {
+      "instanceId": "00da6cd2c4893bab610624e992f7c9070fc77597f8d573cddcca3b2efd2ebe571b4fb6782b70ab9c6fa5daba9e1545fa9197bdcdbb0383b005943e5608d81e9620bc13f2dbe10d67f9c4dad50dbd17"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fvarlog%2Fsystem",
+    "trace": "projects/yukpo-project/traces/5c22b35cbe94ca40b6a54b5b311cbdc5",
+    "receiveTimestamp": "2026-02-17T09:37:44.029406950Z"
+  },
+  {
+    "textPayload": "✅ [WRAPPER] Port libéré, démarrage de Rust...",
+    "insertId": "699436ea0005e7d27ba852f8",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "yukpo-project",
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "revision_name": "yukpo-backend-00125-w59",
+        "service_name": "yukpo-backend"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:46.387026Z",
+    "labels": {
+      "instanceId": "00da6cd2c4893bab610624e992f7c9070fc77597f8d573cddcca3b2efd2ebe571b4fb6782b70ab9c6fa5daba9e1545fa9197bdcdbb0383b005943e5608d81e9620bc13f2dbe10d67f9c4dad50dbd17"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-17T09:37:46.473852104Z"
+  },
+  {
+    "textPayload": "✅ [WRAPPER] Port 8080 est libre",
+    "insertId": "699436ea0005ee69e209b654",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "service_name": "yukpo-backend",
+        "revision_name": "yukpo-backend-00125-w59",
+        "configuration_name": "yukpo-backend",
+        "project_id": "yukpo-project",
+        "location": "europe-west1"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:46.388713Z",
+    "labels": {
+      "instanceId": "00da6cd2c4893bab610624e992f7c9070fc77597f8d573cddcca3b2efd2ebe571b4fb6782b70ab9c6fa5daba9e1545fa9197bdcdbb0383b005943e5608d81e9620bc13f2dbe10d67f9c4dad50dbd17"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-17T09:37:46.473852104Z"
+  },
+  {
+    "textPayload": "🔍 [WRAPPER] Vérification du binaire Rust...",
+    "insertId": "699436ea0005ee97e2628137",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "europe-west1",
+        "service_name": "yukpo-backend",
+        "configuration_name": "yukpo-backend",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00125-w59"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:46.388759Z",
+    "labels": {
+      "instanceId": "00da6cd2c4893bab610624e992f7c9070fc77597f8d573cddcca3b2efd2ebe571b4fb6782b70ab9c6fa5daba9e1545fa9197bdcdbb0383b005943e5608d81e9620bc13f2dbe10d67f9c4dad50dbd17"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-17T09:37:46.473852104Z"
+  },
+  {
+    "textPayload": "✅ [WRAPPER] Binaire trouvé et exécutable",
+    "insertId": "699436ea0005ef13da4e54a7",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "revision_name": "yukpo-backend-00125-w59",
+        "project_id": "yukpo-project",
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "service_name": "yukpo-backend"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:46.388883Z",
+    "labels": {
+      "instanceId": "00da6cd2c4893bab610624e992f7c9070fc77597f8d573cddcca3b2efd2ebe571b4fb6782b70ab9c6fa5daba9e1545fa9197bdcdbb0383b005943e5608d81e9620bc13f2dbe10d67f9c4dad50dbd17"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-17T09:37:46.473852104Z"
+  },
+  {
+    "textPayload": "🚀 [WRAPPER] Démarrage application Rust...",
+    "insertId": "699436ea0005ef1f5cd4f853",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "europe-west1",
+        "configuration_name": "yukpo-backend",
+        "project_id": "yukpo-project",
+        "service_name": "yukpo-backend",
+        "revision_name": "yukpo-backend-00125-w59"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:46.388895Z",
+    "labels": {
+      "instanceId": "00da6cd2c4893bab610624e992f7c9070fc77597f8d573cddcca3b2efd2ebe571b4fb6782b70ab9c6fa5daba9e1545fa9197bdcdbb0383b005943e5608d81e9620bc13f2dbe10d67f9c4dad50dbd17"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-17T09:37:46.473852104Z"
+  },
+  {
+    "textPayload": "🔍 [WRAPPER] Variables d'environnement critiques:",
+    "insertId": "699436ea0005ef2bc058a4fa",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "europe-west1",
+        "revision_name": "yukpo-backend-00125-w59",
+        "configuration_name": "yukpo-backend",
+        "service_name": "yukpo-backend",
+        "project_id": "yukpo-project"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:46.388907Z",
+    "labels": {
+      "instanceId": "00da6cd2c4893bab610624e992f7c9070fc77597f8d573cddcca3b2efd2ebe571b4fb6782b70ab9c6fa5daba9e1545fa9197bdcdbb0383b005943e5608d81e9620bc13f2dbe10d67f9c4dad50dbd17"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-17T09:37:46.473852104Z"
+  },
+  {
+    "textPayload": "   DATABASE_URL: ✅ Présente (longueur: 123)",
+    "insertId": "699436ea0005ef721cfbe4df",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "europe-west1",
+        "configuration_name": "yukpo-backend",
+        "service_name": "yukpo-backend",
+        "revision_name": "yukpo-backend-00125-w59",
+        "project_id": "yukpo-project"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:46.388978Z",
+    "labels": {
+      "instanceId": "00da6cd2c4893bab610624e992f7c9070fc77597f8d573cddcca3b2efd2ebe571b4fb6782b70ab9c6fa5daba9e1545fa9197bdcdbb0383b005943e5608d81e9620bc13f2dbe10d67f9c4dad50dbd17"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-17T09:37:46.473852104Z"
+  },
+  {
+    "textPayload": "   JWT_SECRET: ✅ Présente (longueur: 18)",
+    "insertId": "699436ea0005ef834a73a62a",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "service_name": "yukpo-backend",
+        "revision_name": "yukpo-backend-00125-w59",
+        "project_id": "yukpo-project",
+        "location": "europe-west1",
+        "configuration_name": "yukpo-backend"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:46.388995Z",
+    "labels": {
+      "instanceId": "00da6cd2c4893bab610624e992f7c9070fc77597f8d573cddcca3b2efd2ebe571b4fb6782b70ab9c6fa5daba9e1545fa9197bdcdbb0383b005943e5608d81e9620bc13f2dbe10d67f9c4dad50dbd17"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-17T09:37:46.473852104Z"
+  },
+  {
+    "textPayload": "   REDIS_URL: ✅ Présente",
+    "insertId": "699436ea0005ef93e55cb79c",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "yukpo-project",
+        "service_name": "yukpo-backend",
+        "revision_name": "yukpo-backend-00125-w59",
+        "location": "europe-west1",
+        "configuration_name": "yukpo-backend"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:46.389011Z",
+    "labels": {
+      "instanceId": "00da6cd2c4893bab610624e992f7c9070fc77597f8d573cddcca3b2efd2ebe571b4fb6782b70ab9c6fa5daba9e1545fa9197bdcdbb0383b005943e5608d81e9620bc13f2dbe10d67f9c4dad50dbd17"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-17T09:37:46.473852104Z"
+  },
+  {
+    "textPayload": "   MONGODB_URL: ✅ Présente",
+    "insertId": "699436ea0005efb9d082ccdd",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00125-w59",
+        "service_name": "yukpo-backend",
+        "location": "europe-west1",
+        "configuration_name": "yukpo-backend"
+      }
+    },
+    "timestamp": "2026-02-17T09:37:46.389049Z",
+    "labels": {
+      "instanceId": "00da6cd2c4893bab610624e992f7c9070fc77597f8d573cddcca3b2efd2ebe571b4fb6782b70ab9c6fa5daba9e1545fa9197bdcdbb0383b005943e5608d81e9620bc13f2dbe10d67f9c4dad50dbd17"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-17T09:37:46.473852104Z"
+  }
+]

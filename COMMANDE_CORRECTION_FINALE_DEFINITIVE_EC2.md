@@ -181,3 +181,4 @@ EOFSQL
 Toutes les colonnes manquantes seront ajoutées. Les erreurs devraient disparaître au prochain redémarrage du backend.
 
 
+

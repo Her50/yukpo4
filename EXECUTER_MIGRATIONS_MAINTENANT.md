@@ -151,3 +151,4 @@ Une fois les migrations exécutées :
 Utilisez la **Méthode 1** (`.\scripts\executer-migrations-complet.ps1`) pour une exécution automatique complète.
 
 
+

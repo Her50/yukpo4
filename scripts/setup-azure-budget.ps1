@@ -98,3 +98,4 @@ Remove-Item $budgetFile -ErrorAction SilentlyContinue
 Write-Host "✅ Configuration terminée !" -ForegroundColor Green
 
 
+

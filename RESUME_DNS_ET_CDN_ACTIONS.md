@@ -238,3 +238,4 @@ powershell -ExecutionPolicy Bypass -File scripts\verifier-backend-direct.ps1
 **Document généré le**: 2026-02-14
 
 
+

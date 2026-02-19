@@ -144,3 +144,4 @@ Voir le fichier `COMMANDE_AJOUT_NORMALIZED_AI_TAGS_EC2.md` pour la commande comp
 **Total** : 8 tables complètes sur 9, 1 colonne manquante à ajouter.
 
 
+

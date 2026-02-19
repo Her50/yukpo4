@@ -180,3 +180,4 @@ FROM pg_matviews
 WHERE matviewname = 'hashtag_stats_materialized';
 
 
+

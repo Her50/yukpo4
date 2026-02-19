@@ -61,3 +61,4 @@ Les migrations SQL sont maintenant alignées avec le code Rust.
 - ✅ Aligné → plus de conflits
 
 
+

@@ -235,3 +235,4 @@ Pour utiliser un domaine personnalisé (ex: `cdn.yukpo.app`) :
 **Statut** : ✅ **CLOUD CDN CONFIGURÉ**
 
 
+

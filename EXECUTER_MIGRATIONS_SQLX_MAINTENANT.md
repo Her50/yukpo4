@@ -162,3 +162,4 @@ Une fois les migrations exécutées :
 Utilisez la **Méthode 1** (cargo sqlx migrate run) pour une exécution automatique de toutes les migrations.
 
 
+

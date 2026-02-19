@@ -122,3 +122,4 @@ VITE_ENVIRONMENT=production
 **Statut** : ✅ Configuration frontend vérifiée et correcte
 
 
+

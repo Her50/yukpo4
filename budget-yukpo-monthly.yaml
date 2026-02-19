@@ -1,0 +1,16 @@
+displayName: Budget Mensuel Yukpo - $100
+budgetFilter:
+  projects:
+    - projects/738929393617
+amount:
+  specifiedAmount:
+    currencyCode: USD
+    units: "100"
+thresholdRules:
+  - thresholdPercent: 0.5
+    spendBasis: CURRENT_SPEND
+  - thresholdPercent: 0.8
+    spendBasis: CURRENT_SPEND
+  - thresholdPercent: 1.0
+    spendBasis: CURRENT_SPEND
+

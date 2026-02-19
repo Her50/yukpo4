@@ -191,3 +191,4 @@ Write-Host "[INFO] Attendez 2-5 minutes pour la propagation DNS" -ForegroundColo
 Write-Host "[INFO] Testez avec: nslookup ${Subdomain}.${Domain}" -ForegroundColor Cyan
 
 
+

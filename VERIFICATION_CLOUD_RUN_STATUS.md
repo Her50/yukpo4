@@ -210,3 +210,4 @@ chmod +x scripts/verify-cloud-run-status.sh
 - [Cloud Logging](https://console.cloud.google.com/logs?project=yukpo-project)
 
 
+

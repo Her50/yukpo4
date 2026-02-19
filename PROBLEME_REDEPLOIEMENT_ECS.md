@@ -139,3 +139,4 @@ aws ecs describe-tasks --cluster yukpo-cluster --tasks "$TASK_ARN" --region eu-w
 **Statut** : ⚠️ Redéploiement en attente - Vérification nécessaire
 
 
+

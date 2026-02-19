@@ -75,3 +75,4 @@ PGPASSWORD="PYvHBVetTuWIKNkXgqJcFiU48D39SLwd" psql \
 Si vous voyez un nombre élevé de tables (200+), les migrations ont bien été appliquées.
 
 
+

@@ -71,3 +71,4 @@ Le script a détecté qu'**aucun abonnement Azure actif** n'est associé à votr
 **Statut** : En attente de création d'abonnement Azure
 
 
+

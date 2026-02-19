@@ -150,3 +150,4 @@ Vous devriez voir :
 Cette commande est **idempotente** : elle peut être exécutée plusieurs fois sans problème. Elle n'ajoute que les colonnes manquantes.
 
 
+

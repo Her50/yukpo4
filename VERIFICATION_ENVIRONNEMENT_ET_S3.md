@@ -246,3 +246,4 @@ Si des variables SSM sont manquantes, utilisez les commandes ci-dessus pour les 
 - [AWS Secrets Manager](https://docs.aws.amazon.com/secretsmanager/)
 
 
+

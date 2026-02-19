@@ -108,3 +108,4 @@ L'erreur `column "table_type" does not exist` se produit car :
 Utiliser un JOIN entre `information_schema.columns` et `information_schema.tables` pour accéder à `table_type`, ou utiliser la version simplifiée sans filtre `table_type` (qui fonctionne aussi car `information_schema.columns` ne contient généralement que les colonnes des tables de base).
 
 
+

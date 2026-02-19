@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
     Alert,
     Dimensions,
@@ -59,6 +59,8 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
     const [savingLocation, setSavingLocation] = useState(false);
     // ✅ NOUVEAU: Tracker si la sélection vient d'un clic manuel sur la carte
     const [isManualSelection, setIsManualSelection] = useState(false);
+    // ✅ CRITIQUE: Ref pour le debounce de l'autocomplete (évite les appels API excessifs)
+    const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
     useEffect(() => {
         if (visible) {
@@ -173,9 +175,15 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
         }
     };
 
-    // ✅ NOUVEAU: Autocomplete Google Places avec debounce
-    const handleSearchQueryChange = async (query: string) => {
+    // ✅ CRITIQUE: Autocomplete Google Places avec VRAI debounce (500ms)
+    // ⚠️ CORRECTION 2026-02-19: Ajout d'un debounce réel pour éviter les appels API excessifs
+    const handleSearchQueryChange = (query: string) => {
         setSearchQuery(query);
+
+        // ✅ ANNULER le timer précédent si l'utilisateur continue à taper
+        if (debounceTimerRef.current) {
+            clearTimeout(debounceTimerRef.current);
+        }
 
         if (!query.trim() || query.length < 3) {
             setPlaceSuggestions([]);
@@ -183,65 +191,77 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
             return;
         }
 
-        try {
-            // ✅ Utiliser l'API Google Places Autocomplete depuis la configuration
-            const GOOGLE_MAPS_API_KEY = ENVIRONMENT.GOOGLE_MAPS_API_KEY;
+        // ✅ ATTENDRE 500ms avant d'appeler l'API (debounce réel)
+        debounceTimerRef.current = setTimeout(async () => {
+            try {
+                // ✅ Utiliser l'API Google Places Autocomplete depuis la configuration
+                const GOOGLE_MAPS_API_KEY = ENVIRONMENT.GOOGLE_MAPS_API_KEY;
 
-            if (!GOOGLE_MAPS_API_KEY) {
-                console.warn('[ModernGPSModal] ⚠️ Clé API Google Maps non configurée');
-                return;
+                if (!GOOGLE_MAPS_API_KEY) {
+                    console.warn('[ModernGPSModal] ⚠️ Clé API Google Maps non configurée');
+                    return;
+                }
+
+                // ✅ CORRIGÉ: Utiliser la localisation GPS réelle de l'utilisateur en priorité
+                let locationBias: { lat: number; lng: number };
+                if (userLocation?.coords?.latitude && userLocation?.coords?.longitude) {
+                    locationBias = {
+                        lat: userLocation.coords.latitude,
+                        lng: userLocation.coords.longitude
+                    };
+                } else if (selectedLocation) {
+                    locationBias = selectedLocation;
+                } else if (currentLocation) {
+                    locationBias = currentLocation;
+                } else {
+                    // Fallback sur Douala, Cameroun
+                    locationBias = { lat: 4.031716, lng: 9.817201 };
+                }
+
+                const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(query)}&location=${locationBias.lat},${locationBias.lng}&radius=50000&key=${GOOGLE_MAPS_API_KEY}&language=fr`;
+
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (data.status === 'OK' && data.predictions) {
+                    // ✅ NOUVEAU 2026-01-04: Ajouter les lieux sauvegardés aux suggestions
+                    const savedMatches = savedAddresses
+                        .filter(addr => 
+                            addr.label.toLowerCase().includes(query.toLowerCase()) ||
+                            addr.address.toLowerCase().includes(query.toLowerCase())
+                        )
+                        .map(addr => ({
+                            place_id: `saved_${addr.id}`,
+                            description: `${addr.label} - ${addr.address}`,
+                            structured_formatting: {
+                                main_text: addr.label,
+                                secondary_text: addr.address
+                            },
+                            is_saved: true,
+                            saved_address: addr
+                        }));
+                    
+                    // Combiner les suggestions Google avec les lieux sauvegardés (lieux sauvegardés en premier)
+                    setPlaceSuggestions([...savedMatches, ...data.predictions]);
+                    setShowSuggestions(true);
+                } else {
+                    setPlaceSuggestions([]);
+                    setShowSuggestions(false);
+                }
+            } catch (error) {
+                console.error('[ModernGPSModal] Erreur autocomplete:', error);
             }
-
-            // ✅ CORRIGÉ: Utiliser la localisation GPS réelle de l'utilisateur en priorité
-            let locationBias: { lat: number; lng: number };
-            if (userLocation?.coords?.latitude && userLocation?.coords?.longitude) {
-                locationBias = {
-                    lat: userLocation.coords.latitude,
-                    lng: userLocation.coords.longitude
-                };
-            } else if (selectedLocation) {
-                locationBias = selectedLocation;
-            } else if (currentLocation) {
-                locationBias = currentLocation;
-            } else {
-                // Fallback sur Douala, Cameroun
-                locationBias = { lat: 4.031716, lng: 9.817201 };
-            }
-
-            const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(query)}&location=${locationBias.lat},${locationBias.lng}&radius=50000&key=${GOOGLE_MAPS_API_KEY}&language=fr`;
-
-            const response = await fetch(url);
-            const data = await response.json();
-
-            if (data.status === 'OK' && data.predictions) {
-                // ✅ NOUVEAU 2026-01-04: Ajouter les lieux sauvegardés aux suggestions
-                const savedMatches = savedAddresses
-                    .filter(addr => 
-                        addr.label.toLowerCase().includes(query.toLowerCase()) ||
-                        addr.address.toLowerCase().includes(query.toLowerCase())
-                    )
-                    .map(addr => ({
-                        place_id: `saved_${addr.id}`,
-                        description: `${addr.label} - ${addr.address}`,
-                        structured_formatting: {
-                            main_text: addr.label,
-                            secondary_text: addr.address
-                        },
-                        is_saved: true,
-                        saved_address: addr
-                    }));
-                
-                // Combiner les suggestions Google avec les lieux sauvegardés (lieux sauvegardés en premier)
-                setPlaceSuggestions([...savedMatches, ...data.predictions]);
-                setShowSuggestions(true);
-            } else {
-                setPlaceSuggestions([]);
-                setShowSuggestions(false);
-            }
-        } catch (error) {
-            console.error('[ModernGPSModal] Erreur autocomplete:', error);
-        }
+        }, 500); // ✅ DEBOUNCE 500ms - Réduit drastiquement les appels API
     };
+
+    // ✅ NETTOYER le timer au démontage du composant
+    useEffect(() => {
+        return () => {
+            if (debounceTimerRef.current) {
+                clearTimeout(debounceTimerRef.current);
+            }
+        };
+    }, []);
 
     const handleSelectSuggestion = async (placeId: string, description: string, suggestion?: any) => {
         try {

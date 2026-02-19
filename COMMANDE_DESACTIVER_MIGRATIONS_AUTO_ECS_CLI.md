@@ -175,3 +175,4 @@ Après la mise à jour, vérifier dans les logs CloudWatch :
 - Seules les **migrations automatiques** (`run_auto_migrations()`) seront désactivées
 
 
+

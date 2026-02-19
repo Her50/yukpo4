@@ -119,3 +119,4 @@ aws logs tail /ecs/yukpo-backend-service --since 10m --region eu-west-1 --format
 4. **Surveiller les logs** pendant au moins 1 heure après le déploiement
 
 
+

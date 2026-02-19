@@ -97,3 +97,4 @@ UNION ALL
 SELECT 'social_publication_jobs.platform', EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'social_publication_jobs' AND column_name = 'platform');
 
 
+

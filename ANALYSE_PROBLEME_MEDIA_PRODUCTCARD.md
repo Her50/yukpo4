@@ -301,3 +301,4 @@ const rawImages =
 Le problème principal est dans **ResultatBesoinScreen** où les médias sont réextraits inutilement, ce qui peut écraser les médias déjà normalisés. La solution est de supprimer cette réextraction et d'utiliser directement les médias depuis `transformedProduct`.
 
 
+

@@ -1,0 +1,1420 @@
+[
+  {
+    "textPayload": "2026-02-17 20:14:36.320 UTC [31]: [1443-1] db=,user= LOG:  checkpoint starting: time",
+    "insertId": "s=67945bb738ad4a2fab406482c550b6a5;i=7d9a5;b=bc0eac41248a4c87997dd5939075e6dc;m=329547bef0;t=64b0ab86f4881;x=62da4c42d2ccf5a5-0@a1",
+    "resource": {
+      "type": "cloudsql_database",
+      "labels": {
+        "database_id": "yukpo-project:yukpo-postgres",
+        "region": "europe",
+        "project_id": "yukpo-project"
+      }
+    },
+    "timestamp": "2026-02-17T20:14:36.320897Z",
+    "severity": "INFO",
+    "labels": {
+      "SOURCE_ID": "66613735376565636264363463326266e3b0c442",
+      "PROJECT_NUMBER": "376093909298",
+      "INSTANCE_UID": "2-24deff79-2f6f-49c3-9eee-896d1e18cfbd",
+      "LOG_BUCKET_NUM": "45"
+    },
+    "logName": "projects/yukpo-project/logs/cloudsql.googleapis.com%2Fpostgres.log",
+    "receiveTimestamp": "2026-02-17T20:14:50.881660200Z"
+  },
+  {
+    "textPayload": "2026-02-17 20:14:36.534 UTC [31]: [1444-1] db=,user= LOG:  checkpoint complete: wrote 3 buffers (0.0%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.203 s, sync=0.004 s, total=0.215 s; sync files=3, longest=0.003 s, average=0.002 s; distance=14 kB, estimate=18 kB",
+    "insertId": "s=67945bb738ad4a2fab406482c550b6a5;i=7d9a6;b=bc0eac41248a4c87997dd5939075e6dc;m=32954b041a;t=64b0ab8728daa;x=4a8f34106bec1fa7-0@a1",
+    "resource": {
+      "type": "cloudsql_database",
+      "labels": {
+        "project_id": "yukpo-project",
+        "region": "europe",
+        "database_id": "yukpo-project:yukpo-postgres"
+      }
+    },
+    "timestamp": "2026-02-17T20:14:36.535210Z",
+    "severity": "INFO",
+    "labels": {
+      "LOG_BUCKET_NUM": "45",
+      "PROJECT_NUMBER": "376093909298",
+      "INSTANCE_UID": "2-24deff79-2f6f-49c3-9eee-896d1e18cfbd",
+      "SOURCE_ID": "66613735376565636264363463326266e3b0c442"
+    },
+    "logName": "projects/yukpo-project/logs/cloudsql.googleapis.com%2Fpostgres.log",
+    "receiveTimestamp": "2026-02-17T20:15:40.043383530Z"
+  },
+  {
+    "textPayload": "2026-02-17 20:14:54.159 UTC [148532]: [1-1] db=,user= LOG:  automatic vacuum of table \"cloudsqladmin.public.heartbeat\": index scans: 0\npages: 0 removed, 1 remain, 1 scanned (100.00% of total)\ntuples: 60 removed, 1 remain, 0 are dead but not yet removable\nremovable cutoff: 47352, which was 0 XIDs old when operation ended\nnew relfrozenxid: 47351, which is 61 XIDs ahead of previous value\nindex scan not needed: 0 pages from table (0.00% of total) had 0 dead item identifiers removed\navg read rate: 0.000 MB/s, avg write rate: 6.944 MB/s\nbuffer usage: 41 hits, 0 misses, 1 dirtied\nWAL usage: 1 records, 1 full page images, 5413 bytes\nsystem usage: CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.00 s",
+    "insertId": "s=67945bb738ad4a2fab406482c550b6a5;i=7d9a6;b=bc0eac41248a4c87997dd5939075e6dc;m=32954b041a;t=64b0ab8728daa;x=4a8f34106bec1fa7-0@a2",
+    "resource": {
+      "type": "cloudsql_database",
+      "labels": {
+        "database_id": "yukpo-project:yukpo-postgres",
+        "project_id": "yukpo-project",
+        "region": "europe"
+      }
+    },
+    "timestamp": "2026-02-17T20:14:54.160514Z",
+    "severity": "INFO",
+    "labels": {
+      "INSTANCE_UID": "2-24deff79-2f6f-49c3-9eee-896d1e18cfbd",
+      "SOURCE_ID": "66613735376565636264363463326266e3b0c442",
+      "PROJECT_NUMBER": "376093909298",
+      "LOG_BUCKET_NUM": "45"
+    },
+    "logName": "projects/yukpo-project/logs/cloudsql.googleapis.com%2Fpostgres.log",
+    "receiveTimestamp": "2026-02-17T20:15:40.043383530Z"
+  },
+  {
+    "textPayload": "2026-02-17 20:14:54.165 UTC [148532]: [2-1] db=,user= LOG:  automatic analyze of table \"cloudsqladmin.public.heartbeat\"\navg read rate: 0.000 MB/s, avg write rate: 1.302 MB/s\nbuffer usage: 175 hits, 0 misses, 1 dirtied\nsystem usage: CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.00 s",
+    "insertId": "s=67945bb738ad4a2fab406482c550b6a5;i=7d9a6;b=bc0eac41248a4c87997dd5939075e6dc;m=32954b041a;t=64b0ab8728daa;x=4a8f34106bec1fa7-0@a3",
+    "resource": {
+      "type": "cloudsql_database",
+      "labels": {
+        "region": "europe",
+        "database_id": "yukpo-project:yukpo-postgres",
+        "project_id": "yukpo-project"
+      }
+    },
+    "timestamp": "2026-02-17T20:14:54.166311Z",
+    "severity": "INFO",
+    "labels": {
+      "PROJECT_NUMBER": "376093909298",
+      "LOG_BUCKET_NUM": "45",
+      "SOURCE_ID": "66613735376565636264363463326266e3b0c442",
+      "INSTANCE_UID": "2-24deff79-2f6f-49c3-9eee-896d1e18cfbd"
+    },
+    "logName": "projects/yukpo-project/logs/cloudsql.googleapis.com%2Fpostgres.log",
+    "receiveTimestamp": "2026-02-17T20:15:40.043383530Z"
+  },
+  {
+    "textPayload": "2026-02-17 20:15:41.120 UTC [165723]: [1-1] db=,user= LOG:  automatic vacuum of table \"cloudsqladmin.public.heartbeat\": index scans: 0\npages: 0 removed, 1 remain, 1 scanned (100.00% of total)\ntuples: 60 removed, 1 remain, 0 are dead but not yet removable\nremovable cutoff: 55118, which was 0 XIDs old when operation ended\nnew relfrozenxid: 55117, which is 61 XIDs ahead of previous value\nindex scan not needed: 0 pages from table (0.00% of total) had 0 dead item identifiers removed\navg read rate: 0.000 MB/s, avg write rate: 24.262 MB/s\nbuffer usage: 41 hits, 0 misses, 1 dirtied\nWAL usage: 1 records, 1 full page images, 5413 bytes\nsystem usage: CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.00 s",
+    "insertId": "s=e3fcb03b85694b119ad1af4021701853;i=5f252;b=6f99b7b3339f45a2998945324705e480;m=3e63944744;t=64b0abc4c0fa7;x=c0c31098fa30ddb6-0@a1",
+    "resource": {
+      "type": "cloudsql_database",
+      "labels": {
+        "project_id": "yukpo-project",
+        "database_id": "yukpo-project:yukpo-db",
+        "region": "europe"
+      }
+    },
+    "timestamp": "2026-02-17T20:15:41.121447Z",
+    "severity": "INFO",
+    "labels": {
+      "SOURCE_ID": "38333938656539376533323835643864e3b0c442",
+      "LOG_BUCKET_NUM": "54",
+      "PROJECT_NUMBER": "376093909298",
+      "INSTANCE_UID": "2-2b8ac77d-efeb-4ce6-b999-76f190471c46"
+    },
+    "logName": "projects/yukpo-project/logs/cloudsql.googleapis.com%2Fpostgres.log",
+    "receiveTimestamp": "2026-02-17T20:16:16.406490722Z"
+  },
+  {
+    "textPayload": "2026-02-17 20:15:41.124 UTC [165723]: [2-1] db=,user= LOG:  automatic analyze of table \"cloudsqladmin.public.heartbeat\"\navg read rate: 0.000 MB/s, avg write rate: 1.562 MB/s\nbuffer usage: 175 hits, 0 misses, 1 dirtied\nsystem usage: CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.00 s",
+    "insertId": "s=e3fcb03b85694b119ad1af4021701853;i=5f252;b=6f99b7b3339f45a2998945324705e480;m=3e63944744;t=64b0abc4c0fa7;x=c0c31098fa30ddb6-0@a2",
+    "resource": {
+      "type": "cloudsql_database",
+      "labels": {
+        "project_id": "yukpo-project",
+        "database_id": "yukpo-project:yukpo-db",
+        "region": "europe"
+      }
+    },
+    "timestamp": "2026-02-17T20:15:41.125003Z",
+    "severity": "INFO",
+    "labels": {
+      "INSTANCE_UID": "2-2b8ac77d-efeb-4ce6-b999-76f190471c46",
+      "PROJECT_NUMBER": "376093909298",
+      "SOURCE_ID": "38333938656539376533323835643864e3b0c442",
+      "LOG_BUCKET_NUM": "54"
+    },
+    "logName": "projects/yukpo-project/logs/cloudsql.googleapis.com%2Fpostgres.log",
+    "receiveTimestamp": "2026-02-17T20:16:16.406490722Z"
+  },
+  {
+    "textPayload": "2026-02-17 20:16:04.567 UTC [26]: [1781-1] db=,user= LOG:  checkpoint starting: time",
+    "insertId": "s=e3fcb03b85694b119ad1af4021701853;i=5f252;b=6f99b7b3339f45a2998945324705e480;m=3e63944744;t=64b0abc4c0fa7;x=c0c31098fa30ddb6-0@a3",
+    "resource": {
+      "type": "cloudsql_database",
+      "labels": {
+        "database_id": "yukpo-project:yukpo-db",
+        "region": "europe",
+        "project_id": "yukpo-project"
+      }
+    },
+    "timestamp": "2026-02-17T20:16:04.568109Z",
+    "severity": "INFO",
+    "labels": {
+      "INSTANCE_UID": "2-2b8ac77d-efeb-4ce6-b999-76f190471c46",
+      "LOG_BUCKET_NUM": "54",
+      "PROJECT_NUMBER": "376093909298",
+      "SOURCE_ID": "38333938656539376533323835643864e3b0c442"
+    },
+    "logName": "projects/yukpo-project/logs/cloudsql.googleapis.com%2Fpostgres.log",
+    "receiveTimestamp": "2026-02-17T20:16:16.406490722Z"
+  },
+  {
+    "textPayload": "2026-02-17 20:16:04.781 UTC [26]: [1782-1] db=,user= LOG:  checkpoint complete: wrote 3 buffers (0.0%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.203 s, sync=0.004 s, total=0.215 s; sync files=3, longest=0.003 s, average=0.002 s; distance=14 kB, estimate=18 kB",
+    "insertId": "s=e3fcb03b85694b119ad1af4021701853;i=5f275;b=6f99b7b3339f45a2998945324705e480;m=3e64fd4f5c;t=64b0abdb517bf;x=7c78fff7b57a0e89-0@a1",
+    "resource": {
+      "type": "cloudsql_database",
+      "labels": {
+        "project_id": "yukpo-project",
+        "database_id": "yukpo-project:yukpo-db",
+        "region": "europe"
+      }
+    },
+    "timestamp": "2026-02-17T20:16:04.782015Z",
+    "severity": "INFO",
+    "labels": {
+      "INSTANCE_UID": "2-2b8ac77d-efeb-4ce6-b999-76f190471c46",
+      "PROJECT_NUMBER": "376093909298",
+      "LOG_BUCKET_NUM": "54",
+      "SOURCE_ID": "38333938656539376533323835643864e3b0c442"
+    },
+    "logName": "projects/yukpo-project/logs/cloudsql.googleapis.com%2Fpostgres.log",
+    "receiveTimestamp": "2026-02-17T20:17:16.780532462Z"
+  },
+  {
+    "insertId": "6994ccce0004faf433f81a11",
+    "httpRequest": {
+      "requestMethod": "GET",
+      "requestUrl": "https://yukpo-backend-376093909298.europe-west1.run.app/api/health",
+      "requestSize": "590",
+      "status": 404,
+      "responseSize": "67",
+      "userAgent": "Mozilla/5.0 (compatible)",
+      "remoteIp": "23.23.253.54",
+      "serverIp": "34.143.79.2",
+      "latency": "0.033601073s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "configuration_name": "yukpo-backend",
+        "revision_name": "yukpo-backend-00198-t2g",
+        "service_name": "yukpo-backend"
+      }
+    },
+    "timestamp": "2026-02-17T20:17:18.287325Z",
+    "severity": "WARNING",
+    "labels": {
+      "instanceId": "00da6cd2c4e06b0a1c9ca459c3248cd8873a64ebe1802a4e4be070f211c6be97977bbdec96d7dda56cee786b88feb378ded8aad252a7f1ca1ab2fd88aa65b34b48c0fd16f5790e689b9aa85d115c0f"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/yukpo-project/traces/9a19b4282f46b3415395d3b22841b819",
+    "receiveTimestamp": "2026-02-17T20:17:18.331857051Z",
+    "spanId": "e39f972b80ccf811",
+    "traceSampled": true
+  },
+  {
+    "textPayload": "2026-02-17 20:19:36.609 UTC [31]: [1445-1] db=,user= LOG:  checkpoint starting: time",
+    "insertId": "s=67945bb738ad4a2fab406482c550b6a5;i=7db35;b=bc0eac41248a4c87997dd5939075e6dc;m=32a72dca2c;t=64b0aca5553bd;x=19199577724a565f-0@a1",
+    "resource": {
+      "type": "cloudsql_database",
+      "labels": {
+        "database_id": "yukpo-project:yukpo-postgres",
+        "project_id": "yukpo-project",
+        "region": "europe"
+      }
+    },
+    "timestamp": "2026-02-17T20:19:36.609725Z",
+    "severity": "INFO",
+    "labels": {
+      "LOG_BUCKET_NUM": "45",
+      "PROJECT_NUMBER": "376093909298",
+      "INSTANCE_UID": "2-24deff79-2f6f-49c3-9eee-896d1e18cfbd",
+      "SOURCE_ID": "66613735376565636264363463326266e3b0c442"
+    },
+    "logName": "projects/yukpo-project/logs/cloudsql.googleapis.com%2Fpostgres.log",
+    "receiveTimestamp": "2026-02-17T20:20:06.141018064Z"
+  },
+  {
+    "textPayload": "2026-02-17 20:19:36.823 UTC [31]: [1446-1] db=,user= LOG:  checkpoint complete: wrote 3 buffers (0.0%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.203 s, sync=0.004 s, total=0.215 s; sync files=3, longest=0.003 s, average=0.002 s; distance=14 kB, estimate=18 kB",
+    "insertId": "s=67945bb738ad4a2fab406482c550b6a5;i=7db35;b=bc0eac41248a4c87997dd5939075e6dc;m=32a72dca2c;t=64b0aca5553bd;x=19199577724a565f-0@a2",
+    "resource": {
+      "type": "cloudsql_database",
+      "labels": {
+        "database_id": "yukpo-project:yukpo-postgres",
+        "project_id": "yukpo-project",
+        "region": "europe"
+      }
+    },
+    "timestamp": "2026-02-17T20:19:36.823809Z",
+    "severity": "INFO",
+    "labels": {
+      "SOURCE_ID": "66613735376565636264363463326266e3b0c442",
+      "INSTANCE_UID": "2-24deff79-2f6f-49c3-9eee-896d1e18cfbd",
+      "PROJECT_NUMBER": "376093909298",
+      "LOG_BUCKET_NUM": "45"
+    },
+    "logName": "projects/yukpo-project/logs/cloudsql.googleapis.com%2Fpostgres.log",
+    "receiveTimestamp": "2026-02-17T20:20:06.141018064Z"
+  },
+  {
+    "textPayload": "2026-02-17 20:19:54.285 UTC [148733]: [1-1] db=,user= LOG:  automatic vacuum of table \"cloudsqladmin.public.heartbeat\": index scans: 0\npages: 0 removed, 1 remain, 1 scanned (100.00% of total)\ntuples: 60 removed, 1 remain, 0 are dead but not yet removable\nremovable cutoff: 47413, which was 0 XIDs old when operation ended\nnew relfrozenxid: 47412, which is 61 XIDs ahead of previous value\nindex scan not needed: 0 pages from table (0.00% of total) had 0 dead item identifiers removed\navg read rate: 0.000 MB/s, avg write rate: 7.363 MB/s\nbuffer usage: 41 hits, 0 misses, 1 dirtied\nWAL usage: 1 records, 1 full page images, 5413 bytes\nsystem usage: CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.00 s",
+    "insertId": "s=67945bb738ad4a2fab406482c550b6a5;i=7db35;b=bc0eac41248a4c87997dd5939075e6dc;m=32a72dca2c;t=64b0aca5553bd;x=19199577724a565f-0@a3",
+    "resource": {
+      "type": "cloudsql_database",
+      "labels": {
+        "project_id": "yukpo-project",
+        "database_id": "yukpo-project:yukpo-postgres",
+        "region": "europe"
+      }
+    },
+    "timestamp": "2026-02-17T20:19:54.286364Z",
+    "severity": "INFO",
+    "labels": {
+      "LOG_BUCKET_NUM": "45",
+      "INSTANCE_UID": "2-24deff79-2f6f-49c3-9eee-896d1e18cfbd",
+      "PROJECT_NUMBER": "376093909298",
+      "SOURCE_ID": "66613735376565636264363463326266e3b0c442"
+    },
+    "logName": "projects/yukpo-project/logs/cloudsql.googleapis.com%2Fpostgres.log",
+    "receiveTimestamp": "2026-02-17T20:20:06.141018064Z"
+  },
+  {
+    "textPayload": "2026-02-17 20:19:54.291 UTC [148733]: [2-1] db=,user= LOG:  automatic analyze of table \"cloudsqladmin.public.heartbeat\"\navg read rate: 0.000 MB/s, avg write rate: 1.116 MB/s\nbuffer usage: 175 hits, 0 misses, 1 dirtied\nsystem usage: CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.00 s",
+    "insertId": "s=67945bb738ad4a2fab406482c550b6a5;i=7db58;b=bc0eac41248a4c87997dd5939075e6dc;m=32a83b9b3e;t=64b0acb6324cf;x=6ec8e1828686fd27-0@a1",
+    "resource": {
+      "type": "cloudsql_database",
+      "labels": {
+        "database_id": "yukpo-project:yukpo-postgres",
+        "region": "europe",
+        "project_id": "yukpo-project"
+      }
+    },
+    "timestamp": "2026-02-17T20:19:54.292431Z",
+    "severity": "INFO",
+    "labels": {
+      "PROJECT_NUMBER": "376093909298",
+      "INSTANCE_UID": "2-24deff79-2f6f-49c3-9eee-896d1e18cfbd",
+      "LOG_BUCKET_NUM": "45",
+      "SOURCE_ID": "66613735376565636264363463326266e3b0c442"
+    },
+    "logName": "projects/yukpo-project/logs/cloudsql.googleapis.com%2Fpostgres.log",
+    "receiveTimestamp": "2026-02-17T20:20:50.916020218Z"
+  },
+  {
+    "textPayload": "2026-02-17 20:20:41.180 UTC [165911]: [1-1] db=,user= LOG:  automatic vacuum of table \"cloudsqladmin.public.heartbeat\": index scans: 0\npages: 0 removed, 1 remain, 1 scanned (100.00% of total)\ntuples: 60 removed, 1 remain, 0 are dead but not yet removable\nremovable cutoff: 55179, which was 0 XIDs old when operation ended\nnew relfrozenxid: 55178, which is 61 XIDs ahead of previous value\nindex scan not needed: 0 pages from table (0.00% of total) had 0 dead item identifiers removed\navg read rate: 0.000 MB/s, avg write rate: 4.328 MB/s\nbuffer usage: 41 hits, 0 misses, 1 dirtied\nWAL usage: 1 records, 1 full page images, 5413 bytes\nsystem usage: CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.00 s",
+    "insertId": "s=e3fcb03b85694b119ad1af4021701853;i=5f3fe;b=6f99b7b3339f45a2998945324705e480;m=3e7576d3db;t=64b0ace2e9c3e;x=e6d7979fbb91490-0@a1",
+    "resource": {
+      "type": "cloudsql_database",
+      "labels": {
+        "project_id": "yukpo-project",
+        "database_id": "yukpo-project:yukpo-db",
+        "region": "europe"
+      }
+    },
+    "timestamp": "2026-02-17T20:20:41.181246Z",
+    "severity": "INFO",
+    "labels": {
+      "PROJECT_NUMBER": "376093909298",
+      "INSTANCE_UID": "2-2b8ac77d-efeb-4ce6-b999-76f190471c46",
+      "SOURCE_ID": "38333938656539376533323835643864e3b0c442",
+      "LOG_BUCKET_NUM": "54"
+    },
+    "logName": "projects/yukpo-project/logs/cloudsql.googleapis.com%2Fpostgres.log",
+    "receiveTimestamp": "2026-02-17T20:21:10.520048867Z"
+  },
+  {
+    "textPayload": "2026-02-17 20:20:41.187 UTC [165911]: [2-1] db=,user= LOG:  automatic analyze of table \"cloudsqladmin.public.heartbeat\"\navg read rate: 0.000 MB/s, avg write rate: 1.116 MB/s\nbuffer usage: 175 hits, 0 misses, 1 dirtied\nsystem usage: CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.00 s",
+    "insertId": "s=e3fcb03b85694b119ad1af4021701853;i=5f3fe;b=6f99b7b3339f45a2998945324705e480;m=3e7576d3db;t=64b0ace2e9c3e;x=e6d7979fbb91490-0@a2",
+    "resource": {
+      "type": "cloudsql_database",
+      "labels": {
+        "database_id": "yukpo-project:yukpo-db",
+        "project_id": "yukpo-project",
+        "region": "europe"
+      }
+    },
+    "timestamp": "2026-02-17T20:20:41.187993Z",
+    "severity": "INFO",
+    "labels": {
+      "INSTANCE_UID": "2-2b8ac77d-efeb-4ce6-b999-76f190471c46",
+      "SOURCE_ID": "38333938656539376533323835643864e3b0c442",
+      "LOG_BUCKET_NUM": "54",
+      "PROJECT_NUMBER": "376093909298"
+    },
+    "logName": "projects/yukpo-project/logs/cloudsql.googleapis.com%2Fpostgres.log",
+    "receiveTimestamp": "2026-02-17T20:21:10.520048867Z"
+  },
+  {
+    "textPayload": "2026-02-17 20:21:04.859 UTC [26]: [1783-1] db=,user= LOG:  checkpoint starting: time",
+    "insertId": "s=e3fcb03b85694b119ad1af4021701853;i=5f3fe;b=6f99b7b3339f45a2998945324705e480;m=3e7576d3db;t=64b0ace2e9c3e;x=e6d7979fbb91490-0@a3",
+    "resource": {
+      "type": "cloudsql_database",
+      "labels": {
+        "database_id": "yukpo-project:yukpo-db",
+        "region": "europe",
+        "project_id": "yukpo-project"
+      }
+    },
+    "timestamp": "2026-02-17T20:21:04.859471Z",
+    "severity": "INFO",
+    "labels": {
+      "INSTANCE_UID": "2-2b8ac77d-efeb-4ce6-b999-76f190471c46",
+      "PROJECT_NUMBER": "376093909298",
+      "SOURCE_ID": "38333938656539376533323835643864e3b0c442",
+      "LOG_BUCKET_NUM": "54"
+    },
+    "logName": "projects/yukpo-project/logs/cloudsql.googleapis.com%2Fpostgres.log",
+    "receiveTimestamp": "2026-02-17T20:21:10.520048867Z"
+  },
+  {
+    "textPayload": "2026-02-17 20:21:05.079 UTC [26]: [1784-1] db=,user= LOG:  checkpoint complete: wrote 3 buffers (0.0%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.203 s, sync=0.004 s, total=0.221 s; sync files=3, longest=0.003 s, average=0.002 s; distance=14 kB, estimate=17 kB",
+    "insertId": "s=e3fcb03b85694b119ad1af4021701853;i=5f422;b=6f99b7b3339f45a2998945324705e480;m=3e76e37f20;t=64b0acf9b4783;x=2d43ba67ec44a584-0@a1",
+    "resource": {
+      "type": "cloudsql_database",
+      "labels": {
+        "database_id": "yukpo-project:yukpo-db",
+        "project_id": "yukpo-project",
+        "region": "europe"
+      }
+    },
+    "timestamp": "2026-02-17T20:21:05.080195Z",
+    "severity": "INFO",
+    "labels": {
+      "LOG_BUCKET_NUM": "54",
+      "PROJECT_NUMBER": "376093909298",
+      "SOURCE_ID": "38333938656539376533323835643864e3b0c442",
+      "INSTANCE_UID": "2-2b8ac77d-efeb-4ce6-b999-76f190471c46"
+    },
+    "logName": "projects/yukpo-project/logs/cloudsql.googleapis.com%2Fpostgres.log",
+    "receiveTimestamp": "2026-02-17T20:22:06.476609788Z"
+  },
+  {
+    "textPayload": "2026-02-17 20:24:36.914 UTC [31]: [1447-1] db=,user= LOG:  checkpoint starting: time",
+    "insertId": "s=67945bb738ad4a2fab406482c550b6a5;i=7dce3;b=bc0eac41248a4c87997dd5939075e6dc;m=32b91415d3;t=64b0adc3b9f64;x=995658f298686a08-0@a1",
+    "resource": {
+      "type": "cloudsql_database",
+      "labels": {
+        "region": "europe",
+        "project_id": "yukpo-project",
+        "database_id": "yukpo-project:yukpo-postgres"
+      }
+    },
+    "timestamp": "2026-02-17T20:24:36.915044Z",
+    "severity": "INFO",
+    "labels": {
+      "SOURCE_ID": "66613735376565636264363463326266e3b0c442",
+      "INSTANCE_UID": "2-24deff79-2f6f-49c3-9eee-896d1e18cfbd",
+      "PROJECT_NUMBER": "376093909298",
+      "LOG_BUCKET_NUM": "45"
+    },
+    "logName": "projects/yukpo-project/logs/cloudsql.googleapis.com%2Fpostgres.log",
+    "receiveTimestamp": "2026-02-17T20:24:40.428752683Z"
+  },
+  {
+    "textPayload": "2026-02-17 20:24:37.137 UTC [31]: [1448-1] db=,user= LOG:  checkpoint complete: wrote 3 buffers (0.0%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.205 s, sync=0.005 s, total=0.223 s; sync files=3, longest=0.004 s, average=0.002 s; distance=15 kB, estimate=17 kB",
+    "insertId": "s=67945bb738ad4a2fab406482c550b6a5;i=7dce4;b=bc0eac41248a4c87997dd5939075e6dc;m=32b9177c29;t=64b0adc3f05ba;x=730bd65f2ac3365b-0@a1",
+    "resource": {
+      "type": "cloudsql_database",
+      "labels": {
+        "region": "europe",
+        "project_id": "yukpo-project",
+        "database_id": "yukpo-project:yukpo-postgres"
+      }
+    },
+    "timestamp": "2026-02-17T20:24:37.137850Z",
+    "severity": "INFO",
+    "labels": {
+      "PROJECT_NUMBER": "376093909298",
+      "LOG_BUCKET_NUM": "45",
+      "INSTANCE_UID": "2-24deff79-2f6f-49c3-9eee-896d1e18cfbd",
+      "SOURCE_ID": "66613735376565636264363463326266e3b0c442"
+    },
+    "logName": "projects/yukpo-project/logs/cloudsql.googleapis.com%2Fpostgres.log",
+    "receiveTimestamp": "2026-02-17T20:25:36.818530501Z"
+  },
+  {
+    "textPayload": "2026-02-17 20:25:04.177 UTC [148938]: [1-1] db=,user= LOG:  automatic vacuum of table \"cloudsqladmin.public.heartbeat\": index scans: 0\npages: 0 removed, 1 remain, 1 scanned (100.00% of total)\ntuples: 62 removed, 1 remain, 0 are dead but not yet removable\nremovable cutoff: 47476, which was 0 XIDs old when operation ended\nnew relfrozenxid: 47475, which is 63 XIDs ahead of previous value\nindex scan not needed: 0 pages from table (0.00% of total) had 0 dead item identifiers removed\navg read rate: 0.000 MB/s, avg write rate: 7.343 MB/s\nbuffer usage: 41 hits, 0 misses, 1 dirtied\nWAL usage: 1 records, 1 full page images, 5413 bytes\nsystem usage: CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.00 s",
+    "insertId": "s=67945bb738ad4a2fab406482c550b6a5;i=7dce4;b=bc0eac41248a4c87997dd5939075e6dc;m=32b9177c29;t=64b0adc3f05ba;x=730bd65f2ac3365b-0@a2",
+    "resource": {
+      "type": "cloudsql_database",
+      "labels": {
+        "project_id": "yukpo-project",
+        "database_id": "yukpo-project:yukpo-postgres",
+        "region": "europe"
+      }
+    },
+    "timestamp": "2026-02-17T20:25:04.178236Z",
+    "severity": "INFO",
+    "labels": {
+      "LOG_BUCKET_NUM": "45",
+      "INSTANCE_UID": "2-24deff79-2f6f-49c3-9eee-896d1e18cfbd",
+      "PROJECT_NUMBER": "376093909298",
+      "SOURCE_ID": "66613735376565636264363463326266e3b0c442"
+    },
+    "logName": "projects/yukpo-project/logs/cloudsql.googleapis.com%2Fpostgres.log",
+    "receiveTimestamp": "2026-02-17T20:25:36.818530501Z"
+  },
+  {
+    "textPayload": "2026-02-17 20:25:04.181 UTC [148938]: [2-1] db=,user= LOG:  automatic analyze of table \"cloudsqladmin.public.heartbeat\"\navg read rate: 0.000 MB/s, avg write rate: 1.953 MB/s\nbuffer usage: 175 hits, 0 misses, 1 dirtied\nsystem usage: CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.00 s",
+    "insertId": "s=67945bb738ad4a2fab406482c550b6a5;i=7dce4;b=bc0eac41248a4c87997dd5939075e6dc;m=32b9177c29;t=64b0adc3f05ba;x=730bd65f2ac3365b-0@a3",
+    "resource": {
+      "type": "cloudsql_database",
+      "labels": {
+        "project_id": "yukpo-project",
+        "database_id": "yukpo-project:yukpo-postgres",
+        "region": "europe"
+      }
+    },
+    "timestamp": "2026-02-17T20:25:04.181686Z",
+    "severity": "INFO",
+    "labels": {
+      "PROJECT_NUMBER": "376093909298",
+      "SOURCE_ID": "66613735376565636264363463326266e3b0c442",
+      "INSTANCE_UID": "2-24deff79-2f6f-49c3-9eee-896d1e18cfbd",
+      "LOG_BUCKET_NUM": "45"
+    },
+    "logName": "projects/yukpo-project/logs/cloudsql.googleapis.com%2Fpostgres.log",
+    "receiveTimestamp": "2026-02-17T20:25:36.818530501Z"
+  },
+  {
+    "insertId": "6994cebd0006db18fe08f1c8",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://yukpo-backend-376093909298.europe-west1.run.app/api/mobile-logs",
+      "requestSize": "977",
+      "status": 200,
+      "responseSize": "221",
+      "userAgent": "Yukpo-Mobile/1.0.0",
+      "remoteIp": "129.0.99.69",
+      "serverIp": "34.143.78.2",
+      "latency": "0.030377297s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00198-t2g",
+        "location": "europe-west1",
+        "service_name": "yukpo-backend",
+        "configuration_name": "yukpo-backend"
+      }
+    },
+    "timestamp": "2026-02-17T20:25:33.413636Z",
+    "severity": "INFO",
+    "labels": {
+      "instanceId": "00da6cd2c4e06b0a1c9ca459c3248cd8873a64ebe1802a4e4be070f211c6be97977bbdec96d7dda56cee786b88feb378ded8aad252a7f1ca1ab2fd88aa65b34b48c0fd16f5790e689b9aa85d115c0f"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/yukpo-project/traces/15f06bb4f41f7a07d12f996283c7c771",
+    "receiveTimestamp": "2026-02-17T20:25:33.453478914Z",
+    "spanId": "94478f22b0e874d5",
+    "traceSampled": true
+  },
+  {
+    "textPayload": "2026-02-17 20:25:41.216 UTC [166094]: [1-1] db=,user= LOG:  automatic vacuum of table \"cloudsqladmin.public.heartbeat\": index scans: 0\npages: 0 removed, 1 remain, 1 scanned (100.00% of total)\ntuples: 60 removed, 1 remain, 0 are dead but not yet removable\nremovable cutoff: 55240, which was 0 XIDs old when operation ended\nnew relfrozenxid: 55239, which is 61 XIDs ahead of previous value\nindex scan not needed: 0 pages from table (0.00% of total) had 0 dead item identifiers removed\navg read rate: 0.000 MB/s, avg write rate: 6.776 MB/s\nbuffer usage: 41 hits, 0 misses, 1 dirtied\nWAL usage: 1 records, 1 full page images, 5413 bytes\nsystem usage: CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.00 s",
+    "insertId": "s=e3fcb03b85694b119ad1af4021701853;i=5f594;b=6f99b7b3339f45a2998945324705e480;m=3e875902c3;t=64b0ae010cb26;x=a08b91cddb859f4d-0@a1",
+    "resource": {
+      "type": "cloudsql_database",
+      "labels": {
+        "project_id": "yukpo-project",
+        "region": "europe",
+        "database_id": "yukpo-project:yukpo-db"
+      }
+    },
+    "timestamp": "2026-02-17T20:25:41.217062Z",
+    "severity": "INFO",
+    "labels": {
+      "PROJECT_NUMBER": "376093909298",
+      "INSTANCE_UID": "2-2b8ac77d-efeb-4ce6-b999-76f190471c46",
+      "LOG_BUCKET_NUM": "54",
+      "SOURCE_ID": "38333938656539376533323835643864e3b0c442"
+    },
+    "logName": "projects/yukpo-project/logs/cloudsql.googleapis.com%2Fpostgres.log",
+    "receiveTimestamp": "2026-02-17T20:26:01.806598097Z"
+  },
+  {
+    "textPayload": "2026-02-17 20:25:41.220 UTC [166094]: [2-1] db=,user= LOG:  automatic analyze of table \"cloudsqladmin.public.heartbeat\"\navg read rate: 0.000 MB/s, avg write rate: 1.562 MB/s\nbuffer usage: 175 hits, 0 misses, 1 dirtied\nsystem usage: CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.00 s",
+    "insertId": "s=e3fcb03b85694b119ad1af4021701853;i=5f59e;b=6f99b7b3339f45a2998945324705e480;m=3e875912df;t=64b0ae010db42;x=e82c47daba941ea6-0@a1",
+    "resource": {
+      "type": "cloudsql_database",
+      "labels": {
+        "project_id": "yukpo-project",
+        "database_id": "yukpo-project:yukpo-db",
+        "region": "europe"
+      }
+    },
+    "timestamp": "2026-02-17T20:25:41.221186Z",
+    "severity": "INFO",
+    "labels": {
+      "LOG_BUCKET_NUM": "54",
+      "PROJECT_NUMBER": "376093909298",
+      "SOURCE_ID": "38333938656539376533323835643864e3b0c442",
+      "INSTANCE_UID": "2-2b8ac77d-efeb-4ce6-b999-76f190471c46"
+    },
+    "logName": "projects/yukpo-project/logs/cloudsql.googleapis.com%2Fpostgres.log",
+    "receiveTimestamp": "2026-02-17T20:26:46.442664059Z"
+  },
+  {
+    "insertId": "6994cece000cd1edb4e5345a",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://yukpo-backend-376093909298.europe-west1.run.app/api/mobile-logs",
+      "requestSize": "1558",
+      "status": 200,
+      "responseSize": "222",
+      "userAgent": "Yukpo-Mobile/1.0.0",
+      "remoteIp": "129.0.99.69",
+      "serverIp": "34.143.74.2",
+      "latency": "0.003576107s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "project_id": "yukpo-project",
+        "location": "europe-west1",
+        "revision_name": "yukpo-backend-00198-t2g",
+        "service_name": "yukpo-backend"
+      }
+    },
+    "timestamp": "2026-02-17T20:25:50.835625Z",
+    "severity": "INFO",
+    "labels": {
+      "instanceId": "00da6cd2c4e06b0a1c9ca459c3248cd8873a64ebe1802a4e4be070f211c6be97977bbdec96d7dda56cee786b88feb378ded8aad252a7f1ca1ab2fd88aa65b34b48c0fd16f5790e689b9aa85d115c0f"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/yukpo-project/traces/4259ded3294e2c7554d2ff370f883dc3",
+    "receiveTimestamp": "2026-02-17T20:25:50.845947820Z",
+    "spanId": "cfc46a7a5f2a1bd7",
+    "traceSampled": true
+  },
+  {
+    "insertId": "6994ced300034aced8dcfc7e",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://yukpo-backend-376093909298.europe-west1.run.app/api/mobile-logs",
+      "requestSize": "976",
+      "status": 200,
+      "responseSize": "220",
+      "userAgent": "Yukpo-Mobile/1.0.0",
+      "remoteIp": "129.0.99.69",
+      "serverIp": "34.143.74.2",
+      "latency": "0.002825658s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "europe-west1",
+        "configuration_name": "yukpo-backend",
+        "service_name": "yukpo-backend",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00198-t2g"
+      }
+    },
+    "timestamp": "2026-02-17T20:25:55.211749Z",
+    "severity": "INFO",
+    "labels": {
+      "instanceId": "00da6cd2c4e06b0a1c9ca459c3248cd8873a64ebe1802a4e4be070f211c6be97977bbdec96d7dda56cee786b88feb378ded8aad252a7f1ca1ab2fd88aa65b34b48c0fd16f5790e689b9aa85d115c0f"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/yukpo-project/traces/67d5172be0227aed54d2ff370f883061",
+    "receiveTimestamp": "2026-02-17T20:25:55.506894120Z",
+    "spanId": "60fb332d6cafb26d"
+  },
+  {
+    "insertId": "6994ced5000e15e6ffb8de0d",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://yukpo-backend-376093909298.europe-west1.run.app/api/auth/login",
+      "requestSize": "438",
+      "status": 500,
+      "responseSize": "505",
+      "userAgent": "Yukpo-Mobile/1.0.0",
+      "remoteIp": "129.0.99.69",
+      "serverIp": "34.143.74.2",
+      "latency": "0.049631423s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "yukpo-project",
+        "service_name": "yukpo-backend",
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "revision_name": "yukpo-backend-00198-t2g"
+      }
+    },
+    "timestamp": "2026-02-17T20:25:57.872476Z",
+    "severity": "ERROR",
+    "labels": {
+      "instanceId": "00da6cd2c4e06b0a1c9ca459c3248cd8873a64ebe1802a4e4be070f211c6be97977bbdec96d7dda56cee786b88feb378ded8aad252a7f1ca1ab2fd88aa65b34b48c0fd16f5790e689b9aa85d115c0f"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/yukpo-project/traces/ee4eb0fa9efcd0ee0e83c2a1bca4c26e",
+    "receiveTimestamp": "2026-02-17T20:25:58.171375311Z",
+    "spanId": "bd0b0e4f59c8ef2a"
+  },
+  {
+    "insertId": "6994ced600012e652878389e",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://yukpo-backend-376093909298.europe-west1.run.app/api/mobile-logs",
+      "requestSize": "2620",
+      "status": 200,
+      "responseSize": "224",
+      "userAgent": "Yukpo-Mobile/1.0.0",
+      "remoteIp": "129.0.99.69",
+      "serverIp": "34.143.74.2",
+      "latency": "0.002997078s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "service_name": "yukpo-backend",
+        "revision_name": "yukpo-backend-00198-t2g",
+        "location": "europe-west1",
+        "project_id": "yukpo-project"
+      }
+    },
+    "timestamp": "2026-02-17T20:25:58.073121Z",
+    "severity": "INFO",
+    "labels": {
+      "instanceId": "00da6cd2c4e06b0a1c9ca459c3248cd8873a64ebe1802a4e4be070f211c6be97977bbdec96d7dda56cee786b88feb378ded8aad252a7f1ca1ab2fd88aa65b34b48c0fd16f5790e689b9aa85d115c0f"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/yukpo-project/traces/0e71c5a6187d53960e83c2a1bca4cdf0",
+    "receiveTimestamp": "2026-02-17T20:25:58.171375311Z",
+    "spanId": "d51f34371a28e96e"
+  },
+  {
+    "insertId": "6994ced60006ae17ef07997b",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://yukpo-backend-376093909298.europe-west1.run.app/api/mobile-logs",
+      "requestSize": "2565",
+      "status": 200,
+      "responseSize": "222",
+      "userAgent": "Yukpo-Mobile/1.0.0",
+      "remoteIp": "129.0.99.69",
+      "serverIp": "34.143.74.2",
+      "latency": "0.003886177s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "yukpo-project",
+        "configuration_name": "yukpo-backend",
+        "service_name": "yukpo-backend",
+        "location": "europe-west1",
+        "revision_name": "yukpo-backend-00198-t2g"
+      }
+    },
+    "timestamp": "2026-02-17T20:25:58.432688Z",
+    "severity": "INFO",
+    "labels": {
+      "instanceId": "00da6cd2c4e06b0a1c9ca459c3248cd8873a64ebe1802a4e4be070f211c6be97977bbdec96d7dda56cee786b88feb378ded8aad252a7f1ca1ab2fd88aa65b34b48c0fd16f5790e689b9aa85d115c0f"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/yukpo-project/traces/d7fd34a37e89eaaa0e83c2a1bca4c24a",
+    "receiveTimestamp": "2026-02-17T20:25:58.503390963Z",
+    "spanId": "ca52f9f403852b81"
+  },
+  {
+    "insertId": "6994ced60006df5e0a900975",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://yukpo-backend-376093909298.europe-west1.run.app/api/mobile-logs",
+      "requestSize": "2819",
+      "status": 200,
+      "responseSize": "222",
+      "userAgent": "Yukpo-Mobile/1.0.0",
+      "remoteIp": "129.0.99.69",
+      "serverIp": "34.143.74.2",
+      "latency": "0.002567988s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "service_name": "yukpo-backend",
+        "configuration_name": "yukpo-backend",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00198-t2g",
+        "location": "europe-west1"
+      }
+    },
+    "timestamp": "2026-02-17T20:25:58.446884Z",
+    "severity": "INFO",
+    "labels": {
+      "instanceId": "00da6cd2c4e06b0a1c9ca459c3248cd8873a64ebe1802a4e4be070f211c6be97977bbdec96d7dda56cee786b88feb378ded8aad252a7f1ca1ab2fd88aa65b34b48c0fd16f5790e689b9aa85d115c0f"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/yukpo-project/traces/13e576f4e6c7df7e0e83c2a1bca4c1b4",
+    "receiveTimestamp": "2026-02-17T20:25:58.503390963Z",
+    "spanId": "ad240b1e83d4cd15"
+  },
+  {
+    "insertId": "6994ced600074ef6a854cb80",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://yukpo-backend-376093909298.europe-west1.run.app/api/mobile-logs",
+      "requestSize": "2538",
+      "status": 200,
+      "responseSize": "224",
+      "userAgent": "Yukpo-Mobile/1.0.0",
+      "remoteIp": "129.0.99.69",
+      "serverIp": "34.143.74.2",
+      "latency": "0.002494968s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "service_name": "yukpo-backend",
+        "revision_name": "yukpo-backend-00198-t2g",
+        "project_id": "yukpo-project",
+        "location": "europe-west1",
+        "configuration_name": "yukpo-backend"
+      }
+    },
+    "timestamp": "2026-02-17T20:25:58.475481Z",
+    "severity": "INFO",
+    "labels": {
+      "instanceId": "00da6cd2c4e06b0a1c9ca459c3248cd8873a64ebe1802a4e4be070f211c6be97977bbdec96d7dda56cee786b88feb378ded8aad252a7f1ca1ab2fd88aa65b34b48c0fd16f5790e689b9aa85d115c0f"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/yukpo-project/traces/5261cf35318fe44d0e83c2a1bca4cb54",
+    "receiveTimestamp": "2026-02-17T20:25:58.503390963Z",
+    "spanId": "aef36d9e490d38f4"
+  },
+  {
+    "insertId": "6994ced600078ce0ad78cce0",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://yukpo-backend-376093909298.europe-west1.run.app/api/mobile-logs",
+      "requestSize": "3928",
+      "status": 200,
+      "responseSize": "223",
+      "userAgent": "Yukpo-Mobile/1.0.0",
+      "remoteIp": "129.0.99.69",
+      "serverIp": "34.143.74.2",
+      "latency": "0.002292909s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "service_name": "yukpo-backend",
+        "revision_name": "yukpo-backend-00198-t2g",
+        "location": "europe-west1",
+        "configuration_name": "yukpo-backend",
+        "project_id": "yukpo-project"
+      }
+    },
+    "timestamp": "2026-02-17T20:25:58.491663Z",
+    "severity": "INFO",
+    "labels": {
+      "instanceId": "00da6cd2c4e06b0a1c9ca459c3248cd8873a64ebe1802a4e4be070f211c6be97977bbdec96d7dda56cee786b88feb378ded8aad252a7f1ca1ab2fd88aa65b34b48c0fd16f5790e689b9aa85d115c0f"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/yukpo-project/traces/178a6aea923fafd30e83c2a1bca4c83d",
+    "receiveTimestamp": "2026-02-17T20:25:58.503390963Z",
+    "spanId": "98c28345f01b2996"
+  },
+  {
+    "insertId": "6994ced7000a3307d85970f2",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://yukpo-backend-376093909298.europe-west1.run.app/api/mobile-logs",
+      "requestSize": "1849",
+      "status": 200,
+      "responseSize": "222",
+      "userAgent": "Yukpo-Mobile/1.0.0",
+      "remoteIp": "129.0.99.69",
+      "serverIp": "34.143.74.2",
+      "latency": "0.002336598s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "yukpo-project",
+        "location": "europe-west1",
+        "revision_name": "yukpo-backend-00198-t2g",
+        "service_name": "yukpo-backend",
+        "configuration_name": "yukpo-backend"
+      }
+    },
+    "timestamp": "2026-02-17T20:25:59.665075Z",
+    "severity": "INFO",
+    "labels": {
+      "instanceId": "00da6cd2c4e06b0a1c9ca459c3248cd8873a64ebe1802a4e4be070f211c6be97977bbdec96d7dda56cee786b88feb378ded8aad252a7f1ca1ab2fd88aa65b34b48c0fd16f5790e689b9aa85d115c0f"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/yukpo-project/traces/cad79b9a04a42ebe0e83c2a1bca4cb99",
+    "receiveTimestamp": "2026-02-17T20:25:59.835002654Z",
+    "spanId": "318668db68ada900"
+  },
+  {
+    "textPayload": "2026-02-17 20:26:04.178 UTC [26]: [1785-1] db=,user= LOG:  checkpoint starting: time",
+    "insertId": "s=e3fcb03b85694b119ad1af4021701853;i=5f59e;b=6f99b7b3339f45a2998945324705e480;m=3e875912df;t=64b0ae010db42;x=e82c47daba941ea6-0@a2",
+    "resource": {
+      "type": "cloudsql_database",
+      "labels": {
+        "database_id": "yukpo-project:yukpo-db",
+        "project_id": "yukpo-project",
+        "region": "europe"
+      }
+    },
+    "timestamp": "2026-02-17T20:26:04.178382Z",
+    "severity": "INFO",
+    "labels": {
+      "INSTANCE_UID": "2-2b8ac77d-efeb-4ce6-b999-76f190471c46",
+      "PROJECT_NUMBER": "376093909298",
+      "SOURCE_ID": "38333938656539376533323835643864e3b0c442",
+      "LOG_BUCKET_NUM": "54"
+    },
+    "logName": "projects/yukpo-project/logs/cloudsql.googleapis.com%2Fpostgres.log",
+    "receiveTimestamp": "2026-02-17T20:26:46.442664059Z"
+  },
+  {
+    "textPayload": "2026-02-17 20:26:04.390 UTC [26]: [1786-1] db=,user= LOG:  checkpoint complete: wrote 3 buffers (0.0%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.203 s, sync=0.002 s, total=0.213 s; sync files=3, longest=0.001 s, average=0.001 s; distance=14 kB, estimate=17 kB",
+    "insertId": "s=e3fcb03b85694b119ad1af4021701853;i=5f59e;b=6f99b7b3339f45a2998945324705e480;m=3e875912df;t=64b0ae010db42;x=e82c47daba941ea6-0@a3",
+    "resource": {
+      "type": "cloudsql_database",
+      "labels": {
+        "region": "europe",
+        "database_id": "yukpo-project:yukpo-db",
+        "project_id": "yukpo-project"
+      }
+    },
+    "timestamp": "2026-02-17T20:26:04.390884Z",
+    "severity": "INFO",
+    "labels": {
+      "SOURCE_ID": "38333938656539376533323835643864e3b0c442",
+      "PROJECT_NUMBER": "376093909298",
+      "INSTANCE_UID": "2-2b8ac77d-efeb-4ce6-b999-76f190471c46",
+      "LOG_BUCKET_NUM": "54"
+    },
+    "logName": "projects/yukpo-project/logs/cloudsql.googleapis.com%2Fpostgres.log",
+    "receiveTimestamp": "2026-02-17T20:26:46.442664059Z"
+  },
+  {
+    "insertId": "6994cedc000768b2e0d40481",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://yukpo-backend-376093909298.europe-west1.run.app/api/mobile-logs",
+      "requestSize": "975",
+      "status": 200,
+      "responseSize": "229",
+      "userAgent": "Yukpo-Mobile/1.0.0",
+      "remoteIp": "129.0.99.69",
+      "serverIp": "34.143.74.2",
+      "latency": "0.002930438s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "revision_name": "yukpo-backend-00198-t2g",
+        "configuration_name": "yukpo-backend",
+        "project_id": "yukpo-project",
+        "location": "europe-west1",
+        "service_name": "yukpo-backend"
+      }
+    },
+    "timestamp": "2026-02-17T20:26:04.481574Z",
+    "severity": "INFO",
+    "labels": {
+      "instanceId": "00da6cd2c4e06b0a1c9ca459c3248cd8873a64ebe1802a4e4be070f211c6be97977bbdec96d7dda56cee786b88feb378ded8aad252a7f1ca1ab2fd88aa65b34b48c0fd16f5790e689b9aa85d115c0f"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/yukpo-project/traces/bd22e54f411f87a0cdced0cba2cbfa73",
+    "receiveTimestamp": "2026-02-17T20:26:04.498486294Z",
+    "spanId": "8a0d82603f3a5831",
+    "traceSampled": true
+  },
+  {
+    "insertId": "6994cee10004bb99ec3741d7",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://yukpo-backend-376093909298.europe-west1.run.app/api/mobile-logs",
+      "requestSize": "977",
+      "status": 200,
+      "responseSize": "223",
+      "userAgent": "Yukpo-Mobile/1.0.0",
+      "remoteIp": "129.0.99.69",
+      "serverIp": "34.143.74.2",
+      "latency": "0.002628288s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "project_id": "yukpo-project",
+        "service_name": "yukpo-backend",
+        "location": "europe-west1",
+        "revision_name": "yukpo-backend-00198-t2g"
+      }
+    },
+    "timestamp": "2026-02-17T20:26:09.306305Z",
+    "severity": "INFO",
+    "labels": {
+      "instanceId": "00da6cd2c4e06b0a1c9ca459c3248cd8873a64ebe1802a4e4be070f211c6be97977bbdec96d7dda56cee786b88feb378ded8aad252a7f1ca1ab2fd88aa65b34b48c0fd16f5790e689b9aa85d115c0f"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/yukpo-project/traces/7a4fbe889e0c97c1a275b800eb152410",
+    "receiveTimestamp": "2026-02-17T20:26:09.506557331Z",
+    "spanId": "9a2669c61debde59"
+  },
+  {
+    "insertId": "6994cee3000b083f94565939",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://yukpo-backend-376093909298.europe-west1.run.app/api/auth/login",
+      "requestSize": "427",
+      "status": 500,
+      "responseSize": "505",
+      "userAgent": "Yukpo-Mobile/1.0.0",
+      "remoteIp": "129.0.99.69",
+      "serverIp": "34.143.74.2",
+      "latency": "0.003980277s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "service_name": "yukpo-backend",
+        "location": "europe-west1",
+        "configuration_name": "yukpo-backend",
+        "revision_name": "yukpo-backend-00198-t2g",
+        "project_id": "yukpo-project"
+      }
+    },
+    "timestamp": "2026-02-17T20:26:11.717824Z",
+    "severity": "ERROR",
+    "labels": {
+      "instanceId": "00da6cd2c4e06b0a1c9ca459c3248cd8873a64ebe1802a4e4be070f211c6be97977bbdec96d7dda56cee786b88feb378ded8aad252a7f1ca1ab2fd88aa65b34b48c0fd16f5790e689b9aa85d115c0f"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/yukpo-project/traces/35ed7c40dbb40652a275b800eb15277b",
+    "receiveTimestamp": "2026-02-17T20:26:11.822969448Z",
+    "spanId": "e04ed709279c1859"
+  },
+  {
+    "insertId": "6994cee3000e20d68111cc6b",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://yukpo-backend-376093909298.europe-west1.run.app/api/mobile-logs",
+      "requestSize": "2595",
+      "status": 200,
+      "responseSize": "221",
+      "userAgent": "Yukpo-Mobile/1.0.0",
+      "remoteIp": "129.0.99.69",
+      "serverIp": "34.143.74.2",
+      "latency": "0.010407542s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "europe-west1",
+        "configuration_name": "yukpo-backend",
+        "project_id": "yukpo-project",
+        "service_name": "yukpo-backend",
+        "revision_name": "yukpo-backend-00198-t2g"
+      }
+    },
+    "timestamp": "2026-02-17T20:26:11.914508Z",
+    "severity": "INFO",
+    "labels": {
+      "instanceId": "00da6cd2c4e06b0a1c9ca459c3248cd8873a64ebe1802a4e4be070f211c6be97977bbdec96d7dda56cee786b88feb378ded8aad252a7f1ca1ab2fd88aa65b34b48c0fd16f5790e689b9aa85d115c0f"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/yukpo-project/traces/6bd95efe51d7f1a4a275b800eb152381",
+    "receiveTimestamp": "2026-02-17T20:26:12.155778550Z",
+    "spanId": "4ab4419541698471"
+  },
+  {
+    "insertId": "6994cee400021d30ec17a046",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://yukpo-backend-376093909298.europe-west1.run.app/api/mobile-logs",
+      "requestSize": "2565",
+      "status": 200,
+      "responseSize": "223",
+      "userAgent": "Yukpo-Mobile/1.0.0",
+      "remoteIp": "129.0.99.69",
+      "serverIp": "34.143.74.2",
+      "latency": "0.004290377s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "europe-west1",
+        "service_name": "yukpo-backend",
+        "configuration_name": "yukpo-backend",
+        "revision_name": "yukpo-backend-00198-t2g",
+        "project_id": "yukpo-project"
+      }
+    },
+    "timestamp": "2026-02-17T20:26:12.133173Z",
+    "severity": "INFO",
+    "labels": {
+      "instanceId": "00da6cd2c4e06b0a1c9ca459c3248cd8873a64ebe1802a4e4be070f211c6be97977bbdec96d7dda56cee786b88feb378ded8aad252a7f1ca1ab2fd88aa65b34b48c0fd16f5790e689b9aa85d115c0f"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/yukpo-project/traces/4644183935b0ec75a275b800eb1525f3",
+    "receiveTimestamp": "2026-02-17T20:26:12.155778550Z",
+    "spanId": "2bebcfcf552df076"
+  },
+  {
+    "insertId": "6994cee4000279fd99e0ef4f",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://yukpo-backend-376093909298.europe-west1.run.app/api/mobile-logs",
+      "requestSize": "2819",
+      "status": 200,
+      "responseSize": "224",
+      "userAgent": "Yukpo-Mobile/1.0.0",
+      "remoteIp": "129.0.99.69",
+      "serverIp": "34.143.74.2",
+      "latency": "0.002823568s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "revision_name": "yukpo-backend-00198-t2g",
+        "configuration_name": "yukpo-backend",
+        "service_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project"
+      }
+    },
+    "timestamp": "2026-02-17T20:26:12.158567Z",
+    "severity": "INFO",
+    "labels": {
+      "instanceId": "00da6cd2c4e06b0a1c9ca459c3248cd8873a64ebe1802a4e4be070f211c6be97977bbdec96d7dda56cee786b88feb378ded8aad252a7f1ca1ab2fd88aa65b34b48c0fd16f5790e689b9aa85d115c0f"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/yukpo-project/traces/75fea191fdf6fb67a275b800eb152c43",
+    "receiveTimestamp": "2026-02-17T20:26:12.488613829Z",
+    "spanId": "295b9c1e1679610b"
+  },
+  {
+    "insertId": "6994cee4000330dafe9c503e",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://yukpo-backend-376093909298.europe-west1.run.app/api/mobile-logs",
+      "requestSize": "2539",
+      "status": 200,
+      "responseSize": "222",
+      "userAgent": "Yukpo-Mobile/1.0.0",
+      "remoteIp": "129.0.99.69",
+      "serverIp": "34.143.74.2",
+      "latency": "0.002842908s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "service_name": "yukpo-backend",
+        "revision_name": "yukpo-backend-00198-t2g",
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project"
+      }
+    },
+    "timestamp": "2026-02-17T20:26:12.205220Z",
+    "severity": "INFO",
+    "labels": {
+      "instanceId": "00da6cd2c4e06b0a1c9ca459c3248cd8873a64ebe1802a4e4be070f211c6be97977bbdec96d7dda56cee786b88feb378ded8aad252a7f1ca1ab2fd88aa65b34b48c0fd16f5790e689b9aa85d115c0f"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/yukpo-project/traces/289772b2544985d2a275b800eb152f4f",
+    "receiveTimestamp": "2026-02-17T20:26:12.488613829Z",
+    "spanId": "1eeb9b659a34d2e6"
+  },
+  {
+    "insertId": "6994cee40005737681711700",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://yukpo-backend-376093909298.europe-west1.run.app/api/mobile-logs",
+      "requestSize": "3927",
+      "status": 200,
+      "responseSize": "224",
+      "userAgent": "Yukpo-Mobile/1.0.0",
+      "remoteIp": "129.0.99.69",
+      "serverIp": "34.143.74.2",
+      "latency": "0.002554588s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "service_name": "yukpo-backend",
+        "configuration_name": "yukpo-backend",
+        "revision_name": "yukpo-backend-00198-t2g"
+      }
+    },
+    "timestamp": "2026-02-17T20:26:12.353422Z",
+    "severity": "INFO",
+    "labels": {
+      "instanceId": "00da6cd2c4e06b0a1c9ca459c3248cd8873a64ebe1802a4e4be070f211c6be97977bbdec96d7dda56cee786b88feb378ded8aad252a7f1ca1ab2fd88aa65b34b48c0fd16f5790e689b9aa85d115c0f"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/yukpo-project/traces/51d95e639a5dd884a275b800eb152d1a",
+    "receiveTimestamp": "2026-02-17T20:26:12.488613829Z",
+    "spanId": "85c06b514a59ce6b"
+  },
+  {
+    "insertId": "6994cee6000191d875771467",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://yukpo-backend-376093909298.europe-west1.run.app/api/mobile-logs",
+      "requestSize": "1850",
+      "status": 200,
+      "responseSize": "222",
+      "userAgent": "Yukpo-Mobile/1.0.0",
+      "remoteIp": "129.0.99.69",
+      "serverIp": "34.143.74.2",
+      "latency": "0.003091607s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "europe-west1",
+        "revision_name": "yukpo-backend-00198-t2g",
+        "configuration_name": "yukpo-backend",
+        "project_id": "yukpo-project",
+        "service_name": "yukpo-backend"
+      }
+    },
+    "timestamp": "2026-02-17T20:26:14.098707Z",
+    "severity": "INFO",
+    "labels": {
+      "instanceId": "00da6cd2c4e06b0a1c9ca459c3248cd8873a64ebe1802a4e4be070f211c6be97977bbdec96d7dda56cee786b88feb378ded8aad252a7f1ca1ab2fd88aa65b34b48c0fd16f5790e689b9aa85d115c0f"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/yukpo-project/traces/eccd12c83124fc0aa275b800eb1520aa",
+    "receiveTimestamp": "2026-02-17T20:26:14.156069265Z",
+    "spanId": "261f9809e5edbca6"
+  },
+  {
+    "insertId": "6994ceea000df0ca8f76ce5f",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://yukpo-backend-376093909298.europe-west1.run.app/api/mobile-logs",
+      "requestSize": "976",
+      "status": 200,
+      "responseSize": "223",
+      "userAgent": "Yukpo-Mobile/1.0.0",
+      "remoteIp": "129.0.99.69",
+      "serverIp": "34.143.74.2",
+      "latency": "0.002767918s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00198-t2g",
+        "location": "europe-west1",
+        "service_name": "yukpo-backend",
+        "configuration_name": "yukpo-backend"
+      }
+    },
+    "timestamp": "2026-02-17T20:26:18.909552Z",
+    "severity": "INFO",
+    "labels": {
+      "instanceId": "00da6cd2c4e06b0a1c9ca459c3248cd8873a64ebe1802a4e4be070f211c6be97977bbdec96d7dda56cee786b88feb378ded8aad252a7f1ca1ab2fd88aa65b34b48c0fd16f5790e689b9aa85d115c0f"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/yukpo-project/traces/41ce56043b5df9c93752f435e5ffb64c",
+    "receiveTimestamp": "2026-02-17T20:26:19.148920017Z",
+    "spanId": "06d0a14c215d8423",
+    "traceSampled": true
+  },
+  {
+    "insertId": "6994ceef000b3326b5bff79e",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://yukpo-backend-376093909298.europe-west1.run.app/api/mobile-logs",
+      "requestSize": "975",
+      "status": 200,
+      "responseSize": "223",
+      "userAgent": "Yukpo-Mobile/1.0.0",
+      "remoteIp": "129.0.99.69",
+      "serverIp": "34.143.74.2",
+      "latency": "0.002469208s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "europe-west1",
+        "revision_name": "yukpo-backend-00198-t2g",
+        "project_id": "yukpo-project",
+        "service_name": "yukpo-backend",
+        "configuration_name": "yukpo-backend"
+      }
+    },
+    "timestamp": "2026-02-17T20:26:23.730501Z",
+    "severity": "INFO",
+    "labels": {
+      "instanceId": "00da6cd2c4e06b0a1c9ca459c3248cd8873a64ebe1802a4e4be070f211c6be97977bbdec96d7dda56cee786b88feb378ded8aad252a7f1ca1ab2fd88aa65b34b48c0fd16f5790e689b9aa85d115c0f"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/yukpo-project/traces/bce38d4fbad2226ca0d4f900f60c07bc",
+    "receiveTimestamp": "2026-02-17T20:26:23.812490773Z",
+    "spanId": "58b12efda4d3009d"
+  },
+  {
+    "insertId": "6994cef400081605229935eb",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://yukpo-backend-376093909298.europe-west1.run.app/api/mobile-logs",
+      "requestSize": "977",
+      "status": 200,
+      "responseSize": "222",
+      "userAgent": "Yukpo-Mobile/1.0.0",
+      "remoteIp": "129.0.99.69",
+      "serverIp": "34.143.74.2",
+      "latency": "0.003111738s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "revision_name": "yukpo-backend-00198-t2g",
+        "project_id": "yukpo-project",
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "service_name": "yukpo-backend"
+      }
+    },
+    "timestamp": "2026-02-17T20:26:28.525732Z",
+    "severity": "INFO",
+    "labels": {
+      "instanceId": "00da6cd2c4e06b0a1c9ca459c3248cd8873a64ebe1802a4e4be070f211c6be97977bbdec96d7dda56cee786b88feb378ded8aad252a7f1ca1ab2fd88aa65b34b48c0fd16f5790e689b9aa85d115c0f"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/yukpo-project/traces/fddcb271726ad71ea0d4f900f60c0d6c",
+    "receiveTimestamp": "2026-02-17T20:26:28.807295896Z",
+    "spanId": "b5833a2b10d50978"
+  },
+  {
+    "insertId": "6994cef9000549e8e7b585de",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://yukpo-backend-376093909298.europe-west1.run.app/api/mobile-logs",
+      "requestSize": "975",
+      "status": 200,
+      "responseSize": "222",
+      "userAgent": "Yukpo-Mobile/1.0.0",
+      "remoteIp": "129.0.99.69",
+      "serverIp": "34.143.74.2",
+      "latency": "0.003206777s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "revision_name": "yukpo-backend-00198-t2g",
+        "project_id": "yukpo-project",
+        "service_name": "yukpo-backend"
+      }
+    },
+    "timestamp": "2026-02-17T20:26:33.342376Z",
+    "severity": "INFO",
+    "labels": {
+      "instanceId": "00da6cd2c4e06b0a1c9ca459c3248cd8873a64ebe1802a4e4be070f211c6be97977bbdec96d7dda56cee786b88feb378ded8aad252a7f1ca1ab2fd88aa65b34b48c0fd16f5790e689b9aa85d115c0f"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/yukpo-project/traces/c5d3696ccc108bc353754cbf2ce13630",
+    "receiveTimestamp": "2026-02-17T20:26:33.467784758Z",
+    "spanId": "b8fb116dad27b99f",
+    "traceSampled": true
+  },
+  {
+    "insertId": "6994cefe00023adde195fe68",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://yukpo-backend-376093909298.europe-west1.run.app/api/mobile-logs",
+      "requestSize": "976",
+      "status": 200,
+      "responseSize": "222",
+      "userAgent": "Yukpo-Mobile/1.0.0",
+      "remoteIp": "129.0.99.69",
+      "serverIp": "34.143.74.2",
+      "latency": "0.002196258s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "revision_name": "yukpo-backend-00198-t2g",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "service_name": "yukpo-backend"
+      }
+    },
+    "timestamp": "2026-02-17T20:26:38.143021Z",
+    "severity": "INFO",
+    "labels": {
+      "instanceId": "00da6cd2c4e06b0a1c9ca459c3248cd8873a64ebe1802a4e4be070f211c6be97977bbdec96d7dda56cee786b88feb378ded8aad252a7f1ca1ab2fd88aa65b34b48c0fd16f5790e689b9aa85d115c0f"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/yukpo-project/traces/73291df7534602ba38971b3922568334",
+    "receiveTimestamp": "2026-02-17T20:26:38.469164694Z",
+    "spanId": "fd39cb619e234674"
+  },
+  {
+    "insertId": "6994cf02000e4d20dc7e9af7",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://yukpo-backend-376093909298.europe-west1.run.app/api/mobile-logs",
+      "requestSize": "976",
+      "status": 200,
+      "responseSize": "221",
+      "userAgent": "Yukpo-Mobile/1.0.0",
+      "remoteIp": "129.0.99.69",
+      "serverIp": "34.143.74.2",
+      "latency": "0.002849718s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "revision_name": "yukpo-backend-00198-t2g",
+        "location": "europe-west1",
+        "service_name": "yukpo-backend",
+        "configuration_name": "yukpo-backend",
+        "project_id": "yukpo-project"
+      }
+    },
+    "timestamp": "2026-02-17T20:26:42.933314Z",
+    "severity": "INFO",
+    "labels": {
+      "instanceId": "00da6cd2c4e06b0a1c9ca459c3248cd8873a64ebe1802a4e4be070f211c6be97977bbdec96d7dda56cee786b88feb378ded8aad252a7f1ca1ab2fd88aa65b34b48c0fd16f5790e689b9aa85d115c0f"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/yukpo-project/traces/98dabe4e5560537538971b3922568ca9",
+    "receiveTimestamp": "2026-02-17T20:26:43.128226635Z",
+    "spanId": "fc7e0407d4187ebf"
+  }
+]

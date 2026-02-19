@@ -94,3 +94,4 @@ aws ecs update-service --cluster yukpo-cluster --service yukpo-backend-service -
 **Note** : Cette solution désactive Redis complètement. Utilisez-la seulement si Redis n'est pas critique.
 
 
+

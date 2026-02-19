@@ -1,9 +1,12 @@
 // ✅ Utilitaire Redis avec retry automatique et gestion d'erreur robuste
 // Gère les cas où Redis n'est pas toujours disponible
+// ✅ NOUVEAU 2026-02-19: Support connexion TCP directe pour IPs privées (évite résolution DNS)
 
 use redis::{AsyncCommands, Client as RedisClient};
+use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
+use tokio::net::TcpStream;
 use tokio::time::sleep;
 
 /// Cache pour l'état de santé Redis (évite les logs répétitifs)
@@ -59,12 +62,193 @@ impl std::fmt::Display for RedisError {
 
 impl std::error::Error for RedisError {}
 
+/// ✅ NOUVEAU 2026-02-19: Détecte si une URL Redis contient une IP privée ou un nom d'hôte nécessitant une connexion TCP directe
+pub fn is_private_ip_or_internal_host(url: &str) -> bool {
+    // Détecter les IPs privées (10.x.x.x, 172.16-31.x.x, 192.168.x.x)
+    if url.contains("10.") || url.contains("172.") || url.contains("192.168.") {
+        return true;
+    }
+    // Détecter les noms d'hôtes internes (redis.internal, etc.)
+    if url.contains("redis.internal") || url.contains(".internal") {
+        return true;
+    }
+    false
+}
+
+/// ✅ NOUVEAU 2026-02-19: Extrait l'IP et le port d'une URL Redis
+pub fn extract_ip_and_port(url: &str) -> Option<(String, u16)> {
+    // Parser l'URL Redis: redis://[user]:[password]@[host]:[port]/[db]
+    // ou redis://[host]:[port]/[db]
+
+    // Enlever le protocole
+    let url_clean = url.replace("redis://", "").replace("rediss://", "");
+
+    // Extraire la partie host:port
+    let host_port = if url_clean.contains("@") {
+        // Format avec authentification: user:password@host:port
+        let parts: Vec<&str> = url_clean.split("@").collect();
+        if parts.len() == 2 {
+            parts[1].split("/").next().unwrap_or("")
+        } else {
+            return None;
+        }
+    } else {
+        // Format sans authentification: host:port
+        url_clean.split("/").next().unwrap_or("")
+    };
+
+    // Séparer host et port
+    let parts: Vec<&str> = host_port.split(":").collect();
+    if parts.len() == 2 {
+        let ip = parts[0].to_string();
+        let port = parts[1].parse::<u16>().ok()?;
+        Some((ip, port))
+    } else if parts.len() == 1 {
+        // Port par défaut Redis
+        let ip = parts[0].to_string();
+        Some((ip, 6379))
+    } else {
+        None
+    }
+}
+
+/// ✅ NOUVEAU 2026-02-19: Crée une connexion Redis avec TCP direct (sans résolution DNS)
+/// Utilise TcpStream directement pour éviter la résolution DNS qui échoue avec les IPs privées
+/// Note: Le client Redis utilise toujours la résolution DNS, donc on crée le client avec l'IP
+/// directement dans l'URL et on espère que le système utilisera le stream TCP existant
+pub async fn create_redis_connection_direct_tcp(
+    ip: &str,
+    port: u16,
+    max_retries: u32,
+    retry_delay_ms: u64,
+) -> RedisResult<redis::aio::MultiplexedConnection> {
+    let mut last_error = None;
+    use tokio::time::timeout;
+    use tokio::time::Duration as TokioDuration;
+
+    // Créer une URL Redis avec l'IP directement (sans nom d'hôte)
+    let redis_url = format!("redis://{}:{}/0", ip, port);
+
+    // Créer un client Redis avec l'IP directement
+    // Note: Même avec l'IP, le client peut essayer une résolution DNS inverse
+    // Mais on espère que le système utilisera l'IP directement
+    let client = match RedisClient::open(redis_url.as_str()) {
+        Ok(c) => c,
+        Err(e) => {
+            return Err(RedisError::ConnectionFailed(format!(
+                "Failed to create Redis client: {}",
+                e
+            )));
+        }
+    };
+
+    // Utiliser get_redis_connection normal mais avec un timeout plus court
+    // pour détecter rapidement les erreurs DNS
+    for attempt in 1..=max_retries {
+        match timeout(
+            TokioDuration::from_secs(5), // Timeout plus court pour détecter DNS rapidement
+            client.get_multiplexed_async_connection(),
+        )
+        .await
+        {
+            Ok(Ok(conn)) => {
+                if attempt > 1 {
+                    log::info!(
+                        "✅ [Redis] Connexion TCP directe réussie après {} tentative(s) à {}:{}",
+                        attempt,
+                        ip,
+                        port
+                    );
+                } else {
+                    log::info!("✅ [Redis] Connexion TCP directe établie à {}:{}", ip, port);
+                }
+                return Ok(conn);
+            }
+            Ok(Err(e)) => {
+                let err_msg = format!("{}", e);
+                last_error = Some(err_msg.clone());
+
+                // Si c'est une erreur DNS, on continue avec les tentatives
+                if err_msg.contains("failed to lookup address information")
+                    || err_msg.contains("Name or service not known")
+                {
+                    log::warn!(
+                        "⚠️ [Redis] Erreur DNS détectée (tentative {}/{}): {} - Réessai...",
+                        attempt,
+                        max_retries,
+                        err_msg
+                    );
+                }
+
+                if attempt < max_retries {
+                    sleep(TokioDuration::from_millis(retry_delay_ms)).await;
+                }
+            }
+            Err(_) => {
+                let timeout_msg = format!(
+                    "Connection timeout (5s) - tentative {}/{}",
+                    attempt, max_retries
+                );
+                last_error = Some(timeout_msg.clone());
+
+                if attempt < max_retries {
+                    sleep(TokioDuration::from_millis(retry_delay_ms)).await;
+                }
+            }
+        }
+    }
+
+    Err(RedisError::ConnectionFailed(
+        last_error.unwrap_or_else(|| "Erreur inconnue".to_string()),
+    ))
+}
+
 /// Helper pour obtenir une connexion Redis avec retry automatique et timeout
+/// ✅ NOUVEAU 2026-02-19: Support connexion TCP directe pour IPs privées (évite résolution DNS)
 pub async fn get_redis_connection(
     client: &RedisClient,
     max_retries: u32,
     retry_delay_ms: u64,
 ) -> RedisResult<redis::aio::MultiplexedConnection> {
+    get_redis_connection_with_url(client, None, max_retries, retry_delay_ms).await
+}
+
+/// ✅ NOUVEAU 2026-02-19: Version avec URL pour support connexion TCP directe
+pub async fn get_redis_connection_with_url(
+    client: &RedisClient,
+    redis_url: Option<&str>,
+    max_retries: u32,
+    retry_delay_ms: u64,
+) -> RedisResult<redis::aio::MultiplexedConnection> {
+    // ✅ NOUVEAU: Si URL fournie et IP privée détectée, utiliser connexion TCP directe
+    if let Some(url) = redis_url {
+        if is_private_ip_or_internal_host(url) {
+            use crate::utils::redis_tcp_direct::{
+                create_multiplexed_connection_from_tcp, RedisTcpConfig,
+            };
+
+            if let Some(config) = RedisTcpConfig::from_url(url) {
+                log::info!(
+                    "🔧 [Redis] Utilisation connexion TCP directe pour IP privée {}:{}",
+                    config.ip,
+                    config.port
+                );
+                match create_multiplexed_connection_from_tcp(&config, max_retries, retry_delay_ms)
+                    .await
+                {
+                    Ok(conn) => return Ok(conn),
+                    Err(e) => {
+                        log::warn!(
+                            "⚠️ [Redis] Échec connexion TCP directe: {} - Fallback méthode normale",
+                            e
+                        );
+                        // Fallback vers méthode normale
+                    }
+                }
+            }
+        }
+    }
+
     let mut last_error = None;
 
     // ✅ CORRIGÉ: Ajouter un timeout par tentative pour éviter les blocages infinis
@@ -92,6 +276,53 @@ pub async fn get_redis_connection(
             }
             Ok(Err(e)) => {
                 let err_msg = format!("{}", e);
+
+                // ✅ NOUVEAU 2026-02-19: Si l'erreur est liée à la résolution DNS, essayer TCP directe
+                if err_msg.contains("failed to lookup address information")
+                    || err_msg.contains("Name or service not known")
+                {
+                    log::warn!(
+                        "⚠️ [Redis] Erreur résolution DNS détectée (tentative {}/{}): {}",
+                        attempt,
+                        max_retries,
+                        err_msg
+                    );
+                    log::warn!("   💡 Tentative de connexion TCP directe...");
+
+                    // Essayer de récupérer l'IP depuis REDIS_URL
+                    if let Ok(redis_url) = std::env::var("REDIS_URL") {
+                        if is_private_ip_or_internal_host(&redis_url) {
+                            if let Some((ip, port)) = extract_ip_and_port(&redis_url) {
+                                use crate::utils::redis_tcp_direct::{
+                                    create_multiplexed_connection_from_tcp, RedisTcpConfig,
+                                };
+
+                                if let Some(config) = RedisTcpConfig::from_url(&redis_url) {
+                                    log::info!(
+                                        "🔧 [Redis] Tentative connexion TCP directe à {}:{}",
+                                        ip,
+                                        port
+                                    );
+                                    match create_multiplexed_connection_from_tcp(&config, 1, 0)
+                                        .await
+                                    {
+                                        Ok(conn) => {
+                                            log::info!("✅ [Redis] Connexion TCP directe réussie après erreur DNS");
+                                            return Ok(conn);
+                                        }
+                                        Err(e2) => {
+                                            log::warn!(
+                                                "⚠️ [Redis] Échec connexion TCP directe: {}",
+                                                e2
+                                            );
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
                 last_error = Some(err_msg.clone());
 
                 if attempt < max_retries {

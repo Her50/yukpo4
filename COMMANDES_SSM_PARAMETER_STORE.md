@@ -39,3 +39,4 @@ aws logs tail /ecs/yukpo-backend-service --since 10m --region eu-west-1 --filter
 ```
 
 
+

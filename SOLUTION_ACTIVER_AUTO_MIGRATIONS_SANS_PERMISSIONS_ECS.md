@@ -141,3 +141,4 @@ Pour que cela soit automatique, il faudrait :
 **Pour l'instant, il faut activer manuellement via la console AWS.**
 
 
+

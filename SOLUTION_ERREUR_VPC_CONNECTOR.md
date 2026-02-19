@@ -192,3 +192,4 @@ gcloud run deploy yukpo-backend \
 **✅ Une fois le VPC Connector prêt (état READY), le déploiement devrait réussir !**
 
 
+

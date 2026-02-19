@@ -172,3 +172,4 @@ Les migrations utilisent `CREATE TABLE IF NOT EXISTS`, donc :
 3. **Vérifier la cohérence** : Script de vérification après chaque migration
 
 
+

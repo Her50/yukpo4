@@ -148,3 +148,4 @@ if !is_cloud_run {
 **Note** : Le service fonctionne mais les migrations et certaines tâches échouent à cause du pool saturé. C'est un problème de configuration, pas un problème critique de démarrage.
 
 
+

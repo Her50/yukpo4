@@ -1,0 +1,118 @@
+﻿[
+    {
+        "name":  "JWT_SECRET",
+        "valueFrom":  {
+                          "secretKeyRef":  {
+                                               "key":  "latest",
+                                               "name":  "jwt-secret"
+                                           }
+                      }
+    },
+    {
+        "name":  "DATABASE_URL",
+        "valueFrom":  {
+                          "secretKeyRef":  {
+                                               "key":  "latest",
+                                               "name":  "database-url"
+                                           }
+                      }
+    },
+    {
+        "name":  "REDIS_URL",
+        "valueFrom":  {
+                          "secretKeyRef":  {
+                                               "key":  "latest",
+                                               "name":  "redis-url"
+                                           }
+                      }
+    },
+    {
+        "name":  "MONGODB_URL",
+        "valueFrom":  {
+                          "secretKeyRef":  {
+                                               "key":  "latest",
+                                               "name":  "mongodb-url"
+                                           }
+                      }
+    },
+    {
+        "name":  "CLOUD_RUN",
+        "value":  "true"
+    },
+    {
+        "name":  "ENABLE_AUTO_MIGRATIONS",
+        "value":  "true"
+    },
+    {
+        "name":  "SQLX_OFFLINE",
+        "value":  "true"
+    },
+    {
+        "name":  "HOST",
+        "value":  "0.0.0.0"
+    },
+    {
+        "name":  "RUST_LOG",
+        "value":  "info"
+    },
+    {
+        "name":  "APP_ENV",
+        "value":  "production"
+    },
+    {
+        "name":  "GPU_ENABLED",
+        "value":  "true"
+    },
+    {
+        "name":  "GPU_ENDPOINT",
+        "value":  "http://yukpo-gpu-workers:8080"
+    },
+    {
+        "name":  "GPU_ZONE",
+        "value":  "europe-west1-b"
+    },
+    {
+        "name":  "GPU_INSTANCE_NAME",
+        "value":  "yukpo-gpu-worker"
+    },
+    {
+        "name":  "GCP_PROJECT_ID",
+        "value":  "yukpo-project"
+    },
+    {
+        "name":  "GPU_MONTHLY_BUDGET",
+        "value":  "100.0"
+    },
+    {
+        "name":  "GPU_SCALE_UP_THRESHOLD",
+        "value":  "70.0"
+    },
+    {
+        "name":  "GPU_SCALE_DOWN_THRESHOLD",
+        "value":  "20.0"
+    },
+    {
+        "name":  "GPU_MAX_INSTANCES",
+        "value":  "3"
+    },
+    {
+        "name":  "GPU_MIN_INSTANCES",
+        "value":  "0"
+    },
+    {
+        "name":  "DB_POOL_SIZE",
+        "value":  "10"
+    },
+    {
+        "name":  "DB_POOL_MIN_SIZE",
+        "value":  "2"
+    },
+    {
+        "name":  "DB_ACQUIRE_TIMEOUT_SECS",
+        "value":  "30"
+    },
+    {
+        "name":  "ENVIRONMENT",
+        "value":  "production"
+    }
+]

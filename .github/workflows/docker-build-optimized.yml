@@ -468,13 +468,14 @@ jobs:
           echo "Preparing environment variables from GitHub secrets..."
           
           # Créer un fichier JSON pour les variables d'environnement
+          # NOTE: DATABASE_URL est géré par gcp-deploy.yml comme secret (database-url:latest)
+          # Ne pas l'ajouter ici pour éviter les conflits entre variable d'environnement et secret
           # Utiliser jq si disponible, sinon construire manuellement
           if command -v jq &> /dev/null; then
             echo '{}' | jq \
-              --arg db_url "${{ secrets.GCP_DATABASE_URL }}" \
               --arg allowed_origins "https://api.yukpo.com,https://yukpo.com" \
               '. + {
-                "DATABASE_URL": $db_url,
+                # DATABASE_URL supprimé - géré par gcp-deploy.yml comme secret (database-url:latest)
                 "ENABLE_AUTO_MIGRATIONS": "true",
                 "SQLX_OFFLINE": "true",
                 "RUST_LOG": "info",
@@ -494,10 +495,9 @@ jobs:
               }' > env-vars.json
           else
             # Fallback: construire JSON manuellement avec échappement
-            DB_URL_ESCAPED=$(echo "${{ secrets.GCP_DATABASE_URL }}" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g')
+            # NOTE: DATABASE_URL supprimé - géré par gcp-deploy.yml comme secret (database-url:latest)
             cat > env-vars.json << EOF
           {
-            "DATABASE_URL": "$DB_URL_ESCAPED",
             "ENABLE_AUTO_MIGRATIONS": "true",
             "SQLX_OFFLINE": "true",
             "RUST_LOG": "info",

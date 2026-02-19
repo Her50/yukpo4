@@ -15,3 +15,4 @@ END $$;
 SELECT 'Tous les triggers ont ete supprimes' AS status;
 
 
+

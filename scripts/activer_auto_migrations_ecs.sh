@@ -83,3 +83,4 @@ echo ""
 echo "⚠️ IMPORTANT: N'oubliez pas de désactiver les auto-migrations après les tests !"
 
 
+

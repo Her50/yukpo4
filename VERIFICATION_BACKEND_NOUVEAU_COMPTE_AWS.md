@@ -225,3 +225,4 @@ aws s3 mb s3://yukpo-backend-media --region eu-west-1
 - Mise à jour variables mobile: `MISE_A_JOUR_VARIABLES_AWS_NOUVEAU_COMPTE.md`
 
 
+

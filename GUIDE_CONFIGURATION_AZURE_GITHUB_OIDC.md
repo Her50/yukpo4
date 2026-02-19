@@ -151,3 +151,4 @@ az ad sp create-for-rbac --name "github-actions-yukpomnang" \
 **Statut** : Workflow créé - Configuration Azure requise
 
 
+

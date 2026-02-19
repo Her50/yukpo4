@@ -1,0 +1,9 @@
+﻿python.exe : ERROR: (gcloud.logging.read) INVALID_ARGUMENT: Unparseable filter: regular expressions must begin and end 
+with '"' at line 1, column 198, token ''stdout''
+Au caractère C:\Program Files (x86)\Google\Cloud SDK\google-cloud-sdk\bin\gcloud.ps1:114 : 3
++   & "$cloudsdk_python" $run_args_array
++   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (ERROR: (gcloud....oken ''stdout'':String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+[]

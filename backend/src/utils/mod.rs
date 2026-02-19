@@ -10,6 +10,7 @@ pub mod log;
 pub mod normalize_name;
 pub mod prompt_sanitizer; // ✅ NOUVEAU 2025-01-27: Sanitisation des prompts pour sécurité
 pub mod redis_helper;
+pub mod redis_tcp_direct;
 pub mod retry; // ✅ NOUVEAU 2025-01-27 : Utilitaire de retry pour opérations réseau/DB
 pub mod role_helpers; // ✅ NOUVEAU 2026-02-06: Helpers pour vérifier les rôles admin/super_admin
 pub mod sanitize_logs;

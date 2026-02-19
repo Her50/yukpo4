@@ -248,3 +248,4 @@ az consumption usage list --start-date (Get-Date).AddDays(-30).ToString("yyyy-MM
 **Statut** : Scripts d'automatisation créés - Prêt pour migration automatique
 
 
+
