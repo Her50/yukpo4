@@ -637,6 +637,7 @@ impl AppIA {
 
         // 3. ? OPTIMISATION : Timeout optimis? pour performance
         let mut _last_error = None;
+        let enabled_models_count = enabled_models.len(); // ✅ Sauvegarder la longueur avant le déplacement
 
         for model in enabled_models {
             log::info!(
@@ -707,7 +708,7 @@ impl AppIA {
         log::warn!("[AppIA] Tous les mod?les ont ?chou?, utilisation du fallback intelligent");
         eprintln!(
             "[AppIA::predict] ⚠️ Tous les {} modèle(s) ont échoué - Utilisation du fallback intelligent",
-            enabled_models.len()
+            enabled_models_count
         );
         if let Some(last_err) = _last_error {
             eprintln!("[AppIA::predict] 📋 Dernière erreur: {}", last_err);

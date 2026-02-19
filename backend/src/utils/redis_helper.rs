@@ -3,10 +3,8 @@
 // ✅ NOUVEAU 2026-02-19: Support connexion TCP directe pour IPs privées (évite résolution DNS)
 
 use redis::{AsyncCommands, Client as RedisClient};
-use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
-use tokio::net::TcpStream;
 use tokio::time::sleep;
 
 /// Cache pour l'état de santé Redis (évite les logs répétitifs)

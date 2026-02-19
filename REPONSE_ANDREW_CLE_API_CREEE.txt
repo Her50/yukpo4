@@ -1,0 +1,37 @@
+Hello Andrew,
+
+Thank you for your guidance. I have completed the following steps:
+
+1. ✅ Created a new API key with Application Restrictions
+   - Restricted to Android app: Package name "com.yukpomnang.mobile"
+   - Restricted to iOS app: Bundle ID "com.yukpomnang.mobile"
+   - Restricted to Places API (New) only
+
+2. ✅ Updated my code to use the new API key
+   - Removed hardcoded API key from source code
+   - Using environment variables for the new key
+   - Updated files: mobile/eas.json, mobile/src/config/environment.ts, mobile/app.config.js
+
+3. ✅ Tested the new API key
+   - Verified that autocomplete functionality works correctly
+   - No errors or restrictions issues
+   - Application functions normally with the new restricted key
+
+4. ✅ Deleted the compromised API key (AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ)
+   - Old key has been permanently deleted from Google Cloud Console
+
+5. ✅ Configured quotas and daily caps
+   - Set daily quota: 50,000 requests/day
+   - Set per-minute quota: 100 requests/minute
+   - Enabled daily usage cap to prevent future excessive usage
+
+The new API key is now active and properly secured with application restrictions. This ensures that only my mobile application (Android and iOS) can use the API key, preventing unauthorized usage.
+
+I am ready to proceed with the billing adjustment request for the unauthorized usage ($64,488.94) that occurred due to the compromised API key.
+
+Please let me know if you need any additional information or if there are any other steps required.
+
+Best regards,
+[Your name]
+[Your email]
+
