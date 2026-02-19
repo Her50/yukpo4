@@ -639,7 +639,7 @@ impl AppIA {
         let mut _last_error = None;
         let enabled_models_count = enabled_models.len(); // ✅ Sauvegarder la longueur avant le déplacement
 
-        for model in enabled_models {
+        for model in &enabled_models {
             log::info!(
                 "[AppIA] Tentative avec mod?le: {} (timeout: 30s)",
                 model.name
