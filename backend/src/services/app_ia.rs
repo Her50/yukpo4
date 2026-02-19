@@ -252,6 +252,8 @@ impl AppIA {
 
     /// ?? Initialisation des mod?les IA avec configuration avanc?e
     fn initialize_models() -> Vec<ModelConfig> {
+        // ✅ DIAGNOSTIC 2026-02-19: Logs immédiats sur stderr pour diagnostic Cloud Run
+        eprintln!("[AppIA::initialize_models] 🚀 Début initialisation des modèles IA...");
         let mut models = Vec::new();
 
         // OpenAI GPT-4o (priorit? haute) - Mod?le multimodal le plus avanc?
@@ -259,6 +261,11 @@ impl AppIA {
             Ok(api_key) => {
                 log::info!(
                     "[AppIA] ✅ OPENAI_API_KEY chargée (longueur: {}, préfixe: {}...)",
+                    api_key.len(),
+                    &api_key[..std::cmp::min(20, api_key.len())]
+                );
+                eprintln!(
+                    "[AppIA::initialize_models] ✅ OPENAI_API_KEY trouvée (longueur: {}, préfixe: {}...)",
                     api_key.len(),
                     &api_key[..std::cmp::min(20, api_key.len())]
                 );
@@ -281,6 +288,10 @@ impl AppIA {
             }
             Err(e) => {
                 log::error!("[AppIA] ❌ OPENAI_API_KEY non trouvée: {} - Les modèles OpenAI ne seront pas disponibles", e);
+                eprintln!(
+                    "[AppIA::initialize_models] ❌ OPENAI_API_KEY NON TROUVÉE: {} - Les modèles OpenAI ne seront pas disponibles",
+                    e
+                );
             }
         }
 
@@ -503,12 +514,32 @@ impl AppIA {
                 openai_models,
                 models.len()
             );
+            eprintln!(
+                "[AppIA::initialize_models] ✅ Modèles OpenAI initialisés: {:?} (total: {} modèles)",
+                openai_models,
+                models.len()
+            );
         } else {
             log::warn!(
                 "[AppIA] ⚠️ Aucun modèle OpenAI initialisé (total: {} modèles)",
                 models.len()
             );
+            eprintln!(
+                "[AppIA::initialize_models] ⚠️ Aucun modèle OpenAI initialisé (total: {} modèles) - Le système utilisera le fallback",
+                models.len()
+            );
         }
+
+        // ✅ DIAGNOSTIC 2026-02-19: Lister tous les modèles initialisés
+        let all_model_names: Vec<&str> = models.iter().map(|m| m.name.as_str()).collect();
+        eprintln!(
+            "[AppIA::initialize_models] 📋 Tous les modèles initialisés: {:?}",
+            all_model_names
+        );
+        log::info!(
+            "[AppIA] 📋 Tous les modèles initialisés: {:?}",
+            all_model_names
+        );
 
         models
     }
@@ -575,11 +606,34 @@ impl AppIA {
 
         if enabled_models.is_empty() {
             log::warn!("[AppIA] Aucun mod?le activ?, utilisation du fallback");
+            eprintln!("[AppIA::predict] ⚠️ Aucun modèle activé - Utilisation du fallback");
+            eprintln!(
+                "[AppIA::predict] 📊 Total modèles dans la liste: {}",
+                models.len()
+            );
+            let all_model_names: Vec<&str> = models.iter().map(|m| m.name.as_str()).collect();
+            eprintln!(
+                "[AppIA::predict] 📋 Modèles dans la liste: {:?}",
+                all_model_names
+            );
             let (model_name, response) = self.generate_fallback_response(prompt)?;
             let response_string = response.to_string();
             // ?? CORRECTION : L'ordre de retour doit être (model_name, response, tokens)
             return Ok((model_name, response_string, 5));
         }
+
+        // ✅ DIAGNOSTIC 2026-02-19: Log des modèles disponibles
+        let model_names: Vec<&str> = enabled_models.iter().map(|m| m.name.as_str()).collect();
+        log::info!(
+            "[AppIA] 🔍 {} modèle(s) disponible(s) pour prédiction: {:?}",
+            enabled_models.len(),
+            model_names
+        );
+        eprintln!(
+            "[AppIA::predict] 🔍 {} modèle(s) disponible(s) pour prédiction: {:?}",
+            enabled_models.len(),
+            model_names
+        );
 
         // 3. ? OPTIMISATION : Timeout optimis? pour performance
         let mut _last_error = None;
@@ -651,6 +705,13 @@ impl AppIA {
 
         // 4. Fallback intelligent si tous les mod?les ?chouent
         log::warn!("[AppIA] Tous les mod?les ont ?chou?, utilisation du fallback intelligent");
+        eprintln!(
+            "[AppIA::predict] ⚠️ Tous les {} modèle(s) ont échoué - Utilisation du fallback intelligent",
+            enabled_models.len()
+        );
+        if let Some(last_err) = _last_error {
+            eprintln!("[AppIA::predict] 📋 Dernière erreur: {}", last_err);
+        }
         let (model_name, response_json) = self.generate_fallback_response(prompt)?;
         let response_string = response_json.to_string();
         // Mise ? jour des m?triques pour le fallback

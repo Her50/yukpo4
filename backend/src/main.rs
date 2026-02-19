@@ -2524,11 +2524,58 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     let ia_stats = Arc::new(Mutex::new(IAStats::default()));
+
+    // ✅ DIAGNOSTIC 2026-02-19: Vérifier OPENAI_API_KEY avant initialisation AppIA
+    let openai_key_check = std::env::var("OPENAI_API_KEY");
+    match &openai_key_check {
+        Ok(key) => {
+            log::info!(
+                "[MAIN] ✅ OPENAI_API_KEY détectée avant initialisation AppIA (longueur: {}, préfixe: {}...)",
+                key.len(),
+                &key[..std::cmp::min(20, key.len())]
+            );
+            eprintln!(
+                "[MAIN] ✅ OPENAI_API_KEY détectée avant initialisation AppIA (longueur: {})",
+                key.len()
+            );
+        }
+        Err(e) => {
+            log::error!(
+                "[MAIN] ❌ OPENAI_API_KEY NON TROUVÉE avant initialisation AppIA: {}",
+                e
+            );
+            eprintln!(
+                "[MAIN] ❌ OPENAI_API_KEY NON TROUVÉE avant initialisation AppIA: {}",
+                e
+            );
+        }
+    }
+
     let app_ia = Arc::new(AppIA::new(
         redis_client.clone(),
         ia_stats.clone(),
         pg_pool.clone(),
     ));
+
+    // ✅ DIAGNOSTIC 2026-02-19: Vérifier combien de modèles ont été initialisés
+    let models_count = app_ia.models.read().unwrap().len();
+    log::info!(
+        "[MAIN] ✅ AppIA initialisé avec {} modèle(s) IA",
+        models_count
+    );
+    eprintln!(
+        "[MAIN] ✅ AppIA initialisé avec {} modèle(s) IA",
+        models_count
+    );
+
+    if models_count == 0 {
+        log::warn!(
+            "[MAIN] ⚠️ ATTENTION: Aucun modèle IA initialisé - Le système utilisera uniquement le fallback"
+        );
+        eprintln!(
+            "[MAIN] ⚠️ ATTENTION: Aucun modèle IA initialisé - Le système utilisera uniquement le fallback"
+        );
+    }
 
     // ✅ Cloner redis_client pour le healthcheck avant de le déplacer dans AppState
     let redis_client_healthcheck = redis_client.clone();
