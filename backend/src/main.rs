@@ -2558,7 +2558,7 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
     ));
 
     // ✅ DIAGNOSTIC 2026-02-19: Vérifier combien de modèles ont été initialisés
-    let models_count = app_ia.models.read().unwrap().len();
+    let models_count = app_ia.models.read().await.len();
     log::info!(
         "[MAIN] ✅ AppIA initialisé avec {} modèle(s) IA",
         models_count

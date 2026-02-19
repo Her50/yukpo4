@@ -45,19 +45,29 @@
 
 1. **Application restrictions** : Sélectionner "Android apps" ou "iOS apps"
 2. **Pour Android** :
-   - Cliquer sur "+ ADD AN ITEM"
-   - **Package name** : `com.yukpomnang.mobile` ✅ (votre package name)
-   - **SHA-1 certificate fingerprint** : Obtenir avec :
-     ```bash
-     # Pour debug
-     keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android
-     
-     # Pour production (si vous avez un keystore)
-     keytool -list -v -keystore votre-keystore.jks -alias votre-alias
-     ```
+   - Cliquer sur "+ ADD AN ITEM" (vous pouvez ajouter plusieurs éléments : un pour debug, un pour production)
+   
+   **Élément 1 - Debug** :
+   - **Package name** : `com.yukpomnang.mobile` ✅
+   - **SHA-1 certificate fingerprint** : `E1:9A:BD:DE:56:FB:32:4B:77:E3:48:FE:6E:F6:1E:BB:4D:B5:59:4F` ✅ (déjà obtenu)
+   
+   **Élément 2 - Production** (à ajouter après) :
+   - **Package name** : `com.yukpomnang.mobile` ✅ (même package)
+   - **SHA-1 certificate fingerprint** : Obtenir depuis :
+     - **Google Play Console** : Release → Setup → App signing → Copier le SHA-1
+     - **OU EAS** : `cd mobile && eas credentials` → Android → production
+     - **OU** si vous avez le keystore local :
+       ```bash
+       keytool -list -v -keystore votre-keystore.jks -alias votre-alias
+       ```
+   
+   ⚠️ **IMPORTANT** : Vous devez ajouter les DEUX SHA-1 (debug ET production) pour que la clé fonctionne en développement ET en production !
+
 3. **Pour iOS** :
    - Cliquer sur "+ ADD AN ITEM"
    - **Bundle ID** : `com.yukpomnang.mobile` ✅ (votre bundle ID)
+   
+   ✅ **Note** : Le Bundle ID fonctionne pour TOUS les utilisateurs qui téléchargent l'app depuis l'App Store. Pas besoin d'ajouter plusieurs Bundle IDs - un seul suffit pour tous les utilisateurs iOS.
 
 **Option B : Restrictions par IP (Pour Backend uniquement)**
 
