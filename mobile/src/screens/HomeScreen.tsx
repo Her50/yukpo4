@@ -1,4 +1,4 @@
-﻿/**
+/**
  * HomeScreen - VERSION DE BASE SIMPLIFIÉE
  *
  * Composants essentiels:
@@ -547,7 +547,7 @@ const HomeScreen: React.FC = () => {
         } catch (error: any) {
             console.error('[HomeScreen] Erreur création service:', error);
             setLoading(false);
-            Alert.alert('Erreur', 'Une erreur est survenue lors de la création');
+            Alert.alert('Erreur', error?.message || 'Une erreur est survenue lors de la création');
         }
     }, [user, navigate]);
 

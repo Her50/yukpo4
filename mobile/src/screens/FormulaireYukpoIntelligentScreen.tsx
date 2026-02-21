@@ -5555,7 +5555,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   style={{ flex: 1 }}
                   contentContainerStyle={styles.contentContainer}
                   showsVerticalScrollIndicator={true}
-                  keyboardShouldPersistTaps="handled"
+                  keyboardShouldPersistTaps="always"
                   extraScrollHeight={150}
                 >
                   {/* ✅ CORRIGÉ: Utiliser activeBlockData comme source unique de vérité pour garantir la synchronisation */}

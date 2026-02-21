@@ -50,19 +50,13 @@ const StableTextInput: React.FC<StableTextInputProps> = ({
     }
   }, []);
 
-  // ✅ Handler pour le focus
+  // ✅ Handler pour le focus - NE PAS écraser localValue avec externalValue
+  // Écraser au focus provoque des sauts de curseur / clavier quand le parent n'a pas encore mis à jour
   const handleFocus = useCallback((e: any) => {
     isFocusedRef.current = true;
-    // ✅ CORRECTION CRITIQUE: S'assurer que la valeur locale est à jour au focus
-    // Cela évite les problèmes où le clavier ne s'ouvre pas ou le curseur saute
-    if (localValue !== externalValue) {
-      setLocalValue(externalValue);
-      lastExternalValueRef.current = externalValue;
-    }
-    // ✅ CORRECTION CRITIQUE: Ne pas forcer le focus pour éviter le double focus qui cause le scroll jusqu'en bas
-    // Le focus est déjà géré par React Native, pas besoin de le forcer
+    lastExternalValueRef.current = externalValue;
     props.onFocus?.(e);
-  }, [props.onFocus, localValue, externalValue]);
+  }, [props.onFocus, externalValue]);
 
   // ✅ Handler pour les changements de texte
   const handleChangeText = useCallback((text: string) => {
@@ -85,17 +79,12 @@ const StableTextInput: React.FC<StableTextInputProps> = ({
     }, debounceMs);
   }, [onChangeText, debounceMs]);
 
-  // ✅ Handler pour le blur - synchroniser avec la valeur externe
+  // ✅ Handler pour le blur - NE PAS écraser localValue ici (le parent met à jour en async)
+  // La synchro se fera au prochain render via useEffect quand externalValue aura été mis à jour
   const handleBlur = useCallback((e: any) => {
     isFocusedRef.current = false;
-    // Synchroniser la valeur locale avec la valeur externe au blur
-    // Cela garantit que si la valeur externe a changé pendant la saisie, elle sera synchronisée
-    if (externalValue !== localValue) {
-      setLocalValue(externalValue);
-      lastExternalValueRef.current = externalValue;
-    }
     props.onBlur?.(e);
-  }, [externalValue, localValue, props.onBlur]);
+  }, [props.onBlur]);
 
   // ✅ Nettoyer le timeout au démontage
   useEffect(() => {
