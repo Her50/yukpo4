@@ -78,42 +78,49 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
             // Car la chaîne valeur peut contenir des valeurs incohérentes ou des valeurs supplémentaires
             // À la place, utiliser DIRECTEMENT sous_caracteristiques et productLabels
             
-            // Déterminer l'ordre des labels
+            // Déterminer l'ordre des labels (clés réelles dans sousCaracteristiques)
             // Priorité 1: productLabels (ordre garanti depuis l'IA) - CRITIQUE pour l'alignement
             // Priorité 2: Ordre des clés dans sousCaracteristiques
-            // ✅ CORRECTION CRITIQUE: Utiliser productLabels dans l'ordre exact pour garantir l'alignement
-            // ✅ NOUVEAU: Filtrer productLabels pour ne garder que les labels qui existent dans sousCaracteristiques
-            // ✅ NOUVEAU: Supprimer les doublons de labels pour éviter les répétitions
+            // ✅ CORRECTION PRESTATIONS: Associer chaque productLabel à la clé réelle (exacte ou normalisée)
+            // pour que label et valeur restent alignés même si l'IA renvoie "Type" et la clé est "type_presta"
+            const normalizeForMatch = (s: string) =>
+                s.trim().toLowerCase()
+                    .normalize('NFD').replace(/\p{Diacritic}/gu, '') // enlever accents (é→e, è→e)
+                    .replace(/\s+/g, '_').replace(/-/g, '_');
+            const findMatchingKey = (label: string): string | null => {
+                const trimmed = label.trim();
+                if (sousCaracteristiques.hasOwnProperty(trimmed)) return trimmed;
+                const normalized = normalizeForMatch(trimmed);
+                const key = Object.keys(sousCaracteristiques).find(k =>
+                    normalizeForMatch(k) === normalized
+                    || k.toLowerCase() === trimmed.toLowerCase()
+                    || (normalized.length >= 2 && normalizeForMatch(k).startsWith(normalized))
+                    || (normalized.length >= 2 && normalizeForMatch(k).includes(normalized))
+                );
+                return key ?? null;
+            };
+
             let orderedLabels: string[] = [];
             if (productLabels && Array.isArray(productLabels) && productLabels.length > 0) {
-                const seenLabels = new Set<string>();
-                orderedLabels = productLabels
-                    .filter(label => label && typeof label === 'string' && label.trim().length > 0)
-                    .filter(label => {
-                        const trimmedLabel = label.trim();
-                        // ✅ CRITIQUE: Ne garder que les labels qui existent dans sousCaracteristiques
-                        if (!sousCaracteristiques.hasOwnProperty(trimmedLabel)) {
-                            console.warn(`[SubCharacteristicsTable] ⚠️ Label "${trimmedLabel}" ignoré (n'existe pas dans sousCaracteristiques)`);
-                            return false;
-                        }
-                        // ✅ NOUVEAU: Supprimer les doublons
-                        if (seenLabels.has(trimmedLabel)) {
-                            console.warn(`[SubCharacteristicsTable] ⚠️ Label dupliqué ignoré: "${trimmedLabel}"`);
-                            return false;
-                        }
-                        seenLabels.add(trimmedLabel);
-                        return true;
-                    });
+                const seenKeys = new Set<string>();
+                for (const label of productLabels) {
+                    if (!label || typeof label !== 'string' || label.trim().length === 0) continue;
+                    const key = findMatchingKey(label);
+                    if (key && !seenKeys.has(key)) {
+                        seenKeys.add(key);
+                        orderedLabels.push(key);
+                    } else if (!key) {
+                        console.warn(`[SubCharacteristicsTable] ⚠️ Aucune clé trouvée pour le label "${label}" (prestations: vérifier product_labels = clés sous_caracteristiques)`);
+                    }
+                }
             }
             
             // Si aucun label valide dans productLabels, utiliser les clés de sousCaracteristiques (sans doublons)
             if (orderedLabels.length === 0) {
-                // ✅ CORRECTION CRITIQUE: Utiliser Object.keys() qui préserve l'ordre d'insertion en JavaScript moderne
-                // Mais s'assurer que toutes les clés sont présentes et dans le bon ordre
                 const allKeys = Object.keys(sousCaracteristiques);
                 orderedLabels = Array.from(new Set(allKeys));
                 console.log('[SubCharacteristicsTable] 🔍 Aucun label valide dans productLabels, utilisation des clés de sousCaracteristiques (sans doublons):', orderedLabels);
-                console.warn('[SubCharacteristicsTable] ⚠️ ATTENTION: productLabels non disponible, utilisation de Object.keys() comme fallback. L\'ordre peut ne pas être garanti.');
+                console.warn('[SubCharacteristicsTable] ⚠️ ATTENTION: productLabels non disponible ou sans correspondance, utilisation de Object.keys() comme fallback.');
             }
             
             console.log('[SubCharacteristicsTable] 🔍 Labels ordonnés depuis productLabels:', orderedLabels);
@@ -386,12 +393,8 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
         ]).start();
 
         try {
-            // ✅ NOUVEAU : Appeler onValidate avec gestion d'erreur
-            // onValidate peut maintenant être async et retourner une Promise
-            const result = onValidate(validRows);
-            if (result && typeof result.then === 'function') {
-                await result;
-            }
+            // ✅ NOUVEAU : Appeler onValidate avec gestion d'erreur (sync ou async)
+            await Promise.resolve(onValidate(validRows));
 
             // ✅ FEEDBACK VISUEL: Afficher le succès avec animation
             setIsValidated(true);

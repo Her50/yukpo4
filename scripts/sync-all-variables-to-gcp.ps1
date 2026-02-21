@@ -220,15 +220,15 @@ $envVars = @{
     "SRS_HLS_URL" = "https://srs.46.224.14.85.sslip.io/live"
     "SRS_RTMP_URL" = "rtmp://46.224.14.85:1935/live"
     
-    # S3/GCS Configuration
-    "S3_BUCKET" = "yukpomnang-media-prod"
-    "S3_REGION" = "us-east-1"
-    "S3_ENDPOINT" = ""
+    # S3/GCS Configuration - GCP (CDN S3 naif GCP: Cloud Storage + Cloud CDN)
+    "S3_BUCKET" = "yukpo-project-yukpo-backend-media"
+    "S3_REGION" = "europe-west1"
+    "S3_ENDPOINT" = "https://storage.googleapis.com"
     "S3_FORCE_PATH_STYLE" = "false"
     "RENDERER_S3_UPLOAD" = "true"
-    "UPLOAD_BASE_URL" = "https://cdn.yukpomnang.com"
-    "PUBLIC_BASE_URL" = "https://cdn.yukpomnang.com"
-    "UPLOAD_STORAGE_PATH" = "/var/data/uploads"
+    "UPLOAD_BASE_URL" = "http://34.54.117.97"
+    "PUBLIC_BASE_URL" = "http://34.54.117.97"
+    "UPLOAD_STORAGE_PATH" = "uploads"
     
     # Email Configuration
     "EMAIL_ENABLED" = "true"

@@ -11,9 +11,10 @@ try {
     console.log('ℹ️  Variables d\'environnement: Utilisation des variables système (ou définies dans eas.json pour EAS Build)');
 }
 
-// Vérifier si google-services.json existe
+// Vérifier si google-services.json existe (local ou injecté par EAS Secret)
 const googleServicesPath = path.join(__dirname, 'google-services.json');
-const hasGoogleServices = fs.existsSync(googleServicesPath);
+const hasGoogleServices = fs.existsSync(googleServicesPath) || !!process.env.GOOGLE_SERVICES_JSON;
+const googleServicesFile = process.env.GOOGLE_SERVICES_JSON || (fs.existsSync(googleServicesPath) ? './google-services.json' : null);
 
 // Récupérer les variables d'environnement (depuis .env, variables système, ou eas.json pour EAS)
 const getEnvVar = (key, defaultValue = '') => {
@@ -71,7 +72,7 @@ module.exports = {
             },
             package: "com.yukpomnang.mobile",
             // Ajouter googleServicesFile seulement si le fichier existe
-            ...(hasGoogleServices && { googleServicesFile: "./google-services.json" }),
+            ...(googleServicesFile && { googleServicesFile }),
             permissions: [
                 "android.permission.ACCESS_FINE_LOCATION",
                 "android.permission.ACCESS_COARSE_LOCATION",

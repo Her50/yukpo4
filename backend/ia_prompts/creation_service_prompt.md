@@ -254,6 +254,12 @@ Analyse la demande utilisateur et génère un JSON enrichi, strictement conforme
 - **EXEMPLE** : Si `valeur: ["Toyota,RAV4,2020"]` et `separateur: ","`, alors `product_labels: ["marque", "modele", "annee"]` garantit l'alignement correct
 - **OBLIGATOIRE** : Ce champ est CRITIQUE pour l'alignement labels-valeurs dans le tableau des sous-caractéristiques, surtout pour les prestations
 
+**🚨 RÈGLE SPÉCIFIQUE PRESTATIONS (type_offre = "prestation")** :
+- Pour les **prestations de service**, `product_labels` DOIT être une **copie exacte** des clés de `sous_caracteristiques` (mêmes chaînes, même ordre).
+- Utiliser des **clés en minuscules avec underscores** (ex: `type_presta`, `duree`, `niveau`, `modalite`) pour que le tableau Label/Valeur s'affiche correctement.
+- ❌ **NE PAS** utiliser de libellés affichables différents des clés (ex: éviter `product_labels: ["Type", "Durée"]` si les clés sont `type_presta`, `duree`).
+- ✅ **CORRECT** : `sous_caracteristiques: { "type_presta": ["Consultation"], "duree": ["1h"] }` → `product_labels: ["type_presta", "duree"]`
+
 **EXEMPLES D'ENRICHISSEMENT** :
 
 **Véhicule** - Demande : "Vente Toyota RAV4 2020"

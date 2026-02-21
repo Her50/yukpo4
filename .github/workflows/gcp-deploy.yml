@@ -103,7 +103,13 @@ jobs:
                 "GPU_SCALE_UP_THRESHOLD": "70.0",
                 "GPU_SCALE_DOWN_THRESHOLD": "20.0",
                 "GPU_MAX_INSTANCES": "3",
-                "GPU_MIN_INSTANCES": "0"
+                "GPU_MIN_INSTANCES": "0",
+                "UPLOAD_BASE_URL": "http://34.54.117.97",
+                "PUBLIC_BASE_URL": "http://34.54.117.97",
+                "S3_BUCKET": "yukpo-project-yukpo-backend-media",
+                "S3_REGION": "europe-west1",
+                "S3_ENDPOINT": "https://storage.googleapis.com",
+                "S3_FORCE_PATH_STYLE": "false"
               }' > env-vars.json
           else
             # NOTE: DATABASE_URL est géré comme secret, pas comme variable
@@ -124,7 +130,13 @@ jobs:
             "GPU_SCALE_UP_THRESHOLD": "70.0",
             "GPU_SCALE_DOWN_THRESHOLD": "20.0",
             "GPU_MAX_INSTANCES": "3",
-            "GPU_MIN_INSTANCES": "0"
+            "GPU_MIN_INSTANCES": "0",
+            "UPLOAD_BASE_URL": "http://34.54.117.97",
+            "PUBLIC_BASE_URL": "http://34.54.117.97",
+            "S3_BUCKET": "yukpo-project-yukpo-backend-media",
+            "S3_REGION": "europe-west1",
+            "S3_ENDPOINT": "https://storage.googleapis.com",
+            "S3_FORCE_PATH_STYLE": "false"
           }
           EOF
           fi
@@ -248,7 +260,7 @@ jobs:
                 --port 8080 \
                 --startup-probe=timeoutSeconds=10,periodSeconds=15,initialDelaySeconds=90,failureThreshold=20,httpGet.port=8080,httpGet.path=/health \
                 --set-env-vars="$ENV_VARS" \
-                --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,MONGODB_URL=mongodb-url:latest,OPENAI_API_KEY=openai-api-key:latest" \
+                --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,MONGODB_URL=mongodb-url:latest,OPENAI_API_KEY=openai-api-key:latest,S3_ACCESS_KEY=s3-access-key:latest,S3_SECRET_KEY=s3-secret-key:latest" \
                 --set-cloudsql-instances="$CLOUD_SQL_INSTANCE" \
                 --memory 2Gi \
                 --cpu 2 \
@@ -270,7 +282,7 @@ jobs:
                 --allow-unauthenticated \
                 --port 8080 \
                 --startup-probe=timeoutSeconds=10,periodSeconds=15,initialDelaySeconds=90,failureThreshold=20,httpGet.port=8080,httpGet.path=/health \
-                --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,MONGODB_URL=mongodb-url:latest,OPENAI_API_KEY=openai-api-key:latest" \
+                --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,MONGODB_URL=mongodb-url:latest,OPENAI_API_KEY=openai-api-key:latest,S3_ACCESS_KEY=s3-access-key:latest,S3_SECRET_KEY=s3-secret-key:latest" \
                 --set-cloudsql-instances="$CLOUD_SQL_INSTANCE" \
                 --memory 2Gi \
                 --cpu 2 \
@@ -299,7 +311,7 @@ jobs:
               --port 8080 \
               --startup-probe=timeoutSeconds=10,periodSeconds=15,initialDelaySeconds=90,failureThreshold=20,httpGet.port=8080,httpGet.path=/health \
               --env-vars-file ${{ steps.prepare-env.outputs.env_file }} \
-              --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,MONGODB_URL=mongodb-url:latest,OPENAI_API_KEY=openai-api-key:latest" \
+              --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,MONGODB_URL=mongodb-url:latest,OPENAI_API_KEY=openai-api-key:latest,S3_ACCESS_KEY=s3-access-key:latest,S3_SECRET_KEY=s3-secret-key:latest" \
               --set-cloudsql-instances="$CLOUD_SQL_INSTANCE" \
               --memory 2Gi \
               --cpu 2 \

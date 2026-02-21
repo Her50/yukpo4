@@ -206,20 +206,10 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
         return () => clearTimeout(timeoutId);
     }, [searchQuery, identifiantBase, sousCaracteristiques, separateur]);
 
-    // Décomposer une modalité en chips
-    // ✅ CORRECTION CRITIQUE: Utiliser productLabels pour garantir l'ordre correct des labels
+    // Décomposer une modalité en chips (ordre = getOrderedLabels pour alignement prestations)
     const decomposeModality = (modality: string): ModalityChip[] => {
         const parts = modality.split(separateur).map(p => p.trim());
-        
-        // ✅ PRIORITÉ 1: Utiliser productLabels si disponible (ordre garanti depuis l'IA)
-        // ✅ PRIORITÉ 2: Utiliser l'ordre des clés dans sousCaracteristiques
-        // ✅ CORRECTION CRITIQUE: Filtrer productLabels pour ne garder que les labels qui existent dans sousCaracteristiques
-        // Cela garantit que chaque label correspond à une clé valide dans sousCaracteristiques
-        const orderedLabels = (productLabels && Array.isArray(productLabels) && productLabels.length > 0)
-            ? productLabels
-                .filter(label => label && typeof label === 'string' && label.trim().length > 0)
-                .filter(label => sousCaracteristiques.hasOwnProperty(label)) // ✅ CRITIQUE: Ne garder que les labels qui existent dans sousCaracteristiques
-            : Object.keys(sousCaracteristiques);
+        const orderedLabels = getOrderedLabels();
         
         return parts.map((value, index) => {
             // ✅ CORRECTION: Utiliser le label à la même position que la valeur (alignement garanti)
@@ -315,17 +305,39 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
     }, [customKey, customValue, sousCaracteristiques, separateur, addModality]);
 
     // ✅ NOUVEAU: Callback pour valider le tableau (maintenant async pour gérer les erreurs)
+    // ✅ Même logique que SubCharacteristicsTable: associer productLabel → clé réelle (prestations)
+    const normalizeForMatch = (s: string) =>
+        s.trim().toLowerCase()
+            .normalize('NFD').replace(/\p{Diacritic}/gu, '')
+            .replace(/\s+/g, '_').replace(/-/g, '_');
+    const findMatchingKey = (label: string): string | null => {
+        const trimmed = label.trim();
+        if (sousCaracteristiques.hasOwnProperty(trimmed)) return trimmed;
+        const normalized = normalizeForMatch(trimmed);
+        return Object.keys(sousCaracteristiques).find(k =>
+            normalizeForMatch(k) === normalized || k.toLowerCase() === trimmed.toLowerCase()
+            || (normalized.length >= 2 && normalizeForMatch(k).startsWith(normalized))
+            || (normalized.length >= 2 && normalizeForMatch(k).includes(normalized))
+        ) ?? null;
+    };
+    const getOrderedLabels = (): string[] => {
+        if (productLabels && Array.isArray(productLabels) && productLabels.length > 0) {
+            const seen = new Set<string>();
+            const out: string[] = [];
+            for (const label of productLabels) {
+                if (!label || typeof label !== 'string') continue;
+                const key = findMatchingKey(label);
+                if (key && !seen.has(key)) { seen.add(key); out.push(key); }
+            }
+            if (out.length > 0) return out;
+        }
+        return Object.keys(sousCaracteristiques);
+    };
+
     const handleTableValidate = useCallback(async (rows: SubCharacteristicRow[]) => {
         try {
-            // ✅ CORRECTION CRITIQUE: Construire la modalité en respectant l'ordre correct des labels
-            // Priorité 1: Utiliser productLabels si disponible (ordre garanti)
-            // Priorité 2: Utiliser l'ordre des clés de sousCaracteristiques (ordre d'insertion préservé en JS moderne)
-            // ✅ NOUVEAU: Filtrer productLabels pour ne garder que les labels qui existent dans sousCaracteristiques
-            const orderedLabels = (productLabels && Array.isArray(productLabels) && productLabels.length > 0)
-                ? productLabels
-                    .filter(label => label && typeof label === 'string')
-                    .filter(label => sousCaracteristiques.hasOwnProperty(label)) // ✅ CRITIQUE: Ne garder que les labels qui existent dans sousCaracteristiques
-                : Object.keys(sousCaracteristiques);
+            // ✅ CORRECTION CRITIQUE: Construire la modalité en respectant l'ordre (productLabels → clés réelles, comme SubCharacteristicsTable)
+            const orderedLabels = getOrderedLabels();
             
             const modalityParts: string[] = [];
             
@@ -456,15 +468,8 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                             );
                             
                             if (validRows.length > 0) {
-                                // ✅ CORRECTION CRITIQUE: Construire la modalité en respectant l'ordre correct des labels
-                                // Utiliser le même mécanisme que handleTableValidate pour garantir la cohérence
-                                // Priorité 1: Utiliser productLabels si disponible (ordre garanti)
-                                // Priorité 2: Utiliser l'ordre des clés de sousCaracteristiques
-                                const orderedLabels = (productLabels && Array.isArray(productLabels) && productLabels.length > 0)
-                                    ? productLabels
-                                        .filter(label => label && typeof label === 'string')
-                                        .filter(label => sousCaracteristiques.hasOwnProperty(label)) // ✅ CRITIQUE: Ne garder que les labels qui existent dans sousCaracteristiques
-                                    : Object.keys(sousCaracteristiques);
+                                // ✅ Même ordre que SubCharacteristicsTable (productLabels → clés réelles)
+                                const orderedLabels = getOrderedLabels();
                                 
                                 const modalityParts: string[] = [];
                                 
