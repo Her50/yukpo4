@@ -1,4 +1,4 @@
-﻿# Script de vérification complète du backend dans GCP
+# Script de vérification complète du backend dans GCP
 # Vérifie toutes les fonctionnalités et services
 
 param(
@@ -257,9 +257,11 @@ foreach ($endpoint in $aiEndpoints) {
 Write-Host "`n🏥 6. VÉRIFICATION DES SERVICES SPÉCIALISÉS" -ForegroundColor Yellow
 Write-Host "-------------------------------------------" -ForegroundColor Yellow
 
+$hopitauxBody = '{"symptoms":["fievre"]}'
+$pharmaciesBody = '{"medications":["paracetamol"]}'
 $specializedEndpoints = @(
-    @{ Path = "/api/hopitaux/ai/recommendations"; Method = "POST"; Body = '{"symptoms":["fievre"]}'; Name = "Hôpitaux IA" },
-    @{ Path = "/api/pharmacies/ai/interactions"; Method = "POST"; Body = '{"medications":["paracetamol"]}'; Name = "Pharmacies IA" },
+    @{ Path = "/api/hopitaux/ai/recommendations"; Method = "POST"; Body = $hopitauxBody; Name = "Hôpitaux IA" },
+    @{ Path = "/api/pharmacies/ai/interactions"; Method = "POST"; Body = $pharmaciesBody; Name = "Pharmacies IA" },
     @{ Path = "/api/laboratoires"; Method = "GET"; Name = "Laboratoires" },
     @{ Path = "/api/banque-sang"; Method = "GET"; Name = "Banque de Sang" }
 )
@@ -285,11 +287,12 @@ foreach ($endpoint in $specializedEndpoints) {
 Write-Host "`n⚙️  7. VÉRIFICATION DES SERVICES CORE" -ForegroundColor Yellow
 Write-Host "-------------------------------------" -ForegroundColor Yellow
 
+$deliveryQuoteBody = '{"origin":{"lat":0,"lon":0},"destination":{"lat":0,"lon":0}}'
 $coreEndpoints = @(
     @{ Path = "/api/services"; Method = "GET"; Name = "Services List" },
     @{ Path = "/api/products"; Method = "GET"; Name = "Products List" },
     @{ Path = "/api/search"; Method = "GET"; Name = "Search" },
-    @{ Path = "/api/delivery/public/quote"; Method = "POST"; Body = '{"origin":{"lat":0,"lon":0},"destination":{"lat":0,"lon":0}}'; Name = "Delivery Quote" }
+    @{ Path = "/api/delivery/public/quote"; Method = "POST"; Body = $deliveryQuoteBody; Name = "Delivery Quote" }
 )
 
 foreach ($endpoint in $coreEndpoints) {
@@ -389,5 +392,4 @@ if ($script:FailedTests -eq 0) {
     Write-Host "`n⚠️  CERTAINS TESTS ONT ÉCHOUÉ" -ForegroundColor Yellow
     exit 1
 }
-
 

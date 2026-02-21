@@ -115,7 +115,7 @@ module.exports = {
             config: {
                 encoding: "UTF-8",
                 googleMaps: {
-                    apiKey: "AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ"
+                    apiKey: getEnvVar('EXPO_PUBLIC_GOOGLE_MAPS_API_KEY', '')
                 }
             },
             "meta-data": [
@@ -185,13 +185,14 @@ module.exports = {
             // Pour le build local, créer un fichier .env avec ces variables
             // Pour EAS Build, elles sont chargées depuis eas.json
             // ✅ 2026-02-14: Migration vers GCP Cloud Run
+            // ⚠️ CORRIGÉ 2026-02-20: URL mise à jour vers l'URL réelle qui fonctionne
             // ⚠️ AWS (ancien backend, commenté pour utilisation future): 'https://api.yukpomnang.com'
-            apiUrl: getEnvVar('EXPO_PUBLIC_API_URL', 'https://yukpo-backend-yukpo-project.a.run.app'),
-            wsUrl: getEnvVar('EXPO_PUBLIC_WS_URL', 'wss://yukpo-backend-yukpo-project.a.run.app'),
+            apiUrl: getEnvVar('EXPO_PUBLIC_API_URL', 'https://yukpo-backend-376093909298.europe-west1.run.app'),
+            wsUrl: getEnvVar('EXPO_PUBLIC_WS_URL', 'wss://yukpo-backend-376093909298.europe-west1.run.app'),
             shareUrl: getEnvVar('EXPO_PUBLIC_SHARE_URL', 'https://yukpomnang.com'),
             environment: getEnvVar('EXPO_PUBLIC_ENVIRONMENT', 'production'),
-            googleMapsApiKey: getEnvVar('EXPO_PUBLIC_GOOGLE_MAPS_API_KEY', 'AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ'),
-            googleTranslateApiKey: getEnvVar('EXPO_PUBLIC_GOOGLE_TRANSLATE_API_KEY', 'AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ')
+            googleMapsApiKey: getEnvVar('EXPO_PUBLIC_GOOGLE_MAPS_API_KEY', ''),
+            googleTranslateApiKey: getEnvVar('EXPO_PUBLIC_GOOGLE_TRANSLATE_API_KEY', '')
         },
         autolinking: {
             exclude: [

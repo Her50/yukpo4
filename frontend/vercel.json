@@ -3,28 +3,29 @@
   "buildCommand": "npm install && npm run build",
   "outputDirectory": "dist",
   "framework": null,
-  "_comment": "✅ 2026-02-14: Migration vers GCP Cloud Run - Backend: https://yukpo-backend-yukpo-project.a.run.app",
+  "_comment": "✅ 2026-02-14: Migration vers GCP Cloud Run - Backend: https://yukpo-backend-376093909298.europe-west1.run.app",
+  "_comment_correction": "⚠️ CORRIGÉ 2026-02-20: URL mise à jour vers l'URL réelle qui fonctionne",
   "_comment_aws": "⚠️ AWS (ancien backend, commenté pour utilisation future): https://api.yukpomnang.com",
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "https://yukpo-backend-yukpo-project.a.run.app/api/$1"
+      "destination": "https://yukpo-backend-376093909298.europe-west1.run.app/api/$1"
     },
     {
       "source": "/auth/(.*)",
-      "destination": "https://yukpo-backend-yukpo-project.a.run.app/auth/$1"
+      "destination": "https://yukpo-backend-376093909298.europe-west1.run.app/auth/$1"
     },
     {
       "source": "/services/(.*)",
-      "destination": "https://yukpo-backend-yukpo-project.a.run.app/services/$1"
+      "destination": "https://yukpo-backend-376093909298.europe-west1.run.app/services/$1"
     },
     {
       "source": "/ws/(.*)",
-      "destination": "wss://yukpo-backend-yukpo-project.a.run.app/ws/$1"
+      "destination": "wss://yukpo-backend-376093909298.europe-west1.run.app/ws/$1"
     },
     {
       "source": "/healthz",
-      "destination": "https://yukpo-backend-yukpo-project.a.run.app/healthz"
+      "destination": "https://yukpo-backend-376093909298.europe-west1.run.app/healthz"
     },
     {
       "source": "/(.*)",

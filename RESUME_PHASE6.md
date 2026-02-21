@@ -47,3 +47,4 @@ Migration de la fonction `auto_deactivate_expired_products` (job CRON) pour util
 
 **La migration vers `service_products` est maintenant 100% complète !**
 
+AgenceVoyageFormScreen — partiellement implémenté (tickets bus à vérifier)

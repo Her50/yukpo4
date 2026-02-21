@@ -4,7 +4,7 @@ export const ENVIRONMENT = {
     GOOGLE_TRANSLATE_API_KEY: process.env.EXPO_PUBLIC_GOOGLE_TRANSLATE_API_KEY || '',
 
     // Clé API Google Maps (Places, Geocoding, etc.)
-    GOOGLE_MAPS_API_KEY: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || 'AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ',
+    GOOGLE_MAPS_API_KEY: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || '',
 
            // URL de l'API backend - Configurable via .env
            // ✅ 2026-02-14: Migration vers GCP Cloud Run

@@ -3,6 +3,7 @@
 use base64::{engine::general_purpose::STANDARD, Engine as _};
 use redis::AsyncCommands;
 use redis::Client as RedisClient;
+use reqwest::header::HeaderValue;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -17,6 +18,33 @@ use whatlang::detect;
 use crate::controllers::ia_status_controller::IAStats;
 use crate::core::types::AppError;
 use crate::core::types::AppResult;
+
+/// Construit un en-tête Authorization valide pour l'API OpenAI.
+/// Trim la clé, supprime les caractères de contrôle (CR, LF, BOM, etc.) qui peuvent
+/// provenir de l'injection de secrets (GCP Secret Manager, etc.) et causer
+/// "failed to parse header value". En cas d'échec, log un diagnostic (longueur, octets).
+fn openai_auth_header_value(api_key: &str) -> Result<HeaderValue, String> {
+    let key = api_key.trim();
+    let key_clean: String = key.chars().filter(|c| !c.is_control()).collect();
+    let value = format!("Bearer {}", key_clean);
+    HeaderValue::from_str(&value).map_err(|e| {
+        let bytes: Vec<u8> = key.bytes().collect();
+        let len = bytes.len();
+        let first5: Vec<u8> = bytes.iter().take(5).copied().collect();
+        let last5: Vec<u8> = bytes[bytes.len().saturating_sub(5)..].to_vec();
+        log::error!(
+            "[AppIA] Authorization header invalid: {}. key_len={}, first5_bytes={:?}, last5_bytes={:?} (check CR/LF/BOM in OPENAI_API_KEY)",
+            e,
+            len,
+            first5,
+            last5
+        );
+        format!(
+            "Invalid OPENAI_API_KEY (header parse failed): {} (key length {}, check CR/LF/BOM in secret)",
+            e, len
+        )
+    })
+}
 
 /// ?? Configuration avanc?e pour les mod?les IA
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -258,7 +286,8 @@ impl AppIA {
 
         // OpenAI GPT-4o (priorit? haute) - Mod?le multimodal le plus avanc?
         match std::env::var("OPENAI_API_KEY") {
-            Ok(api_key) => {
+            Ok(raw_key) => {
+                let api_key = raw_key.trim().to_string();
                 log::info!(
                     "[AppIA] ✅ OPENAI_API_KEY chargée (longueur: {}, préfixe: {}...)",
                     api_key.len(),
@@ -296,43 +325,49 @@ impl AppIA {
         }
 
         // OpenAI GPT-4 Turbo (fallback)
-        if let Ok(api_key) = std::env::var("OPENAI_API_KEY") {
-            models.push(ModelConfig {
-                name: "openai-gpt4o-mini".to_string(),
-                api_key,
-                base_url: "https://api.openai.com/v1".to_string(),
-                model: "gpt-4o-mini".to_string(),
-                temperature: 0.3,       // R?duit pour plus de rapidit?
-                max_tokens: 2000,       // R?duit pour acc?l?rer
-                top_p: 0.8,             // R?duit pour plus de pr?cision
-                frequency_penalty: 0.0, // Supprim? pour acc?l?rer
-                presence_penalty: 0.0,  // Supprim? pour acc?l?rer
-                timeout: 60,            // ✅ Augmenté pour éviter timeouts extrêmes
-                retry_count: 2,         // R?duit ? 2 tentatives
-                priority: 9,
-                cost_per_token: 0.00000015,
-                enabled: true,
-            });
+        if let Ok(raw_key) = std::env::var("OPENAI_API_KEY") {
+            let api_key = raw_key.trim().to_string();
+            if !api_key.is_empty() {
+                models.push(ModelConfig {
+                    name: "openai-gpt4o-mini".to_string(),
+                    api_key,
+                    base_url: "https://api.openai.com/v1".to_string(),
+                    model: "gpt-4o-mini".to_string(),
+                    temperature: 0.3,       // R?duit pour plus de rapidit?
+                    max_tokens: 2000,       // R?duit pour acc?l?rer
+                    top_p: 0.8,             // R?duit pour plus de pr?cision
+                    frequency_penalty: 0.0, // Supprim? pour acc?l?rer
+                    presence_penalty: 0.0,  // Supprim? pour acc?l?rer
+                    timeout: 60,            // ✅ Augmenté pour éviter timeouts extrêmes
+                    retry_count: 2,         // R?duit ? 2 tentatives
+                    priority: 9,
+                    cost_per_token: 0.00000015,
+                    enabled: true,
+                });
+            }
         }
 
         // OpenAI GPT-3.5 Turbo (priorit? moyenne)
-        if let Ok(api_key) = std::env::var("OPENAI_API_KEY") {
-            models.push(ModelConfig {
-                name: "openai-gpt35".to_string(),
-                api_key,
-                base_url: "https://api.openai.com/v1".to_string(),
-                model: "gpt-3.5-turbo".to_string(),
-                temperature: 0.7,
-                max_tokens: 4000,
-                top_p: 0.9,
-                frequency_penalty: 0.1,
-                presence_penalty: 0.1,
-                timeout: 60, // ✅ Augmenté pour éviter timeouts extrêmes
-                retry_count: 3,
-                priority: 8,
-                cost_per_token: 0.000002,
-                enabled: true,
-            });
+        if let Ok(raw_key) = std::env::var("OPENAI_API_KEY") {
+            let api_key = raw_key.trim().to_string();
+            if !api_key.is_empty() {
+                models.push(ModelConfig {
+                    name: "openai-gpt35".to_string(),
+                    api_key,
+                    base_url: "https://api.openai.com/v1".to_string(),
+                    model: "gpt-3.5-turbo".to_string(),
+                    temperature: 0.7,
+                    max_tokens: 4000,
+                    top_p: 0.9,
+                    frequency_penalty: 0.1,
+                    presence_penalty: 0.1,
+                    timeout: 60, // ✅ Augmenté pour éviter timeouts extrêmes
+                    retry_count: 3,
+                    priority: 8,
+                    cost_per_token: 0.000002,
+                    enabled: true,
+                });
+            }
         }
 
         // Mistral AI (priorit? haute)
@@ -1242,10 +1277,12 @@ Réponds SEULEMENT le JSON, rien d'autre.",
             "stream": false
         });
 
+        let auth = openai_auth_header_value(&model.api_key)
+            .map_err(|e| format!("OpenAI API error: {}", e))?;
         let response = self
             .http
             .post(&url)
-            .header("Authorization", format!("Bearer {}", model.api_key))
+            .header("Authorization", auth)
             .header("Content-Type", "application/json")
             .json(&payload)
             .timeout(Duration::from_secs(model.timeout))
@@ -1868,10 +1905,12 @@ Réponds SEULEMENT le JSON, rien d'autre.",
             "stream": false
         });
 
+        let auth = openai_auth_header_value(&model.api_key)
+            .map_err(|e| format!("OpenAI multimodal API error: {}", e))?;
         let response = self
             .http
             .post(&url)
-            .header("Authorization", format!("Bearer {}", model.api_key))
+            .header("Authorization", auth)
             .header("Content-Type", "application/json")
             .json(&payload)
             .timeout(Duration::from_secs(model.timeout))
@@ -2466,11 +2505,15 @@ Réponds SEULEMENT le JSON, rien d'autre.",
             match model_name {
                 "openai-gpt4o" => {
                     let client = Client::new();
-                    let api_key = std::env::var("OPENAI_API_KEY").unwrap_or_default();
+                    let api_key =
+                        std::env::var("OPENAI_API_KEY").unwrap_or_default().trim().to_string();
 
                     if api_key.is_empty() {
                         return Err("OPENAI_API_KEY non configur?e".into());
                     }
+
+                    let auth =
+                        openai_auth_header_value(&api_key).map_err(|e| AppError::Internal(e))?;
 
                     let request_body = json!({
                         "model": "gpt-4o",
@@ -2482,7 +2525,7 @@ Réponds SEULEMENT le JSON, rien d'autre.",
 
                     let response = client
                         .post("https://api.openai.com/v1/chat/completions")
-                        .header("Authorization", format!("Bearer {}", api_key))
+                        .header("Authorization", auth)
                         .header("Content-Type", "application/json")
                         .json(&request_body)
                         .timeout(Duration::from_secs(10)) // Timeout HTTP r?duit

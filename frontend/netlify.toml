@@ -8,14 +8,15 @@
   VITE_APP_DEBUG = "false"
 
 # ✅ 2026-02-14: Migration vers GCP Cloud Run
-# Backend GCP: https://yukpo-backend-yukpo-project.a.run.app
+# Backend GCP: https://yukpo-backend-376093909298.europe-west1.run.app
+# ⚠️ CORRIGÉ 2026-02-20: URL mise à jour vers l'URL réelle qui fonctionne
 # ⚠️ AWS (ancien backend, commenté pour utilisation future):
 # - https://api.yukpomnang.com (Cloudflare → AWS ECS)
 # - https://yukpomnang-backend-alb-2043939972.us-east-1.elb.amazonaws.com (AWS ALB direct)
 
 [[redirects]]
   from = "/api/*"
-  to = "https://yukpo-backend-yukpo-project.a.run.app/api/:splat"
+  to = "https://yukpo-backend-376093909298.europe-west1.run.app/api/:splat"
   # to = "https://api.yukpomnang.com/api/:splat"  # ⚠️ AWS (ancien)
   status = 200
   force = true
@@ -23,7 +24,7 @@
 
 [[redirects]]
   from = "/auth/*"
-  to = "https://yukpo-backend-yukpo-project.a.run.app/auth/:splat"
+  to = "https://yukpo-backend-376093909298.europe-west1.run.app/auth/:splat"
   # to = "https://api.yukpomnang.com/auth/:splat"  # ⚠️ AWS (ancien)
   status = 200
   force = true
@@ -31,7 +32,7 @@
 
 [[redirects]]
   from = "/services/*"
-  to = "https://yukpo-backend-yukpo-project.a.run.app/services/:splat"
+  to = "https://yukpo-backend-376093909298.europe-west1.run.app/services/:splat"
   # to = "https://api.yukpomnang.com/services/:splat"  # ⚠️ AWS (ancien)
   status = 200
   force = true
@@ -39,7 +40,7 @@
 
 [[redirects]]
   from = "/healthz"
-  to = "https://yukpo-backend-yukpo-project.a.run.app/healthz"
+  to = "https://yukpo-backend-376093909298.europe-west1.run.app/healthz"
   # to = "https://api.yukpomnang.com/healthz"  # ⚠️ AWS (ancien)
   status = 200
   force = true
@@ -47,7 +48,7 @@
 
 [[redirects]]
   from = "/prestataire/*"
-  to = "https://yukpo-backend-yukpo-project.a.run.app/prestataire/:splat"
+  to = "https://yukpo-backend-376093909298.europe-west1.run.app/prestataire/:splat"
   # to = "https://api.yukpomnang.com/prestataire/:splat"  # ⚠️ AWS (ancien)
   status = 200
   force = true
@@ -55,7 +56,7 @@
 
 [[redirects]]
   from = "/user/*"
-  to = "https://yukpo-backend-yukpo-project.a.run.app/user/:splat"
+  to = "https://yukpo-backend-376093909298.europe-west1.run.app/user/:splat"
   # to = "https://api.yukpomnang.com/user/:splat"  # ⚠️ AWS (ancien)
   status = 200
   force = true
@@ -63,7 +64,7 @@
 
 [[redirects]]
   from = "/users/*"
-  to = "https://yukpo-backend-yukpo-project.a.run.app/users/:splat"
+  to = "https://yukpo-backend-376093909298.europe-west1.run.app/users/:splat"
   # to = "https://api.yukpomnang.com/users/:splat"  # ⚠️ AWS (ancien)
   status = 200
   force = true
@@ -71,7 +72,7 @@
 
 [[redirects]]
   from = "/ia/*"
-  to = "https://yukpo-backend-yukpo-project.a.run.app/ia/:splat"
+  to = "https://yukpo-backend-376093909298.europe-west1.run.app/ia/:splat"
   # to = "https://api.yukpomnang.com/ia/:splat"  # ⚠️ AWS (ancien)
   status = 200
   force = true
@@ -79,7 +80,7 @@
 
 [[redirects]]
   from = "/ws/*"
-  to = "wss://yukpo-backend-yukpo-project.a.run.app/ws/:splat"
+  to = "wss://yukpo-backend-376093909298.europe-west1.run.app/ws/:splat"
   # to = "wss://api.yukpomnang.com/ws/:splat"  # ⚠️ AWS (ancien)
   status = 200
   force = true
@@ -87,7 +88,7 @@
 
 [[redirects]]
   from = "/fournitures/*"
-  to = "https://yukpo-backend-yukpo-project.a.run.app/fournitures/:splat"
+  to = "https://yukpo-backend-376093909298.europe-west1.run.app/fournitures/:splat"
   # to = "https://api.yukpomnang.com/fournitures/:splat"  # ⚠️ AWS (ancien)
   status = 200
   force = true
@@ -95,7 +96,7 @@
 
 [[redirects]]
   from = "/echange/*"
-  to = "https://yukpo-backend-yukpo-project.a.run.app/echange/:splat"
+  to = "https://yukpo-backend-376093909298.europe-west1.run.app/echange/:splat"
   # to = "https://api.yukpomnang.com/echange/:splat"  # ⚠️ AWS (ancien)
   status = 200
   force = true

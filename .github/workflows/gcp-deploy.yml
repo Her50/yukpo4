@@ -248,7 +248,7 @@ jobs:
                 --port 8080 \
                 --startup-probe=timeoutSeconds=10,periodSeconds=15,initialDelaySeconds=90,failureThreshold=20,httpGet.port=8080,httpGet.path=/health \
                 --set-env-vars="$ENV_VARS" \
-                --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,MONGODB_URL=mongodb-url:latest" \
+                --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,MONGODB_URL=mongodb-url:latest,OPENAI_API_KEY=openai-api-key:latest" \
                 --set-cloudsql-instances="$CLOUD_SQL_INSTANCE" \
                 --memory 2Gi \
                 --cpu 2 \
@@ -270,7 +270,7 @@ jobs:
                 --allow-unauthenticated \
                 --port 8080 \
                 --startup-probe=timeoutSeconds=10,periodSeconds=15,initialDelaySeconds=90,failureThreshold=20,httpGet.port=8080,httpGet.path=/health \
-                --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,MONGODB_URL=mongodb-url:latest" \
+                --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,MONGODB_URL=mongodb-url:latest,OPENAI_API_KEY=openai-api-key:latest" \
                 --set-cloudsql-instances="$CLOUD_SQL_INSTANCE" \
                 --memory 2Gi \
                 --cpu 2 \
@@ -299,7 +299,7 @@ jobs:
               --port 8080 \
               --startup-probe=timeoutSeconds=10,periodSeconds=15,initialDelaySeconds=90,failureThreshold=20,httpGet.port=8080,httpGet.path=/health \
               --env-vars-file ${{ steps.prepare-env.outputs.env_file }} \
-              --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,MONGODB_URL=mongodb-url:latest" \
+              --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,MONGODB_URL=mongodb-url:latest,OPENAI_API_KEY=openai-api-key:latest" \
               --set-cloudsql-instances="$CLOUD_SQL_INSTANCE" \
               --memory 2Gi \
               --cpu 2 \

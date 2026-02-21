@@ -17,7 +17,8 @@ const VITE_ENV = import.meta.env.VITE_ENVIRONMENT || 'production';
 // - En prod Netlify/Vercel: utilise proxy (pas de CORS)
 // - En dev/prod ailleurs: utilise le backend GCP Cloud Run
 // ✅ 2026-02-14: Migration vers GCP Cloud Run
-// Backend GCP: https://yukpo-backend-yukpo-project.a.run.app
+// Backend GCP: https://yukpo-backend-376093909298.europe-west1.run.app
+// ⚠️ CORRIGÉ 2026-02-20: URL mise à jour vers l'URL réelle qui fonctionne
 // ⚠️ AWS (ancien backend, commenté pour utilisation future):
 // - https://api.yukpomnang.com (Cloudflare → AWS ECS)
 // - https://yukpomnang-backend-alb-2043939972.us-east-1.elb.amazonaws.com (AWS ALB direct)
@@ -25,12 +26,13 @@ const isNetlify = typeof window !== 'undefined' && window.location.hostname.incl
 const isVercel = typeof window !== 'undefined' && (window.location.hostname.includes('vercel.app') || window.location.hostname.includes('yukpomnang.com'));
 
 // ✅ GCP Cloud Run (nouveau backend)
-const GCP_BACKEND_URL = 'https://yukpo-backend-yukpo-project.a.run.app';
+// ⚠️ CORRIGÉ 2026-02-20: URL mise à jour vers l'URL réelle qui fonctionne
+const GCP_BACKEND_URL = 'https://yukpo-backend-376093909298.europe-west1.run.app';
 // ⚠️ AWS (ancien backend, commenté pour utilisation future)
 // const AWS_BACKEND_URL = 'https://api.yukpomnang.com';
 
 export const API_BASE_URL = VITE_API_URL || ((isNetlify || isVercel) ? '' : GCP_BACKEND_URL);
-export const WS_BASE_URL = VITE_WS_URL || `wss://yukpo-backend-yukpo-project.a.run.app`;
+export const WS_BASE_URL = VITE_WS_URL || `wss://yukpo-backend-376093909298.europe-west1.run.app`;
 
 // Log pour vérifier la configuration chargée (seulement en développement)
 if (import.meta.env.DEV) {
