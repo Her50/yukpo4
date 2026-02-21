@@ -1,4 +1,4 @@
-﻿# ... existing code ...
+# ... existing code ...
 
 # AWS Infrastructure
 infra/aws/terraform.tfvars
@@ -65,3 +65,13 @@ scripts/migrate-simple-fast.ps1
 gcp-sa-key.json
 gcp-env-vars.json
 *.json.key
+
+# Config with secrets (use env / EAS Secrets instead)
+production.json
+production (*).json
+eas_working.json
+LIENS_AWS_IRLANDE_PRODUCTION.json
+cloud-run-config.json
+cloud-run-env-check.json
+mobile/google-services.json
+mobile/android/app/google-services.json

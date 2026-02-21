@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "130064615448",
+    "project_id": "yukpomnang-93cb4",
+    "storage_bucket": "yukpomnang-93cb4.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:130064615448:android:59785afc4b944c9e555b6d",
+        "android_client_info": {
+          "package_name": "com.yukpomnang.mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "SET_VIA_FIREBASE_CONSOLE_OR_LOCAL"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
