@@ -6,7 +6,7 @@
 
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -209,6 +209,22 @@ const AjouterProduitSimpleScreen: React.FC = () => {
         isPrestation: boolean;
         isDuplicate?: boolean; // ✅ NOUVEAU: Indique si c'est une duplication
     } | null>(null);
+
+    // ✅ Phase de lancement (LAUNCH_PHASE_START_DATE) : coût affiché (0 = gratuit)
+    const [productAddCost, setProductAddCost] = useState<number | null>(null);
+    const [productAddIsFree, setProductAddIsFree] = useState<boolean | null>(null);
+
+    useEffect(() => {
+        if (!user?.id) return;
+        apiGet<{ cost: number; is_free: boolean }>('/api/users/product-add-cost')
+            .then((res) => {
+                if (res.success && res.data) {
+                    setProductAddCost(res.data.is_free ? 0 : res.data.cost);
+                    setProductAddIsFree(res.data.is_free);
+                }
+            })
+            .catch(() => {});
+    }, [user?.id]);
 
     // ✅ FONCTION HELPER: Extraire valeur avec fallback intelligent (IDENTIQUE AU GRAND FORMULAIRE)
     const extractValue = (field: any): any => {
@@ -1307,13 +1323,19 @@ const AjouterProduitSimpleScreen: React.FC = () => {
         }
 
         // ✅ CORRECTION CRITIQUE: Afficher la confirmation IMMÉDIATEMENT (avant toute opération lourde)
-        // Cela permet à l'utilisateur de voir immédiatement le coût avant confirmation
-        // Le toast/Alert doit apparaître instantanément au clic
+        // ✅ Phase de lancement (LAUNCH_PHASE_START_DATE) : coût 0 si gratuit, sinon 2000 FCFA
         try {
-            // ✅ ÉTAPE 1 : Vérifier le solde RAPIDEMENT (sans upload médias)
-            const COUT_AJOUT_PRODUIT = 2000;
-            console.log('💰 [AjouterProduitSimple] Vérification rapide du solde pour affichage coût...');
-            const balanceResponse = await apiGet<{ tokens_balance: number }>('/api/users/balance');
+            // ✅ ÉTAPE 1 : Coût effectif (backend = phase lancement ou 1er produit = gratuit)
+            console.log('💰 [AjouterProduitSimple] Vérification coût effectif et solde...');
+            const [costResponse, balanceResponse] = await Promise.all([
+                apiGet<{ cost: number; is_free: boolean }>('/api/users/product-add-cost'),
+                apiGet<{ tokens_balance: number }>('/api/users/balance')
+            ]);
+
+            const effectiveCost = (costResponse.success && costResponse.data)
+                ? (costResponse.data.is_free ? 0 : costResponse.data.cost)
+                : 2000; // fallback si API absente
+            const isFree = effectiveCost === 0;
 
             if (!balanceResponse.success) {
                 const errorMsg = balanceResponse.error || 'Impossible de vérifier votre solde';
@@ -1321,7 +1343,6 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                 Alert.alert('Erreur', errorMsg);
                 return;
             }
-
             if (!balanceResponse.data || typeof balanceResponse.data.tokens_balance === 'undefined') {
                 console.error('💰 [AjouterProduitSimple] ❌ Données solde invalides:', balanceResponse.data);
                 Alert.alert('Erreur', 'Données de solde invalides reçues du serveur');
@@ -1329,34 +1350,34 @@ const AjouterProduitSimpleScreen: React.FC = () => {
             }
 
             const soldeActuel = balanceResponse.data.tokens_balance || 0;
-            console.log('💰 [AjouterProduitSimple] ✅ Solde actuel récupéré:', soldeActuel);
+            console.log('💰 [AjouterProduitSimple] ✅ Solde:', soldeActuel, 'Coût effectif:', effectiveCost, isFree ? '(gratuit - phase lancement)' : 'FCFA');
 
-            // Vérifier si le solde est suffisant
-            if (soldeActuel < COUT_AJOUT_PRODUIT) {
+            // Bloquer seulement si coût > 0 et solde insuffisant
+            if (effectiveCost > 0 && soldeActuel < effectiveCost) {
                 Alert.alert(
                     '💸 Solde insuffisant',
-                    `Coût d'ajout de produit : ${COUT_AJOUT_PRODUIT.toLocaleString()} FCFA\nVotre solde : ${soldeActuel.toLocaleString()} FCFA\n\nVeuillez recharger votre compte pour ajouter ce produit.`,
+                    `Coût d'ajout de produit : ${effectiveCost.toLocaleString()} FCFA\nVotre solde : ${soldeActuel.toLocaleString()} FCFA\n\nVeuillez recharger votre compte pour ajouter ce produit.`,
                     [{ text: 'OK' }]
                 );
                 return;
             }
 
-            // ✅ ÉTAPE 2 : Afficher la confirmation IMMÉDIATEMENT (toast instantané)
+            // ✅ ÉTAPE 2 : Confirmation avec message adapté (gratuit ou coût)
             const actionTitle = isDuplicate ? '💰 Duplication de produit' : '💰 Ajout de produit';
-            const confirmationMessage =
-                `Coût : ${COUT_AJOUT_PRODUIT.toLocaleString()} FCFA\n` +
-                `Votre solde : ${soldeActuel.toLocaleString()} FCFA\n` +
-                `Solde après ${isDuplicate ? 'duplication' : 'ajout'} : ${(soldeActuel - COUT_AJOUT_PRODUIT).toLocaleString()} FCFA\n\n` +
-                (isDuplicate
-                    ? 'Confirmez-vous la duplication de ce produit sur votre service ?'
-                    : 'Confirmez-vous l\'ajout de ce produit à votre service ?');
+            const confirmationMessage = isFree
+                ? `🆓 Gratuit (période de lancement)\n\nConfirmez-vous l'${isDuplicate ? 'duplication' : 'ajout'} de ce produit à votre service ?`
+                : `Coût : ${effectiveCost.toLocaleString()} FCFA\n` +
+                  `Votre solde : ${soldeActuel.toLocaleString()} FCFA\n` +
+                  `Solde après ${isDuplicate ? 'duplication' : 'ajout'} : ${(soldeActuel - effectiveCost).toLocaleString()} FCFA\n\n` +
+                  (isDuplicate
+                      ? 'Confirmez-vous la duplication de ce produit sur votre service ?'
+                      : 'Confirmez-vous l\'ajout de ce produit à votre service ?');
 
-            console.log('[AjouterProduitSimple] 📋 Affichage confirmation création produit:', {
+            console.log('[AjouterProduitSimple] 📋 Confirmation création produit:', {
                 serviceId,
-                hasUser: !!user,
-                userId: user?.id,
                 productName: formValues.nom_produit,
-                cost: COUT_AJOUT_PRODUIT,
+                cost: effectiveCost,
+                is_free: isFree,
                 balance: soldeActuel
             });
 
@@ -1709,9 +1730,8 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                     return;
                                 }
 
-                                // ✅ ÉTAPE 4 : Appeler /api/services/{serviceId}/products
+                                // ✅ ÉTAPE 4 : Appeler /api/services/{serviceId}/products (effectiveCost = 0 si phase lancement)
                                 const userId = parseInt(user?.id || '0', 10);
-                                const COUT_AJOUT_PRODUIT = 2000;
                                 const soldeActuel = balanceResponse.data.tokens_balance || 0;
 
                                 if (!userId || userId === 0) {
@@ -1824,8 +1844,8 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                 }
 
                                 const responseData: any = response.data ?? {};
-                                const costPaid = Number(responseData.cost ?? COUT_AJOUT_PRODUIT);
-                                const newBalanceValue = Number(responseData.new_balance ?? (soldeActuel - COUT_AJOUT_PRODUIT));
+                                const costPaid = Number(responseData.cost ?? effectiveCost);
+                                const newBalanceValue = Number(responseData.new_balance ?? (soldeActuel - effectiveCost));
                                 
                                 // ✅ NOUVEAU 2026-01-02: Vérifier si c'est une queue asynchrone (job_id présent)
                                 const jobId = responseData.job_id;
@@ -2576,12 +2596,14 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                             style={styles.submitButton}
                         />
 
-                        {/* Coût */}
+                        {/* Coût (phase lancement = gratuit) */}
                         {!isEditing && (
                             <View style={styles.costInfo}>
                                 <SafeIcon name="info" size={16} color={modernColors.textSecondary} />
                                 <Text style={styles.costText}>
-                                    {`Coût: 2000 FCFA (Solde: ${(user?.credits || 0).toLocaleString('fr-FR')} FCFA)`}
+                                    {productAddIsFree === true
+                                        ? '🆓 Gratuit (période de lancement)'
+                                        : `Coût: ${(productAddCost ?? 2000).toLocaleString('fr-FR')} FCFA (Solde: ${(user?.credits ?? 0).toLocaleString('fr-FR')} FCFA)`}
                                 </Text>
                             </View>
                         )}

@@ -42,7 +42,7 @@
                                                   "credentialsSource":  "remote",
                                                   "image":  "latest",
                                                   "withoutCredentials":  false,
-                                                  "prebuildCommand":  "rm -rf android/app/build android/build android/.gradle || true; if [ -n \"$GOOGLE_SERVICES_JSON\" ] && [ -f \"$GOOGLE_SERVICES_JSON\" ]; then cp \"$GOOGLE_SERVICES_JSON\" google-services.json && cp \"$GOOGLE_SERVICES_JSON\" android/app/google-services.json; fi"
+                                                  "prebuildCommand":  "rm -rf android/app/build android/build android/.gradle || true"
                                               }
                               },
                   "production":  {
@@ -76,7 +76,7 @@
                                                      "credentialsSource":  "remote",
                                                      "image":  "latest",
                                                      "withoutCredentials":  false,
-                                                     "prebuildCommand":  "rm -rf android/app/build android/build android/.gradle || true; if [ -n \"$GOOGLE_SERVICES_JSON\" ] && [ -f \"$GOOGLE_SERVICES_JSON\" ]; then cp \"$GOOGLE_SERVICES_JSON\" google-services.json && cp \"$GOOGLE_SERVICES_JSON\" android/app/google-services.json; fi"
+                                                     "prebuildCommand":  "rm -rf android/app/build android/build android/.gradle || true"
                                                  }
                                  }
               },

@@ -1,0 +1,11 @@
+---
+description: Éviter la régression "curseur saute du champ" dans le formulaire intelligent
+globs: mobile/src/components/StableTextInput.tsx, mobile/src/screens/FormulaireYukpoIntelligentScreen.tsx
+alwaysApply: false
+---
+name: StableTextInput - pas de régression focus
+description: En modifiant StableTextInput ou le formulaire intelligent, ne pas réintroduire le bug où le curseur saute hors du champ pendant la saisie.
+promptContext:
+  rules:
+    - "StableTextInput : le comparateur React.memo NE DOIT PAS inclure prevProps.style === nextProps.style. Le parent (FormulaireYukpoIntelligentScreen) passe toujours style={[styles.x, ...]} (nouvelle ref à chaque render). Comparer style forcerait un re-render de tous les champs à chaque setState du formulaire et ferait perdre le focus (curseur saute)."
+    - "Si tu modifies le memo de StableTextInput, garder la comparaison sur value, placeholder, keyboardType, multiline, editable uniquement."

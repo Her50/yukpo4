@@ -1,6 +1,11 @@
 /**
  * ✅ COMPOSANT STABLE POUR INPUT TEXT
- * Évite les sauts de curseur en gérant l'état local et en évitant les re-renders pendant la saisie
+ * Évite les sauts de curseur en gérant l'état local et en évitant les re-renders pendant la saisie.
+ *
+ * ⚠️ RÈGLE ANTI-REGRESSION (FormulaireYukpoIntelligentScreen) :
+ * - Le React.memo en bas de fichier NE DOIT PAS comparer `style` (prevProps.style === nextProps.style).
+ * - Le parent passe style={[styles.x, ...]} → nouvelle ref à chaque render → si on compare style,
+ *   tous les inputs re-rendent et le curseur saute du champ. Ne pas réintroduire cette comparaison.
  */
 
 import React, { useRef, useEffect, useCallback, useState } from 'react';
@@ -138,12 +143,15 @@ const styles = StyleSheet.create({
 });
 
 // ✅ Mémoriser le composant pour éviter les re-renders inutiles du parent
+// CORRECTION CRITIQUE: Ne PAS comparer style (prevProps.style === nextProps.style).
+// Le parent passe souvent style={[styles.x, ...]} donc une nouvelle ref à chaque render,
+// ce qui forçait un re-render de tous les inputs et faisait sauter le curseur (perte de focus).
+// On compare uniquement les props qui changent la valeur/affichage; le style est appliqué au prochain render naturel (ex. au blur).
 export default React.memo(StableTextInput, (prevProps, nextProps) => {
-  // Ne re-render que si la valeur externe change ET que l'input n'est pas focus
-  // (géré en interne par le composant)
   return prevProps.value === nextProps.value &&
          prevProps.placeholder === nextProps.placeholder &&
          prevProps.keyboardType === nextProps.keyboardType &&
-         prevProps.style === nextProps.style;
+         prevProps.multiline === nextProps.multiline &&
+         prevProps.editable === nextProps.editable;
 });
 

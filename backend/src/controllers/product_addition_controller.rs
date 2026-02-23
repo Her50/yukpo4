@@ -651,10 +651,21 @@ pub async fn add_product_to_service(
     mod service_costs {
         pub const COST_NEW_PRODUCT_DUPLICATE_XAF: i64 = 2000;
     }
-    let cout_ajout = service_costs::COST_NEW_PRODUCT_DUPLICATE_XAF;
+    let cost_base = service_costs::COST_NEW_PRODUCT_DUPLICATE_XAF;
 
-    // ✅ Vérifier le solde (avec retry)
+    // ✅ Phase de lancement : si l'utilisateur peut créer gratuitement, coût = 0 (variable LAUNCH_PHASE_START_DATE)
     let pool = state.pg.clone();
+    let is_free = crate::services::launch_phase_service::can_create_product_free(&pool, user.id)
+        .await
+        .unwrap_or(false);
+    let cout_ajout = if is_free { 0 } else { cost_base };
+    if is_free {
+        log_info(
+            "[add_product_to_service] 🆓 Création gratuite (phase de lancement ou 1er produit)",
+        );
+    }
+
+    // ✅ Vérifier le solde (avec retry) — inutile si gratuit
     let current_balance_result = crate::utils::db_retry::retry_query(
         &pool,
         || {
@@ -696,43 +707,48 @@ pub async fn add_product_to_service(
         )));
     }
 
-    // ✅ Débiter le solde (avec retry)
-    let pool = state.pg.clone();
-    let debit_result = crate::utils::db_retry::retry_query(
-        &pool,
-        || {
-            let cout_ajout_clone = cout_ajout;
-            let user_id_clone = user.id;
-            let pool_clone = pool.clone();
-            Box::pin(async move {
-                sqlx::query(
-                    "UPDATE users SET tokens_balance = tokens_balance - $1 WHERE id = $2 RETURNING tokens_balance"
-                )
-                .bind(cout_ajout_clone)
-                .bind(user_id_clone)
-                .fetch_one(&pool_clone)
-                .await
-            })
-        },
-        3, // 3 tentatives max
-    )
-    .await;
+    // ✅ Débiter le solde seulement si coût > 0 (avec retry)
+    let new_balance = if cout_ajout == 0 {
+        current_balance
+    } else {
+        let debit_result = crate::utils::db_retry::retry_query(
+            &pool,
+            || {
+                let cout_ajout_clone = cout_ajout;
+                let user_id_clone = user.id;
+                let pool_clone = pool.clone();
+                Box::pin(async move {
+                    sqlx::query(
+                        "UPDATE users SET tokens_balance = tokens_balance - $1 WHERE id = $2 RETURNING tokens_balance"
+                    )
+                    .bind(cout_ajout_clone)
+                    .bind(user_id_clone)
+                    .fetch_one(&pool_clone)
+                    .await
+                })
+            },
+            3, // 3 tentatives max
+        )
+        .await;
 
-    let new_balance = match debit_result {
-        Ok(row) => row.try_get::<i64, _>("tokens_balance").unwrap_or(0),
-        Err(e) => {
-            log_error(&format!(
-                "[add_product_to_service] Échec débit solde: {}",
-                e
-            ));
-            return Err(AppError::Internal(format!("Erreur débit solde: {}", e)));
+        match debit_result {
+            Ok(row) => row.try_get::<i64, _>("tokens_balance").unwrap_or(0),
+            Err(e) => {
+                log_error(&format!(
+                    "[add_product_to_service] Échec débit solde: {}",
+                    e
+                ));
+                return Err(AppError::Internal(format!("Erreur débit solde: {}", e)));
+            }
         }
     };
 
-    log_info(&format!(
-        "[add_product_to_service] ✅ Solde débité: {} FCFA (ancien: {}, nouveau: {})",
-        cout_ajout, current_balance, new_balance
-    ));
+    if cout_ajout > 0 {
+        log_info(&format!(
+            "[add_product_to_service] ✅ Solde débité: {} FCFA (ancien: {}, nouveau: {})",
+            cout_ajout, current_balance, new_balance
+        ));
+    }
 
     // ✅ NOUVEAU 2026-01-02: Utiliser la queue asynchrone au lieu de traiter directement
     // Cela évite les timeouts et erreurs TLS en traitant les créations en arrière-plan

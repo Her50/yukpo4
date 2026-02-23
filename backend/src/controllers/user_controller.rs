@@ -216,6 +216,30 @@ pub async fn get_user_balance(
     }))
 }
 
+/// Coût fixe pour ajouter un produit (aligné avec product_addition_controller)
+const COST_ADD_PRODUCT_XAF: i64 = 2000;
+
+#[derive(Serialize)]
+pub struct ProductAddCostResponse {
+    /// Coût effectif en FCFA (0 si phase de lancement ou 1er produit)
+    pub cost: i64,
+    /// true si création gratuite (LAUNCH_PHASE_START_DATE / 1er produit)
+    pub is_free: bool,
+}
+
+/// GET /api/users/product-add-cost - Coût effectif pour ajouter un produit (phase de lancement = 0)
+pub async fn get_product_add_cost(
+    Extension(user): Extension<AuthenticatedUser>,
+    State(state): State<Arc<AppState>>,
+) -> AppResult<Json<ProductAddCostResponse>> {
+    let is_free =
+        crate::services::launch_phase_service::can_create_product_free(&state.pg, user.id)
+            .await
+            .unwrap_or(false);
+    let cost = if is_free { 0 } else { COST_ADD_PRODUCT_XAF };
+    Ok(Json(ProductAddCostResponse { cost, is_free }))
+}
+
 // Placeholder functions - à implémenter selon les besoins
 pub async fn deduct_balance(
     Extension(_user): Extension<AuthenticatedUser>,

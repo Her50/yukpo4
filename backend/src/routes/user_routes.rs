@@ -6,9 +6,9 @@ use std::sync::Arc;
 
 use crate::controllers::user_controller::{
     change_password, deduct_balance, delete_user_data, export_user_data, get_consumption_history,
-    get_payment_history, get_user_balance, get_user_by_id, get_user_conversations,
-    get_user_profile, purchase_pack, recharge_tokens, update_gps_consent, update_gps_location,
-    update_user_profile,
+    get_payment_history, get_product_add_cost, get_user_balance, get_user_by_id,
+    get_user_conversations, get_user_profile, purchase_pack, recharge_tokens, update_gps_consent,
+    update_gps_location, update_user_profile,
 };
 use crate::middlewares::jwt::jwt_auth;
 use crate::state::AppState;
@@ -20,6 +20,7 @@ pub fn user_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/api/user/me", put(update_user_profile))
         .route("/api/users/balance", get(get_user_balance))
         .route("/api/wallet/balance", get(get_user_balance)) // ✅ Alias pour compatibilité mobile
+        .route("/api/users/product-add-cost", get(get_product_add_cost)) // ✅ Phase lancement : coût 0 si gratuit
         .route(
             "/api/users/consumption-history",
             get(get_consumption_history),

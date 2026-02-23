@@ -327,20 +327,14 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   }, [blocks, isEditingServiceInfo]);
 
   // ✅ REFONTE: Calculer currentBlock à partir de currentDisplayIndex pour garantir la synchronisation
+  // ⚠️ NE PAS appeler setState (setTimeout/setCurrentDisplayIndex) ici : effet de bord pendant le render
+  // qui provoque des mises à jour asynchrones et fait remonter les blocs → perte de focus (curseur saute).
+  // La correction de currentDisplayIndex est faite uniquement dans le useEffect plus bas.
   const currentBlock = useMemo(() => {
     if (!displayedBlocks || displayedBlocks.length === 0) {
       return 0;
     }
-
-    // ✅ Garantir que currentDisplayIndex est valide
     const validDisplayIndex = Math.max(0, Math.min(currentDisplayIndex, displayedBlocks.length - 1));
-    
-    // ✅ Si currentDisplayIndex a changé, le corriger
-    if (validDisplayIndex !== currentDisplayIndex) {
-      console.warn('[NAVIGATION_SYNC] ⚠️ Correction currentDisplayIndex:', currentDisplayIndex, '→', validDisplayIndex);
-      setTimeout(() => setCurrentDisplayIndex(validDisplayIndex), 0);
-    }
-
     const displayedBlock = displayedBlocks[validDisplayIndex];
     return displayedBlock ? displayedBlock.index : 0;
   }, [displayedBlocks, currentDisplayIndex]);
@@ -1281,8 +1275,11 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     // Validation des champs individuels
     currentBlockData.fields.forEach(field => {
       try {
-        // ✅ CORRECTION CRITIQUE: Extraire la valeur correctement pour éviter les crashes
-        let value = valeursFormulaire[field.name];
+        // ✅ CORRECTION: Utiliser la valeur en attente (pending) si elle existe, sinon valeursFormulaire
+        // Évite de devoir saisir deux fois (ex. WhatsApp) quand on valide sans avoir quitté le champ (blur)
+        let value = pendingValuesRef.current[field.name] !== undefined
+          ? pendingValuesRef.current[field.name]
+          : valeursFormulaire[field.name];
         if (value && typeof value === 'object' && value !== null) {
           // Si c'est un objet complexe, extraire la valeur string
           if ('valeur' in value && typeof value.valeur === 'string') {
@@ -1350,6 +1347,27 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           Alert.alert('Champs invalides', errorMessages.join('\n\n'), [{ text: 'OK' }]);
         }
         return;
+      }
+
+      // ✅ Flush des valeurs en attente (ex. WhatsApp saisi mais pas encore blur) vers le formulaire
+      // pour que la valeur soit bien enregistrée et ne demande pas une seconde saisie
+      const pending = pendingValuesRef.current;
+      if (Object.keys(pending).length > 0) {
+        setValeursFormulaire(prev => {
+          let next = prev;
+          for (const fieldName of Object.keys(pending)) {
+            let v = pending[fieldName];
+            if (fieldName === 'prix' && typeof v === 'string' && v.trim() !== '') {
+              const n = parseFloat(v);
+              if (!isNaN(n)) v = n;
+            }
+            if (next[fieldName] !== v) {
+              next = { ...next, [fieldName]: v };
+            }
+          }
+          return next;
+        });
+        pendingValuesRef.current = {};
       }
 
       // ✅ Effacer les erreurs si la validation réussit
@@ -4098,26 +4116,25 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           }
         }
 
-        // 💰 ÉTAPE 1 : Vérifier le solde (coût fixe : 3000 FCFA pour ajout produit)
-        const COUT_AJOUT_PRODUIT = 3000;
+        // 💰 ÉTAPE 1 : Coût effectif (phase lancement = 0) + solde (backend = 2000 FCFA ou 0 si gratuit)
+        console.log('💰 [FormulaireYukpoIntelligentScreen] Vérification coût effectif et solde pour ajout produit...');
+        const [costResponse, balanceResponse] = await Promise.all([
+          apiGet<{ cost: number; is_free: boolean }>('/api/users/product-add-cost'),
+          apiGet<{ tokens_balance: number }>('/api/users/balance')
+        ]);
 
-        console.log('💰 [FormulaireYukpoIntelligentScreen] Vérification du solde pour ajout produit...');
-        const balanceResponse = await apiGet<{ tokens_balance: number }>('/api/users/balance');
+        const effectiveCost = (costResponse.success && costResponse.data)
+          ? (costResponse.data.is_free ? 0 : costResponse.data.cost)
+          : 2000;
+        const isFree = effectiveCost === 0;
 
         if (!balanceResponse.success) {
           const errorMsg = balanceResponse.error || 'Impossible de vérifier votre solde';
           console.error('💰 [FormulaireYukpoIntelligentScreen] ❌ Erreur vérification solde:', errorMsg);
-
-          // Si problème d'authentification, rediriger vers login
           if (errorMsg.includes('401') || errorMsg.includes('Unauthorized') || errorMsg.includes('authentification')) {
-            Alert.alert(
-              'Session expirée',
-              'Votre session a expiré. Veuillez vous reconnecter.',
-              [{ text: 'OK', onPress: () => logout() }]
-            );
+            Alert.alert('Session expirée', 'Votre session a expiré. Veuillez vous reconnecter.', [{ text: 'OK', onPress: () => logout() }]);
             return;
           }
-
           throw new Error(errorMsg);
         }
 
@@ -4127,22 +4144,24 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         }
 
         const soldeActuel = balanceResponse.data.tokens_balance || 0;
-        console.log('💰 [FormulaireYukpoIntelligentScreen] ✅ Solde actuel récupéré:', soldeActuel);
+        console.log('💰 [FormulaireYukpoIntelligentScreen] ✅ Solde:', soldeActuel, 'Coût effectif:', effectiveCost, isFree ? '(gratuit)' : 'FCFA');
 
-        // Vérifier si le solde est suffisant
-        if (soldeActuel < COUT_AJOUT_PRODUIT) {
+        if (effectiveCost > 0 && soldeActuel < effectiveCost) {
           Alert.alert(
             '💸 Solde insuffisant',
-            `Coût d'ajout de produit : ${COUT_AJOUT_PRODUIT.toLocaleString()} FCFA\nVotre solde : ${soldeActuel.toLocaleString()} FCFA\n\nVeuillez recharger votre compte pour ajouter ce produit.`,
+            `Coût d'ajout de produit : ${effectiveCost.toLocaleString()} FCFA\nVotre solde : ${soldeActuel.toLocaleString()} FCFA\n\nVeuillez recharger votre compte pour ajouter ce produit.`,
             [{ text: 'OK' }]
           );
-          return; // ❌ BLOQUE si solde insuffisant
+          return;
         }
 
-        // 💰 ÉTAPE 2 : Demander confirmation avec affichage du coût
+        // 💰 ÉTAPE 2 : Confirmation (gratuit ou coût)
+        const confirmMessage = isFree
+          ? "🆓 Gratuit (période de lancement)\n\nConfirmez-vous l'ajout de ce produit à votre service ?"
+          : `Coût : ${effectiveCost.toLocaleString()} FCFA\nVotre solde : ${soldeActuel.toLocaleString()} FCFA\nSolde après ajout : ${(soldeActuel - effectiveCost).toLocaleString()} FCFA\n\nConfirmez-vous l'ajout de ce produit à votre service ?`;
         Alert.alert(
           '💰 Ajout de produit',
-          `Coût : ${COUT_AJOUT_PRODUIT.toLocaleString()} FCFA\nVotre solde : ${soldeActuel.toLocaleString()} FCFA\nSolde après ajout : ${(soldeActuel - COUT_AJOUT_PRODUIT).toLocaleString()} FCFA\n\nConfirmez-vous l'ajout de ce produit à votre service ?`,
+          confirmMessage,
           [
             {
               text: 'Annuler',
@@ -4198,9 +4217,9 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   }
 
                   const responseData: any = response.data ?? {};
-                  const costPaid = Number(responseData.cost ?? response.cost ?? COUT_AJOUT_PRODUIT);
+                  const costPaid = Number(responseData.cost ?? response.cost ?? effectiveCost);
                   const newBalanceValue = Number(
-                    responseData.new_balance ?? response.new_balance ?? (soldeActuel - COUT_AJOUT_PRODUIT)
+                    responseData.new_balance ?? response.new_balance ?? (soldeActuel - effectiveCost)
                   );
                   const productIndexResult =
                     responseData.product_index ??
@@ -5560,19 +5579,10 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 >
                   {/* ✅ CORRIGÉ: Utiliser activeBlockData comme source unique de vérité pour garantir la synchronisation */}
                   {activeBlockData ? (() => {
-                    const { block, blockIndex, validDisplayIndex } = activeBlockData;
-                    
-                    // ✅ Log pour debug
-                    console.log('[FormulaireYukpoIntelligentScreen] 📋 Affichage bloc:', {
-                      currentDisplayIndex: validDisplayIndex,
-                      blockId: block.id,
-                      blockTitle: block.title,
-                      blockIcon: block.icon
-                    });
-                    
+                    const { block, blockIndex } = activeBlockData;
                     return (
                       <View
-                        key={`block-${block.id}-${validDisplayIndex}`}
+                        key={`block-${block.id}`}
                         ref={(ref) => {
                           blockRefs.current[blockIndex] = ref;
                         }}
@@ -5590,7 +5600,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                             style={styles.sectionHeader}
                           >
                             {/* ✅ CORRIGÉ: Utiliser activeBlockData.block pour garantir la synchronisation avec currentBlockFields */}
-                            <Text key={`header-title-${block.id}-${validDisplayIndex}`} style={styles.sectionHeaderText}>
+                            <Text key={`header-title-${block.id}`} style={styles.sectionHeaderText}>
                               {block.icon} {block.title}
                             </Text>
                           </LinearGradient>

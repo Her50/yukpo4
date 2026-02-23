@@ -1,59 +1,81 @@
-# ✅ EASIGNORE OPTIMISÉ - Réduit la taille de l'archive de ~377MB à ~130-150MB
+# ✅ EASIGNORE OPTIMISÉ - Réduit la taille de l'archive
+# Si l'archive dépasse encore ~50MB : un .easignore à la racine du repo (yukpomnang2)
+# exclut backend/, frontend/, etc. Toujours lancer : cd mobile && eas build
 
 # ============================================
-# BACKEND RUST (ne doit pas être dans mobile/)
+# RACINE REPO (archive = racine Git) - tout sauf mobile/
+# Préfixe ../ = dossiers au même niveau que mobile/
 # ============================================
 ../backend/
+../frontend/
+../imgsmlr/
+../pgvector/
+../video-renderer/
+../deploy_digitalocean/
+../deployment/
+../infra/
+../monitoring/
+../scripts/
+../config/
+../docs/
+../nginx/
+../billing-support-info/
+../.cursor/
+../justin/
+../dossier_candidature_concours/
+../image_yukpo/
+../pgvector_install/
+../.github/
+../CAMDVI/
+../gcp/
+../.netlify/
+../.vercel/
+../.vscode/
+../env_template/
+../CV_LELE_HERNANDEZ_fichiers/
+../TIMELINE_VIDEO_MARKETING_YUKPO_fichiers/
+../TIMELINE_VIDEO_PRESTATAIRES_YUKPO_fichiers/
+../__pycache__/
+# Sans préfixe (au cas où le matching est depuis la racine archive)
 backend/
+frontend/
 **/backend/
+**/frontend/
 **/target/
 **/*.rs
 **/*.toml
 **/Cargo.lock
-
-# ============================================
-# FRONTEND WEB (ne doit pas être dans mobile/)
-# ============================================
-../frontend/
-frontend/
-**/frontend/
-
-# ============================================
-# AUTRES DOSSIERS RACINE (ne doivent pas être dans mobile/)
-# ============================================
-../imgsmlr/
 imgsmlr/
 **/imgsmlr/
-../pgvector/
 pgvector/
 **/pgvector/
-../video-renderer/
 video-renderer/
 **/video-renderer/
-../deploy_digitalocean/
 deploy_digitalocean/
-**/deploy_digitalocean/
-../deployment/
 deployment/
-**/deployment/
-../infra/
 infra/
 **/infra/
-../monitoring/
 monitoring/
 **/monitoring/
-../scripts/
 scripts/
 **/scripts/
-../config/
 config/
 **/config/
-../docs/
 docs/
 **/docs/
-../nginx/
 nginx/
 **/nginx/
+justin/
+dossier_candidature_concours/
+image_yukpo/
+pgvector_install/
+.github/
+CAMDVI/
+gcp/
+.netlify/
+.vercel/
+.vscode/
+env_template/
 
 # ============================================
 # DEPENDENCIES - EXCLUS COMPLÈTEMENT
@@ -145,6 +167,11 @@ android/**/generated/**
 dist/
 dist-test/
 web-build/
+
+# Sorties EAS build:inspect (éviter d'uploader ~300+ MB)
+archive-inspect/
+archive-check/
+archive-check-*/
 
 # ============================================
 # APK & BINARIES (CRITIQUE - 193MB!)
