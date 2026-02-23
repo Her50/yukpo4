@@ -1481,20 +1481,95 @@ pub fn valider_service_json(data: &serde_json::Value) -> Result<serde_json::Valu
                                     key
                                 )));
                             }
-                            // ✅ NOUVEAU: Vérifier et générer product_labels si manquant pour les prestations
+                            // ✅ Dériver product_labels depuis la première modalité (valeur[0]) pour alignement prestations.
+                            // Object.keys(sous_caracteristiques) ne garantit pas le même ordre que les colonnes dans valeur.
                             if key == "produits" && !obj.contains_key("product_labels") {
                                 if let Some(sous_caracs) =
                                     obj.get("sous_caracteristiques").and_then(|v| v.as_object())
                                 {
-                                    let labels: Vec<String> =
-                                        sous_caracs.keys().map(|k| k.to_string()).collect();
+                                    let labels: Vec<String> = {
+                                        let valeur_arr =
+                                            obj.get("valeur").and_then(|v| v.as_array());
+                                        let sep = obj
+                                            .get("separateur")
+                                            .and_then(|v| v.as_str())
+                                            .unwrap_or(",");
+                                        if let Some(arr) = valeur_arr {
+                                            if !arr.is_empty() {
+                                                if let Some(first_str) =
+                                                    arr.first().and_then(|v| v.as_str())
+                                                {
+                                                    let parts: Vec<&str> = first_str
+                                                        .split(sep)
+                                                        .map(|s| s.trim())
+                                                        .filter(|s| !s.is_empty())
+                                                        .collect();
+                                                    let mut derived: Vec<String> =
+                                                        Vec::with_capacity(parts.len());
+                                                    let mut used: std::collections::HashSet<
+                                                        String,
+                                                    > = std::collections::HashSet::new();
+                                                    for part in &parts {
+                                                        let part_lower = part.to_lowercase();
+                                                        let mut found: Option<String> = None;
+                                                        for (k, val) in sous_caracs.iter() {
+                                                            if used.contains(k) {
+                                                                continue;
+                                                            }
+                                                            let arr = val.as_array();
+                                                            if let Some(arr) = arr {
+                                                                if arr.iter().any(|v| {
+                                                                    v.as_str()
+                                                                        .map(|s| {
+                                                                            s.trim().to_lowercase()
+                                                                                == part_lower
+                                                                        })
+                                                                        .unwrap_or(false)
+                                                                }) {
+                                                                    found = Some(k.clone());
+                                                                    break;
+                                                                }
+                                                            }
+                                                        }
+                                                        if let Some(k) = found {
+                                                            derived.push(k.clone());
+                                                            used.insert(k);
+                                                        }
+                                                    }
+                                                    if derived.len() == parts.len()
+                                                        && !derived.is_empty()
+                                                    {
+                                                        log::info!(
+                                                        "[valider_service_json] ✅ product_labels dérivé depuis première modalité (prestations): {:?}",
+                                                        derived
+                                                    );
+                                                        derived
+                                                    } else {
+                                                        sous_caracs
+                                                            .keys()
+                                                            .map(|k| k.to_string())
+                                                            .collect()
+                                                    }
+                                                } else {
+                                                    sous_caracs
+                                                        .keys()
+                                                        .map(|k| k.to_string())
+                                                        .collect()
+                                                }
+                                            } else {
+                                                sous_caracs.keys().map(|k| k.to_string()).collect()
+                                            }
+                                        } else {
+                                            sous_caracs.keys().map(|k| k.to_string()).collect()
+                                        }
+                                    };
                                     if !labels.is_empty() {
                                         obj.insert(
                                             "product_labels".to_string(),
                                             serde_json::json!(labels),
                                         );
                                         log::info!(
-                                            "[valider_service_json] ✅ product_labels généré automatiquement pour champ '{}': {:?}",
+                                            "[valider_service_json] ✅ product_labels généré pour champ '{}': {:?}",
                                             key,
                                             labels
                                         );

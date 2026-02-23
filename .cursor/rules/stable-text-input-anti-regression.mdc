@@ -4,8 +4,10 @@ globs: mobile/src/components/StableTextInput.tsx, mobile/src/screens/FormulaireY
 alwaysApply: false
 ---
 name: StableTextInput - pas de régression focus
-description: En modifiant StableTextInput ou le formulaire intelligent, ne pas réintroduire le bug où le curseur saute hors du champ pendant la saisie.
+description: En modifiant StableTextInput ou le formulaire intelligent, ne pas réintroduire le bug où le curseur saute hors du champ pendant la saisie (souvent intermittent et plus marqué sur certains téléphones).
 promptContext:
   rules:
-    - "StableTextInput : le comparateur React.memo NE DOIT PAS inclure prevProps.style === nextProps.style. Le parent (FormulaireYukpoIntelligentScreen) passe toujours style={[styles.x, ...]} (nouvelle ref à chaque render). Comparer style forcerait un re-render de tous les champs à chaque setState du formulaire et ferait perdre le focus (curseur saute)."
+    - "StableTextInput : le comparateur React.memo NE DOIT PAS inclure prevProps.style === nextProps.style. Le parent passe toujours style={[styles.x, ...]} (nouvelle ref à chaque render). Comparer style forcerait un re-render de tous les champs et ferait perdre le focus."
     - "Si tu modifies le memo de StableTextInput, garder la comparaison sur value, placeholder, keyboardType, multiline, editable uniquement."
+    - "FormulaireYukpoIntelligentScreen : NE JAMAIS appeler setState (setCurrentDisplayIndex, etc.) depuis un useMemo ou pendant le render (ex. setTimeout dans useMemo). Cela provoque des mises à jour asynchrones et remonte les blocs → perte de focus. La correction d'index doit se faire uniquement dans un useEffect."
+    - "FormulaireYukpoIntelligentScreen : la clé du bloc actif doit rester key=block-${block.id} (sans validDisplayIndex) pour éviter les remontages inutiles quand l'index est seulement recalculé."

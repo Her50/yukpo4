@@ -862,9 +862,41 @@ const AjouterProduitSimpleScreen: React.FC = () => {
             if (suggestionData.product_labels && Array.isArray(suggestionData.product_labels)) {
                 return suggestionData.product_labels;
             }
+            // ✅ PRIORITÉ 6B: Dériver depuis la première modalité (valeur[0]) pour alignement prestations / produits
+            const produitsValeur = suggestionData.produits?.valeur;
+            const rawValeur = Array.isArray(produitsValeur) ? produitsValeur : [];
+            const sep = suggestionData.produits?.separateur ?? ',';
+            const sousCaracsInit = suggestionData.produits?.sous_caracteristiques ?? suggestionData.sous_caracteristiques;
+            if (rawValeur.length > 0 && sousCaracsInit && typeof sousCaracsInit === 'object' && Object.keys(sousCaracsInit).length > 0) {
+                const firstMod = rawValeur[0];
+                if (typeof firstMod === 'string' && firstMod.trim().length > 0) {
+                    const parts = firstMod.split(sep).map((p: string) => p.trim()).filter((p: string) => p.length > 0);
+                    const derived: string[] = [];
+                    const used = new Set<string>();
+                    for (const part of parts) {
+                        const norm = part.toLowerCase().trim();
+                        let keyFound: string | null = null;
+                        for (const k of Object.keys(sousCaracsInit)) {
+                            if (used.has(k)) continue;
+                            const v = (sousCaracsInit as Record<string, unknown>)[k];
+                            const arr = Array.isArray(v) ? v : (v != null ? [String(v)] : []);
+                            if (arr.some((x: string) => String(x).toLowerCase().trim() === norm)) {
+                                keyFound = k;
+                                break;
+                            }
+                        }
+                        if (keyFound) {
+                            derived.push(keyFound);
+                            used.add(keyFound);
+                        }
+                    }
+                    if (derived.length > 0 && derived.length === parts.length) {
+                        console.log('[AjouterProduitSimple] ✅ product_labels dérivé depuis première modalité (init):', derived);
+                        return derived;
+                    }
+                }
+            }
             // ✅ PRIORITÉ 7: Si on a des sous_caracteristiques, extraire les clés comme product_labels (fallback)
-            // ✅ CORRECTION CRITIQUE: Utiliser l'ordre des clés tel qu'elles apparaissent dans l'objet
-            // pour garantir l'alignement correct entre labels et valeurs
             if (suggestionData.produits?.sous_caracteristiques && typeof suggestionData.produits.sous_caracteristiques === 'object') {
                 const keys = Object.keys(suggestionData.produits.sous_caracteristiques);
                 if (keys.length > 0) {
@@ -2290,7 +2322,36 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                         if (Array.isArray(suggestionData?.product_labels) && suggestionData.product_labels.length > 0) {
                                             return suggestionData.product_labels;
                                         }
-                                        // PRIORITÉ 5: Extraire depuis sous_caracteristiques disponibles (fallback)
+                                        // PRIORITÉ 5: Dériver depuis la première modalité (values[0]) puis fallback Object.keys
+                                        const sousCaracsForDerive = updatedSousCaracs || formValues.sous_caracteristiques || suggestionData?.produits?.sous_caracteristiques;
+                                        if (sousCaracsForDerive && typeof sousCaracsForDerive === 'object' && values.length > 0) {
+                                            const firstMod = values[0];
+                                            if (typeof firstMod === 'string' && firstMod.trim().length > 0) {
+                                                const parts = firstMod.split(',').map((p: string) => p.trim()).filter((p: string) => p.length > 0);
+                                                const derived: string[] = [];
+                                                const used = new Set<string>();
+                                                for (const part of parts) {
+                                                    const norm = part.toLowerCase().trim();
+                                                    let keyFound: string | null = null;
+                                                    for (const k of Object.keys(sousCaracsForDerive)) {
+                                                        if (used.has(k)) continue;
+                                                        const v = (sousCaracsForDerive as Record<string, unknown>)[k];
+                                                        const arr = Array.isArray(v) ? v : (v != null ? [String(v)] : []);
+                                                        if (arr.some((x: string) => String(x).toLowerCase().trim() === norm)) {
+                                                            keyFound = k;
+                                                            break;
+                                                        }
+                                                    }
+                                                    if (keyFound) {
+                                                        derived.push(keyFound);
+                                                        used.add(keyFound);
+                                                    }
+                                                }
+                                                if (derived.length > 0 && derived.length === parts.length) {
+                                                    return derived;
+                                                }
+                                            }
+                                        }
                                         if (updatedSousCaracs && typeof updatedSousCaracs === 'object') {
                                             return Object.keys(updatedSousCaracs);
                                         }
@@ -2327,19 +2388,44 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                     if (Array.isArray(suggestionData?.product_labels) && suggestionData.product_labels.length > 0) {
                                         return suggestionData.product_labels;
                                     }
-                                    // PRIORITÉ 5: Extraire depuis sous_caracteristiques disponibles (fallback)
-                                    // ✅ CORRECTION CRITIQUE: Utiliser l'ordre des clés tel qu'elles apparaissent dans l'objet
-                                    // pour garantir l'alignement correct entre labels et valeurs
+                                    // PRIORITÉ 5: Dériver depuis la première modalité puis fallback Object.keys
                                     const sousCaracsComplets = formValues.produits?.sous_caracteristiques
                                         || formValues.sous_caracteristiques
                                         || suggestionData?.produits?.sous_caracteristiques
                                         || suggestionData?.sous_caracteristiques;
                                     if (sousCaracsComplets && typeof sousCaracsComplets === 'object') {
-                                        // ✅ CORRECTION: Utiliser Object.keys() qui préserve l'ordre d'insertion en JavaScript moderne
-                                        // Mais s'assurer que les clés correspondent exactement aux clés de sousCaracteristiques
+                                        const sep = ',';
+                                        const produitsArr = Array.isArray(formValues.produits) ? formValues.produits : [];
+                                        if (produitsArr.length > 0) {
+                                            const firstMod = produitsArr[0];
+                                            if (typeof firstMod === 'string' && firstMod.trim().length > 0) {
+                                                const parts = firstMod.split(sep).map((p: string) => p.trim()).filter((p: string) => p.length > 0);
+                                                const derived: string[] = [];
+                                                const used = new Set<string>();
+                                                for (const part of parts) {
+                                                    const norm = part.toLowerCase().trim();
+                                                    let keyFound: string | null = null;
+                                                    for (const k of Object.keys(sousCaracsComplets)) {
+                                                        if (used.has(k)) continue;
+                                                        const v = (sousCaracsComplets as Record<string, unknown>)[k];
+                                                        const arr = Array.isArray(v) ? v : (v != null ? [String(v)] : []);
+                                                        if (arr.some((x: string) => String(x).toLowerCase().trim() === norm)) {
+                                                            keyFound = k;
+                                                            break;
+                                                        }
+                                                    }
+                                                    if (keyFound) {
+                                                        derived.push(keyFound);
+                                                        used.add(keyFound);
+                                                    }
+                                                }
+                                                if (derived.length > 0 && derived.length === parts.length) {
+                                                    return derived;
+                                                }
+                                            }
+                                        }
                                         const keys = Object.keys(sousCaracsComplets);
                                         if (keys.length > 0) {
-                                            console.log('[AjouterProduitSimple] ✅ productLabels extrait depuis sous_caracteristiques (fallback):', keys);
                                             return keys;
                                         }
                                     }

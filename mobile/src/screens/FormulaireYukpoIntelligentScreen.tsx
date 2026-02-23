@@ -397,23 +397,14 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     const validDisplayIndex = Math.max(0, Math.min(currentDisplayIndex, displayedBlocks.length - 1));
     
     if (validDisplayIndex !== currentDisplayIndex) {
-      console.log('[NAVIGATION_SYNC] 🔄 Correction currentDisplayIndex:', {
-        ancien: currentDisplayIndex,
-        nouveau: validDisplayIndex,
-        totalBlocs: displayedBlocks.length,
-      });
+      if (__DEV__) {
+        console.log('[NAVIGATION_SYNC] 🔄 Correction currentDisplayIndex:', {
+          ancien: currentDisplayIndex,
+          nouveau: validDisplayIndex,
+          totalBlocs: displayedBlocks.length,
+        });
+      }
       setCurrentDisplayIndex(validDisplayIndex);
-    }
-
-    // ✅ Log de synchronisation pour debug
-    const displayedBlock = displayedBlocks[validDisplayIndex];
-    if (displayedBlock) {
-      console.log('[NAVIGATION_SYNC] ✅ Synchronisation OK:', {
-        currentDisplayIndex: validDisplayIndex,
-        currentBlock: displayedBlock.index,
-        blockId: displayedBlock.block.id,
-        blockTitle: displayedBlock.block.title,
-      });
     }
   }, [displayedBlocks, currentDisplayIndex]);
 
@@ -1931,9 +1922,40 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               if (!productLabels && suggestion.data.produits?.product_labels && Array.isArray(suggestion.data.produits.product_labels)) {
                 productLabels = suggestion.data.produits.product_labels.filter((label: any) => typeof label === 'string' && label.trim().length > 0);
               }
-              // PRIORITÉ 5: Extraire depuis sous_caracteristiques disponibles (fallback)
-              // ✅ CORRECTION CRITIQUE: Utiliser l'ordre des clés tel qu'elles apparaissent dans l'objet
-              // pour garantir l'alignement correct entre labels et valeurs
+              // PRIORITÉ 5: Dériver depuis la première modalité (valeur[0]) pour alignement prestations
+              const rawValeur = Array.isArray(fieldData.valeur) ? fieldData.valeur : [];
+              const sep = (fieldData.separateur && typeof fieldData.separateur === 'string') ? fieldData.separateur : ',';
+              const sousCaracs = fieldData.sous_caracteristiques && typeof fieldData.sous_caracteristiques === 'object' ? fieldData.sous_caracteristiques : {};
+              if (!productLabels && rawValeur.length > 0 && Object.keys(sousCaracs).length > 0) {
+                const firstMod = rawValeur[0];
+                if (typeof firstMod === 'string' && firstMod.trim().length > 0) {
+                  const parts = firstMod.split(sep).map((p: string) => p.trim()).filter((p: string) => p.length > 0);
+                  const derived: string[] = [];
+                  const used = new Set<string>();
+                  for (const part of parts) {
+                    const norm = part.toLowerCase().trim();
+                    let keyFound: string | null = null;
+                    for (const k of Object.keys(sousCaracs)) {
+                      if (used.has(k)) continue;
+                      const v = sousCaracs[k];
+                      const arr = Array.isArray(v) ? v : (v != null ? [String(v)] : []);
+                      if (arr.some((x: string) => String(x).toLowerCase().trim() === norm)) {
+                        keyFound = k;
+                        break;
+                      }
+                    }
+                    if (keyFound) {
+                      derived.push(keyFound);
+                      used.add(keyFound);
+                    }
+                  }
+                  if (derived.length > 0 && derived.length === parts.length) {
+                    productLabels = derived;
+                    console.log('[FormulaireYukpoIntelligentScreen] ✅ product_labels dérivé depuis première modalité (init prestations):', productLabels);
+                  }
+                }
+              }
+              // PRIORITÉ 5B: Fallback Object.keys sur fieldData.sous_caracteristiques
               if (!productLabels && fieldData.sous_caracteristiques && typeof fieldData.sous_caracteristiques === 'object') {
                 const keys = Object.keys(fieldData.sous_caracteristiques);
                 if (keys.length > 0) {
@@ -1941,7 +1963,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   console.log('[FormulaireYukpoIntelligentScreen] ✅ productLabels extrait depuis fieldData.sous_caracteristiques (fallback):', keys);
                 }
               }
-              // PRIORITÉ 5B: Vérifier aussi dans suggestion.service_data.data.produits.sous_caracteristiques (pour prestations)
+              // PRIORITÉ 5C: Vérifier aussi dans suggestion.service_data.data.produits.sous_caracteristiques (pour prestations)
               if (!productLabels && suggestion?.service_data?.data?.produits?.sous_caracteristiques && typeof suggestion.service_data.data.produits.sous_caracteristiques === 'object') {
                 const keys = Object.keys(suggestion.service_data.data.produits.sous_caracteristiques);
                 if (keys.length > 0) {
@@ -1949,7 +1971,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   console.log('[FormulaireYukpoIntelligentScreen] ✅ productLabels extrait depuis service_data.data.produits.sous_caracteristiques (fallback):', keys);
                 }
               }
-              // PRIORITÉ 5C: Vérifier aussi dans suggestion.service_data.data.sous_caracteristiques (niveau racine)
+              // PRIORITÉ 5D: Vérifier aussi dans suggestion.service_data.data.sous_caracteristiques (niveau racine)
               if (!productLabels && suggestion?.service_data?.data?.sous_caracteristiques && typeof suggestion.service_data.data.sous_caracteristiques === 'object') {
                 const keys = Object.keys(suggestion.service_data.data.sous_caracteristiques);
                 if (keys.length > 0) {
@@ -2702,14 +2724,45 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         productLabels = suggestion.data.produits.product_labels.filter((label: any) => typeof label === 'string' && label.trim().length > 0);
       }
       // PRIORITÉ 6: Extraire depuis sous_caracteristiques disponibles (fallback)
-      // ✅ CORRECTION CRITIQUE: Utiliser l'ordre des clés tel qu'elles apparaissent dans l'objet
-      // pour garantir l'alignement correct entre labels et valeurs
+      // ✅ CORRECTION PRESTATIONS: Dériver l'ordre des labels depuis la PREMIÈRE MODALITÉ (valeur[0])
+      // pour garantir l'alignement Label/Valeur. Object.keys() ne garantit pas le même ordre que les colonnes dans valeur.
       if (!productLabels && Object.keys(currentSousCaracs).length > 0) {
         // Essayer d'utiliser product_labels depuis valeursFormulaire si disponible et filtré par sous_caracteristiques
         if (valeursFormulaire.product_labels && Array.isArray(valeursFormulaire.product_labels)) {
           productLabels = valeursFormulaire.product_labels.filter((label: any) => typeof label === 'string' && label.trim().length > 0 && currentSousCaracs[label]);
         }
-        // ✅ CORRECTION: Vérifier aussi dans suggestion.service_data.data.produits.sous_caracteristiques (pour prestations)
+        // ✅ PRESTATIONS: Dériver l'ordre depuis la première modalité (ordre des colonnes = ordre des labels)
+        if (!productLabels && currentValues.length > 0 && safeSeparateur) {
+          const firstModality = currentValues[0];
+          if (typeof firstModality === 'string' && firstModality.trim().length > 0) {
+            const parts = firstModality.split(safeSeparateur).map((p: string) => p.trim()).filter((p: string) => p.length > 0);
+            const derivedLabels: string[] = [];
+            const usedKeys = new Set<string>();
+            for (const part of parts) {
+              const normalizedPart = part.toLowerCase().trim();
+              let foundKey: string | null = null;
+              for (const key of Object.keys(currentSousCaracs)) {
+                if (usedKeys.has(key)) continue;
+                const vals = currentSousCaracs[key];
+                const arr = Array.isArray(vals) ? vals : (vals != null ? [String(vals)] : []);
+                const match = arr.some((v: string) => String(v).toLowerCase().trim() === normalizedPart);
+                if (match) {
+                  foundKey = key;
+                  break;
+                }
+              }
+              if (foundKey) {
+                derivedLabels.push(foundKey);
+                usedKeys.add(foundKey);
+              }
+            }
+            if (derivedLabels.length > 0 && derivedLabels.length === parts.length) {
+              productLabels = derivedLabels;
+              console.log('[FormulaireYukpoIntelligentScreen] ✅ productLabels dérivé depuis première modalité (prestations):', productLabels);
+            }
+          }
+        }
+        // Fallback: suggestion.service_data.data.produits.sous_caracteristiques (ordre clés peut être incorrect)
         if (!productLabels && suggestion?.service_data?.data?.produits?.sous_caracteristiques && typeof suggestion.service_data.data.produits.sous_caracteristiques === 'object') {
           const keys = Object.keys(suggestion.service_data.data.produits.sous_caracteristiques);
           if (keys.length > 0) {
@@ -2717,7 +2770,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             console.log('[FormulaireYukpoIntelligentScreen] ✅ productLabels extrait depuis service_data.data.produits.sous_caracteristiques (fallback):', keys);
           }
         }
-        // ✅ CORRECTION: Vérifier aussi dans suggestion.service_data.data.sous_caracteristiques (niveau racine)
         if (!productLabels && suggestion?.service_data?.data?.sous_caracteristiques && typeof suggestion.service_data.data.sous_caracteristiques === 'object') {
           const keys = Object.keys(suggestion.service_data.data.sous_caracteristiques);
           if (keys.length > 0) {
@@ -2725,11 +2777,10 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             console.log('[FormulaireYukpoIntelligentScreen] ✅ productLabels extrait depuis service_data.data.sous_caracteristiques (niveau racine, fallback):', keys);
           }
         }
-        // Dernier recours: utiliser Object.keys() qui préserve l'ordre d'insertion en JavaScript moderne
+        // Dernier recours: Object.keys() (ordre peut ne pas correspondre aux colonnes → incohérence prestations)
         if (!productLabels) {
           productLabels = Object.keys(currentSousCaracs);
-          console.warn('[FormulaireYukpoIntelligentScreen] ⚠️ Utilisation Object.keys() pour productLabels (fallback) - ordre préservé en JavaScript moderne');
-          console.log('[FormulaireYukpoIntelligentScreen] ✅ productLabels extrait depuis currentSousCaracs (fallback):', productLabels);
+          console.warn('[FormulaireYukpoIntelligentScreen] ⚠️ Utilisation Object.keys() pour productLabels (fallback) - risque incohérence label/valeur pour prestations');
         }
       }
 
