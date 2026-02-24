@@ -3075,51 +3075,26 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     }
 
     if (field.typeDonnee === 'location') {
-      // ✅ NOUVEAU: Rendu spécial pour lieu_produit avec ModernGPSModal
+      // ✅ Rendu lieu_produit : même mise en forme que AjouterProduitSimpleScreen (sans rouge vif)
       if (field.name === 'lieu_produit' || field.name === 'lieu_commercial' || field.name === 'lieu_commercialisation') {
         const currentValue = valeursFormulaire[field.name]?.valeur || valeursFormulaire[field.name] || '';
-        // Extraire le nom complet du lieu (place_name) au lieu de seulement la ville
         const displayText = typeof currentValue === 'object' && currentValue !== null
           ? (currentValue.place_name || currentValue.raw || '')
           : (typeof currentValue === 'string' ? currentValue : '');
-        
         const isEmpty = !displayText || displayText.trim() === '';
-        const isRequired = field.required === true;
-        
+
         return (
-          <View key={field.name} style={[
-            styles.fieldContainer,
-            isEmpty && isRequired && styles.fieldContainerRequired // ✅ AMÉLIORÉ: Style spécial si requis et vide
-          ]}>
-            {/* ✅ AMÉLIORÉ 2026-01-12: Label plus visible avec icône et badge requis */}
-            <View style={styles.locationLabelContainer}>
-              <SafeIcon name="map-pin" size={18} color={isRequired && isEmpty ? modernColors.error : modernColors.primary} />
-              <Text style={[
-                styles.label,
-                isRequired && isEmpty && styles.labelRequired // ✅ Style spécial si requis et vide
-              ]}>
-                {field.label}
-                {isRequired && <Text style={styles.required}> *</Text>}
-              </Text>
-              {isRequired && isEmpty && (
-                <View style={styles.requiredBadge}>
-                  <Text style={styles.requiredBadgeText}>OBLIGATOIRE</Text>
-                </View>
-              )}
-            </View>
-            
-            {/* ✅ AMÉLIORÉ: Bouton plus visible avec bordure et fond si vide */}
+          <View key={field.name} style={styles.fieldContainer}>
+            <Text style={styles.label}>
+              {field.label}
+              {field.required === true && <Text style={styles.required}> *</Text>}
+            </Text>
             <TouchableOpacity
-              style={[
-                styles.select,
-                isEmpty && styles.selectEmpty, // ✅ Style spécial si vide
-                isEmpty && isRequired && styles.selectRequiredEmpty // ✅ Style encore plus visible si requis et vide
-              ]}
+              style={[styles.select, isEmpty && styles.selectPlaceholder]}
               onPress={() => {
-                // Récupérer la localisation actuelle si disponible
-                const currentValue = valeursFormulaire[field.name]?.valeur || valeursFormulaire[field.name];
-                if (typeof currentValue === 'object' && currentValue !== null && currentValue.coordinates) {
-                  setSelectedLocation({ lat: currentValue.coordinates.lat, lng: currentValue.coordinates.lng });
+                const val = valeursFormulaire[field.name]?.valeur || valeursFormulaire[field.name];
+                if (typeof val === 'object' && val !== null && val.coordinates) {
+                  setSelectedLocation({ lat: val.coordinates.lat, lng: val.coordinates.lng });
                 } else {
                   setSelectedLocation(null);
                 }
@@ -3128,38 +3103,14 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               }}
               activeOpacity={0.7}
             >
-              <View style={styles.selectContent}>
-                <SafeIcon 
-                  name="map-pin" 
-                  size={22} 
-                  color={isEmpty && isRequired ? modernColors.error : modernColors.primary} 
-                />
-                <Text style={[
-                  styles.selectText, 
-                  isEmpty && styles.selectPlaceholderText,
-                  isEmpty && isRequired && styles.selectRequiredText // ✅ Texte plus visible si requis et vide
-                ]}>
-                  {displayText || field.placeholder || '📍 Cliquez pour sélectionner un lieu...'}
-                </Text>
-              </View>
-              <SafeIcon name="chevron-right" size={20} color={isEmpty && isRequired ? modernColors.error : modernColors.textSecondary} />
+              <Text style={[styles.selectText, isEmpty && styles.selectPlaceholderText]}>
+                {displayText || field.placeholder || 'Sélectionner un lieu...'}
+              </Text>
+              <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
             </TouchableOpacity>
-            
-            {/* ✅ AMÉLIORÉ: Message d'aide plus visible si le champ est vide et requis */}
-            {isEmpty && isRequired ? (
-              <View style={styles.alertBox}>
-                <SafeIcon name="alert-circle" size={16} color={modernColors.error} />
-                <Text style={styles.alertText}>
-                  <Text style={styles.alertBold}>Champ obligatoire :</Text> Veuillez sélectionner le lieu de commercialisation de votre produit pour permettre aux clients de vous localiser.
-                </Text>
-              </View>
-            ) : (
-              <View style={styles.hintBox}>
-                <Text style={styles.hintText}>
-                  💡 <Text style={styles.hintBold}>Sélection GPS :</Text> Cliquez pour ouvrir la carte et sélectionner ou créer un lieu précis. Le nom complet du lieu sera affiché.
-                </Text>
-              </View>
-            )}
+            <Text style={[styles.hintText, { marginTop: 8 }]}>
+              💡 Cliquez pour ouvrir la carte et sélectionner ou créer un lieu précis. Le nom complet du lieu sera affiché.
+            </Text>
             {fieldErrors[field.name] && (
               <Text style={styles.fieldErrorText}>⚠️ {String(fieldErrors[field.name])}</Text>
             )}
@@ -6523,7 +6474,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   selectPlaceholder: {
-    color: modernColors.textSecondary,
+    borderColor: '#E5E7EB',
   },
   selectPlaceholderText: {
     color: modernColors.textSecondary,

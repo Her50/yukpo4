@@ -1541,9 +1541,46 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                             nouveauProduit.product_labels = formValues.product_labels.filter((label: any) => typeof label === 'string' && label.trim().length > 0);
                                             console.log('[AjouterProduitSimple] ✅ product_labels préservé depuis formValues (ordre garanti):', nouveauProduit.product_labels);
                                         } else {
-                                            // Fallback: utiliser Object.keys (ordre non garanti)
-                                            nouveauProduit.product_labels = Object.keys(formValues.sous_caracteristiques || {});
-                                            console.warn('[AjouterProduitSimple] ⚠️ Utilisation Object.keys() pour product_labels - ordre non garanti');
+                                            const sc = formValues.sous_caracteristiques || {};
+                                            const produitsArr = Array.isArray(formValues.produits) ? formValues.produits : [];
+                                            if (produitsArr.length > 0 && Object.keys(sc).length > 0) {
+                                                const firstMod = produitsArr[0];
+                                                if (typeof firstMod === 'string' && firstMod.trim().length > 0) {
+                                                    const parts = firstMod.split(',').map((p: string) => p.trim()).filter((p: string) => p.length > 0);
+                                                    const derived: string[] = [];
+                                                    const used = new Set<string>();
+                                                    for (const part of parts) {
+                                                        const norm = part.toLowerCase().trim();
+                                                        let keyFound: string | null = null;
+                                                        for (const k of Object.keys(sc)) {
+                                                            if (used.has(k)) continue;
+                                                            const v = (sc as Record<string, unknown>)[k];
+                                                            const arr = Array.isArray(v) ? v : (v != null ? [String(v)] : []);
+                                                            if (arr.some((x: string) => String(x).toLowerCase().trim() === norm)) {
+                                                                keyFound = k;
+                                                                break;
+                                                            }
+                                                        }
+                                                        if (keyFound) {
+                                                            derived.push(keyFound);
+                                                            used.add(keyFound);
+                                                        }
+                                                    }
+                                                    if (derived.length > 0 && derived.length === parts.length) {
+                                                        nouveauProduit.product_labels = derived;
+                                                        console.log('[AjouterProduitSimple] ✅ product_labels dérivé depuis première modalité (sauvegarde):', nouveauProduit.product_labels);
+                                                    } else {
+                                                        nouveauProduit.product_labels = Object.keys(sc);
+                                                    }
+                                                } else {
+                                                    nouveauProduit.product_labels = Object.keys(sc);
+                                                }
+                                            } else {
+                                                nouveauProduit.product_labels = Object.keys(sc);
+                                                if (Object.keys(sc).length > 0) {
+                                                    console.warn('[AjouterProduitSimple] ⚠️ Utilisation Object.keys() pour product_labels - ordre non garanti');
+                                                }
+                                            }
                                         }
                                     }
                                 }

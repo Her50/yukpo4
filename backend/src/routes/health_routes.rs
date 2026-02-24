@@ -27,7 +27,55 @@ pub fn health_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             axum::routing::get(check_diagnostic)
                 .layer(axum::middleware::from_fn(optional_jwt_auth)),
         )
+        .route(
+            "/health/migrations-check",
+            axum::routing::get(check_migrations_users_columns),
+        )
         .with_state(state)
+}
+
+/// Vérifie la présence des colonnes requises pour le login et la phase de lancement (table users).
+/// GET /health/migrations-check - à appeler après déploiement pour vérifier les migrations GCP.
+async fn check_migrations_users_columns(State(state): State<Arc<AppState>>) -> impl IntoResponse {
+    let pool = state.pg.clone();
+    let has_col = |col: &str| {
+        let pool = pool.clone();
+        let col = col.to_string();
+        async move {
+            sqlx::query_scalar::<_, bool>(
+                "SELECT EXISTS (
+                    SELECT 1 FROM information_schema.columns 
+                    WHERE table_schema = 'public' AND table_name = 'users' AND column_name = $1
+                )",
+            )
+            .bind(&col)
+            .fetch_one(&pool)
+            .await
+            .unwrap_or(false)
+        }
+    };
+    let partner_status = has_col("partner_status").await;
+    let partner_type = has_col("partner_type").await;
+    let free_product_created = has_col("free_product_created").await;
+    let table_users = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users')",
+    )
+    .fetch_one(&state.pg)
+    .await
+    .unwrap_or(false);
+    let login_ok = table_users && partner_status && partner_type;
+    Json(json!({
+        "table_users_exists": table_users,
+        "partner_status": if partner_status { "OK" } else { "MANQUANTE" },
+        "partner_type": if partner_type { "OK" } else { "MANQUANTE" },
+        "free_product_created": if free_product_created { "OK" } else { "MANQUANTE" },
+        "login_ready": login_ok,
+        "message": if login_ok {
+            "Colonnes requises pour le login présentes"
+        } else {
+            "Colonnes manquantes: appliquer migrations 00000075, 00000076, 00001023 (voir VERIFICATION_MIGRATIONS_GCP.md)"
+        }
+    }))
 }
 
 /// ✅ Phase 10 - Vérifie automatiquement le support Google Maps Distance Matrix API
