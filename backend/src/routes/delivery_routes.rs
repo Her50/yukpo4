@@ -18,7 +18,7 @@ use log;
 use rust_decimal::{prelude::FromPrimitive, Decimal};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use sqlx::{FromRow, Row};
+use sqlx::{Executor, FromRow, Row};
 use uuid::Uuid;
 
 #[derive(FromRow)]
@@ -767,6 +767,32 @@ async fn save_product_delivery_config(
         payload.pickup_availability_schedule.as_object().map(|o| o.keys().collect::<Vec<_>>())
     );
 
+    // Acquire a single connection with a small timeout and run the following DB work in a transaction
+    let conn = match tokio::time::timeout(std::time::Duration::from_secs(10), state.pg.acquire())
+        .await
+    {
+        Ok(Ok(c)) => c,
+        Ok(Err(e)) => {
+            log::error!(
+                "[save_product_delivery_config] Erreur acquisition connexion DB: {}",
+                e
+            );
+            return Err(AppError::Internal(
+                "Erreur lors de l'acquisition de la connexion à la base de données".into(),
+            ));
+        }
+        Err(_) => {
+            log::warn!(
+                "[save_product_delivery_config] ❌ Timeout lors de l'acquisition de connexion DB"
+            );
+            return Err(AppError::TooManyRequests(
+                "Base de données occupée, veuillez réessayer dans quelques instants".into(),
+            ));
+        }
+    };
+
+    let mut tx = conn.begin().await?;
+
     let config_row = match sqlx::query(
         r#"
         INSERT INTO product_delivery_config (
@@ -825,7 +851,7 @@ async fn save_product_delivery_config(
     .bind(payload.storage_location_id) // ✅ NOUVEAU: Lieu de stockage principal (Option<i32>, peut être None)
     .bind(is_complete)
     .bind(user.id)
-    .fetch_one(&state.pg)
+    .fetch_one(&mut tx)
     .await
     {
         Ok(row) => row,
@@ -871,6 +897,8 @@ async fn save_product_delivery_config(
                     }
                 }
             }
+            // Rollback transaction on error before returning
+            let _ = tx.rollback().await;
             return Err(AppError::Internal(format!(
                 "Erreur lors de la sauvegarde de la configuration: {}",
                 e
@@ -886,7 +914,7 @@ async fn save_product_delivery_config(
         // Supprimer les anciennes entrées pour cette configuration
         sqlx::query("DELETE FROM product_stock_locations WHERE product_delivery_config_id = $1")
             .bind(config_id)
-            .execute(&state.pg)
+            .execute(&mut tx)
             .await?;
 
         // Insérer les nouveaux lieux de stockage avec leurs quantités
@@ -919,10 +947,13 @@ async fn save_product_delivery_config(
             .bind(storage_location_id)
             .bind(quantity)
             .bind(user.id)
-            .execute(&state.pg)
+            .execute(&mut tx)
             .await?;
         }
     }
+
+    // Commit the transaction after successful insert/update of config and stock locations
+    tx.commit().await?;
 
     // ✅ Phase 2 - Amélioration 6 : Vérifier si la configuration est complète et notifier si nécessaire
     if !config_is_configured {
