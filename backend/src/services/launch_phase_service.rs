@@ -54,7 +54,15 @@ pub async fn is_user_in_launch_phase(pool: &PgPool, user_id: i32) -> Result<bool
     match user_created_at {
         Some(created_at) => {
             let end_date = get_launch_phase_end_date();
-            Ok(created_at <= end_date)
+            let result = created_at <= end_date;
+            log::debug!(
+                "[launch_phase] user_id={} created_at={} end_date={} in_launch_phase={}",
+                user_id,
+                created_at,
+                end_date,
+                result
+            );
+            Ok(result)
         }
         None => Ok(false),
     }
@@ -66,20 +74,51 @@ pub async fn is_user_in_launch_phase(pool: &PgPool, user_id: i32) -> Result<bool
 /// 2. OU c'est son premier produit gratuit (free_product_created = 0)
 pub async fn can_create_product_free(pool: &PgPool, user_id: i32) -> Result<bool, sqlx::Error> {
     // Vérifier si c'est le premier produit gratuit
-    let free_product_created: i32 =
+    let free_product_created_res: Result<i32, sqlx::Error> =
         sqlx::query_scalar("SELECT COALESCE(free_product_created, 0) FROM users WHERE id = $1")
             .bind(user_id)
             .fetch_one(pool)
-            .await
-            .unwrap_or(0);
+            .await;
 
-    // Si c'est le premier produit, c'est toujours gratuit
-    if free_product_created == 0 {
-        return Ok(true);
+    match free_product_created_res {
+        Ok(free_product_created) => {
+            log::debug!(
+                "[launch_phase] user_id={} free_product_created={}",
+                user_id,
+                free_product_created
+            );
+
+            // Si c'est le premier produit, c'est toujours gratuit
+            if free_product_created == 0 {
+                return Ok(true);
+            }
+        }
+        Err(e) => {
+            // Log utile pour diagnostiquer pourquoi la vérification échoue (ex: absence de ligne, permissions, etc.)
+            log::warn!(
+                "[launch_phase] ⚠️ Erreur lecture free_product_created pour user_id={} : {}. On poursuivra la vérification de la phase de lancement.",
+                user_id,
+                e
+            );
+            // Continuer : on essaie quand même de vérifier la phase de lancement
+        }
     }
 
     // Sinon, vérifier si on est dans la phase de lancement
-    is_user_in_launch_phase(pool, user_id).await
+    let in_launch = is_user_in_launch_phase(pool, user_id).await;
+    match &in_launch {
+        Ok(b) => log::debug!(
+            "[launch_phase] user_id={} is_user_in_launch_phase={}",
+            user_id,
+            b
+        ),
+        Err(e) => log::warn!(
+            "[launch_phase] ⚠️ Erreur lors de is_user_in_launch_phase pour user_id={} : {}",
+            user_id,
+            e
+        ),
+    }
+    in_launch
 }
 
 /// Vérifie si un utilisateur peut réactiver des produits gratuitement
