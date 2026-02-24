@@ -120,6 +120,31 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false); // ✅ NOUVEAU: Protection contre double soumission
   const [valeursFormulaire, setValeursFormulaire] = useState<Record<string, any>>({});
 
+  // ✅ Filet de sécurité : si le bouton tourne plus de 4 min (timeout API = 3 min), forcer l'arrêt
+  const safetyTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  React.useEffect(() => {
+    if (isSubmitting || loading) {
+      safetyTimeoutRef.current = setTimeout(() => {
+        setLoading(false);
+        setIsSubmitting(false);
+        Alert.alert(
+          '⏱️ Délai dépassé',
+          'La création a pris trop de temps. Le serveur ou la base de données est peut-être inaccessible.\n\nVérifiez votre connexion et réessayez.',
+          [{ text: 'OK' }]
+        );
+      }, 4 * 60 * 1000); // 4 min
+      return () => {
+        if (safetyTimeoutRef.current) {
+          clearTimeout(safetyTimeoutRef.current);
+          safetyTimeoutRef.current = null;
+        }
+      };
+    } else if (safetyTimeoutRef.current) {
+      clearTimeout(safetyTimeoutRef.current);
+      safetyTimeoutRef.current = null;
+    }
+  }, [isSubmitting, loading]);
+
   // ✅ FONCTION HELPER: Extraire devise depuis variante de prix (comme dans AjouterProduitSimpleScreen)
   const getCurrencyFromVariant = (variant: any): string | undefined => {
     if (!variant) {
@@ -5131,6 +5156,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 console.log('[FormulaireYukpoIntelligentScreen] ✅ Payload envoyé au backend:', JSON.stringify(servicePayload, null, 2));
                 console.log('[FormulaireYukpoIntelligentScreen] 🔑 Token utilisé:', user?.token ? `${user.token.substring(0, 20)}...` : 'AUCUN TOKEN');
                 console.log('[FormulaireYukpoIntelligentScreen] 👤 User ID:', user?.id);
+                // ✅ Trace explicite pour logs GCP : si ce message n'apparaît pas, l'envoi n'a jamais été atteint
+                console.log('[FormulaireYukpoIntelligentScreen] 📤 Envoi POST /api/services/create (début)');
 
                 // ✅ CORRIGÉ: Utilise apiPost avec nouvelle structure ApiResponse
                 const response = await apiPost('/api/services/create', servicePayload);

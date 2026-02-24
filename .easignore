@@ -1,0 +1,75 @@
+# ============================================
+# EAS BUILD - Exclure tout sauf mobile/
+# (Réduit l'archive ~95MB → viser ~85MB en excluant le reste)
+# ============================================
+# Inspect: eas build:inspect -p android -e preview -s archive -o ./archive-inspect
+# .git (~52MB) est inclus par EAS et ne peut pas être exclu.
+# Lancez toujours: cd mobile && eas build
+# ============================================
+
+# Backend Rust (lourd)
+/backend
+backend/
+**/backend/**
+
+# Frontend web (inutile pour le build mobile)
+/frontend
+frontend/
+**/frontend/**
+
+# Autres dossiers racine (déjà listés)
+/imgsmlr
+/imgsmlr/
+/pgvector
+/pgvector/
+/video-renderer
+/video-renderer/
+/deploy_digitalocean
+/deployment
+/infra
+/infra/
+/monitoring
+/monitoring/
+/scripts
+/scripts/
+/config
+/config/
+/docs
+/docs/
+/nginx
+/nginx/
+/billing-support-info
+/.cursor
+
+# Dossiers racine supplémentaires (inspect: ~10 MB au total)
+/justin
+justin/
+/dossier_candidature_concours
+dossier_candidature_concours/
+/image_yukpo
+image_yukpo/
+/pgvector_install
+pgvector_install/
+/.github
+.github/
+/CAMDVI
+CAMDVI/
+/gcp
+gcp/
+/.netlify
+.netlify/
+/.vercel
+.vercel/
+/.vscode
+.vscode/
+/env_template
+env_template/
+/CV_LELE_HERNANDEZ_fichiers
+/TIMELINE_VIDEO_MARKETING_YUKPO_fichiers
+/TIMELINE_VIDEO_PRESTATAIRES_YUKPO_fichiers
+/__pycache__
+**/__pycache__/
+
+# Cibles Rust, node_modules à la racine
+**/target/
+**/node_modules/

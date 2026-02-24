@@ -60,85 +60,10 @@ pub async fn creer_service(
             let mut response =
                 (StatusCode::CREATED, Json(service_creation_result.clone())).into_response();
 
-            // Calculer le co?t r?el bas? sur l'intention et les tokens consomm?s
-            // Pour l'endpoint /api/services/create, l'intention est toujours "creation_service"
-            let base_token_cost = 0.004; // Co?t de base par token en FCFA
-            let multiplier = 100.0; // Multiplicateur pour création de service
-            let cost_xaf = (tokens_consumed as f64) * base_token_cost * multiplier;
-
-            info!(
-                "[creer_service] Calcul coût: {} tokens × {} FCFA × {} = {} FCFA",
-                tokens_consumed, base_token_cost, multiplier, cost_xaf
-            );
-
-            // ✅ NOUVEAU : Déduire le coût du solde de l'utilisateur (avec retry pour gérer erreurs TLS)
-            let cost_in_tokens = cost_xaf as i64; // 1 FCFA = 1 token dans le système
-            let deduction_result = crate::utils::db_retry::retry_query(
-                &state.pg,
-                || {
-                    let cost_clone = cost_in_tokens;
-                    let user_id_clone = payload.user_id;
-                    let pool_clone = state.pg.clone();
-                    Box::pin(async move {
-                        sqlx::query(
-                            "UPDATE users SET tokens_balance = tokens_balance - $1 WHERE id = $2 AND tokens_balance >= $1 RETURNING tokens_balance"
-                        )
-                        .bind(cost_clone)
-                        .bind(user_id_clone)
-                        .fetch_optional(&pool_clone)
-                        .await
-                    })
-                },
-                5, // 5 tentatives max pour gérer les erreurs TLS
-            )
-            .await;
-
-            match deduction_result {
-                Ok(Some(row)) => {
-                    let nouveau_solde: i64 = row.try_get("tokens_balance").unwrap_or(0);
-                    info!(
-                        "[creer_service] ? Solde déduit pour utilisateur {}: {} FCFA ({}→{})",
-                        payload.user_id,
-                        cost_xaf,
-                        nouveau_solde + cost_in_tokens,
-                        nouveau_solde
-                    );
-
-                    // Mettre à jour le JWT avec le nouveau solde
-                    if let Ok(new_jwt) =
-                        crate::middlewares::check_tokens::update_jwt_with_new_balance(
-                            payload.user_id,
-                            nouveau_solde,
-                            &state,
-                        )
-                        .await
-                    {
-                        response.headers_mut().insert(
-                            "x-new-jwt",
-                            axum::http::HeaderValue::from_str(&new_jwt)
-                                .unwrap_or_else(|_| axum::http::HeaderValue::from_static("")),
-                        );
-                        info!(
-                            "[creer_service] ?? JWT mis à jour avec le nouveau solde: {}",
-                            nouveau_solde
-                        );
-                    }
-                }
-                Ok(None) => {
-                    warn!(
-                        "[creer_service] ⚠️ Solde insuffisant pour utilisateur {} (coût: {} FCFA)",
-                        payload.user_id, cost_xaf
-                    );
-                    // Service créé mais solde non déduit
-                }
-                Err(e) => {
-                    error!(
-                        "[creer_service] ❌ Erreur lors de la déduction du solde: {:?}",
-                        e
-                    );
-                    // Service créé mais solde non déduit
-                }
-            }
+            // ⚠️ IMPORTANT
+            // La facturation / gratuité (phase de lancement, solde insuffisant, etc.) est déjà gérée
+            // dans le service `crate::services::creer_service::creer_service` (transaction DB).
+            // Ne pas re-déduire ici : sinon double-débit et contournement de la logique "gratuit".
 
             // Ajouter les headers avec les vraies valeurs
             response.headers_mut().insert(
@@ -146,16 +71,9 @@ pub async fn creer_service(
                 axum::http::HeaderValue::from_str(&tokens_consumed.to_string())
                     .unwrap_or_else(|_| axum::http::HeaderValue::from_static("0")),
             );
-
-            response.headers_mut().insert(
-                "x-tokens-cost-xaf",
-                axum::http::HeaderValue::from_str(&cost_xaf.to_string())
-                    .unwrap_or_else(|_| axum::http::HeaderValue::from_static("0")),
-            );
-
             info!(
-                "[creer_service] Headers ajout?s: x-tokens-consumed={}, x-tokens-cost-xaf={}",
-                tokens_consumed, cost_xaf
+                "[creer_service] Headers ajout?s: x-tokens-consumed={}",
+                tokens_consumed
             );
 
             response
