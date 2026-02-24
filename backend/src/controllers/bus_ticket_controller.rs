@@ -769,10 +769,13 @@ pub async fn create_reservations(
             AppError::Internal(format!("Erreur débit solde: {}", e))
         })?;
 
-    // ✅ Commit la transaction (libère tous les verrous)
+    // ✅ Validation de la transaction (libère tous les verrous)
     tx.commit().await.map_err(|e| {
-        error!("[create_reservations] Erreur commit transaction: {}", e);
-        AppError::Internal(format!("Erreur commit transaction: {}", e))
+        error!(
+            "[create_reservations] Erreur validation de la transaction: {}",
+            e
+        );
+        AppError::Internal(format!("Erreur validation transaction: {}", e))
     })?;
 
     Ok((
@@ -924,10 +927,13 @@ pub async fn cancel_reservation(
             AppError::Internal(format!("Erreur récupération solde: {}", e))
         })?;
 
-    // Commit transaction
+    // Validation de la transaction
     tx.commit().await.map_err(|e| {
-        error!("[cancel_reservation] Erreur commit transaction: {}", e);
-        AppError::Internal(format!("Erreur commit transaction: {}", e))
+        error!(
+            "[cancel_reservation] Erreur validation de la transaction: {}",
+            e
+        );
+        AppError::Internal(format!("Erreur validation transaction: {}", e))
     })?;
 
     let response = CancelReservationResponse {

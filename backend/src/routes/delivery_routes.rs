@@ -781,10 +781,8 @@ async fn save_product_delivery_config(
         )
         VALUES (
             $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17,
-            $18, 
-            $19, 
-            CASE WHEN $19::boolean THEN NOW() ELSE NULL END, 
-            CASE WHEN $19::boolean THEN $20 ELSE NULL END
+            CASE WHEN $17::boolean THEN NOW() ELSE NULL END,
+            CASE WHEN $17::boolean THEN $18 ELSE NULL END
         )
         ON CONFLICT (service_id, product_index)
         DO UPDATE SET

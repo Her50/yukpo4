@@ -388,16 +388,16 @@ pub async fn process_product_creation(
                                     }
                                 }
 
-                                // ✅ CORRIGÉ: Commit seulement si au moins une insertion a réussi
+                                // ✅ CORRIGÉ: Validation seulement si au moins une insertion a réussi
                                 if media_insertion_count == 0 {
                                     log::error!(
-                                    "[process_product_creation] ❌ Aucun média inséré avec succès, rollback de la transaction"
+                                    "[process_product_creation] ❌ Aucun média inséré avec succès, annulation de la transaction"
                                 );
                                     let _ = tx.rollback().await;
                                     media_processing_success = false;
                                 } else if let Err(e) = tx.commit().await {
                                     log::error!(
-                                    "[process_product_creation] ❌ Erreur commit transaction médias: {}",
+                                    "[process_product_creation] ❌ Erreur validation de la transaction médias: {}",
                                     e
                                 );
                                     media_processing_success = false;

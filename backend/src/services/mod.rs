@@ -128,7 +128,7 @@ pub mod negotiated_price_service; // ✅ NOUVEAU : Service pour gérer les prix 
 pub mod notification_queue; // ✅ Service de queue de notifications
 pub mod notification_service; // ✅ Service de notifications en base de données
 pub mod ocr_engine;
-pub mod optimistic_update_service; // ✅ NOUVEAU Phase 10: Service optimistic updates avec rollback
+pub mod optimistic_update_service; // ✅ NOUVEAU Phase 10: Service pour mises à jour optimistes avec mécanisme d'annulation
 pub mod optimized_media_processor; // ✅ NOUVEAU 2025-01-27: Service optimisé de traitement batch des médias
 pub mod orchestration_ia;
 pub mod orchestration_ia_optimized;

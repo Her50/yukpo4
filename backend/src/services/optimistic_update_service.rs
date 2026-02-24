@@ -1,5 +1,5 @@
-// ✅ NOUVEAU Phase 10: Service pour optimistic updates avec rollback
-// Mise à jour UI immédiate avec rollback si erreur serveur
+// ✅ NOUVEAU Phase 10: Service pour mises à jour optimistes avec mécanisme d'annulation
+// Mise à jour UI immédiate avec annulation si erreur serveur
 
 use log::{error, info, warn};
 use serde::{Deserialize, Serialize};
@@ -14,7 +14,7 @@ pub struct OptimisticAction {
     pub action_type: String,
     pub data: Value,
     pub timestamp: i64,
-    pub rollback_data: Value, // État avant modification pour rollback
+    pub rollback_data: Value, // État avant modification pour annulation
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -85,11 +85,11 @@ impl OptimisticUpdateService {
         let mut pending = self.pending_actions.write().await;
 
         if let Some(action) = pending.remove(action_id) {
-            info!("[OptimisticUpdate] Rollback action: {}", action_id);
+            info!("[OptimisticUpdate] Annulation action: {}", action_id);
             Ok(action.rollback_data)
         } else {
             error!(
-                "[OptimisticUpdate] Action non trouvée pour rollback: {}",
+                "[OptimisticUpdate] Action non trouvée pour annulation: {}",
                 action_id
             );
             Err("Action non trouvée".to_string())

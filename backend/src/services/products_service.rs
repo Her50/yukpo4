@@ -309,7 +309,7 @@ impl ProductsService {
 
         tx.commit().await.map_err(|e| {
             AppError::Internal(format!(
-                "Erreur commit réindexation (service_id: {}): {}",
+                "Erreur validation réindexation (service_id: {}): {}",
                 service_id, e
             ))
         })?;

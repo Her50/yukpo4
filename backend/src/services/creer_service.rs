@@ -2421,11 +2421,11 @@ pub async fn creer_service(
                     error_message
                 );
 
-                // ✅ AMÉLIORATION 2025-01-27 : Rollback automatique de la transaction
-                // Le débit est dans la transaction, donc le rollback annule automatiquement le débit
+                // ✅ AMÉLIORATION 2025-01-27 : Annulation automatique de la transaction
+                // Le débit est dans la transaction, donc l'annulation annule automatiquement le débit
                 let _ = tx.rollback().await;
                 log::error!(
-                    "[creer_service] ❌ Transaction rollback - débit annulé automatiquement"
+                    "[creer_service] ❌ Annulation de la transaction - débit annulé automatiquement"
                 );
 
                 // ✅ AMÉLIORATION : Retourner un message d'erreur plus précis selon le type d'erreur
@@ -3062,7 +3062,7 @@ pub async fn creer_service(
                 "[creer_service] ❌ CRITIQUE: Service {} n'existe PAS dans la transaction avant création produits!",
                 service_id
             );
-            // Rollback et retourner une erreur
+            // Annuler la transaction et retourner une erreur
             let _ = tx.rollback().await;
             return Err(crate::core::types::AppError::Internal(format!(
                 "Service {} n'existe pas dans la transaction",
@@ -3097,7 +3097,7 @@ pub async fn creer_service(
 
         // ✅ CORRIGÉ 2026-01-12: Créer les produits directement dans la transaction tx
         // au lieu d'utiliser ProductsService qui utilise une connexion séparée
-        // Cela évite l'erreur FK car le service n'est pas encore commité
+        // Cela évite l'erreur FK car le service n'est pas encore validé
 
         for (product_index, produit_value) in produits_array.iter_mut().enumerate() {
             let produit_obj = match produit_value.as_object_mut() {
@@ -4967,7 +4967,7 @@ pub async fn creer_service(
     // Ne pas attendre la fin des embeddings, retourner immédiatement
     log::info!("[CREER_SERVICE] ? Réponse immédiate au frontend, embeddings en arrière-plan");
 
-    // ✅ NOUVEAU : Historiser automatiquement les champs autocomplete avant le commit
+    // ✅ NOUVEAU : Historiser automatiquement les champs autocomplete avant la validation
     // Cela enrichit l'historique même si l'IA externe a oublié certaines combinaisons
     if let Some(map) = data_obj.as_object() {
         for (_key, value) in map.iter() {
@@ -5192,38 +5192,45 @@ pub async fn creer_service(
         }
     }
 
-    // ✅ NOUVEAU 2026-02-06: Incrémenter le compteur de produits gratuits après le commit
+    // ✅ NOUVEAU 2026-02-06: Incrémenter le compteur de produits gratuits DANS la transaction
+    // afin d'éviter les races entre deux créations concurrentes.
     let should_increment_free = is_free;
 
-    // Commit de la transaction AVANT la réponse
-    tx.commit().await.map_err(|e| {
-        log::error!(
-            "[creer_service] ❌ Échec commit transaction pour service_id={}: {}",
-            service_id,
-            e
-        );
-
-        // ✅ AMÉLIORATION 2025-01-27 : Le débit est dans la transaction, donc le rollback l'annule automatiquement
-        // Pas besoin de remboursement manuel - la transaction garantit l'atomicité
-
-        AppError::Internal(format!("Échec commit: {}", e))
-    })?;
-
-    // ✅ NOUVEAU 2026-02-06: Incrémenter le compteur de produits gratuits après le commit
     if should_increment_free {
-        use crate::services::launch_phase_service::increment_free_product_count;
-        if let Err(e) = increment_free_product_count(pool, user_id).await {
-            log::warn!(
-                "[creer_service] ⚠️ Erreur incrémentation compteur produit gratuit: {}",
+        use crate::services::launch_phase_service::increment_free_product_count_tx;
+        if let Err(e) = increment_free_product_count_tx(&mut tx, user_id).await {
+            log::error!(
+                "[creer_service] ❌ Échec incrémentation compteur produit gratuit (transaction) pour user_id={} : {}",
+                user_id,
                 e
             );
+            // Si on ne peut pas incrémenter le compteur dans la transaction, annuler la transaction et retourner une erreur
+            tx.rollback().await.ok();
+            return Err(AppError::Internal(format!(
+                "Échec incrémentation compteur gratuit: {}",
+                e
+            )));
         } else {
             log::info!(
-                "[creer_service] ✅ Compteur produit gratuit incrémenté pour user_id={}",
+                "[creer_service] ✅ Compteur produit gratuit incrémenté (transaction) pour user_id={}",
                 user_id
             );
         }
     }
+
+    // Validation de la transaction AVANT la réponse
+    tx.commit().await.map_err(|e| {
+        log::error!(
+            "[creer_service] ❌ Échec validation de la transaction pour service_id={}: {}",
+            service_id,
+            e
+        );
+
+        // ✅ AMÉLIORATION 2025-01-27 : Le débit est dans la transaction, donc l'annulation l'annule automatiquement
+        // Pas besoin de remboursement manuel - la transaction garantit l'atomicité
+
+        AppError::Internal(format!("Échec validation: {}", e))
+    })?;
 
     // ✅ PHASE 1: Écriture UNIQUEMENT dans table products (JSONB supprimé)
     // Créer les produits dans la table products séparée pour améliorer les performances
@@ -5909,29 +5916,40 @@ pub async fn save_ia_combinations_to_db(
         // Insérer dans autocomplete_combinations (SANS lieu)
         let is_ai_preferred = index == ai_preferred_index;
 
-        let result = sqlx::query(
+        // Utiliser ON CONFLICT DO NOTHING pour éviter les erreurs de concurrence (duplicate key)
+        match sqlx::query(
             r#"INSERT INTO autocomplete_combinations 
                (service_id, product_vector, product_labels, location_vector, location_labels, full_vector,
                 session_id, is_ai_preferred, ai_confidence, usage_count)
-               VALUES (NULL, $1, $2, '{}', '{}', $1, $3, $4, 0.7, 1)"#
+               VALUES (NULL, $1, $2, '{}', '{}', $1, $3, $4, 0.7, 1) ON CONFLICT DO NOTHING"#,
         )
         .bind(&product_vector)
         .bind(&product_labels)
         .bind(session_id)
         .bind(is_ai_preferred)
-        .execute(pool).await;
-
-        if let Err(e) = result {
-            log::error!(
-                "[save_ia_combinations_to_db] Erreur sauvegarde combinaison {}: {}",
-                index,
-                e
-            );
-        } else {
-            log::info!(
-                "[save_ia_combinations_to_db] ✅ Combinaison {} sauvegardée (IA)",
-                index
-            );
+        .execute(pool)
+        .await
+        {
+            Ok(res) => {
+                if res.rows_affected() == 0 {
+                    log::info!(
+                        "[save_ia_combinations_to_db] ⚠️ Combinaison {} existe déjà (ON CONFLICT), ignorée",
+                        index
+                    );
+                } else {
+                    log::info!(
+                        "[save_ia_combinations_to_db] ✅ Combinaison {} sauvegardée (IA)",
+                        index
+                    );
+                }
+            }
+            Err(e) => {
+                log::error!(
+                    "[save_ia_combinations_to_db] Erreur sauvegarde combinaison {}: {}",
+                    index,
+                    e
+                );
+            }
         }
     }
 

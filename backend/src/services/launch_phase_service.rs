@@ -4,7 +4,7 @@
 // - Réactiver leurs produits gratuitement
 
 use chrono::{DateTime, Utc};
-use sqlx::PgPool;
+use sqlx::{PgPool, Postgres, Transaction};
 use std::env;
 
 /// Date de début de la phase de lancement (configurable via variable d'environnement)
@@ -134,6 +134,21 @@ pub async fn increment_free_product_count(pool: &PgPool, user_id: i32) -> Result
     )
     .bind(user_id)
     .execute(pool)
+    .await?;
+    Ok(())
+}
+
+/// Incrémente le compteur de produits gratuits en utilisant une transaction existante
+/// Permet d'intégrer l'incrémentation dans la même transaction que la création du service
+pub async fn increment_free_product_count_tx<'a>(
+    tx: &mut Transaction<'a, Postgres>,
+    user_id: i32,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        "UPDATE users SET free_product_created = COALESCE(free_product_created, 0) + 1 WHERE id = $1",
+    )
+    .bind(user_id)
+    .execute(&mut **tx)
     .await?;
     Ok(())
 }
