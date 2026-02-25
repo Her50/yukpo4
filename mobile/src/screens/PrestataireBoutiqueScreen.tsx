@@ -23,7 +23,7 @@ import { useLocation } from '../contexts/LocationContext';
 import { apiGet, apiPost } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 
-interface PrestataireBoutiqueScreenProps {}
+interface PrestataireBoutiqueScreenProps { }
 
 const PrestataireBoutiqueScreen: React.FC<PrestataireBoutiqueScreenProps> = () => {
   const navigation = useNavigation();
@@ -76,12 +76,12 @@ const PrestataireBoutiqueScreen: React.FC<PrestataireBoutiqueScreenProps> = () =
         responseKeys: servicesResponse.data ? Object.keys(servicesResponse.data) : [],
         rawResponse: JSON.stringify(servicesResponse).substring(0, 500)
       });
-      
+
       // ✅ Gérer différents formats de réponse
       let servicesData: any[] = [];
       if (servicesResponse.success && servicesResponse.data) {
-        servicesData = Array.isArray(servicesResponse.data) 
-          ? servicesResponse.data 
+        servicesData = Array.isArray(servicesResponse.data)
+          ? servicesResponse.data
           : (Array.isArray(servicesResponse.data.data) ? servicesResponse.data.data : []);
       } else if (Array.isArray(servicesResponse.data)) {
         servicesData = servicesResponse.data;
@@ -95,9 +95,9 @@ const PrestataireBoutiqueScreen: React.FC<PrestataireBoutiqueScreenProps> = () =
           servicesData = servicesResponse.data.resultats;
         }
       }
-      
+
       setServices(servicesData);
-      console.log(`✅ [PrestataireBoutiqueScreen] ${servicesData.length} services chargés pour prestataire ${prestataireUserId}:`, 
+      console.log(`✅ [PrestataireBoutiqueScreen] ${servicesData.length} services chargés pour prestataire ${prestataireUserId}:`,
         servicesData.map((s: any) => ({ id: s.id, hasData: !!s.data, user_id: s.user_id }))
       );
 
@@ -110,7 +110,7 @@ const PrestataireBoutiqueScreen: React.FC<PrestataireBoutiqueScreenProps> = () =
         try {
           console.log(`🔍 [PrestataireBoutiqueScreen] Chargement produits pour service ${serviceId}...`);
           const productsResponse = await apiGet(`/api/services/${serviceId}/products`);
-          
+
           console.log(`📦 [PrestataireBoutiqueScreen] Réponse produits service ${serviceId}:`, {
             success: productsResponse.success,
             hasData: !!productsResponse.data,
@@ -119,16 +119,16 @@ const PrestataireBoutiqueScreen: React.FC<PrestataireBoutiqueScreenProps> = () =
             error: productsResponse.error,
             rawResponse: JSON.stringify(productsResponse).substring(0, 200)
           });
-          
+
           // ✅ CORRIGÉ 2026-01-23: Gérer le format de réponse de l'endpoint
           // L'endpoint /api/services/{serviceId}/products retourne Json<Vec<ProductResponse>>
           // apiGet wrapper la réponse dans { success: true, data: [...] }
           let productsArray: any[] = [];
-          
+
           // ✅ CAS 1: La réponse est dans le format standard { success: true, data: [...] }
           if (productsResponse && typeof productsResponse === 'object' && Array.isArray(productsResponse.data)) {
             productsArray = productsResponse.data;
-          } 
+          }
           // ✅ CAS 2: La réponse est directement un tableau (peu probable avec apiGet, mais on gère le cas)
           else if (Array.isArray(productsResponse)) {
             productsArray = productsResponse;
@@ -141,7 +141,7 @@ const PrestataireBoutiqueScreen: React.FC<PrestataireBoutiqueScreenProps> = () =
               productsArray = productsResponse.data.products;
             }
           }
-          
+
           console.log(`📦 [PrestataireBoutiqueScreen] Produits extraits pour service ${serviceId}:`, {
             productsCount: productsArray.length,
             firstProduct: productsArray[0] ? {
@@ -151,18 +151,18 @@ const PrestataireBoutiqueScreen: React.FC<PrestataireBoutiqueScreenProps> = () =
               hasProductData: !!productsArray[0].product_data
             } : null
           });
-          
+
           if (productsArray.length > 0) {
             const mappedProducts = productsArray.map((productFromAPI: any) => {
               const productData = productFromAPI.product_data || productFromAPI;
               const service = servicesData.find((s: any) => s.id === serviceId);
 
               // ✅ NOUVEAU 2026-01-22: Extraire type_offre depuis product_data ou service.data
-              const typeOffre = productData.type_offre || 
-                               productData.type_offre?.valeur || 
-                               service?.data?.type_offre?.valeur || 
-                               '';
-              
+              const typeOffre = productData.type_offre ||
+                productData.type_offre?.valeur ||
+                service?.data?.type_offre?.valeur ||
+                '';
+
               const transformedProduct = {
                 ...productData,
                 // ✅ CORRIGÉ 2026-01-21: Préserver product_data pour ProductCard
@@ -181,17 +181,17 @@ const PrestataireBoutiqueScreen: React.FC<PrestataireBoutiqueScreenProps> = () =
                 _service: service,
                 _prestataire: prestataireResponse.data,
               };
-              
+
               console.log(`✅ [PrestataireBoutiqueScreen] Produit transformé:`, {
                 id: transformedProduct.id,
                 nom: transformedProduct.nom,
                 _serviceId: transformedProduct._serviceId,
                 hasProductData: !!transformedProduct.product_data
               });
-              
+
               return transformedProduct;
             });
-            
+
             console.log(`✅ [PrestataireBoutiqueScreen] ${mappedProducts.length} produits mappés pour service ${serviceId}`);
             return mappedProducts;
           } else {
@@ -206,66 +206,21 @@ const PrestataireBoutiqueScreen: React.FC<PrestataireBoutiqueScreenProps> = () =
 
       const productsArrays = await Promise.all(productPromises);
       let extractedProducts = productsArrays.flat();
-      
-      console.log(`📊 [PrestataireBoutiqueScreen] Total produits extraits AVANT ajout produit cliqué: ${extractedProducts.length}`, {
+
+      console.log(`📊 [PrestataireBoutiqueScreen] Total produits extraits de l'API: ${extractedProducts.length}`, {
         servicesProcessed: serviceIds.length,
         productsPerService: productsArrays.map((arr, idx) => ({ serviceId: serviceIds[idx], count: arr.length })),
       });
-      
-      // ✅ CORRIGÉ 2026-02-10: Ne PAS filtrer les produits - afficher TOUS les produits du prestataire
-      // Le produit cliqué sera ajouté s'il n'est pas déjà dans les résultats, mais on affiche TOUS les produits
-      // ✅ NOUVEAU 2026-01-23: Ajouter le produit cliqué s'il n'est pas déjà dans les résultats
-      if (clickedProduct && clickedService) {
-        const clickedProductId = clickedProduct.id || clickedProduct.product_id || 
-          (clickedProduct._serviceId && clickedProduct.product_index !== undefined 
-            ? `${clickedProduct._serviceId}_${clickedProduct.product_index}` 
-            : null);
-        
-        const isAlreadyIncluded = extractedProducts.some((p: any) => {
-          const pId = p.id || p.product_id || 
-            (p._serviceId && p.product_index !== undefined ? `${p._serviceId}_${p.product_index}` : null);
-          return pId === clickedProductId;
-        });
-        
-        if (!isAlreadyIncluded && clickedProductId) {
-          console.log(`✅ [PrestataireBoutiqueScreen] Ajout du produit cliqué aux résultats:`, {
-            productId: clickedProductId,
-            nom: clickedProduct.nom || clickedProduct.name || clickedProduct.nom_produit
-          });
-          
-          // Transformer le produit cliqué au même format que les autres
-          const productData = clickedProduct.product_data || clickedProduct;
-          const transformedClickedProduct = {
-            ...productData,
-            product_data: productData,
-            id: clickedProductId,
-            product_index: clickedProduct.product_index,
-            product_name: clickedProduct.product_name || productData.nom_produit || productData.nom || productData.name,
-            product_type: clickedProduct.product_type,
-            product_price: clickedProduct.product_price || productData.prix_produit || productData.prix,
-            nom_produit: productData.nom_produit || productData.nom || productData.name || clickedProduct.product_name,
-            nom: productData.nom_produit || productData.nom || productData.name || clickedProduct.product_name,
-            name: productData.nom_produit || productData.nom || productData.name || clickedProduct.product_name,
-            description: productData.description || productData.description_produit || clickedProduct.description,
-            description_produit: productData.description_produit || productData.description || clickedProduct.description_produit,
-            _serviceId: clickedProduct._serviceId || clickedProduct.service_id || clickedService.id,
-            _service: clickedService,
-            _prestataire: prestataireResponse.data,
-            images: clickedProduct.images || productData.images || [],
-            videos: clickedProduct.videos || productData.videos || [],
-          };
-          
-          // Ajouter en premier pour qu'il soit visible en haut
-          extractedProducts = [transformedClickedProduct, ...extractedProducts];
-        } else if (isAlreadyIncluded) {
-          console.log(`ℹ️ [PrestataireBoutiqueScreen] Le produit cliqué est déjà dans les résultats`);
-        }
-      }
-      
-      console.log(`📊 [PrestataireBoutiqueScreen] Total produits extraits: ${extractedProducts.length}`, {
+
+      // ✅ CORRIGÉ 2026-02-25: Supprimé l'ajout manuel du produit cliqué
+      // Le produit cliqué est déjà inclus dans les résultats de l'API quand on charge 
+      // tous les produits du prestataire via /api/services/{serviceId}/products
+      // L'ajout manuel causait une duplication inutile
+
+      console.log(`📊 [PrestataireBoutiqueScreen] Total produits chargés: ${extractedProducts.length}`, {
         servicesProcessed: serviceIds.length,
         productsPerService: productsArrays.map((arr, idx) => ({ serviceId: serviceIds[idx], count: arr.length })),
-        clickedProductIncluded: clickedProduct ? 'Oui' : 'Non'
+        note: 'Le produit cliqué est déjà inclus dans les résultats de l\'API'
       });
 
       if (extractedProducts.length === 0) {
@@ -282,7 +237,7 @@ const PrestataireBoutiqueScreen: React.FC<PrestataireBoutiqueScreenProps> = () =
             try {
               const [userLat, userLon] = userGPS.split(',').map(Number);
               const [serviceLat, serviceLon] = serviceGPS.split(',').map(Number);
-              
+
               if (!isNaN(userLat) && !isNaN(userLon) && !isNaN(serviceLat) && !isNaN(serviceLon)) {
                 const R = 6371; // Rayon de la Terre en km
                 const dLat = (serviceLat - userLat) * Math.PI / 180;
@@ -316,21 +271,21 @@ const PrestataireBoutiqueScreen: React.FC<PrestataireBoutiqueScreenProps> = () =
 
       setProducts(productsWithDistance);
       console.log(`✅ [PrestataireBoutiqueScreen] ${productsWithDistance.length} produits chargés pour prestataire ${prestataireUserId}`);
-      
+
       // ✅ NOUVEAU 2026-01-22: Déterminer le titre de l'écran selon type_offre
       // Vérifier si au moins un produit/prestation a type_offre = 'prestation'
       const hasPrestation = productsWithDistance.some((p: any) => {
         const typeOffre = p.type_offre || p.product_data?.type_offre || p._service?.data?.type_offre?.valeur || '';
         return typeOffre === 'prestation' || typeOffre === 'prestation_service';
       });
-      
+
       // Si tous les produits sont des prestations, utiliser "Prestation de service"
       // Sinon, utiliser "Boutique"
       const allArePrestations = productsWithDistance.length > 0 && productsWithDistance.every((p: any) => {
         const typeOffre = p.type_offre || p.product_data?.type_offre || p._service?.data?.type_offre?.valeur || '';
         return typeOffre === 'prestation' || typeOffre === 'prestation_service';
       });
-      
+
       if (allArePrestations) {
         setScreenTitle('Prestation de service');
       } else if (hasPrestation) {
@@ -339,10 +294,10 @@ const PrestataireBoutiqueScreen: React.FC<PrestataireBoutiqueScreenProps> = () =
       } else {
         setScreenTitle('Boutique');
       }
-      
+
       // ✅ DEBUG 2026-01-21: Log final des produits
       if (productsWithDistance.length > 0) {
-        console.log(`📦 [PrestataireBoutiqueScreen] Détails des produits chargés:`, 
+        console.log(`📦 [PrestataireBoutiqueScreen] Détails des produits chargés:`,
           productsWithDistance.map((p: any) => ({
             id: p.id,
             nom: p.nom || p.name || p.nom_produit,
@@ -389,7 +344,7 @@ const PrestataireBoutiqueScreen: React.FC<PrestataireBoutiqueScreenProps> = () =
       hasPrestataire: !!(product._prestataire || prestataire),
       hasProductData: !!product.product_data
     });
-    
+
     return (
       <ProductCard
         key={`product-${product._serviceId}-${product.product_index || product.id}`}
@@ -439,12 +394,12 @@ const PrestataireBoutiqueScreen: React.FC<PrestataireBoutiqueScreenProps> = () =
             <SafeIcon name="store" size={24} color={modernColors.primary} />
             <View style={styles.headerText}>
               <Text style={styles.headerTitle}>
-                {screenTitle === 'Prestation de service' 
+                {screenTitle === 'Prestation de service'
                   ? `Prestation de service de ${prestataireName}`
                   : `Boutique de ${prestataireName}`}
               </Text>
               <Text style={styles.headerSubtitle}>
-                {products.length} {products.length === 1 
+                {products.length} {products.length === 1
                   ? (screenTitle === 'Prestation de service' ? 'prestation' : 'produit')
                   : (screenTitle === 'Prestation de service' ? 'prestations' : 'produits')}
               </Text>
@@ -460,12 +415,12 @@ const PrestataireBoutiqueScreen: React.FC<PrestataireBoutiqueScreenProps> = () =
                   texte: prestataireName,
                   user_id: prestataireUserId, // Filtrer par prestataire si l'API le supporte
                 });
-                
+
                 let results: any[] = [];
                 if (searchResponse?.success && searchResponse?.resultats) {
                   results = searchResponse.resultats.resultats || searchResponse.resultats || [];
                 }
-                
+
                 // ✅ Option 2: Si la recherche ne retourne rien, utiliser les services chargés
                 if (results.length === 0 && services.length > 0) {
                   // Convertir les services en format SearchResult
@@ -482,7 +437,7 @@ const PrestataireBoutiqueScreen: React.FC<PrestataireBoutiqueScreenProps> = () =
                     user_id: prestataireUserId,
                   }));
                 }
-                
+
                 // Naviguer vers ResultatBesoinScreen avec les résultats
                 (navigation as any).navigate('ResultatBesoin', {
                   results: results,
@@ -504,7 +459,7 @@ const PrestataireBoutiqueScreen: React.FC<PrestataireBoutiqueScreenProps> = () =
                   data: service.data || {},
                   user_id: prestataireUserId,
                 }));
-                
+
                 (navigation as any).navigate('ResultatBesoin', {
                   results: fallbackResults,
                   searchQuery: prestataireName,
@@ -526,7 +481,7 @@ const PrestataireBoutiqueScreen: React.FC<PrestataireBoutiqueScreenProps> = () =
           <View style={styles.emptyContainer}>
             <SafeIcon name={screenTitle === 'Prestation de service' ? "briefcase" : "package"} size={64} color={modernColors.textSecondary} />
             <Text style={styles.emptyText}>
-              {screenTitle === 'Prestation de service' 
+              {screenTitle === 'Prestation de service'
                 ? 'Aucune prestation disponible'
                 : 'Aucun produit disponible'}
             </Text>
@@ -550,7 +505,7 @@ const PrestataireBoutiqueScreen: React.FC<PrestataireBoutiqueScreenProps> = () =
               }
               return renderProductCard(item);
             }}
-            keyExtractor={(item, index) => 
+            keyExtractor={(item, index) =>
               `product-${item._serviceId}-${item.product_index || item.id || index}`
             }
             contentContainerStyle={styles.listContent}
@@ -566,7 +521,7 @@ const PrestataireBoutiqueScreen: React.FC<PrestataireBoutiqueScreenProps> = () =
               <View style={styles.emptyContainer}>
                 <SafeIcon name={screenTitle === 'Prestation de service' ? "briefcase" : "package"} size={64} color={modernColors.textSecondary} />
                 <Text style={styles.emptyText}>
-                  {screenTitle === 'Prestation de service' 
+                  {screenTitle === 'Prestation de service'
                     ? 'Aucune prestation disponible'
                     : 'Aucun produit disponible'}
                 </Text>
