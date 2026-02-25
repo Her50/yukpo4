@@ -232,7 +232,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
             // Double-tap → Like
             if (!likedMap[contentId]) {
                 setLikedMap((prev) => ({ ...prev, [contentId]: true }));
-                apiPost('/api/content/engagement', { content_id: contentId, action: 'like' }).catch(() => undefined);
+                apiPost(`/api/content/${contentId}/engagement`, { action: 'like', set: true }).catch(() => undefined);
                 try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); } catch (_) { }
             }
             animateHeart(contentId);
@@ -251,25 +251,27 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
 
     const toggleLike = useCallback(async (item: FeedItem) => {
         const contentId = item.contentId || item.id;
-        setLikedMap((prev) => ({ ...prev, [contentId]: !prev[contentId] }));
+        const newState = !likedMap[contentId];
+        setLikedMap((prev) => ({ ...prev, [contentId]: newState }));
         try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch (_) { }
         try {
-            await apiPost('/api/content/engagement', { content_id: contentId, action: 'like' });
+            await apiPost(`/api/content/${contentId}/engagement`, { action: 'like', set: newState });
         } catch (error) {
             console.warn('[VideoFeedScreen] Like error', error);
         }
-    }, []);
+    }, [likedMap]);
 
     const toggleSave = useCallback(async (item: FeedItem) => {
         const contentId = item.contentId || item.id;
-        setSavedMap((prev) => ({ ...prev, [contentId]: !prev[contentId] }));
+        const newState = !savedMap[contentId];
+        setSavedMap((prev) => ({ ...prev, [contentId]: newState }));
         try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch (_) { }
         try {
-            await apiPost('/api/content/engagement', { content_id: contentId, action: 'save' });
+            await apiPost(`/api/content/${contentId}/engagement`, { action: 'save', set: newState });
         } catch (error) {
             console.warn('[VideoFeedScreen] Save error', error);
         }
-    }, []);
+    }, [savedMap]);
 
     const toggleMute = useCallback((item: FeedItem) => {
         const contentId = item.contentId || item.id;
