@@ -1,8 +1,6 @@
 import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import {
     ActivityIndicator,
-    Animated,
-    Dimensions,
     StyleSheet,
     Text,
     TouchableOpacity,
@@ -11,8 +9,6 @@ import {
 import MapView, { Circle, Marker, Polygon, PROVIDER_GOOGLE, Region } from 'react-native-maps';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
-
-const { width, height } = Dimensions.get('window');
 
 interface InteractiveMapViewProps {
     selectedLocation?: { lat: number; lng: number } | null;
@@ -43,34 +39,27 @@ const InteractiveMapView = forwardRef<InteractiveMapViewRef, InteractiveMapViewP
     showTraffic = true,
     polygonPoints = [],
     onPolygonPointsChange,
-    initialRegion, // ✅ NOUVEAU: Région initiale pour centrer la carte
+    initialRegion,
 }, ref) => {
     const mapRef = useRef<MapView>(null);
     const [localPolygonPoints, setLocalPolygonPoints] = useState<{ lat: number; lng: number }[]>(polygonPoints);
-    const [mapRegion, setMapRegion] = useState(() => {
-        // ✅ NOUVEAU: Utiliser initialRegion en priorité, puis selectedLocation, puis défaut
-        if (initialRegion) {
-            return initialRegion;
-        }
-        if (selectedLocation?.lat && selectedLocation?.lng) {
-            return {
-                latitude: selectedLocation.lat,
-                longitude: selectedLocation.lng,
-                latitudeDelta: 0.01,
-                longitudeDelta: 0.01,
-            };
-        }
-        return {
-            latitude: 4.031716, // Douala, Cameroun par défaut
-            longitude: 9.817201,
-            latitudeDelta: 0.01,
-            longitudeDelta: 0.01,
-        };
+    // ✅ CORRIGÉ 2026-02-25: Utiliser initialRegion UNIQUEMENT (non-contrôlé)
+    // region={} contrôlé causait des sauts visuels à chaque setState
+    const startRegion = initialRegion || (selectedLocation?.lat && selectedLocation?.lng ? {
+        latitude: selectedLocation.lat,
+        longitude: selectedLocation.lng,
+        latitudeDelta: 0.005,
+        longitudeDelta: 0.005,
+    } : {
+        latitude: 4.031716,
+        longitude: 9.817201,
+        latitudeDelta: 0.005,
+        longitudeDelta: 0.005,
     });
+    // ✅ Garder une ref pour le zoom courant (mis à jour par onRegionChangeComplete)
+    const currentRegionRef = useRef(startRegion);
     const [mapReady, setMapReady] = useState(false);
     const [mapError, setMapError] = useState(false);
-    // ✅ NOUVEAU: Animation pour l'indicateur de déplacement
-    const pulseAnim = useRef(new Animated.Value(1)).current;
 
     // ✅ NOUVEAU: Exposer la méthode animateToRegion via ref
     useImperativeHandle(ref, () => ({
@@ -79,65 +68,28 @@ const InteractiveMapView = forwardRef<InteractiveMapViewRef, InteractiveMapViewP
         },
     }), []);
 
-    // ✅ CORRIGÉ 2026-01-23: Repositionner automatiquement la carte avec animation fluide et visible
-    const [isAnimating, setIsAnimating] = useState(false);
+    // ✅ CORRIGÉ 2026-02-25: Animation fluide sans saut visuel
     const previousLocationRef = useRef<{ lat: number; lng: number } | null>(null);
-    
+
     useEffect(() => {
-        if (selectedLocation && selectedLocation.lat != null && selectedLocation.lng != null) {
-            // Vérifier si c'est un nouveau lieu (pas juste une mise à jour initiale)
-            const isNewLocation = previousLocationRef.current === null || 
-                previousLocationRef.current.lat !== selectedLocation.lat || 
+        if (selectedLocation && selectedLocation.lat != null && selectedLocation.lng != null && mapReady && mapRef.current) {
+            const isNewLocation = previousLocationRef.current === null ||
+                previousLocationRef.current.lat !== selectedLocation.lat ||
                 previousLocationRef.current.lng !== selectedLocation.lng;
-            
-            if (isNewLocation && mapReady && mapRef.current) {
+
+            if (isNewLocation) {
+                // ✅ CORRIGÉ: Garder le zoom actuel de l'utilisateur au lieu de forcer 0.01
+                const currentDelta = currentRegionRef.current;
                 const newRegion: Region = {
                     latitude: selectedLocation.lat,
                     longitude: selectedLocation.lng,
-                    latitudeDelta: 0.01,
-                    longitudeDelta: 0.01,
+                    latitudeDelta: currentDelta.latitudeDelta,
+                    longitudeDelta: currentDelta.longitudeDelta,
                 };
-                
-                // ✅ AMÉLIORÉ: Activer l'indicateur d'animation
-                setIsAnimating(true);
-                
-                // ✅ NOUVEAU: Démarrer l'animation de pulse
-                Animated.loop(
-                    Animated.sequence([
-                        Animated.timing(pulseAnim, {
-                            toValue: 1.3,
-                            duration: 500,
-                            useNativeDriver: true,
-                        }),
-                        Animated.timing(pulseAnim, {
-                            toValue: 1,
-                            duration: 500,
-                            useNativeDriver: true,
-                        }),
-                    ])
-                ).start();
-                
-                // ✅ AMÉLIORÉ: Animation plus longue et fluide (1000ms au lieu de 500ms)
-                mapRef.current.animateToRegion(newRegion, 1000);
-                
-                // ✅ AMÉLIORÉ: Désactiver l'indicateur après l'animation
-                setTimeout(() => {
-                    setIsAnimating(false);
-                    pulseAnim.stopAnimation();
-                    pulseAnim.setValue(1);
-                }, 1000);
-                
-                // Mettre à jour la référence de la position précédente
+                // Animation fluide de 800ms — pas de saut
+                mapRef.current.animateToRegion(newRegion, 800);
                 previousLocationRef.current = { lat: selectedLocation.lat, lng: selectedLocation.lng };
             }
-            
-            // Mettre à jour mapRegion pour que la carte se repositionne
-            setMapRegion({
-                latitude: selectedLocation.lat,
-                longitude: selectedLocation.lng,
-                latitudeDelta: 0.01,
-                longitudeDelta: 0.01,
-            });
         }
     }, [selectedLocation, mapReady]);
 
@@ -158,7 +110,6 @@ const InteractiveMapView = forwardRef<InteractiveMapViewRef, InteractiveMapViewP
         const newPoint = { lat: latitude, lng: longitude };
 
         if (zoneType === 'polygon') {
-            // Mode polygone : ajouter un point au polygone
             const newPoints = [...localPolygonPoints, newPoint];
             setLocalPolygonPoints(newPoints);
             if (onPolygonPointsChange) {
@@ -168,47 +119,10 @@ const InteractiveMapView = forwardRef<InteractiveMapViewRef, InteractiveMapViewP
                 onPolygonSelect(newPoints);
             }
         } else if (onLocationSelect) {
-            // ✅ AMÉLIORÉ: Mode point avec animation visible
-            // Activer l'indicateur d'animation avant de changer la position
-            setIsAnimating(true);
-            
-            // ✅ NOUVEAU: Démarrer l'animation de pulse
-            Animated.loop(
-                Animated.sequence([
-                    Animated.timing(pulseAnim, {
-                        toValue: 1.3,
-                        duration: 500,
-                        useNativeDriver: true,
-                    }),
-                    Animated.timing(pulseAnim, {
-                        toValue: 1,
-                        duration: 500,
-                        useNativeDriver: true,
-                    }),
-                ])
-            ).start();
-            
-            // Appeler onLocationSelect qui déclenchera l'animation via useEffect
+            // ✅ CORRIGÉ 2026-02-25: Juste notifier le parent — l'animation sera
+            // déclenchée par le useEffect quand selectedLocation change.
+            // PAS de double animateToRegion ici.
             onLocationSelect(newPoint);
-            
-            // ✅ NOUVEAU: Animer immédiatement la carte vers le nouveau point pour feedback instantané
-            if (mapRef.current) {
-                const newRegion: Region = {
-                    latitude: newPoint.lat,
-                    longitude: newPoint.lng,
-                    latitudeDelta: 0.01,
-                    longitudeDelta: 0.01,
-                };
-                // Animation fluide de 1000ms pour que l'utilisateur voie le déplacement
-                mapRef.current.animateToRegion(newRegion, 1000);
-            }
-            
-            // Désactiver l'indicateur après l'animation
-            setTimeout(() => {
-                setIsAnimating(false);
-                pulseAnim.stopAnimation();
-                pulseAnim.setValue(1);
-            }, 1000);
         }
     };
 
@@ -310,7 +224,13 @@ const InteractiveMapView = forwardRef<InteractiveMapViewRef, InteractiveMapViewP
                 style={styles.map}
                 provider={PROVIDER_GOOGLE}
                 mapType={getMapType()}
-                region={mapRegion}
+                // ✅ CORRIGÉ 2026-02-25: initialRegion (non-contrôlé) au lieu de region
+                // region={} causait des sauts visuels à chaque re-render
+                initialRegion={startRegion}
+                onRegionChangeComplete={(region) => {
+                    // Garder le zoom courant pour les animations futures
+                    currentRegionRef.current = region;
+                }}
                 onPress={handleMapPress}
                 onMapReady={() => {
                     console.log('[InteractiveMapView] ✅ Map ready');
@@ -323,7 +243,7 @@ const InteractiveMapView = forwardRef<InteractiveMapViewRef, InteractiveMapViewP
                     setMapReady(true);
                 }}
                 showsUserLocation={true}
-                showsMyLocationButton={true}
+                showsMyLocationButton={false}
                 showsBuildings={showBuildings}
                 showsTraffic={showTraffic}
                 showsIndoors={true}
@@ -334,9 +254,10 @@ const InteractiveMapView = forwardRef<InteractiveMapViewRef, InteractiveMapViewP
                 loadingEnabled={true}
                 loadingIndicatorColor={modernColors.primary}
                 loadingBackgroundColor={modernColors.background}
-                customMapStyle={mapStyle === 'standard' ? undefined : []}
+                minZoomLevel={5}
+                maxZoomLevel={20}
             >
-                {/* ✅ AMÉLIORÉ: Marqueur de position sélectionnée avec animation de pulse */}
+                {/* Marqueur de position sélectionnée */}
                 {selectedLocation && zoneType !== 'polygon' && (
                     <Marker
                         coordinate={{
@@ -345,9 +266,8 @@ const InteractiveMapView = forwardRef<InteractiveMapViewRef, InteractiveMapViewP
                         }}
                         title="Position sélectionnée"
                         description={`${selectedLocation.lat.toFixed(6)}, ${selectedLocation.lng.toFixed(6)}`}
-                        pinColor={modernColors.primary}
-                        // ✅ NOUVEAU: Animation du marqueur pour feedback visuel
-                        tracksViewChanges={isAnimating}
+                        pinColor="#EF4444"
+                        tracksViewChanges={false}
                     />
                 )}
 
@@ -369,130 +289,77 @@ const InteractiveMapView = forwardRef<InteractiveMapViewRef, InteractiveMapViewP
                 {renderZoneOverlay()}
             </MapView>
 
-            {/* ✅ REFONTE: Indicateur de mode en haut à gauche */}
-            <View style={styles.modeIndicatorLeft}>
-                {/* Indicateur de mode - AMÉLIORÉ */}
-                <View style={styles.modeIndicator}>
-                    <SafeIcon
-                        name={zoneType === 'point' ? "circle" : "maximize"}
-                        size={14}
-                        color={modernColors.primary}
-                    />
-                    <Text style={styles.modeText}>
-                        {zoneType === 'point' ? 'Point précis' : `Zone (${localPolygonPoints.length} pts)`}
-                    </Text>
-                </View>
-            </View>
-
-            {/* Contrôles de carte à droite */}
+            {/* Contrôles de carte compacts à droite */}
             <View style={styles.mapControls}>
+                <TouchableOpacity
+                    style={styles.zoomBtn}
+                    onPress={() => {
+                        const cur = currentRegionRef.current;
+                        mapRef.current?.animateToRegion({
+                            ...cur,
+                            latitudeDelta: cur.latitudeDelta * 0.5,
+                            longitudeDelta: cur.longitudeDelta * 0.5,
+                        }, 300);
+                    }}
+                >
+                    <SafeIcon name="plus" size={20} color="#333" />
+                </TouchableOpacity>
 
-                {/* ✅ Contrôles de zoom avec labels */}
-                <View style={styles.zoomControls}>
-                    <TouchableOpacity
-                        style={styles.zoomButton}
-                        onPress={() => {
-                            mapRef.current?.animateToRegion({
-                                ...mapRegion,
-                                latitudeDelta: mapRegion.latitudeDelta * 0.5,
-                                longitudeDelta: mapRegion.longitudeDelta * 0.5,
-                            });
-                        }}
-                    >
-                        <SafeIcon name="plus" size={18} color={modernColors.text} />
-                        <Text style={styles.zoomLabel}>Zoom +</Text>
-                    </TouchableOpacity>
+                <TouchableOpacity
+                    style={styles.zoomBtn}
+                    onPress={() => {
+                        const cur = currentRegionRef.current;
+                        mapRef.current?.animateToRegion({
+                            ...cur,
+                            latitudeDelta: Math.min(cur.latitudeDelta * 2, 10),
+                            longitudeDelta: Math.min(cur.longitudeDelta * 2, 10),
+                        }, 300);
+                    }}
+                >
+                    <SafeIcon name="minus" size={20} color="#333" />
+                </TouchableOpacity>
 
-                    <View style={styles.zoomDivider} />
-
-                    <TouchableOpacity
-                        style={styles.zoomButton}
-                        onPress={() => {
-                            mapRef.current?.animateToRegion({
-                                ...mapRegion,
-                                latitudeDelta: mapRegion.latitudeDelta * 2,
-                                longitudeDelta: mapRegion.longitudeDelta * 2,
-                            });
-                        }}
-                    >
-                        <SafeIcon name="minus" size={18} color={modernColors.text} />
-                        <Text style={styles.zoomLabel}>Zoom -</Text>
-                    </TouchableOpacity>
-                </View>
-
-                {/* Bouton centrer sur position - AMÉLIORÉ */}
+                {/* Centrer sur la position sélectionnée */}
                 {selectedLocation && (
                     <TouchableOpacity
-                        style={styles.centerButton}
+                        style={[styles.zoomBtn, { backgroundColor: modernColors.primary }]}
                         onPress={() => {
                             mapRef.current?.animateToRegion({
                                 latitude: selectedLocation.lat,
                                 longitude: selectedLocation.lng,
-                                latitudeDelta: 0.01,
-                                longitudeDelta: 0.01,
-                            });
+                                latitudeDelta: 0.005,
+                                longitudeDelta: 0.005,
+                            }, 600);
                         }}
                     >
-                        <SafeIcon name="target" size={16} color="#FFFFFF" />
-                        <Text style={styles.centerButtonText}>Centrer</Text>
+                        <SafeIcon name="crosshair" size={20} color="#FFF" />
                     </TouchableOpacity>
                 )}
             </View>
 
-            {/* ✅ NOUVEAU: Indicateur visuel pendant l'animation de déplacement avec animation pulse */}
-            {isAnimating && (
-                <View style={styles.animationIndicator}>
-                    <Animated.View 
-                        style={[
-                            styles.animationPulse,
-                            {
-                                transform: [{ scale: pulseAnim }],
-                                opacity: pulseAnim.interpolate({
-                                    inputRange: [0.5, 1],
-                                    outputRange: [0.5, 1],
-                                }),
-                            }
-                        ]} 
-                    />
-                    <ActivityIndicator size="small" color="#FFFFFF" />
-                    <Text style={styles.animationText}>Déplacement...</Text>
-                </View>
-            )}
-
-            {/* Légende des informations */}
+            {/* Légende compacte en bas */}
             <View style={styles.legend}>
                 {zoneType === 'polygon' ? (
                     <>
-                        <View style={styles.legendItem}>
-                            <View style={[styles.legendColor, { backgroundColor: modernColors.success }]} />
-                            <Text style={styles.legendText}>
-                                Points: {localPolygonPoints.length}
-                                {localPolygonPoints.length < 3 && ' (min. 3 pour une zone)'}
-                            </Text>
-                        </View>
+                        <Text style={styles.legendText}>
+                            {localPolygonPoints.length} point{localPolygonPoints.length !== 1 ? 's' : ''}
+                            {localPolygonPoints.length < 3 && ' (min. 3)'}
+                        </Text>
                         {localPolygonPoints.length > 0 && (
                             <TouchableOpacity
                                 style={styles.clearButton}
                                 onPress={clearPolygon}
                             >
-                                <SafeIcon name="trash" size={14} color="#FFFFFF" />
-                                <Text style={styles.clearButtonText}>Effacer</Text>
+                                <SafeIcon name="trash-2" size={14} color="#FFF" />
                             </TouchableOpacity>
                         )}
                     </>
+                ) : selectedLocation ? (
+                    <Text style={styles.legendText}>
+                        📍 {selectedLocation.lat.toFixed(6)}, {selectedLocation.lng.toFixed(6)}
+                    </Text>
                 ) : (
-                    <>
-                        <View style={styles.legendItem}>
-                            <View style={[styles.legendColor, { backgroundColor: modernColors.primary }]} />
-                            <Text style={styles.legendText}>Position sélectionnée</Text>
-                        </View>
-                        {zoneType === 'circle' && (
-                            <View style={styles.legendItem}>
-                                <View style={[styles.legendColor, { backgroundColor: `${modernColors.primary}20` }]} />
-                                <Text style={styles.legendText}>Zone de service ({radius}m)</Text>
-                            </View>
-                        )}
-                    </>
+                    <Text style={[styles.legendText, { color: '#9CA3AF' }]}>Touchez la carte pour placer un point</Text>
                 )}
             </View>
         </View>
@@ -524,165 +391,55 @@ const styles = StyleSheet.create({
         color: '#6B7280',
         fontWeight: '500',
     },
-    modeIndicatorLeft: {
-        position: 'absolute',
-        top: 16,
-        left: 16,
-        zIndex: 10,
-    },
     mapControls: {
         position: 'absolute',
-        top: 16,
-        right: 16,
+        top: 12,
+        right: 12,
         gap: 8,
     },
-    modeIndicator: {
-        flexDirection: 'row',
+    zoomBtn: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: 'rgba(255,255,255,0.95)',
+        justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: 'rgba(255, 255, 255, 0.95)',
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-        borderRadius: 6,
-        gap: 6,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.15,
-        shadowRadius: 4,
-        elevation: 3,
-    },
-    modeText: {
-        fontSize: 12,
-        color: modernColors.text,
-        fontWeight: '500',
-    },
-    // ✅ NOUVEAU: Contrôles de zoom améliorés avec labels
-    zoomControls: {
-        backgroundColor: 'rgba(255, 255, 255, 0.98)',
-        borderRadius: 10,
-        paddingVertical: 4,
-        paddingHorizontal: 8,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.15,
-        shadowRadius: 5,
-        elevation: 4,
-    },
-    zoomButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 6,
-        paddingVertical: 8,
-        paddingHorizontal: 10,
-        minWidth: 90, // ✅ Largeur minimale pour le texte
-    },
-    zoomLabel: {
-        fontSize: 12,
-        fontWeight: '700',
-        color: modernColors.text,
-        letterSpacing: 0.3,
-    },
-    zoomDivider: {
-        height: 1,
-        backgroundColor: '#E5E7EB',
-        marginVertical: 2,
-    },
-    // ✅ NOUVEAU: Bouton centrer amélioré avec label
-    centerButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        paddingVertical: 8,
-        paddingHorizontal: 12,
-        backgroundColor: modernColors.primary,
-        borderRadius: 10,
-        shadowColor: modernColors.primary,
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.3,
+        shadowOpacity: 0.2,
         shadowRadius: 4,
         elevation: 4,
-    },
-    centerButtonText: {
-        fontSize: 12,
-        fontWeight: '700',
-        color: '#FFFFFF',
-        letterSpacing: 0.3,
     },
     legend: {
         position: 'absolute',
-        bottom: 16,
-        left: 16,
-        backgroundColor: 'rgba(255, 255, 255, 0.95)',
-        padding: 12,
-        borderRadius: 8,
-        gap: 8,
+        bottom: 12,
+        left: 12,
+        right: 12,
+        backgroundColor: 'rgba(255,255,255,0.92)',
+        paddingHorizontal: 14,
+        paddingVertical: 8,
+        borderRadius: 10,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 4,
         elevation: 2,
     },
-    legendItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-    },
-    legendColor: {
-        width: 12,
-        height: 12,
-        borderRadius: 6,
-    },
     legendText: {
         fontSize: 12,
-        color: modernColors.text,
-        fontWeight: '500',
+        color: '#374151',
+        fontWeight: '600',
+        fontFamily: 'monospace',
     },
     clearButton: {
-        flexDirection: 'row',
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: '#EF4444',
+        justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: modernColors.error,
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 6,
-        gap: 6,
-        marginTop: 8,
-    },
-    clearButtonText: {
-        fontSize: 12,
-        color: '#FFFFFF',
-        fontWeight: '600',
-    },
-    // ✅ NOUVEAU: Styles pour l'indicateur d'animation
-    animationIndicator: {
-        position: 'absolute',
-        top: '45%',
-        alignSelf: 'center',
-        backgroundColor: 'rgba(99, 102, 241, 0.95)',
-        paddingHorizontal: 20,
-        paddingVertical: 12,
-        borderRadius: 25,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 10,
-        zIndex: 1000,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.4,
-        shadowRadius: 8,
-        elevation: 10,
-        borderWidth: 2,
-        borderColor: '#FFFFFF',
-    },
-    animationPulse: {
-        width: 10,
-        height: 10,
-        borderRadius: 5,
-        backgroundColor: '#FFFFFF',
-    },
-    animationText: {
-        fontSize: 14,
-        fontWeight: '700',
-        color: '#FFFFFF',
-        letterSpacing: 0.5,
     },
 });

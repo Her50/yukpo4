@@ -61,6 +61,8 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
     const [isManualSelection, setIsManualSelection] = useState(false);
     // ✅ CRITIQUE: Ref pour le debounce de l'autocomplete (évite les appels API excessifs)
     const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+    // ✅ Position dynamique des suggestions (mesurée via onLayout)
+    const [suggestionsTop, setSuggestionsTop] = useState(170);
 
     useEffect(() => {
         if (visible) {
@@ -547,7 +549,7 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
             onRequestClose={onClose}
         >
             <View style={styles.container}>
-                {/* Header compact et moderne - OPTIMISÉ */}
+                {/* Header simplifié */}
                 <LinearGradient
                     colors={[modernColors.primary, modernColors.primaryDark]}
                     style={styles.header}
@@ -555,26 +557,15 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                     <TouchableOpacity
                         style={styles.closeButton}
                         onPress={onClose}
-                        accessibilityLabel="Fermer la sélection GPS"
+                        accessibilityLabel="Fermer"
                         accessibilityRole="button"
                     >
-                        <SafeIcon name="x" size={20} color="#FFFFFF" />
+                        <SafeIcon name="arrow-left" size={22} color="#FFFFFF" />
                     </TouchableOpacity>
 
-                    <View style={styles.headerContent}>
-                        <SafeIcon name="map-pin" size={16} color="#FFFFFF" />
-                        <Text
-                            style={[styles.headerTitle, { flex: 1, marginHorizontal: 6 }]}
-                            numberOfLines={1}
-                            ellipsizeMode="middle"
-                        >
-                            {title}
-                        </Text>
-                        <View style={styles.headerIcons}>
-                            <SafeIcon name="smartphone" size={12} color="#FFFFFF" />
-                            <SafeIcon name="map" size={12} color="#FFFFFF" />
-                        </View>
-                    </View>
+                    <Text style={styles.headerTitle} numberOfLines={1}>
+                        Localisation GPS
+                    </Text>
 
                     <TouchableOpacity style={styles.layerButton} onPress={toggleMapStyle}>
                         <SafeIcon name="layers" size={18} color="#FFFFFF" />
@@ -582,106 +573,73 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                     </TouchableOpacity>
                 </LinearGradient>
 
-                {/* ✅ REFONTE COMPLÈTE: Barre de contrôles ultra-intuitive et compacte */}
-                <View style={styles.topControlBar}>
-                    {/* Mode de sélection - HORIZONTAL ET INTUITIF */}
-                    <View style={[styles.topControlSection, { flex: 1.2 }]}>
-                        <Text style={[styles.topControlLabel, { fontSize: 8, fontWeight: '700' }]} numberOfLines={1} ellipsizeMode="clip">Mode de sélection</Text>
-                        <View style={styles.horizontalModeButtons}>
+                {/* Barre de recherche + contrôles — compacte et claire */}
+                <View style={styles.searchBar} onLayout={(e) => {
+                    const { y, height: h } = e.nativeEvent.layout;
+                    setSuggestionsTop(y + h);
+                }}>
+                    {/* Champ de recherche principal */}
+                    <View style={styles.searchInputRow}>
+                        <SafeIcon name="search" size={18} color="#9CA3AF" />
+                        <TextInput
+                            style={styles.searchInput}
+                            placeholder="Hôpital, pharmacie, quartier, restaurant..."
+                            value={searchQuery}
+                            onChangeText={handleSearchQueryChange}
+                            placeholderTextColor="#9CA3AF"
+                            returnKeyType="search"
+                            onSubmitEditing={handleSearch}
+                            onFocus={() => {
+                                if (placeSuggestions.length > 0) {
+                                    setShowSuggestions(true);
+                                }
+                            }}
+                        />
+                        {searchQuery.length > 0 && (
+                            <TouchableOpacity onPress={() => { setSearchQuery(''); setPlaceSuggestions([]); setShowSuggestions(false); }}>
+                                <SafeIcon name="x-circle" size={18} color="#9CA3AF" />
+                            </TouchableOpacity>
+                        )}
+                        <TouchableOpacity
+                            style={styles.searchButton}
+                            onPress={handleSearch}
+                            disabled={loading}
+                        >
+                            <SafeIcon name="search" size={16} color="#FFF" />
+                        </TouchableOpacity>
+                    </View>
+
+                    {/* Boutons rapides sous la recherche */}
+                    <View style={styles.quickActions}>
+                        {/* Mode Point / Zone */}
+                        <View style={styles.modeToggle}>
                             <TouchableOpacity
-                                style={[
-                                    styles.horizontalModeButton,
-                                    styles.pointModeButton,
-                                    zoneType === 'point' && styles.horizontalModeButtonActive
-                                ]}
+                                style={[styles.modeBtn, zoneType === 'point' && styles.modeBtnActive]}
                                 onPress={() => setZoneType('point')}
                             >
-                                <SafeIcon
-                                    name="circle"
-                                    size={16}
-                                    color={zoneType === 'point' ? '#FFFFFF' : modernColors.primary}
-                                />
+                                <SafeIcon name="map-pin" size={14} color={zoneType === 'point' ? '#FFF' : modernColors.primary} />
+                                <Text style={[styles.modeBtnText, zoneType === 'point' && styles.modeBtnTextActive]}>Point</Text>
                             </TouchableOpacity>
-
                             {allowZoneSelection && (
                                 <TouchableOpacity
-                                    style={[
-                                        styles.horizontalModeButton,
-                                        styles.zoneModeButton,
-                                        zoneType === 'polygon' && styles.horizontalModeButtonActive
-                                    ]}
+                                    style={[styles.modeBtn, zoneType === 'polygon' && styles.modeBtnActive]}
                                     onPress={() => setZoneType('polygon')}
                                 >
-                                    <SafeIcon
-                                        name="maximize"
-                                        size={16}
-                                        color={zoneType === 'polygon' ? '#FFFFFF' : modernColors.primary}
-                                    />
+                                    <SafeIcon name="hexagon" size={14} color={zoneType === 'polygon' ? '#FFF' : modernColors.primary} />
+                                    <Text style={[styles.modeBtnText, zoneType === 'polygon' && styles.modeBtnTextActive]}>Zone</Text>
                                 </TouchableOpacity>
                             )}
                         </View>
-                    </View>
 
-                    {/* Recherche d'adresse - AGRANDIE AVEC AUTOCOMPLETE */}
-                    <View style={[styles.topControlSection, { flex: 2.5 }]}>
-                        <View style={styles.controlHeader}>
-                            <SafeIcon name="search" size={10} color={modernColors.success} />
-                            <Text style={[styles.topControlLabel, { fontSize: 9, fontWeight: '700' }]} numberOfLines={1} ellipsizeMode="tail">RECHERCHE DE LIEU</Text>
-                        </View>
-                        <View style={styles.topSearchContainer}>
-                            <TextInput
-                                style={[styles.topSearchInput, { fontSize: 12, paddingHorizontal: 10, paddingVertical: 8 }]}
-                                placeholder="Rechercher un lieu..."
-                                value={searchQuery}
-                                onChangeText={handleSearchQueryChange}
-                                placeholderTextColor="#9CA3AF"
-                                returnKeyType="search"
-                                onSubmitEditing={handleSearch}
-                                onFocus={() => {
-                                    if (placeSuggestions.length > 0) {
-                                        setShowSuggestions(true);
-                                    }
-                                }}
-                            />
-                            <TouchableOpacity
-                                style={styles.topSearchButton}
-                                onPress={handleSearch}
-                                disabled={loading}
-                            >
-                                <SafeIcon name="search" size={14} color="#FFFFFF" />
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-
-                    {/* Ma position GPS - SIMPLIFIÉ ET CLAIR */}
-                    <View style={[styles.topControlSection, { flex: 0.8 }]}>
-                        <Text style={[styles.topControlLabel, { fontSize: 8, fontWeight: '700' }]} numberOfLines={1} ellipsizeMode="clip">MA POS.</Text>
+                        {/* Bouton Ma position */}
                         <TouchableOpacity
-                            style={styles.topGPSButton}
+                            style={styles.gpsBtn}
                             onPress={handleGetCurrentLocation}
                             disabled={loading}
                         >
-                            <SafeIcon
-                                name={loading ? "loader" : "map-pin"}
-                                size={16}
-                                color="#FFFFFF"
-                            />
+                            <SafeIcon name={loading ? 'loader' : 'navigation'} size={16} color="#FFF" />
+                            <Text style={styles.gpsBtnText}>Ma position</Text>
                         </TouchableOpacity>
-                    </View>
-                </View>
-
-                {/* ✅ NOUVEAU: Barre de coordonnées sous la barre principale */}
-                <View style={styles.coordsBar}>
-                    <View style={styles.coordsBarContent}>
-                        <SafeIcon name="map-pin" size={12} color={modernColors.primary} />
-                        <Text style={styles.coordsBarLabel}>COORDONNÉES:</Text>
-                        {selectedLocation && selectedLocation.lat != null && selectedLocation.lng != null ? (
-                            <Text style={styles.coordsBarValue} numberOfLines={1}>
-                                {Number.isFinite(selectedLocation.lat) ? selectedLocation.lat.toFixed(6) : '0.000000'}, {Number.isFinite(selectedLocation.lng) ? selectedLocation.lng.toFixed(6) : '0.000000'}
-                            </Text>
-                        ) : (
-                            <Text style={styles.coordsBarPlaceholder}>Aucune sélection</Text>
-                        )}
                     </View>
                 </View>
 
@@ -691,7 +649,7 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                         <TouchableWithoutFeedback onPress={() => setShowSuggestions(false)}>
                             <View style={styles.suggestionsBackdrop} />
                         </TouchableWithoutFeedback>
-                        <View style={styles.suggestionsContainer}>
+                        <View style={[styles.suggestionsContainer, { top: suggestionsTop }]}>
                             <ScrollView
                                 style={styles.suggestionsScrollView}
                                 nestedScrollEnabled={true}
@@ -909,46 +867,29 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: 16,
-        paddingVertical: 12,
-        paddingTop: 50, // Status bar
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 4,
+        paddingVertical: 10,
+        paddingTop: 50,
+        gap: 12,
     },
     closeButton: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
+        width: 36,
+        height: 36,
+        borderRadius: 18,
         backgroundColor: 'rgba(255, 255, 255, 0.2)',
         justifyContent: 'center',
         alignItems: 'center',
     },
-    headerContent: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginLeft: 12,
-    },
     headerTitle: {
-        fontSize: 13,
-        fontWeight: '600',
-        color: '#FFFFFF',
-        marginLeft: 6,
         flex: 1,
-        textAlign: 'center',
-    },
-    headerIcons: {
-        flexDirection: 'row',
-        marginLeft: 8,
-        gap: 4,
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#FFFFFF',
     },
     layerButton: {
         flexDirection: 'row',
-        height: 36,
+        height: 34,
         paddingHorizontal: 12,
-        borderRadius: 18,
+        borderRadius: 17,
         backgroundColor: 'rgba(255, 255, 255, 0.25)',
         justifyContent: 'center',
         alignItems: 'center',
@@ -958,206 +899,90 @@ const styles = StyleSheet.create({
         fontSize: 12,
         fontWeight: '700',
         color: '#FFFFFF',
-        letterSpacing: 0.3,
     },
-    content: {
-        flex: 1,
-        flexDirection: 'row',
-    },
-    leftPanel: {
-        display: 'none', // ✅ SUPPRIMÉ COMPLÈTEMENT pour maximiser la carte
-    },
-    // ✅ NOUVEAU: Styles pour la barre de contrôle horizontale
-    topControlBar: {
-        flexDirection: 'row',
+    // Barre de recherche
+    searchBar: {
         backgroundColor: '#FFFFFF',
-        paddingHorizontal: 12,
+        paddingHorizontal: 14,
         paddingVertical: 10,
         borderBottomWidth: 1,
         borderBottomColor: '#E5E7EB',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.06,
-        shadowRadius: 3,
-        elevation: 2,
         gap: 10,
     },
-    // ✅ NOUVEAU: Barre de coordonnées compacte
-    coordsBar: {
-        backgroundColor: '#F9FAFB',
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderBottomWidth: 1,
-        borderBottomColor: '#E5E7EB',
-    },
-    coordsBarContent: {
+    searchInputRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 6,
-    },
-    coordsBarLabel: {
-        fontSize: 9,
-        fontWeight: '700',
-        color: '#6B7280',
-        letterSpacing: 0.3,
-        textTransform: 'uppercase',
-    },
-    coordsBarValue: {
-        fontSize: 10,
-        fontWeight: '600',
-        color: modernColors.primary,
-        fontFamily: 'monospace',
-        flex: 1,
-    },
-    coordsBarPlaceholder: {
-        fontSize: 10,
-        fontWeight: '500',
-        color: '#9CA3AF',
-        fontStyle: 'italic',
-        flex: 1,
-    },
-    topControlSection: {
-        flex: 1,
-        minWidth: 0, // ✅ Pour permettre au flex de bien fonctionner
-    },
-    controlHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 4,
-        marginBottom: 4,
-    },
-    topControlLabel: {
-        fontSize: 9,
-        fontWeight: '800',
-        color: '#1F2937',
-        letterSpacing: 0.2,
-        textTransform: 'uppercase',
-        includeFontPadding: false,
-        textAlignVertical: 'center',
-        flexShrink: 1,
-    },
-    topModeButtons: {
-        flexDirection: 'row',
-        gap: 8,
-    },
-    horizontalModeButtons: {
-        flexDirection: 'row',
-        gap: 8,
-    },
-    horizontalModeButton: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: 6,
-        paddingHorizontal: 8,
-        borderRadius: 8,
-        borderWidth: 2,
-        borderColor: '#E5E7EB',
-        backgroundColor: '#FFFFFF',
-        gap: 4,
-        minHeight: 36,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
-        elevation: 1,
-    },
-    pointModeButton: {
-        borderRadius: 20, // ✅ Forme arrondie (circulaire) pour "Point"
-    },
-    zoneModeButton: {
-        borderRadius: 4, // ✅ Forme plus carrée pour "Zone"
-    },
-    horizontalModeButtonActive: {
-        backgroundColor: modernColors.primary,
-        borderColor: modernColors.primary,
-        shadowOpacity: 0.2,
-        elevation: 3,
-    },
-    horizontalModeButtonText: {
-        fontSize: 10,
-        fontWeight: '700',
-        color: modernColors.primary,
-        letterSpacing: 0.1,
-        textAlign: 'center',
-    },
-    horizontalModeButtonTextActive: {
-        color: '#FFFFFF',
-        fontWeight: '700',
-    },
-    topModeButton: {
-        flex: 1,
-        flexDirection: 'row', // ✅ CORRIGÉ: Horizontal au lieu de vertical
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: 10,
-        paddingHorizontal: 12,
+        backgroundColor: '#F3F4F6',
         borderRadius: 10,
-        borderWidth: 2,
-        borderColor: '#E5E7EB',
-        backgroundColor: '#FFFFFF',
-        gap: 8, // ✅ Augmenté de 4 à 8 pour plus d'espace entre icône et texte
-        minHeight: 48, // ✅ RÉDUIT de 68 à 48 pour moins d'espace vertical
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 3,
-        elevation: 2,
+        paddingHorizontal: 12,
+        gap: 8,
     },
-    topModeButtonActive: {
-        backgroundColor: modernColors.primary,
-        borderColor: modernColors.primary,
-        shadowOpacity: 0.4,
-        elevation: 5,
-    },
-    topModeButtonText: {
-        fontSize: 13, // ✅ RÉDUIT de 14 à 13 pour meilleur fit
-        fontWeight: '700',
-        color: modernColors.primary,
-        letterSpacing: 0.2,
-        textAlign: 'center',
-    },
-    topModeButtonTextActive: {
-        color: '#FFFFFF',
-        fontWeight: '800',
-    },
-    topSearchContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-    },
-    topSearchInput: {
+    searchInput: {
         flex: 1,
-        height: 36,
-        borderWidth: 2,
-        borderColor: '#D1D5DB',
-        borderRadius: 8,
-        paddingHorizontal: 10,
-        fontSize: 11,
-        backgroundColor: '#FFFFFF',
+        height: 42,
+        fontSize: 14,
         color: '#111827',
-        fontWeight: '600',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
-        elevation: 1,
+        fontWeight: '500',
     },
-    topSearchButton: {
+    searchButton: {
         width: 36,
         height: 36,
         borderRadius: 8,
         backgroundColor: modernColors.primary,
         justifyContent: 'center',
         alignItems: 'center',
-        shadowColor: modernColors.primary,
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 3,
-        elevation: 3,
     },
-    // ✅ NOUVEAU: Overlay pour les suggestions (au-dessus de tout)
+    quickActions: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    modeToggle: {
+        flexDirection: 'row',
+        gap: 8,
+    },
+    modeBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 6,
+        paddingHorizontal: 14,
+        borderRadius: 20,
+        borderWidth: 1.5,
+        borderColor: modernColors.primary,
+        backgroundColor: '#FFF',
+        gap: 6,
+    },
+    modeBtnActive: {
+        backgroundColor: modernColors.primary,
+        borderColor: modernColors.primary,
+    },
+    modeBtnText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: modernColors.primary,
+    },
+    modeBtnTextActive: {
+        color: '#FFFFFF',
+    },
+    gpsBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 7,
+        paddingHorizontal: 14,
+        borderRadius: 20,
+        backgroundColor: '#10B981',
+        gap: 6,
+    },
+    gpsBtnText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#FFFFFF',
+    },
+    content: {
+        flex: 1,
+        flexDirection: 'row',
+    },
+    // Overlay pour les suggestions autocomplete
     suggestionsOverlay: {
         position: 'absolute',
         top: 0,
@@ -1179,7 +1004,7 @@ const styles = StyleSheet.create({
     // ✅ NOUVEAU: Styles pour l'autocomplete Google Places
     suggestionsContainer: {
         position: 'absolute',
-        top: 140, // Position sous la barre de recherche et coordonnées
+        // top est passé dynamiquement via style inline (mesuré par onLayout)
         left: 12,
         right: 12,
         backgroundColor: '#FFFFFF',
@@ -1239,214 +1064,6 @@ const styles = StyleSheet.create({
         fontSize: 11,
         fontWeight: '400',
         color: modernColors.textSecondary,
-    },
-    topGPSButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: 6,
-        paddingHorizontal: 8,
-        borderRadius: 10,
-        backgroundColor: modernColors.success, // ✅ Vert pour "Me localiser"
-        gap: 4,
-        minHeight: 36,
-        shadowColor: modernColors.success,
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 3,
-        elevation: 3,
-    },
-    // ✅ NOUVEAU: Styles pour l'affichage des coordonnées en haut
-    coordsDisplayContainer: {
-        backgroundColor: '#F9FAFB',
-        borderWidth: 1.5,
-        borderColor: '#D1D5DB',
-        borderRadius: 8,
-        paddingVertical: 6,
-        paddingHorizontal: 8,
-        minHeight: 36,
-        justifyContent: 'center',
-    },
-    coordsRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        marginVertical: 2,
-    },
-    coordsLabel: {
-        fontSize: 11,
-        fontWeight: '700',
-        color: modernColors.textSecondary,
-        textTransform: 'uppercase',
-        minWidth: 30,
-    },
-    coordsValue: {
-        fontSize: 13,
-        fontWeight: '700',
-        color: modernColors.text,
-        fontFamily: 'monospace',
-        letterSpacing: 0.3,
-    },
-    coordsCompact: {
-        fontSize: 9,
-        fontWeight: '600',
-        color: modernColors.text,
-        fontFamily: 'monospace',
-        textAlign: 'center',
-        lineHeight: 12,
-    },
-    coordsPlaceholder: {
-        fontSize: 12,
-        fontWeight: '600',
-        color: modernColors.textSecondary,
-        textAlign: 'center',
-        fontStyle: 'italic',
-    },
-    topGPSIcon: {
-        fontSize: 22,
-    },
-    topGPSButtonText: {
-        fontSize: 12, // ✅ RÉDUIT de 13 à 12 pour éviter le wrap
-        fontWeight: '700',
-        color: '#FFFFFF',
-        letterSpacing: 0.2,
-        textAlign: 'center',
-    },
-    controlCard: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 12,
-        padding: 12,
-        marginBottom: 12,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
-        elevation: 1,
-    },
-    cardHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 8,
-        flexWrap: 'nowrap',
-    },
-    cardTitle: {
-        fontSize: 14, // ✅ Augmenté de 12 à 14 pour meilleure lisibilité
-        fontWeight: '700', // ✅ Plus gras
-        color: '#1F2937', // ✅ Plus contrasté
-        marginLeft: 6,
-        flexShrink: 1,
-        flexWrap: 'nowrap',
-    },
-    selectionModeButtons: {
-        flexDirection: 'row',
-        gap: 8,
-    },
-    modeButton: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: 8,
-        paddingHorizontal: 8,
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: modernColors.primary,
-        backgroundColor: '#FFFFFF',
-        gap: 4,
-    },
-    modeButtonActive: {
-        backgroundColor: modernColors.primary,
-    },
-    modeButtonText: {
-        fontSize: 11,
-        fontWeight: '500',
-        color: modernColors.primary,
-        marginLeft: 4,
-        textAlign: 'center',
-        flexShrink: 0,
-    },
-    modeButtonTextActive: {
-        color: '#FFFFFF',
-    },
-    searchContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-    },
-    searchInput: {
-        flex: 1,
-        height: 32,
-        borderWidth: 1,
-        borderColor: '#D1D5DB',
-        borderRadius: 8,
-        paddingHorizontal: 10,
-        fontSize: 12,
-        backgroundColor: '#FFFFFF',
-    },
-    searchButton: {
-        width: 32,
-        height: 32,
-        borderRadius: 8,
-        backgroundColor: modernColors.primary,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    gpsButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: 10,
-        paddingHorizontal: 12,
-        borderRadius: 8,
-        backgroundColor: modernColors.primary,
-    },
-    gpsButtonText: {
-        fontSize: 12,
-        fontWeight: '500',
-        color: '#FFFFFF',
-        marginLeft: 6,
-        textAlign: 'center',
-        flexShrink: 0,
-    },
-    selectedLocationContainer: {
-        marginTop: 4,
-        flexDirection: 'column',
-        flexWrap: 'wrap',
-    },
-    selectedLocationText: {
-        fontSize: 13, // ✅ Augmenté pour meilleure lisibilité
-        fontWeight: '700', // ✅ Plus gras
-        color: '#111827', // ✅ Plus contrasté
-        fontFamily: 'monospace',
-        flexWrap: 'wrap',
-        textAlign: 'left',
-    },
-    selectedAddressText: {
-        fontSize: 12, // ✅ Augmenté pour meilleure lisibilité
-        fontWeight: '600', // ✅ Plus gras
-        color: '#374151', // ✅ Plus contrasté
-        marginTop: 4,
-        flexWrap: 'wrap',
-        textAlign: 'left',
-        lineHeight: 17,
-    },
-    clearButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: 6,
-        paddingHorizontal: 8,
-        borderRadius: 6,
-        backgroundColor: '#FEF2F2',
-        marginTop: 4,
-    },
-    clearButtonText: {
-        fontSize: 10,
-        color: '#EF4444',
-        marginLeft: 4,
-        fontWeight: '500',
-        textAlign: 'center',
-        flexShrink: 0,
     },
     mapContainer: {
         flex: 1,
