@@ -2,8 +2,8 @@
 // Focus sur la recherche d'emploi avec fonctionnalités IA avancées
 // Création d'offre accessible via bouton (navigation vers CreateOffre)
 
-import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
@@ -21,13 +21,24 @@ import {
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useLocation } from '../../contexts/LocationContext';
-import { offreEmploiService, OffreEmploi, SearchOffresFilters, CVAnalysis, SalaryPrediction, FormationSuggestion } from '../../services/offreEmploiService';
+import { useAIWithFallback } from '../../hooks/useAIWithFallback';
+import { CVAnalysis, FormationSuggestion, OffreEmploi, offreEmploiService, SalaryPrediction, SearchOffresFilters } from '../../services/offreEmploiService';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
+
+// Filtres rapides par type de contrat
+const CONTRACT_FILTERS = [
+    { id: 'all', label: 'Tous', icon: 'list' },
+    { id: 'CDI', label: 'CDI', icon: 'shield' },
+    { id: 'CDD', label: 'CDD', icon: 'clock' },
+    { id: 'Stage', label: 'Stage', icon: 'graduation-cap' },
+    { id: 'Freelance', label: 'Freelance', icon: 'zap' },
+];
 
 const OffresEmploiHomeScreen: React.FC = () => {
     const navigation = useNavigation();
     const { location } = useLocation();
+    const { predictSalary } = useAIWithFallback();
 
     // États de recherche
     const [searchQuery, setSearchQuery] = useState('');
@@ -36,6 +47,11 @@ const OffresEmploiHomeScreen: React.FC = () => {
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [totalResults, setTotalResults] = useState(0);
+
+    // ✅ NOUVEAU: Filtres par type de contrat
+    const [activeContractFilter, setActiveContractFilter] = useState('all');
+    // ✅ NOUVEAU: Offres sauvegardées
+    const [savedOffers, setSavedOffers] = useState<Set<string>>(new Set());
 
     // États pour fonctionnalités IA
     const [showAIModal, setShowAIModal] = useState(false);
@@ -75,7 +91,7 @@ const OffresEmploiHomeScreen: React.FC = () => {
             }
 
             const response = await offreEmploiService.searchOffres(filters);
-            
+
             if (response.success && response.data?.data) {
                 setOffres(response.data.data);
                 setTotalResults(response.data.total || 0);
@@ -96,6 +112,58 @@ const OffresEmploiHomeScreen: React.FC = () => {
     const handleSearch = () => {
         hapticPress();
         loadOffres(false);
+    };
+
+    // ✅ NOUVEAU: Filtre par type de contrat
+    const handleContractFilter = (filterId: string) => {
+        hapticPress();
+        setActiveContractFilter(filterId);
+    };
+
+    // ✅ NOUVEAU: Offres filtrées (côté client pour réactivité)
+    const filteredOffres = activeContractFilter === 'all'
+        ? offres
+        : offres.filter(o => o.type_contrat?.toLowerCase().includes(activeContractFilter.toLowerCase()));
+
+    // ✅ NOUVEAU: Toggle sauvegarde d'offre
+    const handleToggleSaveOffer = (offre: OffreEmploi) => {
+        hapticPress();
+        const id = offre.id.toString();
+        setSavedOffers(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) {
+                next.delete(id);
+            } else {
+                next.add(id);
+            }
+            return next;
+        });
+    };
+
+    // ✅ NOUVEAU: Estimation salaire IA inline (avec fallback 3 niveaux)
+    const handleInlineSalaryEstimate = async (offre: OffreEmploi) => {
+        hapticPress();
+        const result = await predictSalary(
+            offre.titre_poste || '',
+            offre.secteur || '',
+            3,
+            [],
+            offre.lieu_travail || 'douala'
+        );
+        if (result.success && result.data) {
+            const est = result.data;
+            const source = result.source === 'local' ? ' (estimation locale)' : '';
+            Alert.alert(
+                `Estimation salaire${source}`,
+                `Poste: ${offre.titre_poste}\n\n` +
+                `Fourchette: ${(est.salaire_estime_min || 0).toLocaleString()} - ${(est.salaire_estime_max || 0).toLocaleString()} FCFA/mois\n` +
+                `Médian: ${(est.salaire_estime_median || 0).toLocaleString()} FCFA/mois\n\n` +
+                `${est.comparaison_marche || ''}`,
+                [{ text: 'OK' }]
+            );
+        } else {
+            Alert.alert('Indisponible', 'L\'estimation de salaire n\'est pas disponible pour ce poste.');
+        }
     };
 
     // ✅ CORRIGÉ: Fonction IA améliorée - Naviguer directement vers l'écran d'analyse CV
@@ -267,28 +335,53 @@ const OffresEmploiHomeScreen: React.FC = () => {
                 </LinearGradient>
             </View>
 
+            {/* ✅ NOUVEAU: Filtres par type de contrat */}
+            <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 8, gap: 8 }}
+            >
+                {CONTRACT_FILTERS.map(f => (
+                    <TouchableOpacity
+                        key={f.id}
+                        style={{
+                            flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 8,
+                            borderRadius: 20, gap: 6,
+                            backgroundColor: activeContractFilter === f.id ? '#6366F1' : '#F3F4F6',
+                        }}
+                        onPress={() => handleContractFilter(f.id)}
+                    >
+                        <SafeIcon name={f.icon} size={14} color={activeContractFilter === f.id ? '#FFFFFF' : '#6B7280'} type="lucide" />
+                        <Text style={{ fontSize: 13, fontWeight: '600', color: activeContractFilter === f.id ? '#FFFFFF' : '#374151' }}>
+                            {f.label}
+                        </Text>
+                    </TouchableOpacity>
+                ))}
+            </ScrollView>
+
             {/* Contenu : Liste des offres */}
             {loading && offres.length === 0 ? (
-                    <View style={styles.centerContainer}>
-                        <ActivityIndicator size="large" color={modernColors.primary} />
-                        <Text style={styles.loadingText}>Recherche d'offres...</Text>
-                    </View>
-                ) : error && offres.length === 0 ? (
-                    <View style={styles.centerContainer}>
-                        <SafeIcon name="briefcase" size={64} color="#9CA3AF" />
-                        <Text style={styles.errorText}>{error}</Text>
-                        <TouchableOpacity
-                            style={styles.retryButton}
-                            onPress={() => loadOffres(true)}
-                        >
-                            <Text style={styles.retryButtonText}>Réessayer</Text>
-                        </TouchableOpacity>
-                    </View>
-                ) : (
-                    <FlatList
-                        data={offres}
-                        keyExtractor={(item) => item.id.toString()}
-                        renderItem={({ item }) => (
+                <View style={styles.centerContainer}>
+                    <ActivityIndicator size="large" color={modernColors.primary} />
+                    <Text style={styles.loadingText}>Recherche d'offres...</Text>
+                </View>
+            ) : error && offres.length === 0 ? (
+                <View style={styles.centerContainer}>
+                    <SafeIcon name="briefcase" size={64} color="#9CA3AF" />
+                    <Text style={styles.errorText}>{error}</Text>
+                    <TouchableOpacity
+                        style={styles.retryButton}
+                        onPress={() => loadOffres(true)}
+                    >
+                        <Text style={styles.retryButtonText}>Réessayer</Text>
+                    </TouchableOpacity>
+                </View>
+            ) : (
+                <FlatList
+                    data={filteredOffres}
+                    keyExtractor={(item) => item.id.toString()}
+                    renderItem={({ item }) => (
+                        <View>
                             <OffreCard
                                 offre={item}
                                 onPress={() => navigation.navigate('OffreDetails' as never, { offreId: item.id } as never)}
@@ -298,29 +391,49 @@ const OffresEmploiHomeScreen: React.FC = () => {
                                 }}
                                 formatSalary={formatSalary}
                             />
-                        )}
-                        contentContainerStyle={styles.listContent}
-                        refreshControl={
-                            <RefreshControl
-                                refreshing={refreshing}
-                                onRefresh={() => {
-                                    setRefreshing(true);
-                                    loadOffres(false);
-                                }}
-                                colors={[modernColors.primary]}
-                            />
-                        }
-                        ListEmptyComponent={
-                            <View style={styles.emptyContainer}>
-                                <SafeIcon name="briefcase" size={64} color="#9CA3AF" />
-                                <Text style={styles.emptyText}>Aucune offre trouvée</Text>
-                                <Text style={styles.emptySubtext}>
-                                    Essayez de modifier vos critères de recherche
-                                </Text>
+                            {/* ✅ NOUVEAU: Boutons d'action rapide */}
+                            <View style={{ flexDirection: 'row', paddingHorizontal: 16, paddingBottom: 8, gap: 8, marginTop: -4 }}>
+                                <TouchableOpacity
+                                    style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: savedOffers.has(item.id.toString()) ? '#EEF2FF' : '#F9FAFB', borderRadius: 8, paddingVertical: 8, borderWidth: 1, borderColor: savedOffers.has(item.id.toString()) ? '#C7D2FE' : '#E5E7EB' }}
+                                    onPress={() => handleToggleSaveOffer(item)}
+                                >
+                                    <SafeIcon name="bookmark" size={14} color={savedOffers.has(item.id.toString()) ? '#6366F1' : '#9CA3AF'} type="lucide" />
+                                    <Text style={{ marginLeft: 4, fontSize: 12, color: savedOffers.has(item.id.toString()) ? '#6366F1' : '#6B7280' }}>
+                                        {savedOffers.has(item.id.toString()) ? 'Sauvegardé' : 'Sauvegarder'}
+                                    </Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFF7ED', borderRadius: 8, paddingVertical: 8, borderWidth: 1, borderColor: '#FED7AA' }}
+                                    onPress={() => handleInlineSalaryEstimate(item)}
+                                >
+                                    <SafeIcon name="trending-up" size={14} color="#F59E0B" type="lucide" />
+                                    <Text style={{ marginLeft: 4, fontSize: 12, color: '#D97706' }}>Estimer salaire</Text>
+                                </TouchableOpacity>
                             </View>
-                        }
-                    />
-                )}
+                        </View>
+                    )}
+                    contentContainerStyle={styles.listContent}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={refreshing}
+                            onRefresh={() => {
+                                setRefreshing(true);
+                                loadOffres(false);
+                            }}
+                            colors={[modernColors.primary]}
+                        />
+                    }
+                    ListEmptyComponent={
+                        <View style={styles.emptyContainer}>
+                            <SafeIcon name="briefcase" size={64} color="#9CA3AF" />
+                            <Text style={styles.emptyText}>Aucune offre trouvée</Text>
+                            <Text style={styles.emptySubtext}>
+                                Essayez de modifier vos critères de recherche
+                            </Text>
+                        </View>
+                    }
+                />
+            )}
 
             {/* Modal IA */}
             {showAIModal && (

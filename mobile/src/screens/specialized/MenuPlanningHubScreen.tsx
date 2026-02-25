@@ -17,11 +17,13 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { NativeButton, NativeCard, NativeInput } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
+import { useToaster } from '../../components/ToasterProvider';
+import { useLocationSafe } from '../../contexts/LocationContext';
+import { useAIWithFallback } from '../../hooks/useAIWithFallback';
 import { FamilyProfile, GeneratedRecipe, menuPlanningService, WeeklyMenu } from '../../services/menuPlanningService';
 import { modernColors } from '../../theme/modernTheme';
-import { useLocationSafe } from '../../contexts/LocationContext';
 import { generateAndDownloadRecipePDF, shareRecipePDF } from '../../utils/recipePdfGenerator';
 
 // ✅ NOUVEAU: Helper pour extraire le nombre de servings
@@ -44,6 +46,8 @@ type MenuPeriod = '1_week' | '2_weeks' | '1_month';
 const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
     const navigation = useNavigation();
     const { location, getCurrentLocation } = useLocationSafe();
+    const { callWithFallback } = useAIWithFallback();
+    const toaster = useToaster();
     const [loading, setLoading] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [profile, setProfile] = useState<FamilyProfile | null>(null);
@@ -54,7 +58,7 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
     const [historyMenus, setHistoryMenus] = useState<any[]>([]);
     const [historyShoppingLists, setHistoryShoppingLists] = useState<any[]>([]);
     const [loadingHistory, setLoadingHistory] = useState(false);
-    
+
     // ✅ NOUVEAU: États pour le modal de recette
     const [showRecipeModal, setShowRecipeModal] = useState(false);
     const [showRecipeDetails, setShowRecipeDetails] = useState(false);
@@ -114,58 +118,70 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
         }
     };
 
-    // ✅ REFONDU: Générer une recette via IA - SIMPLIFIÉ
+    // ✅ REFONDU: Générer une recette via IA avec fallback 3 niveaux (ne plante plus jamais)
     const handleGenerateRecipe = async () => {
         if (!recipeRequest.trim()) {
             Alert.alert('Erreur', 'Veuillez entrer le nom d\'un plat');
             return;
         }
 
-        // Fermer le clavier immédiatement
         Keyboard.dismiss();
         setLoadingRecipe(true);
 
-        try {
-            const response = await menuPlanningService.generateRecipe(recipeRequest.trim());
-            
-            // Extraire la recette de différentes structures possibles
-            let recipe: GeneratedRecipe | null = null;
-            
-            if (response) {
-                if (response.data?.recipe) {
-                    recipe = response.data.recipe;
-                } else if (response.data && response.data.recipe_name) {
-                    recipe = response.data as GeneratedRecipe;
-                } else if (response.recipe) {
-                    recipe = response.recipe;
-                } else if (response.data?.data?.recipe) {
-                    recipe = response.data.data.recipe;
+        const result = await callWithFallback(
+            async () => {
+                const response = await menuPlanningService.generateRecipe(recipeRequest.trim());
+                let recipe: GeneratedRecipe | null = null;
+                if (response) {
+                    recipe = response.data?.recipe || (response.data?.recipe_name ? response.data as GeneratedRecipe : null) || response.recipe || response.data?.data?.recipe || null;
                 }
-                
-                if (!response.success && !recipe) {
-                    const errorMsg = response.error || response.message || response.data?.error || response.data?.message || 'Impossible de générer la recette';
-                    Alert.alert('Erreur', errorMsg);
-                    setLoadingRecipe(false);
-                    return;
-                }
+                if (recipe && recipe.recipe_name) return recipe;
+                return null;
+            },
+            'cuisine_recette',
+            `Générer recette: ${recipeRequest.trim()}`,
+            () => {
+                const name = recipeRequest.trim();
+                return {
+                    recipe_name: name,
+                    description: `Recette traditionnelle de ${name}. Recette générée localement — consultez un livre de cuisine pour les détails.`,
+                    cuisine_style: 'camerounaise',
+                    meal_type: ['dejeuner', 'diner'],
+                    difficulty: 'moyen',
+                    prep_time_minutes: 30,
+                    cook_time_minutes: 45,
+                    servings: { number: 4, size: 'portions' },
+                    ingredients: [
+                        { name: 'Ingrédient principal', quantity: 500, unit: 'g' },
+                        { name: 'Huile', quantity: 3, unit: 'cuillères à soupe' },
+                        { name: 'Oignon', quantity: 2, unit: 'pièces' },
+                        { name: 'Sel et poivre', quantity: 1, unit: 'pincée' },
+                    ],
+                    instructions: [
+                        'Préparer et laver tous les ingrédients.',
+                        'Faire chauffer l\'huile dans une marmite.',
+                        'Ajouter les oignons et faire revenir 5 min.',
+                        'Ajouter l\'ingrédient principal et cuire à feu moyen.',
+                        'Assaisonner et servir chaud.',
+                    ],
+                    nutrition_per_serving: { calories: 350, proteins: 25, carbs: 40, fats: 12, fiber: 5 },
+                    tips: ['Servir avec du riz ou des plantains.'],
+                    estimated_cost: 2500,
+                } as GeneratedRecipe;
             }
+        );
 
-            if (recipe && recipe.recipe_name) {
-                setGeneratedRecipe(recipe);
-                setShowRecipeModal(false);
-                setRecipeRequest('');
-                setLoadingRecipe(false);
-                // Petit délai pour permettre la fermeture complète du modal avant d'ouvrir le suivant
-                setTimeout(() => {
-                    setShowRecipeDetails(true);
-                }, 200);
-            } else {
-                Alert.alert('Erreur', 'Impossible d\'extraire la recette de la réponse. Veuillez réessayer.');
-                setLoadingRecipe(false);
+        if (result.success && result.data) {
+            setGeneratedRecipe(result.data);
+            setShowRecipeModal(false);
+            setRecipeRequest('');
+            setLoadingRecipe(false);
+            if (result.source === 'local') {
+                toaster?.show?.('Recette générée localement — résultats approximatifs', 'info');
             }
-        } catch (error: any) {
-            console.error('[MenuPlanningHub] Erreur génération recette:', error);
-            Alert.alert('Erreur', error.message || 'Une erreur est survenue');
+            setTimeout(() => setShowRecipeDetails(true), 200);
+        } else {
+            Alert.alert('Erreur', 'Impossible de générer la recette. Réessayez plus tard.');
             setLoadingRecipe(false);
         }
     };
@@ -188,7 +204,7 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
 
         try {
             setLoading(true);
-            
+
             // ✅ NOUVEAU: Récupérer la localisation actuelle dynamiquement
             let currentGps: string | undefined;
             try {
@@ -209,12 +225,12 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                 console.warn('[MenuPlanningHub] Impossible de récupérer la localisation actuelle, utilisation du GPS stocké:', error);
                 // Continue sans GPS actuel, le backend utilisera le GPS stocké
             }
-            
+
             // Calculer la date de début selon la période choisie
             const today = new Date();
             const weekStart = new Date(today);
             weekStart.setDate(today.getDate() - today.getDay() + 1); // Lundi de cette semaine
-            
+
             // Générer le menu avec le profil utilisateur réel et la localisation actuelle
             const response = await menuPlanningService.generateWeeklyMenu(
                 weekStart.toISOString().split('T')[0],
@@ -270,13 +286,13 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
         <ScrollView
             style={styles.container}
             contentContainerStyle={styles.scrollContent}
-                refreshControl={
-                    <RefreshControl refreshing={refreshing} onRefresh={() => {
-                        setRefreshing(true);
-                        loadData();
-                        loadHistory();
-                    }} />
-                }
+            refreshControl={
+                <RefreshControl refreshing={refreshing} onRefresh={() => {
+                    setRefreshing(true);
+                    loadData();
+                    loadHistory();
+                }} />
+            }
             showsVerticalScrollIndicator={false}
         >
             {/* Header avec gradient */}
@@ -328,11 +344,11 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                             onPress={() => navigation.navigate('FamilyProfile' as never)}
                             style={styles.profileEditButton}
                         >
-                            <SafeIcon 
-                                name={hasProfile ? "Edit" : "Plus"} 
-                                size={16} 
-                                color={modernColors.primary} 
-                                type="lucide" 
+                            <SafeIcon
+                                name={hasProfile ? "Edit" : "Plus"}
+                                size={16}
+                                color={modernColors.primary}
+                                type="lucide"
                             />
                         </TouchableOpacity>
                     </View>
@@ -409,7 +425,7 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                         <Text style={styles.generateSubtitle}>
                             Notre IA vous propose un menu personnalisé selon vos préférences et votre budget
                         </Text>
-                        
+
                         {/* Sélecteur de période */}
                         <View style={styles.periodSelector}>
                             <Text style={styles.periodLabel}>Période du menu :</Text>
@@ -592,7 +608,7 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                 }}
             >
                 <View style={styles.modalOverlay}>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         style={styles.modalOverlayTouchable}
                         activeOpacity={1}
                         onPress={() => {
@@ -674,7 +690,7 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                         </View>
 
                         {generatedRecipe && (
-                            <ScrollView 
+                            <ScrollView
                                 style={styles.modalBody}
                                 removeClippedSubviews={true} // ✅ CORRIGÉ: Optimise les performances
                                 scrollEventThrottle={16} // ✅ CORRIGÉ: Limite la fréquence des événements de scroll
@@ -812,14 +828,14 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                                 title={exportingRecipePDF ? 'Génération...' : 'Partager en PDF'}
                                 onPress={async () => {
                                     if (!generatedRecipe) return;
-                                    
+
                                     try {
                                         setExportingRecipePDF(true);
                                         const pdfUri = await generateAndDownloadRecipePDF({
                                             recipe: generatedRecipe,
                                             currency: 'FCFA',
                                         });
-                                        
+
                                         await shareRecipePDF(pdfUri, generatedRecipe.recipe_name);
                                         Alert.alert('Succès', 'Recette partagée avec succès !');
                                     } catch (error: any) {

@@ -54,6 +54,7 @@ pub mod orientation_scolaire_routes;
 pub mod partner_validation_routes; // ✅ NOUVEAU: Routes pour validation des partenaires
 pub mod payment_routes;
 pub mod phone_model_routes; // ✅ Routes pour modèles de smartphones
+pub mod phone_verification_routes; // ✅ NOUVEAU 2026-02-25: Routes pour vérification OTP téléphone
 pub mod places_routes; // ✅ NOUVEAU: Routes pour autocomplete de lieux (Google Maps API)
 pub mod plugin_routes;
 pub mod popular_products_routes;

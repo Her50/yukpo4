@@ -12,9 +12,9 @@ import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 import ModernGPSModal from '../../components/ModernGPSModal';
 // ✅ SUPPRIMÉ: PartnerSelector - Les données partenaire sont chargées automatiquement depuis /api/partners/me
-import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import PrestationSelectorWithSchedule, { PrestationWithSchedule } from '../../components/PrestationSelectorWithSchedule';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 // ✅ SUPPRIMÉ : WeekScheduleSelector (planning hebdomadaire supprimé)
 import { useAuth } from '../../contexts/AuthContext';
 import { useLocation } from '../../contexts/LocationContext';
@@ -275,6 +275,28 @@ const HopitalFormScreen: React.FC = () => {
             return;
         }
 
+        // ✅ NOUVEAU: Validation téléphone obligatoire
+        if (!formData.telephone.trim()) {
+            Alert.alert('Validation', 'Le numéro de téléphone est obligatoire pour un établissement de santé');
+            setLoading(false);
+            return;
+        }
+
+        // ✅ NOUVEAU: Validation format téléphone
+        const phoneDigits = formData.telephone.replace(/\D/g, '');
+        if (phoneDigits.length < 9) {
+            Alert.alert('Validation', 'Le numéro de téléphone doit contenir au moins 9 chiffres');
+            setLoading(false);
+            return;
+        }
+
+        // ✅ NOUVEAU: Validation localisation
+        if (!formData.quartier && !selectedGPS) {
+            Alert.alert('Validation', 'Veuillez indiquer le quartier ou activer la localisation GPS');
+            setLoading(false);
+            return;
+        }
+
         try {
             // ✅ SUPPRIMÉ : planning_hebdomadaire (pas d'utilité selon demande)
 
@@ -440,8 +462,8 @@ const HopitalFormScreen: React.FC = () => {
                             onSelect={(location: LocationObject) => {
                                 // ✅ CORRECTION: Extraire la valeur à stocker (string ou LocationObject selon besoin)
                                 const quartierValue = location.raw || location.place_name || '';
-                                setFormData({ 
-                                    ...formData, 
+                                setFormData({
+                                    ...formData,
                                     quartier: quartierValue,
                                     // ✅ NOUVEAU: Extraire automatiquement ville et pays si disponibles
                                     ville: location.components?.ville || formData.ville,

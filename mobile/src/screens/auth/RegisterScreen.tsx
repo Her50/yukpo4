@@ -1,12 +1,14 @@
 // @ts-nocheck
 // Migration vers Lucide React Native pour un design moderne
 import { useNavigation } from '@react-navigation/native';
+import * as Google from 'expo-auth-session/providers/google';
+import * as Linking from 'expo-linking';
+import * as WebBrowser from 'expo-web-browser';
 import { CheckCircle, Envelope, WarningCircle } from 'phosphor-react-native';
 import * as React from 'react';
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Alert,
-  KeyboardAvoidingView,
   Platform,
   ScrollView,
   StyleSheet,
@@ -16,12 +18,9 @@ import {
 } from 'react-native';
 import { Card, Paragraph, TextInput, Title } from 'react-native-paper';
 import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
+import { API_BASE_URL } from '../../config/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { theme } from '../../theme/theme';
-import * as WebBrowser from 'expo-web-browser';
-import * as Google from 'expo-auth-session/providers/google';
-import * as Linking from 'expo-linking';
-import { API_BASE_URL } from '../../config/api';
 
 // Configuration WebBrowser pour OAuth
 WebBrowser.maybeCompleteAuthSession();
@@ -30,9 +29,27 @@ interface RegisterForm {
   nom: string;
   prenom: string;
   email: string;
+  phone: string;
+  phoneCountry: string;
   password: string;
   confirmPassword: string;
 }
+
+// Indicatifs téléphoniques par pays africain francophone
+const COUNTRY_CODES = [
+  { code: 'CM', label: '🇨🇲 Cameroun', prefix: '+237' },
+  { code: 'CI', label: '🇨🇮 Côte d\'Ivoire', prefix: '+225' },
+  { code: 'SN', label: '🇸🇳 Sénégal', prefix: '+221' },
+  { code: 'CD', label: '🇨🇩 RD Congo', prefix: '+243' },
+  { code: 'GA', label: '🇬🇦 Gabon', prefix: '+241' },
+  { code: 'BF', label: '🇧🇫 Burkina Faso', prefix: '+226' },
+  { code: 'ML', label: '🇲🇱 Mali', prefix: '+223' },
+  { code: 'GN', label: '🇬🇳 Guinée', prefix: '+224' },
+  { code: 'TD', label: '🇹🇩 Tchad', prefix: '+235' },
+  { code: 'CG', label: '🇨🇬 Congo', prefix: '+242' },
+  { code: 'FR', label: '🇫🇷 France', prefix: '+33' },
+  { code: 'BE', label: '🇧🇪 Belgique', prefix: '+32' },
+];
 
 const RegisterScreen: React.FC = () => {
   const navigation = useNavigation();
@@ -43,9 +60,12 @@ const RegisterScreen: React.FC = () => {
     nom: '',
     prenom: '',
     email: '',
+    phone: '',
+    phoneCountry: 'CM',
     password: '',
     confirmPassword: '',
   });
+  const [showCountryPicker, setShowCountryPicker] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formLoading, setFormLoading] = useState(false);
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
@@ -53,7 +73,7 @@ const RegisterScreen: React.FC = () => {
   // Configuration Google OAuth
   // ✅ CORRECTION ALIGNEMENT: Utiliser Linking.createURL() pour garantir l'alignement avec app.config.js
   const redirectUri = Linking.createURL('/');
-  
+
   const [googleRequest, googleResponse, googlePromptAsync] = Google.useAuthRequest({
     expoClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || '738929393617-4kt4e9ed1g79j70dng7epskqn7rkqnm2.apps.googleusercontent.com',
     iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
@@ -87,13 +107,13 @@ const RegisterScreen: React.FC = () => {
       console.error('[RegisterScreen] Code erreur:', googleResponse.error?.code);
       console.error('[RegisterScreen] Message erreur:', googleResponse.error?.message);
       console.error('[RegisterScreen] URL erreur:', googleResponse.error?.url);
-      
+
       // Messages d'erreur spécifiques selon le type d'erreur
       let errorMessage = 'Erreur de connexion Google. Veuillez réessayer.';
-      
-      if (googleResponse.error?.code === 'invalid_request' || 
-          googleResponse.error?.message?.includes('Custom URI scheme') ||
-          googleResponse.error?.message?.includes('invalid_request')) {
+
+      if (googleResponse.error?.code === 'invalid_request' ||
+        googleResponse.error?.message?.includes('Custom URI scheme') ||
+        googleResponse.error?.message?.includes('invalid_request')) {
         errorMessage = 'Configuration OAuth manquante. Le schéma URI personnalisé n\'est pas activé pour Android.\n\n' +
           'URI utilisée: ' + (googleRequest?.redirectUri || 'non définie') + '\n\n' +
           'Veuillez consulter le guide: mobile/GUIDE_FIX_GOOGLE_OAUTH_ANDROID.md';
@@ -102,7 +122,7 @@ const RegisterScreen: React.FC = () => {
       } else if (googleResponse.error?.code === 'popup_closed') {
         errorMessage = 'La fenêtre de connexion a été fermée.';
       }
-      
+
       setError(errorMessage);
       setFormLoading(false);
     }
@@ -127,10 +147,10 @@ const RegisterScreen: React.FC = () => {
           const { jwtDecode } = await import('../../utils/jwtDecode');
           const SafeStorage = (await import('../../utils/safeStorage')).default;
           await SafeStorage.setItem('auth_token', data.token);
-          
+
           // Décoder le token pour obtenir les informations utilisateur
           const decoded = jwtDecode(data.token);
-          
+
           // Mettre à jour le contexte d'authentification
           updateUser({
             id: String(decoded.sub),
@@ -140,7 +160,7 @@ const RegisterScreen: React.FC = () => {
             credits: decoded.tokens_balance ?? 0,
             role: decoded.role || 'user',
           });
-          
+
           setRegistrationSuccess(true);
           Alert.alert('Succès', `Bienvenue ! Votre compte a été créé avec Google.`);
         } else {
@@ -164,7 +184,7 @@ const RegisterScreen: React.FC = () => {
     try {
       setFormLoading(true);
       setError(null);
-      
+
       // Vérifier que le Client ID Android est configuré sur Android
       if (Platform.OS === 'android' && !process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID) {
         const errorMsg = 'Configuration OAuth Android manquante.\n\n' +
@@ -175,17 +195,17 @@ const RegisterScreen: React.FC = () => {
         setFormLoading(false);
         return;
       }
-      
+
       await googlePromptAsync();
     } catch (error: any) {
       console.error('[RegisterScreen] Erreur lors du lancement Google OAuth:', error);
       let errorMessage = 'Impossible de lancer l\'inscription Google. Veuillez réessayer.';
-      
+
       if (error?.message?.includes('Custom URI scheme') || error?.message?.includes('invalid_request')) {
         errorMessage = 'Configuration OAuth manquante. Le schéma URI personnalisé n\'est pas activé pour Android.\n\n' +
           'Veuillez consulter le guide: mobile/GUIDE_FIX_GOOGLE_OAUTH_ANDROID.md';
       }
-      
+
       setError(errorMessage);
       Alert.alert('Erreur OAuth', errorMessage);
       setFormLoading(false);
@@ -201,11 +221,21 @@ const RegisterScreen: React.FC = () => {
     return null;
   };
 
+  // Obtenir le préfixe du pays sélectionné
+  const selectedCountry = COUNTRY_CODES.find(c => c.code === form.phoneCountry) || COUNTRY_CODES[0];
+
   // Inscription classique
   const handleRegister = async () => {
     // Validation des champs
-    if (!form.nom || !form.prenom || !form.email || !form.password || !form.confirmPassword) {
-      setError('Veuillez remplir tous les champs');
+    if (!form.nom || !form.prenom || !form.email || !form.phone || !form.password || !form.confirmPassword) {
+      setError('Veuillez remplir tous les champs, y compris le numéro de téléphone');
+      return;
+    }
+
+    // Validation du téléphone (au moins 8 chiffres)
+    const phoneDigits = form.phone.replace(/\D/g, '');
+    if (phoneDigits.length < 8) {
+      setError('Numéro de téléphone invalide. Minimum 8 chiffres.');
       return;
     }
 
@@ -225,39 +255,49 @@ const RegisterScreen: React.FC = () => {
     setFormLoading(true);
 
     try {
-      // Logique identique au frontend
+      const fullPhone = `${selectedCountry.prefix}${phoneDigits}`;
+
+      // Appel API d'inscription avec le téléphone
       const response = await register({
         name: `${form.nom} ${form.prenom}`.trim(),
         email: form.email,
         password: form.password,
+        phone: fullPhone,
       });
 
       console.log('[RegisterScreen] Réponse inscription:', response);
 
-      // Si l'inscription réussit, afficher le message de succès (comme le frontend)
       if (response.success) {
-        console.log('[RegisterScreen] Inscription réussie, utilisateur défini dans AuthContext');
-        setRegistrationSuccess(true);
+        console.log('[RegisterScreen] Inscription réussie, redirection vers OTP');
+
+        // Naviguer vers l'écran de vérification OTP
+        const userId = response.data?.id || response.data?.user_id;
+        if (userId && form.phone) {
+          (navigation as any).navigate('OtpVerification', {
+            userId: userId,
+            phone: fullPhone,
+            phoneCountry: form.phoneCountry,
+            email: form.email,
+            token: response.data?.token,
+          });
+        } else {
+          // Fallback: afficher succès classique
+          setRegistrationSuccess(true);
+        }
       } else {
         throw new Error('Erreur lors de l\'inscription');
       }
     } catch (error: any) {
       console.error('[RegisterScreen] Erreur inscription:', error);
 
-      // Détection des erreurs spécifiques
       let errorMessage = error.message || 'Erreur lors de l\'inscription';
 
-      // Email déjà utilisé (409 Conflict)
       if (error.message?.includes('409') || error.message?.includes('deja utilise') || error.message?.includes('already exists')) {
-        errorMessage = '❌ Cet email est déjà utilisé. Essayez de vous connecter ou utilisez un autre email.';
-      }
-      // Erreur de validation (400 Bad Request)
-      else if (error.message?.includes('400') || error.message?.includes('validation')) {
-        errorMessage = '❌ Données invalides. Vérifiez vos informations.';
-      }
-      // Erreur réseau
-      else if (error.message?.includes('network') || error.message?.includes('fetch')) {
-        errorMessage = '❌ Problème de connexion. Vérifiez votre internet.';
+        errorMessage = 'Cet email est déjà utilisé. Essayez de vous connecter ou utilisez un autre email.';
+      } else if (error.message?.includes('400') || error.message?.includes('validation')) {
+        errorMessage = 'Données invalides. Vérifiez vos informations.';
+      } else if (error.message?.includes('network') || error.message?.includes('fetch')) {
+        errorMessage = 'Problème de connexion. Vérifiez votre internet.';
       }
 
       setError(errorMessage);
@@ -346,121 +386,170 @@ const RegisterScreen: React.FC = () => {
 
   return (
     <KeyboardAwareScreen style={styles.container} contentContainerStyle={styles.scrollContent}>
-        <View style={styles.header}>
-          <Title style={styles.title}>
-            Créer un compte{' '}
-            <Text style={styles.yukpoText}>Yukpo</Text>
-          </Title>
-          <Paragraph style={styles.subtitle}>
-            Utilisez votre compte{' '}
-            <Text style={styles.bold}>Google</Text> ou{' '}
-            <Text style={styles.bold}>Facebook</Text> pour vous inscrire rapidement :
-          </Paragraph>
-        </View>
+      <View style={styles.header}>
+        <Title style={styles.title}>
+          Créer un compte{' '}
+          <Text style={styles.yukpoText}>Yukpo</Text>
+        </Title>
+        <Paragraph style={styles.subtitle}>
+          Utilisez votre compte{' '}
+          <Text style={styles.bold}>Google</Text> ou{' '}
+          <Text style={styles.bold}>Facebook</Text> pour vous inscrire rapidement :
+        </Paragraph>
+      </View>
 
-        {/* Boutons OAuth */}
-        <View style={styles.oauthContainer}>
-          <OAuthButton
-            provider="google"
-            onPress={handleGoogleRegister}
-          />
-          <OAuthButton
-            provider="facebook"
-            onPress={() => Alert.alert('OAuth', 'Fonctionnalité Facebook à implémenter')}
-          />
-        </View>
+      {/* Boutons OAuth */}
+      <View style={styles.oauthContainer}>
+        <OAuthButton
+          provider="google"
+          onPress={handleGoogleRegister}
+        />
+        <OAuthButton
+          provider="facebook"
+          onPress={() => Alert.alert('OAuth', 'Fonctionnalité Facebook à implémenter')}
+        />
+      </View>
 
-        <View style={styles.divider}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>ou créez un compte manuellement</Text>
-          <View style={styles.dividerLine} />
-        </View>
+      <View style={styles.divider}>
+        <View style={styles.dividerLine} />
+        <Text style={styles.dividerText}>ou créez un compte manuellement</Text>
+        <View style={styles.dividerLine} />
+      </View>
 
-        {/* Messages d'erreur */}
-        {error && (
-          <Card style={styles.errorCard}>
-            <Card.Content style={styles.errorContent}>
-              <WarningCircle size={24} color="#F44336" />
-              <Text style={styles.errorText}>{String(error)}</Text>
-            </Card.Content>
-          </Card>
-        )}
-
-        {/* Formulaire d'inscription */}
-        <Card style={styles.formCard}>
-          <Card.Content>
-            <TextInput
-              label="Nom de famille"
-              value={form.nom}
-              onChangeText={(text) => setForm({ ...form, nom: text })}
-              disabled={formLoading || loading}
-              style={styles.input}
-              left={<TextInput.Icon icon="account" />}
-            />
-
-            <TextInput
-              label="Prénom"
-              value={form.prenom}
-              onChangeText={(text) => setForm({ ...form, prenom: text })}
-              disabled={formLoading || loading}
-              style={styles.input}
-              left={<TextInput.Icon icon="account" />}
-            />
-
-            <TextInput
-              label="Adresse email"
-              value={form.email}
-              onChangeText={(text) => setForm({ ...form, email: text })}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              disabled={formLoading || loading}
-              style={styles.input}
-              left={<TextInput.Icon icon="email" />}
-            />
-
-            <TextInput
-              label="Mot de passe"
-              value={form.password}
-              onChangeText={(text) => setForm({ ...form, password: text })}
-              secureTextEntry
-              disabled={formLoading || loading}
-              style={styles.input}
-              left={<TextInput.Icon icon="lock" />}
-            />
-
-            <TextInput
-              label="Confirmer le mot de passe"
-              value={form.confirmPassword}
-              onChangeText={(text) => setForm({ ...form, confirmPassword: text })}
-              secureTextEntry
-              disabled={formLoading || loading}
-              style={styles.input}
-              left={<TextInput.Icon icon="lock-check" />}
-            />
-
-            <Text style={styles.passwordHint}>
-              Mot de passe requis : 8 caractères, 1 majuscule, 1 chiffre.
-            </Text>
-
-            <TouchableOpacity
-              onPress={handleRegister}
-              disabled={formLoading || loading}
-              style={styles.registerButton}
-            >
-              <Text style={styles.registerButtonLabel}>
-                {formLoading || loading ? 'Création du compte...' : 'Créer mon compte'}
-              </Text>
-            </TouchableOpacity>
+      {/* Messages d'erreur */}
+      {error && (
+        <Card style={styles.errorCard}>
+          <Card.Content style={styles.errorContent}>
+            <WarningCircle size={24} color="#F44336" />
+            <Text style={styles.errorText}>{String(error)}</Text>
           </Card.Content>
         </Card>
+      )}
 
-        {/* Lien vers la connexion */}
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>Vous avez déjà un compte ? </Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Login' as never)}>
-            <Text style={styles.footerLink}>Connectez-vous</Text>
+      {/* Formulaire d'inscription */}
+      <Card style={styles.formCard}>
+        <Card.Content>
+          <TextInput
+            label="Nom de famille"
+            value={form.nom}
+            onChangeText={(text) => setForm({ ...form, nom: text })}
+            disabled={formLoading || loading}
+            style={styles.input}
+            left={<TextInput.Icon icon="account" />}
+          />
+
+          <TextInput
+            label="Prénom"
+            value={form.prenom}
+            onChangeText={(text) => setForm({ ...form, prenom: text })}
+            disabled={formLoading || loading}
+            style={styles.input}
+            left={<TextInput.Icon icon="account" />}
+          />
+
+          <TextInput
+            label="Adresse email"
+            value={form.email}
+            onChangeText={(text) => setForm({ ...form, email: text })}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            disabled={formLoading || loading}
+            style={styles.input}
+            left={<TextInput.Icon icon="email" />}
+          />
+
+          {/* Numéro de téléphone avec indicatif pays */}
+          <View style={styles.phoneRow}>
+            <TouchableOpacity
+              style={styles.countrySelector}
+              onPress={() => setShowCountryPicker(!showCountryPicker)}
+              disabled={formLoading || loading}
+            >
+              <Text style={styles.countrySelectorText}>
+                {selectedCountry.prefix}
+              </Text>
+              <Text style={styles.countrySelectorArrow}>▼</Text>
+            </TouchableOpacity>
+            <TextInput
+              label="Numéro de téléphone"
+              value={form.phone}
+              onChangeText={(text) => setForm({ ...form, phone: text.replace(/\D/g, '') })}
+              keyboardType="phone-pad"
+              disabled={formLoading || loading}
+              style={[styles.input, styles.phoneInput]}
+              left={<TextInput.Icon icon="phone" />}
+              placeholder="6XXXXXXXX"
+            />
+          </View>
+
+          {/* Sélecteur de pays (dropdown) */}
+          {showCountryPicker && (
+            <View style={styles.countryDropdown}>
+              <ScrollView style={styles.countryDropdownScroll} nestedScrollEnabled>
+                {COUNTRY_CODES.map((country) => (
+                  <TouchableOpacity
+                    key={country.code}
+                    style={[
+                      styles.countryItem,
+                      form.phoneCountry === country.code && styles.countryItemSelected,
+                    ]}
+                    onPress={() => {
+                      setForm({ ...form, phoneCountry: country.code });
+                      setShowCountryPicker(false);
+                    }}
+                  >
+                    <Text style={styles.countryItemText}>
+                      {country.label} ({country.prefix})
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          )}
+
+          <TextInput
+            label="Mot de passe"
+            value={form.password}
+            onChangeText={(text) => setForm({ ...form, password: text })}
+            secureTextEntry
+            disabled={formLoading || loading}
+            style={styles.input}
+            left={<TextInput.Icon icon="lock" />}
+          />
+
+          <TextInput
+            label="Confirmer le mot de passe"
+            value={form.confirmPassword}
+            onChangeText={(text) => setForm({ ...form, confirmPassword: text })}
+            secureTextEntry
+            disabled={formLoading || loading}
+            style={styles.input}
+            left={<TextInput.Icon icon="lock-check" />}
+          />
+
+          <Text style={styles.passwordHint}>
+            Mot de passe requis : 8 caractères, 1 majuscule, 1 chiffre.
+          </Text>
+
+          <TouchableOpacity
+            onPress={handleRegister}
+            disabled={formLoading || loading}
+            style={styles.registerButton}
+          >
+            <Text style={styles.registerButtonLabel}>
+              {formLoading || loading ? 'Création du compte...' : 'Créer mon compte'}
+            </Text>
           </TouchableOpacity>
-        </View>
+        </Card.Content>
+      </Card>
+
+      {/* Lien vers la connexion */}
+      <View style={styles.footer}>
+        <Text style={styles.footerText}>Vous avez déjà un compte ? </Text>
+        <TouchableOpacity onPress={() => navigation.navigate('Login' as never)}>
+          <Text style={styles.footerLink}>Connectez-vous</Text>
+        </TouchableOpacity>
+      </View>
     </KeyboardAwareScreen>
   );
 };
@@ -559,6 +648,67 @@ const styles = StyleSheet.create({
   input: {
     marginBottom: 16,
     backgroundColor: theme.colors.surface,
+  },
+  // ✅ NOUVEAU: Styles téléphone avec indicatif pays
+  phoneRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    marginBottom: 0,
+  },
+  countrySelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: '#CCC',
+    borderRadius: 4,
+    paddingHorizontal: 12,
+    height: 56,
+    marginTop: 6,
+    gap: 4,
+  },
+  countrySelectorText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: theme.colors.text,
+  },
+  countrySelectorArrow: {
+    fontSize: 10,
+    color: theme.colors.textSecondary,
+  },
+  phoneInput: {
+    flex: 1,
+  },
+  countryDropdown: {
+    backgroundColor: 'white',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 8,
+    marginBottom: 16,
+    maxHeight: 200,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+  },
+  countryDropdownScroll: {
+    maxHeight: 200,
+  },
+  countryItem: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  countryItemSelected: {
+    backgroundColor: '#FFF8DC',
+  },
+  countryItemText: {
+    fontSize: 14,
+    color: theme.colors.text,
   },
   passwordHint: {
     fontSize: 12,

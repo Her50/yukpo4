@@ -1,7 +1,7 @@
 // Navigation ULTRA-SIMPLIFIÉE avec TOUS les providers nécessaires
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 // ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
-import { createStackNavigator, useNavigation } from '@react-navigation/stack';
+import { createStackNavigator } from '@react-navigation/stack';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
@@ -21,8 +21,9 @@ import { useDeepLinkRedirect } from '../hooks/useDeepLinkRedirect';
 
 // ✅ IMPORTS DIRECTS - Écrans d'authentification
 import LoginScreen from '../screens/auth/LoginScreen';
-import RegisterScreen from '../screens/auth/RegisterScreen';
+import OtpVerificationScreen from '../screens/auth/OtpVerificationScreen';
 import PartnerRegisterScreen from '../screens/auth/PartnerRegisterScreen';
+import RegisterScreen from '../screens/auth/RegisterScreen';
 
 // ✅ IMPORTS DIRECTS - Écrans principaux
 import HomeScreen from '../screens/HomeScreen';
@@ -33,12 +34,13 @@ import GestionServicesSpecialisesScreen from '../screens/specialized/GestionServ
 import ServicesDashboard from '../screens/specialized/ServicesDashboard';
 
 // ✅ IMPORTS DIRECTS - Écrans Flash Sales et Promos
+import CreateFlashPromoScreen from '../screens/CreateFlashPromoScreen';
 import FlashPromosActiveScreen from '../screens/FlashPromosActiveScreen';
 import FlashSaleScreen from '../screens/FlashSaleScreen';
 import GlobalPromoCatalogScreen from '../screens/GlobalPromoCatalogScreen';
-import CreateFlashPromoScreen from '../screens/CreateFlashPromoScreen';
 
 // ✅ IMPORTS DIRECTS - Écrans secondaires
+import UserRoleManagementScreen from '../screens/admin/UserRoleManagementScreen';
 import AgencyTicketManagementScreen from '../screens/AgencyTicketManagementScreen';
 import AjouterProduitSimpleScreen from '../screens/AjouterProduitSimpleScreen';
 import BloodGroupManagementScreen from '../screens/BloodGroupManagementScreen';
@@ -50,11 +52,10 @@ import AnalyticsDashboardScreen from '../screens/dashboard/AnalyticsDashboardScr
 import DashboardPrestataireScreen from '../screens/DashboardPrestataireScreen'; // ✅ Dashboard Prestataire
 import DashboardScreen from '../screens/DashboardScreen'; // ✅ Ancien Dashboard
 import CourierAdminScreen from '../screens/delivery/CourierAdminScreen';
-import DeliveryPartnersAdminScreen from '../screens/delivery/DeliveryPartnersAdminScreen';
-import UserRoleManagementScreen from '../screens/admin/UserRoleManagementScreen';
 import DeliveryHomeScreen from '../screens/delivery/DeliveryHomeScreen';
-import DeliveryParcelFlowScreen from '../screens/delivery/DeliveryParcelFlowScreen';
 import DeliveryParcelFlowNewScreen from '../screens/delivery/DeliveryParcelFlowNewScreen';
+import DeliveryParcelFlowScreen from '../screens/delivery/DeliveryParcelFlowScreen';
+import DeliveryPartnersAdminScreen from '../screens/delivery/DeliveryPartnersAdminScreen';
 import DeliveryShoppingFlowScreen from '../screens/delivery/DeliveryShoppingFlowScreen';
 import DeliveryShoppingTrackingScreen from '../screens/delivery/DeliveryShoppingTrackingScreen';
 import ShoppingBasketScreen from '../screens/delivery/ShoppingBasketScreen';
@@ -65,6 +66,7 @@ import StorageLocationsScreen from '../screens/delivery/StorageLocationsScreen';
 import EnhancedSettingsScreen from '../screens/EnhancedSettingsScreen';
 import FormulaireYukpoIntelligentScreen from '../screens/FormulaireYukpoIntelligentScreen';
 import HashtagDiscoveryScreen from '../screens/HashtagDiscoveryScreen';
+import HistoriqueProduitsConsultesScreen from '../screens/HistoriqueProduitsConsultesScreen';
 import ManageAgencySchedulesScreen from '../screens/ManageAgencySchedulesScreen';
 import ManageBusSeatsScreen from '../screens/ManageBusSeatsScreen';
 import MesProduitsScreen from '../screens/MesProduitsScreen';
@@ -72,6 +74,7 @@ import MesServicesSpecialisesScreen from '../screens/MesServicesSpecialisesScree
 import MyBusTicketsScreen from '../screens/MyBusTicketsScreen';
 import NavigationScreen from '../screens/NavigationScreen'; // ✅ NOUVEAU: Écran navigation intelligente
 import OrderStatusScreen from '../screens/OrderStatusScreen';
+import PrestataireBoutiqueScreen from '../screens/PrestataireBoutiqueScreen';
 import ProductDetailScreen from '../screens/ProductDetailScreen';
 import GlobalPromoManagerScreen from '../screens/promo/GlobalPromoManagerScreen';
 import GlobalPromoSubmissionScreen from '../screens/promo/GlobalPromoSubmissionScreen';
@@ -79,8 +82,6 @@ import ProviderOrderManagementScreen from '../screens/ProviderOrderManagementScr
 import PubliciteDashboardScreen from '../screens/PubliciteDashboardScreen';
 import RechargeTokensScreen from '../screens/RechargeTokensScreen';
 import ResultatBesoinScreen from '../screens/ResultatBesoinScreen';
-import PrestataireBoutiqueScreen from '../screens/PrestataireBoutiqueScreen';
-import HistoriqueProduitsConsultesScreen from '../screens/HistoriqueProduitsConsultesScreen';
 import ServiceDetailSharedScreen from '../screens/ServiceDetailSharedScreen';
 import SoldeDetailScreen from '../screens/SoldeDetailScreen';
 import AgenceVoyageFormScreen from '../screens/specialized/AgenceVoyageFormScreen';
@@ -88,9 +89,9 @@ import BanqueSangFormScreen from '../screens/specialized/BanqueSangFormScreen';
 import CovoiturageBookingScreen from '../screens/specialized/CovoiturageBookingScreen';
 import CovoiturageDetailsScreen from '../screens/specialized/CovoiturageDetailsScreen';
 import CovoiturageFormScreen from '../screens/specialized/CovoiturageFormScreen';
+import CovoiturageHomeScreen from '../screens/specialized/CovoiturageHomeScreen';
 import CovoiturageListScreen from '../screens/specialized/CovoiturageListScreen';
 import CovoiturageSearchScreen from '../screens/specialized/CovoiturageSearchScreen';
-import CovoiturageHomeScreen from '../screens/specialized/CovoiturageHomeScreen';
 import HopitalFormScreen from '../screens/specialized/HopitalFormScreen';
 import LaboratoireFormScreen from '../screens/specialized/LaboratoireFormScreen';
 import MesReservationsScreen from '../screens/specialized/MesReservationsScreen';
@@ -102,27 +103,27 @@ import ReservationScreen from '../screens/specialized/ReservationScreen';
 import ServiceDetailScreen from '../screens/specialized/ServiceDetailScreen';
 import TaxiAvailabilityScreen from '../screens/specialized/TaxiAvailabilityScreen';
 import TaxiBookingScreen from '../screens/specialized/TaxiBookingScreen';
-import TaxiTrackingScreen from '../screens/specialized/TaxiTrackingScreen';
 import TaxiDetailsScreen from '../screens/specialized/TaxiDetailsScreen';
 import TaxiFormScreen from '../screens/specialized/TaxiFormScreen';
+import TaxiHomeScreen from '../screens/specialized/TaxiHomeScreen';
 import { TaxiIntelligentSearchScreen } from '../screens/specialized/TaxiIntelligentSearchScreen';
 import TaxiListScreen from '../screens/specialized/TaxiListScreen';
 import TaxiSearchScreen from '../screens/specialized/TaxiSearchScreen';
-import TaxiHomeScreen from '../screens/specialized/TaxiHomeScreen';
+import TaxiTrackingScreen from '../screens/specialized/TaxiTrackingScreen';
 // ✅ Phase 3: Hôpitaux et Laboratoires
 import HopitalDetailsScreen from '../screens/specialized/HopitalDetailsScreen';
+import HopitalHomeScreen from '../screens/specialized/HopitalHomeScreen';
 import HopitalListScreen from '../screens/specialized/HopitalListScreen';
 import HopitalSearchScreen from '../screens/specialized/HopitalSearchScreen';
 import LaboratoireDetailsScreen from '../screens/specialized/LaboratoireDetailsScreen';
+import LaboratoireHomeScreen from '../screens/specialized/LaboratoireHomeScreen';
 import LaboratoireListScreen from '../screens/specialized/LaboratoireListScreen';
 import LaboratoireSearchScreen from '../screens/specialized/LaboratoireSearchScreen';
-import LaboratoireHomeScreen from '../screens/specialized/LaboratoireHomeScreen';
-import HopitalHomeScreen from '../screens/specialized/HopitalHomeScreen';
 // ✅ NOUVEAU: Écrans Pharmacie
 import PharmacieDetailsScreen from '../screens/specialized/PharmacieDetailsScreen';
+import PharmacieHomeScreen from '../screens/specialized/PharmacieHomeScreen';
 import PharmacieListScreen from '../screens/specialized/PharmacieListScreen';
 import PharmacieSearchScreen from '../screens/specialized/PharmacieSearchScreen';
-import PharmacieHomeScreen from '../screens/specialized/PharmacieHomeScreen';
 // ✅ NOUVEAU: Écrans Banque de sang
 import BanqueSangDetailsScreen from '../screens/specialized/BanqueSangDetailsScreen';
 import BanqueSangListScreen from '../screens/specialized/BanqueSangListScreen';
@@ -137,11 +138,11 @@ import AgenceVoyageSearchScreen from '../screens/specialized/AgenceVoyageSearchS
 import ImmobilierBookingScreen from '../screens/specialized/ImmobilierBookingScreen';
 import ImmobilierCompareScreen from '../screens/specialized/ImmobilierCompareScreen';
 import ImmobilierDetailsScreen from '../screens/specialized/ImmobilierDetailsScreen';
+import ImmobilierFormScreen from '../screens/specialized/ImmobilierFormScreen';
+import ImmobilierHomeScreen from '../screens/specialized/ImmobilierHomeScreen';
 import ImmobilierListScreen from '../screens/specialized/ImmobilierListScreen';
 import ImmobilierPriceAlertsScreen from '../screens/specialized/ImmobilierPriceAlertsScreen';
 import ImmobilierSearchScreen from '../screens/specialized/ImmobilierSearchScreen';
-import ImmobilierHomeScreen from '../screens/specialized/ImmobilierHomeScreen';
-import ImmobilierFormScreen from '../screens/specialized/ImmobilierFormScreen';
 import MyFavoritesScreen from '../screens/specialized/MyFavoritesScreen';
 import SpecializedSearchScreen from '../screens/SpecializedSearchScreen';
 import SpecializedServicesHubScreen from '../screens/SpecializedServicesHubScreen';
@@ -160,20 +161,20 @@ import BusReturnRequestsScreen from '../screens/specialized/BusReturnRequestsScr
 // ✅ NOUVEAU 2025-01-28: Écrans Bourse du livre scolaire
 import LivreScolaireDetailsScreen from '../screens/specialized/LivreScolaireDetailsScreen';
 import LivreScolaireFormScreen from '../screens/specialized/LivreScolaireFormScreen';
+import LivreScolaireHomeScreen from '../screens/specialized/LivreScolaireHomeScreen';
 import LivreScolaireListScreen from '../screens/specialized/LivreScolaireListScreen';
 import LivreScolaireSearchScreen from '../screens/specialized/LivreScolaireSearchScreen';
-import LivreScolaireHomeScreen from '../screens/specialized/LivreScolaireHomeScreen';
 import MesLivresScreen from '../screens/specialized/MesLivresScreen';
 // ✅ NOUVEAU 2025-01-28: Écrans Orientation scolaire
 import ConcoursEntreeScreen from '../screens/orientation/ConcoursEntreeScreen';
 import ConferencesLivesScreen from '../screens/orientation/ConferencesLivesScreen';
+import CreateEtablissementScreen from '../screens/orientation/CreateEtablissementScreen';
 import EtablissementDetailsScreen from '../screens/orientation/EtablissementDetailsScreen';
 import EtablissementSearchScreen from '../screens/orientation/EtablissementSearchScreen';
 import ExperiencesEtudiantsScreen from '../screens/orientation/ExperiencesEtudiantsScreen';
 import FournituresScolairesScreen from '../screens/orientation/FournituresScolairesScreen';
-import OrientationScolaireHubScreen from '../screens/orientation/OrientationScolaireHubScreen';
 import OrientationScolaireHomeScreen from '../screens/orientation/OrientationScolaireHomeScreen';
-import CreateEtablissementScreen from '../screens/orientation/CreateEtablissementScreen';
+import OrientationScolaireHubScreen from '../screens/orientation/OrientationScolaireHubScreen';
 import ProgrammesScolairesScreen from '../screens/orientation/ProgrammesScolairesScreen';
 import MesTrocsScreen from '../screens/specialized/MesTrocsScreen';
 import TrocDetailsScreen from '../screens/specialized/TrocDetailsScreen';
@@ -181,31 +182,31 @@ import TrocLiveValidationScreen from '../screens/specialized/TrocLiveValidationS
 import TrocMatchingScreen from '../screens/specialized/TrocMatchingScreen';
 // ✅ NOUVEAU 2025-01-28: Écrans offres d'emploi
 import CreateOffreScreen from '../screens/offres-emploi/CreateOffreScreen';
-import OffreSearchScreen from '../screens/offres-emploi/OffreSearchScreen';
-import OffresEmploiHubScreen from '../screens/offres-emploi/OffresEmploiHubScreen';
-import OffresEmploiHomeScreen from '../screens/offres-emploi/OffresEmploiHomeScreen';
 import MesOffresScreen from '../screens/offres-emploi/MesOffresScreen';
+import OffreSearchScreen from '../screens/offres-emploi/OffreSearchScreen';
+import OffresEmploiHomeScreen from '../screens/offres-emploi/OffresEmploiHomeScreen';
+import OffresEmploiHubScreen from '../screens/offres-emploi/OffresEmploiHubScreen';
 import ProfilCandidatScreen from '../screens/offres-emploi/ProfilCandidatScreen';
 // ✅ NOUVEAU 2025-01-27: Écran Bourse du Livre avec IA
 import BourseLivreScreen from '../screens/BourseLivreScreen';
 // ✅ NOUVEAU 2025-01-27: Écrans Planification Menus
-import MenuPlanningHubScreen from '../screens/specialized/MenuPlanningHubScreen';
 import FamilyProfileScreen from '../screens/specialized/FamilyProfileScreen';
+import MenuPlanningHubScreen from '../screens/specialized/MenuPlanningHubScreen';
 import RecipeSearchScreen from '../screens/specialized/RecipeSearchScreen';
 // ✅ NOUVEAU: BayamSelam = SupermarketHome (même écran professionnel)
-import SupermarketHomeScreen from '../screens/specialized/SupermarketHomeScreen';
-import BayamSelamSearchScreen from '../screens/specialized/BayamSelamSearchScreen';
-import BayamSelamResultsScreen from '../screens/specialized/BayamSelamResultsScreen';
+import ErrorBoundary from '../components/ErrorBoundary';
 import AutoServicesSearchScreen from '../screens/specialized/AutoServicesSearchScreen';
+import BayamSelamResultsScreen from '../screens/specialized/BayamSelamResultsScreen';
+import BayamSelamSearchScreen from '../screens/specialized/BayamSelamSearchScreen';
 import InsuranceServicesSearchScreen from '../screens/specialized/InsuranceServicesSearchScreen';
 import MenuWeekCalendarScreen from '../screens/specialized/MenuWeekCalendarScreen';
 import RecipeDetailsScreen from '../screens/specialized/RecipeDetailsScreen';
 import ShoppingListScreen from '../screens/specialized/ShoppingListScreen';
+import SupermarketHomeScreen from '../screens/specialized/SupermarketHomeScreen';
 import VideoCreationIntroScreen from '../screens/video/VideoCreationIntroScreen';
 import VideoCreationWizardScreen from '../screens/video/VideoCreationWizardScreen';
 import VideoGenerationResultScreen from '../screens/video/VideoGenerationResultScreen';
 import VideoAnalyticsScreen from '../screens/VideoAnalyticsScreen';
-import ErrorBoundary from '../components/ErrorBoundary';
 import VideoFeedScreen from '../screens/VideoFeedScreen';
 import YukpoServicePlaceholderScreen from '../screens/YukpoServicePlaceholderScreen';
 
@@ -215,6 +216,7 @@ markNavigatorSafeAreaHandled(NavigationScreen as any);
 
 const LoginScreenWithSafeArea = withNavigatorSafeArea(LoginScreen);
 const RegisterScreenWithSafeArea = withNavigatorSafeArea(RegisterScreen);
+const OtpVerificationScreenWithSafeArea = withNavigatorSafeArea(OtpVerificationScreen);
 const PartnerRegisterScreenWithSafeArea = withNavigatorSafeArea(PartnerRegisterScreen);
 const HomeScreenWithSafeArea = withNavigatorSafeArea(HomeScreen);
 const MesInteractionsScreenWithSafeArea = withNavigatorSafeArea(MesInteractionsScreen);
@@ -342,26 +344,26 @@ const PrestataireReservationsScreenWithSafeArea = withNavigatorSafeArea(Prestata
 const ServiceDetailScreenWithSafeArea = withNavigatorSafeArea(ServiceDetailScreen);
 // ✅ SÉCURITÉ: Wrapper VideoFeedScreen avec ErrorBoundary pour éviter les crashes
 const VideoFeedScreenWithErrorBoundary = (props: any) => (
-    <ErrorBoundary
-        fallback={
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#000' }}>
-                <Text style={{ color: '#FFF', fontSize: 16, marginBottom: 20 }}>
-                    Impossible de charger le feed vidéo
-                </Text>
-                <TouchableOpacity
-                    style={{ backgroundColor: modernColors.primary, padding: 12, borderRadius: 8 }}
-                    onPress={() => {
-                        // Réessayer en naviguant à nouveau
-                        (props.navigation as any)?.navigate('Videos');
-                    }}
-                >
-                    <Text style={{ color: '#FFF', fontWeight: '600' }}>Réessayer</Text>
-                </TouchableOpacity>
-            </View>
-        }
-    >
-        <VideoFeedScreen {...props} />
-    </ErrorBoundary>
+  <ErrorBoundary
+    fallback={
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#000' }}>
+        <Text style={{ color: '#FFF', fontSize: 16, marginBottom: 20 }}>
+          Impossible de charger le feed vidéo
+        </Text>
+        <TouchableOpacity
+          style={{ backgroundColor: modernColors.primary, padding: 12, borderRadius: 8 }}
+          onPress={() => {
+            // Réessayer en naviguant à nouveau
+            (props.navigation as any)?.navigate('Videos');
+          }}
+        >
+          <Text style={{ color: '#FFF', fontWeight: '600' }}>Réessayer</Text>
+        </TouchableOpacity>
+      </View>
+    }
+  >
+    <VideoFeedScreen {...props} />
+  </ErrorBoundary>
 );
 
 const VideoFeedScreenWithSafeArea = withNavigatorSafeArea(VideoFeedScreenWithErrorBoundary);
@@ -480,11 +482,12 @@ const TabIcon: React.FC<{ name: string; focused: boolean; badgeCount?: number }>
 // Stack d'authentification - Très léger
 const AuthStack = () => {
   console.log('[AppNavigator] 📱 Rendu AuthStack');
-  
+
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Login" component={LoginScreenWithSafeArea} />
       <Stack.Screen name="Register" component={RegisterScreenWithSafeArea} />
+      <Stack.Screen name="OtpVerification" component={OtpVerificationScreenWithSafeArea} />
       <Stack.Screen name="PartnerRegister" component={PartnerRegisterScreenWithSafeArea} />
     </Stack.Navigator>
   );
@@ -858,11 +861,11 @@ const MainStackWithDeepLinks = (props: any) => {
   // pour s'assurer que NavigationContainer est prêt
   // useDeepLinkRedirect gère maintenant aussi la redirection des partenaires
   useDeepLinkRedirect();
-  
+
   // ✅ SIMPLIFICATION: Retirer useNavigation() et la logique de redirection des partenaires
   // car cela cause le crash "undefined is not a function"
   // La redirection des partenaires est maintenant gérée dans useDeepLinkRedirect
-  
+
   return <MainStack {...props} />;
 };
 
@@ -870,12 +873,12 @@ const MainStackWithDeepLinks = (props: any) => {
 const SecondaryStack = () => {
   console.log('[AppNavigator] 📱 Rendu SecondaryStack');
   const { user } = useAuth();
-  
+
   // ✅ CORRECTION CRASH: Supprimer useNavigation() de SecondaryStack car il cause le crash
   // Le problème est que useNavigation() est appelé dans un composant qui crée un Stack.Navigator
   // et essaie d'accéder au contexte parent, ce qui peut être undefined au moment du rendu initial
   // La redirection des partenaires sera gérée dans MainStackWithDeepLinks via useDeepLinkRedirect
-  
+
   // ✅ NOUVEAU: Rediriger les partenaires vers leur écran spécialisé
   // Cette logique sera déplacée dans un composant qui est rendu après que le Stack.Navigator soit monté
   React.useEffect(() => {
@@ -884,7 +887,7 @@ const SecondaryStack = () => {
       console.log('[AppNavigator] Partenaire détecté, redirection gérée par deep links');
     }
   }, [user?.role, user?.partner_type]);
-  
+
   return (
     <Stack.Navigator
       screenOptions={defaultScreenOptions} // ✅ PHASE 3: Transitions personnalisées par défaut
@@ -898,819 +901,819 @@ const SecondaryStack = () => {
           ...transitionConfig.fade, // Transition fade pour l'écran principal
         }}
       />
-        <Stack.Screen
-          name="NavigationScreen"
-          component={NavigationScreenWithSafeArea}
-          options={{
-            ...defaultScreenOptions,
-            title: 'Navigation Intelligente',
-            ...transitionConfig.slide, // Transition slide pour Navigation
-          }}
-        />
-        <Stack.Screen
-          name="Contact"
-          component={ContactScreenWithSafeArea}
-          options={{
-            ...defaultScreenOptions,
-            ...transitionConfig.fade, // Transition fade pour Contact
-          }}
-        />
-        <Stack.Screen name="SpecializedSearch" component={SpecializedSearchScreenWithSafeArea} />
-        <Stack.Screen name="SpecializedServicesHub" component={SpecializedServicesHubScreenWithSafeArea} />
-        <Stack.Screen name="MesServicesSpecialises" component={MesServicesSpecialisesScreenWithSafeArea} />
-        <Stack.Screen name="GestionServicesSpecialises" component={GestionServicesSpecialisesScreenWithSafeArea} />
-        <Stack.Screen name="ServicesDashboard" component={ServicesDashboardWithSafeArea} />
-        <Stack.Screen name="PharmacieForm" component={PharmacieFormScreenWithSafeArea} />
-        <Stack.Screen name="HopitalForm" component={HopitalFormScreenWithSafeArea} />
-        <Stack.Screen name="LaboratoireForm" component={LaboratoireFormScreenWithSafeArea} />
-        <Stack.Screen name="BanqueSangForm" component={BanqueSangFormScreenWithSafeArea} />
-        <Stack.Screen name="AgenceVoyageForm" component={AgenceVoyageFormScreenWithSafeArea} />
-        <Stack.Screen name="CovoiturageForm" component={CovoiturageFormScreenWithSafeArea} />
-        <Stack.Screen name="TaxiForm" component={TaxiFormScreenWithSafeArea} />
-        {/* ✅ NOUVEAU: Ajouter PartnerRegister au MainStack pour navigation depuis TaxiHome et CovoiturageHome */}
-        <Stack.Screen name="PartnerRegister" component={PartnerRegisterScreenWithSafeArea} />
-        {/* ✅ Phase 3: Routes recherche Taxi et Covoiturage */}
-        <Stack.Screen 
-          name="TaxiSearch" 
-          component={TaxiHomeScreenWithSafeArea}
-          options={{
-            headerShown: false,
-          }}
-        />
-        <Stack.Screen 
-          name="TaxiSearchAdvanced" 
-          component={TaxiSearchScreenWithSafeArea}
-          options={{
-            ...defaultScreenOptions,
-            title: 'Recherche Taxi',
-          }}
-        />
-        <Stack.Screen name="TaxiIntelligentSearch" component={TaxiIntelligentSearchScreenWithSafeArea} />
-        <Stack.Screen name="TaxiList" component={TaxiListScreenWithSafeArea} />
-        <Stack.Screen name="TaxiDetails" component={TaxiDetailsScreenWithSafeArea} />
-        <Stack.Screen name="TaxiBooking" component={TaxiBookingScreenWithSafeArea} />
-        <Stack.Screen name="TaxiTracking" component={TaxiTrackingScreenWithSafeArea} />
-        <Stack.Screen name="TaxiAvailability" component={TaxiAvailabilityScreenWithSafeArea} />
-        <Stack.Screen name="MesTaxis" component={MesTaxisScreenWithSafeArea} />
-        {/* ✅ Phase 3: Hôpitaux */}
-        <Stack.Screen name="HopitalSearch" component={HopitalHomeScreenWithSafeArea} />
-        <Stack.Screen name="HopitalSearchAdvanced" component={HopitalSearchScreenWithSafeArea} />
-        {/* ✅ NOUVEAU: Routes Immobilier */}
-        <Stack.Screen name="ImmobilierSearch" component={ImmobilierHomeScreenWithSafeArea} />
-        <Stack.Screen name="HotelSearch" component={ImmobilierHomeScreenWithSafeArea} />
-        <Stack.Screen name="MeubleSearch" component={ImmobilierHomeScreenWithSafeArea} />
-        <Stack.Screen name="ImmobilierSearchAdvanced" component={ImmobilierSearchScreenWithSafeArea} />
-        <Stack.Screen name="ImmobilierList" component={ImmobilierListScreenWithSafeArea} />
-        <Stack.Screen name="ImmobilierDetails" component={ImmobilierDetailsScreenWithSafeArea} />
-        <Stack.Screen name="ImmobilierForm" component={ImmobilierFormScreenWithSafeArea} />
-        <Stack.Screen name="ImmobilierBooking" component={ImmobilierBookingScreenWithSafeArea} />
-        <Stack.Screen name="ImmobilierCompare" component={ImmobilierCompareScreenWithSafeArea} />
-        <Stack.Screen name="MyFavorites" component={MyFavoritesScreenWithSafeArea} />
-        <Stack.Screen name="ImmobilierPriceAlerts" component={ImmobilierPriceAlertsScreenWithSafeArea} />
-        <Stack.Screen name="HopitalList" component={HopitalListScreenWithSafeArea} />
-        <Stack.Screen name="HopitalDetails" component={HopitalDetailsScreenWithSafeArea} />
-        {/* ✅ Phase 3: Laboratoires */}
-        <Stack.Screen name="LaboratoireSearch" component={LaboratoireHomeScreenWithSafeArea} />
-        <Stack.Screen name="LaboratoireSearchAdvanced" component={LaboratoireSearchScreenWithSafeArea} />
-        <Stack.Screen name="LaboratoireList" component={LaboratoireListScreenWithSafeArea} />
-        <Stack.Screen name="LaboratoireDetails" component={LaboratoireDetailsScreenWithSafeArea} />
-        {/* ✅ NOUVEAU: Pharmacie */}
-        <Stack.Screen name="PharmacieSearch" component={PharmacieHomeScreenWithSafeArea} />
-        <Stack.Screen name="PharmacieSearchAdvanced" component={PharmacieSearchScreenWithSafeArea} />
-        <Stack.Screen name="PharmacieList" component={PharmacieListScreenWithSafeArea} />
-        <Stack.Screen name="PharmacieDetails" component={PharmacieDetailsScreenWithSafeArea} />
-        {/* ✅ NOUVEAU: Hub services de santé */}
-        <Stack.Screen name="HealthServicesHub" component={HealthServicesHubScreenWithSafeArea} />
-        {/* ✅ NOUVEAU: Banque de sang */}
-        <Stack.Screen name="BanqueSangSearch" component={BanqueSangSearchScreenWithSafeArea} />
-        <Stack.Screen name="BanqueSangList" component={BanqueSangListScreenWithSafeArea} />
-        <Stack.Screen name="BanqueSangDetails" component={BanqueSangDetailsScreenWithSafeArea} />
-        {/* ✅ NOUVEAU: Agence de voyage */}
-        <Stack.Screen name="AgenceVoyageSearch" component={AgenceVoyageSearchScreenWithSafeArea} />
-        <Stack.Screen name="AgenceVoyageList" component={AgenceVoyageListScreenWithSafeArea} />
-        <Stack.Screen name="AgenceVoyageDetails" component={AgenceVoyageDetailsScreenWithSafeArea} />
-        <Stack.Screen 
-          name="CovoiturageSearch" 
-          component={CovoiturageHomeScreenWithSafeArea}
-          options={{
-            headerShown: false,
-          }}
-        />
-        <Stack.Screen 
-          name="CovoiturageSearchAdvanced" 
-          component={CovoiturageSearchScreenWithSafeArea}
-          options={{
-            ...defaultScreenOptions,
-            title: 'Recherche Covoiturage',
-          }}
-        />
-        <Stack.Screen name="CovoiturageList" component={CovoiturageListScreenWithSafeArea} />
-        <Stack.Screen name="CovoiturageDetails" component={CovoiturageDetailsScreenWithSafeArea} />
-        <Stack.Screen name="CovoiturageBooking" component={CovoiturageBookingScreenWithSafeArea} />
-        <Stack.Screen name="MyTrips" component={MyTripsScreenWithSafeArea} />
-        {/* ✅ NOUVEAU 2025-01-28: Routes Bourse du livre scolaire */}
-        <Stack.Screen
-          name="LivreScolaireSearch"
-          component={LivreScolaireHomeScreenWithSafeArea}
-        />
-        <Stack.Screen
-          name="LivreScolaireSearchAdvanced"
-          component={LivreScolaireSearchScreenWithSafeArea}
-          options={{
-            ...defaultScreenOptions,
-            title: 'Rechercher un livre',
-          }}
-        />
-        <Stack.Screen
-          name="LivreScolaireList"
-          component={LivreScolaireListScreenWithSafeArea}
-          options={{
-            ...defaultScreenOptions,
-            title: 'Livres trouvés',
-          }}
-        />
-        <Stack.Screen
-          name="LivreScolaireDetails"
-          component={LivreScolaireDetailsScreenWithSafeArea}
-          options={{
-            ...defaultScreenOptions,
-            title: 'Détails du livre',
-          }}
-        />
-        <Stack.Screen
-          name="LivreScolaireForm"
-          component={LivreScolaireFormScreenWithSafeArea}
-          options={{
-            ...defaultScreenOptions,
-            title: 'Créer/Modifier un livre',
-          }}
-        />
-        <Stack.Screen
-          name="MesLivres"
-          component={MesLivresScreenWithSafeArea}
-          options={{
-            ...defaultScreenOptions,
-            title: 'Mes Livres',
-          }}
-        />
-        <Stack.Screen
-          name="TrocMatching"
-          component={TrocMatchingScreenWithSafeArea}
-          options={{
-            ...defaultScreenOptions,
-            title: 'Matchings trouvés',
-          }}
-        />
-        <Stack.Screen
-          name="TrocDetails"
-          component={TrocDetailsScreenWithSafeArea}
-          options={{
-            ...defaultScreenOptions,
-            title: 'Détails du troc',
-          }}
-        />
-        <Stack.Screen
-          name="TrocLiveValidation"
-          component={TrocLiveValidationScreenWithSafeArea}
-          options={{
-            ...defaultScreenOptions,
-            title: 'Validation vidéo',
-          }}
-        />
-        <Stack.Screen
-          name="MesTrocs"
-          component={MesTrocsScreenWithSafeArea}
-          options={{
-            ...defaultScreenOptions,
-            title: 'Mes Troc',
-          }}
-        />
-        {/* ✅ NOUVEAU 2025-01-28: Orientation scolaire */}
-        <Stack.Screen
-          name="OrientationScolaireHub"
-          component={OrientationScolaireHomeScreenWithSafeArea}
-          options={{
-            headerShown: false,
-          }}
-        />
-        <Stack.Screen
-          name="OrientationScolaireHubAdvanced"
-          component={OrientationScolaireHubScreenWithSafeArea}
-          options={{
-            ...defaultScreenOptions,
-            title: 'Orientation Scolaire',
-          }}
-        />
-        <Stack.Screen
-          name="EtablissementSearch"
-          component={EtablissementSearchScreenWithSafeArea}
-          options={{
-            ...defaultScreenOptions,
-            title: 'Rechercher un établissement',
-          }}
-        />
-        <Stack.Screen
-          name="EtablissementDetails"
-          component={EtablissementDetailsScreenWithSafeArea}
-          options={{
-            ...defaultScreenOptions,
-            title: 'Détails établissement',
-          }}
-        />
-        <Stack.Screen
-          name="CreateEtablissement"
-          component={CreateEtablissementScreenWithSafeArea}
-          options={{
-            ...defaultScreenOptions,
-            title: 'Créer un établissement',
-          }}
-        />
-        <Stack.Screen
-          name="ProgrammesList"
-          component={ProgrammesScolairesScreenWithSafeArea}
-          options={{
-            ...defaultScreenOptions,
-            title: 'Programmes Scolaires',
-          }}
-        />
-        <Stack.Screen
-          name="FournituresList"
-          component={FournituresScolairesScreenWithSafeArea}
-          options={{
-            ...defaultScreenOptions,
-            title: 'Fournitures Scolaires',
-          }}
-        />
-        <Stack.Screen
-          name="ConcoursList"
-          component={ConcoursEntreeScreenWithSafeArea}
-          options={{
-            ...defaultScreenOptions,
-            title: 'Concours d\'Entrée',
-          }}
-        />
-        <Stack.Screen
-          name="ExperiencesList"
-          component={ExperiencesEtudiantsScreenWithSafeArea}
-          options={{
-            ...defaultScreenOptions,
-            title: 'Expériences Étudiants',
-          }}
-        />
-        <Stack.Screen
-          name="ConferencesList"
-          component={ConferencesLivesScreenWithSafeArea}
-          options={{
-            ...defaultScreenOptions,
-            title: 'Conférences & Lives',
-          }}
-        />
-        {/* ✅ NOUVEAU 2025-01-27: Routes Bourse du Livre avec IA */}
-        <Stack.Screen
-          name="BourseLivre"
-          component={BourseLivreScreenWithSafeArea}
-          options={{
-            ...defaultScreenOptions,
-            title: 'Bourse du Livre',
-          }}
-        />
-        {/* ✅ NOUVEAU 2025-01-27: Routes Planification Menus */}
-        <Stack.Screen
-          name="MenuPlanningHub"
-          component={MenuPlanningHubScreenWithSafeArea}
-          options={{
-            ...defaultScreenOptions,
-            title: 'Planification Menus',
-          }}
-        />
-        <Stack.Screen
-          name="FamilyProfile"
-          component={FamilyProfileScreenWithSafeArea}
-          options={{
-            ...defaultScreenOptions,
-            title: 'Profil Famille',
-          }}
-        />
-        <Stack.Screen
-          name="RecipeSearch"
-          component={RecipeSearchScreenWithSafeArea}
-          options={{
-            ...defaultScreenOptions,
-            title: 'Recherche de Recettes',
-          }}
-        />
-        <Stack.Screen
-          name="MenuWeekCalendar"
-          component={MenuWeekCalendarScreenWithSafeArea}
-          options={{
-            ...defaultScreenOptions,
-            title: 'Menu de la Semaine',
-          }}
-        />
-        <Stack.Screen
-          name="ShoppingList"
-          component={ShoppingListScreenWithSafeArea}
-          options={{
-            ...defaultScreenOptions,
-            title: 'Liste de Courses',
-          }}
-        />
-        <Stack.Screen
-          name="RecipeDetails"
-          component={RecipeDetailsScreenWithSafeArea}
-          options={{
-            ...defaultScreenOptions,
-            title: 'Détails Recette',
-          }}
-        />
-        {/* ✅ NOUVEAU: Écrans Orientation Scolaire IA */}
-        <Stack.Screen
-          name="ProfilEtudiant"
-          component={withNavigatorSafeArea(require('../screens/orientation/ProfilEtudiantScreen').default)}
-          options={{
-            ...defaultScreenOptions,
-            title: 'Mon Profil Étudiant',
-          }}
-        />
-        <Stack.Screen
-          name="OrientationAIProfileAnalysis"
-          component={withNavigatorSafeArea(require('../screens/orientation/OrientationAIProfileAnalysisScreen').default)}
-          options={{
-            ...defaultScreenOptions,
-            title: 'Analyse Profil IA',
-          }}
-        />
-        <Stack.Screen
-          name="OrientationAIRecommendations"
-          component={withNavigatorSafeArea(require('../screens/orientation/OrientationAIRecommendationsScreen').default)}
-          options={{
-            ...defaultScreenOptions,
-            title: 'Recommandations Programmes',
-          }}
-        />
-        <Stack.Screen
-          name="OrientationAIComparePrograms"
-          component={withNavigatorSafeArea(require('../screens/orientation/OrientationAICompareProgramsScreen').default)}
-          options={{
-            ...defaultScreenOptions,
-            title: 'Comparer Programmes',
-          }}
-        />
-        {/* ✅ NOUVEAU: Écrans Offres d'Emploi IA */}
-        <Stack.Screen
-          name="AICVAnalysis"
-          component={withNavigatorSafeArea(require('../screens/offres-emploi/AnalyseCVScreen').default)}
-          options={{
-            ...defaultScreenOptions,
-            title: 'Analyse CV IA',
-          }}
-        />
-        <Stack.Screen
-          name="AISalaryPrediction"
-          component={withNavigatorSafeArea(require('../screens/offres-emploi/AISalaryPredictionScreen').default)}
-          options={{
-            ...defaultScreenOptions,
-            title: 'Prédiction Salaire IA',
-          }}
-        />
-        <Stack.Screen
-          name="AISuggestFormations"
-          component={withNavigatorSafeArea(require('../screens/offres-emploi/AISuggestFormationsScreen').default)}
-          options={{
-            ...defaultScreenOptions,
-            title: 'Suggestions Formations IA',
-          }}
-        />
-        {/* ✅ NOUVEAU 2025-01-28: Routes offres d'emploi */}
-        <Stack.Screen
-          name="OffresEmploiHub"
-          component={OffresEmploiHomeScreenWithSafeArea}
-          options={{
-            headerShown: false,
-          }}
-        />
-        <Stack.Screen
-          name="OffresEmploiHubAdvanced"
-          component={OffresEmploiHubScreenWithSafeArea}
-          options={{
-            ...defaultScreenOptions,
-            title: 'Hub Emploi',
-          }}
-        />
-        <Stack.Screen
-          name="OffreSearch"
-          component={OffreSearchScreenWithSafeArea}
-          options={{
-            ...defaultScreenOptions,
-            title: 'Rechercher une offre',
-          }}
-        />
-        <Stack.Screen
-          name="OffreList"
-          component={withNavigatorSafeArea(require('../screens/offres-emploi/OffreListScreen').default)}
-          options={{
-            ...defaultScreenOptions,
-            title: 'Résultats de recherche',
-          }}
-        />
-        <Stack.Screen
-          name="OffreDetails"
-          component={withNavigatorSafeArea(require('../screens/offres-emploi/OffreDetailsScreen').default)}
-          options={{
-            ...defaultScreenOptions,
-            title: 'Détails de l\'offre',
-          }}
-        />
-        <Stack.Screen
-          name="CreateOffre"
-          component={CreateOffreScreenWithSafeArea}
-          options={{
-            ...defaultScreenOptions,
-            title: 'Publier une offre',
-          }}
-        />
-        <Stack.Screen
-          name="MesOffres"
-          component={MesOffresScreenWithSafeArea}
-          options={{
-            ...defaultScreenOptions,
-            title: 'Mes Offres',
-          }}
-        />
-        <Stack.Screen
-          name="OffreCandidatures"
-          component={withNavigatorSafeArea(require('../screens/offres-emploi/OffreCandidaturesScreen').default)}
-          options={{
-            ...defaultScreenOptions,
-            title: 'Candidatures',
-          }}
-        />
-        <Stack.Screen
-          name="ProfilCandidat"
-          component={ProfilCandidatScreenWithSafeArea}
-          options={{
-            ...defaultScreenOptions,
-            title: 'Mon Profil Candidat',
-          }}
-        />
-        <Stack.Screen
-          name="Reservation"
-          component={ReservationScreenWithSafeArea}
-          options={{
-            ...defaultScreenOptions,
-            title: 'Réservation',
-          }}
-        />
-        <Stack.Screen
-          name="MesReservations"
-          component={MesReservationsScreenWithSafeArea}
-          options={{
-            ...defaultScreenOptions,
-            title: 'Mes Réservations',
-          }}
-        />
-        <Stack.Screen
-          name="MesReservationsCovoiturage"
-          component={withNavigatorSafeArea(require('../screens/specialized/MesReservationsCovoiturageScreen').default)}
-          options={{
-            ...defaultScreenOptions,
-            title: 'Mes Réservations Covoiturage',
-          }}
-        />
-        <Stack.Screen
-          name="PrestataireReservations"
-          component={PrestataireReservationsScreenWithSafeArea}
-          options={{
-            ...defaultScreenOptions,
-            title: 'Réservations Reçues',
-          }}
-        />
-        <Stack.Screen
-          name="ServiceDetailSpecialized"
-          component={ServiceDetailScreenWithSafeArea}
-          options={{
-            ...defaultScreenOptions,
-            ...transitionConfig.slideUp,
-            gestureDirection: 'vertical',
-          }}
-        />
-        <Stack.Screen name="MyBusTickets" component={withNavigatorSafeArea(MyBusTicketsScreen)} />
-        <Stack.Screen name="BloodGroupManagement" component={withNavigatorSafeArea(BloodGroupManagementScreen)} />
-        <Stack.Screen name="AgencyTicketManagement" component={withNavigatorSafeArea(AgencyTicketManagementScreen)} />
-        <Stack.Screen name="BusBoardingManagement" component={withNavigatorSafeArea(BusBoardingManagementScreen)} />
-        <Stack.Screen name="ManageBusSeats" component={withNavigatorSafeArea(ManageBusSeatsScreen)} />
-        <Stack.Screen name="ManageAgencySchedules" component={withNavigatorSafeArea(ManageAgencySchedulesScreen)} />
-        {/* ✅ NOUVEAU: Écrans banque de sang */}
-        <Stack.Screen
-          name="BloodDonationRequest"
-          component={withNavigatorSafeArea(BloodDonationRequestScreen)}
-          options={{ title: 'Créer demande de don' }}
-        />
-        <Stack.Screen
-          name="BloodDonationMatches"
-          component={withNavigatorSafeArea(BloodDonationMatchesScreen)}
-          options={{ title: 'Matches donneurs' }}
-        />
-        <Stack.Screen
-          name="MyBloodDonations"
-          component={withNavigatorSafeArea(MyBloodDonationsScreen)}
-          options={{ title: 'Mes dons de sang' }}
-        />
-        {/* ✅ NOUVEAU: Écrans tickets bus */}
-        <Stack.Screen
-          name="BusTicketSearch"
-          component={TicketVoyageHomeScreenWithSafeArea}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="BusTicketSearchAdvanced"
-          component={withNavigatorSafeArea(BusTicketSearchScreen)}
-          options={{ title: 'Recherche avancée' }}
-        />
-        {/* ✅ NOUVEAU: BayamSelam - Recherche et résultats */}
-        <Stack.Screen
-          name="BayamSelamSearch"
-          component={BayamSelamSearchScreenWithSafeArea}
-          options={{
-            headerShown: false,
-          }}
-        />
-        <Stack.Screen
-          name="BayamSelamResults"
-          component={BayamSelamResultsScreenWithSafeArea}
-          options={{
-            headerShown: false,
-          }}
-        />
-        {/* ✅ BayamSelamSearchAdvanced redirige aussi vers SupermarketHome */}
-        <Stack.Screen
-          name="BayamSelamSearchAdvanced"
-          component={SupermarketHomeScreenWithSafeArea}
-          options={{ title: 'BayamSelam - Comparateur de prix', headerShown: false }}
-        />
-        <Stack.Screen
-          name="SupermarketHome"
-          component={SupermarketHomeScreenWithSafeArea}
-          options={{ title: 'Supermarché', headerShown: false }}
-          options={{
-            headerShown: false,
-          }}
-        />
-        <Stack.Screen
-          name="AutoServicesSearch"
-          component={AutoServicesSearchScreenWithSafeArea}
-          options={{ title: 'Rechercher un véhicule' }}
-        />
-        <Stack.Screen
-          name="InsuranceServicesSearch"
-          component={InsuranceServicesSearchScreenWithSafeArea}
-          options={{ title: 'Rechercher une assurance' }}
-        />
-        <Stack.Screen
-          name="BusTicketBooking"
-          component={withNavigatorSafeArea(BusTicketBookingScreen)}
-          options={{ title: 'Réserver des places' }}
-        />
-        <Stack.Screen
-          name="BusTicketPayment"
-          component={withNavigatorSafeArea(require('../screens/specialized/BusTicketPaymentScreen').default)}
-          options={{ title: 'Paiement ticket' }}
-        />
-        <Stack.Screen
-          name="BusTicketDetails"
-          component={withNavigatorSafeArea(BusTicketDetailsScreen)}
-          options={{ title: 'Mon ticket' }}
-        />
-        {/* ✅ NOUVEAU: Routes demandes de retour (aller-retour) */}
-        <Stack.Screen
-          name="BusReturnRequests"
-          component={withNavigatorSafeArea(BusReturnRequestsScreen)}
-          options={{ title: 'Mes demandes de retour' }}
-        />
-        <Stack.Screen
-          name="BusReturnRequestForm"
-          component={withNavigatorSafeArea(BusReturnRequestFormScreen)}
-          options={{ title: 'Créer demande de retour' }}
-        />
-        <Stack.Screen
-          name="Settings"
-          component={EnhancedSettingsScreenWithSafeArea}
-          options={{
-            ...defaultScreenOptions,
-            ...transitionConfig.fade, // ✅ PHASE 3: Transition fade pour settings
-          }}
-        />
-        <Stack.Screen
-          name="RechargeTokens"
-          component={RechargeTokensScreenWithSafeArea}
-          options={{
-            ...defaultScreenOptions,
-            ...transitionConfig.slideUp, // ✅ PHASE 3: Transition slideUp pour recharge tokens
-            gestureDirection: 'vertical',
-          }}
-        />
-        <Stack.Screen name="FormulaireYukpoIntelligent" component={FormulaireYukpoIntelligentWithSafeArea} />
-        <Stack.Screen name="AjouterProduitSimple" component={AjouterProduitSimpleWithSafeArea} />
-        <Stack.Screen name="MesProduits" component={MesProduitsScreenWithSafeArea} />
-        <Stack.Screen
-          name="ProductDetail"
-          component={ProductDetailScreenWithSafeArea}
-          options={{
-            ...defaultScreenOptions,
-            ...transitionConfig.slideUp, // ✅ PHASE 3: Transition slideUp pour détails produit
-            gestureDirection: 'vertical',
-          }}
-        />
-        <Stack.Screen
-          name="ServiceDetailShared"
-          component={ServiceDetailSharedScreenWithSafeArea}
-          options={{
-            ...defaultScreenOptions,
-            ...transitionConfig.slideUp, // ✅ PHASE 3: Transition slideUp pour détails service partagé
-            gestureDirection: 'vertical',
-          }}
-        />
-        <Stack.Screen
-          name="ResultatBesoin"
-          component={ResultatBesoinScreenWithSafeArea}
-          options={{
-            ...defaultScreenOptions,
-            ...transitionConfig.scale, // ✅ PHASE 3: Transition scale pour résultats
-          }}
-        />
-        <Stack.Screen
-          name="PrestataireBoutique"
-          component={PrestataireBoutiqueScreenWithSafeArea}
-          options={{ title: 'Boutique' }}
-        />
-        <Stack.Screen
-          name="HistoriqueProduitsConsultes"
-          component={HistoriqueProduitsConsultesScreenWithSafeArea}
-          options={{ title: 'Produits consultés' }}
-        />
-        <Stack.Screen
-          name="ServiceDetail"
-          component={ServiceDetailScreenWithSafeArea}
-          options={{
-            ...defaultScreenOptions,
-            title: 'Boutique',
-            ...transitionConfig.slideUp, // ✅ PHASE 3: Transition slideUp pour boutique
-          }}
-        />
-        <Stack.Screen
-          name="CreatePublicite"
-          component={CreatePubliciteScreenWithSafeArea}
-          options={{
-            ...defaultScreenOptions,
-            ...transitionConfig.slideUp, // ✅ PHASE 3: Transition slideUp pour création publicité
-            gestureDirection: 'vertical',
-          }}
-        />
-        <Stack.Screen
-          name="PubliciteDashboard"
-          component={PubliciteDashboardScreenWithSafeArea}
-          options={{
-            ...defaultScreenOptions,
-            ...transitionConfig.slideHorizontal, // ✅ PHASE 3: Transition slideHorizontal pour dashboard
-          }}
-        />
-        <Stack.Screen
-          name="SoldeDetail"
-          component={SoldeDetailScreenWithSafeArea}
-          options={{
-            ...defaultScreenOptions,
-            ...transitionConfig.fade, // ✅ PHASE 3: Transition fade pour détails solde
-          }}
-        />
-        <Stack.Screen name="YukpoServicePlaceholder" component={YukpoServicePlaceholderScreenWithSafeArea} />
-        <Stack.Screen 
-          name="VideoFeed" 
-          component={VideoFeedScreenWithSafeArea}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen name="HashtagDiscovery" component={HashtagDiscoveryScreenWithSafeArea} />
-        <Stack.Screen name="CreatorAnalytics" component={CreatorAnalyticsScreenWithSafeArea} />
-        <Stack.Screen name="VideoAnalytics" component={VideoAnalyticsScreenWithSafeArea} />
-        <Stack.Screen name="VideoCreationIntro" component={VideoCreationIntroScreenWithSafeArea} />
-        <Stack.Screen
-          name="FlashSale"
-          component={withNavigatorSafeArea(FlashSaleScreen)}
-          options={{
-            ...defaultScreenOptions,
-            title: '🔥 Ventes Flash',
-          }}
-        />
-        <Stack.Screen
-          name="FlashPromosActive"
-          component={withNavigatorSafeArea(FlashPromosActiveScreen)}
-          options={{
-            ...defaultScreenOptions,
-            title: '⚡ Flash Promotionnels',
-          }}
-        />
-        <Stack.Screen
-          name="CreateFlashPromo"
-          component={withNavigatorSafeArea(CreateFlashPromoScreen)}
-          options={{
-            ...defaultScreenOptions,
-            title: '⚡ Créer Flash Promo',
-          }}
-        />
-        <Stack.Screen
-          name="GlobalPromoCatalog"
-          component={withNavigatorSafeArea(GlobalPromoCatalogScreen)}
-          options={{
-            ...defaultScreenOptions,
-            title: '🛍️ Black Friday',
-          }}
-        />
-        <Stack.Screen name="VideoCreationWizard" component={VideoCreationWizardScreenWithSafeArea} />
-        <Stack.Screen name="VideoGenerationResult" component={VideoGenerationResultScreenWithSafeArea} />
-        <Stack.Screen name="Delivery" component={DeliveryHomeScreenWithSafeArea} />
-        <Stack.Screen name="DeliveryHome" component={DeliveryHomeScreenWithSafeArea} />
-        <Stack.Screen name="DeliveryShoppingFlow" component={DeliveryShoppingFlow} />
-        <Stack.Screen name="DeliveryShoppingFlowNew" component={withNavigatorSafeArea(DeliveryShoppingFlowScreen)} />
-        <Stack.Screen name="DeliveryParcelFlow" component={withNavigatorSafeArea(DeliveryParcelFlowScreen)} />
-        <Stack.Screen name="DeliveryParcelFlowNew" component={withNavigatorSafeArea(DeliveryParcelFlowNewScreen)} />
-        <Stack.Screen
-          name="DeliveryShoppingTracking"
-          component={DeliveryShoppingTrackingScreenWithSafeArea}
-        />
-        <Stack.Screen
-          name="StorageLocations"
-          component={StorageLocationsScreenWithSafeArea}
-        />
-        <Stack.Screen
-          name="GlobalPromoSubmission"
-          component={GlobalPromoSubmissionScreenWithSafeArea}
-          options={{
-            ...defaultScreenOptions,
-            ...transitionConfig.slideUp, // ✅ PHASE 3: Transition slideUp pour soumission promo
-            gestureDirection: 'vertical',
-          }}
-        />
-        <Stack.Screen
-          name="GlobalPromoManager"
-          component={GlobalPromoManagerScreenWithSafeArea}
-          options={{
-            ...defaultScreenOptions,
-            ...transitionConfig.slideUp, // ✅ PHASE 3: Transition slideUp pour gestion promo
-            gestureDirection: 'vertical',
-          }}
-        />
-        <Stack.Screen
-          name="AnalyticsDashboard"
-          component={withNavigatorSafeArea(AnalyticsDashboardScreen)}
-        />
-        <Stack.Screen
-          name="Dashboard"
-          component={DashboardScreenWithSafeArea}
-        />
-        <Stack.Screen
-          name="DashboardPrestataire"
-          component={DashboardPrestataireScreenWithSafeArea}
-        />
-        <Stack.Screen
-          name="AgencyAnalyticsDashboard"
-          component={withNavigatorSafeArea(require('../screens/AgencyAnalyticsDashboard').default)}
-          options={{
-            ...defaultScreenOptions,
-            title: 'Analytics Agence',
-          }}
-        />
-        <Stack.Screen
-          name="CourierRegistration"
-          component={withNavigatorSafeArea(require('../screens/delivery/CourierRegistrationScreen').default)}
-        />
-        <Stack.Screen
-          name="CourierDashboard"
-          component={withNavigatorSafeArea(require('../screens/delivery/CourierDashboardScreen').default)}
-        />
-        <Stack.Screen
-          name="CourierAdmin"
-          component={withNavigatorSafeArea(CourierAdminScreen)}
-          options={{
-            ...defaultScreenOptions,
-            title: 'Gestion des coursiers',
-          }}
-        />
-        <Stack.Screen
-          name="DeliveryPartnersAdmin"
-          component={withNavigatorSafeArea(DeliveryPartnersAdminScreen)}
-          options={{
-            ...defaultScreenOptions,
-            title: 'Gestion des partenaires',
-          }}
-        />
-        <Stack.Screen
-          name="UserRoleManagement"
-          component={withNavigatorSafeArea(UserRoleManagementScreen)}
-          options={{
-            ...defaultScreenOptions,
-            title: 'Gestion des rôles',
-          }}
-        />
-      </Stack.Navigator>
+      <Stack.Screen
+        name="NavigationScreen"
+        component={NavigationScreenWithSafeArea}
+        options={{
+          ...defaultScreenOptions,
+          title: 'Navigation Intelligente',
+          ...transitionConfig.slide, // Transition slide pour Navigation
+        }}
+      />
+      <Stack.Screen
+        name="Contact"
+        component={ContactScreenWithSafeArea}
+        options={{
+          ...defaultScreenOptions,
+          ...transitionConfig.fade, // Transition fade pour Contact
+        }}
+      />
+      <Stack.Screen name="SpecializedSearch" component={SpecializedSearchScreenWithSafeArea} />
+      <Stack.Screen name="SpecializedServicesHub" component={SpecializedServicesHubScreenWithSafeArea} />
+      <Stack.Screen name="MesServicesSpecialises" component={MesServicesSpecialisesScreenWithSafeArea} />
+      <Stack.Screen name="GestionServicesSpecialises" component={GestionServicesSpecialisesScreenWithSafeArea} />
+      <Stack.Screen name="ServicesDashboard" component={ServicesDashboardWithSafeArea} />
+      <Stack.Screen name="PharmacieForm" component={PharmacieFormScreenWithSafeArea} />
+      <Stack.Screen name="HopitalForm" component={HopitalFormScreenWithSafeArea} />
+      <Stack.Screen name="LaboratoireForm" component={LaboratoireFormScreenWithSafeArea} />
+      <Stack.Screen name="BanqueSangForm" component={BanqueSangFormScreenWithSafeArea} />
+      <Stack.Screen name="AgenceVoyageForm" component={AgenceVoyageFormScreenWithSafeArea} />
+      <Stack.Screen name="CovoiturageForm" component={CovoiturageFormScreenWithSafeArea} />
+      <Stack.Screen name="TaxiForm" component={TaxiFormScreenWithSafeArea} />
+      {/* ✅ NOUVEAU: Ajouter PartnerRegister au MainStack pour navigation depuis TaxiHome et CovoiturageHome */}
+      <Stack.Screen name="PartnerRegister" component={PartnerRegisterScreenWithSafeArea} />
+      {/* ✅ Phase 3: Routes recherche Taxi et Covoiturage */}
+      <Stack.Screen
+        name="TaxiSearch"
+        component={TaxiHomeScreenWithSafeArea}
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="TaxiSearchAdvanced"
+        component={TaxiSearchScreenWithSafeArea}
+        options={{
+          ...defaultScreenOptions,
+          title: 'Recherche Taxi',
+        }}
+      />
+      <Stack.Screen name="TaxiIntelligentSearch" component={TaxiIntelligentSearchScreenWithSafeArea} />
+      <Stack.Screen name="TaxiList" component={TaxiListScreenWithSafeArea} />
+      <Stack.Screen name="TaxiDetails" component={TaxiDetailsScreenWithSafeArea} />
+      <Stack.Screen name="TaxiBooking" component={TaxiBookingScreenWithSafeArea} />
+      <Stack.Screen name="TaxiTracking" component={TaxiTrackingScreenWithSafeArea} />
+      <Stack.Screen name="TaxiAvailability" component={TaxiAvailabilityScreenWithSafeArea} />
+      <Stack.Screen name="MesTaxis" component={MesTaxisScreenWithSafeArea} />
+      {/* ✅ Phase 3: Hôpitaux */}
+      <Stack.Screen name="HopitalSearch" component={HopitalHomeScreenWithSafeArea} />
+      <Stack.Screen name="HopitalSearchAdvanced" component={HopitalSearchScreenWithSafeArea} />
+      {/* ✅ NOUVEAU: Routes Immobilier */}
+      <Stack.Screen name="ImmobilierSearch" component={ImmobilierHomeScreenWithSafeArea} />
+      <Stack.Screen name="HotelSearch" component={ImmobilierHomeScreenWithSafeArea} />
+      <Stack.Screen name="MeubleSearch" component={ImmobilierHomeScreenWithSafeArea} />
+      <Stack.Screen name="ImmobilierSearchAdvanced" component={ImmobilierSearchScreenWithSafeArea} />
+      <Stack.Screen name="ImmobilierList" component={ImmobilierListScreenWithSafeArea} />
+      <Stack.Screen name="ImmobilierDetails" component={ImmobilierDetailsScreenWithSafeArea} />
+      <Stack.Screen name="ImmobilierForm" component={ImmobilierFormScreenWithSafeArea} />
+      <Stack.Screen name="ImmobilierBooking" component={ImmobilierBookingScreenWithSafeArea} />
+      <Stack.Screen name="ImmobilierCompare" component={ImmobilierCompareScreenWithSafeArea} />
+      <Stack.Screen name="MyFavorites" component={MyFavoritesScreenWithSafeArea} />
+      <Stack.Screen name="ImmobilierPriceAlerts" component={ImmobilierPriceAlertsScreenWithSafeArea} />
+      <Stack.Screen name="HopitalList" component={HopitalListScreenWithSafeArea} />
+      <Stack.Screen name="HopitalDetails" component={HopitalDetailsScreenWithSafeArea} />
+      {/* ✅ Phase 3: Laboratoires */}
+      <Stack.Screen name="LaboratoireSearch" component={LaboratoireHomeScreenWithSafeArea} />
+      <Stack.Screen name="LaboratoireSearchAdvanced" component={LaboratoireSearchScreenWithSafeArea} />
+      <Stack.Screen name="LaboratoireList" component={LaboratoireListScreenWithSafeArea} />
+      <Stack.Screen name="LaboratoireDetails" component={LaboratoireDetailsScreenWithSafeArea} />
+      {/* ✅ NOUVEAU: Pharmacie */}
+      <Stack.Screen name="PharmacieSearch" component={PharmacieHomeScreenWithSafeArea} />
+      <Stack.Screen name="PharmacieSearchAdvanced" component={PharmacieSearchScreenWithSafeArea} />
+      <Stack.Screen name="PharmacieList" component={PharmacieListScreenWithSafeArea} />
+      <Stack.Screen name="PharmacieDetails" component={PharmacieDetailsScreenWithSafeArea} />
+      {/* ✅ NOUVEAU: Hub services de santé */}
+      <Stack.Screen name="HealthServicesHub" component={HealthServicesHubScreenWithSafeArea} />
+      {/* ✅ NOUVEAU: Banque de sang */}
+      <Stack.Screen name="BanqueSangSearch" component={BanqueSangSearchScreenWithSafeArea} />
+      <Stack.Screen name="BanqueSangList" component={BanqueSangListScreenWithSafeArea} />
+      <Stack.Screen name="BanqueSangDetails" component={BanqueSangDetailsScreenWithSafeArea} />
+      {/* ✅ NOUVEAU: Agence de voyage */}
+      <Stack.Screen name="AgenceVoyageSearch" component={AgenceVoyageSearchScreenWithSafeArea} />
+      <Stack.Screen name="AgenceVoyageList" component={AgenceVoyageListScreenWithSafeArea} />
+      <Stack.Screen name="AgenceVoyageDetails" component={AgenceVoyageDetailsScreenWithSafeArea} />
+      <Stack.Screen
+        name="CovoiturageSearch"
+        component={CovoiturageHomeScreenWithSafeArea}
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="CovoiturageSearchAdvanced"
+        component={CovoiturageSearchScreenWithSafeArea}
+        options={{
+          ...defaultScreenOptions,
+          title: 'Recherche Covoiturage',
+        }}
+      />
+      <Stack.Screen name="CovoiturageList" component={CovoiturageListScreenWithSafeArea} />
+      <Stack.Screen name="CovoiturageDetails" component={CovoiturageDetailsScreenWithSafeArea} />
+      <Stack.Screen name="CovoiturageBooking" component={CovoiturageBookingScreenWithSafeArea} />
+      <Stack.Screen name="MyTrips" component={MyTripsScreenWithSafeArea} />
+      {/* ✅ NOUVEAU 2025-01-28: Routes Bourse du livre scolaire */}
+      <Stack.Screen
+        name="LivreScolaireSearch"
+        component={LivreScolaireHomeScreenWithSafeArea}
+      />
+      <Stack.Screen
+        name="LivreScolaireSearchAdvanced"
+        component={LivreScolaireSearchScreenWithSafeArea}
+        options={{
+          ...defaultScreenOptions,
+          title: 'Rechercher un livre',
+        }}
+      />
+      <Stack.Screen
+        name="LivreScolaireList"
+        component={LivreScolaireListScreenWithSafeArea}
+        options={{
+          ...defaultScreenOptions,
+          title: 'Livres trouvés',
+        }}
+      />
+      <Stack.Screen
+        name="LivreScolaireDetails"
+        component={LivreScolaireDetailsScreenWithSafeArea}
+        options={{
+          ...defaultScreenOptions,
+          title: 'Détails du livre',
+        }}
+      />
+      <Stack.Screen
+        name="LivreScolaireForm"
+        component={LivreScolaireFormScreenWithSafeArea}
+        options={{
+          ...defaultScreenOptions,
+          title: 'Créer/Modifier un livre',
+        }}
+      />
+      <Stack.Screen
+        name="MesLivres"
+        component={MesLivresScreenWithSafeArea}
+        options={{
+          ...defaultScreenOptions,
+          title: 'Mes Livres',
+        }}
+      />
+      <Stack.Screen
+        name="TrocMatching"
+        component={TrocMatchingScreenWithSafeArea}
+        options={{
+          ...defaultScreenOptions,
+          title: 'Matchings trouvés',
+        }}
+      />
+      <Stack.Screen
+        name="TrocDetails"
+        component={TrocDetailsScreenWithSafeArea}
+        options={{
+          ...defaultScreenOptions,
+          title: 'Détails du troc',
+        }}
+      />
+      <Stack.Screen
+        name="TrocLiveValidation"
+        component={TrocLiveValidationScreenWithSafeArea}
+        options={{
+          ...defaultScreenOptions,
+          title: 'Validation vidéo',
+        }}
+      />
+      <Stack.Screen
+        name="MesTrocs"
+        component={MesTrocsScreenWithSafeArea}
+        options={{
+          ...defaultScreenOptions,
+          title: 'Mes Troc',
+        }}
+      />
+      {/* ✅ NOUVEAU 2025-01-28: Orientation scolaire */}
+      <Stack.Screen
+        name="OrientationScolaireHub"
+        component={OrientationScolaireHomeScreenWithSafeArea}
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="OrientationScolaireHubAdvanced"
+        component={OrientationScolaireHubScreenWithSafeArea}
+        options={{
+          ...defaultScreenOptions,
+          title: 'Orientation Scolaire',
+        }}
+      />
+      <Stack.Screen
+        name="EtablissementSearch"
+        component={EtablissementSearchScreenWithSafeArea}
+        options={{
+          ...defaultScreenOptions,
+          title: 'Rechercher un établissement',
+        }}
+      />
+      <Stack.Screen
+        name="EtablissementDetails"
+        component={EtablissementDetailsScreenWithSafeArea}
+        options={{
+          ...defaultScreenOptions,
+          title: 'Détails établissement',
+        }}
+      />
+      <Stack.Screen
+        name="CreateEtablissement"
+        component={CreateEtablissementScreenWithSafeArea}
+        options={{
+          ...defaultScreenOptions,
+          title: 'Créer un établissement',
+        }}
+      />
+      <Stack.Screen
+        name="ProgrammesList"
+        component={ProgrammesScolairesScreenWithSafeArea}
+        options={{
+          ...defaultScreenOptions,
+          title: 'Programmes Scolaires',
+        }}
+      />
+      <Stack.Screen
+        name="FournituresList"
+        component={FournituresScolairesScreenWithSafeArea}
+        options={{
+          ...defaultScreenOptions,
+          title: 'Fournitures Scolaires',
+        }}
+      />
+      <Stack.Screen
+        name="ConcoursList"
+        component={ConcoursEntreeScreenWithSafeArea}
+        options={{
+          ...defaultScreenOptions,
+          title: 'Concours d\'Entrée',
+        }}
+      />
+      <Stack.Screen
+        name="ExperiencesList"
+        component={ExperiencesEtudiantsScreenWithSafeArea}
+        options={{
+          ...defaultScreenOptions,
+          title: 'Expériences Étudiants',
+        }}
+      />
+      <Stack.Screen
+        name="ConferencesList"
+        component={ConferencesLivesScreenWithSafeArea}
+        options={{
+          ...defaultScreenOptions,
+          title: 'Conférences & Lives',
+        }}
+      />
+      {/* ✅ NOUVEAU 2025-01-27: Routes Bourse du Livre avec IA */}
+      <Stack.Screen
+        name="BourseLivre"
+        component={BourseLivreScreenWithSafeArea}
+        options={{
+          ...defaultScreenOptions,
+          title: 'Bourse du Livre',
+        }}
+      />
+      {/* ✅ NOUVEAU 2025-01-27: Routes Planification Menus */}
+      <Stack.Screen
+        name="MenuPlanningHub"
+        component={MenuPlanningHubScreenWithSafeArea}
+        options={{
+          ...defaultScreenOptions,
+          title: 'Planification Menus',
+        }}
+      />
+      <Stack.Screen
+        name="FamilyProfile"
+        component={FamilyProfileScreenWithSafeArea}
+        options={{
+          ...defaultScreenOptions,
+          title: 'Profil Famille',
+        }}
+      />
+      <Stack.Screen
+        name="RecipeSearch"
+        component={RecipeSearchScreenWithSafeArea}
+        options={{
+          ...defaultScreenOptions,
+          title: 'Recherche de Recettes',
+        }}
+      />
+      <Stack.Screen
+        name="MenuWeekCalendar"
+        component={MenuWeekCalendarScreenWithSafeArea}
+        options={{
+          ...defaultScreenOptions,
+          title: 'Menu de la Semaine',
+        }}
+      />
+      <Stack.Screen
+        name="ShoppingList"
+        component={ShoppingListScreenWithSafeArea}
+        options={{
+          ...defaultScreenOptions,
+          title: 'Liste de Courses',
+        }}
+      />
+      <Stack.Screen
+        name="RecipeDetails"
+        component={RecipeDetailsScreenWithSafeArea}
+        options={{
+          ...defaultScreenOptions,
+          title: 'Détails Recette',
+        }}
+      />
+      {/* ✅ NOUVEAU: Écrans Orientation Scolaire IA */}
+      <Stack.Screen
+        name="ProfilEtudiant"
+        component={withNavigatorSafeArea(require('../screens/orientation/ProfilEtudiantScreen').default)}
+        options={{
+          ...defaultScreenOptions,
+          title: 'Mon Profil Étudiant',
+        }}
+      />
+      <Stack.Screen
+        name="OrientationAIProfileAnalysis"
+        component={withNavigatorSafeArea(require('../screens/orientation/OrientationAIProfileAnalysisScreen').default)}
+        options={{
+          ...defaultScreenOptions,
+          title: 'Analyse Profil IA',
+        }}
+      />
+      <Stack.Screen
+        name="OrientationAIRecommendations"
+        component={withNavigatorSafeArea(require('../screens/orientation/OrientationAIRecommendationsScreen').default)}
+        options={{
+          ...defaultScreenOptions,
+          title: 'Recommandations Programmes',
+        }}
+      />
+      <Stack.Screen
+        name="OrientationAIComparePrograms"
+        component={withNavigatorSafeArea(require('../screens/orientation/OrientationAICompareProgramsScreen').default)}
+        options={{
+          ...defaultScreenOptions,
+          title: 'Comparer Programmes',
+        }}
+      />
+      {/* ✅ NOUVEAU: Écrans Offres d'Emploi IA */}
+      <Stack.Screen
+        name="AICVAnalysis"
+        component={withNavigatorSafeArea(require('../screens/offres-emploi/AnalyseCVScreen').default)}
+        options={{
+          ...defaultScreenOptions,
+          title: 'Analyse CV IA',
+        }}
+      />
+      <Stack.Screen
+        name="AISalaryPrediction"
+        component={withNavigatorSafeArea(require('../screens/offres-emploi/AISalaryPredictionScreen').default)}
+        options={{
+          ...defaultScreenOptions,
+          title: 'Prédiction Salaire IA',
+        }}
+      />
+      <Stack.Screen
+        name="AISuggestFormations"
+        component={withNavigatorSafeArea(require('../screens/offres-emploi/AISuggestFormationsScreen').default)}
+        options={{
+          ...defaultScreenOptions,
+          title: 'Suggestions Formations IA',
+        }}
+      />
+      {/* ✅ NOUVEAU 2025-01-28: Routes offres d'emploi */}
+      <Stack.Screen
+        name="OffresEmploiHub"
+        component={OffresEmploiHomeScreenWithSafeArea}
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="OffresEmploiHubAdvanced"
+        component={OffresEmploiHubScreenWithSafeArea}
+        options={{
+          ...defaultScreenOptions,
+          title: 'Hub Emploi',
+        }}
+      />
+      <Stack.Screen
+        name="OffreSearch"
+        component={OffreSearchScreenWithSafeArea}
+        options={{
+          ...defaultScreenOptions,
+          title: 'Rechercher une offre',
+        }}
+      />
+      <Stack.Screen
+        name="OffreList"
+        component={withNavigatorSafeArea(require('../screens/offres-emploi/OffreListScreen').default)}
+        options={{
+          ...defaultScreenOptions,
+          title: 'Résultats de recherche',
+        }}
+      />
+      <Stack.Screen
+        name="OffreDetails"
+        component={withNavigatorSafeArea(require('../screens/offres-emploi/OffreDetailsScreen').default)}
+        options={{
+          ...defaultScreenOptions,
+          title: 'Détails de l\'offre',
+        }}
+      />
+      <Stack.Screen
+        name="CreateOffre"
+        component={CreateOffreScreenWithSafeArea}
+        options={{
+          ...defaultScreenOptions,
+          title: 'Publier une offre',
+        }}
+      />
+      <Stack.Screen
+        name="MesOffres"
+        component={MesOffresScreenWithSafeArea}
+        options={{
+          ...defaultScreenOptions,
+          title: 'Mes Offres',
+        }}
+      />
+      <Stack.Screen
+        name="OffreCandidatures"
+        component={withNavigatorSafeArea(require('../screens/offres-emploi/OffreCandidaturesScreen').default)}
+        options={{
+          ...defaultScreenOptions,
+          title: 'Candidatures',
+        }}
+      />
+      <Stack.Screen
+        name="ProfilCandidat"
+        component={ProfilCandidatScreenWithSafeArea}
+        options={{
+          ...defaultScreenOptions,
+          title: 'Mon Profil Candidat',
+        }}
+      />
+      <Stack.Screen
+        name="Reservation"
+        component={ReservationScreenWithSafeArea}
+        options={{
+          ...defaultScreenOptions,
+          title: 'Réservation',
+        }}
+      />
+      <Stack.Screen
+        name="MesReservations"
+        component={MesReservationsScreenWithSafeArea}
+        options={{
+          ...defaultScreenOptions,
+          title: 'Mes Réservations',
+        }}
+      />
+      <Stack.Screen
+        name="MesReservationsCovoiturage"
+        component={withNavigatorSafeArea(require('../screens/specialized/MesReservationsCovoiturageScreen').default)}
+        options={{
+          ...defaultScreenOptions,
+          title: 'Mes Réservations Covoiturage',
+        }}
+      />
+      <Stack.Screen
+        name="PrestataireReservations"
+        component={PrestataireReservationsScreenWithSafeArea}
+        options={{
+          ...defaultScreenOptions,
+          title: 'Réservations Reçues',
+        }}
+      />
+      <Stack.Screen
+        name="ServiceDetailSpecialized"
+        component={ServiceDetailScreenWithSafeArea}
+        options={{
+          ...defaultScreenOptions,
+          ...transitionConfig.slideUp,
+          gestureDirection: 'vertical',
+        }}
+      />
+      <Stack.Screen name="MyBusTickets" component={withNavigatorSafeArea(MyBusTicketsScreen)} />
+      <Stack.Screen name="BloodGroupManagement" component={withNavigatorSafeArea(BloodGroupManagementScreen)} />
+      <Stack.Screen name="AgencyTicketManagement" component={withNavigatorSafeArea(AgencyTicketManagementScreen)} />
+      <Stack.Screen name="BusBoardingManagement" component={withNavigatorSafeArea(BusBoardingManagementScreen)} />
+      <Stack.Screen name="ManageBusSeats" component={withNavigatorSafeArea(ManageBusSeatsScreen)} />
+      <Stack.Screen name="ManageAgencySchedules" component={withNavigatorSafeArea(ManageAgencySchedulesScreen)} />
+      {/* ✅ NOUVEAU: Écrans banque de sang */}
+      <Stack.Screen
+        name="BloodDonationRequest"
+        component={withNavigatorSafeArea(BloodDonationRequestScreen)}
+        options={{ title: 'Créer demande de don' }}
+      />
+      <Stack.Screen
+        name="BloodDonationMatches"
+        component={withNavigatorSafeArea(BloodDonationMatchesScreen)}
+        options={{ title: 'Matches donneurs' }}
+      />
+      <Stack.Screen
+        name="MyBloodDonations"
+        component={withNavigatorSafeArea(MyBloodDonationsScreen)}
+        options={{ title: 'Mes dons de sang' }}
+      />
+      {/* ✅ NOUVEAU: Écrans tickets bus */}
+      <Stack.Screen
+        name="BusTicketSearch"
+        component={TicketVoyageHomeScreenWithSafeArea}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="BusTicketSearchAdvanced"
+        component={withNavigatorSafeArea(BusTicketSearchScreen)}
+        options={{ title: 'Recherche avancée' }}
+      />
+      {/* ✅ NOUVEAU: BayamSelam - Recherche et résultats */}
+      <Stack.Screen
+        name="BayamSelamSearch"
+        component={BayamSelamSearchScreenWithSafeArea}
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="BayamSelamResults"
+        component={BayamSelamResultsScreenWithSafeArea}
+        options={{
+          headerShown: false,
+        }}
+      />
+      {/* ✅ BayamSelamSearchAdvanced redirige aussi vers SupermarketHome */}
+      <Stack.Screen
+        name="BayamSelamSearchAdvanced"
+        component={SupermarketHomeScreenWithSafeArea}
+        options={{ title: 'BayamSelam - Comparateur de prix', headerShown: false }}
+      />
+      <Stack.Screen
+        name="SupermarketHome"
+        component={SupermarketHomeScreenWithSafeArea}
+        options={{ title: 'Supermarché', headerShown: false }}
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="AutoServicesSearch"
+        component={AutoServicesSearchScreenWithSafeArea}
+        options={{ title: 'Rechercher un véhicule' }}
+      />
+      <Stack.Screen
+        name="InsuranceServicesSearch"
+        component={InsuranceServicesSearchScreenWithSafeArea}
+        options={{ title: 'Rechercher une assurance' }}
+      />
+      <Stack.Screen
+        name="BusTicketBooking"
+        component={withNavigatorSafeArea(BusTicketBookingScreen)}
+        options={{ title: 'Réserver des places' }}
+      />
+      <Stack.Screen
+        name="BusTicketPayment"
+        component={withNavigatorSafeArea(require('../screens/specialized/BusTicketPaymentScreen').default)}
+        options={{ title: 'Paiement ticket' }}
+      />
+      <Stack.Screen
+        name="BusTicketDetails"
+        component={withNavigatorSafeArea(BusTicketDetailsScreen)}
+        options={{ title: 'Mon ticket' }}
+      />
+      {/* ✅ NOUVEAU: Routes demandes de retour (aller-retour) */}
+      <Stack.Screen
+        name="BusReturnRequests"
+        component={withNavigatorSafeArea(BusReturnRequestsScreen)}
+        options={{ title: 'Mes demandes de retour' }}
+      />
+      <Stack.Screen
+        name="BusReturnRequestForm"
+        component={withNavigatorSafeArea(BusReturnRequestFormScreen)}
+        options={{ title: 'Créer demande de retour' }}
+      />
+      <Stack.Screen
+        name="Settings"
+        component={EnhancedSettingsScreenWithSafeArea}
+        options={{
+          ...defaultScreenOptions,
+          ...transitionConfig.fade, // ✅ PHASE 3: Transition fade pour settings
+        }}
+      />
+      <Stack.Screen
+        name="RechargeTokens"
+        component={RechargeTokensScreenWithSafeArea}
+        options={{
+          ...defaultScreenOptions,
+          ...transitionConfig.slideUp, // ✅ PHASE 3: Transition slideUp pour recharge tokens
+          gestureDirection: 'vertical',
+        }}
+      />
+      <Stack.Screen name="FormulaireYukpoIntelligent" component={FormulaireYukpoIntelligentWithSafeArea} />
+      <Stack.Screen name="AjouterProduitSimple" component={AjouterProduitSimpleWithSafeArea} />
+      <Stack.Screen name="MesProduits" component={MesProduitsScreenWithSafeArea} />
+      <Stack.Screen
+        name="ProductDetail"
+        component={ProductDetailScreenWithSafeArea}
+        options={{
+          ...defaultScreenOptions,
+          ...transitionConfig.slideUp, // ✅ PHASE 3: Transition slideUp pour détails produit
+          gestureDirection: 'vertical',
+        }}
+      />
+      <Stack.Screen
+        name="ServiceDetailShared"
+        component={ServiceDetailSharedScreenWithSafeArea}
+        options={{
+          ...defaultScreenOptions,
+          ...transitionConfig.slideUp, // ✅ PHASE 3: Transition slideUp pour détails service partagé
+          gestureDirection: 'vertical',
+        }}
+      />
+      <Stack.Screen
+        name="ResultatBesoin"
+        component={ResultatBesoinScreenWithSafeArea}
+        options={{
+          ...defaultScreenOptions,
+          ...transitionConfig.scale, // ✅ PHASE 3: Transition scale pour résultats
+        }}
+      />
+      <Stack.Screen
+        name="PrestataireBoutique"
+        component={PrestataireBoutiqueScreenWithSafeArea}
+        options={{ title: 'Boutique' }}
+      />
+      <Stack.Screen
+        name="HistoriqueProduitsConsultes"
+        component={HistoriqueProduitsConsultesScreenWithSafeArea}
+        options={{ title: 'Produits consultés' }}
+      />
+      <Stack.Screen
+        name="ServiceDetail"
+        component={ServiceDetailScreenWithSafeArea}
+        options={{
+          ...defaultScreenOptions,
+          title: 'Boutique',
+          ...transitionConfig.slideUp, // ✅ PHASE 3: Transition slideUp pour boutique
+        }}
+      />
+      <Stack.Screen
+        name="CreatePublicite"
+        component={CreatePubliciteScreenWithSafeArea}
+        options={{
+          ...defaultScreenOptions,
+          ...transitionConfig.slideUp, // ✅ PHASE 3: Transition slideUp pour création publicité
+          gestureDirection: 'vertical',
+        }}
+      />
+      <Stack.Screen
+        name="PubliciteDashboard"
+        component={PubliciteDashboardScreenWithSafeArea}
+        options={{
+          ...defaultScreenOptions,
+          ...transitionConfig.slideHorizontal, // ✅ PHASE 3: Transition slideHorizontal pour dashboard
+        }}
+      />
+      <Stack.Screen
+        name="SoldeDetail"
+        component={SoldeDetailScreenWithSafeArea}
+        options={{
+          ...defaultScreenOptions,
+          ...transitionConfig.fade, // ✅ PHASE 3: Transition fade pour détails solde
+        }}
+      />
+      <Stack.Screen name="YukpoServicePlaceholder" component={YukpoServicePlaceholderScreenWithSafeArea} />
+      <Stack.Screen
+        name="VideoFeed"
+        component={VideoFeedScreenWithSafeArea}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen name="HashtagDiscovery" component={HashtagDiscoveryScreenWithSafeArea} />
+      <Stack.Screen name="CreatorAnalytics" component={CreatorAnalyticsScreenWithSafeArea} />
+      <Stack.Screen name="VideoAnalytics" component={VideoAnalyticsScreenWithSafeArea} />
+      <Stack.Screen name="VideoCreationIntro" component={VideoCreationIntroScreenWithSafeArea} />
+      <Stack.Screen
+        name="FlashSale"
+        component={withNavigatorSafeArea(FlashSaleScreen)}
+        options={{
+          ...defaultScreenOptions,
+          title: '🔥 Ventes Flash',
+        }}
+      />
+      <Stack.Screen
+        name="FlashPromosActive"
+        component={withNavigatorSafeArea(FlashPromosActiveScreen)}
+        options={{
+          ...defaultScreenOptions,
+          title: '⚡ Flash Promotionnels',
+        }}
+      />
+      <Stack.Screen
+        name="CreateFlashPromo"
+        component={withNavigatorSafeArea(CreateFlashPromoScreen)}
+        options={{
+          ...defaultScreenOptions,
+          title: '⚡ Créer Flash Promo',
+        }}
+      />
+      <Stack.Screen
+        name="GlobalPromoCatalog"
+        component={withNavigatorSafeArea(GlobalPromoCatalogScreen)}
+        options={{
+          ...defaultScreenOptions,
+          title: '🛍️ Black Friday',
+        }}
+      />
+      <Stack.Screen name="VideoCreationWizard" component={VideoCreationWizardScreenWithSafeArea} />
+      <Stack.Screen name="VideoGenerationResult" component={VideoGenerationResultScreenWithSafeArea} />
+      <Stack.Screen name="Delivery" component={DeliveryHomeScreenWithSafeArea} />
+      <Stack.Screen name="DeliveryHome" component={DeliveryHomeScreenWithSafeArea} />
+      <Stack.Screen name="DeliveryShoppingFlow" component={DeliveryShoppingFlow} />
+      <Stack.Screen name="DeliveryShoppingFlowNew" component={withNavigatorSafeArea(DeliveryShoppingFlowScreen)} />
+      <Stack.Screen name="DeliveryParcelFlow" component={withNavigatorSafeArea(DeliveryParcelFlowScreen)} />
+      <Stack.Screen name="DeliveryParcelFlowNew" component={withNavigatorSafeArea(DeliveryParcelFlowNewScreen)} />
+      <Stack.Screen
+        name="DeliveryShoppingTracking"
+        component={DeliveryShoppingTrackingScreenWithSafeArea}
+      />
+      <Stack.Screen
+        name="StorageLocations"
+        component={StorageLocationsScreenWithSafeArea}
+      />
+      <Stack.Screen
+        name="GlobalPromoSubmission"
+        component={GlobalPromoSubmissionScreenWithSafeArea}
+        options={{
+          ...defaultScreenOptions,
+          ...transitionConfig.slideUp, // ✅ PHASE 3: Transition slideUp pour soumission promo
+          gestureDirection: 'vertical',
+        }}
+      />
+      <Stack.Screen
+        name="GlobalPromoManager"
+        component={GlobalPromoManagerScreenWithSafeArea}
+        options={{
+          ...defaultScreenOptions,
+          ...transitionConfig.slideUp, // ✅ PHASE 3: Transition slideUp pour gestion promo
+          gestureDirection: 'vertical',
+        }}
+      />
+      <Stack.Screen
+        name="AnalyticsDashboard"
+        component={withNavigatorSafeArea(AnalyticsDashboardScreen)}
+      />
+      <Stack.Screen
+        name="Dashboard"
+        component={DashboardScreenWithSafeArea}
+      />
+      <Stack.Screen
+        name="DashboardPrestataire"
+        component={DashboardPrestataireScreenWithSafeArea}
+      />
+      <Stack.Screen
+        name="AgencyAnalyticsDashboard"
+        component={withNavigatorSafeArea(require('../screens/AgencyAnalyticsDashboard').default)}
+        options={{
+          ...defaultScreenOptions,
+          title: 'Analytics Agence',
+        }}
+      />
+      <Stack.Screen
+        name="CourierRegistration"
+        component={withNavigatorSafeArea(require('../screens/delivery/CourierRegistrationScreen').default)}
+      />
+      <Stack.Screen
+        name="CourierDashboard"
+        component={withNavigatorSafeArea(require('../screens/delivery/CourierDashboardScreen').default)}
+      />
+      <Stack.Screen
+        name="CourierAdmin"
+        component={withNavigatorSafeArea(CourierAdminScreen)}
+        options={{
+          ...defaultScreenOptions,
+          title: 'Gestion des coursiers',
+        }}
+      />
+      <Stack.Screen
+        name="DeliveryPartnersAdmin"
+        component={withNavigatorSafeArea(DeliveryPartnersAdminScreen)}
+        options={{
+          ...defaultScreenOptions,
+          title: 'Gestion des partenaires',
+        }}
+      />
+      <Stack.Screen
+        name="UserRoleManagement"
+        component={withNavigatorSafeArea(UserRoleManagementScreen)}
+        options={{
+          ...defaultScreenOptions,
+          title: 'Gestion des rôles',
+        }}
+      />
+    </Stack.Navigator>
   );
 };
 
@@ -1780,7 +1783,7 @@ const AppNavigator: React.FC = () => {
       'telecom': 'GestionServicesSpecialises',
       'livraison': 'GestionServicesSpecialises',
     };
-    
+
     const targetScreen = partnerTypeToScreen[user.partner_type] || 'GestionServicesSpecialises';
     // Note: La navigation sera gérée dans SecondaryStack avec un useEffect
     // Pour l'instant, on charge l'app normalement et la redirection se fera dans SecondaryStack

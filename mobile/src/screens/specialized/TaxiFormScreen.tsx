@@ -1,6 +1,7 @@
 // ✅ Écran de création/édition de services taxi (accessible à tous les utilisateurs)
 // Permet à n'importe quel utilisateur d'intégrer son véhicule pour le taxi
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import React, { useEffect, useState } from 'react';
@@ -16,9 +17,8 @@ import {
 import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 import ModernGPSModal from '../../components/ModernGPSModal';
-import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { apiPost, servicesApi } from '../../services/api';
@@ -318,6 +318,28 @@ const TaxiFormScreen: React.FC = () => {
 
         if (!formData.telephone.trim()) {
             Alert.alert('Erreur', 'Le numéro de téléphone est obligatoire');
+            setLoading(false);
+            return;
+        }
+
+        // ✅ NOUVEAU: Validation du type de véhicule
+        if (!formData.type_vehicule.trim()) {
+            Alert.alert('Validation', 'Veuillez indiquer le type de véhicule (berline, moto, minibus...)');
+            setLoading(false);
+            return;
+        }
+
+        // ✅ NOUVEAU: Validation de l'immatriculation
+        if (!formData.immatriculation.trim()) {
+            Alert.alert('Validation', 'Le numéro d\'immatriculation est obligatoire pour l\'identification du véhicule');
+            setLoading(false);
+            return;
+        }
+
+        // ✅ NOUVEAU: Validation du format téléphone (au moins 9 chiffres)
+        const phoneDigits = formData.telephone.replace(/\D/g, '');
+        if (phoneDigits.length < 9) {
+            Alert.alert('Validation', 'Le numéro de téléphone doit contenir au moins 9 chiffres');
             setLoading(false);
             return;
         }

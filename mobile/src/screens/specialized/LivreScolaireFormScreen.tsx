@@ -1,30 +1,31 @@
 // ✅ Formulaire de création/édition d'un livre scolaire (Mobile)
 
 import { useNavigation, useRoute } from '@react-navigation/native';
+import * as ImagePicker from 'expo-image-picker';
 import React, { useEffect, useState } from 'react';
 import {
+    ActivityIndicator,
     Alert,
     Image,
+    Modal,
     StyleSheet,
     Text,
     TouchableOpacity,
     View,
-    ActivityIndicator,
-    Modal,
 } from 'react-native';
 import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
-import * as ImagePicker from 'expo-image-picker';
 import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 import ModernGPSModal from '../../components/ModernGPSModal';
-import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
+import { useToaster } from '../../components/ToasterProvider';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLocation } from '../../contexts/LocationContext';
+import { useAIWithFallback } from '../../hooks/useAIWithFallback';
 import { apiGet, apiPost, apiPut } from '../../services/api';
-import { livreScolaireService, BookImageAnalysis } from '../../services/livreScolaireService';
+import { BookImageAnalysis, livreScolaireService } from '../../services/livreScolaireService';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
-import { useToaster } from '../../components/ToasterProvider';
 
 const niveaux = ['Primaire', 'Collège', 'Lycée'];
 const etats = ['Neuf', 'Très bon', 'Bon', 'Acceptable'];
@@ -35,6 +36,7 @@ const LivreScolaireFormScreen: React.FC = () => {
     const { user } = useAuth();
     const { location } = useLocation();
     const toaster = useToaster();
+    const { callWithFallback } = useAIWithFallback();
     const params = route.params as any;
     const mode = params?.mode || 'create';
     const livreId = params?.livreId as number | undefined;
@@ -57,7 +59,7 @@ const LivreScolaireFormScreen: React.FC = () => {
 
     const [selectedGPS, setSelectedGPS] = useState<string | null>(null);
     const [showGPSModal, setShowGPSModal] = useState(false);
-    
+
     // ✅ NOUVEAU: États pour upload d'images et analyse IA
     const [selectedImages, setSelectedImages] = useState<string[]>([]);
     const [imageBase64List, setImageBase64List] = useState<string[]>([]);
@@ -146,12 +148,12 @@ const LivreScolaireFormScreen: React.FC = () => {
                 const asset = result.assets[0];
                 const newImages = [...selectedImages, asset.uri];
                 setSelectedImages(newImages);
-                
+
                 if (asset.base64) {
                     const base64Image = `data:image/jpeg;base64,${asset.base64}`;
                     const newBase64List = [...imageBase64List, base64Image];
                     setImageBase64List(newBase64List);
-                    
+
                     // Analyser automatiquement la première image
                     if (imageBase64List.length === 0) {
                         await analyzeImage(base64Image);
@@ -185,7 +187,7 @@ const LivreScolaireFormScreen: React.FC = () => {
             if (!result.canceled && result.assets.length > 0) {
                 const newUris: string[] = [];
                 const newBase64: string[] = [];
-                
+
                 for (const asset of result.assets) {
                     newUris.push(asset.uri);
                     if (asset.base64) {
@@ -193,11 +195,11 @@ const LivreScolaireFormScreen: React.FC = () => {
                         newBase64.push(base64Image);
                     }
                 }
-                
+
                 setSelectedImages([...selectedImages, ...newUris]);
                 const updatedBase64 = [...imageBase64List, ...newBase64];
                 setImageBase64List(updatedBase64);
-                
+
                 // Analyser automatiquement la première image si c'est la première
                 if (imageBase64List.length === 0 && newBase64.length > 0) {
                     await analyzeImage(newBase64[0]);
@@ -209,62 +211,72 @@ const LivreScolaireFormScreen: React.FC = () => {
         }
     };
 
-    // ✅ MODIFIÉ: Analyser l'image avec l'IA pour extraire les infos du livre
+    // ✅ REFONDU: Analyser l'image avec l'IA + fallback 3 niveaux
     const analyzeImage = async (imageBase64: string) => {
         setAnalyzingImage(true);
-        
-        try {
-            const response = await livreScolaireService.analyzeBookImage(
-                imageBase64,
-                location?.coords?.latitude,
-                location?.coords?.longitude
-            );
 
-            if (response.success && response.data?.book_info) {
-                const bookInfo: BookImageAnalysis = response.data.book_info;
-                
-                // Stocker le résultat de l'analyse IA
-                setIAAnalysisResult(bookInfo);
-                
-                // Pré-remplir le formulaire avec les données extraites par l'IA
-                setFormData({
-                    ...formData,
-                    titre: bookInfo.titre || formData.titre,
-                    auteur: bookInfo.auteur || formData.auteur,
-                    editeur: bookInfo.editeur || formData.editeur,
-                    isbn: bookInfo.isbn || formData.isbn,
-                    classe_actuelle: bookInfo.classe_actuelle || formData.classe_actuelle,
-                    classe_souhaitee: bookInfo.classe_souhaitee || formData.classe_souhaitee,
-                    matiere: bookInfo.matiere || formData.matiere,
-                    niveau: bookInfo.niveau || formData.niveau,
-                    etat_livre: bookInfo.etat_livre || formData.etat_livre,
-                    description_etat: bookInfo.description_etat || formData.description_etat,
-                });
-
-                // ✅ MODIFIÉ: Afficher un toast de succès en haut de l'écran
-                toaster.success(
-                    `Analyse terminée ! ${(bookInfo.confidence * 100).toFixed(0)}% de confiance. Vérifiez les informations extraites.`
+        const result = await callWithFallback(
+            async () => {
+                const response = await livreScolaireService.analyzeBookImage(
+                    imageBase64,
+                    location?.coords?.latitude,
+                    location?.coords?.longitude
                 );
-                
-                // ✅ NOUVEAU: Afficher le modal avec les informations extraites
-                setShowIAAnalysisModal(true);
+                if (response.success && response.data?.book_info) {
+                    return response.data.book_info as BookImageAnalysis;
+                }
+                return null;
+            },
+            'livre_analyse_image',
+            'Analyser image de livre scolaire pour extraire titre, auteur, matière, classe',
+            () => ({
+                titre: '',
+                auteur: '',
+                editeur: '',
+                isbn: '',
+                classe_actuelle: '',
+                classe_souhaitee: '',
+                matiere: '',
+                niveau: '',
+                etat_livre: 'Bon',
+                description_etat: 'État non déterminé par l\'IA — veuillez vérifier manuellement.',
+                confidence: 0.1,
+            } as BookImageAnalysis)
+        );
+
+        if (result.success && result.data) {
+            const bookInfo = result.data;
+            setIAAnalysisResult(bookInfo);
+
+            setFormData({
+                ...formData,
+                titre: bookInfo.titre || formData.titre,
+                auteur: bookInfo.auteur || formData.auteur,
+                editeur: bookInfo.editeur || formData.editeur,
+                isbn: bookInfo.isbn || formData.isbn,
+                classe_actuelle: bookInfo.classe_actuelle || formData.classe_actuelle,
+                classe_souhaitee: bookInfo.classe_souhaitee || formData.classe_souhaitee,
+                matiere: bookInfo.matiere || formData.matiere,
+                niveau: bookInfo.niveau || formData.niveau,
+                etat_livre: bookInfo.etat_livre || formData.etat_livre,
+                description_etat: bookInfo.description_etat || formData.description_etat,
+            });
+
+            if (result.source === 'local') {
+                toaster.warning('Analyse IA indisponible — veuillez remplir le formulaire manuellement.');
             } else {
-                toaster.error('Impossible d\'analyser l\'image. Veuillez remplir le formulaire manuellement.');
+                toaster.success(
+                    `Analyse terminée ! ${((bookInfo.confidence || 0) * 100).toFixed(0)}% de confiance. Vérifiez les informations.`
+                );
+                setShowIAAnalysisModal(true);
             }
-        } catch (error: any) {
-            console.error('[LivreScolaireFormScreen] Erreur analyse:', error);
-            const errorMessage = error.message || 'Erreur lors de l\'analyse de l\'image';
-            toaster.error(errorMessage);
-            
-            // Vérifier si c'est une erreur de connexion IA
-            if (errorMessage.includes('IA') || errorMessage.includes('connexion') || errorMessage.includes('timeout')) {
-                toaster.warning('L\'analyse IA n\'a pas pu être effectuée. Vérifiez votre connexion et réessayez.');
-            }
-        } finally {
-            setAnalyzingImage(false);
+        } else {
+            toaster.error('Impossible d\'analyser l\'image. Veuillez remplir le formulaire manuellement.');
         }
+
+        setAnalyzingImage(false);
     };
-    
+
     // ✅ NOUVEAU: Appliquer les données de l'IA au formulaire
     const applyIAAnalysis = () => {
         if (iaAnalysisResult) {
@@ -549,7 +561,7 @@ const LivreScolaireFormScreen: React.FC = () => {
                         <Text style={styles.labelSubtext}>
                             Prenez une photo ou sélectionnez depuis la galerie. L'IA analysera automatiquement la première image.
                         </Text>
-                        
+
                         {/* Boutons d'action */}
                         <View style={styles.imageActions}>
                             <TouchableOpacity
@@ -606,8 +618,8 @@ const LivreScolaireFormScreen: React.FC = () => {
                             onSelect={(location: LocationObject) => {
                                 // ✅ CORRECTION: Extraire la valeur à stocker (string ou LocationObject selon besoin)
                                 const quartierValue = location.raw || location.place_name || '';
-                                setFormData({ 
-                                    ...formData, 
+                                setFormData({
+                                    ...formData,
                                     quartier: quartierValue,
                                     // ✅ NOUVEAU: Extraire automatiquement ville si disponible
                                     ville: location.components?.ville || formData.ville,
@@ -723,77 +735,77 @@ const LivreScolaireFormScreen: React.FC = () => {
 
                                 <View style={styles.analysisResults}>
                                     <Text style={styles.analysisSectionTitle}>Informations extraites :</Text>
-                                    
+
                                     {iaAnalysisResult.titre && (
                                         <View style={styles.analysisItem}>
                                             <Text style={styles.analysisLabel}>Titre :</Text>
                                             <Text style={styles.analysisValue}>{iaAnalysisResult.titre}</Text>
                                         </View>
                                     )}
-                                    
+
                                     {iaAnalysisResult.auteur && (
                                         <View style={styles.analysisItem}>
                                             <Text style={styles.analysisLabel}>Auteur :</Text>
                                             <Text style={styles.analysisValue}>{iaAnalysisResult.auteur}</Text>
                                         </View>
                                     )}
-                                    
+
                                     {iaAnalysisResult.editeur && (
                                         <View style={styles.analysisItem}>
                                             <Text style={styles.analysisLabel}>Éditeur :</Text>
                                             <Text style={styles.analysisValue}>{iaAnalysisResult.editeur}</Text>
                                         </View>
                                     )}
-                                    
+
                                     {iaAnalysisResult.isbn && (
                                         <View style={styles.analysisItem}>
                                             <Text style={styles.analysisLabel}>ISBN :</Text>
                                             <Text style={styles.analysisValue}>{iaAnalysisResult.isbn}</Text>
                                         </View>
                                     )}
-                                    
+
                                     {iaAnalysisResult.matiere && (
                                         <View style={styles.analysisItem}>
                                             <Text style={styles.analysisLabel}>Matière :</Text>
                                             <Text style={styles.analysisValue}>{iaAnalysisResult.matiere}</Text>
                                         </View>
                                     )}
-                                    
+
                                     {iaAnalysisResult.niveau && (
                                         <View style={styles.analysisItem}>
                                             <Text style={styles.analysisLabel}>Niveau :</Text>
                                             <Text style={styles.analysisValue}>{iaAnalysisResult.niveau}</Text>
                                         </View>
                                     )}
-                                    
+
                                     {iaAnalysisResult.classe_actuelle && (
                                         <View style={styles.analysisItem}>
                                             <Text style={styles.analysisLabel}>Classe actuelle :</Text>
                                             <Text style={styles.analysisValue}>{iaAnalysisResult.classe_actuelle}</Text>
                                         </View>
                                     )}
-                                    
+
                                     {iaAnalysisResult.classe_souhaitee && (
                                         <View style={styles.analysisItem}>
                                             <Text style={styles.analysisLabel}>Classe souhaitée :</Text>
                                             <Text style={styles.analysisValue}>{iaAnalysisResult.classe_souhaitee}</Text>
                                         </View>
                                     )}
-                                    
+
                                     {iaAnalysisResult.etat_livre && (
                                         <View style={styles.analysisItem}>
                                             <Text style={styles.analysisLabel}>État :</Text>
                                             <Text style={styles.analysisValue}>{iaAnalysisResult.etat_livre}</Text>
                                         </View>
                                     )}
-                                    
+
                                     {iaAnalysisResult.description_etat && (
                                         <View style={styles.analysisItem}>
                                             <Text style={styles.analysisLabel}>Description :</Text>
                                             <Text style={styles.analysisValue}>{iaAnalysisResult.description_etat}</Text>
                                         </View>
                                     )}
-                                    
+
                                     {iaAnalysisResult.notes && (
                                         <View style={styles.analysisItem}>
                                             <Text style={styles.analysisLabel}>Notes :</Text>

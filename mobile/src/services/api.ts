@@ -174,7 +174,7 @@ const shouldRetry = (error: any, status?: number, config: RetryConfig = DEFAULT_
     endpoint.includes('/preview/short') ||
     endpoint.includes('/services/create')
   );
-  
+
   // ✅ NOUVEAU: Retry pour les codes d'erreur spécifiques (TIMEOUT, NETWORK_ERROR)
   // Mais pas pour les endpoints avec timeout long (timeout réel = problème backend)
   if (error?.code === 'TIMEOUT') {
@@ -185,7 +185,7 @@ const shouldRetry = (error: any, status?: number, config: RetryConfig = DEFAULT_
     // Pour les autres endpoints, retry (peut être erreur réseau temporaire)
     return true;
   }
-  
+
   if (error?.code === 'NETWORK_ERROR') {
     return true;
   }
@@ -230,7 +230,7 @@ const apiCallWithRetry = async <T>(
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       const result = await apiCallInternal<T>(endpoint, options);
-      
+
       // Si succès, retourner immédiatement
       if (result.success !== false && (!result.status || result.status < 400)) {
         return result;
@@ -240,7 +240,7 @@ const apiCallWithRetry = async <T>(
       lastStatus = result.status;
       // ✅ AMÉLIORÉ: Passer aussi le code d'erreur et l'endpoint à shouldRetry
       const errorToCheck = { ...result, error: result.error || result, code: result.code };
-      
+
       // ✅ CORRIGÉ: Vérifier si on doit retry AVANT de retourner l'erreur
       if (attempt < maxRetries && shouldRetry(errorToCheck, lastStatus, retryConfig, endpoint)) {
         // Calculer le délai avec backoff exponentiel (1s, 2s, 4s)
@@ -257,7 +257,7 @@ const apiCallWithRetry = async <T>(
       return result;
     } catch (error: any) {
       lastError = error;
-      
+
       // Vérifier si on doit retry
       if (attempt < maxRetries && shouldRetry(error, undefined, retryConfig, endpoint)) {
         const delayMs = Math.min(1000 * Math.pow(2, attempt), 10000);
@@ -503,12 +503,12 @@ const apiCallInternal = async <T>(
       // ✅ CORRIGÉ 2025-12-24: Améliorer l'extraction du message d'erreur
       // Le backend peut retourner error, message, ou les deux
       let errorMessage = data?.message || data?.error;
-      
+
       // ✅ Si c'est une erreur 401 et qu'on n'a pas de message, utiliser un message par défaut
       if (response.status === 401 && !errorMessage) {
         errorMessage = 'Identifiants incorrects';
       }
-      
+
       // ✅ Dernier recours : message générique avec le status
       if (!errorMessage) {
         errorMessage = `Erreur ${response.status}`;
@@ -544,7 +544,7 @@ const apiCallInternal = async <T>(
     // ✅ AMÉLIORÉ: Gérer les erreurs de timeout (AbortError)
     if (error.name === 'AbortError' || error.message === 'Aborted') {
       console.error(`[Mobile API] Timeout pour ${endpoint}`);
-      
+
       // ✅ NOUVEAU: Message spécifique pour création de service avec payload volumineux
       let errorMessage = 'La requête a expiré. Vérifiez votre connexion internet.';
       if (endpoint.includes('/services/create')) {
@@ -552,7 +552,7 @@ const apiCallInternal = async <T>(
       } else if (endpoint.includes('/services/') && endpoint.includes('/products')) {
         errorMessage = 'L\'ajout du produit a pris trop de temps (plus de 3 minutes). Cela peut être dû à :\n\n• Un grand nombre de médias\n• Des variants complexes\n• Une connexion internet lente\n• Un serveur temporairement surchargé\n• Des opérations backend lourdes\n\n⚠️ Le produit peut avoir été créé malgré l\'erreur. Vérifiez votre liste de produits avant de réessayer.';
       }
-      
+
       return {
         success: false,
         error: errorMessage,
@@ -574,14 +574,14 @@ const apiCallInternal = async <T>(
       'ERR_CONNECTION_TIMED_OUT',
       'ERR_NAME_NOT_RESOLVED',
     ];
-    
-    const isNetworkError = networkErrorPatterns.some(pattern => 
-      error.message?.includes(pattern) || 
+
+    const isNetworkError = networkErrorPatterns.some(pattern =>
+      error.message?.includes(pattern) ||
       error.toString().includes(pattern) ||
       error.code?.includes(pattern) ||
       (error.name && networkErrorPatterns.some(p => error.name.includes(p)))
     );
-    
+
     if (isNetworkError) {
       console.error(`[Mobile API] Erreur réseau pour ${endpoint}:`, error.message || error.toString());
       console.error(`[Mobile API] Détails erreur:`, {
@@ -590,13 +590,13 @@ const apiCallInternal = async <T>(
         code: error.code,
         stack: error.stack?.substring(0, 200),
       });
-      
+
       // ✅ NOUVEAU: Message spécifique pour création de service
       let errorMessage = 'Impossible de se connecter au serveur. Vérifiez votre connexion internet.';
       if (endpoint.includes('/services/create')) {
         errorMessage = 'Impossible d\'envoyer la requête au serveur.\n\nCauses possibles :\n- Connexion internet instable\n- Payload trop volumineux\n- Serveur temporairement indisponible (cold start)\n\nConseils :\n- Vérifiez votre connexion\n- Réduisez le nombre de médias\n- Réessayez dans quelques instants (le serveur peut être en veille)';
       }
-      
+
       return {
         success: false,
         error: errorMessage,
@@ -627,12 +627,12 @@ export const apiCall = async <T>(
   if (useRetry === false) {
     return apiCallInternal<T>(endpoint, options);
   }
-  
+
   // Si useRetry est un objet RetryConfig, l'utiliser
   if (typeof useRetry === 'object') {
     return apiCallWithRetry<T>(endpoint, options, useRetry);
   }
-  
+
   // Sinon, utiliser la configuration par défaut
   return apiCallWithRetry<T>(endpoint, options);
 };
@@ -699,7 +699,13 @@ export const authApi = {
       password: userData.password,
       lang: 'fr',
     };
-    
+
+    // ✅ NOUVEAU 2026-02-25: Ajouter le téléphone si fourni
+    if (userData.phone) {
+      payload.phone = userData.phone;
+      payload.phone_country = (userData as any).phone_country || 'CM';
+    }
+
     // ✅ NOUVEAU: Ajouter les champs partenaire si présents
     if (userData.is_partner) {
       payload.is_partner = true;
@@ -1062,7 +1068,7 @@ export const deliveryApi = {
     if (params.max_distance_km) queryParams.append('max_distance_km', params.max_distance_km.toString());
     if (params.transport_type) queryParams.append('transport_type', params.transport_type);
     if (params.specialization) queryParams.append('specialization', params.specialization);
-    
+
     return apiCall(`/api/deliveries/couriers/available?${queryParams.toString()}`);
   },
   getRecipientUpdates: async (deliveryId: string) => {
@@ -1205,7 +1211,7 @@ export const deliveryApi = {
   listProductDeliveryConfigs: async (serviceId: number) => {
     return apiCall<{
       success: boolean;
-      products: Array<{index: number, name: string, is_configured: boolean}>;
+      products: Array<{ index: number, name: string, is_configured: boolean }>;
     }>(`/api/delivery/product-config/list/${serviceId}`);
   },
   // ✅ Phase 9 - Amélioration 32 : Gestion des lieux de stock

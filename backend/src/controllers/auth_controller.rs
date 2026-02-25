@@ -160,6 +160,9 @@ pub struct RegisterInput {
     pub email: String,
     pub password: String,
     pub lang: Option<String>,
+    // ✅ NOUVEAU 2026-02-25: Champs pour vérification téléphone
+    pub phone: Option<String>,         // Numéro de téléphone
+    pub phone_country: Option<String>, // Code pays (CM, CI, SN, etc.)
     // ✅ NOUVEAU: Champs pour inscription partenaire
     pub is_partner: Option<bool>, // true si c'est une inscription partenaire
     pub partner_type: Option<String>, // 'pharmacie', 'hopital', 'laboratoire', 'agence de voyage'
@@ -641,14 +644,31 @@ pub async fn register_user(
         payload.partner_type.clone(), // ✅ NOUVEAU: passer le type de partenaire
     )?;
 
+    // ✅ NOUVEAU 2026-02-25: Sauvegarder le téléphone si fourni
+    if let Some(ref phone) = payload.phone {
+        if !phone.trim().is_empty() {
+            let phone_country = payload.phone_country.as_deref().unwrap_or("CM");
+            let _ = sqlx::query(
+                "UPDATE users SET phone = $1, phone_country = $2, phone_verified = FALSE WHERE id = $3"
+            )
+            .bind(phone.trim())
+            .bind(phone_country)
+            .bind(new.id)
+            .execute(db)
+            .await;
+        }
+    }
+
     // Retourne explicitement 201 Created avec le token
     Ok((
         axum::http::StatusCode::CREATED,
         Json(serde_json::json!({
             "id": new.id,
+            "user_id": new.id,
             "tokens_balance": new.tokens_balance,
             "token": jwt,
-            "message": "utiliseateur inscrit avec succès"
+            "phone_verified": false,
+            "message": "Compte créé avec succès. Veuillez vérifier votre numéro de téléphone."
         })),
     )
         .into_response())

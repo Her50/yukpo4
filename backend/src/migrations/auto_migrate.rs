@@ -8676,6 +8676,12 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Err(e) => error!("❌ Erreur migration auto gpu_scale_actions: {}", e),
     }
 
+    // ✅ NOUVEAU 2026-02-25 : Tables vérification téléphone OTP
+    match ensure_phone_verification_tables(pool).await {
+        Ok(_) => info!("✅ Migration auto: phone_verification_tables OK"),
+        Err(e) => error!("❌ Erreur migration auto phone_verification_tables: {}", e),
+    }
+
     info!("✅ Migrations automatiques terminées");
 }
 
@@ -17520,5 +17526,61 @@ pub async fn run_individual_migrations(pool: &PgPool) -> Result<(), sqlx::Error>
         warn!("⚠️ [MIGRATIONS INDIVIDUELLES] Certaines migrations ont échoué. Vérifiez les logs ci-dessus.");
     }
 
+    Ok(())
+}
+
+/// ✅ NOUVEAU 2026-02-25: Tables pour vérification téléphone par OTP (SMS/WhatsApp)
+pub async fn ensure_phone_verification_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification des tables de vérification téléphone OTP...");
+
+    // 1. Ajouter les colonnes phone, phone_country, phone_verified dans users
+    sqlx::query("ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(20)")
+        .execute(pool)
+        .await?;
+
+    sqlx::query("ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_country VARCHAR(5)")
+        .execute(pool)
+        .await?;
+
+    sqlx::query("ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_verified BOOLEAN DEFAULT FALSE")
+        .execute(pool)
+        .await?;
+
+    // 2. Créer la table phone_verification_codes
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS phone_verification_codes (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            phone VARCHAR(20) NOT NULL,
+            country_code VARCHAR(5) NOT NULL DEFAULT 'CM',
+            code VARCHAR(6) NOT NULL,
+            attempts INTEGER DEFAULT 0,
+            is_used BOOLEAN DEFAULT FALSE,
+            expires_at TIMESTAMPTZ NOT NULL,
+            verified_at TIMESTAMPTZ,
+            created_at TIMESTAMPTZ DEFAULT NOW()
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    // 3. Index pour recherche rapide
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_phone_verification_user ON phone_verification_codes(user_id, is_used, expires_at)"
+    ).execute(pool).await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_phone_verification_phone ON phone_verification_codes(phone)"
+    ).execute(pool).await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone) WHERE phone IS NOT NULL",
+    )
+    .execute(pool)
+    .await?;
+
+    info!("✅ Tables de vérification téléphone OTP créées/vérifiées");
     Ok(())
 }

@@ -6,7 +6,9 @@ use axum::{
 };
 use std::sync::Arc;
 
-use crate::controllers::auth_controller::{bootstrap_super_admin, login_handler, register_user};
+use crate::controllers::auth_controller::{
+    bootstrap_super_admin, login_handler, oauth_login_handler, register_user,
+};
 use crate::middlewares::anti_bruteforce;
 use crate::middlewares::cors::cors_preflight_handler;
 use crate::state::AppState;
@@ -26,6 +28,9 @@ pub fn auth_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/auth/login", options(cors_preflight_handler))
         .route("/auth/register", post(register_user))
         .route("/auth/register", options(cors_preflight_handler))
+        // ✅ CORRIGÉ 2026-02-25: Route OAuth manquante (causait 404 pour connexion Google/Facebook)
+        .route("/auth/oauth", post(oauth_login_handler))
+        .route("/auth/oauth", options(cors_preflight_handler))
         // ✅ TEMPORAIRE: Endpoint pour créer le super admin (sécurisé par token)
         .route("/auth/bootstrap-super-admin", post(bootstrap_super_admin))
         .layer(middleware::from_fn(

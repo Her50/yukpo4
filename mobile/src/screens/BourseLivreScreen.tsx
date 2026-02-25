@@ -17,8 +17,10 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { NativeBadge, NativeButton } from '../components/SafeNativeDesign';
 import SafeIcon from '../components/SafeIcon';
+import { NativeBadge, NativeButton } from '../components/SafeNativeDesign';
+import { useToaster } from '../components/ToasterProvider';
+import { useAIWithFallback } from '../hooks/useAIWithFallback';
 import { apiGet } from '../services/api';
 import { BookRecommendationRequest, bourseLivreApi, PriceSuggestionRequest } from '../services/bourseLivreApi';
 import { modernColors, modernStyles } from '../theme/modernTheme';
@@ -63,6 +65,8 @@ interface FilterState {
 
 const BourseLivreScreen: React.FC = () => {
     const navigation = useNavigation<any>();
+    const { callWithFallback } = useAIWithFallback();
+    const toaster = useToaster();
     const [searchQuery, setSearchQuery] = useState('');
     const [livres, setLivres] = useState<LivreScolaire[]>([]);
     const [loading, setLoading] = useState(false);
@@ -150,54 +154,87 @@ const BourseLivreScreen: React.FC = () => {
         return () => clearTimeout(timer);
     }, [searchQuery]);
 
-    // Obtenir recommandations IA
+    // ✅ REFONDU: Recommandations IA avec fallback 3 niveaux
     const handleGetRecommendations = async () => {
-        try {
-            setLoading(true);
-            const request: BookRecommendationRequest = {
-                classe_actuelle: filters.classe_actuelle || '6ème',
-                classe_souhaitee: filters.classe_souhaitee || '5ème',
-                matiere: filters.matiere || 'Mathématiques',
-                niveau: filters.niveau,
-                ville: filters.ville,
-            };
-
-            const result = await bourseLivreApi.getRecommendations(request);
-            setRecommendations(result);
+        setLoading(true);
+        const result = await callWithFallback(
+            async () => {
+                const request: BookRecommendationRequest = {
+                    classe_actuelle: filters.classe_actuelle || '6ème',
+                    classe_souhaitee: filters.classe_souhaitee || '5ème',
+                    matiere: filters.matiere || 'Mathématiques',
+                    niveau: filters.niveau,
+                    ville: filters.ville,
+                };
+                return await bourseLivreApi.getRecommendations(request);
+            },
+            'bourse_livre_reco',
+            `Recommandations livres: ${filters.classe_actuelle || '6ème'} vers ${filters.classe_souhaitee || '5ème'}, ${filters.matiere || 'Mathématiques'}`,
+            () => ({
+                recommendations: [
+                    { titre: 'CIAM Mathématiques', raison: 'Manuel de référence pour cette classe', score: 0.9 },
+                    { titre: 'Excellence en Français', raison: 'Très utilisé dans les établissements', score: 0.8 },
+                ],
+                conseil: 'Vérifiez la liste officielle de votre établissement pour les manuels obligatoires.',
+            })
+        );
+        if (result.success && result.data) {
+            setRecommendations(result.data);
             setShowRecommendations(true);
-        } catch (error: any) {
-            console.error('[BourseLivreScreen] Erreur recommandations IA:', error);
-            Alert.alert('Erreur', 'Impossible d\'obtenir les recommandations IA.');
-        } finally {
-            setLoading(false);
+            if (result.source === 'local') toaster?.show?.('Recommandations basées sur des données locales', 'info');
+        } else {
+            Alert.alert('Indisponible', 'Recommandations IA temporairement indisponibles.');
         }
+        setLoading(false);
     };
 
-    // Obtenir suggestions prix IA
+    // ✅ REFONDU: Suggestions prix IA avec fallback 3 niveaux
     const handleGetPriceSuggestion = async (livre: LivreScolaire) => {
-        try {
-            setLoading(true);
-            const request: PriceSuggestionRequest = {
-                livre_id: livre.id,
-                titre: livre.titre,
-                auteur: livre.auteur,
-                editeur: livre.editeur,
-                isbn: livre.isbn,
-                classe: livre.classe_actuelle,
-                matiere: livre.matiere,
-                etat_livre: livre.etat_livre,
-                ville: livre.ville,
-            };
-
-            const result = await bourseLivreApi.getPriceSuggestions(request);
-            setPriceSuggestion(result);
+        setLoading(true);
+        const result = await callWithFallback(
+            async () => {
+                const request: PriceSuggestionRequest = {
+                    livre_id: livre.id,
+                    titre: livre.titre,
+                    auteur: livre.auteur,
+                    editeur: livre.editeur,
+                    isbn: livre.isbn,
+                    classe: livre.classe_actuelle,
+                    matiere: livre.matiere,
+                    etat_livre: livre.etat_livre,
+                    ville: livre.ville,
+                };
+                return await bourseLivreApi.getPriceSuggestions(request);
+            },
+            'bourse_livre_prix',
+            `Estimation prix: ${livre.titre} (${livre.etat_livre}) à ${livre.ville || 'Cameroun'}`,
+            () => {
+                const basePrices: Record<string, number> = {
+                    'Neuf': 5000, 'Très bon': 3500, 'Bon': 2500, 'Acceptable': 1500,
+                };
+                const base = basePrices[livre.etat_livre] || 2500;
+                return {
+                    prix_suggere: base,
+                    prix_min: Math.round(base * 0.7),
+                    prix_max: Math.round(base * 1.3),
+                    devise: 'FCFA',
+                    conseil: `Pour un livre en état "${livre.etat_livre}", le prix moyen observé est d'environ ${base} FCFA.`,
+                };
+            }
+        );
+        if (result.success && result.data) {
+            setPriceSuggestion(result.data);
             setShowPriceSuggestion(true);
-        } catch (error: any) {
-            console.error('[BourseLivreScreen] Erreur suggestion prix IA:', error);
-            Alert.alert('Erreur', 'Impossible d\'obtenir la suggestion de prix.');
-        } finally {
-            setLoading(false);
+            if (result.source === 'local') toaster?.show?.('Estimation basée sur des données locales', 'info');
+        } else {
+            Alert.alert('Indisponible', 'Estimation de prix IA temporairement indisponible.');
         }
+        setLoading(false);
+    };
+
+    // ✅ NOUVEAU: Lancer le troc pour un livre
+    const handleStartTroc = (livre: LivreScolaire) => {
+        navigation.navigate('TrocMatching', { livreId: livre.id });
     };
 
     // Appliquer les filtres
@@ -288,6 +325,13 @@ const BourseLivreScreen: React.FC = () => {
                     >
                         <SafeIcon name="dollar-sign" size={16} color={modernColors.primary} />
                         <Text style={styles.cardActionText}>Prix IA</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.cardActionButton, { backgroundColor: '#ECFDF5' }]}
+                        onPress={() => handleStartTroc(item)}
+                    >
+                        <SafeIcon name="repeat" size={16} color="#10B981" type="lucide" />
+                        <Text style={[styles.cardActionText, { color: '#10B981' }]}>Troquer</Text>
                     </TouchableOpacity>
                 </View>
             </TouchableOpacity>

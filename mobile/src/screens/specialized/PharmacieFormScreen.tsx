@@ -9,13 +9,13 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import GuardDaysSelector from '../../components/GuardDaysSelector';
+import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 import ModernGPSModal from '../../components/ModernGPSModal';
 // ✅ SUPPRIMÉ: PartnerSelector - Les données partenaire sont chargées automatiquement depuis /api/partners/me
-import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import SimplePrestationSelector from '../../components/SimplePrestationSelector';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLocation } from '../../contexts/LocationContext';
@@ -501,7 +501,7 @@ const PharmacieFormScreen: React.FC = () => {
                 const created = response.data?.created || 0;
                 const updated = response.data?.updated || 0;
                 const errors = response.data?.errors || [];
-                
+
                 let message = `Import réussi !\n- ${created} produit(s) créé(s)\n- ${updated} produit(s) mis à jour`;
                 if (errors.length > 0) {
                     message += `\n\n${errors.length} erreur(s):\n${errors.slice(0, 5).join('\n')}`;
@@ -513,7 +513,7 @@ const PharmacieFormScreen: React.FC = () => {
                 Alert.alert('Import terminé', message);
                 setShowBulkImportModal(false);
                 setBulkImportText('');
-                
+
                 // Recharger la liste
                 if (serviceId) {
                     const productsResponse = await apiGet(`/api/pharmacies/${serviceId}/products`);
@@ -554,7 +554,7 @@ const PharmacieFormScreen: React.FC = () => {
         }));
 
         const jsonString = JSON.stringify(exportData, null, 2);
-        
+
         // Afficher dans une alerte (dans une vraie app, on pourrait utiliser le partage de fichiers)
         Alert.alert(
             'Export réussi',
@@ -610,6 +610,28 @@ const PharmacieFormScreen: React.FC = () => {
 
         if (!formData.nom.trim()) {
             Alert.alert('Erreur', 'Le nom de la pharmacie est obligatoire');
+            setLoading(false);
+            return;
+        }
+
+        // ✅ NOUVEAU: Validation téléphone obligatoire
+        if (!formData.telephone.trim()) {
+            Alert.alert('Validation', 'Le numéro de téléphone est obligatoire pour une pharmacie');
+            setLoading(false);
+            return;
+        }
+
+        // ✅ NOUVEAU: Validation format téléphone
+        const phoneDigits = formData.telephone.replace(/\D/g, '');
+        if (phoneDigits.length < 9) {
+            Alert.alert('Validation', 'Le numéro de téléphone doit contenir au moins 9 chiffres');
+            setLoading(false);
+            return;
+        }
+
+        // ✅ NOUVEAU: Validation localisation
+        if (!formData.quartier && !selectedGPS) {
+            Alert.alert('Validation', 'Veuillez indiquer le quartier ou activer la localisation GPS');
             setLoading(false);
             return;
         }
@@ -742,8 +764,8 @@ const PharmacieFormScreen: React.FC = () => {
                             onSelect={(location: LocationObject) => {
                                 // ✅ CORRECTION: Extraire la valeur à stocker (string ou LocationObject selon besoin)
                                 const quartierValue = location.raw || location.place_name || '';
-                                setFormData({ 
-                                    ...formData, 
+                                setFormData({
+                                    ...formData,
                                     quartier: quartierValue,
                                     // ✅ NOUVEAU: Extraire automatiquement ville et pays si disponibles
                                     ville: location.components?.ville || formData.ville,
@@ -972,41 +994,41 @@ const PharmacieFormScreen: React.FC = () => {
                                         </View>
                                     ) : (
                                         filteredProducts.map((product) => (
-                                        <View key={product.id} style={styles.productCard}>
-                                            <View style={styles.productInfo}>
-                                                <Text style={styles.productName}>{product.nom_produit}</Text>
-                                                {product.description && (
-                                                    <Text style={styles.productDescription}>{product.description}</Text>
-                                                )}
-                                                <View style={styles.productDetails}>
-                                                    <Text style={styles.productPrice}>
-                                                        {product.prix.toLocaleString()} FCFA / {product.unite}
-                                                    </Text>
-                                                    <Text style={styles.productStock}>
-                                                        Stock: {product.stock} {product.unite}(s)
-                                                    </Text>
-                                                </View>
-                                                {product.categorie && (
-                                                    <View style={styles.productCategory}>
-                                                        <Text style={styles.productCategoryText}>{product.categorie}</Text>
+                                            <View key={product.id} style={styles.productCard}>
+                                                <View style={styles.productInfo}>
+                                                    <Text style={styles.productName}>{product.nom_produit}</Text>
+                                                    {product.description && (
+                                                        <Text style={styles.productDescription}>{product.description}</Text>
+                                                    )}
+                                                    <View style={styles.productDetails}>
+                                                        <Text style={styles.productPrice}>
+                                                            {product.prix.toLocaleString()} FCFA / {product.unite}
+                                                        </Text>
+                                                        <Text style={styles.productStock}>
+                                                            Stock: {product.stock} {product.unite}(s)
+                                                        </Text>
                                                     </View>
-                                                )}
+                                                    {product.categorie && (
+                                                        <View style={styles.productCategory}>
+                                                            <Text style={styles.productCategoryText}>{product.categorie}</Text>
+                                                        </View>
+                                                    )}
+                                                </View>
+                                                <View style={styles.productActions}>
+                                                    <TouchableOpacity
+                                                        style={styles.productActionButton}
+                                                        onPress={() => openProductModal(product)}
+                                                    >
+                                                        <SafeIcon name="edit" size={18} color={modernColors.primary} type="lucide" />
+                                                    </TouchableOpacity>
+                                                    <TouchableOpacity
+                                                        style={[styles.productActionButton, styles.deleteButton]}
+                                                        onPress={() => handleDeleteProduct(product)}
+                                                    >
+                                                        <SafeIcon name="trash-2" size={18} color="#DC2626" type="lucide" />
+                                                    </TouchableOpacity>
+                                                </View>
                                             </View>
-                                            <View style={styles.productActions}>
-                                                <TouchableOpacity
-                                                    style={styles.productActionButton}
-                                                    onPress={() => openProductModal(product)}
-                                                >
-                                                    <SafeIcon name="edit" size={18} color={modernColors.primary} type="lucide" />
-                                                </TouchableOpacity>
-                                                <TouchableOpacity
-                                                    style={[styles.productActionButton, styles.deleteButton]}
-                                                    onPress={() => handleDeleteProduct(product)}
-                                                >
-                                                    <SafeIcon name="trash-2" size={18} color="#DC2626" type="lucide" />
-                                                </TouchableOpacity>
-                                            </View>
-                                        </View>
                                         ))
                                     )}
                                 </View>

@@ -1,5 +1,6 @@
 // ✅ NOUVEAU: Écran de création/édition d'offres d'emploi pour les recruteurs
 
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
 import {
@@ -11,15 +12,14 @@ import {
     View
 } from 'react-native';
 import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 import ModernGPSModal from '../../components/ModernGPSModal';
-import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import SimplePrestationSelector from '../../components/SimplePrestationSelector';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLocation } from '../../contexts/LocationContext';
-import { apiGet, apiPost, apiPut, servicesApi } from '../../services/api';
+import { apiGet, apiPost } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 import { getCurrencyIntelligently } from '../../utils/currencyUtils';
 
@@ -178,6 +178,28 @@ const OffresEmploiFormScreen: React.FC = () => {
         if (!formData.secteur.trim()) {
             Alert.alert('Erreur', 'Le secteur est obligatoire');
             return;
+        }
+
+        // ✅ NOUVEAU: Validation cohérence salaire min/max
+        if (formData.salaire_min && formData.salaire_max) {
+            const salMin = parseFloat(formData.salaire_min);
+            const salMax = parseFloat(formData.salaire_max);
+            if (!isNaN(salMin) && !isNaN(salMax) && salMin > salMax) {
+                Alert.alert('Validation', 'Le salaire minimum ne peut pas être supérieur au salaire maximum');
+                return;
+            }
+        }
+
+        // ✅ NOUVEAU: Validation date limite candidature (pas dans le passé)
+        if (formData.date_limite_candidature) {
+            const now = new Date();
+            now.setHours(0, 0, 0, 0);
+            const dateLimite = new Date(formData.date_limite_candidature);
+            dateLimite.setHours(0, 0, 0, 0);
+            if (dateLimite < now) {
+                Alert.alert('Validation', 'La date limite de candidature ne peut pas être dans le passé');
+                return;
+            }
         }
 
         try {

@@ -1,10 +1,10 @@
 // ✅ Écran Immobilier MODERNE - Refonte complète avec UX de niveau mondial
-import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { LinearGradient } from 'expo-linear-gradient';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
-    Animated,
+    Alert,
     FlatList,
     Modal,
     RefreshControl,
@@ -13,16 +13,17 @@ import {
     Text,
     TextInput,
     TouchableOpacity,
-    View,
+    View
 } from 'react-native';
-import ImmobilierResultCard from '../../components/specialized/ImmobilierResultCard';
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
+import ImmobilierResultCard from '../../components/specialized/ImmobilierResultCard';
 import { useLocation } from '../../contexts/LocationContext';
+import { useAIWithFallback } from '../../hooks/useAIWithFallback';
+import { useCurrencyDetection } from '../../hooks/useCurrencyDetection';
 import { immobilierService, PropertySearchFilters, RealEstateProperty } from '../../services/immobilierService';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
-import { useCurrencyDetection } from '../../hooks/useCurrencyDetection';
 
 type ViewMode = 'list' | 'grid';
 type SortOption = 'relevance' | 'price_asc' | 'price_desc' | 'date_desc' | 'superficie_desc';
@@ -31,7 +32,7 @@ const ImmobilierHomeScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
     const { location } = useLocation();
-    
+
     // ✅ NOUVEAU: Détection automatique de devise depuis GPS
     const detectedCurrency = useCurrencyDetection();
 
@@ -49,12 +50,23 @@ const ImmobilierHomeScreen: React.FC = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const [totalResults, setTotalResults] = useState(0);
 
+    // ✅ NOUVEAU: Hook IA avec fallback 3 niveaux
+    const { estimatePropertyPrice } = useAIWithFallback();
+
     // États UI
     const [viewMode, setViewMode] = useState<ViewMode>('list');
     const [sortBy, setSortBy] = useState<SortOption>('relevance');
     const [showFilters, setShowFilters] = useState(false);
     const [showSortModal, setShowSortModal] = useState(false);
     const [searchFocused, setSearchFocused] = useState(false);
+
+    // ✅ NOUVEAU: Favoris locaux
+    const [favorites, setFavorites] = useState<Set<string>>(new Set());
+    // ✅ NOUVEAU: Modal simulation prêt
+    const [showLoanModal, setShowLoanModal] = useState(false);
+    const [loanProperty, setLoanProperty] = useState<RealEstateProperty | null>(null);
+    const [loanDuration, setLoanDuration] = useState('20');
+    const [loanRate, setLoanRate] = useState('5.5');
 
     // États de filtres - ✅ NOUVEAU: Initialiser avec les filtres de route si présents
     const [filters, setFilters] = useState<PropertySearchFilters>({
@@ -147,10 +159,10 @@ const ImmobilierHomeScreen: React.FC = () => {
             }
 
             const response = await immobilierService.searchProperties(searchFilters);
-            
+
             if (response.success && response.data) {
                 let newProperties = response.data;
-                
+
                 // Tri côté client (le backend trie par date_desc par défaut)
                 if (sortBy !== 'relevance') {
                     newProperties = [...newProperties].sort((a, b) => {
@@ -172,7 +184,7 @@ const ImmobilierHomeScreen: React.FC = () => {
                         }
                     });
                 }
-                
+
                 if (reset) {
                     setProperties(newProperties);
                 } else {
@@ -228,10 +240,85 @@ const ImmobilierHomeScreen: React.FC = () => {
         });
     };
 
+    // ✅ NOUVEAU: Toggle favori
+    const handleToggleFavorite = (property: RealEstateProperty) => {
+        hapticPress();
+        const id = property.id.toString();
+        setFavorites(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) {
+                next.delete(id);
+            } else {
+                next.add(id);
+                // Appeler le backend en arrière-plan (best-effort)
+                immobilierService.addToFavorites?.(property.id)?.catch(() => { });
+            }
+            return next;
+        });
+    };
+
+    // ✅ NOUVEAU: Simulation prêt immobilier
+    const handleLoanSimulation = (property: RealEstateProperty) => {
+        hapticPress();
+        setLoanProperty(property);
+        setShowLoanModal(true);
+    };
+
+    const calculateLoan = () => {
+        if (!loanProperty) return null;
+        const price = loanProperty.prix_vente || loanProperty.prix_location_mensuel || 0;
+        if (!price) return null;
+        const apport = Math.round(price * 0.1); // 10% apport
+        const montant = price - apport;
+        const duration = parseInt(loanDuration) || 20;
+        const rate = parseFloat(loanRate) || 5.5;
+        const monthlyRate = rate / 100 / 12;
+        const nbMonths = duration * 12;
+        const mensualite = montant * (monthlyRate * Math.pow(1 + monthlyRate, nbMonths)) / (Math.pow(1 + monthlyRate, nbMonths) - 1);
+        const coutTotal = mensualite * nbMonths;
+        return {
+            prix: price,
+            apport,
+            montant,
+            mensualite: Math.round(mensualite),
+            coutTotal: Math.round(coutTotal),
+            interets: Math.round(coutTotal - montant),
+            duration,
+            rate,
+        };
+    };
+
+    // ✅ NOUVEAU: Estimation prix IA (fallback 3 niveaux)
+    const handleAIPriceEstimate = async (property: RealEstateProperty) => {
+        hapticPress();
+        const result = await estimatePropertyPrice(
+            property.type_bien || 'maison',
+            property.superficie_m2 || 100,
+            property.nb_chambres || 2,
+            (property as any).standing || 'standard',
+            property.quartier || '',
+            property.ville || 'douala',
+        );
+        if (result.success && result.data) {
+            const est = result.data;
+            const source = result.source === 'local' ? ' (estimation locale)' : '';
+            Alert.alert(
+                `Estimation IA${source}`,
+                `Prix estimé: ${est.estimated_price?.toLocaleString() || '?'} FCFA\n` +
+                `Fourchette: ${(est.price_range_min || 0).toLocaleString()} - ${(est.price_range_max || 0).toLocaleString()} FCFA\n` +
+                `Prix/m²: ${est.price_per_m2?.toLocaleString() || '?'} FCFA\n\n` +
+                `${est.reasoning || ''}`,
+                [{ text: 'OK' }]
+            );
+        } else {
+            Alert.alert('Indisponible', 'L\'estimation IA n\'est pas disponible pour ce bien.');
+        }
+    };
+
     const handleQuickFilter = (filter: typeof quickFilters[0]) => {
         hapticPress();
         const newFilters: PropertySearchFilters = { ...filters };
-        
+
         if (filter.statut) {
             newFilters.statut = filter.statut;
         }
@@ -241,7 +328,7 @@ const ImmobilierHomeScreen: React.FC = () => {
         if (filter.id === 'recent') {
             setSortBy('date_desc');
         }
-        
+
         setFilters(newFilters);
         setCurrentPage(1);
     };
@@ -290,11 +377,11 @@ const ImmobilierHomeScreen: React.FC = () => {
                         </TouchableOpacity>
                         <View style={styles.headerTitleContainer}>
                             <Text style={styles.headerTitle}>
-                                {filters.type_bien === 'hotel' 
-                                    ? 'Hôtels' 
-                                    : filters.type_bien === 'meuble' 
-                                    ? 'Meublés / Locations meublées'
-                                    : 'Immobilier'}
+                                {filters.type_bien === 'hotel'
+                                    ? 'Hôtels'
+                                    : filters.type_bien === 'meuble'
+                                        ? 'Meublés / Locations meublées'
+                                        : 'Immobilier'}
                             </Text>
                             {totalResults > 0 && (
                                 <Text style={styles.headerSubtitle}>
@@ -321,11 +408,11 @@ const ImmobilierHomeScreen: React.FC = () => {
                             }}
                             style={styles.filterButton}
                         >
-                            <SafeIcon 
-                                name="sliders-h" 
-                                size={22} 
-                                color="#FFFFFF" 
-                                type="lucide" 
+                            <SafeIcon
+                                name="sliders-h"
+                                size={22}
+                                color="#FFFFFF"
+                                type="lucide"
                             />
                             {activeFiltersCount > 0 && (
                                 <View style={styles.filterBadge}>
@@ -368,11 +455,11 @@ const ImmobilierHomeScreen: React.FC = () => {
                                 disabled={loading}
                                 activeOpacity={0.7}
                             >
-                                <SafeIcon 
-                                    name="search" 
-                                    size={18} 
-                                    color={loading ? "#9CA3AF" : "#1E40AF"} 
-                                    type="lucide" 
+                                <SafeIcon
+                                    name="search"
+                                    size={18}
+                                    color={loading ? "#9CA3AF" : "#1E40AF"}
+                                    type="lucide"
                                 />
                             </TouchableOpacity>
                         </View>
@@ -421,11 +508,11 @@ const ImmobilierHomeScreen: React.FC = () => {
                                 setViewMode('list');
                             }}
                         >
-                            <SafeIcon 
-                                name="list" 
-                                size={18} 
-                                color={viewMode === 'list' ? '#1E40AF' : '#9CA3AF'} 
-                                type="lucide" 
+                            <SafeIcon
+                                name="list"
+                                size={18}
+                                color={viewMode === 'list' ? '#1E40AF' : '#9CA3AF'}
+                                type="lucide"
                             />
                         </TouchableOpacity>
                         <TouchableOpacity
@@ -435,11 +522,11 @@ const ImmobilierHomeScreen: React.FC = () => {
                                 setViewMode('grid');
                             }}
                         >
-                            <SafeIcon 
-                                name="grid" 
-                                size={18} 
-                                color={viewMode === 'grid' ? '#1E40AF' : '#9CA3AF'} 
-                                type="lucide" 
+                            <SafeIcon
+                                name="grid"
+                                size={18}
+                                color={viewMode === 'grid' ? '#1E40AF' : '#9CA3AF'}
+                                type="lucide"
                             />
                         </TouchableOpacity>
                     </View>
@@ -478,6 +565,32 @@ const ImmobilierHomeScreen: React.FC = () => {
                                 property={item}
                                 onPress={() => handlePropertyPress(item)}
                             />
+                            {/* ✅ NOUVEAU: Boutons d'action rapide */}
+                            <View style={{ flexDirection: 'row', paddingHorizontal: 16, paddingBottom: 8, gap: 8 }}>
+                                <TouchableOpacity
+                                    style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: favorites.has(item.id.toString()) ? '#FEF2F2' : '#F9FAFB', borderRadius: 8, paddingVertical: 8, borderWidth: 1, borderColor: favorites.has(item.id.toString()) ? '#FCA5A5' : '#E5E7EB' }}
+                                    onPress={() => handleToggleFavorite(item)}
+                                >
+                                    <SafeIcon name="heart" size={14} color={favorites.has(item.id.toString()) ? '#EF4444' : '#9CA3AF'} type="lucide" />
+                                    <Text style={{ marginLeft: 4, fontSize: 12, color: favorites.has(item.id.toString()) ? '#EF4444' : '#6B7280' }}>Favori</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#EFF6FF', borderRadius: 8, paddingVertical: 8, borderWidth: 1, borderColor: '#BFDBFE' }}
+                                    onPress={() => handleAIPriceEstimate(item)}
+                                >
+                                    <SafeIcon name="bar-chart-2" size={14} color="#3B82F6" type="lucide" />
+                                    <Text style={{ marginLeft: 4, fontSize: 12, color: '#3B82F6' }}>Estimer</Text>
+                                </TouchableOpacity>
+                                {item.prix_vente && (
+                                    <TouchableOpacity
+                                        style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#ECFDF5', borderRadius: 8, paddingVertical: 8, borderWidth: 1, borderColor: '#A7F3D0' }}
+                                        onPress={() => handleLoanSimulation(item)}
+                                    >
+                                        <SafeIcon name="calculator" size={14} color="#10B981" type="lucide" />
+                                        <Text style={{ marginLeft: 4, fontSize: 12, color: '#10B981' }}>Prêt</Text>
+                                    </TouchableOpacity>
+                                )}
+                            </View>
                         </View>
                     )}
                     numColumns={viewMode === 'grid' ? 2 : 1}
@@ -542,6 +655,87 @@ const ImmobilierHomeScreen: React.FC = () => {
                 onSortChange={setSortBy}
                 sortOptions={sortOptions}
             />
+
+            {/* ✅ NOUVEAU: Modal simulation prêt immobilier */}
+            <Modal visible={showLoanModal} animationType="slide" transparent>
+                <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+                    <View style={{ backgroundColor: '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, maxHeight: '80%' }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                            <Text style={{ fontSize: 20, fontWeight: '700', color: '#111827' }}>Simulation de prêt</Text>
+                            <TouchableOpacity onPress={() => setShowLoanModal(false)}>
+                                <SafeIcon name="x" size={24} color="#6B7280" type="lucide" />
+                            </TouchableOpacity>
+                        </View>
+
+                        {loanProperty && (
+                            <View style={{ backgroundColor: '#F0F9FF', borderRadius: 12, padding: 12, marginBottom: 16 }}>
+                                <Text style={{ fontSize: 14, fontWeight: '600', color: '#1E40AF' }}>
+                                    {loanProperty.type_bien} - {loanProperty.ville}
+                                </Text>
+                                <Text style={{ fontSize: 18, fontWeight: '700', color: '#111827', marginTop: 4 }}>
+                                    {(loanProperty.prix_vente || 0).toLocaleString()} FCFA
+                                </Text>
+                            </View>
+                        )}
+
+                        <Text style={{ fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 6 }}>Durée (années)</Text>
+                        <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
+                            {['10', '15', '20', '25'].map(d => (
+                                <TouchableOpacity
+                                    key={d}
+                                    style={{ flex: 1, paddingVertical: 10, borderRadius: 8, alignItems: 'center', backgroundColor: loanDuration === d ? '#1E40AF' : '#F3F4F6' }}
+                                    onPress={() => setLoanDuration(d)}
+                                >
+                                    <Text style={{ fontWeight: '600', color: loanDuration === d ? '#FFFFFF' : '#374151' }}>{d} ans</Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+
+                        <Text style={{ fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 6 }}>Taux annuel (%)</Text>
+                        <View style={{ flexDirection: 'row', gap: 8, marginBottom: 20 }}>
+                            {['4.5', '5.5', '6.5', '7.5'].map(r => (
+                                <TouchableOpacity
+                                    key={r}
+                                    style={{ flex: 1, paddingVertical: 10, borderRadius: 8, alignItems: 'center', backgroundColor: loanRate === r ? '#1E40AF' : '#F3F4F6' }}
+                                    onPress={() => setLoanRate(r)}
+                                >
+                                    <Text style={{ fontWeight: '600', color: loanRate === r ? '#FFFFFF' : '#374151' }}>{r}%</Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+
+                        {(() => {
+                            const loan = calculateLoan();
+                            if (!loan) return <Text style={{ color: '#9CA3AF', textAlign: 'center' }}>Prix non disponible</Text>;
+                            return (
+                                <View style={{ backgroundColor: '#ECFDF5', borderRadius: 12, padding: 16 }}>
+                                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
+                                        <Text style={{ color: '#6B7280' }}>Apport (10%)</Text>
+                                        <Text style={{ fontWeight: '600', color: '#111827' }}>{loan.apport.toLocaleString()} FCFA</Text>
+                                    </View>
+                                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
+                                        <Text style={{ color: '#6B7280' }}>Montant emprunté</Text>
+                                        <Text style={{ fontWeight: '600', color: '#111827' }}>{loan.montant.toLocaleString()} FCFA</Text>
+                                    </View>
+                                    <View style={{ height: 1, backgroundColor: '#D1FAE5', marginVertical: 8 }} />
+                                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
+                                        <Text style={{ color: '#059669', fontWeight: '700', fontSize: 16 }}>Mensualité</Text>
+                                        <Text style={{ fontWeight: '700', fontSize: 18, color: '#059669' }}>{loan.mensualite.toLocaleString()} FCFA</Text>
+                                    </View>
+                                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+                                        <Text style={{ color: '#6B7280', fontSize: 12 }}>Coût total du crédit</Text>
+                                        <Text style={{ fontSize: 12, color: '#6B7280' }}>{loan.coutTotal.toLocaleString()} FCFA</Text>
+                                    </View>
+                                    <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                                        <Text style={{ color: '#6B7280', fontSize: 12 }}>Intérêts totaux</Text>
+                                        <Text style={{ fontSize: 12, color: '#EF4444' }}>{loan.interets.toLocaleString()} FCFA</Text>
+                                    </View>
+                                </View>
+                            );
+                        })()}
+                    </View>
+                </View>
+            </Modal>
         </SafeNativeView>
     );
 };

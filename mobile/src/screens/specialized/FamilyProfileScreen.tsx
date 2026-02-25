@@ -4,15 +4,14 @@ import React, { useEffect, useState } from 'react';
 import {
     Alert,
     StyleSheet,
-    Switch,
     Text,
     TextInput,
     TouchableOpacity,
-    View,
+    View
 } from 'react-native';
 import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
-import { NativeButton, NativeCard, NativeInput } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeButton, NativeCard, NativeInput } from '../../components/SafeNativeDesign';
 import { FamilyProfile, menuPlanningService } from '../../services/menuPlanningService';
 import { modernColors } from '../../theme/modernTheme';
 
@@ -95,6 +94,20 @@ const FamilyProfileScreen: React.FC = () => {
     };
 
     const handleSave = async () => {
+        // ✅ NOUVEAU: Validation avant sauvegarde
+        if (profile.total_members < 1) {
+            Alert.alert('Validation', 'Le nombre total de membres doit être au moins 1.');
+            return;
+        }
+        if (profile.adults_count < 1) {
+            Alert.alert('Validation', 'Il doit y avoir au moins 1 adulte.');
+            return;
+        }
+        if (profile.cuisine_styles.length === 0) {
+            Alert.alert('Validation', 'Veuillez sélectionner au moins un style de cuisine préféré.');
+            return;
+        }
+
         try {
             setSaving(true);
             const response = await menuPlanningService.updateFamilyProfile(profile);
@@ -362,13 +375,35 @@ const FamilyProfileScreen: React.FC = () => {
                 {/* Budget et temps */}
                 <NativeCard style={styles.card}>
                     <Text style={styles.label}>💰 Budget mensuel (FCFA)</Text>
+                    {/* ✅ NOUVEAU: Presets de budget rapide */}
+                    <View style={styles.chipsContainer}>
+                        {[25000, 50000, 75000, 100000, 150000].map((amount) => (
+                            <TouchableOpacity
+                                key={amount}
+                                style={[
+                                    styles.chip,
+                                    profile.budget_monthly === amount && styles.chipSelected,
+                                ]}
+                                onPress={() => setProfile((prev) => ({ ...prev, budget_monthly: amount }))}
+                            >
+                                <Text
+                                    style={[
+                                        styles.chipText,
+                                        profile.budget_monthly === amount && styles.chipTextSelected,
+                                    ]}
+                                >
+                                    {amount.toLocaleString()}
+                                </Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
                     <NativeInput
                         value={profile.budget_monthly?.toString() || ''}
                         onChangeText={(text) => {
                             const num = parseFloat(text) || undefined;
                             setProfile((prev) => ({ ...prev, budget_monthly: num }));
                         }}
-                        placeholder="Ex: 50000"
+                        placeholder="Ou saisissez un montant personnalisé"
                         keyboardType="numeric"
                     />
 

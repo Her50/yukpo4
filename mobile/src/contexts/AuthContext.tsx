@@ -112,7 +112,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const checkAuthStatus = async () => {
     try {
       setLoading(true);
-      
+
       // ✅ CRITIQUE: Ajouter un timeout pour éviter le blocage indéfini
       const timeoutPromise = new Promise<null>((resolve) => {
         setTimeout(() => {
@@ -201,7 +201,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           await SafeStorage.setItem('auth_token', token);
 
           const partnerType = decoded.partner_type || (response.data as any)?.partner_type;
-          
+
           // ✅ NOUVEAU: Log pour confirmer l'identification du partenaire
           if (decoded.role === 'partenaire' && partnerType) {
             console.log(`[AuthContext] ✅ Partenaire identifié: type="${partnerType}"`);
@@ -281,7 +281,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             };
 
             setUser(newUserData);
-            return { success: true, data: newUserData };
+            // ✅ NOUVEAU 2026-02-25: Inclure user_id pour le flux OTP
+            return { success: true, data: { ...newUserData, user_id: (response.data as any)?.user_id || (response.data as any)?.id || decoded.sub, token: response.data.token } };
           } else {
             throw new Error('Token expiré');
           }

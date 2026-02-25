@@ -76,6 +76,7 @@ use crate::routes::{
     order_routes::order_routes,
     orientation_scolaire_routes::orientation_scolaire_routes,
     payment_routes::payment_routes,
+    phone_verification_routes::phone_verification_routes, // ✅ NOUVEAU 2026-02-25: Routes vérification OTP téléphone
     // phone_model_routes::phone_model_routes, // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (mobile_routes)
     plugin_routes::plugin_routes, // ✅ NOUVEAU Phase 2: Routes gestion des plugins
     popular_products_routes::popular_products_routes,
@@ -275,6 +276,7 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
     let kyc_admin = kyc_admin_routes(state.clone()); // ✅ NOUVEAU 2025-01-29: Routes admin KYC
     let mobile_logs = mobile_logs_routes(state.clone());
     let navigation = navigation_routes(state.clone()); // ✅ NOUVEAU: Routes navigation intelligente
+    let phone_verification = phone_verification_routes(state.clone()); // ✅ NOUVEAU 2026-02-25: Routes vérification OTP téléphone
     let delivery_external = delivery_external_routes(state.clone());
     let negotiated_prices = negotiated_price_routes(state.clone());
     let health = health_routes(state.clone());
@@ -407,6 +409,7 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .merge(gpu) // ✅ NOUVEAU 2026-02-14: Routes pour gestion GPU GCP
         .merge(mobile_logs)
         .merge(navigation) // ✅ NOUVEAU: Routes navigation intelligente
+        .merge(phone_verification) // ✅ NOUVEAU 2026-02-25: Routes vérification OTP téléphone
         .merge(delivery_external)
         .merge(negotiated_prices)
         .merge(health)

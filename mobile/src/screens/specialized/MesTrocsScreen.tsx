@@ -13,10 +13,10 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import { NativeCard } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeCard } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
-import { apiGet } from '../../services/api';
+import { apiGet, apiPost } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 
 interface TrocLivre {
@@ -98,9 +98,46 @@ const MesTrocsScreen: React.FC = () => {
         }
     };
 
+    // ✅ NOUVEAU: Accepter rapidement un troc
+    const handleQuickAccept = async (trocId: number) => {
+        try {
+            const response = await apiPost(`/api/troc-livres/${trocId}/accept`, {});
+            if (response.success) {
+                Alert.alert('Succès', 'Troc accepté !');
+                loadTrocs();
+            } else {
+                Alert.alert('Erreur', response.error || 'Impossible d\'accepter');
+            }
+        } catch (error: any) {
+            Alert.alert('Erreur', error.message || 'Une erreur est survenue');
+        }
+    };
+
+    // ✅ NOUVEAU: Refuser rapidement un troc
+    const handleQuickRefuse = async (trocId: number) => {
+        Alert.alert('Confirmer', 'Voulez-vous vraiment refuser ce troc ?', [
+            { text: 'Annuler', style: 'cancel' },
+            {
+                text: 'Refuser', style: 'destructive',
+                onPress: async () => {
+                    try {
+                        const response = await apiPost(`/api/troc-livres/${trocId}/refuse`, {});
+                        if (response.success) {
+                            Alert.alert('Refusé', 'Le troc a été refusé.');
+                            loadTrocs();
+                        }
+                    } catch (error: any) {
+                        Alert.alert('Erreur', error.message || 'Erreur');
+                    }
+                },
+            },
+        ]);
+    };
+
     const renderTroc = ({ item }: { item: TrocLivre }) => {
         const isInitiateur = user?.id === item.initiateur_id;
         const statutColor = getStatutColor(item.statut);
+        const canAccept = item.statut === 'en_attente' && !isInitiateur;
 
         return (
             <NativeCard style={styles.trocCard}>
@@ -157,6 +194,26 @@ const MesTrocsScreen: React.FC = () => {
                             <Text style={styles.distanceText}>
                                 📍 {item.distance_km.toFixed(1)} km
                             </Text>
+                        )}
+
+                        {/* ✅ NOUVEAU: Actions rapides pour trocs en attente */}
+                        {canAccept && (
+                            <View style={{ flexDirection: 'row', gap: 8, marginTop: 8, marginBottom: 4 }}>
+                                <TouchableOpacity
+                                    style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#ECFDF5', borderRadius: 8, paddingVertical: 10, borderWidth: 1, borderColor: '#A7F3D0' }}
+                                    onPress={() => handleQuickAccept(item.id)}
+                                >
+                                    <SafeIcon name="check" size={16} color="#10B981" type="lucide" />
+                                    <Text style={{ marginLeft: 6, fontWeight: '600', color: '#10B981' }}>Accepter</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FEF2F2', borderRadius: 8, paddingVertical: 10, borderWidth: 1, borderColor: '#FCA5A5' }}
+                                    onPress={() => handleQuickRefuse(item.id)}
+                                >
+                                    <SafeIcon name="x" size={16} color="#EF4444" type="lucide" />
+                                    <Text style={{ marginLeft: 6, fontWeight: '600', color: '#EF4444' }}>Refuser</Text>
+                                </TouchableOpacity>
+                            </View>
                         )}
 
                         <View style={styles.validationRow}>

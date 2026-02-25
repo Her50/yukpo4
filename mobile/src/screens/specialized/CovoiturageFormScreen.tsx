@@ -1,6 +1,7 @@
 // ✅ Écran de création/édition de trajets de covoiturage (accessible à tous les utilisateurs)
 // Permet à n'importe quel utilisateur d'intégrer son véhicule pour le covoiturage
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
@@ -17,15 +18,13 @@ import {
 import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 import ModernGPSModal from '../../components/ModernGPSModal';
-import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLocation } from '../../contexts/LocationContext';
+import { useCurrencyDetection } from '../../hooks/useCurrencyDetection';
 import { apiPost, servicesApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
-import { getCurrencyIntelligently } from '../../utils/currencyUtils';
-import { useCurrencyDetection } from '../../hooks/useCurrencyDetection';
 
 const COVOITURAGE_FORM_STORAGE_KEY = '@covoiturage_last_form_data';
 
@@ -37,7 +36,7 @@ const CovoiturageFormScreen: React.FC = () => {
     const [serviceId, setServiceId] = useState<number | null>((route.params as any)?.serviceId || null);
     const specializedServiceId = (route.params as any)?.specializedServiceId as number | undefined;
     const mode = (route.params as any)?.mode as string | undefined;
-    
+
     // ✅ NOUVEAU: Détection automatique de devise
     const detectedCurrency = useCurrencyDetection(formData.depart || formData.destination || null);
 
@@ -337,6 +336,25 @@ const CovoiturageFormScreen: React.FC = () => {
             return;
         }
 
+        // ✅ NOUVEAU: Validation date de départ (pas dans le passé)
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+        const departDate = new Date(formData.date_depart);
+        departDate.setHours(0, 0, 0, 0);
+        if (departDate < now) {
+            Alert.alert('Validation', 'La date de départ ne peut pas être dans le passé');
+            setLoading(false);
+            return;
+        }
+
+        // ✅ NOUVEAU: Validation places disponibles
+        const places = parseInt(formData.places_disponibles);
+        if (isNaN(places) || places < 1 || places > 50) {
+            Alert.alert('Validation', 'Le nombre de places doit être entre 1 et 50');
+            setLoading(false);
+            return;
+        }
+
         try {
             setLoading(true);
 
@@ -430,7 +448,7 @@ const CovoiturageFormScreen: React.FC = () => {
                                     required
                                 />
                             </View>
-                            
+
                             {/* Bouton d'échange */}
                             <TouchableOpacity
                                 style={styles.swapButton}
@@ -444,7 +462,7 @@ const CovoiturageFormScreen: React.FC = () => {
                             >
                                 <SafeIcon name="arrow-up-down" size={18} color="#FFFFFF" type="lucide" />
                             </TouchableOpacity>
-                            
+
                             {/* Destination */}
                             <View style={styles.routeInputContainer}>
                                 <Text style={styles.routeLabel}>
@@ -463,7 +481,7 @@ const CovoiturageFormScreen: React.FC = () => {
                                 />
                             </View>
                         </View>
-                        
+
                         {/* GPS (optionnel, plus compact) */}
                         <View style={styles.gpsRow}>
                             <TouchableOpacity
@@ -708,8 +726,8 @@ const CovoiturageFormScreen: React.FC = () => {
                                     <SafeIcon name="repeat" size={16} color={modernColors.primary} type="lucide" />
                                     <Text style={styles.recurrenceInfoText}>
                                         {formData.recurrence_type === 'daily' ? 'Quotidien' :
-                                         formData.recurrence_type === 'weekly' ? 'Hebdomadaire' :
-                                         'Mensuel'}
+                                            formData.recurrence_type === 'weekly' ? 'Hebdomadaire' :
+                                                'Mensuel'}
                                         {formData.recurrence_end_date && ` jusqu'au ${formData.recurrence_end_date.toLocaleDateString('fr-FR')}`}
                                     </Text>
                                 </View>

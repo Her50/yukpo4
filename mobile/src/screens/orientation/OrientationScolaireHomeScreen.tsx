@@ -2,8 +2,8 @@
 // Structure claire avec onglets : Établissements, Programmes, Concours, Conférences, Fournitures
 // Toutes les fonctionnalités IA opérationnelles
 
-import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
@@ -20,17 +20,20 @@ import {
 } from 'react-native';
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
+import { useToaster } from '../../components/ToasterProvider';
 import { useLocation } from '../../contexts/LocationContext';
-import { orientationScolaireService, EtablissementScolaire, ProgrammeScolaire, ConcoursEntree, ConferenceLive, FournituresScolaires, StudentProfileAnalysis, ProgramRecommendation } from '../../services/orientationScolaireService';
+import { useAIWithFallback } from '../../hooks/useAIWithFallback';
+import { ConcoursEntree, ConferenceLive, EtablissementScolaire, FournituresScolaires, orientationScolaireService, ProgrammeScolaire, ProgramRecommendation, StudentProfileAnalysis } from '../../services/orientationScolaireService';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
-import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 
 type TabType = 'etablissements' | 'programmes' | 'concours' | 'conferences' | 'fournitures';
 
 const OrientationScolaireHomeScreen: React.FC = () => {
     const navigation = useNavigation();
     const { location } = useLocation();
+    const { callWithFallback } = useAIWithFallback();
+    const toaster = useToaster();
 
     // Onglet actif
     const [activeTab, setActiveTab] = useState<TabType>('etablissements');
@@ -249,7 +252,7 @@ const OrientationScolaireHomeScreen: React.FC = () => {
         }
     };
 
-    // ✅ NOUVEAU: Recherche académique IA
+    // ✅ REFONDU: Recherche académique IA avec fallback 3 niveaux
     const handleAcademicSearch = async () => {
         if (!academicQuery.trim()) {
             Alert.alert('Erreur', 'Veuillez saisir votre question');
@@ -259,30 +262,45 @@ const OrientationScolaireHomeScreen: React.FC = () => {
         hapticPress();
         setLoadingAI(true);
 
-        try {
-            const { apiPost } = require('../../services/api');
-            // ✅ Utiliser l'endpoint spécifique de recherche académique avec système d'orchestration IA complet
-            const response = await apiPost('/api/orientation/ai/academic-search', {
-                query: academicQuery.trim(),
-                context: {
-                    service: 'orientation_scolaire',
-                    domain: 'education',
-                },
-            });
-
-            if (response.success) {
-                // Le backend peut retourner response.response ou response.data.response
-                const aiResponse = response.response || response.data?.response || response.data?.message || 'Réponse non disponible';
-                setAcademicResponse(aiResponse);
-            } else {
-                Alert.alert('Erreur', response.message || 'Impossible d\'obtenir une réponse');
+        const result = await callWithFallback(
+            async () => {
+                const { apiPost } = require('../../services/api');
+                const response = await apiPost('/api/orientation/ai/academic-search', {
+                    query: academicQuery.trim(),
+                    context: { service: 'orientation_scolaire', domain: 'education' },
+                });
+                if (response?.success) {
+                    return response.response || response.data?.response || response.data?.message || null;
+                }
+                return null;
+            },
+            'orientation_academic',
+            `Recherche académique: ${academicQuery.trim()}`,
+            () => {
+                const q = academicQuery.trim().toLowerCase();
+                if (q.includes('bourse') || q.includes('scholarship')) {
+                    return 'Les bourses disponibles au Cameroun incluent: Bourses d\'excellence du MINESUP, Bourses de la coopération française (Campus France), Bourses DAAD (Allemagne), Bourses Commonwealth. Consultez votre établissement pour les détails.';
+                }
+                if (q.includes('concours') || q.includes('admission')) {
+                    return 'Les principaux concours au Cameroun: ENAM, ENSP, ENS, École Polytechnique, FMSB, IUT. Les inscriptions ouvrent généralement entre mars et juin. Vérifiez les dates sur le site du MINESUP.';
+                }
+                if (q.includes('université') || q.includes('faculté')) {
+                    return 'Le Cameroun compte 8 universités d\'\u00c9tat (Yaoundé I & II, Douala, Dschang, Buea, Bamenda, Maroua, Ngaoundéré) et de nombreuses universités privées. Choisissez en fonction de la filière souhaitée.';
+                }
+                return 'Pour des conseils personnalisés en orientation scolaire, créez votre profil étudiant et consultez les recommandations IA. Vous pouvez aussi contacter un conseiller d\'orientation.';
             }
-        } catch (err: any) {
-            console.error('[OrientationScolaireHomeScreen] Erreur recherche académique:', err);
-            Alert.alert('Erreur', err.message || 'Erreur lors de la recherche');
-        } finally {
-            setLoadingAI(false);
+        );
+
+        if (result.success && result.data) {
+            setAcademicResponse(result.data);
+            if (result.source === 'local') {
+                toaster?.show?.('Réponse basée sur des données locales', 'info');
+            }
+        } else {
+            setAcademicResponse('Consultez un conseiller d\'orientation pour des conseils personnalisés.');
+            toaster?.show?.('IA temporairement indisponible', 'error');
         }
+        setLoadingAI(false);
     };
 
     const formatDistance = (distance?: number) => {
@@ -376,11 +394,11 @@ const OrientationScolaireHomeScreen: React.FC = () => {
                                 disabled={loading}
                                 activeOpacity={0.7}
                             >
-                                <SafeIcon 
-                                    name="search" 
-                                    size={18} 
-                                    color={loading ? "#9CA3AF" : "#8B5CF6"} 
-                                    type="lucide" 
+                                <SafeIcon
+                                    name="search"
+                                    size={18}
+                                    color={loading ? "#9CA3AF" : "#8B5CF6"}
+                                    type="lucide"
                                 />
                             </TouchableOpacity>
                         </View>
@@ -400,11 +418,11 @@ const OrientationScolaireHomeScreen: React.FC = () => {
                             disabled={loading}
                             activeOpacity={0.7}
                         >
-                            <SafeIcon 
-                                name="brain" 
-                                size={18} 
-                                color={loading ? "#9CA3AF" : "#8B5CF6"} 
-                                type="lucide" 
+                            <SafeIcon
+                                name="brain"
+                                size={18}
+                                color={loading ? "#9CA3AF" : "#8B5CF6"}
+                                type="lucide"
                             />
                             <Text style={[
                                 styles.aiSearchButtonText,
