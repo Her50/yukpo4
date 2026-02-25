@@ -27,22 +27,25 @@ pub async fn track_service_interaction(
         // D?terminer le type d'interaction selon la route
         let interaction_type = determine_interaction_type(req.uri().path(), req.method());
 
-        // V?rifier si l'utilisateur a d?j? interagi r?cemment (anti-spam)
-        // TODO: R?activer apr?s cr?ation de la table service_interactions_tracking
-        let should_debit_provider = true; // Temporaire : toujours d?biter
+        // Vérifier si l'utilisateur a déjà interagi récemment (anti-spam 1h)
+        #[derive(sqlx::FromRow)]
+        struct InteractionRow {
+            #[allow(dead_code)]
+            id: i32,
+            tokens_debited: bool,
+        }
 
-        /*
-        let recent_interaction = sqlx::query!(
+        let recent_interaction: Result<Option<InteractionRow>, _> = sqlx::query_as(
             r#"
             SELECT id, tokens_debited FROM service_interactions_tracking
             WHERE user_id = $1 AND service_id = $2 AND interaction_type = $3
             AND created_at > NOW() - INTERVAL '1 hour'
             ORDER BY created_at DESC LIMIT 1
             "#,
-            user_id,
-            service_id,
-            interaction_type
         )
+        .bind(user_id)
+        .bind(service_id)
+        .bind(&interaction_type)
         .fetch_optional(&state.pg)
         .await;
 
@@ -51,38 +54,40 @@ pub async fn track_service_interaction(
         match recent_interaction {
             Ok(Some(interaction)) => {
                 if !interaction.tokens_debited {
-                    // Interaction r?cente existe mais pas encore d?bit?e
                     should_debit_provider = true;
                 }
-                info!("[track_service_interaction] Interaction r?cente trouv?e pour utilisateur {} sur service {}", user_id, service_id);
-            },
+            }
             Ok(None) => {
-                // Premi?re interaction ou interaction ancienne
                 should_debit_provider = true;
 
-                // Enregistrer la nouvelle interaction
-                let insert_result = sqlx::query!(
+                // Enregistrer la nouvelle interaction (alimente live_audience_service)
+                let insert_result = sqlx::query(
                     r#"
                     INSERT INTO service_interactions_tracking
                     (user_id, service_id, interaction_type, tokens_debited, ip_address, user_agent)
                     VALUES ($1, $2, $3, FALSE, NULL, NULL)
                     "#,
-                    user_id,
-                    service_id,
-                    interaction_type
                 )
+                .bind(user_id)
+                .bind(service_id)
+                .bind(&interaction_type)
                 .execute(&state.pg)
                 .await;
 
                 if let Err(e) = insert_result {
-                    error!("[track_service_interaction] Erreur insertion interaction: {}", e);
+                    error!(
+                        "[track_service_interaction] Erreur insertion interaction: {}",
+                        e
+                    );
                 }
-            },
+            }
             Err(e) => {
-                error!("[track_service_interaction] Erreur v?rification interaction: {}", e);
+                error!(
+                    "[track_service_interaction] Erreur vérification interaction: {}",
+                    e
+                );
             }
         }
-        */
 
         // D?biter le prestataire si n?cessaire
         if should_debit_provider {
@@ -181,27 +186,27 @@ async fn debit_service_provider(
                                 info!("[debit_service_provider] Prestataire {} d?bit? de {}XAF pour interaction {} sur service {} par utilisateur {}", 
                                     provider_id, COUT_INTERACTION_SERVICE_XAF_DIXIEME as f64 / 10.0, interaction_type, service_id, interacting_user_id);
 
-                                // TODO: R?activer apr?s cr?ation de la table service_interactions_tracking
-                                /*
-                                // Marquer l'interaction comme d?bit?e
-                                let mark_result = sqlx::query!(
+                                // Marquer l'interaction comme débitée
+                                let mark_result = sqlx::query(
                                     r#"
                                     UPDATE service_interactions_tracking
                                     SET tokens_debited = TRUE
                                     WHERE user_id = $1 AND service_id = $2 AND interaction_type = $3
                                     AND created_at > NOW() - INTERVAL '1 hour'
                                     "#,
-                                    interacting_user_id,
-                                    service_id,
-                                    interaction_type
                                 )
+                                .bind(interacting_user_id)
+                                .bind(service_id)
+                                .bind(interaction_type)
                                 .execute(pool)
                                 .await;
 
                                 if let Err(e) = mark_result {
-                                    error!("[debit_service_provider] Erreur marquage interaction: {}", e);
+                                    error!(
+                                        "[debit_service_provider] Erreur marquage interaction: {}",
+                                        e
+                                    );
                                 }
-                                */
                             }
                             Err(e) => {
                                 error!(

@@ -19,6 +19,8 @@ export interface NotificationPreferences {
     carpool_match: boolean;
     taxi_nearby: boolean;
     weekly_summary: boolean;
+    live_events: boolean;
+    flash_promos: boolean;
 }
 
 export class PushNotificationService {
@@ -29,6 +31,8 @@ export class PushNotificationService {
         carpool_match: true,
         taxi_nearby: true,
         weekly_summary: true,
+        live_events: true,
+        flash_promos: true,
     };
 
     private constructor() { }
@@ -231,6 +235,21 @@ export class PushNotificationService {
                 if (this.isNotificationEnabled('weekly_summary')) {
                     // Naviguer vers le dashboard
                     console.log('[PushNotificationService] Notification résumé:', data);
+                }
+                break;
+            case 'live_scheduled':
+            case 'live_live_now':
+            case 'live_replay_ready':
+                if (this.isNotificationEnabled('live_events')) {
+                    console.log('[PushNotificationService] Notification Live:', notificationType, data);
+                }
+                break;
+            case 'live_flash_sale_scheduled':
+            case 'live_flash_sale_live':
+            case 'live_flash_sale_ending':
+            case 'live_flash_sale_commentary':
+                if (this.isNotificationEnabled('flash_promos')) {
+                    console.log('[PushNotificationService] Notification Flash Promo:', notificationType, data);
                 }
                 break;
         }

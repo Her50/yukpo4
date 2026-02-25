@@ -4,10 +4,10 @@
  * - Gère les notifications d'appels entrants
  * - Affiche les notifications en foreground
  */
+import { useNavigation } from '@react-navigation/native';
 import * as Notifications from 'expo-notifications';
 import React, { useEffect, useRef, useState } from 'react';
 import { Alert, DeviceEventEmitter } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
 import { setupForegroundNotificationHandler, setupNotificationResponseHandler } from '../services/pushNotifications';
 import InAppCallModal from './InAppCallModal';
@@ -27,7 +27,7 @@ const PushNotificationManager: React.FC = () => {
         // Listener pour notifications reçues en foreground
         notificationListener.current = setupForegroundNotificationHandler((notification) => {
             const data = notification.request.content.data;
-            
+
             console.log('[PushNotificationManager] 🔔 Notification reçue:', notification.request.content);
 
             // ✅ NOUVEAU: Émettre un événement global pour mettre à jour les badges de notifications
@@ -40,18 +40,18 @@ const PushNotificationManager: React.FC = () => {
             // Gérer les appels entrants
             if (data?.type === 'incoming_call') {
                 console.log('[PushNotificationManager] 📞 Appel entrant détecté:', data);
-                
+
                 setIncomingCall({
                     callType: data.call_type || 'audio',
                     callerName: data.caller_name || 'Utilisateur',
                     callerId: data.caller_id,
                     serviceId: data.service_id,
                 });
-            } 
+            }
             // ✅ NOUVEAU: Gérer les notifications de messages
             else if (data?.type === 'new_message') {
                 console.log('[PushNotificationManager] 💬 Nouveau message détecté:', data);
-                
+
                 // Afficher une alerte avec option d'ouvrir le chat
                 Alert.alert(
                     notification.request.content.title || '💬 Nouveau message',
@@ -75,7 +75,7 @@ const PushNotificationManager: React.FC = () => {
             // ✅ NOUVEAU: Gérer les notifications de livraison disponible (foreground)
             else if (data?.type === 'delivery_available') {
                 console.log('[PushNotificationManager] 📦 Notification de livraison disponible (foreground):', data.delivery_id);
-                
+
                 // Afficher une alerte avec options d'accepter ou voir les détails
                 Alert.alert(
                     notification.request.content.title || '📦 Nouvelle livraison disponible',
@@ -96,6 +96,67 @@ const PushNotificationManager: React.FC = () => {
                     ]
                 );
             }
+            // ✅ Notifications Live (live programmé, en direct, replay)
+            else if (data?.event === 'live_scheduled' || data?.event === 'live_live_now' || data?.event === 'live_replay_ready') {
+                console.log('[PushNotificationManager] 🎥 Notification Live:', data.event, data.live_session_id);
+
+                const buttonText = data.event === 'live_live_now' ? 'Rejoindre'
+                    : data.event === 'live_replay_ready' ? 'Voir le replay' : 'Voir';
+
+                Alert.alert(
+                    notification.request.content.title || '🎥 Live',
+                    notification.request.content.body || '',
+                    [
+                        { text: 'Fermer', style: 'cancel' },
+                        {
+                            text: buttonText,
+                            onPress: () => {
+                                if (data.live_session_id) {
+                                    (navigation as any).navigate('LiveStream', {
+                                        sessionId: data.live_session_id,
+                                        serviceId: data.primary_service_id,
+                                    });
+                                } else if (data.primary_service_id) {
+                                    (navigation as any).navigate('ServiceDetail', {
+                                        serviceId: data.primary_service_id,
+                                    });
+                                }
+                            }
+                        }
+                    ]
+                );
+            }
+            // ✅ Notifications Flash Promo (programmée, en direct, fin imminente, commentaire)
+            else if (data?.event === 'live_flash_sale_scheduled' || data?.event === 'live_flash_sale_live' || data?.event === 'live_flash_sale_ending' || data?.event === 'live_flash_sale_commentary') {
+                console.log('[PushNotificationManager] ⚡ Notification Flash Promo:', data.event, data.flash_sale_id);
+
+                const buttonText = data.event === 'live_flash_sale_live' ? 'Acheter maintenant'
+                    : data.event === 'live_flash_sale_ending' ? 'Dernière chance' : 'Voir';
+
+                Alert.alert(
+                    notification.request.content.title || '⚡ Flash Promo',
+                    notification.request.content.body || '',
+                    [
+                        { text: 'Fermer', style: 'cancel' },
+                        {
+                            text: buttonText,
+                            onPress: () => {
+                                if (data.live_session_id) {
+                                    (navigation as any).navigate('LiveStream', {
+                                        sessionId: data.live_session_id,
+                                        serviceId: data.primary_service_id,
+                                        highlightFlashSale: data.flash_sale_id,
+                                    });
+                                } else if (data.primary_service_id) {
+                                    (navigation as any).navigate('ServiceDetail', {
+                                        serviceId: data.primary_service_id,
+                                    });
+                                }
+                            }
+                        }
+                    ]
+                );
+            }
             else {
                 // Autres notifications - afficher une alerte
                 Alert.alert(
@@ -108,7 +169,7 @@ const PushNotificationManager: React.FC = () => {
         // Listener pour interactions avec notifications (tap)
         responseListener.current = setupNotificationResponseHandler((response) => {
             const data = response.notification.request.content.data;
-            
+
             console.log('[PushNotificationManager] 👆 Notification tapée:', data);
 
             // ✅ NOUVEAU: Émettre un événement pour mettre à jour le badge quand une notification est tapée
@@ -129,7 +190,7 @@ const PushNotificationManager: React.FC = () => {
             // ✅ NOUVEAU: Gérer les notifications de messages
             else if (data?.type === 'new_message') {
                 console.log('[PushNotificationManager] 💬 Navigation vers le service pour voir le message');
-                
+
                 // Naviguer vers le service ou le chat
                 if (data.service_id) {
                     (navigation as any).navigate('ServiceDetail', {
@@ -141,17 +202,38 @@ const PushNotificationManager: React.FC = () => {
             // ✅ NOUVEAU: Gérer les notifications de livraison disponible
             else if (data?.type === 'delivery_available') {
                 console.log('[PushNotificationManager] 📦 Notification de livraison disponible:', data.delivery_id);
-                
-                // ✅ NOUVEAU: Jouer un son pour attirer l'attention du coursier
-                // Le son est déjà joué par le système via le canal "delivery_notifications"
-                // mais on peut aussi utiliser le service de son si nécessaire
-                
+
                 // Naviguer vers l'écran de suivi de livraison
                 if (data.delivery_id) {
                     (navigation as any).navigate('DeliveryTracking', {
                         deliveryId: data.delivery_id,
-                        showAcceptButton: true, // Afficher le bouton d'acceptation
+                        showAcceptButton: true,
                     });
+                }
+            }
+            // ✅ Tap sur notification Live → naviguer vers le live
+            else if (data?.event === 'live_scheduled' || data?.event === 'live_live_now' || data?.event === 'live_replay_ready') {
+                console.log('[PushNotificationManager] 🎥 Tap notification Live:', data.event);
+                if (data.live_session_id) {
+                    (navigation as any).navigate('LiveStream', {
+                        sessionId: data.live_session_id,
+                        serviceId: data.primary_service_id,
+                    });
+                } else if (data.primary_service_id) {
+                    (navigation as any).navigate('ServiceDetail', { serviceId: data.primary_service_id });
+                }
+            }
+            // ✅ Tap sur notification Flash Promo → naviguer vers le live + flash sale
+            else if (data?.event === 'live_flash_sale_scheduled' || data?.event === 'live_flash_sale_live' || data?.event === 'live_flash_sale_ending' || data?.event === 'live_flash_sale_commentary') {
+                console.log('[PushNotificationManager] ⚡ Tap notification Flash Promo:', data.event);
+                if (data.live_session_id) {
+                    (navigation as any).navigate('LiveStream', {
+                        sessionId: data.live_session_id,
+                        serviceId: data.primary_service_id,
+                        highlightFlashSale: data.flash_sale_id,
+                    });
+                } else if (data.primary_service_id) {
+                    (navigation as any).navigate('ServiceDetail', { serviceId: data.primary_service_id });
                 }
             }
         });

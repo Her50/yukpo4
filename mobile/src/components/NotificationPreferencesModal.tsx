@@ -13,8 +13,8 @@ import {
 } from 'react-native';
 import { NotificationPreferences, pushNotificationService } from '../services/push_notifications';
 import { modernColors } from '../theme/modernTheme';
-import { NativeButton } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
+import { NativeButton } from './SafeNativeDesign';
 
 interface NotificationPreferencesModalProps {
     visible: boolean;
@@ -30,6 +30,8 @@ const NotificationPreferencesModal: React.FC<NotificationPreferencesModalProps> 
         carpool_match: true,
         taxi_nearby: true,
         weekly_summary: true,
+        live_events: true,
+        flash_promos: true,
     });
     const [loading, setLoading] = useState(false);
 
@@ -185,6 +187,48 @@ const NotificationPreferencesModal: React.FC<NotificationPreferencesModalProps> 
                                         true: modernColors.primary + '80',
                                     }}
                                     thumbColor={preferences.weekly_summary ? modernColors.primary : '#9CA3AF'}
+                                />
+                            </View>
+
+                            <View style={styles.preferenceItem}>
+                                <View style={styles.preferenceInfo}>
+                                    <SafeIcon name="video" size={24} color={modernColors.primary} />
+                                    <View style={styles.preferenceText}>
+                                        <Text style={styles.preferenceTitle}>Lives en direct</Text>
+                                        <Text style={styles.preferenceDescription}>
+                                            Notifications quand un vendeur que vous suivez lance un live
+                                        </Text>
+                                    </View>
+                                </View>
+                                <Switch
+                                    value={preferences.live_events}
+                                    onValueChange={() => handleToggle('live_events')}
+                                    trackColor={{
+                                        false: '#E5E7EB',
+                                        true: modernColors.primary + '80',
+                                    }}
+                                    thumbColor={preferences.live_events ? modernColors.primary : '#9CA3AF'}
+                                />
+                            </View>
+
+                            <View style={styles.preferenceItem}>
+                                <View style={styles.preferenceInfo}>
+                                    <SafeIcon name="zap" size={24} color={modernColors.primary} />
+                                    <View style={styles.preferenceText}>
+                                        <Text style={styles.preferenceTitle}>Flash Promos</Text>
+                                        <Text style={styles.preferenceDescription}>
+                                            Alertes pour les ventes flash et promotions éclair
+                                        </Text>
+                                    </View>
+                                </View>
+                                <Switch
+                                    value={preferences.flash_promos}
+                                    onValueChange={() => handleToggle('flash_promos')}
+                                    trackColor={{
+                                        false: '#E5E7EB',
+                                        true: modernColors.primary + '80',
+                                    }}
+                                    thumbColor={preferences.flash_promos ? modernColors.primary : '#9CA3AF'}
                                 />
                             </View>
                         </View>
