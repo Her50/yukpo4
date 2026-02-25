@@ -1,12 +1,19 @@
 import { useNavigation } from '@react-navigation/native';
-import { ResizeMode, Video } from 'expo-av';
+import { AVPlaybackStatus, ResizeMode, Video } from 'expo-av';
+import * as Haptics from 'expo-haptics';
+import { LinearGradient } from 'expo-linear-gradient';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
+    Animated,
     Dimensions,
     FlatList,
+    Platform,
+    Pressable,
+    RefreshControl,
     Share,
+    StatusBar,
     StyleSheet,
     Text,
     TouchableOpacity,
@@ -18,9 +25,8 @@ import { SafeNativeView } from '../components/SafeNativeView';
 import { useAuth } from '../contexts/AuthContext';
 import { apiGet, apiPost } from '../services/api';
 import { mediaService } from '../services/mediaService';
-import { modernColors } from '../theme/modernTheme';
 
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
 
 type FeedItem = {
     id: string;
@@ -31,27 +37,35 @@ type FeedItem = {
     contentId: string;
     likesCount?: number;
     savesCount?: number;
+    commentsCount?: number;
+    viewsCount?: number;
+    isPaid?: boolean;
+    serviceId?: number;
+    sellerName?: string;
+    sellerAvatar?: string;
+    category?: string;
+    hashtags?: string[];
 };
 
-// ✅ NOUVEAU 2026-01-13: Fonction pour normaliser les URLs de vidéos
+const formatCount = (count: number): string => {
+    if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`;
+    if (count >= 1000) return `${(count / 1000).toFixed(1)}K`;
+    return String(count);
+};
+
 const normalizeVideoUrl = (url: any): string | null => {
     if (!url) return null;
     const urlStr = typeof url === 'string' ? url : String(url);
     if (!urlStr || typeof urlStr !== 'string') return null;
     const trimmed = urlStr.trim();
     if (!trimmed) return null;
-    
-    // Si c'est déjà une URL complète, retourner tel quel
     if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:')) {
         return trimmed;
     }
-    
-    // Normaliser via mediaService pour obtenir l'URL CDN
     return mediaService.getVideoUrl(trimmed) || trimmed;
 };
 
 const normalizeFeed = (raw: any[]): FeedItem[] => {
-    // ✅ CORRIGÉ: Vérifier que raw est un tableau avant d'utiliser .map
     if (!Array.isArray(raw)) {
         console.warn('[VideoFeedScreen] normalizeFeed: raw n\'est pas un tableau', typeof raw, raw);
         return [];
@@ -64,11 +78,10 @@ const normalizeFeed = (raw: any[]): FeedItem[] => {
                 item?.data?.video ||
                 item?.data?.videos?.[0];
             if (!rawVideo) return null;
-            
-            // ✅ NOUVEAU 2026-01-13: Normaliser l'URL de la vidéo
+
             const video = normalizeVideoUrl(rawVideo);
             if (!video) return null;
-            
+
             const title =
                 item?.titre ||
                 item?.title ||
@@ -80,15 +93,16 @@ const normalizeFeed = (raw: any[]): FeedItem[] => {
                 item?.content_id ||
                 item?.data?.id ||
                 `${index}-${video}`;
-            
-            // ✅ NOUVEAU 2026-01-13: Normaliser aussi l'URL de la miniature
+
             const rawThumbnail =
                 item?.thumbnail ||
                 item?.cover ||
                 item?.data?.thumbnail ||
                 item?.data?.cover;
-            const thumbnail = rawThumbnail ? (normalizeVideoUrl(rawThumbnail) || mediaService.getImageUrl(String(rawThumbnail)) || String(rawThumbnail)) : undefined;
-            
+            const thumbnail = rawThumbnail
+                ? (normalizeVideoUrl(rawThumbnail) || mediaService.getImageUrl(String(rawThumbnail)) || String(rawThumbnail))
+                : undefined;
+
             return {
                 id: String(id),
                 contentId: String(item?.content_id || id),
@@ -96,18 +110,16 @@ const normalizeFeed = (raw: any[]): FeedItem[] => {
                 description: item?.description || item?.data?.description,
                 videoUrl: video,
                 thumbnail: thumbnail,
-                likesCount: Number(
-                    item?.likes ??
-                        item?.data?.likes ??
-                        item?.stats?.likes ??
-                        0,
-                ),
-                savesCount: Number(
-                    item?.saves ??
-                        item?.data?.saves ??
-                        item?.stats?.saves ??
-                        0,
-                ),
+                likesCount: Number(item?.likes ?? item?.data?.likes ?? item?.stats?.likes ?? 0),
+                savesCount: Number(item?.saves ?? item?.data?.saves ?? item?.stats?.saves ?? 0),
+                commentsCount: Number(item?.comments ?? item?.data?.comments ?? item?.stats?.comments ?? 0),
+                viewsCount: Number(item?.views ?? item?.data?.views ?? item?.stats?.views ?? 0),
+                isPaid: item?.is_paid || item?.content_type === 'paid' || false,
+                serviceId: item?.service_id || item?.data?.service_id,
+                sellerName: item?.seller_name || item?.data?.seller_name || item?.data?.titre_service || item?.data?.titre?.valeur,
+                sellerAvatar: item?.seller_avatar || item?.data?.seller_avatar,
+                category: item?.category || item?.data?.category,
+                hashtags: item?.hashtags || item?.data?.hashtags || [],
             } as FeedItem;
         })
         .filter((item): item is FeedItem => item !== null && item !== undefined) as FeedItem[];
@@ -124,47 +136,55 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
     const showOnlyMyVideos = route?.params?.showOnlyMyVideos || false;
 
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
     const [feed, setFeed] = useState<FeedItem[]>([]);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [likedMap, setLikedMap] = useState<Record<string, boolean>>({});
     const [savedMap, setSavedMap] = useState<Record<string, boolean>>({});
+    const [pausedMap, setPausedMap] = useState<Record<string, boolean>>({});
+    const [mutedMap, setMutedMap] = useState<Record<string, boolean>>({});
+    const [progressMap, setProgressMap] = useState<Record<string, number>>({});
+    const [doubleTapHeart, setDoubleTapHeart] = useState<string | null>(null);
     const videoRefs = useRef<Map<number, Video | null>>(new Map());
+    const lastTapRef = useRef<Record<string, number>>({});
+    const heartAnim = useRef(new Animated.Value(0)).current;
 
-    const fetchFeed = useCallback(async () => {
-        setLoading(true);
+    const fetchFeed = useCallback(async (isRefresh = false) => {
+        if (!isRefresh) setLoading(true);
         try {
             const endpoint = showOnlyMyVideos
                 ? '/api/videos/my-videos'
                 : '/api/content/mixed?limit=30&format=video';
             const response = await apiGet(endpoint);
-            // ✅ CORRIGÉ: Gérer les différents formats de réponse API
-            // L'API peut retourner { success: true, data: [...] } ou directement un tableau
             let data = response?.data;
             if (data && typeof data === 'object' && !Array.isArray(data)) {
-                // Si data est un objet avec une propriété data, utiliser celle-ci
                 data = data.data || data.items || [];
             } else if (!data || !Array.isArray(data)) {
-                // Fallback si data n'existe pas ou n'est pas un tableau
                 data = response?.items || [];
             }
             const normalized = normalizeFeed(data);
-            console.log(`[VideoFeedScreen] 📹 Feed chargé: ${normalized.length} vidéos`);
+            console.log(`[VideoFeedScreen] Feed chargé: ${normalized.length} vidéos`);
             setFeed(normalized);
             setLikedMap({});
             setSavedMap({});
+            setPausedMap({});
+            setProgressMap({});
         } catch (error) {
             console.error('[VideoFeedScreen] Erreur chargement feed', error);
-            Alert.alert(
-                'Vidéos indisponibles',
-                "Impossible de charger les vidéos pour l'instant.",
-            );
+            if (!isRefresh) {
+                Alert.alert('Vidéos indisponibles', "Impossible de charger les vidéos pour l'instant.");
+            }
         } finally {
             setLoading(false);
+            setRefreshing(false);
         }
     }, [showOnlyMyVideos]);
 
-    useEffect(() => {
-        fetchFeed();
+    useEffect(() => { fetchFeed(); }, [fetchFeed]);
+
+    const onRefresh = useCallback(() => {
+        setRefreshing(true);
+        fetchFeed(true);
     }, [fetchFeed]);
 
     const registerRef = useCallback((index: number, ref: Video | null) => {
@@ -183,97 +203,207 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
     useEffect(() => {
         videoRefs.current.forEach((ref, index) => {
             if (!ref) return;
-            if (index === currentIndex) {
-                ref.playAsync()
-                    .then(() => console.log(`[VideoFeedScreen] ✅ Vidéo ${index} en lecture`))
-                    .catch((error) => console.warn(`[VideoFeedScreen] ⚠️ Erreur démarrage vidéo ${index}:`, error));
+            const item = feed[index];
+            const contentId = item?.contentId || item?.id;
+            const isPaused = contentId ? (pausedMap[contentId] ?? false) : false;
+            if (index === currentIndex && !isPaused) {
+                ref.playAsync().catch(() => undefined);
             } else {
                 ref.pauseAsync().catch(() => undefined);
             }
         });
-    }, [currentIndex]);
+    }, [currentIndex, pausedMap, feed]);
 
-    const toggleLike = async (item: FeedItem) => {
+    const animateHeart = useCallback((contentId: string) => {
+        setDoubleTapHeart(contentId);
+        heartAnim.setValue(0);
+        Animated.sequence([
+            Animated.spring(heartAnim, { toValue: 1, useNativeDriver: true, friction: 3 }),
+            Animated.timing(heartAnim, { toValue: 0, duration: 400, delay: 300, useNativeDriver: true }),
+        ]).start(() => setDoubleTapHeart(null));
+    }, [heartAnim]);
+
+    const handleTap = useCallback((item: FeedItem) => {
         const contentId = item.contentId || item.id;
-        setLikedMap((prev) => ({
-            ...prev,
-            [contentId]: !prev[contentId],
-        }));
+        const now = Date.now();
+        const lastTap = lastTapRef.current[contentId] || 0;
+
+        if (now - lastTap < 300) {
+            // Double-tap → Like
+            if (!likedMap[contentId]) {
+                setLikedMap((prev) => ({ ...prev, [contentId]: true }));
+                apiPost('/api/content/engagement', { content_id: contentId, action: 'like' }).catch(() => undefined);
+                try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); } catch (_) { }
+            }
+            animateHeart(contentId);
+            lastTapRef.current[contentId] = 0;
+        } else {
+            // Single tap → Pause/Play
+            lastTapRef.current[contentId] = now;
+            setTimeout(() => {
+                if (lastTapRef.current[contentId] === now) {
+                    setPausedMap((prev) => ({ ...prev, [contentId]: !prev[contentId] }));
+                    try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch (_) { }
+                }
+            }, 320);
+        }
+    }, [likedMap, animateHeart]);
+
+    const toggleLike = useCallback(async (item: FeedItem) => {
+        const contentId = item.contentId || item.id;
+        setLikedMap((prev) => ({ ...prev, [contentId]: !prev[contentId] }));
+        try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch (_) { }
         try {
-            await apiPost('/api/content/engagement', {
-                content_id: contentId,
-                action: 'like',
-            });
+            await apiPost('/api/content/engagement', { content_id: contentId, action: 'like' });
         } catch (error) {
             console.warn('[VideoFeedScreen] Like error', error);
         }
-    };
+    }, []);
 
-    const toggleSave = async (item: FeedItem) => {
+    const toggleSave = useCallback(async (item: FeedItem) => {
         const contentId = item.contentId || item.id;
-        setSavedMap((prev) => ({
-            ...prev,
-            [contentId]: !prev[contentId],
-        }));
+        setSavedMap((prev) => ({ ...prev, [contentId]: !prev[contentId] }));
+        try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch (_) { }
         try {
-            await apiPost('/api/content/engagement', {
-                content_id: contentId,
-                action: 'save',
-            });
+            await apiPost('/api/content/engagement', { content_id: contentId, action: 'save' });
         } catch (error) {
             console.warn('[VideoFeedScreen] Save error', error);
         }
-    };
+    }, []);
 
-    const handleShare = async (item: FeedItem) => {
+    const toggleMute = useCallback((item: FeedItem) => {
+        const contentId = item.contentId || item.id;
+        setMutedMap((prev) => ({ ...prev, [contentId]: !prev[contentId] }));
+    }, []);
+
+    const handleShare = useCallback(async (item: FeedItem) => {
         try {
-            await Share.share({
-                message: item.videoUrl,
-                url: item.videoUrl,
-                title: item.titre,
-            });
+            await Share.share({ message: item.videoUrl, url: item.videoUrl, title: item.titre });
         } catch (error) {
             console.warn('[VideoFeedScreen] Share error', error);
         }
-    };
+    }, []);
 
-    const renderItem = ({ item, index }: { item: FeedItem; index: number }) => {
+    const handleViewProduct = useCallback((item: FeedItem) => {
+        if (item.serviceId) {
+            (navigation as any).navigate('ServiceDetail', { serviceId: item.serviceId });
+        }
+    }, [navigation]);
+
+    const handlePlaybackStatus = useCallback((contentId: string, status: AVPlaybackStatus) => {
+        if (!status.isLoaded) return;
+        if (status.durationMillis && status.durationMillis > 0) {
+            const progress = status.positionMillis / status.durationMillis;
+            setProgressMap((prev) => {
+                if (Math.abs((prev[contentId] || 0) - progress) < 0.01) return prev;
+                return { ...prev, [contentId]: progress };
+            });
+        }
+    }, []);
+
+    const renderItem = useCallback(({ item, index }: { item: FeedItem; index: number }) => {
         const contentId = item.contentId || item.id;
         const liked = likedMap[contentId] ?? false;
         const saved = savedMap[contentId] ?? false;
+        const paused = pausedMap[contentId] ?? false;
+        const muted = mutedMap[contentId] ?? false;
+        const progress = progressMap[contentId] ?? 0;
+        const isActive = index === currentIndex;
+
         return (
             <View style={styles.card}>
-                <Video
-                    ref={(ref) => registerRef(index, ref)}
-                    style={styles.video}
-                    source={{ uri: item.videoUrl }}
-                    resizeMode={ResizeMode.COVER}
-                    shouldPlay={index === currentIndex}
-                    isLooping
-                    useNativeControls={false}
-                    onLoad={() => {
-                        if (index === currentIndex) {
-                            const ref = videoRefs.current.get(index);
-                            ref?.playAsync().catch(() => undefined);
-                        }
-                    }}
-                    onReadyForDisplay={() => {
-                        if (index === currentIndex) {
-                            const ref = videoRefs.current.get(index);
-                            ref?.playAsync().catch(() => undefined);
-                        }
-                    }}
-                    onError={(error) => {
-                        console.error(`[VideoFeedScreen] ❌ Erreur vidéo ${index}:`, error);
-                    }}
-                    onPlaybackStatusUpdate={(status) => {
-                        if (status.isLoaded && index === currentIndex && !status.isPlaying && !status.didJustFinish) {
-                            const ref = videoRefs.current.get(index);
-                            ref?.playAsync().catch(() => undefined);
-                        }
-                    }}
+                <Pressable style={styles.videoTouchable} onPress={() => handleTap(item)}>
+                    <Video
+                        ref={(ref) => registerRef(index, ref)}
+                        style={styles.video}
+                        source={{ uri: item.videoUrl }}
+                        posterSource={item.thumbnail ? { uri: item.thumbnail } : undefined}
+                        posterStyle={styles.poster}
+                        usePoster={!!item.thumbnail}
+                        resizeMode={ResizeMode.COVER}
+                        shouldPlay={isActive && !paused}
+                        isLooping
+                        isMuted={muted}
+                        useNativeControls={false}
+                        onPlaybackStatusUpdate={(status) => handlePlaybackStatus(contentId, status)}
+                        onError={(error) => console.error(`[VideoFeedScreen] Erreur vidéo ${index}:`, error)}
+                    />
+
+                    {paused && isActive && (
+                        <View style={styles.pauseOverlay}>
+                            <View style={styles.pauseIcon}>
+                                <SafeIcon name="play" size={48} color="#fff" type="lucide" />
+                            </View>
+                        </View>
+                    )}
+
+                    {doubleTapHeart === contentId && (
+                        <Animated.View
+                            style={[
+                                styles.heartAnimation,
+                                {
+                                    transform: [{ scale: heartAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 1.4] }) }],
+                                    opacity: heartAnim,
+                                },
+                            ]}
+                        >
+                            <SafeIcon name="heart" size={100} color="#FF2D55" type="lucide" />
+                        </Animated.View>
+                    )}
+                </Pressable>
+
+                <View style={styles.progressBarContainer}>
+                    <View style={[styles.progressBarFill, { width: `${progress * 100}%` }]} />
+                </View>
+
+                <LinearGradient
+                    colors={['transparent', 'rgba(0,0,0,0.7)', 'rgba(0,0,0,0.9)']}
+                    style={styles.bottomGradient}
+                    pointerEvents="none"
                 />
-                <View style={styles.overlay}>
+
+                {item.isPaid && (
+                    <View style={styles.sponsoredBadge}>
+                        <Text style={styles.sponsoredText}>Sponsorisé</Text>
+                    </View>
+                )}
+
+                <TouchableOpacity
+                    style={styles.muteButton}
+                    onPress={() => toggleMute(item)}
+                    activeOpacity={0.7}
+                >
+                    <SafeIcon
+                        name={muted ? 'volume-x' : 'volume-2'}
+                        size={18}
+                        color="#fff"
+                        type="lucide"
+                    />
+                </TouchableOpacity>
+
+                <View style={styles.bottomInfo}>
+                    <TouchableOpacity
+                        style={styles.sellerRow}
+                        onPress={() => item.serviceId && handleViewProduct(item)}
+                        activeOpacity={0.7}
+                    >
+                        <View style={styles.sellerAvatar}>
+                            <Text style={styles.sellerAvatarText}>
+                                {(item.sellerName || 'Y')[0].toUpperCase()}
+                            </Text>
+                        </View>
+                        <View style={styles.sellerInfo}>
+                            <Text style={styles.sellerName} numberOfLines={1}>
+                                {item.sellerName || 'Yukpo'}
+                            </Text>
+                            {item.category && (
+                                <Text style={styles.sellerCategory} numberOfLines={1}>
+                                    {item.category}
+                                </Text>
+                            )}
+                        </View>
+                    </TouchableOpacity>
+
                     <Text numberOfLines={2} style={styles.title}>
                         {item.titre}
                     </Text>
@@ -282,52 +412,63 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                             {item.description}
                         </Text>
                     ) : null}
+
+                    {Array.isArray(item.hashtags) && item.hashtags.length > 0 && (
+                        <Text style={styles.hashtags} numberOfLines={1}>
+                            {item.hashtags.slice(0, 4).map(h => `#${h}`).join(' ')}
+                        </Text>
+                    )}
+
+                    {item.serviceId && (
+                        <TouchableOpacity
+                            style={styles.ctaButton}
+                            onPress={() => handleViewProduct(item)}
+                            activeOpacity={0.8}
+                        >
+                            <SafeIcon name="shopping-bag" size={16} color="#fff" type="lucide" />
+                            <Text style={styles.ctaText}>Voir le produit</Text>
+                        </TouchableOpacity>
+                    )}
                 </View>
+
                 <View style={styles.actions}>
-                    <TouchableOpacity
-                        style={styles.actionButton}
-                        onPress={() => toggleLike(item)}
-                    >
-                        <SafeIcon
-                            name="heart"
-                            size={24}
-                            color={liked ? modernColors.primary : '#fff'}
-                            type="lucide"
-                        />
-                        <Text style={styles.actionLabel}>
-                            {(item.likesCount ?? 0) + (liked ? 1 : 0)}
-                        </Text>
+                    <TouchableOpacity style={styles.actionButton} onPress={() => toggleLike(item)} activeOpacity={0.7}>
+                        <View style={[styles.actionIconBg, liked && styles.actionIconBgActive]}>
+                            <SafeIcon name="heart" size={28} color={liked ? '#FF2D55' : '#fff'} type="lucide" />
+                        </View>
+                        <Text style={styles.actionLabel}>{formatCount((item.likesCount ?? 0) + (liked ? 1 : 0))}</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity
-                        style={styles.actionButton}
-                        onPress={() => toggleSave(item)}
-                    >
-                        <SafeIcon
-                            name="bookmark"
-                            size={24}
-                            color={saved ? modernColors.primary : '#fff'}
-                            type="lucide"
-                        />
-                        <Text style={styles.actionLabel}>
-                            {(item.savesCount ?? 0) + (saved ? 1 : 0)}
-                        </Text>
+
+                    <TouchableOpacity style={styles.actionButton} onPress={() => { }} activeOpacity={0.7}>
+                        <View style={styles.actionIconBg}>
+                            <SafeIcon name="message-circle" size={28} color="#fff" type="lucide" />
+                        </View>
+                        <Text style={styles.actionLabel}>{formatCount(item.commentsCount ?? 0)}</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity
-                        style={styles.actionButton}
-                        onPress={() => handleShare(item)}
-                    >
-                        <SafeIcon name="share" size={24} color="#fff" type="lucide" />
+
+                    <TouchableOpacity style={styles.actionButton} onPress={() => toggleSave(item)} activeOpacity={0.7}>
+                        <View style={[styles.actionIconBg, saved && styles.actionIconBgActive]}>
+                            <SafeIcon name="bookmark" size={28} color={saved ? '#FFD700' : '#fff'} type="lucide" />
+                        </View>
+                        <Text style={styles.actionLabel}>{formatCount((item.savesCount ?? 0) + (saved ? 1 : 0))}</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity style={styles.actionButton} onPress={() => handleShare(item)} activeOpacity={0.7}>
+                        <View style={styles.actionIconBg}>
+                            <SafeIcon name="send" size={26} color="#fff" type="lucide" />
+                        </View>
                         <Text style={styles.actionLabel}>Partager</Text>
                     </TouchableOpacity>
                 </View>
             </View>
         );
-    };
+    }, [likedMap, savedMap, pausedMap, mutedMap, progressMap, currentIndex, doubleTapHeart, heartAnim, handleTap, toggleLike, toggleSave, toggleMute, handleShare, handleViewProduct, registerRef, handlePlaybackStatus]);
 
     if (loading) {
         return (
             <SafeNativeView style={styles.centered}>
-                <ActivityIndicator size="large" color={modernColors.primary} />
+                <StatusBar barStyle="light-content" backgroundColor="#000" />
+                <ActivityIndicator size="large" color="#FF2D55" />
                 <Text style={styles.loadingText}>Chargement des vidéos…</Text>
             </SafeNativeView>
         );
@@ -336,14 +477,14 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
     if (!feed.length) {
         return (
             <SafeNativeView style={styles.centered}>
+                <StatusBar barStyle="light-content" backgroundColor="#000" />
+                <SafeIcon name="video-off" size={64} color="#4B5563" type="lucide" />
                 <Text style={styles.emptyTitle}>Aucune vidéo disponible</Text>
                 <Text style={styles.emptySubtitle}>
                     Revenez plus tard ou créez votre première vidéo.
                 </Text>
-                <TouchableOpacity
-                    style={styles.reloadButton}
-                    onPress={fetchFeed}
-                >
+                <TouchableOpacity style={styles.reloadButton} onPress={fetchFeed}>
+                    <SafeIcon name="refresh-cw" size={18} color="#fff" type="lucide" />
                     <Text style={styles.reloadText}>Recharger</Text>
                 </TouchableOpacity>
             </SafeNativeView>
@@ -352,6 +493,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
 
     return (
         <SafeNativeView style={styles.container}>
+            <StatusBar barStyle="light-content" backgroundColor="#000" translucent />
             <FlatList
                 data={feed}
                 keyExtractor={(item) => item.id}
@@ -365,6 +507,19 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                     offset: SCREEN_HEIGHT * index,
                     index,
                 })}
+                windowSize={3}
+                maxToRenderPerBatch={2}
+                removeClippedSubviews={Platform.OS === 'android'}
+                initialNumToRender={1}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={onRefresh}
+                        tintColor="#FF2D55"
+                        colors={['#FF2D55']}
+                        progressBackgroundColor="#1a1a1a"
+                    />
+                }
             />
         </SafeNativeView>
     );
@@ -381,75 +536,234 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         backgroundColor: '#000',
         padding: 24,
-        gap: 12,
+        gap: 16,
     },
     loadingText: {
-        color: '#E5E7EB',
-        fontSize: 16,
-        fontWeight: '600',
+        color: '#9CA3AF',
+        fontSize: 15,
+        fontWeight: '500',
+        marginTop: 8,
     },
     emptyTitle: {
         color: '#fff',
-        fontSize: 18,
+        fontSize: 20,
         fontWeight: '700',
         textAlign: 'center',
+        marginTop: 16,
     },
     emptySubtitle: {
-        color: '#9CA3AF',
+        color: '#6B7280',
         textAlign: 'center',
-        marginTop: 6,
+        fontSize: 15,
+        lineHeight: 22,
     },
     reloadButton: {
-        marginTop: 16,
-        paddingHorizontal: 18,
-        paddingVertical: 12,
-        borderRadius: 10,
-        backgroundColor: modernColors.primary,
+        marginTop: 20,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        paddingHorizontal: 24,
+        paddingVertical: 14,
+        borderRadius: 50,
+        backgroundColor: '#FF2D55',
     },
     reloadText: {
         color: '#fff',
         fontWeight: '700',
+        fontSize: 15,
     },
     card: {
         height: SCREEN_HEIGHT,
-        width: '100%',
+        width: SCREEN_WIDTH,
         backgroundColor: '#000',
+    },
+    videoTouchable: {
+        flex: 1,
     },
     video: {
         height: '100%',
         width: '100%',
-        backgroundColor: '#000',
+        backgroundColor: '#111',
     },
-    overlay: {
+    poster: {
+        height: '100%',
+        width: '100%',
+        resizeMode: 'cover',
+    },
+    pauseOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    pauseIcon: {
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+        backgroundColor: 'rgba(0,0,0,0.45)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    heartAnimation: {
         position: 'absolute',
-        bottom: 110,
+        top: '50%',
+        left: '50%',
+        marginTop: -50,
+        marginLeft: -50,
+    },
+    progressBarContainer: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        height: 3,
+        backgroundColor: 'rgba(255,255,255,0.15)',
+        zIndex: 20,
+    },
+    progressBarFill: {
+        height: '100%',
+        backgroundColor: '#FF2D55',
+    },
+    bottomGradient: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        height: 300,
+    },
+    sponsoredBadge: {
+        position: 'absolute',
+        top: Platform.OS === 'ios' ? 60 : 40,
         left: 16,
-        right: 100,
-        gap: 6,
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 6,
+        backgroundColor: 'rgba(255,255,255,0.2)',
+    },
+    sponsoredText: {
+        color: '#fff',
+        fontSize: 11,
+        fontWeight: '600',
+        letterSpacing: 0.5,
+    },
+    muteButton: {
+        position: 'absolute',
+        top: Platform.OS === 'ios' ? 60 : 40,
+        right: 16,
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: 'rgba(0,0,0,0.4)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    bottomInfo: {
+        position: 'absolute',
+        bottom: 24,
+        left: 16,
+        right: 80,
+        gap: 8,
+    },
+    sellerRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        marginBottom: 4,
+    },
+    sellerAvatar: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#FF2D55',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 2,
+        borderColor: '#fff',
+    },
+    sellerAvatarText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: '800',
+    },
+    sellerInfo: {
+        flex: 1,
+    },
+    sellerName: {
+        color: '#fff',
+        fontSize: 15,
+        fontWeight: '700',
+    },
+    sellerCategory: {
+        color: 'rgba(255,255,255,0.6)',
+        fontSize: 12,
+        fontWeight: '500',
     },
     title: {
         color: '#fff',
-        fontSize: 18,
-        fontWeight: '700',
+        fontSize: 15,
+        fontWeight: '600',
+        lineHeight: 20,
+        textShadowColor: 'rgba(0,0,0,0.6)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 4,
     },
     description: {
-        color: '#E5E7EB',
-        fontSize: 14,
+        color: 'rgba(255,255,255,0.8)',
+        fontSize: 13,
+        lineHeight: 18,
+        textShadowColor: 'rgba(0,0,0,0.5)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 3,
+    },
+    hashtags: {
+        color: '#FF2D55',
+        fontSize: 13,
+        fontWeight: '600',
+    },
+    ctaButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        alignSelf: 'flex-start',
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderRadius: 50,
+        backgroundColor: 'rgba(255,45,85,0.9)',
+        marginTop: 4,
+    },
+    ctaText: {
+        color: '#fff',
+        fontSize: 13,
+        fontWeight: '700',
     },
     actions: {
         position: 'absolute',
-        right: 16,
-        bottom: 80,
-        gap: 12,
+        right: 12,
+        bottom: 100,
+        gap: 20,
         alignItems: 'center',
     },
     actionButton: {
         alignItems: 'center',
         gap: 4,
     },
+    actionIconBg: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: 'rgba(0,0,0,0.3)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    actionIconBgActive: {
+        backgroundColor: 'rgba(0,0,0,0.5)',
+    },
     actionLabel: {
         color: '#fff',
+        fontSize: 12,
         fontWeight: '600',
+        textShadowColor: 'rgba(0,0,0,0.5)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 2,
     },
 });
 
