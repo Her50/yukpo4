@@ -565,6 +565,16 @@ const HomeScreen: React.FC = () => {
                         tokens_consumed: result.data.tokens_consumed || 0,
                         session_id: result.data.session_id,
                     },
+                    mediaData: {
+                        base64_image: input.base64_image || [],
+                        video_base64: input.video_base64 || [],
+                        audio_base64: input.audio_base64 || [],
+                        doc_base64: input.doc_base64 || [],
+                    },
+                    gpsData: {
+                        gps_mobile: input.gps_mobile,
+                        gps_fixe: input.gps_fixe,
+                    },
                     type: 'creation_service',
                     mode: 'create',
                     initialInput: input,
