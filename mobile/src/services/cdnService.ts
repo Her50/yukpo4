@@ -31,13 +31,13 @@ const CDN_ENDPOINTS: CDNEndpoint[] = [
     {
         name: 'GCP Cloud CDN',
         // ✅ GCP Cloud CDN (nouveau)
-        url: ENVIRONMENT.CDN_GCP_URL || 'http://34.54.117.97',
+        url: ENVIRONMENT.CDN_GCP_URL || 'https://storage.googleapis.com/yukpo-project-yukpo-backend-media',
         region: 'europe-west1',
     },
     {
         name: 'GCP Storage Direct',
         // ✅ Fallback direct vers GCP Cloud Storage si CDN indisponible
-        url: ENVIRONMENT.GCP_STORAGE_DIRECT_URL || 'http://34.54.117.97',
+        url: ENVIRONMENT.GCP_STORAGE_DIRECT_URL || 'https://storage.googleapis.com/yukpo-project-yukpo-backend-media',
         region: 'europe-west1',
     },
     // ⚠️ AWS/Wasabi (ancien, commenté pour utilisation future)
@@ -129,7 +129,7 @@ class CDNService {
                 console.debug('[CDNService] GCP Cloud CDN non disponible, test GCP Storage Direct...');
             }
         }
-        
+
         // ⚠️ AWS/Cloudflare (ancien, commenté pour utilisation future)
         // // Prioriser Cloudflare (CDN global)
         // const cloudflareEndpoint = endpoints.find(e => e.name === 'Cloudflare');

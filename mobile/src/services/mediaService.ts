@@ -4,8 +4,8 @@
  * ⚠️ AWS/Cloudflare (ancien): Intègre automatiquement le CDN Cloudflare et gère les fallbacks
  */
 
-import { cdnService } from './cdnService';
 import { ENVIRONMENT } from '../config/environment';
+import { cdnService } from './cdnService';
 
 export interface ImageOptions {
     width?: number;
@@ -52,7 +52,7 @@ class MediaService {
      */
     getImageUrl(path: string, options?: ImageOptions): string {
         const normalizedPath = this.normalizePath(path);
-        
+
         // Si c'est déjà une URL complète, utiliser directement
         if (normalizedPath.startsWith('http://') || normalizedPath.startsWith('https://')) {
             return normalizedPath;
@@ -60,7 +60,7 @@ class MediaService {
 
         // Obtenir URL via CDN
         let url = cdnService.getVideoUrl(normalizedPath, true); // CDN service gère aussi les images
-        
+
         // Ajouter paramètres d'optimisation si fournis
         if (options) {
             const params = new URLSearchParams();
@@ -68,7 +68,7 @@ class MediaService {
             if (options.height) params.append('h', options.height.toString());
             if (options.quality) params.append('q', options.quality.toString());
             if (options.format) params.append('f', options.format);
-            
+
             const queryString = params.toString();
             if (queryString) {
                 url += (url.includes('?') ? '&' : '?') + queryString;
@@ -83,7 +83,7 @@ class MediaService {
      */
     getVideoUrl(path: string, options?: VideoOptions): string {
         const normalizedPath = this.normalizePath(path);
-        
+
         // Si c'est déjà une URL complète, utiliser directement
         if (normalizedPath.startsWith('http://') || normalizedPath.startsWith('https://')) {
             return normalizedPath;
@@ -91,13 +91,13 @@ class MediaService {
 
         // Obtenir URL via CDN
         let url = cdnService.getVideoUrl(normalizedPath, true);
-        
+
         // Ajouter paramètres d'optimisation si fournis
         if (options) {
             const params = new URLSearchParams();
             if (options.quality) params.append('quality', options.quality);
             if (options.format) params.append('format', options.format);
-            
+
             const queryString = params.toString();
             if (queryString) {
                 url += (url.includes('?') ? '&' : '?') + queryString;
@@ -113,7 +113,7 @@ class MediaService {
      */
     getVideoUrlWithFallback(path: string): string[] {
         const normalizedPath = this.normalizePath(path);
-        
+
         // Si c'est déjà une URL complète, retourner tel quel
         if (normalizedPath.startsWith('http://') || normalizedPath.startsWith('https://')) {
             return [normalizedPath];
@@ -127,17 +127,17 @@ class MediaService {
      */
     getImageUrlWithFallback(path: string, options?: ImageOptions): string[] {
         const normalizedPath = this.normalizePath(path);
-        
+
         // Si c'est déjà une URL complète
         if (normalizedPath.startsWith('http://') || normalizedPath.startsWith('https://')) {
             return [normalizedPath];
         }
 
         const urls: string[] = [];
-        
+
         // URL CDN primaire
         urls.push(this.getImageUrl(normalizedPath, options));
-        
+
         // ✅ Fallback GCP Cloud Storage Direct (remplace Wasabi)
         if (ENVIRONMENT.GCP_STORAGE_DIRECT_URL) {
             urls.push(`${ENVIRONMENT.GCP_STORAGE_DIRECT_URL}${normalizedPath}`);
@@ -146,7 +146,7 @@ class MediaService {
         // if (ENVIRONMENT.WASABI_DIRECT_URL) {
         //     urls.push(`${ENVIRONMENT.WASABI_DIRECT_URL}${normalizedPath}`);
         // }
-        
+
         // Fallback backend direct
         urls.push(`${this.backendUrl}${normalizedPath}`);
 
@@ -166,7 +166,7 @@ class MediaService {
     isCDNUrl(url: string): boolean {
         if (!url) return false;
         // ✅ GCP Cloud CDN (nouveau)
-        return url.includes(ENVIRONMENT.CDN_GCP_URL || '34.54.117.97') || url.includes('storage.googleapis.com');
+        return url.includes(ENVIRONMENT.CDN_GCP_URL || 'storage.googleapis.com') || url.includes('storage.googleapis.com');
         // ⚠️ AWS/Cloudflare (ancien, commenté pour utilisation future)
         // return url.includes(ENVIRONMENT.CDN_CLOUDFLARE_URL || 'cdn.yukpomnang.com');
     }
@@ -176,9 +176,9 @@ class MediaService {
      */
     isGCPStorageUrl(url: string): boolean {
         if (!url) return false;
-        return url.includes(ENVIRONMENT.GCP_STORAGE_DIRECT_URL || '34.54.117.97') || url.includes('storage.googleapis.com');
+        return url.includes(ENVIRONMENT.GCP_STORAGE_DIRECT_URL || 'storage.googleapis.com') || url.includes('storage.googleapis.com');
     }
-    
+
     /**
      * ⚠️ AWS/Wasabi (ancien, commenté pour utilisation future)
      * Vérifie si une URL utilise Wasabi
@@ -193,7 +193,7 @@ class MediaService {
      */
     getCDNBaseUrl(): string {
         // ✅ GCP Cloud CDN (nouveau)
-        return ENVIRONMENT.CDN_GCP_URL || 'http://34.54.117.97';
+        return ENVIRONMENT.CDN_GCP_URL || 'https://storage.googleapis.com/yukpo-project-yukpo-backend-media';
         // ⚠️ AWS/Cloudflare (ancien, commenté pour utilisation future)
         // return ENVIRONMENT.CDN_CLOUDFLARE_URL || 'https://cdn.yukpomnang.com';
     }
@@ -202,9 +202,9 @@ class MediaService {
      * Obtient l'URL de base de GCP Cloud Storage (remplace Wasabi)
      */
     getGCPStorageBaseUrl(): string {
-        return ENVIRONMENT.GCP_STORAGE_DIRECT_URL || 'http://34.54.117.97';
+        return ENVIRONMENT.GCP_STORAGE_DIRECT_URL || 'https://storage.googleapis.com/yukpo-project-yukpo-backend-media';
     }
-    
+
     /**
      * ⚠️ AWS/Wasabi (ancien, commenté pour utilisation future)
      * Obtient l'URL de base de Wasabi

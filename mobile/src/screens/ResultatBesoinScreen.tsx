@@ -2134,9 +2134,18 @@ const ResultatBesoinScreen: React.FC = () => {
                 prestataire={prestataire}
                 userLocation={userLocationMemo}
                 onPress={() => {
-                    setSelectedProduct(product);
-                    setSelectedService(service);
-                    setSelectedPrestataire(prestataire);
+                    // ✅ CORRIGÉ 2026-02-25: Naviguer vers la boutique du prestataire pour afficher TOUS ses produits
+                    if (service?.user_id) {
+                        const prestataireNameForNav = prestataire?.nom || prestataire?.nom_complet || prestataire?.name || 'Prestataire';
+                        navigation.navigate('PrestataireBoutique' as never, {
+                            userId: service.user_id,
+                            user_id: service.user_id,
+                            prestataireName: prestataireNameForNav,
+                            name: prestataireNameForNav,
+                            clickedProduct: product,
+                            clickedService: service,
+                        } as never);
+                    }
                 }}
                 onChatPress={() => {
                     setSelectedProduct(product);
@@ -2146,7 +2155,7 @@ const ResultatBesoinScreen: React.FC = () => {
                 }}
             />
         );
-    }, [userLocationMemo, getProductName]); // ✅ Utiliser userLocationMemo au lieu de location directement
+    }, [userLocationMemo, getProductName, navigation]); // ✅ Utiliser userLocationMemo au lieu de location directement
 
     // ✅ NOUVEAU 2026-01-XX: Fonction pour rendre ProductCard pour les services (utiliser le même visuel que les produits)
     // ✅ DÉPLACÉ avant renderListItem pour éviter les problèmes de dépendances
@@ -2187,9 +2196,17 @@ const ResultatBesoinScreen: React.FC = () => {
                 prestataire={prestataire}
                 userLocation={userLocationMemo}
                 onPress={() => {
-                    setSelectedService(service);
-                    setSelectedPrestataire(prestataire);
-                    handleServiceClick(service.id);
+                    // ✅ CORRIGÉ 2026-02-25: Naviguer vers la boutique du prestataire pour afficher TOUS ses produits
+                    if (service?.user_id) {
+                        const prestataireNameForNav = prestataire?.nom || prestataire?.nom_complet || prestataire?.name || 'Prestataire';
+                        navigation.navigate('PrestataireBoutique' as never, {
+                            userId: service.user_id,
+                            user_id: service.user_id,
+                            prestataireName: prestataireNameForNav,
+                            name: prestataireNameForNav,
+                            clickedService: service,
+                        } as never);
+                    }
                 }}
                 onChatPress={() => {
                     setSelectedService(service);
@@ -2198,7 +2215,7 @@ const ResultatBesoinScreen: React.FC = () => {
                 }}
             />
         );
-    }, [userLocationMemo, getPrestataire, handleServiceClick]); // ✅ Utiliser handleServiceClick au lieu de handleServicePress
+    }, [userLocationMemo, getPrestataire, navigation]); // ✅ Utiliser handleServiceClick au lieu de handleServicePress
 
     // ✅ NOUVEAU 2026-01-14: renderItem mémorisé pour FlatList pour éviter les re-renders
     const renderListItem = useCallback(({ item }: { item: { type: 'service' | 'product'; data: any; key: string } }) => {

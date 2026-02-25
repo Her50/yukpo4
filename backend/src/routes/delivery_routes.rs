@@ -792,7 +792,7 @@ async fn save_product_delivery_config(
 
     let mut tx: sqlx::Transaction<'_, sqlx::Postgres> = conn.begin().await?;
 
-    let config_row = match sqlx::query(
+    let config_row: sqlx::postgres::PgRow = match sqlx::query(
         r#"
         INSERT INTO product_delivery_config (
             service_id, product_index,
@@ -850,7 +850,7 @@ async fn save_product_delivery_config(
     .bind(payload.storage_location_id) // ✅ NOUVEAU: Lieu de stockage principal (Option<i32>, peut être None)
     .bind(is_complete)
     .bind(user.id)
-    .fetch_one(&mut tx)
+    .fetch_one(&mut *tx)
     .await
     {
         Ok(row) => row,
@@ -913,7 +913,7 @@ async fn save_product_delivery_config(
         // Supprimer les anciennes entrées pour cette configuration
         sqlx::query("DELETE FROM product_stock_locations WHERE product_delivery_config_id = $1")
             .bind(config_id)
-            .execute(&mut tx)
+            .execute(&mut *tx)
             .await?;
 
         // Insérer les nouveaux lieux de stockage avec leurs quantités
@@ -946,7 +946,7 @@ async fn save_product_delivery_config(
             .bind(storage_location_id)
             .bind(quantity)
             .bind(user.id)
-            .execute(&mut tx)
+            .execute(&mut *tx)
             .await?;
         }
     }
