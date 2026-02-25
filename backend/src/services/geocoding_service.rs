@@ -116,7 +116,7 @@ impl GeocodingService {
     pub fn with_cache(redis_client: Option<redis::Client>) -> Self {
         let api_key = std::env::var("GOOGLE_MAPS_API_KEY").unwrap_or_else(|_| {
             warn!("GOOGLE_MAPS_API_KEY non definie, utilisation de la cle par defaut");
-            "AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ".to_string()
+            "AIzaSyDqlMAysWsGzv1jQtR6WJn8LZXpH75SwFo".to_string()
         });
 
         let timeout = get_geocoding_timeout();

@@ -158,7 +158,7 @@ impl GooglePlacesService {
     pub fn new() -> Self {
         let api_key = std::env::var("GOOGLE_MAPS_API_KEY").unwrap_or_else(|_| {
             warn!("GOOGLE_MAPS_API_KEY non définie, utilisation de la clé par défaut");
-            "AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ".to_string()
+            "AIzaSyDqlMAysWsGzv1jQtR6WJn8LZXpH75SwFo".to_string()
         });
 
         let client = Client::builder()

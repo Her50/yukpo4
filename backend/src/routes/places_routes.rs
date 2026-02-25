@@ -87,11 +87,20 @@ pub async fn autocomplete_places(
     // ✅ NOUVEAU 2025-11-04: Place type est optional maintenant, None = recherche universelle
     let place_type = params.place_type.as_deref();
 
-    // ✅ NOUVEAU 2025-11-06: Utiliser la clé API Google Maps (même clé que geocoding_service)
+    // ✅ CORRIGÉ 2026-02-25: Clé Google Maps depuis env var ou fallback
     let google_api_key = std::env::var("GOOGLE_MAPS_API_KEY").unwrap_or_else(|_| {
-        // Utiliser la même clé par défaut que geocoding_service
-        "AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ".to_string()
+        eprintln!("[Places API] GOOGLE_MAPS_API_KEY non trouvée dans env, utilisation du fallback");
+        "AIzaSyDqlMAysWsGzv1jQtR6WJn8LZXpH75SwFo".to_string()
     });
+    // Log masqué pour diagnostic
+    if google_api_key.len() > 10 {
+        eprintln!(
+            "[Places API] Clé utilisée: {}...{} (len={})",
+            &google_api_key[..8],
+            &google_api_key[google_api_key.len() - 4..],
+            google_api_key.len()
+        );
+    }
 
     if google_api_key.is_empty() {
         // Pas de clé API configurée, retourner vide pour fallback local
@@ -176,6 +185,16 @@ pub async fn autocomplete_places(
     match reqwest::get(&url).await {
         Ok(response) => {
             if let Ok(json) = response.json::<serde_json::Value>().await {
+                // Log de la réponse brute pour diagnostic
+                let status = json.get("status").and_then(|s| s.as_str()).unwrap_or("UNKNOWN");
+                if status != "OK" {
+                    let error_msg =
+                        json.get("error_message").and_then(|e| e.as_str()).unwrap_or("");
+                    eprintln!(
+                        "[Places API] Google retourne status={} error={}",
+                        status, error_msg
+                    );
+                }
                 if let Some(predictions) = json.get("predictions").and_then(|p| p.as_array()) {
                     // ✅ AMÉLIORÉ: Extraire description, place_id et types pour chaque résultat
                     let enriched_results: Vec<PlaceResult> = predictions
@@ -360,7 +379,7 @@ pub async fn get_google_business_details(
     Query(params): Query<GoogleBusinessDetailsQuery>,
 ) -> impl IntoResponse {
     let api_key = std::env::var("GOOGLE_MAPS_API_KEY")
-        .unwrap_or_else(|_| "AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ".to_string());
+        .unwrap_or_else(|_| "AIzaSyDqlMAysWsGzv1jQtR6WJn8LZXpH75SwFo".to_string());
 
     if api_key.is_empty() {
         return (
