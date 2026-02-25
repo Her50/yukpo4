@@ -1,34 +1,33 @@
 // ✅ Écran Hôpital MODERNE - Refonte complète avec UX de niveau mondial
 // ÉTAPE 1: Structure de base avec autocomplete et fonctionnalités IA
 
-import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
-import React, { useCallback, useEffect, useState } from 'react';
+import * as ImageManipulator from 'expo-image-manipulator';
+import * as ImagePicker from 'expo-image-picker';
+import { LinearGradient } from 'expo-linear-gradient';
+import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
+    Alert,
     FlatList,
+    Image,
     Modal,
-    RefreshControl,
     ScrollView,
     StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
-    View,
-    Image,
-    Alert,
+    View
 } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
-import * as ImageManipulator from 'expo-image-manipulator';
+import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
-import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
-import { useLocation } from '../../contexts/LocationContext';
-import { hospitalService, MedicalService, PathologySearchResult, MedicalServiceAvailability } from '../../services/hospitalService';
-import { modernColors } from '../../theme/modernTheme';
-import { hapticPress } from '../../utils/hapticFeedback';
-import { imageAnalysisService, ImageAnalysisResult } from '../../services/imageAnalysisService';
 import { useToaster } from '../../components/ToasterProvider';
+import { useLocation } from '../../contexts/LocationContext';
+import { useAIWithFallback } from '../../hooks/useAIWithFallback';
+import { hospitalService, MedicalService, MedicalServiceAvailability, PathologySearchResult } from '../../services/hospitalService';
+import { imageAnalysisService } from '../../services/imageAnalysisService';
+import { hapticPress } from '../../utils/hapticFeedback';
 
 type SortOption = 'relevance' | 'price_asc' | 'price_desc' | 'distance_asc' | 'name_asc';
 
@@ -56,7 +55,8 @@ const HopitalHomeScreen: React.FC = () => {
     const [showAutocomplete, setShowAutocomplete] = useState(false);
     const [selectedService, setSelectedService] = useState<MedicalService | null>(null);
 
-    // États IA
+    // États IA (avec fallback 3 niveaux)
+    const { searchPathology: aiSearchPathology } = useAIWithFallback();
     const [showAIModal, setShowAIModal] = useState(false);
     const [aiMode, setAiMode] = useState<'pathology' | 'image' | null>(null);
     const [pathologyQuery, setPathologyQuery] = useState('');
@@ -115,17 +115,17 @@ const HopitalHomeScreen: React.FC = () => {
             loadAvailableServices();
             return;
         }
-        
+
         const query = searchQuery.trim() || autocompleteQuery.trim();
         setShowAutocomplete(false);
-        
+
         // Rechercher les services disponibles avec système de disponibilité
         if (useAvailability && location?.coords) {
             loadAvailableServices(query);
         } else {
             // Navigation vers recherche d'hôpitaux avec ce service
-            navigation.navigate('HopitalList' as never, { 
-                serviceType: query 
+            navigation.navigate('HopitalList' as never, {
+                serviceType: query
             } as never);
         }
     };
@@ -136,14 +136,14 @@ const HopitalHomeScreen: React.FC = () => {
         setSearchQuery(service.name);
         setAutocompleteQuery(service.name);
         setShowAutocomplete(false);
-        
+
         // Rechercher les services disponibles avec système de disponibilité
         if (useAvailability && location?.coords) {
             loadAvailableServices(service.name);
         } else {
             // Navigation vers recherche d'hôpitaux avec ce service
-            navigation.navigate('HopitalList' as never, { 
-                serviceType: service.name 
+            navigation.navigate('HopitalList' as never, {
+                serviceType: service.name
             } as never);
         }
     };
@@ -153,7 +153,7 @@ const HopitalHomeScreen: React.FC = () => {
         try {
             setLoading(true);
             setError(null);
-            
+
             const response = await hospitalService.searchAvailableMedicalServices(
                 serviceName || searchQuery || undefined,
                 location?.coords ? {
@@ -162,7 +162,7 @@ const HopitalHomeScreen: React.FC = () => {
                 } : undefined,
                 50 // 50km par défaut
             );
-            
+
             if (response.success && response.data) {
                 setAvailableServices(response.data);
             } else {
@@ -177,7 +177,7 @@ const HopitalHomeScreen: React.FC = () => {
         }
     };
 
-    // ✅ CORRIGÉ: Fonction de recherche de pathologie avec toast et modal fonctionnel
+    // ✅ REFONDU: Recherche pathologie avec fallback 3 niveaux (ne plante plus jamais)
     const handleSearchPathology = async () => {
         if (!pathologyQuery.trim()) {
             toaster.warning('Veuillez entrer une recherche de pathologie');
@@ -187,47 +187,32 @@ const HopitalHomeScreen: React.FC = () => {
         hapticPress();
         setLoadingAI(true);
         setAiMode('pathology');
-        setShowAIModal(true); // ✅ Ouvrir le modal avant la recherche
-        setPathologyResults([]); // Réinitialiser les résultats
+        setShowAIModal(true);
+        setPathologyResults([]);
 
-        try {
-            const response = await hospitalService.searchPathology(
-                pathologyQuery.trim(),
-                undefined,
-                location?.coords ? { lat: location.coords.latitude, lng: location.coords.longitude } : undefined
-            );
-            
-            // Gérer différents formats de réponse
-            if (response.success) {
-                const results = response.results || response.data?.results || response.data || [];
-                if (Array.isArray(results) && results.length > 0) {
-                    setPathologyResults(results);
-                    toaster.success(`${results.length} pathologie(s) trouvée(s)`);
-                } else {
-                    toaster.warning('Aucune pathologie trouvée. Essayez avec d\'autres symptômes.');
-                    setPathologyResults([]);
-                }
+        const loc = location?.coords ? { lat: location.coords.latitude, lng: location.coords.longitude } : undefined;
+        const result = await aiSearchPathology(pathologyQuery.trim(), loc);
+
+        if (result.success && result.data && Array.isArray(result.data) && result.data.length > 0) {
+            setPathologyResults(result.data);
+            if (result.source === 'local') {
+                toaster?.show?.('Résultats basés sur des données locales — consultez un médecin', 'info');
             } else {
-                const errorMsg = response.message || response.error || 'L\'IA de recherche pathologique n\'est pas encore opérationnelle.';
-                toaster.error(errorMsg);
-                setPathologyResults([]);
+                toaster?.show?.(`${result.data.length} pathologie(s) trouvée(s)`, 'success');
             }
-        } catch (err: any) {
-            console.error('[HopitalHomeScreen] Erreur recherche pathologie:', err);
-            const errorMsg = err.message || err.error || 'Erreur lors de la recherche. L\'IA de recherche pathologique n\'est peut-être pas encore opérationnelle.';
-            toaster.error(errorMsg);
+        } else {
+            toaster?.show?.('Aucun résultat. Consultez un médecin généraliste.', 'info');
             setPathologyResults([]);
-        } finally {
-            setLoadingAI(false);
         }
+        setLoadingAI(false);
     };
 
     const handlePickImage = async (source: 'camera' | 'gallery') => {
         hapticPress();
-        
+
         try {
             let result;
-            
+
             if (source === 'camera') {
                 // Demander permission caméra
                 const { status: cameraStatus } = await ImagePicker.requestCameraPermissionsAsync();
@@ -235,7 +220,7 @@ const HopitalHomeScreen: React.FC = () => {
                     Alert.alert('Permission requise', 'Veuillez autoriser l\'accès à la caméra');
                     return;
                 }
-                
+
                 result = await ImagePicker.launchCameraAsync({
                     mediaTypes: ImagePicker.MediaTypeOptions.Images,
                     allowsEditing: true,
@@ -249,7 +234,7 @@ const HopitalHomeScreen: React.FC = () => {
                     Alert.alert('Permission requise', 'Veuillez autoriser l\'accès à la galerie');
                     return;
                 }
-                
+
                 result = await ImagePicker.launchImageLibraryAsync({
                     mediaTypes: ImagePicker.MediaTypeOptions.Images,
                     allowsEditing: true,
@@ -260,7 +245,7 @@ const HopitalHomeScreen: React.FC = () => {
 
             if (!result.canceled && result.assets[0]) {
                 const asset = result.assets[0];
-                
+
                 // ✅ CORRIGÉ: Convertir l'image en JPEG avec expo-image-manipulator
                 // Cela garantit que l'image est dans un format supporté par OpenAI (JPEG, PNG, GIF, WEBP)
                 const manipulatedImage = await ImageManipulator.manipulateAsync(
@@ -472,11 +457,11 @@ const HopitalHomeScreen: React.FC = () => {
                         }}
                         activeOpacity={0.7}
                     >
-                        <SafeIcon 
-                            name={getCurrentSortIcon()} 
-                            size={18} 
-                            color="#6B7280" 
-                            type="lucide" 
+                        <SafeIcon
+                            name={getCurrentSortIcon()}
+                            size={18}
+                            color="#6B7280"
+                            type="lucide"
                         />
                         <Text style={styles.sortButtonText}>
                             {sortOptions.find(o => o.value === sortBy)?.label || 'Trier'}
@@ -636,7 +621,7 @@ const AIModal: React.FC<AIModalProps> = ({
                         </TouchableOpacity>
                     </View>
 
-                    <KeyboardAwareScreen 
+                    <KeyboardAwareScreen
                         style={styles.modalScroll}
                         contentContainerStyle={styles.modalScrollContent}
                     >
@@ -649,7 +634,7 @@ const AIModal: React.FC<AIModalProps> = ({
                                     <Text style={styles.pathologySearchSubtitle}>
                                         Décrivez vos symptômes ou recherchez une pathologie pour obtenir des recommandations médicales
                                     </Text>
-                                    
+
                                     <View style={styles.pathologyInputContainer}>
                                         <View style={styles.pathologySearchBar}>
                                             <TextInput
@@ -682,7 +667,7 @@ const AIModal: React.FC<AIModalProps> = ({
                                             </TouchableOpacity>
                                         </View>
                                     </View>
-                                    
+
                                     <TouchableOpacity
                                         style={[
                                             styles.searchButton,
@@ -704,7 +689,7 @@ const AIModal: React.FC<AIModalProps> = ({
                                             </>
                                         )}
                                     </TouchableOpacity>
-                                    
+
                                     {!pathologyQuery.trim() && (
                                         <Text style={styles.pathologyHint}>
                                             💡 Exemples : "Douleurs thoraciques", "Fièvre persistante", "Troubles digestifs"
@@ -728,8 +713,8 @@ const AIModal: React.FC<AIModalProps> = ({
                                                         <View style={[styles.urgencyBadge, styles[`urgency${String(result.urgency_level).charAt(0).toUpperCase() + String(result.urgency_level).slice(1)}`]]}>
                                                             <Text style={styles.urgencyText}>
                                                                 {result.urgency_level === 'critical' ? 'Critique' :
-                                                                 result.urgency_level === 'high' ? 'Urgent' :
-                                                                 result.urgency_level === 'moderate' ? 'Modéré' : 'Faible'}
+                                                                    result.urgency_level === 'high' ? 'Urgent' :
+                                                                        result.urgency_level === 'moderate' ? 'Modéré' : 'Faible'}
                                                             </Text>
                                                         </View>
                                                     )}
@@ -737,7 +722,7 @@ const AIModal: React.FC<AIModalProps> = ({
                                                 {result.description && (
                                                     <Text style={styles.pathologyDescription}>{String(result.description)}</Text>
                                                 )}
-                                                
+
                                                 {result.symptoms && Array.isArray(result.symptoms) && result.symptoms.length > 0 && (
                                                     <View style={styles.symptomsContainer}>
                                                         <Text style={styles.symptomsTitle}>Symptômes:</Text>
@@ -823,21 +808,21 @@ const AIModal: React.FC<AIModalProps> = ({
                                             <SafeIcon name="check-circle" size={24} color="#DC2626" type="lucide" />
                                             <Text style={styles.analysisTitle}>Rapport d'analyse IA</Text>
                                         </View>
-                                        
+
                                         {imageAnalysis.description && (
                                             <View style={styles.analysisSection}>
                                                 <Text style={styles.analysisSectionTitle}>Description</Text>
                                                 <Text style={styles.analysisText}>{String(imageAnalysis.description)}</Text>
                                             </View>
                                         )}
-                                        
+
                                         {imageAnalysis.interpretation && (
                                             <View style={styles.analysisSection}>
                                                 <Text style={styles.analysisSectionTitle}>Interprétation</Text>
                                                 <Text style={styles.analysisText}>{String(imageAnalysis.interpretation)}</Text>
                                             </View>
                                         )}
-                                        
+
                                         {imageAnalysis.tags && Array.isArray(imageAnalysis.tags) && imageAnalysis.tags.length > 0 && (
                                             <View style={styles.analysisSection}>
                                                 <Text style={styles.analysisSectionTitle}>Éléments détectés</Text>
@@ -852,7 +837,7 @@ const AIModal: React.FC<AIModalProps> = ({
                                                 </View>
                                             </View>
                                         )}
-                                        
+
                                         {imageAnalysis.recommendations && Array.isArray(imageAnalysis.recommendations) && imageAnalysis.recommendations.length > 0 && (
                                             <View style={styles.analysisSection}>
                                                 <Text style={styles.analysisSectionTitle}>Recommandations</Text>
@@ -866,7 +851,7 @@ const AIModal: React.FC<AIModalProps> = ({
                                                     ))}
                                             </View>
                                         )}
-                                        
+
                                         {imageAnalysis.confidence != null && (
                                             <View style={styles.confidenceContainer}>
                                                 <Text style={styles.confidenceLabel}>

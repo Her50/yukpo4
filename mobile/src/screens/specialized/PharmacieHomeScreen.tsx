@@ -1,13 +1,16 @@
 // ✅ Écran Pharmacie MODERNE - Refonte complète avec UX de niveau mondial
 // ÉTAPE 1: Structure de base et header
 
-import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
+import * as ImagePicker from 'expo-image-picker';
+import { LinearGradient } from 'expo-linear-gradient';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
+    Alert,
     Animated,
     FlatList,
+    Image,
     Modal,
     RefreshControl,
     ScrollView,
@@ -16,21 +19,18 @@ import {
     TextInput,
     TouchableOpacity,
     View,
-    Image,
-    Alert,
 } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
+import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
-import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
+import { useToaster } from '../../components/ToasterProvider';
 import { useLocation } from '../../contexts/LocationContext';
-import { pharmacyProductService, PharmacyProduct, ProductSearchFilters } from '../../services/pharmacyProductService';
-import { pharmacyService, DosageRecommendation, MedicationInteraction } from '../../services/pharmacyService';
+import { useAIWithFallback } from '../../hooks/useAIWithFallback';
+import { imageAnalysisService } from '../../services/imageAnalysisService';
+import { PharmacyProduct, pharmacyProductService, ProductSearchFilters } from '../../services/pharmacyProductService';
+import { DosageRecommendation, MedicationInteraction, pharmacyService } from '../../services/pharmacyService';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
-import { useAIServices } from '../../hooks/useAIServices';
-import { imageAnalysisService } from '../../services/imageAnalysisService';
-import { useToaster } from '../../components/ToasterProvider';
 
 type SortOption = 'relevance' | 'price_asc' | 'price_desc' | 'distance_asc' | 'name_asc';
 
@@ -70,14 +70,14 @@ const PharmacieHomeScreen: React.FC = () => {
     const [interactionsData, setInteractionsData] = useState<MedicationInteraction | null>(null);
     const [loadingAI, setLoadingAI] = useState(false);
 
-    // États pour assistant IA conversationnel
-    const { askAI, loading: aiLoading } = useAIServices();
+    // États pour assistant IA conversationnel (avec fallback 3 niveaux)
+    const { askPharmacyQuestion, checkDrugInteractions, getDosageRecommendation, loading: aiLoading } = useAIWithFallback();
     const [aiQuestion, setAiQuestion] = useState('');
     const [aiResponse, setAiResponse] = useState<string | null>(null);
     const [showAIChat, setShowAIChat] = useState(false);
     const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
     const [aiChatHeight] = useState(new Animated.Value(0)); // ✅ NOUVEAU: Animation pour le déroulement
-    
+
     // États pour analyse d'image
     const [selectedMedicationImage, setSelectedMedicationImage] = useState<string | null>(null);
     const [imageAnalysisResult, setImageAnalysisResult] = useState<any | null>(null);
@@ -144,10 +144,10 @@ const PharmacieHomeScreen: React.FC = () => {
             };
 
             const response = await pharmacyProductService.searchProducts(searchFilters);
-            
+
             if (response.success && response.data?.products) {
                 let results = response.data.products;
-                
+
                 // Limiter à 20 résultats pour l'affichage initial
                 if (initialLoad && results.length > 20) {
                     results = results.slice(0, 20);
@@ -172,7 +172,7 @@ const PharmacieHomeScreen: React.FC = () => {
                         }
                     });
                 }
-                
+
                 setMedications(results);
                 setTotalResults(results.length);
             } else {
@@ -239,48 +239,33 @@ const PharmacieHomeScreen: React.FC = () => {
         loadMedications(false);
     };
 
-    // ✅ MODIFIÉ: Fonction pour poser une question à l'IA - maintenant opérationnelle
+    // ✅ REFONDU: Fonction IA avec fallback 3 niveaux (ne plante plus jamais)
     const handleAskAI = async () => {
         if (!aiQuestion.trim()) {
             toaster.warning('Veuillez saisir une question');
             return;
         }
-        
+
         hapticPress();
         setAiResponse(null);
-        
-        try {
-            const context = {
-                category: 'pharmacie',
-                currentSearch: searchQuery,
-                medications: medications.slice(0, 5).map(m => m.nom_produit),
-                location: location?.coords ? {
-                    lat: location.coords.latitude,
-                    lng: location.coords.longitude
-                } : null
-            };
-            
-            const response = await askAI(aiQuestion, context);
-            if (response && response.message) {
-                const message = response.message || response.text || response.response || 'Réponse non disponible';
-                setAiResponse(message);
-                
-                // ✅ Mettre à jour les suggestions si fournies
-                if (response.suggestions && response.suggestions.length > 0) {
-                    setAiSuggestions(response.suggestions);
-                }
-                
-                toaster.success('Réponse IA générée');
-            } else {
-                const errorMsg = 'Désolé, l\'assistant IA n\'a pas pu traiter votre question. Veuillez réessayer ou consultez votre pharmacien.';
-                setAiResponse(errorMsg);
-                toaster.error('Impossible d\'obtenir une réponse IA');
+
+        const medNames = medications.slice(0, 5).map(m => m.nom_produit);
+        const result = await askPharmacyQuestion(aiQuestion, medNames);
+
+        if (result.success && result.data) {
+            const message = result.data.message || 'Réponse non disponible';
+            setAiResponse(message);
+            if (result.data.suggestions?.length > 0) {
+                setAiSuggestions(result.data.suggestions);
             }
-        } catch (err: any) {
-            console.error('[PharmacieHomeScreen] Erreur IA:', err);
-            const errorMsg = err.message || err.error || 'L\'assistant IA n\'est pas encore opérationnel. Veuillez réessayer plus tard.';
-            setAiResponse(`Désolé, je n'ai pas pu traiter votre question. ${errorMsg}`);
-            toaster.error('Erreur lors de la requête IA');
+            if (result.source === 'local') {
+                toaster?.show?.('Réponse basée sur des données locales', 'info');
+            } else {
+                toaster?.show?.('Réponse IA générée', 'success');
+            }
+        } else {
+            setAiResponse('Consultez votre pharmacien pour des conseils personnalisés.');
+            toaster?.show?.('IA temporairement indisponible', 'error');
         }
     };
 
@@ -311,17 +296,17 @@ const PharmacieHomeScreen: React.FC = () => {
     // Fonction pour analyser une image de médicament
     const handleAnalyzeMedicationImage = async (source: 'camera' | 'gallery') => {
         hapticPress();
-        
+
         try {
             let result;
-            
+
             if (source === 'camera') {
                 const { status: cameraStatus } = await ImagePicker.requestCameraPermissionsAsync();
                 if (cameraStatus !== 'granted') {
                     Alert.alert('Permission requise', 'Veuillez autoriser l\'accès à la caméra');
                     return;
                 }
-                
+
                 result = await ImagePicker.launchCameraAsync({
                     mediaTypes: ImagePicker.MediaTypeOptions.Images,
                     allowsEditing: true,
@@ -334,7 +319,7 @@ const PharmacieHomeScreen: React.FC = () => {
                     Alert.alert('Permission requise', 'Veuillez autoriser l\'accès à la galerie');
                     return;
                 }
-                
+
                 result = await ImagePicker.launchImageLibraryAsync({
                     mediaTypes: ImagePicker.MediaTypeOptions.Images,
                     allowsEditing: true,
@@ -357,12 +342,12 @@ const PharmacieHomeScreen: React.FC = () => {
                     // Gérer différents formats de réponse
                     const analysis = analysisResponse.data.analysis || analysisResponse.data;
                     setImageAnalysisResult(analysis);
-                    
+
                     // Afficher le résultat dans le chat IA
                     const description = analysis.description || analysis.interpretation || 'Analyse complétée';
-                    const recommendations = analysis.recommendations ? 
+                    const recommendations = analysis.recommendations ?
                         (Array.isArray(analysis.recommendations) ? analysis.recommendations.join('\n') : analysis.recommendations) : '';
-                    
+
                     setAiResponse(
                         `Analyse du médicament:\n\n${description}\n\n` +
                         (recommendations ? `Recommandations:\n${recommendations}` : '')
@@ -406,45 +391,32 @@ const PharmacieHomeScreen: React.FC = () => {
         );
     };
 
-    // Fonctions IA
+    // ✅ REFONDU: Fonctions IA avec fallback 3 niveaux (ne plante plus jamais)
     const handleGetDosage = async (medication: PharmacyProduct) => {
         hapticPress();
         setSelectedMedication(medication);
         setLoadingAI(true);
         setShowDosageModal(true);
-        
-        try {
-            const response = await pharmacyService.suggestDosage(medication.nom_produit);
-            
-            // Gérer différents formats de réponse
-            if (response.success) {
-                const dosage = response.data?.dosage || response.dosage || response.data;
-                if (dosage && (dosage.dosage || dosage.frequency)) {
-                    setDosageData({
-                        dosage: dosage.dosage || 'Consultez votre médecin',
-                        frequency: dosage.frequency || 'Selon prescription',
-                        duration: dosage.duration || 'Selon prescription',
-                        precautions: Array.isArray(dosage.precautions) ? dosage.precautions : [],
-                        warnings: Array.isArray(dosage.warnings) ? dosage.warnings : [],
-                    });
-                } else {
-                    Alert.alert(
-                        'Information non disponible',
-                        'La posologie IA n\'est pas encore disponible pour ce médicament. Consultez votre médecin ou pharmacien.',
-                        [{ text: 'OK', onPress: () => setShowDosageModal(false) }]
-                    );
-                }
-            } else {
-                const errorMsg = response.message || response.error || 'Impossible d\'obtenir la posologie. L\'IA de posologie n\'est peut-être pas encore opérationnelle.';
-                Alert.alert('Erreur', errorMsg, [{ text: 'OK', onPress: () => setShowDosageModal(false) }]);
+
+        const result = await getDosageRecommendation(medication.nom_produit);
+
+        if (result.success && result.data) {
+            const dosage = result.data;
+            setDosageData({
+                dosage: dosage.dosage || 'Consultez votre médecin',
+                frequency: dosage.frequency || 'Selon prescription',
+                duration: dosage.duration || 'Selon prescription',
+                precautions: Array.isArray(dosage.precautions) ? dosage.precautions : [],
+                warnings: Array.isArray(dosage.warnings) ? dosage.warnings : [],
+            });
+            if (result.source === 'local') {
+                toaster?.show?.('Information basée sur des données locales', 'info');
             }
-        } catch (err: any) {
-            console.error('[PharmacieHomeScreen] Erreur posologie:', err);
-            const errorMsg = err.message || err.error || 'Erreur lors de la récupération de la posologie. L\'IA de posologie n\'est peut-être pas encore opérationnelle.';
-            Alert.alert('Erreur', errorMsg, [{ text: 'OK', onPress: () => setShowDosageModal(false) }]);
-        } finally {
-            setLoadingAI(false);
+        } else {
+            setShowDosageModal(false);
+            Alert.alert('Indisponible', 'Consultez votre pharmacien pour la posologie de ce médicament.');
         }
+        setLoadingAI(false);
     };
 
     const handleCheckInteractions = async (medication: PharmacyProduct) => {
@@ -452,38 +424,71 @@ const PharmacieHomeScreen: React.FC = () => {
         setSelectedMedication(medication);
         setLoadingAI(true);
         setShowInteractionsModal(true);
-        
+
+        const result = await checkDrugInteractions([medication.nom_produit]);
+
+        if (result.success && result.data) {
+            const interaction = result.data;
+            setInteractionsData({
+                severity: interaction.severity || 'none',
+                description: interaction.description || 'Aucune interaction connue',
+                recommendation: interaction.recommendation || 'Consultez votre pharmacien',
+                alternative_suggestions: Array.isArray(interaction.alternative_suggestions) ?
+                    interaction.alternative_suggestions : [],
+            });
+            if (result.source === 'local') {
+                toaster?.show?.('Consultez votre pharmacien pour une vérification complète', 'info');
+            }
+        } else {
+            setShowInteractionsModal(false);
+            Alert.alert('Indisponible', 'Consultez votre pharmacien pour vérifier les interactions.');
+        }
+        setLoadingAI(false);
+    };
+
+    // ✅ NOUVEAU: Vérifier disponibilité d'un médicament dans une pharmacie
+    const handleCheckAvailability = async (medication: PharmacyProduct) => {
+        hapticPress();
         try {
-            const response = await pharmacyService.checkInteractions([medication.nom_produit]);
-            
-            // Gérer différents formats de réponse
-            if (response.success) {
-                const interaction = response.data?.interaction || response.interaction || response.data;
-                if (interaction && (interaction.severity || interaction.description)) {
-                    setInteractionsData({
-                        severity: interaction.severity || 'none',
-                        description: interaction.description || 'Aucune interaction connue',
-                        recommendation: interaction.recommendation || 'Consultez votre pharmacien',
-                        alternative_suggestions: Array.isArray(interaction.alternative_suggestions) ? 
-                            interaction.alternative_suggestions : [],
-                    });
-                } else {
-                    Alert.alert(
-                        'Information non disponible',
-                        'Les interactions médicamenteuses ne sont pas encore disponibles pour ce médicament. Consultez votre pharmacien.',
-                        [{ text: 'OK', onPress: () => setShowInteractionsModal(false) }]
-                    );
-                }
+            const response = await pharmacyService.checkAvailability(
+                medication.pharmacy_service_id, medication.nom_produit, 1
+            );
+            if (response?.available) {
+                Alert.alert(
+                    '✅ Disponible',
+                    `${medication.nom_produit} est en stock (${response.medication?.stock_quantity || '?'} unités).\nPrix: ${response.medication?.price ? response.medication.price.toLocaleString() + ' FCFA' : 'Sur demande'}`,
+                    [
+                        { text: 'Réserver', onPress: () => handleReserveMedication(medication) },
+                        { text: 'OK' },
+                    ]
+                );
             } else {
-                const errorMsg = response.message || response.error || 'Impossible de vérifier les interactions. L\'IA de vérification d\'interactions n\'est peut-être pas encore opérationnelle.';
-                Alert.alert('Erreur', errorMsg, [{ text: 'OK', onPress: () => setShowInteractionsModal(false) }]);
+                Alert.alert('❌ Indisponible', `${medication.nom_produit} n'est pas disponible dans cette pharmacie.`);
             }
         } catch (err: any) {
-            console.error('[PharmacieHomeScreen] Erreur interactions:', err);
-            const errorMsg = err.message || err.error || 'Erreur lors de la vérification des interactions. L\'IA de vérification d\'interactions n\'est peut-être pas encore opérationnelle.';
-            Alert.alert('Erreur', errorMsg, [{ text: 'OK', onPress: () => setShowInteractionsModal(false) }]);
-        } finally {
-            setLoadingAI(false);
+            console.warn('[PharmacieHome] Erreur vérification stock:', err);
+            toaster?.show?.('Impossible de vérifier le stock', 'error');
+        }
+    };
+
+    // ✅ NOUVEAU: Réserver un médicament
+    const handleReserveMedication = async (medication: PharmacyProduct) => {
+        hapticPress();
+        try {
+            const response = await pharmacyService.reserveMedication(
+                medication.pharmacy_service_id, medication.nom_produit, 1
+            );
+            if (response?.reservation_id) {
+                Alert.alert(
+                    '✅ Réservé !',
+                    `Votre réservation est confirmée.\nExpire: ${response.expiry_time || 'dans 2h'}\nPrésentez-vous à la pharmacie pour récupérer votre médicament.`
+                );
+            } else {
+                Alert.alert('Erreur', response?.message || 'Impossible de réserver ce médicament.');
+            }
+        } catch (err: any) {
+            console.warn('[PharmacieHome] Erreur réservation:', err);
+            Alert.alert('Erreur', 'Impossible de réserver. Réessayez ou contactez la pharmacie.');
         }
     };
 
@@ -526,11 +531,11 @@ const PharmacieHomeScreen: React.FC = () => {
                             style={styles.filterButton}
                             activeOpacity={0.7}
                         >
-                            <SafeIcon 
-                                name="filter" 
-                                size={22} 
-                                color="#FFFFFF" 
-                                type="lucide" 
+                            <SafeIcon
+                                name="filter"
+                                size={22}
+                                color="#FFFFFF"
+                                type="lucide"
                             />
                             {activeFiltersCount > 0 && (
                                 <View style={styles.filterBadge}>
@@ -612,11 +617,11 @@ const PharmacieHomeScreen: React.FC = () => {
                         }}
                         activeOpacity={0.7}
                     >
-                        <SafeIcon 
-                            name={getCurrentSortIcon()} 
-                            size={18} 
-                            color="#6B7280" 
-                            type="lucide" 
+                        <SafeIcon
+                            name={getCurrentSortIcon()}
+                            size={18}
+                            color="#6B7280"
+                            type="lucide"
                         />
                         <Text style={styles.sortButtonText}>
                             {sortOptions.find(o => o.value === sortBy)?.label || 'Trier'}
@@ -631,7 +636,7 @@ const PharmacieHomeScreen: React.FC = () => {
                         onPress={() => {
                             hapticPress();
                             const newValue = !showAIChat;
-                            
+
                             // ✅ CORRIGÉ: Mettre à jour l'état d'abord si on ouvre, puis animer
                             if (newValue) {
                                 setShowAIChat(true);
@@ -666,17 +671,17 @@ const PharmacieHomeScreen: React.FC = () => {
                                     Posez vos questions sur les médicaments
                                 </Text>
                             </View>
-                            <SafeIcon 
-                                name={showAIChat ? "chevron-up" : "chevron-down"} 
-                                size={20} 
-                                color="#6B7280" 
-                                type="lucide" 
+                            <SafeIcon
+                                name={showAIChat ? "chevron-up" : "chevron-down"}
+                                size={20}
+                                color="#6B7280"
+                                type="lucide"
                             />
                         </View>
                     </TouchableOpacity>
 
                     {showAIChat && (
-                        <Animated.View 
+                        <Animated.View
                             style={[
                                 styles.aiChatWrapper,
                                 {
@@ -689,7 +694,7 @@ const PharmacieHomeScreen: React.FC = () => {
                                 }
                             ]}
                         >
-                            <KeyboardAwareScreen 
+                            <KeyboardAwareScreen
                                 style={styles.aiChatScrollView}
                                 contentContainerStyle={styles.aiChatScrollContent}
                                 extraScrollHeight={150}
@@ -718,8 +723,8 @@ const PharmacieHomeScreen: React.FC = () => {
                                 {/* Aperçu image sélectionnée */}
                                 {selectedMedicationImage && (
                                     <View style={styles.imagePreviewContainer}>
-                                        <Image 
-                                            source={{ uri: selectedMedicationImage }} 
+                                        <Image
+                                            source={{ uri: selectedMedicationImage }}
                                             style={styles.imagePreview}
                                             resizeMode="contain"
                                         />
@@ -739,8 +744,8 @@ const PharmacieHomeScreen: React.FC = () => {
                                 {aiSuggestions.length > 0 && (
                                     <View style={styles.aiSuggestionsContainer}>
                                         <Text style={styles.aiSuggestionsTitle}>Suggestions :</Text>
-                                        <ScrollView 
-                                            horizontal 
+                                        <ScrollView
+                                            horizontal
                                             showsHorizontalScrollIndicator={true}
                                             contentContainerStyle={styles.aiSuggestionsScroll}
                                             nestedScrollEnabled={true}
@@ -804,7 +809,7 @@ const PharmacieHomeScreen: React.FC = () => {
                                             <SafeIcon name="brain" size={16} color="#059669" type="lucide" />
                                             <Text style={styles.aiResponseTitle}>Réponse IA</Text>
                                         </View>
-                                        <ScrollView 
+                                        <ScrollView
                                             style={styles.aiResponseTextScroll}
                                             nestedScrollEnabled={true}
                                         >
@@ -964,12 +969,12 @@ interface MedicationCardProps {
     formatPrice: (price?: number) => string;
 }
 
-const MedicationCard: React.FC<MedicationCardProps> = ({ 
-    medication, 
-    onPress, 
-    onGetDosage, 
+const MedicationCard: React.FC<MedicationCardProps> = ({
+    medication,
+    onPress,
+    onGetDosage,
     onCheckInteractions,
-    formatPrice 
+    formatPrice
 }) => {
     return (
         <TouchableOpacity style={styles.medicationCard} onPress={onPress} activeOpacity={0.7}>

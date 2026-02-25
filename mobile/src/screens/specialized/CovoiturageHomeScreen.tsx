@@ -1,34 +1,31 @@
 // ✅ Écran Covoiturage MODERNE - Refonte complète avec UX digne d'une app de covoiturage
 // Structure claire : Recherche de trajets vs Création de trajet
 
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useNavigation } from '@react-navigation/native';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
     FlatList,
-    Modal,
     RefreshControl,
-    ScrollView,
     StyleSheet,
     Text,
-    TextInput,
     TouchableOpacity,
-    View,
+    View
 } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import SafeIcon from '../../components/SafeIcon';
 import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
+import LocationSelector, { LocationObject } from '../../components/LocationSelector';
+import SafeIcon from '../../components/SafeIcon';
+import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import { SafeNativeView } from '../../components/SafeNativeView';
+import { useToaster } from '../../components/ToasterProvider';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLocation } from '../../contexts/LocationContext';
-import { covoiturageService, Covoiturage, SearchCovoituragesFilters, CreateCovoiturageRequest } from '../../services/covoiturageService';
+import { useCurrencyDetection } from '../../hooks/useCurrencyDetection';
+import { Covoiturage, covoiturageService, CreateCovoiturageRequest, SearchCovoituragesFilters } from '../../services/covoiturageService';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
-import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
-import LocationSelector, { LocationObject } from '../../components/LocationSelector';
-import { useCurrencyDetection } from '../../hooks/useCurrencyDetection';
-import { useToaster } from '../../components/ToasterProvider';
 
 type ViewMode = 'search' | 'create';
 
@@ -37,7 +34,7 @@ const CovoiturageHomeScreen: React.FC = () => {
     const { user } = useAuth();
     const { location } = useLocation();
     const toaster = useToaster();
-    
+
     // ✅ NOUVEAU: Vérifier si l'utilisateur est un chauffeur validé
     const [isDriverValidated, setIsDriverValidated] = useState(false);
     const [checkingDriverStatus, setCheckingDriverStatus] = useState(true);
@@ -53,11 +50,11 @@ const CovoiturageHomeScreen: React.FC = () => {
 
             try {
                 // Vérifier depuis les données utilisateur locales d'abord
-                const localCheck = user?.role === 'driver' || 
-                                  (user as any)?.is_driver === true || 
-                                  (user as any)?.driver_status === 'validated' ||
-                                  (user as any)?.driver_status === 'approved';
-                
+                const localCheck = user?.role === 'driver' ||
+                    (user as any)?.is_driver === true ||
+                    (user as any)?.driver_status === 'validated' ||
+                    (user as any)?.driver_status === 'approved';
+
                 if (localCheck) {
                     setIsDriverValidated(true);
                     setCheckingDriverStatus(false);
@@ -67,7 +64,7 @@ const CovoiturageHomeScreen: React.FC = () => {
                 // Si pas trouvé localement, vérifier via API
                 const { apiGet } = await import('../../services/api');
                 const response = await apiGet(`/api/users/${user.id}/driver-status`);
-                
+
                 if (response.success && response.data) {
                     const driverStatus = response.data.driver_status || response.data.is_driver;
                     setIsDriverValidated(driverStatus === 'validated' || driverStatus === 'approved' || driverStatus === true);
@@ -78,8 +75,8 @@ const CovoiturageHomeScreen: React.FC = () => {
                 console.warn('[CovoiturageHomeScreen] Erreur vérification statut chauffeur:', error);
                 // En cas d'erreur, utiliser la vérification locale
                 setIsDriverValidated(
-                    user?.role === 'driver' || 
-                    (user as any)?.is_driver === true || 
+                    user?.role === 'driver' ||
+                    (user as any)?.is_driver === true ||
                     (user as any)?.driver_status === 'validated' ||
                     (user as any)?.driver_status === 'approved'
                 );
@@ -111,15 +108,15 @@ const CovoiturageHomeScreen: React.FC = () => {
     // États pour création de trajet
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [creating, setCreating] = useState(false);
-    
+
     // ✅ NOUVEAU: Détection automatique de devise depuis GPS/localisation
     // Utiliser les états depart/destination qui sont déjà définis
     const detectedCurrency = useCurrencyDetection(
-        typeof depart === 'object' ? depart : 
-        typeof destination === 'object' ? destination : 
-        undefined
+        typeof depart === 'object' ? depart :
+            typeof destination === 'object' ? destination :
+                undefined
     );
-    
+
     const [trajetForm, setTrajetForm] = useState<Partial<CreateCovoiturageRequest>>({
         nombre_places: 4,
         places_disponibles: 3,
@@ -146,7 +143,7 @@ const CovoiturageHomeScreen: React.FC = () => {
                     50,
                     dateDepart.toISOString().split('T')[0]
                 );
-                
+
                 if (response.success && response.data?.data) {
                     setCovoiturages(response.data.data);
                     setTotalResults(response.data.total || 0);
@@ -177,10 +174,10 @@ const CovoiturageHomeScreen: React.FC = () => {
 
     // ✅ NOUVEAU: Vérifier si le bouton de recherche doit être activé
     const canSearch = () => {
-        const departStr = typeof depart === 'string' 
+        const departStr = typeof depart === 'string'
             ? depart.trim()
             : (depart as LocationObject)?.components?.ville || (depart as LocationObject)?.place_name || '';
-        
+
         const destinationStr = typeof destination === 'string'
             ? destination.trim()
             : (destination as LocationObject)?.components?.ville || (destination as LocationObject)?.place_name || '';
@@ -190,12 +187,12 @@ const CovoiturageHomeScreen: React.FC = () => {
 
     const handleSearch = async () => {
         hapticPress();
-        
+
         // ✅ VALIDATION: Vérifier que départ et destination sont remplis
-        const departStr = typeof depart === 'string' 
+        const departStr = typeof depart === 'string'
             ? depart.trim()
             : (depart as LocationObject)?.components?.ville || (depart as LocationObject)?.place_name || '';
-        
+
         const destinationStr = typeof destination === 'string'
             ? destination.trim()
             : (destination as LocationObject)?.components?.ville || (destination as LocationObject)?.place_name || '';
@@ -224,7 +221,7 @@ const CovoiturageHomeScreen: React.FC = () => {
             }
 
             const response = await covoiturageService.searchCovoiturages(filters);
-            
+
             if (response.success && response.data?.data) {
                 setCovoiturages(response.data.data);
                 setTotalResults(response.data.total || 0);
@@ -250,7 +247,7 @@ const CovoiturageHomeScreen: React.FC = () => {
             Alert.alert('Erreur', 'Veuillez remplir le départ et la destination');
             return;
         }
-        
+
         if (!trajetForm.service_id) {
             Alert.alert(
                 'Service requis',
@@ -376,11 +373,11 @@ const CovoiturageHomeScreen: React.FC = () => {
                             ]}
                             disabled={checkingDriverStatus}
                         >
-                            <SafeIcon 
-                                name="plus" 
-                                size={18} 
-                                color={isDriverValidated ? "#FFFFFF" : "#FFFFFF"} 
-                                type="lucide" 
+                            <SafeIcon
+                                name="plus"
+                                size={18}
+                                color={isDriverValidated ? "#FFFFFF" : "#FFFFFF"}
+                                type="lucide"
                             />
                             <Text style={[
                                 styles.publishTrajetTextRight,
@@ -509,7 +506,7 @@ const CovoiturageHomeScreen: React.FC = () => {
                                 ) : (
                                     <>
                                         <SafeIcon name="search" size={20} color="#FFFFFF" type="lucide" />
-                                        <Text 
+                                        <Text
                                             style={[styles.searchButtonText, !canSearch() && styles.searchButtonTextDisabled]}
                                             numberOfLines={1}
                                         >
@@ -627,11 +624,13 @@ interface TrajetCardProps {
     trajet: Covoiturage;
     onPress: () => void;
     onReserve: () => void;
+    onContact?: (type: 'phone' | 'whatsapp') => void;
     formatPrice: (price: number, devise?: string) => string;
     formatTime: (time: string) => string;
 }
 
-const TrajetCard: React.FC<TrajetCardProps> = ({ trajet, onPress, onReserve, formatPrice, formatTime }) => {
+const TrajetCard: React.FC<TrajetCardProps> = ({ trajet, onPress, onReserve, onContact, formatPrice, formatTime }) => {
+    const placesColor = trajet.places_disponibles <= 1 ? '#EF4444' : trajet.places_disponibles <= 2 ? '#F59E0B' : '#10B981';
     return (
         <TouchableOpacity style={styles.trajetCard} onPress={onPress} activeOpacity={0.7}>
             <View style={styles.trajetHeader}>
@@ -709,15 +708,33 @@ const TrajetCard: React.FC<TrajetCardProps> = ({ trajet, onPress, onReserve, for
                         )}
                     </View>
                 )}
-                <TouchableOpacity
-                    style={styles.reserveButton}
-                    onPress={(e) => {
-                        e.stopPropagation();
-                        onReserve();
-                    }}
-                >
-                    <Text style={styles.reserveButtonText}>Réserver</Text>
-                </TouchableOpacity>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    {onContact && (
+                        <TouchableOpacity
+                            style={[styles.reserveButton, { backgroundColor: '#3B82F6', paddingHorizontal: 10 }]}
+                            onPress={(e) => { e.stopPropagation(); onContact('phone'); }}
+                        >
+                            <SafeIcon name="phone" size={14} color="#FFFFFF" type="lucide" />
+                        </TouchableOpacity>
+                    )}
+                    {onContact && (
+                        <TouchableOpacity
+                            style={[styles.reserveButton, { backgroundColor: '#25D366', paddingHorizontal: 10 }]}
+                            onPress={(e) => { e.stopPropagation(); onContact('whatsapp'); }}
+                        >
+                            <SafeIcon name="message-circle" size={14} color="#FFFFFF" type="lucide" />
+                        </TouchableOpacity>
+                    )}
+                    <TouchableOpacity
+                        style={styles.reserveButton}
+                        onPress={(e) => {
+                            e.stopPropagation();
+                            onReserve();
+                        }}
+                    >
+                        <Text style={styles.reserveButtonText}>Réserver</Text>
+                    </TouchableOpacity>
+                </View>
             </View>
         </TouchableOpacity>
     );

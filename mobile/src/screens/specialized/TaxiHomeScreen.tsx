@@ -7,27 +7,25 @@ import {
     ActivityIndicator,
     Alert,
     FlatList,
-    Modal,
+    Linking,
     RefreshControl,
-    ScrollView,
     StyleSheet,
     Text,
-    TextInput,
     TouchableOpacity,
-    View,
+    View
 } from 'react-native';
-import SafeIcon from '../../components/SafeIcon';
 import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
+import LocationSelector, { LocationObject } from '../../components/LocationSelector';
+import SafeIcon from '../../components/SafeIcon';
+import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import { SafeNativeView } from '../../components/SafeNativeView';
+import { useToaster } from '../../components/ToasterProvider';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLocation } from '../../contexts/LocationContext';
-import { taxiService, Taxi, SearchTaxisFilters, CreateTaxiRequest } from '../../services/taxiService';
+import { useCurrencyDetection } from '../../hooks/useCurrencyDetection';
+import { CreateTaxiRequest, SearchTaxisFilters, Taxi, taxiService } from '../../services/taxiService';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
-import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
-import LocationSelector, { LocationObject } from '../../components/LocationSelector';
-import { useCurrencyDetection } from '../../hooks/useCurrencyDetection';
-import { useToaster } from '../../components/ToasterProvider';
 
 type ViewMode = 'search' | 'create';
 
@@ -36,7 +34,7 @@ const TaxiHomeScreen: React.FC = () => {
     const { user } = useAuth();
     const { location, getLocationAddress } = useLocation();
     const toaster = useToaster();
-    
+
     // ✅ NOUVEAU: Vérifier si l'utilisateur est un chauffeur validé
     const [isDriverValidated, setIsDriverValidated] = useState(false);
     const [checkingDriverStatus, setCheckingDriverStatus] = useState(true);
@@ -52,11 +50,11 @@ const TaxiHomeScreen: React.FC = () => {
 
             try {
                 // Vérifier depuis les données utilisateur locales d'abord
-                const localCheck = user?.role === 'driver' || 
-                                  (user as any)?.is_driver === true || 
-                                  (user as any)?.driver_status === 'validated' ||
-                                  (user as any)?.driver_status === 'approved';
-                
+                const localCheck = user?.role === 'driver' ||
+                    (user as any)?.is_driver === true ||
+                    (user as any)?.driver_status === 'validated' ||
+                    (user as any)?.driver_status === 'approved';
+
                 if (localCheck) {
                     setIsDriverValidated(true);
                     setCheckingDriverStatus(false);
@@ -66,7 +64,7 @@ const TaxiHomeScreen: React.FC = () => {
                 // Si pas trouvé localement, vérifier via API
                 const { apiGet } = await import('../../services/api');
                 const response = await apiGet(`/api/users/${user.id}/driver-status`);
-                
+
                 if (response.success && response.data) {
                     const driverStatus = response.data.driver_status || response.data.is_driver;
                     setIsDriverValidated(driverStatus === 'validated' || driverStatus === 'approved' || driverStatus === true);
@@ -77,8 +75,8 @@ const TaxiHomeScreen: React.FC = () => {
                 console.warn('[TaxiHomeScreen] Erreur vérification statut chauffeur:', error);
                 // En cas d'erreur, utiliser la vérification locale
                 setIsDriverValidated(
-                    user?.role === 'driver' || 
-                    (user as any)?.is_driver === true || 
+                    user?.role === 'driver' ||
+                    (user as any)?.is_driver === true ||
                     (user as any)?.driver_status === 'validated' ||
                     (user as any)?.driver_status === 'approved'
                 );
@@ -109,9 +107,9 @@ const TaxiHomeScreen: React.FC = () => {
 
     // ✅ NOUVEAU: Détection automatique de devise depuis GPS/localisation
     const detectedCurrency = useCurrencyDetection(
-        typeof depart === 'object' ? depart : 
-        typeof destination === 'object' ? destination : 
-        undefined
+        typeof depart === 'object' ? depart :
+            typeof destination === 'object' ? destination :
+                undefined
     );
 
     // États pour création de service taxi
@@ -134,7 +132,7 @@ const TaxiHomeScreen: React.FC = () => {
                     setInitializingDepart(true);
                     // Obtenir l'adresse depuis les coordonnées GPS
                     const address = await getLocationAddress(location);
-                    
+
                     if (address) {
                         // Créer un LocationObject à partir de l'adresse et des coordonnées
                         const locationObject: LocationObject = {
@@ -198,7 +196,7 @@ const TaxiHomeScreen: React.FC = () => {
             }
 
             const response = await taxiService.searchTaxis(filters);
-            
+
             if (response.success && response.data?.data) {
                 // Filtrer par disponibilité côté client si nécessaire
                 let filteredTaxis = response.data.data;
@@ -225,10 +223,10 @@ const TaxiHomeScreen: React.FC = () => {
         // Le départ est valide s'il existe (peut être GPS ou lieu sélectionné)
         const departValid = depart && (
             typeof depart === 'string' ? depart.trim() !== '' :
-            (depart as LocationObject)?.place_name || 
-            (depart as LocationObject)?.geometry?.coordinates?.length === 2
+                (depart as LocationObject)?.place_name ||
+                (depart as LocationObject)?.geometry?.coordinates?.length === 2
         );
-        
+
         // La destination est obligatoire et doit être un lieu précis
         const destinationStr = typeof destination === 'string'
             ? destination.trim()
@@ -239,13 +237,13 @@ const TaxiHomeScreen: React.FC = () => {
 
     const handleSearch = async () => {
         hapticPress();
-        
+
         // ✅ VALIDATION: Vérifier que départ (GPS ou lieu) et destination (lieu précis) sont remplis
         const departLocation = typeof depart === 'object' ? depart as LocationObject : null;
-        const departStr = typeof depart === 'string' 
+        const departStr = typeof depart === 'string'
             ? depart.trim()
             : departLocation?.place_name || '';
-        
+
         const destinationLocation = typeof destination === 'object' ? destination as LocationObject : null;
         const destinationStr = typeof destination === 'string'
             ? destination.trim()
@@ -289,7 +287,7 @@ const TaxiHomeScreen: React.FC = () => {
             }
 
             const response = await taxiService.searchTaxis(filters);
-            
+
             if (response.success && response.data?.data) {
                 let filteredTaxis = response.data.data;
                 if (availableOnly) {
@@ -318,7 +316,7 @@ const TaxiHomeScreen: React.FC = () => {
             Alert.alert('Erreur', 'Veuillez remplir le numéro de téléphone');
             return;
         }
-        
+
         if (!taxiForm.service_id) {
             Alert.alert(
                 'Service requis',
@@ -443,11 +441,11 @@ const TaxiHomeScreen: React.FC = () => {
                             ]}
                             disabled={checkingDriverStatus}
                         >
-                            <SafeIcon 
-                                name="plus" 
-                                size={18} 
-                                color={isDriverValidated ? "#FFFFFF" : "#FFFFFF"} 
-                                type="lucide" 
+                            <SafeIcon
+                                name="plus"
+                                size={18}
+                                color={isDriverValidated ? "#FFFFFF" : "#FFFFFF"}
+                                type="lucide"
                             />
                             <Text style={[
                                 styles.publishServiceTextRight,
@@ -521,7 +519,7 @@ const TaxiHomeScreen: React.FC = () => {
                                             if (location?.coords) {
                                                 try {
                                                     const address = await getLocationAddress(location);
-                                                    
+
                                                     if (address) {
                                                         const locationObject: LocationObject = {
                                                             raw: address,
@@ -600,11 +598,11 @@ const TaxiHomeScreen: React.FC = () => {
                                     setAvailableOnly(!availableOnly);
                                 }}
                             >
-                                <SafeIcon 
-                                    name={availableOnly ? 'check-circle' : 'circle'} 
-                                    size={14} 
-                                    color={availableOnly ? '#06B6D4' : '#9CA3AF'} 
-                                    type="lucide" 
+                                <SafeIcon
+                                    name={availableOnly ? 'check-circle' : 'circle'}
+                                    size={14}
+                                    color={availableOnly ? '#06B6D4' : '#9CA3AF'}
+                                    type="lucide"
                                 />
                                 <Text style={[styles.filterChipText, availableOnly && styles.filterChipTextActive]}>
                                     Taxis disponibles uniquement
@@ -629,7 +627,7 @@ const TaxiHomeScreen: React.FC = () => {
                                 ) : (
                                     <>
                                         <SafeIcon name="search" size={20} color="#FFFFFF" type="lucide" />
-                                        <Text 
+                                        <Text
                                             style={[styles.searchButtonText, !canSearch() && styles.searchButtonTextDisabled]}
                                             numberOfLines={1}
                                         >
@@ -680,24 +678,23 @@ const TaxiHomeScreen: React.FC = () => {
                                 onPress={() => navigation.navigate('TaxiDetails' as never, { taxiId: item.id } as never)}
                                 onCall={() => {
                                     hapticPress();
-                                    Alert.alert(
-                                        'Appeler le taxi',
-                                        `Voulez-vous appeler ${item.nom_chauffeur || item.telephone} ?`,
-                                        [
-                                            { text: 'Annuler' },
-                                            { 
-                                                text: 'Appeler', 
-                                                onPress: () => {
-                                                    // TODO: Implémenter l'appel
-                                                    Alert.alert('Appel', `Appel vers ${item.telephone}`);
-                                                }
-                                            },
-                                        ]
-                                    );
+                                    if (item.telephone) {
+                                        Linking.openURL(`tel:${item.telephone}`);
+                                    }
+                                }}
+                                onWhatsApp={() => {
+                                    hapticPress();
+                                    const phone = item.whatsapp || item.telephone;
+                                    if (phone) {
+                                        const cleanPhone = phone.replace(/[^0-9+]/g, '');
+                                        Linking.openURL(`whatsapp://send?phone=${cleanPhone}&text=Bonjour, je souhaite réserver un taxi.`).catch(() => {
+                                            Linking.openURL(`https://wa.me/${cleanPhone}?text=Bonjour, je souhaite réserver un taxi.`);
+                                        });
+                                    }
                                 }}
                                 onBook={() => {
                                     hapticPress();
-                                    navigation.navigate('TaxiBooking' as never, { 
+                                    navigation.navigate('TaxiBooking' as never, {
                                         taxiId: item.id,
                                         depart: typeof depart === 'object' ? (depart as LocationObject)?.place_name : depart,
                                         destination: typeof destination === 'object' ? (destination as LocationObject)?.place_name : destination,
@@ -748,12 +745,24 @@ interface TaxiCardProps {
     taxi: Taxi;
     onPress: () => void;
     onCall: () => void;
+    onWhatsApp?: () => void;
     onBook: () => void;
     formatPrice: (price?: number) => string;
     formatDistance: (distance?: number) => string;
 }
 
-const TaxiCard: React.FC<TaxiCardProps> = ({ taxi, onPress, onCall, onBook, formatPrice, formatDistance }) => {
+const TaxiCard: React.FC<TaxiCardProps> = ({ taxi, onPress, onCall, onWhatsApp, onBook, formatPrice, formatDistance }) => {
+    // Estimation tarifaire locale
+    const estimatePrice = (distanceKm?: number): string => {
+        if (!distanceKm || !taxi.tarif_base) return '';
+        const base = taxi.tarif_base || 500;
+        const perKm = taxi.tarif_par_km || 250;
+        const estimated = base + (perKm * distanceKm);
+        const min = Math.round(estimated * 0.85);
+        const max = Math.round(estimated * 1.15);
+        return `${min.toLocaleString()} - ${max.toLocaleString()} FCFA`;
+    };
+    const priceEstimate = estimatePrice(taxi.distance_km);
     return (
         <TouchableOpacity style={styles.taxiCard} onPress={onPress} activeOpacity={0.7}>
             <View style={styles.taxiHeader}>
@@ -833,6 +842,14 @@ const TaxiCard: React.FC<TaxiCardProps> = ({ taxi, onPress, onCall, onBook, form
                 </View>
             )}
 
+            {priceEstimate ? (
+                <View style={[styles.taxiPricing, { backgroundColor: '#ECFDF5', borderColor: '#10B981', borderWidth: 1, borderRadius: 8, padding: 8, marginTop: 6 }]}>
+                    <SafeIcon name="calculator" size={14} color="#10B981" type="lucide" />
+                    <Text style={[styles.pricingLabel, { color: '#059669', marginLeft: 6 }]}>Estimation:</Text>
+                    <Text style={[styles.pricingValue, { color: '#059669', fontWeight: '700' }]}>{priceEstimate}</Text>
+                </View>
+            ) : null}
+
             <View style={styles.taxiFooter}>
                 {taxi.rating && (
                     <View style={styles.ratingContainer}>
@@ -850,6 +867,17 @@ const TaxiCard: React.FC<TaxiCardProps> = ({ taxi, onPress, onCall, onBook, form
                     >
                         <SafeIcon name="phone" size={16} color="#FFFFFF" type="lucide" />
                     </TouchableOpacity>
+                    {onWhatsApp && (
+                        <TouchableOpacity
+                            style={[styles.callButton, { backgroundColor: '#25D366' }]}
+                            onPress={(e) => {
+                                e.stopPropagation();
+                                onWhatsApp();
+                            }}
+                        >
+                            <SafeIcon name="message-circle" size={16} color="#FFFFFF" type="lucide" />
+                        </TouchableOpacity>
+                    )}
                     <TouchableOpacity
                         style={styles.bookButton}
                         onPress={(e) => {
