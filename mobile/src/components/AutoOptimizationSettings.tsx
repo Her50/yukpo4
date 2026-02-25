@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 import { apiGet, apiPost } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
-import { NativeCard } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
+import { NativeCard } from './SafeNativeDesign';
 
 interface AutoOptimizationSettings {
     enabled: boolean;
@@ -148,7 +148,7 @@ export const AutoOptimizationSettings: React.FC<AutoOptimizationSettingsProps> =
                     <ActivityIndicator size="small" color={modernColors.primary} />
                 </View>
             ) : (
-                <ScrollView style={styles.content}>
+                <View style={styles.content}>
                     {/* Activation principale */}
                     <View style={styles.section}>
                         <View style={styles.settingRow}>
@@ -385,7 +385,7 @@ export const AutoOptimizationSettings: React.FC<AutoOptimizationSettingsProps> =
                             </>
                         )}
                     </TouchableOpacity>
-                </ScrollView>
+                </View>
             )}
         </NativeCard>
     );
@@ -435,7 +435,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     content: {
-        maxHeight: 600,
     },
     section: {
         marginBottom: 24,

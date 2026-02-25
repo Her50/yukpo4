@@ -1,10 +1,10 @@
 import * as DocumentPicker from 'expo-document-picker';
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { apiGet, apiPost } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
-import { NativeCard, NativeInput } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
+import { NativeCard, NativeInput } from './SafeNativeDesign';
 
 export interface CustomAudience {
     id: string;
@@ -399,7 +399,7 @@ export const CustomAudienceManager: React.FC<CustomAudienceManagerProps> = ({
 
             {/* Liste des audiences */}
             {!showCreateForm && (
-                <ScrollView style={styles.audiencesList}>
+                <View style={styles.audiencesList}>
                     {loading ? (
                         <View style={styles.loadingContainer}>
                             <ActivityIndicator size="small" color={modernColors.primary} />
@@ -461,7 +461,7 @@ export const CustomAudienceManager: React.FC<CustomAudienceManagerProps> = ({
                             );
                         })
                     )}
-                </ScrollView>
+                </View>
             )}
         </NativeCard>
     );
@@ -673,7 +673,6 @@ const styles = StyleSheet.create({
         color: '#fff',
     },
     audiencesList: {
-        maxHeight: 400,
     },
     loadingContainer: {
         padding: 20,

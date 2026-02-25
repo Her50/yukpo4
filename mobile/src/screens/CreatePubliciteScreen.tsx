@@ -12,7 +12,6 @@ import {
     Dimensions,
     Image,
     Platform,
-    ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
@@ -32,12 +31,12 @@ import { BidStrategySelector, BidStrategyType } from '../components/BidStrategyS
 import { BudgetSlider } from '../components/BudgetSlider';
 import { CampaignScheduler } from '../components/CampaignScheduler';
 import { CustomAudienceManager } from '../components/CustomAudienceManager';
-import { NativeButton, NativeCard, NativeInput } from '../components/SafeNativeDesign';
 import NavigatorToolbar from '../components/NavigatorToolbar';
 import { PlacementSelector, PlacementType } from '../components/PlacementSelector';
 import ProductVideoCreationModal from '../components/ProductVideoCreationModal';
 import { RetargetingOptions } from '../components/RetargetingOptions';
 import SafeIcon from '../components/SafeIcon';
+import { NativeButton, NativeCard, NativeInput } from '../components/SafeNativeDesign';
 import { config } from '../config/environment';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguageSafe } from '../contexts/LanguageContext';
@@ -350,7 +349,7 @@ const CreatePubliciteScreen: React.FC = () => {
     const loadMesServicesEtProduits = async () => {
         try {
             setLoading(true);
-            
+
             // ✅ PHASE 5: Utiliser getProductsByUser (plus de fallback JSONB)
             if (!user?.id) {
                 console.warn('[CreatePubliciteScreen] ⚠️ Utilisateur non connecté');
@@ -383,9 +382,9 @@ const CreatePubliciteScreen: React.FC = () => {
                     category_label: productData.categorie_produit || productData.categorie || productData.category,
                 };
             });
-            
+
             setProduitsList(allProducts);
-            
+
             // Charger aussi les services pour autres usages
             const response = await apiGet('/api/prestataire/services');
             if (response.success && response.data) {
@@ -938,7 +937,7 @@ const CreatePubliciteScreen: React.FC = () => {
             // On soustrait aussi la hauteur du header et du stepper (environ 120px)
             const scrollY = Math.max(0, position - 100);
             const scrollView = scrollViewRef.current;
-            
+
             // ✅ CORRIGÉ: Vérifier que scrollView est bien un objet avant d'appeler des méthodes
             if (scrollView && typeof scrollView === 'object') {
                 // KeyboardAwareScrollView supporte scrollToPosition
@@ -979,8 +978,8 @@ const CreatePubliciteScreen: React.FC = () => {
 
             {/* ✅ NOUVEAU: Stepper de progression */}
             <View style={styles.stepperContainer}>
-                <AdCreationStepper 
-                    currentStep={currentStep} 
+                <AdCreationStepper
+                    currentStep={currentStep}
                     steps={STEPS}
                     onStepPress={handleStepPress}
                 />
@@ -998,15 +997,13 @@ const CreatePubliciteScreen: React.FC = () => {
                 keyboardShouldPersistTaps="handled"
                 keyboardDismissMode="on-drag"
                 scrollEnabled={true}
-                bounces={Platform.OS === 'ios'}
+                bounces={true}
                 removeClippedSubviews={false}
                 nestedScrollEnabled={true}
-                enableResetScrollToCoords={true}
+                enableResetScrollToCoords={false}
                 keyboardOpeningTime={0}
-                alwaysBounceVertical={false}
-                // ✅ CORRECTION CRITIQUE: Propriétés pour garantir le scroll
+                alwaysBounceVertical={true}
                 scrollEventThrottle={16}
-                overScrollMode="always"
             >
                 {/* ✅ NOUVEAU: Section Templates */}
                 {!titre && !showTemplates && (
@@ -1085,114 +1082,114 @@ const CreatePubliciteScreen: React.FC = () => {
                     <NativeCard style={styles.sectionCard}>
                         <Text style={styles.sectionTitle}>📝 Informations générales</Text>
 
-                    <View style={styles.fieldContainer}>
-                        <View style={styles.fieldLabelRow}>
-                            <Text style={styles.fieldLabel}>
-                                {t('publicite.title')} <Text style={styles.required}>*</Text>
-                            </Text>
-                        </View>
-                        <NativeInput
-                            placeholder="Ex: Promotion Immobilier - 20% de remise"
-                            value={titre}
-                            onChangeText={setTitre}
-                            style={[
-                                styles.input,
-                                validationErrors.titre && styles.inputError,
-                            ]}
-                        />
-                        {validationErrors.titre && (
-                            <Text style={styles.errorText}>{validationErrors.titre}</Text>
-                        )}
-                        {/* ✅ NOUVEAU: Composant IA Suggestions */}
-                        {selectedProduits.length > 0 && (
-                            <AISuggestionsGenerator
-                                field="titre"
-                                products={produitsList.filter(p => selectedProduits.includes(p.id))}
-                                targetAudience={{
-                                    ageRange: targeting.ageRange,
-                                    gender: targeting.gender,
-                                    interests: targeting.interests,
-                                }}
-                                campaignGoal="conversion"
-                                onSuggestionSelect={(suggestion) => {
-                                    setTitre(suggestion);
-                                    setSuggestions([]);
-                                }}
-                                currentValue={titre}
+                        <View style={styles.fieldContainer}>
+                            <View style={styles.fieldLabelRow}>
+                                <Text style={styles.fieldLabel}>
+                                    {t('publicite.title')} <Text style={styles.required}>*</Text>
+                                </Text>
+                            </View>
+                            <NativeInput
+                                placeholder="Ex: Promotion Immobilier - 20% de remise"
+                                value={titre}
+                                onChangeText={setTitre}
+                                style={[
+                                    styles.input,
+                                    validationErrors.titre && styles.inputError,
+                                ]}
                             />
-                        )}
-                    </View>
+                            {validationErrors.titre && (
+                                <Text style={styles.errorText}>{validationErrors.titre}</Text>
+                            )}
+                            {/* ✅ NOUVEAU: Composant IA Suggestions */}
+                            {selectedProduits.length > 0 && (
+                                <AISuggestionsGenerator
+                                    field="titre"
+                                    products={produitsList.filter(p => selectedProduits.includes(p.id))}
+                                    targetAudience={{
+                                        ageRange: targeting.ageRange,
+                                        gender: targeting.gender,
+                                        interests: targeting.interests,
+                                    }}
+                                    campaignGoal="conversion"
+                                    onSuggestionSelect={(suggestion) => {
+                                        setTitre(suggestion);
+                                        setSuggestions([]);
+                                    }}
+                                    currentValue={titre}
+                                />
+                            )}
+                        </View>
 
-                    <View style={styles.fieldContainer}>
-                        <Text style={styles.fieldLabel}>{t('publicite.description')}</Text>
-                        <NativeInput
-                            placeholder="Décrivez votre offre promotionnelle..."
-                            value={description}
-                            onChangeText={setDescription}
-                            style={styles.input}
-                            multiline
-                            numberOfLines={3}
-                        />
-                        {/* ✅ NOUVEAU: Composant IA Suggestions pour description */}
-                        {selectedProduits.length > 0 && (
-                            <AISuggestionsGenerator
-                                field="description"
-                                products={produitsList.filter(p => selectedProduits.includes(p.id))}
-                                targetAudience={{
-                                    ageRange: targeting.ageRange,
-                                    gender: targeting.gender,
-                                    interests: targeting.interests,
-                                }}
-                                campaignGoal="conversion"
-                                onSuggestionSelect={(suggestion) => {
-                                    setDescription(suggestion);
-                                }}
-                                currentValue={description}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>{t('publicite.description')}</Text>
+                            <NativeInput
+                                placeholder="Décrivez votre offre promotionnelle..."
+                                value={description}
+                                onChangeText={setDescription}
+                                style={styles.input}
+                                multiline
+                                numberOfLines={3}
                             />
-                        )}
-                    </View>
-
-                    <View style={styles.fieldContainer}>
-                        <Text style={styles.fieldLabel}>{t('publicite.duration')} <Text style={styles.required}>*</Text></Text>
-                        <View style={styles.dureeButtons}>
-                            {['7', '14', '30', '60', '90'].map((d) => (
-                                <TouchableOpacity
-                                    key={d}
-                                    style={[styles.dureeButton, duree === d && styles.dureeButtonActive]}
-                                    onPress={() => setDuree(d)}
-                                >
-                                    <Text style={[styles.dureeText, duree === d && styles.dureeTextActive]}>
-                                        {d} jours
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
+                            {/* ✅ NOUVEAU: Composant IA Suggestions pour description */}
+                            {selectedProduits.length > 0 && (
+                                <AISuggestionsGenerator
+                                    field="description"
+                                    products={produitsList.filter(p => selectedProduits.includes(p.id))}
+                                    targetAudience={{
+                                        ageRange: targeting.ageRange,
+                                        gender: targeting.gender,
+                                        interests: targeting.interests,
+                                    }}
+                                    campaignGoal="conversion"
+                                    onSuggestionSelect={(suggestion) => {
+                                        setDescription(suggestion);
+                                    }}
+                                    currentValue={description}
+                                />
+                            )}
                         </View>
-                    </View>
 
-                    {/* ✅ Sélection zone géographique */}
-                    <View style={styles.fieldContainer}>
-                        <Text style={styles.fieldLabel}>{t('publicite.zone')} <Text style={styles.required}>*</Text></Text>
-                        <Text style={styles.fieldHint}>{t('publicite.zone.select')}</Text>
-                        <View style={styles.zoneButtons}>
-                            {['local', 'regional', 'international'].map((zone) => (
-                                <TouchableOpacity
-                                    key={zone}
-                                    style={[styles.zoneButton, zoneGeographique === zone && styles.zoneButtonActive]}
-                                    onPress={() => setZoneGeographique(zone)}
-                                >
-                                    <SafeIcon
-                                        name={zone === 'local' ? 'map-pin' : zone === 'regional' ? 'globe' : 'globe'}
-                                        size={20}
-                                        color={zoneGeographique === zone ? '#fff' : modernColors.primary}
-                                    />
-                                    <Text style={[styles.zoneText, zoneGeographique === zone && styles.zoneTextActive]}>
-                                        {getZoneLabel(zone)}
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>{t('publicite.duration')} <Text style={styles.required}>*</Text></Text>
+                            <View style={styles.dureeButtons}>
+                                {['7', '14', '30', '60', '90'].map((d) => (
+                                    <TouchableOpacity
+                                        key={d}
+                                        style={[styles.dureeButton, duree === d && styles.dureeButtonActive]}
+                                        onPress={() => setDuree(d)}
+                                    >
+                                        <Text style={[styles.dureeText, duree === d && styles.dureeTextActive]}>
+                                            {d} jours
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
                         </View>
-                    </View>
-                </NativeCard>
+
+                        {/* ✅ Sélection zone géographique */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>{t('publicite.zone')} <Text style={styles.required}>*</Text></Text>
+                            <Text style={styles.fieldHint}>{t('publicite.zone.select')}</Text>
+                            <View style={styles.zoneButtons}>
+                                {['local', 'regional', 'international'].map((zone) => (
+                                    <TouchableOpacity
+                                        key={zone}
+                                        style={[styles.zoneButton, zoneGeographique === zone && styles.zoneButtonActive]}
+                                        onPress={() => setZoneGeographique(zone)}
+                                    >
+                                        <SafeIcon
+                                            name={zone === 'local' ? 'map-pin' : zone === 'regional' ? 'globe' : 'globe'}
+                                            size={20}
+                                            color={zoneGeographique === zone ? '#fff' : modernColors.primary}
+                                        />
+                                        <Text style={[styles.zoneText, zoneGeographique === zone && styles.zoneTextActive]}>
+                                            {getZoneLabel(zone)}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+                    </NativeCard>
                 </View>
 
                 {/* Sélection des produits */}
@@ -1200,47 +1197,47 @@ const CreatePubliciteScreen: React.FC = () => {
                     onLayout={(e) => handleSectionLayout('products', e)}
                 >
                     <NativeCard style={styles.sectionCard}>
-                    <Text style={styles.sectionTitle}>📦 {t('publicite.products')} ({selectedProduits.length})</Text>
-                    <Text style={styles.sectionHint}>✨ Optionnel - Sélectionnez les produits à promouvoir</Text>
+                        <Text style={styles.sectionTitle}>📦 {t('publicite.products')} ({selectedProduits.length})</Text>
+                        <Text style={styles.sectionHint}>✨ Optionnel - Sélectionnez les produits à promouvoir</Text>
 
-                    {loading ? (
-                        <ActivityIndicator size="small" color={modernColors.primary} />
-                    ) : produitsList.length === 0 ? (
-                        <View style={styles.emptyState}>
-                            <SafeIcon name="package" size={48} color="#D1D5DB" />
-                            <Text style={styles.emptyText}>Aucun produit disponible</Text>
-                            <Text style={styles.emptySubtext}>Créez d'abord un service avec des produits</Text>
-                        </View>
-                    ) : (
-                        <View style={styles.productsList}>
-                            {produitsList.map((produit) => {
-                                const isSelected = selectedProduits.includes(produit.id);
-                                return (
-                                    <TouchableOpacity
-                                        key={produit.id}
-                                        style={[styles.productItem, isSelected && styles.productItemSelected]}
-                                        onPress={() => toggleProduitSelection(produit.id)}
-                                    >
-                                        <View style={[styles.checkbox, isSelected && styles.checkboxChecked]}>
-                                            {isSelected && (
-                                                <SafeIcon name="check" size={16} color="#fff" />
-                                            )}
-                                        </View>
-                                        <View style={styles.productInfo}>
-                                            <Text style={styles.productName}>{produit.nom || 'Produit'}</Text>
-                                            <Text style={styles.productService}>Service: {produit.serviceTitre}</Text>
-                                            {produit.prix && (
-                                                <Text style={styles.productPrice}>
-                                                    {produit.prix} {produit.devise || 'FCFA'}
-                                                </Text>
-                                            )}
-                                        </View>
-                                    </TouchableOpacity>
-                                );
-                            })}
-                        </View>
-                    )}
-                </NativeCard>
+                        {loading ? (
+                            <ActivityIndicator size="small" color={modernColors.primary} />
+                        ) : produitsList.length === 0 ? (
+                            <View style={styles.emptyState}>
+                                <SafeIcon name="package" size={48} color="#D1D5DB" />
+                                <Text style={styles.emptyText}>Aucun produit disponible</Text>
+                                <Text style={styles.emptySubtext}>Créez d'abord un service avec des produits</Text>
+                            </View>
+                        ) : (
+                            <View style={styles.productsList}>
+                                {produitsList.map((produit) => {
+                                    const isSelected = selectedProduits.includes(produit.id);
+                                    return (
+                                        <TouchableOpacity
+                                            key={produit.id}
+                                            style={[styles.productItem, isSelected && styles.productItemSelected]}
+                                            onPress={() => toggleProduitSelection(produit.id)}
+                                        >
+                                            <View style={[styles.checkbox, isSelected && styles.checkboxChecked]}>
+                                                {isSelected && (
+                                                    <SafeIcon name="check" size={16} color="#fff" />
+                                                )}
+                                            </View>
+                                            <View style={styles.productInfo}>
+                                                <Text style={styles.productName}>{produit.nom || 'Produit'}</Text>
+                                                <Text style={styles.productService}>Service: {produit.serviceTitre}</Text>
+                                                {produit.prix && (
+                                                    <Text style={styles.productPrice}>
+                                                        {produit.prix} {produit.devise || 'FCFA'}
+                                                    </Text>
+                                                )}
+                                            </View>
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                            </View>
+                        )}
+                    </NativeCard>
                 </View>
 
                 {/* Vidéos promotionnelles */}
@@ -1248,70 +1245,70 @@ const CreatePubliciteScreen: React.FC = () => {
                     onLayout={(e) => handleSectionLayout('media', e)}
                 >
                     <NativeCard style={styles.sectionCard}>
-                    <Text style={styles.sectionTitle}>🎬 {t('publicite.videos')} ({videos.length})</Text>
-                    <Text style={styles.sectionHint}>Maximum 30 secondes par vidéo</Text>
+                        <Text style={styles.sectionTitle}>🎬 {t('publicite.videos')} ({videos.length})</Text>
+                        <Text style={styles.sectionHint}>Maximum 30 secondes par vidéo</Text>
 
-                    <TouchableOpacity
-                        style={[styles.addVideoButton, isConvertingVideo && styles.addVideoButtonDisabled]}
-                        onPress={handleSelectVideo}
-                        disabled={isConvertingVideo}
-                    >
-                        <SafeIcon name="video" size={20} color={modernColors.primary} />
-                        <Text style={styles.addVideoText}>Ajouter une vidéo</Text>
-                    </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[styles.addVideoButton, isConvertingVideo && styles.addVideoButtonDisabled]}
+                            onPress={handleSelectVideo}
+                            disabled={isConvertingVideo}
+                        >
+                            <SafeIcon name="video" size={20} color={modernColors.primary} />
+                            <Text style={styles.addVideoText}>Ajouter une vidéo</Text>
+                        </TouchableOpacity>
 
-                    {isExistingMode && (
-                        <View style={styles.noticeRow}>
-                            <SafeIcon name="info" size={16} color={modernColors.primary} />
-                            <Text style={styles.noticeText}>
-                                Les vidéos ajoutées auparavant ne sont pas rechargées automatiquement. Importez-les à nouveau ou générez une nouvelle version carrée avec Yukpo IA.
-                            </Text>
-                        </View>
-                    )}
+                        {isExistingMode && (
+                            <View style={styles.noticeRow}>
+                                <SafeIcon name="info" size={16} color={modernColors.primary} />
+                                <Text style={styles.noticeText}>
+                                    Les vidéos ajoutées auparavant ne sont pas rechargées automatiquement. Importez-les à nouveau ou générez une nouvelle version carrée avec Yukpo IA.
+                                </Text>
+                            </View>
+                        )}
 
-                    <Text style={[styles.fieldHint, { marginTop: 12 }]}>
-                        ✨ Générer automatiquement une vidéo carrée optimisée grâce à Yukpo IA.
-                    </Text>
-                    <NativeButton
-                        title={isConvertingVideo ? 'Génération IA en cours…' : '✨ Générer une vidéo carrée IA'}
-                        onPress={openVideoCreator}
-                        variant="secondary"
-                        size="medium"
-                        disabled={isConvertingVideo || produitsList.length === 0}
-                        style={styles.generateButton}
-                    />
-                    {isConvertingVideo && (
-                        <View style={styles.aiProgressRow}>
-                            <ActivityIndicator size="small" color={modernColors.primary} />
-                            <Text style={styles.aiProgressText}>Conversion du média IA…</Text>
-                        </View>
-                    )}
+                        <Text style={[styles.fieldHint, { marginTop: 12 }]}>
+                            ✨ Générer automatiquement une vidéo carrée optimisée grâce à Yukpo IA.
+                        </Text>
+                        <NativeButton
+                            title={isConvertingVideo ? 'Génération IA en cours…' : '✨ Générer une vidéo carrée IA'}
+                            onPress={openVideoCreator}
+                            variant="secondary"
+                            size="medium"
+                            disabled={isConvertingVideo || produitsList.length === 0}
+                            style={styles.generateButton}
+                        />
+                        {isConvertingVideo && (
+                            <View style={styles.aiProgressRow}>
+                                <ActivityIndicator size="small" color={modernColors.primary} />
+                                <Text style={styles.aiProgressText}>Conversion du média IA…</Text>
+                            </View>
+                        )}
 
-                    {videos.length > 0 && (
-                        <View style={styles.videosGrid}>
-                            {videos.map((video, index) => (
-                                <View key={index} style={styles.videoCard}>
-                                    <Image
-                                        source={{ uri: `data:image/jpeg;base64,${video.thumbnail}` }}
-                                        style={styles.videoThumbnail}
-                                    />
-                                    <TouchableOpacity
-                                        style={styles.removeVideoButton}
-                                        onPress={() => removeVideo(index)}
-                                    >
-                                        <SafeIcon name="x" size={16} color="#fff" />
-                                    </TouchableOpacity>
-                                    <View style={styles.videoDuration}>
-                                        <SafeIcon name="play" size={12} color="#fff" />
-                                        <Text style={styles.videoDurationText}>
-                                            {String(Math.round((video.duration || 0) / 1000))}s
-                                        </Text>
+                        {videos.length > 0 && (
+                            <View style={styles.videosGrid}>
+                                {videos.map((video, index) => (
+                                    <View key={index} style={styles.videoCard}>
+                                        <Image
+                                            source={{ uri: `data:image/jpeg;base64,${video.thumbnail}` }}
+                                            style={styles.videoThumbnail}
+                                        />
+                                        <TouchableOpacity
+                                            style={styles.removeVideoButton}
+                                            onPress={() => removeVideo(index)}
+                                        >
+                                            <SafeIcon name="x" size={16} color="#fff" />
+                                        </TouchableOpacity>
+                                        <View style={styles.videoDuration}>
+                                            <SafeIcon name="play" size={12} color="#fff" />
+                                            <Text style={styles.videoDurationText}>
+                                                {String(Math.round((video.duration || 0) / 1000))}s
+                                            </Text>
+                                        </View>
                                     </View>
-                                </View>
-                            ))}
-                        </View>
-                    )}
-                </NativeCard>
+                                ))}
+                            </View>
+                        )}
+                    </NativeCard>
                 </View>
 
                 {/* ✅ AMÉLIORÉ: Budget avec slider interactif */}
@@ -1319,58 +1316,58 @@ const CreatePubliciteScreen: React.FC = () => {
                     onLayout={(e) => handleSectionLayout('budget', e)}
                 >
                     <NativeCard style={[styles.sectionCard, styles.summaryCard]}>
-                    <Text style={styles.sectionTitle}>💰 Budget & Performance</Text>
+                        <Text style={styles.sectionTitle}>💰 Budget & Performance</Text>
 
-                    <BudgetSlider
-                        value={coutEstime}
-                        min={Math.max(100, Math.round(coutEstime * 0.5))}
-                        max={Math.round(coutEstime * 3)}
-                        step={100}
-                        currency={userCurrency}
-                        onValueChange={(value) => {
-                            // Ajuster la durée pour correspondre au budget
-                            const exchangeRate = EXCHANGE_RATES[userCurrency] || 1;
-                            const valueFCFA = Math.round(value * exchangeRate);
-                            const baseCost = 2000 * videos.length;
-                            const daysFromBudget = Math.max(1, Math.round((valueFCFA - baseCost) / PRICE_PER_DAY_FCFA));
-                            if (daysFromBudget <= 90) {
-                                setDuree(daysFromBudget.toString());
-                            }
-                        }}
-                        estimatedReach={estimatedMetrics.estimatedReach}
-                        estimatedImpressions={estimatedMetrics.estimatedImpressions}
-                    />
+                        <BudgetSlider
+                            value={coutEstime}
+                            min={Math.max(100, Math.round(coutEstime * 0.5))}
+                            max={Math.round(coutEstime * 3)}
+                            step={100}
+                            currency={userCurrency}
+                            onValueChange={(value) => {
+                                // Ajuster la durée pour correspondre au budget
+                                const exchangeRate = EXCHANGE_RATES[userCurrency] || 1;
+                                const valueFCFA = Math.round(value * exchangeRate);
+                                const baseCost = 2000 * videos.length;
+                                const daysFromBudget = Math.max(1, Math.round((valueFCFA - baseCost) / PRICE_PER_DAY_FCFA));
+                                if (daysFromBudget <= 90) {
+                                    setDuree(daysFromBudget.toString());
+                                }
+                            }}
+                            estimatedReach={estimatedMetrics.estimatedReach}
+                            estimatedImpressions={estimatedMetrics.estimatedImpressions}
+                        />
 
-                    {/* ✅ NOUVEAU: Stratégie d'enchères */}
-                    <BidStrategySelector
-                        strategy={bidStrategy}
-                        onStrategyChange={setBidStrategy}
-                    />
+                        {/* ✅ NOUVEAU: Stratégie d'enchères */}
+                        <BidStrategySelector
+                            strategy={bidStrategy}
+                            onStrategyChange={setBidStrategy}
+                        />
 
-                    <View style={styles.divider} />
+                        <View style={styles.divider} />
 
-                    <View style={styles.summaryRow}>
-                        <Text style={styles.summaryLabel}>{t('publicite.products_selected')}</Text>
-                        <Text style={styles.summaryValue}>{selectedProduits.length}</Text>
-                    </View>
-                    <View style={styles.summaryRow}>
-                        <Text style={styles.summaryLabel}>{t('publicite.videos_added')}</Text>
-                        <Text style={styles.summaryValue}>{videos.length}</Text>
-                    </View>
-                    <View style={styles.summaryRow}>
-                        <Text style={styles.summaryLabel}>{t('publicite.duration')}</Text>
-                        <Text style={styles.summaryValue}>{duree} jours</Text>
-                    </View>
-                    <View style={styles.summaryRow}>
-                        <Text style={styles.summaryLabel}>{t('publicite.zone')}</Text>
-                        <Text style={styles.summaryValue}>{getZoneLabel(zoneGeographique)}</Text>
-                    </View>
-                    <View style={styles.divider} />
-                    <View style={styles.summaryRow}>
-                        <Text style={styles.totalLabel}>{t('publicite.total_cost')}</Text>
-                        <Text style={styles.totalValue}>{coutEstime.toLocaleString()} {userCurrency}</Text>
-                    </View>
-                </NativeCard>
+                        <View style={styles.summaryRow}>
+                            <Text style={styles.summaryLabel}>{t('publicite.products_selected')}</Text>
+                            <Text style={styles.summaryValue}>{selectedProduits.length}</Text>
+                        </View>
+                        <View style={styles.summaryRow}>
+                            <Text style={styles.summaryLabel}>{t('publicite.videos_added')}</Text>
+                            <Text style={styles.summaryValue}>{videos.length}</Text>
+                        </View>
+                        <View style={styles.summaryRow}>
+                            <Text style={styles.summaryLabel}>{t('publicite.duration')}</Text>
+                            <Text style={styles.summaryValue}>{duree} jours</Text>
+                        </View>
+                        <View style={styles.summaryRow}>
+                            <Text style={styles.summaryLabel}>{t('publicite.zone')}</Text>
+                            <Text style={styles.summaryValue}>{getZoneLabel(zoneGeographique)}</Text>
+                        </View>
+                        <View style={styles.divider} />
+                        <View style={styles.summaryRow}>
+                            <Text style={styles.totalLabel}>{t('publicite.total_cost')}</Text>
+                            <Text style={styles.totalValue}>{coutEstime.toLocaleString()} {userCurrency}</Text>
+                        </View>
+                    </NativeCard>
                 </View>
 
                 {/* ✅ NOUVEAU: Ciblage avancé */}

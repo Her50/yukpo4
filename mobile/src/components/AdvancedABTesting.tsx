@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { apiGet } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
-import { NativeCard } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
+import { NativeCard } from './SafeNativeDesign';
 
 interface Variant {
     id: string;
@@ -219,7 +219,7 @@ export const AdvancedABTesting: React.FC<AdvancedABTestingProps> = ({
                     <Text style={styles.loadingText}>Analyse en cours...</Text>
                 </View>
             ) : stats.length > 0 ? (
-                <ScrollView style={styles.statsContainer}>
+                <View style={styles.statsContainer}>
                     {stats.map((stat, index) => {
                         const metricValue = getMetricValue(stat);
                         const percentage = maxMetricValue > 0 ? (metricValue / maxMetricValue) * 100 : 0;
@@ -337,7 +337,7 @@ export const AdvancedABTesting: React.FC<AdvancedABTestingProps> = ({
                             </View>
                         );
                     })}
-                </ScrollView>
+                </View>
             ) : (
                 <View style={styles.emptyState}>
                     <SafeIcon name="flask" size={48} color={modernColors.border} />
@@ -446,7 +446,6 @@ const styles = StyleSheet.create({
         color: modernColors.textSecondary,
     },
     statsContainer: {
-        maxHeight: 600,
     },
     statCard: {
         marginBottom: 16,

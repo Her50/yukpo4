@@ -1,10 +1,10 @@
 import * as ImagePicker from 'expo-image-picker';
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Dimensions, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Dimensions, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { apiGet } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
-import { NativeCard, NativeInput } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
+import { NativeCard, NativeInput } from './SafeNativeDesign';
 
 const { width } = Dimensions.get('window');
 const ASSET_CARD_WIDTH = (width - 48) / 3;
@@ -203,7 +203,7 @@ export const AssetLibrary: React.FC<AssetLibraryProps> = ({
                     </Text>
                 </View>
             ) : (
-                <ScrollView style={styles.assetsGrid}>
+                <View style={styles.assetsGrid}>
                     <View style={styles.gridContainer}>
                         {filteredAssets.map((asset) => {
                             const isSelected = selectedAssets.includes(asset.id);
@@ -243,7 +243,7 @@ export const AssetLibrary: React.FC<AssetLibraryProps> = ({
                             );
                         })}
                     </View>
-                </ScrollView>
+                </View>
             )}
 
             <Text style={styles.countText}>
@@ -361,7 +361,6 @@ const styles = StyleSheet.create({
         marginTop: 4,
     },
     assetsGrid: {
-        maxHeight: 400,
     },
     gridContainer: {
         flexDirection: 'row',
