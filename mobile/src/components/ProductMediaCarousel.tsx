@@ -179,104 +179,109 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
         );
     }
 
+    // ✅ CORRIGÉ 2026-02-25: Fonction de rendu d'un média individuel (réutilisée pour 1 ou N médias)
+    const renderMediaItem = (media: { type: 'image' | 'video'; uri: string; index: number }, index: number) => {
+        return (
+            <View key={index} style={styles.slide}>
+                {media.type === 'image' ? (
+                    <TouchableOpacity
+                        activeOpacity={0.9}
+                        onPress={() => openFullscreen(media)}
+                        style={styles.imageContainer}
+                    >
+                        <OptimizedImage
+                            uri={media.uri}
+                            style={styles.media}
+                            priority={index === currentIndex ? "high" : "low"}
+                            cachePolicy="memory-disk"
+                        />
+                        <LinearGradient
+                            colors={['transparent', 'rgba(0,0,0,0.3)']}
+                            style={styles.gradient}
+                        />
+                    </TouchableOpacity>
+                ) : (
+                    <View style={styles.videoContainer}>
+                        {playingVideoIndex === index ? (
+                            <Video
+                                ref={(ref) => {
+                                    if (ref) {
+                                        videoRefs.current.set(index, ref);
+                                    } else {
+                                        videoRefs.current.delete(index);
+                                    }
+                                }}
+                                source={{ uri: media.uri }}
+                                style={styles.media}
+                                resizeMode={ResizeMode.COVER}
+                                shouldPlay={true}
+                                isLooping
+                                isMuted={false}
+                                useNativeControls={true}
+                                onError={(error) => {
+                                    const errorMessage = error?.message || String(error);
+                                    if (!errorMessage.includes('404')) {
+                                        console.error('[ProductMediaCarousel] ❌ Erreur vidéo:', error);
+                                    }
+                                    setPlayingVideoIndex(null);
+                                }}
+                            />
+                        ) : (
+                            <View style={[styles.media, { backgroundColor: '#1a1a2e', alignItems: 'center', justifyContent: 'center' }]}>
+                                <SafeIcon name="video" size={36} color="rgba(255,255,255,0.5)" />
+                            </View>
+                        )}
+                        <TouchableOpacity
+                            style={styles.fullscreenButton}
+                            onPress={() => openFullscreen(media)}
+                            activeOpacity={0.8}
+                        >
+                            <SafeIcon name="maximize" size={18} color="#FFF" />
+                        </TouchableOpacity>
+                        {playingVideoIndex !== index && (
+                            <TouchableOpacity
+                                style={styles.playButton}
+                                onPress={() => playVideo(index)}
+                                activeOpacity={0.8}
+                            >
+                                <SafeIcon name="play" size={48} color="#FFF" />
+                            </TouchableOpacity>
+                        )}
+                    </View>
+                )}
+            </View>
+        );
+    };
+
     return (
         <>
             <View style={styles.container}>
-                <ScrollView
-                    ref={scrollViewRef}
-                    horizontal
-                    pagingEnabled
-                    showsHorizontalScrollIndicator={false}
-                    onScroll={handleScroll}
-                    scrollEventThrottle={16}
-                    decelerationRate="fast"
-                    snapToInterval={CAROUSEL_WIDTH}
-                    snapToAlignment="start"
-                    nestedScrollEnabled={true} // ✅ CORRIGÉ: Permettre le scroll imbriqué
-                    scrollEnabled={true} // ✅ CORRIGÉ: S'assurer que le scroll est activé
-                    bounces={true} // ✅ CORRIGÉ: Permettre le rebond pour meilleure UX
-                >
-                    {allMedia.map((media, index) => {
-                        // ✅ CORRIGÉ 2026-02-25: Ne rendre que les médias proches (±1) pour éviter la surcharge
-                        const shouldRender = Math.abs(index - currentIndex) <= 1;
-
-                        if (!shouldRender) {
-                            return <View key={index} style={styles.slide} />;
-                        }
-
-                        return (
-                            <View key={index} style={styles.slide}>
-                                {media.type === 'image' ? (
-                                    <TouchableOpacity
-                                        activeOpacity={0.9}
-                                        onPress={() => openFullscreen(media)}
-                                        style={styles.imageContainer}
-                                    >
-                                        <OptimizedImage
-                                            uri={media.uri}
-                                            style={styles.media}
-                                            priority={index === currentIndex ? "high" : "low"}
-                                            cachePolicy="memory-disk"
-                                        />
-                                        <LinearGradient
-                                            colors={['transparent', 'rgba(0,0,0,0.3)']}
-                                            style={styles.gradient}
-                                        />
-                                    </TouchableOpacity>
-                                ) : (
-                                    <View style={styles.videoContainer}>
-                                        {/* ✅ CORRIGÉ 2026-02-25: Vidéo ne se charge que quand l'utilisateur appuie play */}
-                                        {playingVideoIndex === index ? (
-                                            <Video
-                                                ref={(ref) => {
-                                                    if (ref) {
-                                                        videoRefs.current.set(index, ref);
-                                                    } else {
-                                                        videoRefs.current.delete(index);
-                                                    }
-                                                }}
-                                                source={{ uri: media.uri }}
-                                                style={styles.media}
-                                                resizeMode={ResizeMode.COVER}
-                                                shouldPlay={true}
-                                                isLooping
-                                                isMuted={false}
-                                                useNativeControls={true}
-                                                onError={(error) => {
-                                                    const errorMessage = error?.message || String(error);
-                                                    if (!errorMessage.includes('404')) {
-                                                        console.error('[ProductMediaCarousel] ❌ Erreur vidéo:', error);
-                                                    }
-                                                    setPlayingVideoIndex(null);
-                                                }}
-                                            />
-                                        ) : (
-                                            <View style={[styles.media, { backgroundColor: '#1a1a2e', alignItems: 'center', justifyContent: 'center' }]}>
-                                                <SafeIcon name="video" size={36} color="rgba(255,255,255,0.5)" />
-                                            </View>
-                                        )}
-                                        <TouchableOpacity
-                                            style={styles.fullscreenButton}
-                                            onPress={() => openFullscreen(media)}
-                                            activeOpacity={0.8}
-                                        >
-                                            <SafeIcon name="maximize" size={18} color="#FFF" />
-                                        </TouchableOpacity>
-                                        {playingVideoIndex !== index && (
-                                            <TouchableOpacity
-                                                style={styles.playButton}
-                                                onPress={() => playVideo(index)}
-                                                activeOpacity={0.8}
-                                            >
-                                                <SafeIcon name="play" size={48} color="#FFF" />
-                                            </TouchableOpacity>
-                                        )}
-                                    </View>
-                                )}
-                            </View>
-                        );
-                    })}
-                </ScrollView>
+                {/* ✅ CORRIGÉ 2026-02-25: Si un seul média, pas de ScrollView (évite capture gestes) */}
+                {allMedia.length === 1 ? (
+                    renderMediaItem(allMedia[0], 0)
+                ) : (
+                    <ScrollView
+                        ref={scrollViewRef}
+                        horizontal
+                        pagingEnabled
+                        showsHorizontalScrollIndicator={false}
+                        onScroll={handleScroll}
+                        scrollEventThrottle={100}
+                        decelerationRate="fast"
+                        snapToInterval={CAROUSEL_WIDTH}
+                        snapToAlignment="start"
+                        nestedScrollEnabled={true}
+                        bounces={false}
+                    >
+                        {allMedia.map((media, index) => {
+                            const shouldRender = Math.abs(index - currentIndex) <= 1;
+                            if (!shouldRender) {
+                                return <View key={index} style={styles.slide} />;
+                            }
+                            return renderMediaItem(media, index);
+                        })}
+                    </ScrollView>
+                )}
 
                 {/* Indicateurs */}
                 {allMedia.length > 1 && (
