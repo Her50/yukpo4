@@ -127,20 +127,23 @@ pub async fn autocomplete_places(
         None => {
             // ✅ AMÉLIORÉ 2025-01-02: Recherche universelle - inclut TOUS les types (géographiques + établissements)
             // Ne pas spécifier types pour obtenir tous les résultats (villes, quartiers, établissements, etc.)
-            // Biais vers l'Afrique francophone
-            url.push_str("&components=country:cm|country:ci|country:sn|country:cd|country:ml|country:bf|country:ne|country:td|country:gn|country:bj|country:tg|country:cg|country:ga|country:cf|country:mg|country:bi|country:rw|country:dj|country:km|country:mr");
+            // ✅ FIX 2026-02-25: Google Places API limite à 5 composants country max
+            url.push_str("&components=country:cm|country:ci|country:sn|country:cd|country:ga");
+            url.push_str("&language=fr");
         }
         Some("city") => {
             // Filtrer pour villes uniquement
             url.push_str("&types=(cities)");
-            // Biais vers l'Afrique francophone
-            url.push_str("&components=country:cm|country:ci|country:sn|country:cd|country:ml|country:bf|country:ne|country:td|country:gn|country:bj|country:tg|country:cg|country:ga|country:cf|country:mg|country:bi|country:rw|country:dj|country:km|country:mr");
+            // ✅ FIX 2026-02-25: Google Places API limite à 5 composants country max
+            url.push_str("&components=country:cm|country:ci|country:sn|country:cd|country:ga");
+            url.push_str("&language=fr");
         }
         Some("neighborhood") => {
             // ✅ NOUVEAU: Quartiers et sous-localités
             url.push_str("&types=sublocality|neighborhood");
-            // Biais vers l'Afrique francophone
-            url.push_str("&components=country:cm|country:ci|country:sn|country:cd|country:ml|country:bf|country:ne|country:td|country:gn|country:bj|country:tg|country:cg|country:ga|country:cf|country:mg|country:bi|country:rw|country:dj|country:km|country:mr");
+            // ✅ FIX 2026-02-25: Google Places API limite à 5 composants country max
+            url.push_str("&components=country:cm|country:ci|country:sn|country:cd|country:ga");
+            url.push_str("&language=fr");
             // Si contexte de ville fourni, ajouter comme biais
             if let Some(city) = &params.city {
                 url.push_str(&format!("&location={}", urlencoding::encode(city)));
