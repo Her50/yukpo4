@@ -192,6 +192,7 @@ module.exports = {
             shareUrl: getEnvVar('EXPO_PUBLIC_SHARE_URL', 'https://yukpomnang.com'),
             environment: getEnvVar('EXPO_PUBLIC_ENVIRONMENT', 'production'),
             googleMapsApiKey: getEnvVar('EXPO_PUBLIC_GOOGLE_MAPS_API_KEY', ''),
+            googleMapsIosApiKey: getEnvVar('EXPO_PUBLIC_GOOGLE_MAPS_IOS_API_KEY', ''),
             googleTranslateApiKey: getEnvVar('EXPO_PUBLIC_GOOGLE_TRANSLATE_API_KEY', '')
         },
         autolinking: {

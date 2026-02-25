@@ -72,6 +72,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   const route = useRoute();
   const { user, logout } = useAuth();
   const mainScrollViewRef = React.useRef<KeyboardAwareScrollView>(null);
+  const blockTabsScrollRef = React.useRef<ScrollView>(null);
   const blockRefs = React.useRef<Record<number, View | null>>({});
   const blockPositions = React.useRef<Record<number, number>>({});
 
@@ -432,6 +433,18 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       setCurrentDisplayIndex(validDisplayIndex);
     }
   }, [displayedBlocks, currentDisplayIndex]);
+
+  // ✅ NOUVEAU 2026-02-25: Auto-scroll horizontal des tabs vers le tab actif
+  useEffect(() => {
+    if (blockTabsScrollRef.current && displayedBlocks.length > 0 && currentDisplayIndex >= 0) {
+      // Chaque tab fait environ 120px (minWidth 100 + gap 8 + padding)
+      const tabWidth = 120;
+      const scrollX = Math.max(0, (currentDisplayIndex * tabWidth) - (width / 2) + (tabWidth / 2));
+      requestAnimationFrame(() => {
+        blockTabsScrollRef.current?.scrollTo({ x: scrollX, animated: true });
+      });
+    }
+  }, [currentDisplayIndex, displayedBlocks.length]);
 
   useEffect(() => {
     const parseMediaValue = (value: any): any[] => {
@@ -5533,6 +5546,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
                   {/* ✅ CORRECTION: Navigation avec ScrollView horizontal pour aligner les tabs avec les noms de blocs */}
                   <ScrollView
+                    ref={blockTabsScrollRef}
                     horizontal
                     showsHorizontalScrollIndicator={false}
                     contentContainerStyle={styles.blockNavigationScroll}

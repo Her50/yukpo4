@@ -19,19 +19,18 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { apiGet, apiPost } from '../services/api';
-import { modernColors } from '../theme/modernTheme';
 import { useLocation } from '../contexts/LocationContext';
-import ChatModalMobile from './ChatModalMobile';
-import { NativeButton, NativeCard } from './NativeDesign';
+import { apiGet, apiPost } from '../services/api';
+import { productDeliveryService } from '../services/productDeliveryService';
+import { modernColors } from '../theme/modernTheme';
+import { generateProductShareMessage, generateSmartShareLink } from '../utils/productShareHelper';
+import SafeStorage from '../utils/safeStorage';
+import { NativeCard } from './NativeDesign';
 import ProductCommentsSection from './ProductCommentsSection';
 import ProductMediaCarousel from './ProductMediaCarousel';
 import SafeIcon from './SafeIcon';
 import ServiceGalleryModal from './ServiceGalleryModal';
 import OrderDeliveryModal from './delivery/OrderDeliveryModal';
-import { productDeliveryService } from '../services/productDeliveryService';
-import SafeStorage from '../utils/safeStorage';
-import { generateProductShareMessage, generateSmartShareLink } from '../utils/productShareHelper';
 
 const { width } = Dimensions.get('window');
 
@@ -105,9 +104,9 @@ const splitWithFallback = (input: any, primary?: string): string[] => {
 // ✅ CORRIGÉ 2026-01-22: Gérer correctement les URLs CDN depuis la table media
 const normalizeMediaUrl = (media: any, type: 'image' | 'video' = 'image'): string | null => {
   if (!media) return null;
-  
+
   let url: string | null = null;
-  
+
   // Extraire l'URL depuis différents formats
   if (typeof media === 'string') {
     url = media.trim();
@@ -120,9 +119,9 @@ const normalizeMediaUrl = (media: any, type: 'image' | 'video' = 'image'): strin
       url = null;
     }
   }
-  
+
   if (!url || url === '' || url === 'false') return null;
-  
+
   // ✅ CORRIGÉ 2026-01-22: Les URLs CDN depuis la table media sont déjà des URLs complètes (https://...)
   // Si c'est déjà une URL complète (http/https) ou base64, retourner tel quel
   if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
@@ -132,7 +131,7 @@ const normalizeMediaUrl = (media: any, type: 'image' | 'video' = 'image'): strin
     }
     return url;
   }
-  
+
   // Si c'est un chemin relatif commençant par /, construire l'URL complète
   if (url.startsWith('/')) {
     const baseUrl = process.env.EXPO_PUBLIC_API_URL || process.env.EXPO_PUBLIC_UPLOAD_URL || '';
@@ -141,7 +140,7 @@ const normalizeMediaUrl = (media: any, type: 'image' | 'video' = 'image'): strin
     }
     return url; // Retourner tel quel si pas de base URL configurée
   }
-  
+
   // Si ça ressemble à du base64 (pas d'URL, pas de /, longue chaîne)
   const looksLikeBase64 = /^[A-Za-z0-9+/=]{100,}$/.test(url);
   if (looksLikeBase64) {
@@ -151,7 +150,7 @@ const normalizeMediaUrl = (media: any, type: 'image' | 'video' = 'image'): strin
       return `data:video/mp4;base64,${url}`;
     }
   }
-  
+
   // Si ça commence par uploads/, construire l'URL
   if (url.startsWith('uploads/')) {
     const baseUrl = process.env.EXPO_PUBLIC_API_URL || process.env.EXPO_PUBLIC_UPLOAD_URL || '';
@@ -159,16 +158,16 @@ const normalizeMediaUrl = (media: any, type: 'image' | 'video' = 'image'): strin
       return `${baseUrl.replace(/\/$/, '')}/${url}`;
     }
   }
-  
+
   // Retourner tel quel par défaut
   return url;
 };
 
 const getCountryFlag = (country?: string): string => {
   if (!country || typeof country !== 'string') return '🌍';
-  
+
   const countryLower = country.toLowerCase().trim();
-  
+
   // Drapeaux des pays africains et internationaux (même mapping que useLocationDisplay)
   if (countryLower.includes('cameroun') || countryLower.includes('cameroon') || countryLower.includes('douala') || countryLower.includes('yaoundé') || countryLower.includes('yaounde')) return '🇨🇲';
   if (countryLower.includes('nigeria') || countryLower.includes('lagos') || countryLower.includes('abuja')) return '🇳🇬';
@@ -195,9 +194,9 @@ const getCountryFlag = (country?: string): string => {
 // ✅ NOUVEAU: Fonction pour extraire le pays depuis la localisation
 const extractCountryFromLocation = (location: string): string | null => {
   if (!location || typeof location !== 'string') return null;
-  
+
   const locationLower = location.toLowerCase();
-  
+
   if (locationLower.includes('cameroun') || locationLower.includes('cameroon') || locationLower.includes('douala') || locationLower.includes('yaoundé') || locationLower.includes('yaounde')) return 'Cameroun';
   if (locationLower.includes('nigeria') || locationLower.includes('lagos') || locationLower.includes('abuja')) return 'Nigeria';
   if (locationLower.includes('sénégal') || locationLower.includes('senegal') || locationLower.includes('dakar')) return 'Sénégal';
@@ -212,7 +211,7 @@ const extractCountryFromLocation = (location: string): string | null => {
   if (locationLower.includes('tchad') || locationLower.includes('chad')) return 'Tchad';
   if (locationLower.includes('gabon')) return 'Gabon';
   if (locationLower.includes('congo')) return 'Congo';
-  
+
   return null;
 };
 
@@ -257,7 +256,7 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
     latitude: contextLocation.coords.latitude,
     longitude: contextLocation.coords.longitude,
   } : null);
-  
+
   const [imageError, setImageError] = useState(false);
   const [selectedVariantIndex, setSelectedVariantIndex] = useState<number | null>(null);
   // ✅ NOUVEAU 2026-01-13: Ref pour le ScrollView des variations de prix
@@ -280,7 +279,7 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
   const [reactions, setReactions] = useState<Record<string, { count: number; hasReacted: boolean }>>({});
   const [loadingReactions, setLoadingReactions] = useState(false);
   const [pendingReaction, setPendingReaction] = useState<string | null>(null);
-  
+
   // ✅ NOUVEAU 2026-01-23: Tracking des produits consultés
   useEffect(() => {
     const trackProductView = async () => {
@@ -289,12 +288,12 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
         const productIndex = product?.product_index || product?.index;
         // ✅ CORRIGÉ 2026-01-23: Vérifier que productData existe avant d'accéder à ses propriétés
         const productName = productData?.nom || productData?.nom_produit || productData?.name || 'Produit';
-        
+
         if (!serviceId) return;
-        
+
         const STORAGE_KEY = 'viewed_products_history';
         const MAX_HISTORY_ITEMS = 100;
-        
+
         // Charger l'historique existant
         const stored = await SafeStorage.getItem(STORAGE_KEY);
         let history: Array<{
@@ -303,20 +302,20 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
           productName: string;
           viewedAt: string;
         }> = stored ? JSON.parse(stored) : [];
-        
+
         // Vérifier si le produit n'est pas déjà dans l'historique (éviter les doublons)
         const existingIndex = history.findIndex(
-          item => item.serviceId === serviceId && 
-                  (productIndex === undefined || item.productIndex === productIndex)
+          item => item.serviceId === serviceId &&
+            (productIndex === undefined || item.productIndex === productIndex)
         );
-        
+
         const newEntry = {
           serviceId,
           productIndex,
           productName,
           viewedAt: new Date().toISOString(),
         };
-        
+
         if (existingIndex >= 0) {
           // Mettre à jour la date de consultation
           history[existingIndex] = newEntry;
@@ -324,17 +323,17 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
           // Ajouter à l'historique
           history.unshift(newEntry);
         }
-        
+
         // Limiter à MAX_HISTORY_ITEMS
         history = history.slice(0, MAX_HISTORY_ITEMS);
-        
+
         // Sauvegarder
         await SafeStorage.setItem(STORAGE_KEY, JSON.stringify(history));
       } catch (error) {
         console.error('[ProductCard] Erreur tracking produit consulté:', error);
       }
     };
-    
+
     // Tracker après un court délai pour éviter de tracker à chaque re-render
     const timer = setTimeout(trackProductView, 1000);
     return () => clearTimeout(timer);
@@ -356,7 +355,7 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
       : typeof productData?.product_vector === 'string'
         ? splitWithFallback(productData.product_vector, ',')
         : [];
-  
+
   // Filtrer les valeurs booléennes, null, undefined, et "false" string
   const productVector = rawProductVector.filter((item: any) => {
     if (item === null || item === undefined) return false;
@@ -369,13 +368,13 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
   const rawLocationVector = productData?.location_vector || productData?.locationVector || productData?.location?.vector;
   const locationVector = Array.isArray(rawLocationVector)
     ? rawLocationVector.filter((item: any) => {
-        // ✅ CORRIGÉ 2026-01-13: Filtrer aussi les strings "false" et valeurs booléennes
-        if (item === null || item === undefined) return false;
-        if (typeof item === 'boolean') return false;
-        if (item === 'false' || item === false) return false;
-        if (typeof item === 'string' && item.trim() === '') return false;
-        return true;
-      })
+      // ✅ CORRIGÉ 2026-01-13: Filtrer aussi les strings "false" et valeurs booléennes
+      if (item === null || item === undefined) return false;
+      if (typeof item === 'boolean') return false;
+      if (item === 'false' || item === false) return false;
+      if (typeof item === 'string' && item.trim() === '') return false;
+      return true;
+    })
     : typeof rawLocationVector === 'string'
       ? splitWithFallback(rawLocationVector, ',').filter((item: string) => item !== 'false' && item.trim() !== '')
       : [];
@@ -386,26 +385,26 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
   // Priorité 3: chosen_location depuis productData
   // Priorité 4: locationVector (peut contenir quartier, ville, etc.)
   // Priorité 5: adresse depuis productData ou service.data
-  const lieuProduitComposants = service?.data?.lieu_produit?.valeur?.composants 
+  const lieuProduitComposants = service?.data?.lieu_produit?.valeur?.composants
     || service?.data?.lieu_produit?.valeur?.valeur?.components
     || productData.lieu_produit?.valeur?.composants
     || productData.lieu_produit?.valeur?.valeur?.components
     || productData.lieu_produit?.composants;
-  
+
   // ✅ PRIORITAIRE: Extraire quartier et ville depuis les composants
-  let quartier = lieuProduitComposants?.quartier 
+  let quartier = lieuProduitComposants?.quartier
     ? filterBooleanValue(lieuProduitComposants.quartier, '')
     : null;
-  let ville = lieuProduitComposants?.ville 
+  let ville = lieuProduitComposants?.ville
     ? filterBooleanValue(lieuProduitComposants.ville, '')
     : null;
-  
+
   // ✅ NOUVEAU 2026-01-21: Si pas de composants, essayer de parser la valeur de lieu_produit
   if (!quartier || !ville) {
-    const lieuProduitValeur = service?.data?.lieu_produit?.valeur 
+    const lieuProduitValeur = service?.data?.lieu_produit?.valeur
       || productData.lieu_produit?.valeur
       || productData.lieu_produit;
-    
+
     // Si c'est une chaîne, essayer de la parser (format "quartier, ville" ou "ville")
     if (typeof lieuProduitValeur === 'string') {
       const parts = lieuProduitValeur.split(',').map((p: string) => p.trim());
@@ -430,7 +429,7 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
       }
     }
   }
-  
+
   // Construire la localisation préférée : "quartier, ville" ou juste l'un des deux
   let locationDisplay = '';
   if (quartier && ville) {
@@ -443,7 +442,7 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
     // Enlever le pays si présent
     locationDisplay = ville.replace(/,\s*(Cameroun|Cameroon)$/i, '').trim();
   }
-  
+
   // Fallback si pas de composants : utiliser les autres sources
   const chosenLocationRaw = locationDisplay ||
     productData.chosen_location ||
@@ -457,15 +456,15 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
     service?.data?.adresse?.valeur ||
     service?.data?.adresse_service?.valeur ||
     '';
-  
+
   // ✅ CORRIGÉ 2026-01-21: Filtrer strictement les valeurs booléennes, "false" string, null, undefined
-  const chosenLocation = (typeof chosenLocationRaw === 'string' && 
-                          chosenLocationRaw !== 'false' && 
-                          chosenLocationRaw !== false &&
-                          chosenLocationRaw.trim() !== '')
+  const chosenLocation = (typeof chosenLocationRaw === 'string' &&
+    chosenLocationRaw !== 'false' &&
+    chosenLocationRaw !== false &&
+    chosenLocationRaw.trim() !== '')
     ? chosenLocationRaw.trim()
     : '';
-  
+
   // ✅ DEBUG 2026-01-21: Logger l'extraction de la localisation avec quartier/ville
   useEffect(() => {
     if (chosenLocation) {
@@ -496,7 +495,7 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
   // Vérifier si variation_prix existe et n'a pas encore été transformé
   let hasVariant = productData.has_variant || product.has_variant || false;
   let variants = productData.variants || product.variants || [];
-  
+
   // ✅ DEBUG: Logger pour diagnostiquer les problèmes de variations
   useEffect(() => {
     if (__DEV__) {
@@ -517,13 +516,13 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
       }
     }
   }, [hasVariant, variants.length, productData.variation_prix, product.variation_prix, productData.has_variant, product.has_variant]);
-  
+
   // Si pas de variants mais qu'on a variation_prix, le transformer
   if (!hasVariant && variants.length === 0) {
     // ✅ CORRIGÉ: Vérifier aussi dans product directement (pas seulement productData)
     const variationPrix = productData.variation_prix || productData.variabilite_prix || productData.price_variant
       || product.variation_prix || product.variabilite_prix || product.price_variant;
-    
+
     if (variationPrix) {
       console.log('[ProductCard] 🔍 variation_prix trouvé:', {
         type: typeof variationPrix,
@@ -534,7 +533,7 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
       // Si c'est un objet avec modalites
       if (typeof variationPrix === 'object' && !Array.isArray(variationPrix)) {
         const modalites = variationPrix.modalites || variationPrix.valeur || variationPrix;
-        
+
         if (Array.isArray(modalites) && modalites.length > 0) {
           variants = modalites.map((modalite: any) => {
             const variant: any = {};
@@ -556,13 +555,13 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
             }
             return variant;
           });
-          
+
           hasVariant = variants.length > 0;
-          
+
           if (variationPrix.variable) {
             productData.variant_dimension = variationPrix.variable;
           }
-          
+
           console.log('[ProductCard] ✅ variation_prix transformé en variants:', variants.length);
         }
       }
@@ -588,7 +587,7 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
           }
           return variant;
         });
-        
+
         hasVariant = variants.length > 0;
         console.log('[ProductCard] ✅ variation_prix (array) transformé en variants:', variants.length);
       }
@@ -615,7 +614,7 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
 
   // ✅ NOUVEAU 2026-02-10: Utiliser le nom de la structure (titre_service) en priorité au lieu du nom personnel
   // Priorité 1: Nom de la structure depuis le service (titre_service)
-  const structureName = 
+  const structureName =
     service?.data?.titre_service?.valeur ||
     service?.data?.titre_service ||
     service?.titre_service ||
@@ -681,49 +680,49 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
   // 4. service.data->'produits'[index].images/videos (ancien système)
   // 5. service.data->'images'/'videos' (médias du service)
   // 6. service.images/videos (médias du service au niveau racine)
-  
+
   // ✅ PRIORITÉ 1: product.images/videos (passés directement par ResultatBesoinScreen) - PRIORITÉ ABSOLUE
   // ✅ CORRIGÉ 2026-01-23: Vérifier TOUJOURS product.images/videos EN PREMIER car ResultatBesoinScreen les passe là
   // ✅ CRITIQUE: Ne pas utiliser productData.images si product.images existe, car productData peut être product.product_data
   // qui peut ne pas contenir les images même si product.images les contient
-  const rawImages = 
+  const rawImages =
     (Array.isArray(product.images) && product.images.length > 0) ? product.images
-    : (Array.isArray(product.product_data?.images) && product.product_data.images.length > 0) ? product.product_data.images
-    : (Array.isArray(productData.images) && productData.images.length > 0 && productData !== product) ? productData.images 
-    : (Array.isArray(productData.data?.images) && productData.data.images.length > 0) ? productData.data.images
-    : (Array.isArray(service?.data?.produits) && productIndex !== undefined && service.data.produits[productIndex])
-      ? (service.data.produits[productIndex].images || [])
-    : (Array.isArray(service?.data?.images?.valeur) && service.data.images.valeur.length > 0) ? service.data.images.valeur
-    : (Array.isArray(service?.data?.images) && service.data.images.length > 0) ? service.data.images
-    : (Array.isArray(service?.images) && service.images.length > 0) ? service.images
-    : [];
-  
+      : (Array.isArray(product.product_data?.images) && product.product_data.images.length > 0) ? product.product_data.images
+        : (Array.isArray(productData.images) && productData.images.length > 0 && productData !== product) ? productData.images
+          : (Array.isArray(productData.data?.images) && productData.data.images.length > 0) ? productData.data.images
+            : (Array.isArray(service?.data?.produits) && productIndex !== undefined && service.data.produits[productIndex])
+              ? (service.data.produits[productIndex].images || [])
+              : (Array.isArray(service?.data?.images?.valeur) && service.data.images.valeur.length > 0) ? service.data.images.valeur
+                : (Array.isArray(service?.data?.images) && service.data.images.length > 0) ? service.data.images
+                  : (Array.isArray(service?.images) && service.images.length > 0) ? service.images
+                    : [];
+
   // Filtrer et normaliser les images avec la fonction globale
   const images = rawImages
     .map((img: any) => normalizeMediaUrl(img, 'image'))
     .filter((img): img is string => img !== null && img !== '');
-  
+
   // ✅ PRIORITÉ 1: product.videos (passés directement par ResultatBesoinScreen) - PRIORITÉ ABSOLUE
   // ✅ CORRIGÉ 2026-01-23: Vérifier TOUJOURS product.videos EN PREMIER car ResultatBesoinScreen les passe là
   // ✅ CRITIQUE: Ne pas utiliser productData.videos si product.videos existe, car productData peut être product.product_data
   // qui peut ne pas contenir les vidéos même si product.videos les contient
-  const rawVideos = 
+  const rawVideos =
     (Array.isArray(product.videos) && product.videos.length > 0) ? product.videos
-    : (Array.isArray(product.product_data?.videos) && product.product_data.videos.length > 0) ? product.product_data.videos
-    : (Array.isArray(productData.videos) && productData.videos.length > 0 && productData !== product) ? productData.videos
-    : (Array.isArray(productData.data?.videos) && productData.data.videos.length > 0) ? productData.data.videos
-    : (Array.isArray(service?.data?.produits) && productIndex !== undefined && service.data.produits[productIndex])
-      ? (service.data.produits[productIndex].videos || [])
-    : (Array.isArray(service?.data?.videos?.valeur) && service.data.videos.valeur.length > 0) ? service.data.videos.valeur
-    : (Array.isArray(service?.data?.videos) && service.data.videos.length > 0) ? service.data.videos
-    : (Array.isArray(service?.videos) && service.videos.length > 0) ? service.videos
-    : [];
-  
+      : (Array.isArray(product.product_data?.videos) && product.product_data.videos.length > 0) ? product.product_data.videos
+        : (Array.isArray(productData.videos) && productData.videos.length > 0 && productData !== product) ? productData.videos
+          : (Array.isArray(productData.data?.videos) && productData.data.videos.length > 0) ? productData.data.videos
+            : (Array.isArray(service?.data?.produits) && productIndex !== undefined && service.data.produits[productIndex])
+              ? (service.data.produits[productIndex].videos || [])
+              : (Array.isArray(service?.data?.videos?.valeur) && service.data.videos.valeur.length > 0) ? service.data.videos.valeur
+                : (Array.isArray(service?.data?.videos) && service.data.videos.length > 0) ? service.data.videos
+                  : (Array.isArray(service?.videos) && service.videos.length > 0) ? service.videos
+                    : [];
+
   // Filtrer et normaliser les vidéos avec la fonction globale
   const videos = rawVideos
     .map((vid: any) => normalizeMediaUrl(vid, 'video'))
     .filter((vid): vid is string => vid !== null && vid !== '');
-  
+
   // ✅ DEBUG 2026-01-23: Logger pour diagnostiquer les problèmes de médias depuis la table media
   useEffect(() => {
     // ✅ AMÉLIORÉ: Toujours logger pour voir pourquoi les médias ne s'affichent pas
@@ -755,12 +754,12 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
     ? variants[selectedVariantIndex]
     : null;
   const variantImage = selectedVariant?.image || selectedVariant?.images?.[0];
-  
+
   // ✅ CORRIGÉ 2026-01-13: Normaliser l'image de variation si nécessaire
   const normalizedVariantImage = variantImage ? normalizeMediaUrl(variantImage, 'image') : null;
-  
+
   const hasMedia = (images?.length || 0) + (videos?.length || 0) > 0 || !!normalizedVariantImage;
-  
+
   // ✅ DEBUG: Logger pour diagnostiquer les problèmes de médias
   useEffect(() => {
     if (__DEV__ && (rawImages.length > 0 || rawVideos.length > 0 || images.length > 0 || videos.length > 0)) {
@@ -778,7 +777,7 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
       });
     }
   }, [hasMedia, images.length, videos.length, rawImages.length, rawVideos.length, product.images, product.videos, productData.images, productData.videos, normalizedVariantImage]);
-  
+
   // ✅ DEBUG 2026-01-13: Logger hasMedia pour diagnostiquer
   if (rawImages.length > 0 || rawVideos.length > 0) {
     console.log(`[ProductCard] hasMedia=${hasMedia}, images=${images.length}, videos=${videos.length}, variantImage=${!!normalizedVariantImage}`);
@@ -813,11 +812,11 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
   const serviceType = filterBooleanValue(service?.data?.type?.valeur || service?.data?.type || service?.category || '', '');
   const productType = filterBooleanValue(productData.type || productData.product_type || '', '');
   const typeOffre = filterBooleanValue(service?.data?.type_offre?.valeur || productData.type_offre || '', '');
-  
+
   // ✅ CORRIGÉ 2026-01-13: Vérifier si c'est une prestation de service (ne doit PAS avoir le bouton "Me livrer")
   // Une prestation est identifiée par : type_offre === 'prestation' OU type === 'prestation_service' / 'service' / 'service_prestation'
   // ET elle n'a PAS de données de produit (nom, prix, etc.)
-  const isPrestation = 
+  const isPrestation =
     typeOffre === 'prestation' ||
     typeOffre === 'service' ||
     serviceType === 'prestation_service' ||
@@ -825,12 +824,12 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
     productType === 'prestation_service' ||
     productType === 'service_prestation' ||
     (serviceType === 'service' && !product?.product_data && !productData?.nom && !productData?.name && !productData?.prix && !productData?.price);
-  
+
   // ✅ CORRIGÉ 2026-01-13: C'est un produit si :
   // 1. type_offre === 'produit' (définitif)
   // 2. OU product.product_data existe (produit depuis service_products)
   // 3. OU le type n'est PAS une prestation ET il y a des données de produit (nom, prix, etc.)
-  const isProduct = 
+  const isProduct =
     typeOffre === 'produit' || // ✅ Définitif : type_offre = 'produit'
     product.product_data !== undefined || // Produit depuis service_products
     (!isPrestation && (
@@ -844,11 +843,11 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
     const checkDeliveryConfig = async () => {
       // ✅ CORRIGÉ: Convertir serviceId en number si c'est une string
       const numericServiceId = typeof serviceId === 'string' ? parseInt(serviceId, 10) : serviceId;
-      
+
       // ✅ CORRIGÉ 2026-01-20: Vérifier que productIndex est valide (pas juste 0 par défaut)
       // Si productIndex est 0 mais qu'il n'était pas explicitement défini, ne pas vérifier
       const hasValidProductIndex = productIndex !== undefined && productIndex !== null && productIndex >= 0;
-      
+
       if (!isProduct || !numericServiceId || isNaN(numericServiceId) || !hasValidProductIndex) {
         console.log('[ProductCard] ⚠️ Vérification config livraison ignorée:', {
           isProduct,
@@ -879,7 +878,7 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
             is_immediately_available: config.is_immediately_available
           } : null
         });
-        
+
         // ✅ CORRIGÉ: Vérifier que config n'est pas null ET que is_configured est true
         if (config && config.is_configured === true) {
           console.log('[ProductCard] ✅ Config livraison valide - bouton activé');
@@ -924,7 +923,7 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
   const deliveryEnabled = isProduct && // ✅ CRITIQUE: Uniquement pour les produits
     serviceId && // ✅ S'assurer qu'il y a un serviceId
     hasDeliveryConfig === true; // ✅ NOUVEAU: Vérifier que la configuration de livraison existe et est configurée
-  
+
   // ✅ DEBUG 2026-01-20: Logger l'état du bouton pour déboguer
   useEffect(() => {
     if (isProduct && serviceId) {
@@ -943,7 +942,7 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
   // Le prix peut être dans : prix, prix_produit, prix.valeur, prix_produit.valeur, price, product_price
   const extractPrice = (data: any): number => {
     if (!data) return 0;
-    
+
     // Vérifier les variations de prix d'abord
     if (hasVariant && variants.length > 0) {
       const variantPrices = variants.map((v: any) => {
@@ -954,15 +953,15 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
         return Math.min(...variantPrices);
       }
     }
-    
+
     // Vérifier prix direct (nombre)
     if (typeof data.prix === 'number') return data.prix;
     if (typeof data.price === 'number') return data.price;
     if (typeof data.product_price === 'number') return data.product_price;
-    
+
     // Vérifier prix_produit direct (nombre)
     if (typeof data.prix_produit === 'number') return data.prix_produit;
-    
+
     // Vérifier prix structuré (objet avec valeur)
     if (data.prix && typeof data.prix === 'object') {
       const prixValue = data.prix.valeur || data.prix.value || data.prix;
@@ -972,7 +971,7 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
         if (!isNaN(parsed)) return parsed;
       }
     }
-    
+
     // Vérifier prix_produit structuré (objet avec valeur)
     if (data.prix_produit && typeof data.prix_produit === 'object') {
       const prixProduitValue = data.prix_produit.valeur || data.prix_produit.value || data.prix_produit;
@@ -982,7 +981,7 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
         if (!isNaN(parsed)) return parsed;
       }
     }
-    
+
     // Vérifier prix en string
     if (typeof data.prix === 'string') {
       const parsed = parseFloat(data.prix);
@@ -996,22 +995,22 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
       const parsed = parseFloat(data.prix_produit);
       if (!isNaN(parsed)) return parsed;
     }
-    
+
     return 0;
   };
-  
+
   // ✅ CORRIGÉ 2026-01-22: Extraire le prix depuis productData ET product (si disponible)
   const displayPrice = extractPrice(productData) || extractPrice(product) || 0;
 
   // ✅ CORRIGÉ 2026-01-22: Extraire la devise depuis toutes les sources possibles
   const extractDevise = (data: any): string => {
     if (!data) return 'XAF';
-    
+
     // Vérifier devise directe
     if (data.devise && typeof data.devise === 'string') return data.devise;
     if (data.currency && typeof data.currency === 'string') return data.currency;
     if (data.devise_produit && typeof data.devise_produit === 'string') return data.devise_produit;
-    
+
     // Vérifier devise structurée (objet avec valeur)
     if (data.devise && typeof data.devise === 'object') {
       const deviseValue = data.devise.valeur || data.devise.value || data.devise;
@@ -1021,34 +1020,34 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
       const deviseProduitValue = data.devise_produit.valeur || data.devise_produit.value || data.devise_produit;
       if (typeof deviseProduitValue === 'string') return deviseProduitValue;
     }
-    
+
     return 'XAF';
   };
-  
+
   const devise = extractDevise(productData) || extractDevise(product) || variants[0]?.devise || 'XAF';
 
   // ✅ CORRIGÉ 2025-01-01: Mémoriser le calcul de distance pour éviter les recalculs à chaque render
   // ✅ CORRIGÉ 2026-01-04: Vérifier aussi dans product directement (pas seulement productData)
   // Dans ResultatBesoinScreen, distance et distance_km sont ajoutés directement dans product
   const distanceKm = useMemo(() => {
-    const rawDistance = product.distance_km ?? product.distanceKm ?? product.distance 
+    const rawDistance = product.distance_km ?? product.distanceKm ?? product.distance
       ?? productData.distance_km ?? productData.distanceKm ?? productData.distance ?? productData.distance_client;
     let calculatedDistance = typeof rawDistance === 'string'
       ? parseFloat(rawDistance)
       : typeof rawDistance === 'number'
         ? rawDistance
         : undefined;
-    
+
     // ✅ NOUVEAU: Calculer la distance si elle n'est pas fournie et qu'on a les coordonnées GPS
     if ((calculatedDistance === undefined || !Number.isFinite(calculatedDistance)) && effectiveUserLocation && locationCalculateDistance) {
       // Extraire les coordonnées GPS du produit/service (priorité: _gps ajouté dans ResultatBesoinScreen, puis gps direct, puis service)
       // ✅ CORRIGÉ 2026-01-04: Vérifier aussi dans product directement (pas seulement productData)
       const productGPS = product._gps || productData._gps || product.gps || productData.gps || productData.gps_coords || productData.gps_fixe || service?.data?.gps_fixe?.valeur || service?.data?.gps?.valeur;
-      
+
       if (productGPS) {
         let productLat: number | undefined;
         let productLon: number | undefined;
-        
+
         // Parser le GPS (peut être string "lat,lng" ou object {lat, lng} ou {latitude, longitude})
         if (typeof productGPS === 'string') {
           const parts = productGPS.split(',').map(p => p.trim());
@@ -1060,10 +1059,10 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
           productLat = productGPS.lat ?? productGPS.latitude;
           productLon = productGPS.lng ?? productGPS.longitude;
         }
-        
+
         // Calculer la distance si on a les deux coordonnées
-        if (productLat !== undefined && productLon !== undefined && 
-            Number.isFinite(productLat) && Number.isFinite(productLon)) {
+        if (productLat !== undefined && productLon !== undefined &&
+          Number.isFinite(productLat) && Number.isFinite(productLon)) {
           try {
             calculatedDistance = locationCalculateDistance(
               effectiveUserLocation.latitude,
@@ -1077,13 +1076,13 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
         }
       }
     }
-    
+
     return calculatedDistance;
   }, [product.distance_km, product.distanceKm, product.distance, product._gps, product.gps, productData.distance_km, productData.distanceKm, productData.distance, productData.distance_client, productData._gps, productData.gps, productData.gps_coords, productData.gps_fixe, service?.data?.gps_fixe?.valeur, service?.data?.gps?.valeur, effectiveUserLocation, locationCalculateDistance]);
-  
+
   // ✅ CORRIGÉ: Vérifier aussi si distanceKm est 0 (valide) et améliorer la logique
   const hasDistance = typeof distanceKm === 'number' && Number.isFinite(distanceKm) && distanceKm >= 0;
-  
+
   // ✅ DEBUG: Logger pour diagnostiquer les problèmes de distance
   useEffect(() => {
     if (__DEV__) {
@@ -1112,17 +1111,17 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
   // ✅ CORRIGÉ 2026-01-14: Filtrer les valeurs "false" string et valeurs vides
   const paysFromService = filterBooleanValue(service?.data?.pays?.valeur, '');
   const paysFromLocationComponents = filterBooleanValue(
-    service?.data?.lieu_produit?.valeur?.composants?.pays 
+    service?.data?.lieu_produit?.valeur?.composants?.pays
     || service?.data?.lieu_produit?.valeur?.valeur?.components?.pays,
     ''
   );
   const paysFromLocation = chosenLocation ? extractCountryFromLocation(chosenLocation) : null;
   const paysFromVector = locationVector.length > 0 ? filterBooleanValue(locationVector[locationVector.length - 1], '') : '';
   const paysFromProduct = filterBooleanValue(productData.pays, '');
-  
+
   const pays = paysFromService || paysFromLocationComponents || paysFromLocation || paysFromVector || paysFromProduct || null;
   const countryFlag = pays && pays.trim() !== '' ? getCountryFlag(pays) : '';
-  
+
   // ✅ DEBUG 2026-01-20: Logger l'extraction du pays et du drapeau
   useEffect(() => {
     if (pays || countryFlag) {
@@ -1277,7 +1276,7 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
       // Le lien HTTPS sera intercepté par l'app si installée (via intentFilters)
       // Sinon, il ouvrira la page web. C'est un seul lien intelligent qui fonctionne partout.
       const smartLink = generateSmartShareLink(productId, serviceId);
-      
+
       const result = await Share.share({
         message: shareMessage,
         title: productName,
@@ -1298,7 +1297,7 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
     try {
       // Extraire les coordonnées GPS du produit/service
       const productGPS = product._gps || productData._gps || product.gps || productData.gps || productData.gps_coords || productData.gps_fixe || service?.data?.gps_fixe?.valeur || service?.data?.gps?.valeur;
-      
+
       if (!productGPS) {
         Alert.alert(
           'Localisation indisponible',
@@ -1451,14 +1450,14 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
         if (variantsScrollRef.current && !isScrollingManually) {
           setCurrentVariantIndex((prevIndex) => {
             const nextIndex = (prevIndex + 1) % variants.length;
-            
+
             // Scroll vers la prochaine variation
             variantsScrollRef.current?.scrollTo({
               x: nextIndex * cardWidth,
               y: 0,
               animated: true,
             });
-            
+
             return nextIndex;
           });
         }
@@ -1495,14 +1494,14 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
         if (characteristicsScrollRef.current && !isScrollingCharacteristicsManually) {
           setCurrentCharacteristicIndex((prevIndex) => {
             const nextIndex = (prevIndex + 1) % productVector.length;
-            
+
             // Scroll vers la prochaine caractéristique
             characteristicsScrollRef.current?.scrollTo({
               x: nextIndex * chipWidth,
               y: 0,
               animated: true,
             });
-            
+
             return nextIndex;
           });
         }
@@ -1686,7 +1685,7 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
                     </Text>
                   </TouchableOpacity>
                 )}
-                
+
                 {/* Statistiques centrées - Espacement équilibré */}
                 {topStatsData.length > 0 && (
                   <View style={styles.topStatsRowCentered}>
@@ -1706,7 +1705,7 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
                     ))}
                   </View>
                 )}
-                
+
                 {/* Bouton partage à droite - Visuellement équilibré */}
                 <TouchableOpacity
                   style={styles.shareButtonCompact}
@@ -1727,23 +1726,22 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
                     'Produit'
                   )}
                 </Text>
-                
+
                 {/* ✅ OPTIMISÉ 2026-01-14: Description juste sous le titre pour meilleure hiérarchie */}
                 {/* ✅ CORRIGÉ 2026-01-23: Utiliser UNIQUEMENT productData.description pour éviter confusion avec description du service */}
                 {/* ✅ CORRIGÉ 2026-02-06: Permettre l'affichage de la description sur plus de lignes (4 au lieu de 2) */}
                 {(productData.description || productData.description_produit || product.description || product.description_produit) && (
-                  <Text 
+                  <Text
                     style={styles.productDescription}
-                    numberOfLines={4}
-                    // ✅ CORRECTION: Augmenté de 2 à 4 lignes pour permettre une meilleure lecture
-                    // tout en préservant la mise en forme existante
+                  // ✅ CORRIGÉ 2026-02-25: Supprimer numberOfLines pour afficher toute la description
+                  // Les retours à la ligne (\n) seront respectés et le texte ne sera plus tronqué
                   >
                     {filterBooleanValue(
                       // ✅ CORRIGÉ 2026-01-23: PRIORITÉ ABSOLUE à la description du produit depuis productData
                       // Ne JAMAIS utiliser la description du service comme fallback
-                      productData.description || 
-                      productData.description_produit || 
-                      product.description || 
+                      productData.description ||
+                      productData.description_produit ||
+                      product.description ||
                       product.description_produit ||
                       '',
                       ''
@@ -1774,7 +1772,7 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
                       if (prestataire.user_id) {
                         // ✅ NOUVEAU 2026-01-20: Rediriger vers la boutique du prestataire
                         // ✅ CORRIGÉ 2026-01-23: Passer le produit et service cliqués pour les inclure dans les résultats
-                        navigation.navigate('PrestataireBoutique' as any, { 
+                        navigation.navigate('PrestataireBoutique' as any, {
                           userId: prestataire.user_id,
                           user_id: prestataire.user_id,
                           prestataireName: prestataire.nom || prestataire.nom_complet || prestataire.name,
@@ -1793,7 +1791,7 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
                     </Text>
                   </TouchableOpacity>
                 )}
-                
+
                 {/* Adresse avec drapeau - Quartier/Ville + drapeau collé */}
                 {(chosenLocation || countryFlag) && (
                   <View style={styles.addressRowCompact}>
@@ -2081,16 +2079,16 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
   // Comparer les IDs et valeurs clés plutôt que les objets entiers
   const prevProductId = prevProps.product?._serviceId || prevProps.product?.service_id || prevProps.product?.id;
   const nextProductId = nextProps.product?._serviceId || nextProps.product?.service_id || nextProps.product?.id;
-  
+
   const prevServiceId = prevProps.service?.id;
   const nextServiceId = nextProps.service?.id;
-  
+
   const prevPrestataireId = prevProps.prestataire?.user_id || prevProps.prestataire?.userId || prevProps.prestataire?.id;
   const nextPrestataireId = nextProps.prestataire?.user_id || nextProps.prestataire?.userId || nextProps.prestataire?.id;
-  
+
   const prevLocation = prevProps.userLocation ? `${prevProps.userLocation.latitude},${prevProps.userLocation.longitude}` : null;
   const nextLocation = nextProps.userLocation ? `${nextProps.userLocation.latitude},${nextProps.userLocation.longitude}` : null;
-  
+
   // ✅ Ne re-render que si les valeurs clés changent
   return (
     prevProductId === nextProductId &&

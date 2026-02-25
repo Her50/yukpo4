@@ -1,10 +1,15 @@
+import { Platform } from 'react-native';
+
 // Configuration de l'environnement pour l'application mobile
 export const ENVIRONMENT = {
     // Clé API Google Translate
     GOOGLE_TRANSLATE_API_KEY: process.env.EXPO_PUBLIC_GOOGLE_TRANSLATE_API_KEY || '',
 
-    // Clé API Google Maps (Places, Geocoding, etc.)
-    GOOGLE_MAPS_API_KEY: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || '',
+    // Clés API Google Maps (Places, Geocoding, etc.)
+    // ✅ 2026-02-25: Clés séparées Android/iOS pour sécurité (recommandation Google)
+    GOOGLE_MAPS_API_KEY: Platform.OS === 'ios'
+        ? (process.env.EXPO_PUBLIC_GOOGLE_MAPS_IOS_API_KEY || process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || '')
+        : (process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || ''),
 
     // URL de l'API backend - Configurable via .env
     // ✅ 2026-02-14: Migration vers GCP Cloud Run
