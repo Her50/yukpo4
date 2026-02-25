@@ -344,14 +344,14 @@ jobs:
             if [ -n "$ENV_VARS" ] && [ "$ENV_VARS" != "null" ]; then
               echo "Déploiement avec variables d'environnement..."
               # ✅ CORRIGÉ: Ajout du startup probe pour Cloud Run
-              # Timeout total: 60s (initial) + (20 × 15s) = 360 secondes maximum
+              # Timeout total: 180s (initial) + (30 × 15s) = 630 secondes maximum (wrapper Python 90s + migrations Rust)
               gcloud run deploy ${{ env.SERVICE_NAME }} \
                 --image ${{ env.IMAGE_NAME }}:${{ github.sha }} \
                 --platform managed \
                 --region ${{ env.REGION }} \
                 --allow-unauthenticated \
                 --port 8080 \
-                --startup-probe=timeoutSeconds=10,periodSeconds=15,initialDelaySeconds=90,failureThreshold=20,httpGet.port=8080,httpGet.path=/health \
+                --startup-probe=timeoutSeconds=10,periodSeconds=15,initialDelaySeconds=180,failureThreshold=30,httpGet.port=8080,httpGet.path=/health \
                 --update-env-vars="$ENV_VARS" \
                 --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,MONGODB_URL=mongodb-url:latest,OPENAI_API_KEY=openai-api-key:latest,S3_ACCESS_KEY=s3-access-key:latest,S3_SECRET_KEY=s3-secret-key:latest,LIVEKIT_API_KEY=livekit-api-key:latest,LIVEKIT_API_SECRET=livekit-api-secret:latest" \
                 --set-cloudsql-instances="$CLOUD_SQL_INSTANCE" \
@@ -373,7 +373,7 @@ jobs:
                 --region ${{ env.REGION }} \
                 --allow-unauthenticated \
                 --port 8080 \
-                --startup-probe=timeoutSeconds=10,periodSeconds=15,initialDelaySeconds=90,failureThreshold=20,httpGet.port=8080,httpGet.path=/health \
+                --startup-probe=timeoutSeconds=10,periodSeconds=15,initialDelaySeconds=180,failureThreshold=30,httpGet.port=8080,httpGet.path=/health \
                 --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,MONGODB_URL=mongodb-url:latest,OPENAI_API_KEY=openai-api-key:latest,S3_ACCESS_KEY=s3-access-key:latest,S3_SECRET_KEY=s3-secret-key:latest,LIVEKIT_API_KEY=livekit-api-key:latest,LIVEKIT_API_SECRET=livekit-api-secret:latest" \
                 --set-cloudsql-instances="$CLOUD_SQL_INSTANCE" \
                 --memory 2Gi \
@@ -399,7 +399,7 @@ jobs:
               --region ${{ env.REGION }} \
               --allow-unauthenticated \
               --port 8080 \
-              --startup-probe=timeoutSeconds=10,periodSeconds=15,initialDelaySeconds=90,failureThreshold=20,httpGet.port=8080,httpGet.path=/health \
+              --startup-probe=timeoutSeconds=10,periodSeconds=15,initialDelaySeconds=180,failureThreshold=30,httpGet.port=8080,httpGet.path=/health \
               --env-vars-file ${{ steps.prepare-env.outputs.env_file }} \
               --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,MONGODB_URL=mongodb-url:latest,OPENAI_API_KEY=openai-api-key:latest,S3_ACCESS_KEY=s3-access-key:latest,S3_SECRET_KEY=s3-secret-key:latest,LIVEKIT_API_KEY=livekit-api-key:latest,LIVEKIT_API_SECRET=livekit-api-secret:latest" \
               --set-cloudsql-instances="$CLOUD_SQL_INSTANCE" \
