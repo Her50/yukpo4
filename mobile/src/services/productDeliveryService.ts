@@ -54,8 +54,9 @@ export const productDeliveryService = {
             const data = await response.json();
 
             if (!response.ok) {
-                if (response.status === 404) {
-                    return null; // Configuration non trouvée
+                if (response.status === 404 || response.status === 403) {
+                    // 404 = config non trouvée, 403 = ancien backend qui bloque les non-propriétaires
+                    return null;
                 }
                 throw new Error(data.message || 'Erreur lors de la récupération de la configuration');
             }

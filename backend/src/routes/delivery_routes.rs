@@ -1252,24 +1252,21 @@ async fn get_client_delivery_preferences(
 }
 
 /// GET /api/delivery/product-config/{service_id}/{product_index} - Récupérer la configuration
+/// ✅ CORRIGÉ 2026-02-25: Accessible à tout utilisateur authentifié (pas seulement le propriétaire)
+/// Les acheteurs doivent pouvoir vérifier si un produit a une config livraison pour afficher le bouton "Me livrer"
 async fn get_product_delivery_config(
     State(state): State<Arc<AppState>>,
-    Extension(user): Extension<AuthenticatedUser>,
+    Extension(_user): Extension<AuthenticatedUser>,
     Path((service_id, product_index)): Path<(i32, i32)>,
 ) -> AppResult<Json<Value>> {
-    // Vérifier propriétaire
-    let service: Option<ServiceUserIdRow> =
-        sqlx::query_as("SELECT user_id FROM services WHERE id = $1")
-            .bind(service_id)
-            .fetch_optional(&state.pg)
-            .await?;
+    // ✅ Vérifier que le service existe (sans vérifier le propriétaire - lecture publique)
+    let service_exists: Option<(i32,)> = sqlx::query_as("SELECT id FROM services WHERE id = $1")
+        .bind(service_id)
+        .fetch_optional(&state.pg)
+        .await?;
 
-    let service_owner = service.ok_or_else(|| AppError::NotFound("Service non trouvé".into()))?;
-
-    if service_owner.user_id != user.id {
-        return Err(AppError::Forbidden(
-            "Vous n'êtes pas le propriétaire de ce service".into(),
-        ));
+    if service_exists.is_none() {
+        return Err(AppError::NotFound("Service non trouvé".into()));
     }
 
     let config_row = sqlx::query(

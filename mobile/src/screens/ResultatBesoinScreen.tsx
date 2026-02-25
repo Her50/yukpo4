@@ -4,9 +4,7 @@ import React, { startTransition, useCallback, useEffect, useMemo, useRef, useSta
 import {
     ActivityIndicator,
     Alert,
-    FlatList,
     Linking,
-    RefreshControl,
     ScrollView,
     StyleSheet,
     Text,
@@ -2313,15 +2311,7 @@ const ResultatBesoinScreen: React.FC = () => {
             <KeyboardAwareScreen
                 style={styles.scrollView}
                 contentContainerStyle={styles.scrollContent}
-                refreshControl={
-                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-                }
                 keyboardShouldPersistTaps="handled"
-                keyboardDismissMode="interactive"
-                removeClippedSubviews={true}
-                initialNumToRender={5}
-                maxToRenderPerBatch={5}
-                windowSize={10}
             >
                 {/* Header avec bouton retour */}
                 <View style={styles.header}>
@@ -2580,40 +2570,19 @@ const ResultatBesoinScreen: React.FC = () => {
                             initialFilters={categoryFilters}
                         />
 
-                        {/* ✅ CORRIGÉ 2026-01-14: FlatList optimisée pour éviter le tremblement */}
+                        {/* ✅ CORRIGÉ 2026-02-25: Remplacer FlatList par .map() car FlatList dans un ScrollView
+                            (KeyboardAwareScreen) cause un conflit de gestes tactiles qui verrouille l'écran.
+                            Les boutons de ProductCard deviennent inactionnables car le ScrollView parent
+                            capture tous les événements tactiles avant le FlatList interne.
+                            Solution: .map() simple dans le ScrollView parent (données déjà en mémoire). */}
                         {allResults.length > 0 ? (
-                            <FlatList
-                                data={allResults}
-                                keyExtractor={keyExtractor}
-                                renderItem={renderListItem}
-                                ListEmptyComponent={
-                                    <View style={styles.emptyState}>
-                                        <SafeIcon name="package" size={48} color="#D1D5DB" />
-                                        <Text style={styles.emptyStateText}>Aucun résultat trouvé</Text>
-                                        <Text style={styles.emptyStateSubtext}>
-                                            {Object.keys(categoryFilters).length > 0
-                                                ? 'Essayez de modifier vos filtres'
-                                                : 'Essayez de modifier votre recherche'}
-                                        </Text>
+                            <View style={[styles.servicesContainer, styles.servicesContainerContent]}>
+                                {allResults.map((item) => (
+                                    <View key={item.key}>
+                                        {renderListItem({ item })}
                                     </View>
-                                }
-                                // ✅ OPTIMISATIONS FlatList pour réduire le tremblement
-                                initialNumToRender={3}
-                                maxToRenderPerBatch={3}
-                                windowSize={5}
-                                removeClippedSubviews={true}
-                                updateCellsBatchingPeriod={100}
-                                // ✅ CORRIGÉ 2026-01-14: Retirer getItemLayout car les hauteurs varient (causes tremblement)
-                                // getItemLayout supprimé car les cartes ont des hauteurs variables
-                                // ✅ Désactiver les animations inutiles
-                                scrollEventThrottle={16}
-                                // ✅ Optimiser le rendu
-                                legacyImplementation={false}
-                                // ✅ NOUVEAU 2026-01-14: Désactiver les animations de layout pour éviter le tremblement
-                                disableVirtualization={false}
-                                style={styles.servicesContainer}
-                                contentContainerStyle={styles.servicesContainerContent}
-                            />
+                                ))}
+                            </View>
                         ) : (
                             <View style={styles.emptyState}>
                                 <SafeIcon name="package" size={48} color="#D1D5DB" />
