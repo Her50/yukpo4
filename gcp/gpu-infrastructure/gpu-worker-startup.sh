@@ -3,35 +3,36 @@
 # Yukpo GPU Worker - Startup Script for GCP Compute Engine T4
 # Auto-installs NVIDIA drivers, Python, and starts the worker
 # ============================================================
-set -euo pipefail
+set -uo pipefail
+
+export DEBIAN_FRONTEND=noninteractive
+export NEEDRESTART_MODE=a
 
 LOG_FILE="/var/log/yukpo-gpu-worker.log"
 exec > >(tee -a "$LOG_FILE") 2>&1
 
 echo "$(date) [GPU Worker] Starting setup..."
 
-# 1. Install NVIDIA drivers if not present
-if ! command -v nvidia-smi &>/dev/null; then
-    echo "$(date) [GPU Worker] Installing NVIDIA drivers..."
-    apt-get update -y
-    apt-get install -y linux-headers-$(uname -r) software-properties-common
-    # Install NVIDIA CUDA drivers
-    curl -fsSL https://developer.download.nvidia.com/compute/cuda/repos/debian12/x86_64/cuda-keyring_1.1-1_all.deb -o /tmp/cuda-keyring.deb
-    dpkg -i /tmp/cuda-keyring.deb || true
-    apt-get update -y
-    apt-get install -y cuda-drivers || {
-        echo "$(date) [GPU Worker] CUDA drivers install failed, trying alternative..."
-        apt-get install -y nvidia-driver-535 || apt-get install -y nvidia-driver-525 || true
-    }
+# 1. Install Python and essential dependencies FIRST (always needed)
+echo "$(date) [GPU Worker] Installing Python and essentials..."
+apt-get update -y
+apt-get install -y --no-install-recommends python3 python3-pip python3-venv curl jq
+
+# 2. Check for physical GPU hardware before attempting driver install
+if lspci 2>/dev/null | grep -iq nvidia; then
+    echo "$(date) [GPU Worker] NVIDIA GPU hardware detected! Installing drivers..."
+    if ! command -v nvidia-smi &>/dev/null; then
+        apt-get install -y --no-install-recommends linux-headers-$(uname -r) 2>/dev/null || true
+        curl -fsSL https://developer.download.nvidia.com/compute/cuda/repos/debian12/x86_64/cuda-keyring_1.1-1_all.deb -o /tmp/cuda-keyring.deb 2>/dev/null || true
+        dpkg -i /tmp/cuda-keyring.deb 2>/dev/null || true
+        apt-get update -y 2>/dev/null || true
+        apt-get install -y --no-install-recommends cuda-drivers 2>/dev/null || true
+    fi
+    nvidia-smi 2>/dev/null && echo "$(date) [GPU Worker] GPU ready!" || echo "$(date) [GPU Worker] WARNING: GPU detected but drivers failed"
+else
+    echo "$(date) [GPU Worker] No NVIDIA GPU hardware found - running in CPU-only mode"
+    echo "$(date) [GPU Worker] GPU will be auto-detected on next boot if hardware is added"
 fi
-
-# 2. Verify GPU
-echo "$(date) [GPU Worker] Checking GPU..."
-nvidia-smi || echo "$(date) [GPU Worker] WARNING: nvidia-smi failed, GPU may not be ready yet"
-
-# 3. Install Python and dependencies
-echo "$(date) [GPU Worker] Installing Python..."
-apt-get install -y python3 python3-pip python3-venv curl jq
 
 # 4. Create the worker application
 mkdir -p /opt/yukpo-gpu-worker
