@@ -255,13 +255,14 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
 
   const filteredChatHistories = chatHistories
     .filter(chat => {
-      const matchesSearch = chat.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        chat.serviceTitle?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        chat.lastMessage.toLowerCase().includes(searchTerm.toLowerCase());
+      const search = (searchTerm || '').toLowerCase();
+      const matchesSearch = (chat.clientName || '').toLowerCase().includes(search) ||
+        (chat.serviceTitle || '').toLowerCase().includes(search) ||
+        (chat.lastMessage || '').toLowerCase().includes(search);
       const matchesStatus = filterStatus === 'all' || chat.status === filterStatus;
       return matchesSearch && matchesStatus;
     })
-    .sort((a, b) => b.lastMessageTime.getTime() - a.lastMessageTime.getTime());
+    .sort((a, b) => (b.lastMessageTime?.getTime?.() || 0) - (a.lastMessageTime?.getTime?.() || 0));
 
   const formatTime = (date: Date) => {
     const now = new Date();
