@@ -9,7 +9,7 @@ use std::sync::Arc;
 
 use crate::controllers::products_controller::{
     delete_product, duplicate_product, get_product, get_products_by_service, get_products_by_user,
-    share_product_redirect, update_product,
+    get_products_by_user_path, share_product_redirect, update_product,
 };
 use crate::middlewares::jwt::jwt_auth;
 use crate::state::AppState;
@@ -46,6 +46,12 @@ pub fn products_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route(
             "/api/products",
             get(get_products_by_user)
+                .layer(middleware::from_fn_with_state(state.clone(), jwt_auth)),
+        )
+        // ✅ ALIAS: /api/products/user/{user_id} (compatibilité mobile)
+        .route(
+            "/api/products/user/{user_id}",
+            get(get_products_by_user_path)
                 .layer(middleware::from_fn_with_state(state.clone(), jwt_auth)),
         )
         // ✅ NOUVEAU: Route publique pour partage intelligent de produits

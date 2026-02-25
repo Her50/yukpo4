@@ -1,6 +1,6 @@
 ﻿// @ts-nocheck
 import { useNavigation, useRoute } from '@react-navigation/native';
-import React, { useCallback, useEffect, useMemo, useRef, useState, startTransition } from 'react';
+import React, { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -13,10 +13,10 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import { KeyboardAwareScreen } from '../components/KeyboardAwareScreen';
 import CategoryFilters from '../components/CategoryFilters';
 import ChatInputMobile from '../components/ChatInputMobile';
 import ChatModalMobile from '../components/ChatModalMobile';
+import { KeyboardAwareScreen } from '../components/KeyboardAwareScreen';
 import ModernGPSModal from '../components/ModernGPSModal';
 import ProductCard from '../components/ProductCard';
 import SafeIcon from '../components/SafeIcon';
@@ -105,29 +105,29 @@ const ResultatBesoinScreen: React.FC = () => {
     const routeParams = (route.params as any) || {};
     const initialResults = routeParams.results || [];
     const searchQuery = routeParams.searchQuery || routeParams.query || '';
-    
+
     // ✅ CORRECTION 2025-12-30: useRef pour éviter les re-renders infinis
     const hasProcessedInitialResults = useRef(false);
     const initialResultsLength = useRef(initialResults?.length || 0);
-    
+
     // ✅ CORRIGÉ 2026-01-24: Fonction utilitaire pour extraire le nom du produit avec fallbacks
     // ✅ MIGRATION COMPLÈTE: Tous les produits sont maintenant dans service_products avec product_name (colonne générée)
     // Le backend retourne product_name depuis service_products, mais product_data contient nom_produit
     const getProductName = useCallback((productData: any): string => {
         if (!productData) return 'Produit sans nom';
-        
+
         // ✅ PRIORITÉ 1: product_name depuis le backend (colonne générée PostgreSQL)
         if (productData.product_name) return String(productData.product_name);
-        
+
         // ✅ PRIORITÉ 2: nom_produit depuis product_data (format original)
         if (productData.nom_produit) return String(productData.nom_produit);
-        
+
         // ✅ PRIORITÉ 3: Autres variantes possibles
         if (productData.nom) return String(productData.nom);
         if (productData.name) return String(productData.name);
         if (productData.titre) return String(productData.titre);
         if (productData.title) return String(productData.title);
-        
+
         // ✅ ERREUR: Si aucun nom n'est disponible, c'est une anomalie
         console.error('[ResultatBesoinScreen] ❌ ERREUR: product_name manquant (anomalie backend):', productData);
         return 'Produit sans nom';
@@ -136,31 +136,31 @@ const ResultatBesoinScreen: React.FC = () => {
     // ✅ CORRIGÉ 2026-01-21: Fonction améliorée pour calculer le score de pertinence au niveau produit
     const calculateProductRelevanceScore = useCallback((product: any, query: string): number => {
         if (!query || !product) return 0;
-        
+
         const queryLower = query.toLowerCase().trim();
         const queryWords = queryLower.split(/\s+/).filter(w => w.length > 0);
-        
+
         if (queryWords.length === 0) return 0;
-        
+
         let score = 0;
-        
+
         // ✅ CORRIGÉ: Utiliser la fonction utilitaire pour extraire le nom correctement
         const productData = product.product_data || product;
         const nomProduit = getProductName(productData).toLowerCase();
         const descriptionProduit = (productData.description_produit || productData.description || product.description_produit || product.description || '').toLowerCase();
         const categorieProduit = (productData.categorie_produit || productData.category || product.categorie_produit || product.category || '').toLowerCase();
         const combinaisonBrute = (productData.combinaison_brute || product.combinaison_brute || '').toLowerCase();
-        
+
         // Extraire les sous-caractéristiques (marque, modèle, etc.)
         const sousCaracteristiques = productData.sous_caracteristiques || product.sous_caracteristiques || {};
         const allCharacteristics = Object.values(sousCaracteristiques)
             .flat()
             .map((v: any) => String(v).toLowerCase())
             .join(' ');
-        
+
         // Construire un texte complet pour la recherche
         const allProductText = `${nomProduit} ${descriptionProduit} ${categorieProduit} ${combinaisonBrute} ${allCharacteristics}`.toLowerCase();
-        
+
         // ✅ AMÉLIORÉ 2026-01-24: Score pour correspondance exacte de la requête complète dans le nom
         // ✅ Générique pour tous types de produits (pas seulement "tv")
         if (nomProduit.includes(queryLower)) {
@@ -170,12 +170,12 @@ const ResultatBesoinScreen: React.FC = () => {
         } else if (allProductText.includes(queryLower)) {
             score += 50;
         }
-        
+
         // ✅ AMÉLIORÉ 2026-01-24: Score pondéré pour chaque mot-clé de la requête
         // ✅ Générique pour tous types de produits
         queryWords.forEach(word => {
             if (word.length < 2) return; // Ignorer les mots trop courts
-            
+
             // ✅ CORRIGÉ: Correspondance dans le nom (priorité absolue)
             if (nomProduit === word) {
                 score += 50; // Correspondance exacte d'un mot dans le nom
@@ -184,30 +184,30 @@ const ResultatBesoinScreen: React.FC = () => {
             } else if (nomProduit.includes(word)) {
                 score += 30; // Contient le mot
             }
-            
+
             // ✅ AMÉLIORÉ: Correspondance dans la catégorie (ex: "Téléviseur" pour "tv")
             if (categorieProduit.includes(word)) {
                 score += 35; // Bon score pour correspondance de catégorie
             }
-            
+
             // ✅ AMÉLIORÉ: Correspondance dans les sous-caractéristiques (marque, modèle, etc.) - important pour "Samsonite"
             if (allCharacteristics.includes(word)) {
                 score += 25; // Bon score pour correspondance de marque/modèle
             }
-            
+
             // Correspondance dans la description
             if (descriptionProduit.includes(word)) {
                 score += 10;
             }
-            
+
             // Correspondance dans la combinaison brute
             if (combinaisonBrute.includes(word)) {
                 score += 12;
             }
         });
-        
+
         // ✅ NOUVEAU: Bonus pour correspondance de plusieurs mots-clés (ex: "Sac", "au", "dos", "Samsonite")
-        const matchingWords = queryWords.filter(word => 
+        const matchingWords = queryWords.filter(word =>
             word.length >= 2 && allProductText.includes(word)
         );
         if (matchingWords.length === queryWords.length) {
@@ -215,7 +215,7 @@ const ResultatBesoinScreen: React.FC = () => {
         } else if (matchingWords.length >= queryWords.length / 2) {
             score += 15; // Bonus partiel si au moins la moitié correspond
         }
-        
+
         return score;
     }, [getProductName]);
 
@@ -308,7 +308,7 @@ const ResultatBesoinScreen: React.FC = () => {
     // Fonction pour filtrer les produits selon les filtres de catégorie
     const filterProducts = (productsList: any[]): any[] => {
         let filtered = [...productsList];
-        
+
         console.log('🔍 [ResultatBesoinScreen] filterProducts appelé avec:', {
             produitsCount: productsList.length,
             categoryFiltersCount: Object.keys(categoryFilters).length,
@@ -356,7 +356,7 @@ const ResultatBesoinScreen: React.FC = () => {
                 }
                 return true;
             });
-            
+
             if (beforeFilter > 0 && filtered.length === 0) {
                 console.error('❌ [ResultatBesoinScreen] filterProducts - TOUS les produits ont été exclus par les filtres de catégorie!', {
                     avant: beforeFilter,
@@ -387,7 +387,7 @@ const ResultatBesoinScreen: React.FC = () => {
 
                 return true;
             });
-            
+
             if (beforePriceFilter > 0 && filtered.length === 0) {
                 console.error('❌ [ResultatBesoinScreen] filterProducts - TOUS les produits ont été exclus par le filtre de prix!', {
                     avant: beforePriceFilter,
@@ -623,13 +623,13 @@ const ResultatBesoinScreen: React.FC = () => {
                                 dataLength: Array.isArray(productsResponse.data) ? productsResponse.data.length : 'N/A',
                                 fullResponse: productsResponse
                             });
-                            
+
                             if (productsResponse.success && Array.isArray(productsResponse.data)) {
                                 productsFromAPI = productsResponse.data;
                                 console.log(`✅ [ResultatBesoinScreen] ${productsFromAPI.length} produits récupérés depuis API pour service ${serviceId}`);
                                 // ✅ DEBUG: Log détaillé des produits récupérés
                                 if (productsFromAPI.length > 0) {
-                                    console.log(`📦 [ResultatBesoinScreen] Détails produits pour service ${serviceId}:`, 
+                                    console.log(`📦 [ResultatBesoinScreen] Détails produits pour service ${serviceId}:`,
                                         productsFromAPI.map((p: any) => ({
                                             id: p.id,
                                             product_id: p.product_id,
@@ -703,11 +703,11 @@ const ResultatBesoinScreen: React.FC = () => {
             if (validServices.length === 0) {
                 setError("Aucun service trouvé. Les services recherchés ne sont plus disponibles.");
                 setServices([]);
-                } else {
-                    // ✅ CORRIGÉ 2026-01-13: Utiliser startTransition pour les mises à jour non urgentes
-                    startTransition(() => {
-                        setServices(validServices);
-                    });
+            } else {
+                // ✅ CORRIGÉ 2026-01-13: Utiliser startTransition pour les mises à jour non urgentes
+                startTransition(() => {
+                    setServices(validServices);
+                });
 
                 // Extraire tous les produits de tous les services
                 const extractedProducts: any[] = [];
@@ -716,23 +716,23 @@ const ResultatBesoinScreen: React.FC = () => {
                 validServices.forEach((service) => {
                     // ✅ CORRECTION CRITIQUE: Utiliser UNIQUEMENT les produits depuis l'API service_products (nouveau système)
                     let serviceProduits: any[] = [];
-                    
+
                     // ✅ DEBUG 2026-01-13: Logs détaillés pour diagnostiquer les problèmes d'affichage
                     console.log(`🔍 [ResultatBesoinScreen] DEBUG extraction produits pour service ${service.id}:`, {
                         hasProductsFromAPI: !!service._productsFromAPI,
                         isArray: Array.isArray(service._productsFromAPI),
                         productsFromAPICount: Array.isArray(service._productsFromAPI) ? service._productsFromAPI.length : 0,
-                        productsFromAPISample: Array.isArray(service._productsFromAPI) && service._productsFromAPI.length > 0 
-                            ? service._productsFromAPI[0] 
+                        productsFromAPISample: Array.isArray(service._productsFromAPI) && service._productsFromAPI.length > 0
+                            ? service._productsFromAPI[0]
                             : null
                     });
-                    
+
                     // Produits depuis l'API service_products (nouveau système uniquement)
                     if (service._productsFromAPI && Array.isArray(service._productsFromAPI) && service._productsFromAPI.length > 0) {
                         serviceProduits = service._productsFromAPI.map((productFromAPI: any) => {
                             // ✅ Transformer le format API vers format attendu (product_data contient les données)
                             const productData = productFromAPI.product_data || productFromAPI;
-                            
+
                             // ✅ CORRIGÉ 2026-02-10: DEBUG - Log détaillé de la structure productFromAPI pour diagnostiquer les médias
                             if (__DEV__) {
                                 console.log(`🔍 [ResultatBesoinScreen] Structure productFromAPI pour service ${service.id}:`, {
@@ -746,29 +746,29 @@ const ResultatBesoinScreen: React.FC = () => {
                                     productFromAPISample: JSON.stringify(productFromAPI).substring(0, 500),
                                 });
                             }
-                            
+
                             // ✅ CORRIGÉ 2026-01-23: Utiliser la fonction utilitaire pour extraire le nom correctement
                             const productName = getProductName(productData) || productFromAPI.product_name || '';
-                            
+
                             // ✅ CORRIGÉ 2026-02-10: Extraire les images/vidéos depuis TOUTES les sources possibles
                             // Priorité: productFromAPI.images/videos (direct) > productData.images/videos > []
                             // ✅ AMÉLIORÉ: Extraire aussi depuis product_data si c'est un objet JSON
                             let extractedImages: any[] = [];
                             let extractedVideos: any[] = [];
-                            
+
                             // Source 1: productFromAPI.images/videos (direct - peut venir de la table media enrichie par le backend)
                             if (Array.isArray(productFromAPI.images) && productFromAPI.images.length > 0) {
                                 extractedImages = productFromAPI.images;
                             } else if (productFromAPI.images && !Array.isArray(productFromAPI.images)) {
                                 extractedImages = [productFromAPI.images];
                             }
-                            
+
                             if (Array.isArray(productFromAPI.videos) && productFromAPI.videos.length > 0) {
                                 extractedVideos = productFromAPI.videos;
                             } else if (productFromAPI.videos && !Array.isArray(productFromAPI.videos)) {
                                 extractedVideos = [productFromAPI.videos];
                             }
-                            
+
                             // Source 2: productData.images/videos (où le backend enrichit avec les médias de la table media)
                             if (extractedImages.length === 0 && productData) {
                                 if (Array.isArray(productData.images) && productData.images.length > 0) {
@@ -777,7 +777,7 @@ const ResultatBesoinScreen: React.FC = () => {
                                     extractedImages = [productData.images];
                                 }
                             }
-                            
+
                             if (extractedVideos.length === 0 && productData) {
                                 if (Array.isArray(productData.videos) && productData.videos.length > 0) {
                                     extractedVideos = productData.videos;
@@ -785,7 +785,7 @@ const ResultatBesoinScreen: React.FC = () => {
                                     extractedVideos = [productData.videos];
                                 }
                             }
-                            
+
                             // ✅ AMÉLIORÉ: Normaliser les images/vidéos (extraire les URLs si ce sont des objets)
                             const normalizeMediaArray = (mediaArray: any[]): string[] => {
                                 return mediaArray
@@ -800,10 +800,10 @@ const ResultatBesoinScreen: React.FC = () => {
                                     })
                                     .filter((url): url is string => url !== null && url !== '' && url !== 'false');
                             };
-                            
+
                             const normalizedImages = normalizeMediaArray(extractedImages);
                             const normalizedVideos = normalizeMediaArray(extractedVideos);
-                            
+
                             // ✅ CORRIGÉ 2026-01-20: Extraire correctement tous les champs du produit
                             // ✅ CORRIGÉ 2026-01-21: S'assurer que les images et vidéos sont bien incluses depuis product_data
                             // ✅ CORRIGÉ 2026-01-23: S'assurer que la description est explicitement extraite
@@ -844,7 +844,7 @@ const ResultatBesoinScreen: React.FC = () => {
                                     average_rating: service.average_rating,
                                 },
                             };
-                            
+
                             // ✅ DEBUG 2026-02-10: Log détaillé de chaque produit transformé avec description et images
                             console.log(`📦 [ResultatBesoinScreen] Produit transformé pour service ${service.id}:`, {
                                 id: transformedProduct.id,
@@ -858,7 +858,7 @@ const ResultatBesoinScreen: React.FC = () => {
                                 // ✅ CORRIGÉ 2026-02-10: Log détaillé des médias normalisés
                                 images_count: normalizedImages.length,
                                 videos_count: normalizedVideos.length,
-                                images_sample: normalizedImages.length > 0 
+                                images_sample: normalizedImages.length > 0
                                     ? normalizedImages[0].substring(0, 100) + '...'
                                     : 'aucune',
                                 videos_sample: normalizedVideos.length > 0
@@ -883,13 +883,13 @@ const ResultatBesoinScreen: React.FC = () => {
                                     product_data_images_type: productData?.images ? (Array.isArray(productData.images) ? 'array' : typeof productData.images) : 'absent',
                                 }
                             });
-                            
+
                             return transformedProduct;
                         });
                         console.log(`✅ [ResultatBesoinScreen] ${serviceProduits.length} produits depuis API service_products pour service ${service.id}`);
-                        
+
                         // ✅ DEBUG: Log tous les noms de produits extraits
-                        console.log(`📋 [ResultatBesoinScreen] Liste des produits extraits pour service ${service.id}:`, 
+                        console.log(`📋 [ResultatBesoinScreen] Liste des produits extraits pour service ${service.id}:`,
                             serviceProduits.map((p: any) => ({
                                 id: p.id,
                                 product_index: p.product_index,
@@ -902,9 +902,31 @@ const ResultatBesoinScreen: React.FC = () => {
                         console.warn(`⚠️ [ResultatBesoinScreen] Aucun produit trouvé dans _productsFromAPI pour service ${service.id}`);
                     }
                     // ❌ SUPPRIMÉ: Plus de fallback vers l'ancien système (service.data.produits) - utiliser uniquement service_products
-                    
+
                     if (serviceProduits.length > 0) {
-                        serviceProduits.forEach((product: any) => {
+                        // ✅ CORRIGÉ 2026-02-25: Filtrer les produits par pertinence avec la recherche
+                        // Ne garder QUE les produits qui correspondent à la requête (score > 0)
+                        // Si un seul produit → le garder (le service a matché grâce à lui)
+                        // Si aucun produit pertinent → garder le 1er (fallback)
+                        let filteredServiceProduits = serviceProduits;
+                        if (searchQuery && serviceProduits.length > 1) {
+                            const scoredProducts = serviceProduits.map((p: any) => ({
+                                product: p,
+                                relevanceScore: calculateProductRelevanceScore(p, searchQuery),
+                            }));
+                            const relevant = scoredProducts.filter((sp: any) => sp.relevanceScore > 0);
+                            if (relevant.length > 0) {
+                                filteredServiceProduits = relevant.map((sp: any) => sp.product);
+                                console.log(`🎯 [ResultatBesoinScreen] Service ${service.id}: ${filteredServiceProduits.length}/${serviceProduits.length} produits pertinents pour "${searchQuery}"`);
+                            } else {
+                                // Aucun produit pertinent par score texte → garder uniquement le premier
+                                // (le moteur de recherche a matché ce service, donc au moins le 1er produit est pertinent)
+                                filteredServiceProduits = [serviceProduits[0]];
+                                console.log(`🎯 [ResultatBesoinScreen] Service ${service.id}: aucun produit avec score>0, garde le 1er produit`);
+                            }
+                        }
+
+                        filteredServiceProduits.forEach((product: any) => {
                             // GPS prioritaire : produit > service gps_fixe > service gps
                             const productGPS = product.gps || product.gpsFixe;
                             const serviceGPSFixe = service.data?.gps_fixe?.valeur || service.data?.gps_fixe;
@@ -918,7 +940,7 @@ const ResultatBesoinScreen: React.FC = () => {
                                     // Parser les coordonnées GPS
                                     const [userLat, userLon] = userGPS.split(',').map(Number);
                                     const [productLat, productLon] = bestGPS.split(',').map(Number);
-                                    
+
                                     if (!isNaN(userLat) && !isNaN(userLon) && !isNaN(productLat) && !isNaN(productLon)) {
                                         // ✅ CORRIGÉ 2026-01-XX: Utiliser calculateDistance au lieu de calculateDistanceFromCoords
                                         distance = calculateDistance(userLat, userLon, productLat, productLon);
@@ -930,7 +952,7 @@ const ResultatBesoinScreen: React.FC = () => {
                                     console.warn('⚠️ [ResultatBesoinScreen] Erreur calcul distance produit:', error);
                                 }
                             }
-                            
+
                             // ✅ FALLBACK: Utiliser la distance du service si disponible et si la distance du produit n'a pas pu être calculée
                             if ((distance === undefined || !Number.isFinite(distance)) && service.distance !== undefined && Number.isFinite(service.distance)) {
                                 distance = service.distance;
@@ -942,13 +964,13 @@ const ResultatBesoinScreen: React.FC = () => {
                             // ✅ NOUVEAU 2026-01-20: Calculer le score de pertinence au niveau produit
                             // Base: score du service (pertinence générale)
                             let finalScore = service.score || 0;
-                            
+
                             // ✅ AJOUT: Score de pertinence spécifique au produit par rapport à la requête
                             if (searchQuery) {
                                 const productRelevanceScore = calculateProductRelevanceScore(product, searchQuery);
                                 // Ajouter le score de pertinence produit (poids important pour différencier les produits)
                                 finalScore += productRelevanceScore;
-                                
+
                                 // ✅ DEBUG: Log le score calculé pour diagnostiquer
                                 const productDataForLog = product.product_data || product;
                                 const productNameForLog = getProductName(productDataForLog) || 'unknown';
@@ -959,7 +981,7 @@ const ResultatBesoinScreen: React.FC = () => {
                                     searchQuery
                                 });
                             }
-                            
+
                             const isPromo = product.en_promotion || product.promotion_active;
 
                             if (isPromo) {
@@ -973,62 +995,62 @@ const ResultatBesoinScreen: React.FC = () => {
                             // ✅ PRIORITÉ ABSOLUE: product.images/videos (déjà normalisés dans transformedProduct)
                             let productImages: string[] = Array.isArray(product.images) ? product.images : [];
                             let productVideos: string[] = Array.isArray(product.videos) ? product.videos : [];
-                            
+
                             // ✅ CORRIGÉ: Si product.images/videos sont vides, essayer product_data comme fallback (mais normaliser)
                             // ✅ Cela garantit que même si l'extraction initiale a échoué, on récupère les médias depuis product_data
                             if (productImages.length === 0) {
                                 const productDataFromProduct = product.product_data || product;
-                                const fallbackImages = Array.isArray(productDataFromProduct?.images) 
-                                    ? productDataFromProduct.images 
-                                    : productDataFromProduct?.images 
-                                        ? [productDataFromProduct.images] 
+                                const fallbackImages = Array.isArray(productDataFromProduct?.images)
+                                    ? productDataFromProduct.images
+                                    : productDataFromProduct?.images
+                                        ? [productDataFromProduct.images]
                                         : [];
-                                
+
                                 if (fallbackImages.length > 0) {
                                     // ✅ Normaliser les fallbacks avec la même fonction que l'extraction initiale
                                     productImages = normalizeMediaArray(fallbackImages);
                                     console.log(`[ResultatBesoinScreen] ✅ Images récupérées depuis product_data (fallback):`, productImages.length);
                                 }
                             }
-                            
+
                             if (productVideos.length === 0) {
                                 const productDataFromProduct = product.product_data || product;
-                                const fallbackVideos = Array.isArray(productDataFromProduct?.videos) 
-                                    ? productDataFromProduct.videos 
-                                    : productDataFromProduct?.videos 
-                                        ? [productDataFromProduct.videos] 
+                                const fallbackVideos = Array.isArray(productDataFromProduct?.videos)
+                                    ? productDataFromProduct.videos
+                                    : productDataFromProduct?.videos
+                                        ? [productDataFromProduct.videos]
                                         : [];
-                                
+
                                 if (fallbackVideos.length > 0) {
                                     // ✅ Normaliser les fallbacks avec la même fonction que l'extraction initiale
                                     productVideos = normalizeMediaArray(fallbackVideos);
                                     console.log(`[ResultatBesoinScreen] ✅ Vidéos récupérées depuis product_data (fallback):`, productVideos.length);
                                 }
                             }
-                            
+
                             // ✅ FALLBACK FINAL: Si toujours vides, essayer les médias du service (normalisés)
                             if (productImages.length === 0) {
                                 const serviceImages = Array.isArray(service?.images) ? service.images
                                     : Array.isArray(service?.data?.images?.valeur) ? service.data.images.valeur
-                                    : Array.isArray(service?.data?.images) ? service.data.images
-                                    : [];
+                                        : Array.isArray(service?.data?.images) ? service.data.images
+                                            : [];
                                 if (serviceImages.length > 0) {
                                     productImages = normalizeMediaArray(serviceImages);
                                     console.log(`[ResultatBesoinScreen] ✅ Images récupérées depuis service (fallback final):`, productImages.length);
                                 }
                             }
-                            
+
                             if (productVideos.length === 0) {
                                 const serviceVideos = Array.isArray(service?.videos) ? service.videos
                                     : Array.isArray(service?.data?.videos?.valeur) ? service.data.videos.valeur
-                                    : Array.isArray(service?.data?.videos) ? service.data.videos
-                                    : [];
+                                        : Array.isArray(service?.data?.videos) ? service.data.videos
+                                            : [];
                                 if (serviceVideos.length > 0) {
                                     productVideos = normalizeMediaArray(serviceVideos);
                                     console.log(`[ResultatBesoinScreen] ✅ Vidéos récupérées depuis service (fallback final):`, productVideos.length);
                                 }
                             }
-                            
+
                             // ✅ DEBUG 2026-01-22: Log pour diagnostiquer les images depuis la table media
                             if (__DEV__ && (productImages.length > 0 || productVideos.length > 0)) {
                                 const productDataForLog = product.product_data || product;
@@ -1049,7 +1071,7 @@ const ResultatBesoinScreen: React.FC = () => {
                             // Utiliser service_id-product_index si disponible, sinon id de la table service_products
                             const productDataForId = product.product_data || product;
                             const productNameForId = getProductName(productDataForId) || 'unknown';
-                            const stableProductId = product.product_index !== undefined 
+                            const stableProductId = product.product_index !== undefined
                                 ? `${service.id}_${product.product_index}`
                                 : product.id || product.product_id || `${service.id}-${productNameForId}`;
 
@@ -1094,10 +1116,10 @@ const ResultatBesoinScreen: React.FC = () => {
                 });
 
                 console.log(`📦 [ResultatBesoinScreen] ${extractedProducts.length} produits extraits de ${validServices.length} services`);
-                
+
                 // ✅ DEBUG 2026-01-20: Log détaillé des produits extraits avant déduplication avec tous les champs importants
                 if (extractedProducts.length > 0) {
-                    console.log(`🔍 [ResultatBesoinScreen] DEBUG produits extraits (avant déduplication):`, 
+                    console.log(`🔍 [ResultatBesoinScreen] DEBUG produits extraits (avant déduplication):`,
                         extractedProducts.map((p: any) => ({
                             id: p.id,
                             product_id: p.product_id,
@@ -1124,10 +1146,10 @@ const ResultatBesoinScreen: React.FC = () => {
                     // ✅ CORRIGÉ: Utiliser le même format d'ID que ProductCard
                     // Priorité: service_id-product_index (format standard) > id de la table > fallback
                     const serviceId = product._serviceId || product.service_id;
-                    const productIndex = product.product_index !== undefined && product.product_index !== null 
-                        ? product.product_index 
+                    const productIndex = product.product_index !== undefined && product.product_index !== null
+                        ? product.product_index
                         : (typeof product.index === 'number' ? product.index : undefined);
-                    
+
                     let productUniqueId: string;
                     if (productIndex !== undefined && productIndex !== null && serviceId) {
                         // Format standard: service_id-product_index
@@ -1139,11 +1161,11 @@ const ResultatBesoinScreen: React.FC = () => {
                         // Fallback: service_id-nom
                         const productDataForId = product.product_data || product;
                         const productNameForId = getProductName(productDataForId) || 'unknown';
-                        productUniqueId = serviceId 
+                        productUniqueId = serviceId
                             ? `${serviceId}-${productNameForId}`
                             : `unknown-${productNameForId}`;
                     }
-                    
+
                     if (seenProductIds.has(productUniqueId)) {
                         const productDataForLog = product.product_data || product;
                         const productNameForLog = getProductName(productDataForLog) || 'produit';
@@ -1158,10 +1180,10 @@ const ResultatBesoinScreen: React.FC = () => {
                 });
 
                 console.log(`📦 [ResultatBesoinScreen] ${deduplicatedProducts.length} produits après déduplication (${extractedProducts.length - deduplicatedProducts.length} doublons supprimés)`);
-                
+
                 // ✅ DEBUG 2026-01-13: Log détaillé des produits après déduplication
                 if (deduplicatedProducts.length > 0) {
-                    console.log(`🔍 [ResultatBesoinScreen] DEBUG produits après déduplication:`, 
+                    console.log(`🔍 [ResultatBesoinScreen] DEBUG produits après déduplication:`,
                         deduplicatedProducts.map((p: any) => ({
                             id: p.id,
                             product_id: p.product_id,
@@ -1195,7 +1217,7 @@ const ResultatBesoinScreen: React.FC = () => {
                 });
 
                 // ✅ DEBUG 2026-01-20: Log les produits triés avant affichage
-                console.log(`📊 [ResultatBesoinScreen] Produits triés (ordre final):`, 
+                console.log(`📊 [ResultatBesoinScreen] Produits triés (ordre final):`,
                     deduplicatedProducts.map((p: any, idx: number) => ({
                         index: idx,
                         id: p.id,
@@ -1273,7 +1295,7 @@ const ResultatBesoinScreen: React.FC = () => {
             });
 
             console.log(`📊 ${newPrestataires.size} prestataires chargés sur ${userIds.length} demandés`);
-            
+
             // ✅ CORRIGÉ 2025-01-01: Mémoriser la Map pour éviter les changements de référence
             // Ne mettre à jour que si les données ont réellement changé
             let hasPrestatairesChanges = false;
@@ -1288,7 +1310,7 @@ const ResultatBesoinScreen: React.FC = () => {
                     }
                 }
             }
-            
+
             if (hasPrestatairesChanges) {
                 prestatairesRef.current = newPrestataires;
                 // ✅ CORRIGÉ 2026-01-13: Utiliser startTransition pour les mises à jour non urgentes
@@ -1296,13 +1318,13 @@ const ResultatBesoinScreen: React.FC = () => {
                     setPrestataires(newPrestataires);
                 });
             }
-            
+
             // ✅ CORRIGÉ 2026-01-14: Mettre à jour les produits avec debounce plus long pour éviter les re-renders en cascade
             // Annuler le timeout précédent s'il existe
             if (updateTimeoutRef.current) {
                 clearTimeout(updateTimeoutRef.current);
             }
-            
+
             // ✅ CORRIGÉ: Debounce augmenté à 300ms pour mieux regrouper et éviter les tremblements
             updateTimeoutRef.current = setTimeout(() => {
                 startTransition(() => {
@@ -1329,18 +1351,18 @@ const ResultatBesoinScreen: React.FC = () => {
                             // ✅ CORRIGÉ: Retourner la même référence si pas de changement
                             return product;
                         });
-                        
+
                         // ✅ CORRIGÉ: Ne retourner un nouveau tableau que s'il y a des changements réels
                         if (!hasChanges) {
                             return prevProducts; // Même référence = pas de re-render
                         }
-                        
+
                         return updatedProducts;
                     });
                 });
                 updateTimeoutRef.current = null;
             }, 300); // ✅ Debounce augmenté à 300ms pour mieux regrouper les mises à jour et éviter les tremblements
-            
+
             setPrestatairesLoaded(true);
         } catch (error) {
             console.error('❌ Erreur lors de la récupération des prestataires:', error);
@@ -1390,7 +1412,7 @@ const ResultatBesoinScreen: React.FC = () => {
                 }
 
                 console.log('🔄 [ResultatBesoinScreen] Traitement des résultats initiaux:', initialResults.length);
-                
+
                 // Marquer comme traité AVANT le traitement asynchrone
                 hasProcessedInitialResults.current = true;
                 initialResultsLength.current = initialResults.length;
@@ -1769,7 +1791,7 @@ const ResultatBesoinScreen: React.FC = () => {
 
             // ✅ CORRIGÉ: Utiliser le service de recherche directement (comme HomeScreen)
             const { rechercherServices } = await import('../services/yukpoclient');
-            
+
             // ✅ CORRIGÉ: Préparer le payload complet avec support multimédia
             const searchPayload: any = {
                 texte: input.texte || input.text || input.description || '',
@@ -1779,11 +1801,11 @@ const ResultatBesoinScreen: React.FC = () => {
             if (input.base64_image && input.base64_image.length > 0) {
                 searchPayload.base64_image = input.base64_image;
             }
-            
+
             if (input.audio_base64 && input.audio_base64.length > 0) {
                 searchPayload.audio_base64 = input.audio_base64;
             }
-            
+
             if (input.video_base64 && input.video_base64.length > 0) {
                 searchPayload.video_base64 = input.video_base64;
             }
@@ -1918,15 +1940,15 @@ const ResultatBesoinScreen: React.FC = () => {
             priceFilter: priceFilter.min !== null || priceFilter.max !== null,
             priceFilterValues: priceFilter
         });
-        
+
         if (products.length === 0) {
             console.warn('⚠️ [ResultatBesoinScreen] filterProducts - Aucun produit dans l\'état');
             return [];
         }
-        
+
         const filtered = filterProducts(products);
         console.log('✅ [ResultatBesoinScreen] filterProducts - produits après filtrage:', filtered.length);
-        
+
         if (filtered.length === 0 && products.length > 0) {
             console.error('❌ [ResultatBesoinScreen] filterProducts - PROBLÈME: Tous les produits ont été filtrés!', {
                 produitsAvant: products.length,
@@ -1936,10 +1958,10 @@ const ResultatBesoinScreen: React.FC = () => {
                 }
             });
         }
-        
+
         return filtered;
     }, [products, categoryFilters, priceFilter, sortBy]);
-    
+
     const filteredServices = useMemo(() => {
         // ✅ Comparer les longueurs et références pour éviter les recalculs inutiles
         if (services.length === 0) return [];
@@ -1953,7 +1975,7 @@ const ResultatBesoinScreen: React.FC = () => {
             filteredServicesCount: filteredServices.length,
             filteredProductsCount: filteredProducts.length
         });
-        
+
         // ✅ NOUVEAU: Créer un Set des serviceIds qui ont des produits pour éviter les doublons
         // ✅ CORRIGÉ: Vérifier aussi service_id en plus de _serviceId
         const serviceIdsWithProducts = new Set(
@@ -1964,7 +1986,7 @@ const ResultatBesoinScreen: React.FC = () => {
                 })
                 .filter(id => id && id !== 'undefined' && id !== 'null' && id !== '')
         );
-        
+
         // ✅ DEBUG: Logger pour diagnostiquer la comptabilisation
         console.log('🔍 [ResultatBesoinScreen] Comptabilisation debug:', {
             filteredProductsCount: filteredProducts.length,
@@ -1972,7 +1994,7 @@ const ResultatBesoinScreen: React.FC = () => {
             serviceIdsWithProducts: Array.from(serviceIdsWithProducts),
             serviceIdsWithProductsSize: serviceIdsWithProducts.size,
         });
-        
+
         // ✅ CORRIGÉ: Ne pas afficher les services qui ont déjà des produits (éviter doublon)
         const services = filteredServices
             .filter(service => {
@@ -1983,8 +2005,8 @@ const ResultatBesoinScreen: React.FC = () => {
                 }
                 return !hasProducts; // Afficher uniquement les services SANS produits
             })
-            .map(service => ({ 
-                type: 'service' as const, 
+            .map(service => ({
+                type: 'service' as const,
                 data: service,
                 // ✅ CORRIGÉ: Clé stable sans score pour éviter les re-renders
                 key: `service-${service.id}`
@@ -1993,12 +2015,12 @@ const ResultatBesoinScreen: React.FC = () => {
             // ✅ CORRIGÉ: Clé stable basée uniquement sur des propriétés immuables (sans score)
             // Utiliser le même format d'ID que ProductCard pour garantir la cohérence
             const serviceId = product._serviceId || product.service_id || 'unknown';
-            const productIndex = product.product_index !== undefined && product.product_index !== null 
-                ? product.product_index 
+            const productIndex = product.product_index !== undefined && product.product_index !== null
+                ? product.product_index
                 : (typeof product.index === 'number' ? product.index : undefined);
             const productDataForName = product.product_data || product;
             const productName = getProductName(productDataForName) || `product-${idx}`;
-            
+
             // ✅ CORRIGÉ: Utiliser le même format d'ID que ProductCard et la déduplication
             let productUniqueId: string;
             if (productIndex !== undefined && productIndex !== null && serviceId) {
@@ -2008,17 +2030,17 @@ const ResultatBesoinScreen: React.FC = () => {
             } else {
                 productUniqueId = `${serviceId}-${productName}`;
             }
-            
+
             return {
-                type: 'product' as const, 
+                type: 'product' as const,
                 data: product,
                 key: `product-${productUniqueId}`
             };
         });
-        
+
         // ✅ DEBUG 2026-01-20: Log les produits qui seront affichés
         if (products.length > 0) {
-            console.log(`🖥️ [ResultatBesoinScreen] Produits qui seront affichés dans l'UI (${products.length} produits):`, 
+            console.log(`🖥️ [ResultatBesoinScreen] Produits qui seront affichés dans l'UI (${products.length} produits):`,
                 products.map((p: any) => {
                     const productDataForLog = p.data?.product_data || p.data;
                     const productNameForLog = getProductName(productDataForLog) || 'sans nom';
@@ -2034,21 +2056,21 @@ const ResultatBesoinScreen: React.FC = () => {
                 })
             );
         }
-        
+
         const allResultsArray = [...services, ...products];
         console.log('✅ [ResultatBesoinScreen] allResults - Total:', {
             total: allResultsArray.length,
             services: services.length,
             products: products.length
         });
-        
+
         if (allResultsArray.length === 0 && (filteredServices.length > 0 || filteredProducts.length > 0)) {
             console.error('❌ [ResultatBesoinScreen] allResults - PROBLÈME: allResults est vide alors que filteredServices ou filteredProducts ne le sont pas!', {
                 filteredServicesLength: filteredServices.length,
                 filteredProductsLength: filteredProducts.length
             });
         }
-        
+
         return allResultsArray;
     }, [filteredServices, filteredProducts, getProductName]);
 
@@ -2091,7 +2113,7 @@ const ResultatBesoinScreen: React.FC = () => {
             console.warn('[ResultatBesoinScreen] ⚠️ Product est undefined dans renderProductCard');
             return null;
         }
-        
+
         const service = product._service;
         // ✅ Priorité: prestataire dans le produit > prestataire dans la Map > null
         const prestataireFromProduct = product._prestataire;
@@ -2130,7 +2152,7 @@ const ResultatBesoinScreen: React.FC = () => {
     // ✅ DÉPLACÉ avant renderListItem pour éviter les problèmes de dépendances
     const renderServiceAsProductCard = useCallback((service: Service) => {
         const prestataire = getPrestataire(service.user_id);
-        
+
         // Convertir le service en format compatible avec ProductCard
         // ProductCard attend un objet "product" mais peut aussi afficher un service (isPrestation = true)
         const serviceAsProduct = {
@@ -2185,7 +2207,7 @@ const ResultatBesoinScreen: React.FC = () => {
             console.warn('[ResultatBesoinScreen] ⚠️ Item ou item.data est undefined:', item);
             return null;
         }
-        
+
         if (item.type === 'service') {
             const service = item.data as Service;
             if (!service) {
@@ -2256,8 +2278,8 @@ const ResultatBesoinScreen: React.FC = () => {
     }, (prevProps, nextProps) => {
         // ✅ Comparaison personnalisée pour éviter les re-renders inutiles
         return prevProps.service.id === nextProps.service.id &&
-               prevProps.service.score === nextProps.service.score &&
-               prevProps.service.distance === nextProps.service.distance;
+            prevProps.service.score === nextProps.service.score &&
+            prevProps.service.distance === nextProps.service.distance;
     });
 
     if (loading) {
@@ -2284,335 +2306,334 @@ const ResultatBesoinScreen: React.FC = () => {
                 maxToRenderPerBatch={5}
                 windowSize={10}
             >
-            {/* Header avec bouton retour */}
-            <View style={styles.header}>
-                <TouchableOpacity
-                    onPress={() => navigation.goBack()}
-                    style={styles.backButton}
-                >
-                    <Text style={styles.backIcon}>←</Text>
-                    <Text style={styles.backText}>Retour</Text>
-                </TouchableOpacity>
-            </View>
+                {/* Header avec bouton retour */}
+                <View style={styles.header}>
+                    <TouchableOpacity
+                        onPress={() => navigation.goBack()}
+                        style={styles.backButton}
+                    >
+                        <Text style={styles.backIcon}>←</Text>
+                        <Text style={styles.backText}>Retour</Text>
+                    </TouchableOpacity>
+                </View>
 
-            {/* 🔍 Barre de recherche avec support multimédia (comme HomeScreen) */}
-            <View style={styles.searchContainer}>
-                <ChatInputMobile
-                    onSubmit={handleSearch}
-                    loading={loading}
-                    placeholder="Affiner votre recherche..."
-                    onGPSPress={() => setShowGPSModal(true)}
-                    showSendButton={true}
-                    showAutocomplete={false} // ✅ DÉSACTIVÉ: Autocomplete désactivée pour améliorer les performances
-                    isSearchMode={true}
-                    isCreateService={false}
-                />
-            </View>
+                {/* 🔍 Barre de recherche avec support multimédia (comme HomeScreen) */}
+                <View style={styles.searchContainer}>
+                    <ChatInputMobile
+                        onSubmit={handleSearch}
+                        loading={loading}
+                        placeholder="Affiner votre recherche..."
+                        onGPSPress={() => setShowGPSModal(true)}
+                        showSendButton={true}
+                        showAutocomplete={false} // ✅ DÉSACTIVÉ: Autocomplete désactivée pour améliorer les performances
+                        isSearchMode={true}
+                        isCreateService={false}
+                    />
+                </View>
 
-            {/* Modal GPS */}
-            {showGPSModal && (
-                <ModernGPSModal
-                    visible={true}
-                    onClose={() => setShowGPSModal(false)}
-                    onSelect={(coordinatesString) => {
-                        try {
-                            const firstPoint = coordinatesString.split('|')[0].split(',');
-                            if (firstPoint.length === 2) {
-                                const lat = parseFloat(firstPoint[0]);
-                                const lng = parseFloat(firstPoint[1]);
-                                if (!isNaN(lat) && !isNaN(lng)) {
-                                    setSelectedLocation({ lat, lng });
-                                    console.log('[ResultatBesoinScreen] Localisation GPS définie:', { lat, lng });
+                {/* Modal GPS */}
+                {showGPSModal && (
+                    <ModernGPSModal
+                        visible={true}
+                        onClose={() => setShowGPSModal(false)}
+                        onSelect={(coordinatesString) => {
+                            try {
+                                const firstPoint = coordinatesString.split('|')[0].split(',');
+                                if (firstPoint.length === 2) {
+                                    const lat = parseFloat(firstPoint[0]);
+                                    const lng = parseFloat(firstPoint[1]);
+                                    if (!isNaN(lat) && !isNaN(lng)) {
+                                        setSelectedLocation({ lat, lng });
+                                        console.log('[ResultatBesoinScreen] Localisation GPS définie:', { lat, lng });
+                                    }
                                 }
+                            } catch (error) {
+                                console.error('[ResultatBesoinScreen] Erreur parsing GPS:', error);
                             }
-                        } catch (error) {
-                            console.error('[ResultatBesoinScreen] Erreur parsing GPS:', error);
-                        }
-                        setShowGPSModal(false);
-                    }}
-                    currentLocation={selectedLocation}
-                    title="Sélectionner votre localisation"
-                    allowZoneSelection={true}
-                />
-            )}
+                            setShowGPSModal(false);
+                        }}
+                        currentLocation={selectedLocation}
+                        title="Sélectionner votre localisation"
+                        allowZoneSelection={true}
+                    />
+                )}
 
-            {/* Avertissement GPS en temps réel */}
-            {services.some(service => !service.data?.gps_fixe && service.gps) && (
-                <View style={styles.gpsWarningContainer}>
-                    <View style={styles.gpsWarningContent}>
-                        <Text style={styles.gpsWarningIcon}>⚠️</Text>
-                        <View style={styles.gpsWarningTextContainer}>
-                            <Text style={styles.gpsWarningTitle}>
-                                Certains services utilisent la position GPS en temps réel du créateur
-                            </Text>
-                            <Text style={styles.gpsWarningSubtitle}>
-                                Les coordonnées affichées peuvent changer selon la position actuelle du prestataire
-                            </Text>
+                {/* Avertissement GPS en temps réel */}
+                {services.some(service => !service.data?.gps_fixe && service.gps) && (
+                    <View style={styles.gpsWarningContainer}>
+                        <View style={styles.gpsWarningContent}>
+                            <Text style={styles.gpsWarningIcon}>⚠️</Text>
+                            <View style={styles.gpsWarningTextContainer}>
+                                <Text style={styles.gpsWarningTitle}>
+                                    Certains services utilisent la position GPS en temps réel du créateur
+                                </Text>
+                                <Text style={styles.gpsWarningSubtitle}>
+                                    Les coordonnées affichées peuvent changer selon la position actuelle du prestataire
+                                </Text>
+                            </View>
                         </View>
                     </View>
-                </View>
-            )}
+                )}
 
-            {/* Messages d'erreur */}
-            {error && (
-                <View style={styles.errorCard}>
-                    <View style={[styles.cardContent, styles.errorContent]}>
-                        <Text style={styles.errorIcon}>⚠️</Text>
-                        <Text style={styles.errorTitle}>Erreur de chargement</Text>
-                        <Text style={styles.errorText}>{error}</Text>
-                        <TouchableOpacity
-                            onPress={() => navigation.goBack()}
-                            style={styles.errorButton}
-                        >
-                            <Text>Retour</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            )}
-
-            {/* Aucun service trouvé */}
-            {!services || services.length === 0 ? (
-                <View style={styles.emptyCard}>
-                    <View style={[styles.cardContent, styles.emptyContent]}>
-                        <Text style={styles.emptyIcon}>🔍</Text>
-                        <Text style={styles.emptyTitle}>
-                            {terminology.emptyMessage || 'Aucun résultat trouvé'}
-                        </Text>
-                        <Text style={styles.emptyText}>
-                            Aucun {terminology.providerLabel.toLowerCase()} ne correspond à vos critères pour le moment.
-                        </Text>
-                        <TouchableOpacity
-                            onPress={() => navigation.goBack()}
-                            style={styles.emptyButton}
-                        >
-                            <Text>Retour à la recherche</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            ) : !prestatairesLoaded ? (
-                <View style={styles.loadingCard}>
-                    <View style={[styles.cardContent, styles.loadingContent]}>
-                        <ActivityIndicator size="large" color={theme.colors.primary} />
-                        <Text style={styles.loadingTitle}>Chargement des informations prestataire</Text>
-                        <Text style={styles.loadingSubtitle}>
-                            Récupération des données GPS et des informations des prestataires...
-                        </Text>
-                    </View>
-                </View>
-            ) : (
-                <>
-                    {/* 🎨 Section de filtres moderne */}
-                    <View style={styles.modernFiltersContainer}>
-                        {/* En-tête avec compteur */}
-                        <View style={styles.modernFiltersHeader}>
-                            <View style={styles.modernHeaderLeft}>
-                                <Text style={styles.modernHeaderIcon}>{categoryStyle.icon}</Text>
-                                <View style={styles.modernHeaderText}>
-                                    <Text style={styles.modernHeaderTitle} numberOfLines={1} ellipsizeMode="tail">
-                                        Résultats de recherche
-                                    </Text>
-                                    <Text style={styles.modernHeaderSubtitle} numberOfLines={1}>
-                                        {(() => {
-                                            // ✅ CORRIGÉ 2026-02-07: Utiliser allResults.length au lieu de filteredProducts.length + filteredServices.length
-                                            // car allResults exclut les services qui ont déjà des produits extraits (évite doublon)
-                                            const total = allResults.length;
-                                            const originalTotal = products.length + services.length;
-                                            return `${total} résultat${total > 1 ? 's' : ''}${total !== originalTotal ? ` sur ${originalTotal}` : ''}`;
-                                        })()}
-                                    </Text>
-                                </View>
-                            </View>
+                {/* Messages d'erreur */}
+                {error && (
+                    <View style={styles.errorCard}>
+                        <View style={[styles.cardContent, styles.errorContent]}>
+                            <Text style={styles.errorIcon}>⚠️</Text>
+                            <Text style={styles.errorTitle}>Erreur de chargement</Text>
+                            <Text style={styles.errorText}>{error}</Text>
                             <TouchableOpacity
-                                style={[styles.modernFilterBadge, { backgroundColor: categoryStyle.primaryColor }]}
-                                onPress={() => setShowCategoryFilters(true)}
+                                onPress={() => navigation.goBack()}
+                                style={styles.errorButton}
                             >
-                                <SafeIcon name="filter" size={16} color="#FFFFFF" />
-                                {Object.keys(categoryFilters).length > 0 && (
-                                    <View style={styles.modernFilterCount}>
-                                        <Text style={styles.modernFilterCountText}>{Object.keys(categoryFilters).length}</Text>
-                                    </View>
-                                )}
+                                <Text>Retour</Text>
                             </TouchableOpacity>
                         </View>
-
-                        {/* Boutons de tri horizontal améliorés */}
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.modernSortScroll}>
-                            <View style={styles.modernSortButtons}>
-                                {/* Bouton Pertinence */}
-                                    <TouchableOpacity
-                                        style={[
-                                            styles.modernSortChip,
-                                        sortBy === 'relevance' && [styles.modernSortChipActive, { backgroundColor: categoryStyle.primaryColor }]
-                                        ]}
-                                    onPress={() => setSortBy('relevance')}
-                                    >
-                                        <Text
-                                            style={[
-                                                styles.modernSortChipText,
-                                            sortBy === 'relevance' && styles.modernSortChipTextActive
-                                            ]}
-                                        >
-                                        {terminology.sortLabels.relevance}
-                                        </Text>
-                                    </TouchableOpacity>
-
-                                {/* Bouton Prix avec toggle */}
-                                <TouchableOpacity
-                                    style={[
-                                        styles.modernSortChip,
-                                        (sortBy === 'price_asc' || sortBy === 'price_desc') && [styles.modernSortChipActive, { backgroundColor: categoryStyle.primaryColor }]
-                                    ]}
-                                    onPress={() => {
-                                        if (sortBy === 'price_asc') {
-                                            setSortBy('price_desc');
-                                        } else if (sortBy === 'price_desc') {
-                                            setSortBy('price_asc');
-                                        } else {
-                                            setSortBy('price_asc');
-                                        }
-                                    }}
-                                >
-                                    <View style={styles.priceSortContainer}>
-                                        <Text
-                                            style={[
-                                                styles.modernSortChipText,
-                                                (sortBy === 'price_asc' || sortBy === 'price_desc') && styles.modernSortChipTextActive
-                                            ]}
-                                        >
-                                            {terminology.sortLabels.price_asc.replace(' croissant', '')}
-                                        </Text>
-                                        <SafeIcon
-                                            name={sortBy === 'price_desc' ? 'arrow-up' : 'arrow-down'}
-                                            size={12}
-                                            color={(sortBy === 'price_asc' || sortBy === 'price_desc') ? '#FFFFFF' : categoryStyle.primaryColor}
-                                        />
-                                    </View>
-                                </TouchableOpacity>
-
-                                {/* Bouton Distance */}
-                                <TouchableOpacity
-                                    style={[
-                                        styles.modernSortChip,
-                                        sortBy === 'distance' && [styles.modernSortChipActive, { backgroundColor: categoryStyle.primaryColor }]
-                                    ]}
-                                    onPress={() => setSortBy('distance')}
-                                >
-                                    <Text
-                                        style={[
-                                            styles.modernSortChipText,
-                                            sortBy === 'distance' && styles.modernSortChipTextActive
-                                        ]}
-                                    >
-                                        {terminology.sortLabels.distance}
-                                    </Text>
-                                </TouchableOpacity>
-
-                                {/* Bouton Date si disponible */}
-                                {terminology.sortLabels.date && (
-                                    <TouchableOpacity
-                                        style={[
-                                            styles.modernSortChip,
-                                            sortBy === 'date' && [styles.modernSortChipActive, { backgroundColor: categoryStyle.primaryColor }]
-                                        ]}
-                                        onPress={() => setSortBy('date' as any)}
-                                    >
-                                        <Text
-                                            style={[
-                                                styles.modernSortChipText,
-                                                sortBy === 'date' && styles.modernSortChipTextActive
-                                            ]}
-                                        >
-                                            {terminology.sortLabels.date}
-                                        </Text>
-                                    </TouchableOpacity>
-                                )}
-                            </View>
-                        </ScrollView>
                     </View>
+                )}
 
-                    {/* Modal de filtres de catégorie */}
-                    <CategoryFilters
-                        category={dominantCategory}
-                        visible={showCategoryFilters}
-                        onClose={() => setShowCategoryFilters(false)}
-                        onApply={(filters) => {
-                            setCategoryFilters(filters);
-                            console.log('Filtres appliqués:', filters);
-                        }}
-                        initialFilters={categoryFilters}
-                    />
-
-                    {/* ✅ CORRIGÉ 2026-01-14: FlatList optimisée pour éviter le tremblement */}
-                    {allResults.length > 0 ? (
-                        <FlatList
-                            data={allResults}
-                            keyExtractor={keyExtractor}
-                            renderItem={renderListItem}
-                            ListEmptyComponent={
-                                <View style={styles.emptyState}>
-                                    <SafeIcon name="package" size={48} color="#D1D5DB" />
-                                    <Text style={styles.emptyStateText}>Aucun résultat trouvé</Text>
-                                    <Text style={styles.emptyStateSubtext}>
-                                        {Object.keys(categoryFilters).length > 0
-                                            ? 'Essayez de modifier vos filtres'
-                                            : 'Essayez de modifier votre recherche'}
-                                    </Text>
-                                </View>
-                            }
-                            // ✅ OPTIMISATIONS FlatList pour réduire le tremblement
-                            initialNumToRender={3}
-                            maxToRenderPerBatch={3}
-                            windowSize={5}
-                            removeClippedSubviews={true}
-                            updateCellsBatchingPeriod={100}
-                            // ✅ CORRIGÉ 2026-01-14: Retirer getItemLayout car les hauteurs varient (causes tremblement)
-                            // getItemLayout supprimé car les cartes ont des hauteurs variables
-                            // ✅ Désactiver les animations inutiles
-                            scrollEventThrottle={16}
-                            // ✅ Optimiser le rendu
-                            legacyImplementation={false}
-                            // ✅ NOUVEAU 2026-01-14: Désactiver les animations de layout pour éviter le tremblement
-                            disableVirtualization={false}
-                            style={styles.servicesContainer}
-                            contentContainerStyle={styles.servicesContainerContent}
-                        />
-                    ) : (
-                        <View style={styles.emptyState}>
-                            <SafeIcon name="package" size={48} color="#D1D5DB" />
-                            <Text style={styles.emptyStateText}>Aucun résultat trouvé</Text>
-                            <Text style={styles.emptyStateSubtext}>
-                                {Object.keys(categoryFilters).length > 0
-                                    ? 'Essayez de modifier vos filtres'
-                                    : 'Essayez de modifier votre recherche'}
+                {/* Aucun service trouvé */}
+                {!services || services.length === 0 ? (
+                    <View style={styles.emptyCard}>
+                        <View style={[styles.cardContent, styles.emptyContent]}>
+                            <Text style={styles.emptyIcon}>🔍</Text>
+                            <Text style={styles.emptyTitle}>
+                                {terminology.emptyMessage || 'Aucun résultat trouvé'}
+                            </Text>
+                            <Text style={styles.emptyText}>
+                                Aucun {terminology.providerLabel.toLowerCase()} ne correspond à vos critères pour le moment.
+                            </Text>
+                            <TouchableOpacity
+                                onPress={() => navigation.goBack()}
+                                style={styles.emptyButton}
+                            >
+                                <Text>Retour à la recherche</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                ) : !prestatairesLoaded ? (
+                    <View style={styles.loadingCard}>
+                        <View style={[styles.cardContent, styles.loadingContent]}>
+                            <ActivityIndicator size="large" color={theme.colors.primary} />
+                            <Text style={styles.loadingTitle}>Chargement des informations prestataire</Text>
+                            <Text style={styles.loadingSubtitle}>
+                                Récupération des données GPS et des informations des prestataires...
                             </Text>
                         </View>
-                    )}
+                    </View>
+                ) : (
+                    <>
+                        {/* 🎨 Section de filtres moderne */}
+                        <View style={styles.modernFiltersContainer}>
+                            {/* En-tête avec compteur */}
+                            <View style={styles.modernFiltersHeader}>
+                                <View style={styles.modernHeaderLeft}>
+                                    <Text style={styles.modernHeaderIcon}>{categoryStyle.icon}</Text>
+                                    <View style={styles.modernHeaderText}>
+                                        <Text style={styles.modernHeaderTitle} numberOfLines={1} ellipsizeMode="tail">
+                                            Résultats de recherche
+                                        </Text>
+                                        <Text style={styles.modernHeaderSubtitle} numberOfLines={1}>
+                                            {(() => {
+                                                // ✅ CORRIGÉ 2026-02-25: Afficher uniquement allResults.length (déjà dédupliqué)
+                                                // products.length + services.length double-comptait les services ayant des produits
+                                                const total = allResults.length;
+                                                return `${total} résultat${total > 1 ? 's' : ''}`;
+                                            })()}
+                                        </Text>
+                                    </View>
+                                </View>
+                                <TouchableOpacity
+                                    style={[styles.modernFilterBadge, { backgroundColor: categoryStyle.primaryColor }]}
+                                    onPress={() => setShowCategoryFilters(true)}
+                                >
+                                    <SafeIcon name="filter" size={16} color="#FFFFFF" />
+                                    {Object.keys(categoryFilters).length > 0 && (
+                                        <View style={styles.modernFilterCount}>
+                                            <Text style={styles.modernFilterCountText}>{Object.keys(categoryFilters).length}</Text>
+                                        </View>
+                                    )}
+                                </TouchableOpacity>
+                            </View>
 
-                </>
-            )}
+                            {/* Boutons de tri horizontal améliorés */}
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.modernSortScroll}>
+                                <View style={styles.modernSortButtons}>
+                                    {/* Bouton Pertinence */}
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.modernSortChip,
+                                            sortBy === 'relevance' && [styles.modernSortChipActive, { backgroundColor: categoryStyle.primaryColor }]
+                                        ]}
+                                        onPress={() => setSortBy('relevance')}
+                                    >
+                                        <Text
+                                            style={[
+                                                styles.modernSortChipText,
+                                                sortBy === 'relevance' && styles.modernSortChipTextActive
+                                            ]}
+                                        >
+                                            {terminology.sortLabels.relevance}
+                                        </Text>
+                                    </TouchableOpacity>
 
-            {/* Chat Modal avec WebSocket */}
-            <ChatModalMobile
-                visible={showChatModal}
-                service={selectedService}
-                prestataireInfo={selectedPrestataire}
-                user={user}
-                onClose={() => {
-                    setShowChatModal(false);
-                    setSelectedService(null);
-                    setSelectedPrestataire(null);
-                }}
-            />
+                                    {/* Bouton Prix avec toggle */}
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.modernSortChip,
+                                            (sortBy === 'price_asc' || sortBy === 'price_desc') && [styles.modernSortChipActive, { backgroundColor: categoryStyle.primaryColor }]
+                                        ]}
+                                        onPress={() => {
+                                            if (sortBy === 'price_asc') {
+                                                setSortBy('price_desc');
+                                            } else if (sortBy === 'price_desc') {
+                                                setSortBy('price_asc');
+                                            } else {
+                                                setSortBy('price_asc');
+                                            }
+                                        }}
+                                    >
+                                        <View style={styles.priceSortContainer}>
+                                            <Text
+                                                style={[
+                                                    styles.modernSortChipText,
+                                                    (sortBy === 'price_asc' || sortBy === 'price_desc') && styles.modernSortChipTextActive
+                                                ]}
+                                            >
+                                                {terminology.sortLabels.price_asc.replace(' croissant', '')}
+                                            </Text>
+                                            <SafeIcon
+                                                name={sortBy === 'price_desc' ? 'arrow-up' : 'arrow-down'}
+                                                size={12}
+                                                color={(sortBy === 'price_asc' || sortBy === 'price_desc') ? '#FFFFFF' : categoryStyle.primaryColor}
+                                            />
+                                        </View>
+                                    </TouchableOpacity>
 
-            {/* Gallery Modal */}
-            <ServiceGalleryModal
-                visible={showGalleryModal}
-                service={selectedService}
-                onClose={() => {
-                    setShowGalleryModal(false);
-                    setSelectedService(null);
-                }}
-            />
+                                    {/* Bouton Distance */}
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.modernSortChip,
+                                            sortBy === 'distance' && [styles.modernSortChipActive, { backgroundColor: categoryStyle.primaryColor }]
+                                        ]}
+                                        onPress={() => setSortBy('distance')}
+                                    >
+                                        <Text
+                                            style={[
+                                                styles.modernSortChipText,
+                                                sortBy === 'distance' && styles.modernSortChipTextActive
+                                            ]}
+                                        >
+                                            {terminology.sortLabels.distance}
+                                        </Text>
+                                    </TouchableOpacity>
+
+                                    {/* Bouton Date si disponible */}
+                                    {terminology.sortLabels.date && (
+                                        <TouchableOpacity
+                                            style={[
+                                                styles.modernSortChip,
+                                                sortBy === 'date' && [styles.modernSortChipActive, { backgroundColor: categoryStyle.primaryColor }]
+                                            ]}
+                                            onPress={() => setSortBy('date' as any)}
+                                        >
+                                            <Text
+                                                style={[
+                                                    styles.modernSortChipText,
+                                                    sortBy === 'date' && styles.modernSortChipTextActive
+                                                ]}
+                                            >
+                                                {terminology.sortLabels.date}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    )}
+                                </View>
+                            </ScrollView>
+                        </View>
+
+                        {/* Modal de filtres de catégorie */}
+                        <CategoryFilters
+                            category={dominantCategory}
+                            visible={showCategoryFilters}
+                            onClose={() => setShowCategoryFilters(false)}
+                            onApply={(filters) => {
+                                setCategoryFilters(filters);
+                                console.log('Filtres appliqués:', filters);
+                            }}
+                            initialFilters={categoryFilters}
+                        />
+
+                        {/* ✅ CORRIGÉ 2026-01-14: FlatList optimisée pour éviter le tremblement */}
+                        {allResults.length > 0 ? (
+                            <FlatList
+                                data={allResults}
+                                keyExtractor={keyExtractor}
+                                renderItem={renderListItem}
+                                ListEmptyComponent={
+                                    <View style={styles.emptyState}>
+                                        <SafeIcon name="package" size={48} color="#D1D5DB" />
+                                        <Text style={styles.emptyStateText}>Aucun résultat trouvé</Text>
+                                        <Text style={styles.emptyStateSubtext}>
+                                            {Object.keys(categoryFilters).length > 0
+                                                ? 'Essayez de modifier vos filtres'
+                                                : 'Essayez de modifier votre recherche'}
+                                        </Text>
+                                    </View>
+                                }
+                                // ✅ OPTIMISATIONS FlatList pour réduire le tremblement
+                                initialNumToRender={3}
+                                maxToRenderPerBatch={3}
+                                windowSize={5}
+                                removeClippedSubviews={true}
+                                updateCellsBatchingPeriod={100}
+                                // ✅ CORRIGÉ 2026-01-14: Retirer getItemLayout car les hauteurs varient (causes tremblement)
+                                // getItemLayout supprimé car les cartes ont des hauteurs variables
+                                // ✅ Désactiver les animations inutiles
+                                scrollEventThrottle={16}
+                                // ✅ Optimiser le rendu
+                                legacyImplementation={false}
+                                // ✅ NOUVEAU 2026-01-14: Désactiver les animations de layout pour éviter le tremblement
+                                disableVirtualization={false}
+                                style={styles.servicesContainer}
+                                contentContainerStyle={styles.servicesContainerContent}
+                            />
+                        ) : (
+                            <View style={styles.emptyState}>
+                                <SafeIcon name="package" size={48} color="#D1D5DB" />
+                                <Text style={styles.emptyStateText}>Aucun résultat trouvé</Text>
+                                <Text style={styles.emptyStateSubtext}>
+                                    {Object.keys(categoryFilters).length > 0
+                                        ? 'Essayez de modifier vos filtres'
+                                        : 'Essayez de modifier votre recherche'}
+                                </Text>
+                            </View>
+                        )}
+
+                    </>
+                )}
+
+                {/* Chat Modal avec WebSocket */}
+                <ChatModalMobile
+                    visible={showChatModal}
+                    service={selectedService}
+                    prestataireInfo={selectedPrestataire}
+                    user={user}
+                    onClose={() => {
+                        setShowChatModal(false);
+                        setSelectedService(null);
+                        setSelectedPrestataire(null);
+                    }}
+                />
+
+                {/* Gallery Modal */}
+                <ServiceGalleryModal
+                    visible={showGalleryModal}
+                    service={selectedService}
+                    onClose={() => {
+                        setShowGalleryModal(false);
+                        setSelectedService(null);
+                    }}
+                />
             </KeyboardAwareScreen>
         </SafeNativeView>
     );

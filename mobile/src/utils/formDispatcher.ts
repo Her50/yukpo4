@@ -16,6 +16,12 @@ export interface DynamicField {
   allowCustomModality?: boolean; // Permet d'ajouter de nouvelles modalités
   // ✅ NOUVEAU: Support pour les nouveaux types
   typeDonnee?: string; // 'autocomplete', 'price_variant', 'date', 'location'
+  // Pour textarea
+  multiline?: boolean;
+  minLines?: number;
+  // Pour champs spéciaux
+  isStructureName?: boolean;
+  hint?: string;
   // Pour autocomplete
   separateur?: string;
   sousCaracteristiques?: { [key: string]: string[] };

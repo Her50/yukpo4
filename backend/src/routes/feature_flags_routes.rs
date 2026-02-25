@@ -16,5 +16,8 @@ pub async fn get_feature_flags(_state: State<Arc<AppState>>) -> Json<serde_json:
 }
 
 pub fn feature_flags_routes(_state: Arc<AppState>) -> Router<Arc<AppState>> {
-    Router::new().route("/api/feature-flags", get(get_feature_flags))
+    Router::new()
+        .route("/api/feature-flags", get(get_feature_flags))
+        // ✅ ALIAS: /api/meta/feature-flags (compatibilité mobile)
+        .route("/api/meta/feature-flags", get(get_feature_flags))
 }

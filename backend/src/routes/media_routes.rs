@@ -7,6 +7,7 @@ use axum::{
 use std::sync::Arc;
 
 use crate::controllers::{
+    audio_library_controller::get_audio_library,
     ia_controller::{
         generate_distribution_plan, generate_video_brief, generate_video_style,
         generate_video_timeline,
@@ -15,6 +16,7 @@ use crate::controllers::{
         delete_media, get_effect, get_effects_by_category, get_template, get_templates_by_industry,
         list_effects, list_templates, serve_example_video, upload_media,
     },
+    media_product_controller::get_product_media,
     product_video_controller::{
         estimate_video_cost_for_product, generate_video_for_product,
         get_video_generation_job_status,
@@ -71,6 +73,11 @@ pub fn media_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             "/api/templates/industry/{industry}",
             get(get_templates_by_industry),
         )
+        // ✅ NOUVEAU: Route pour récupérer les médias d'un produit spécifique
+        .route(
+            "/api/media/product/{service_id}/{product_index}",
+            get(get_product_media),
+        )
         // ✅ NOUVEAU: Routes pour génération vidéo produit
         .route(
             "/api/media/product/{service_id}/{product_index}/generate-video",
@@ -80,6 +87,10 @@ pub fn media_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             "/api/media/product/{service_id}/{product_index}/estimate-video",
             post(estimate_video_cost_for_product),
         )
+        // ✅ ALIAS: /api/studio/templates → /api/templates (compatibilité mobile)
+        .route("/api/studio/templates", get(list_templates))
+        // ✅ NOUVEAU: Route pour bibliothèque audio (utilisée par le studio vidéo)
+        .route("/api/audio-library", get(get_audio_library))
         // ✅ CORRIGÉ 2026-01-02: Route pour récupérer le statut d'un job de génération vidéo
         // IMPORTANT: Cette route doit être AVANT la route générique /api/media/{*file_path}
         .route(

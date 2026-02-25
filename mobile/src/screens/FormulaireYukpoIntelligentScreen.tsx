@@ -2,7 +2,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 // Code corrigé (remplace @ts-ignore)
 import * as Clipboard from 'expo-clipboard';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   DeviceEventEmitter,
@@ -15,8 +15,8 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-import { KeyboardAwareScreen } from '../components/KeyboardAwareScreen';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
+import { KeyboardAwareScreen } from '../components/KeyboardAwareScreen';
 import { apiGet, apiPost } from '../services/api';
 // Code corrigé (remplace @ts-ignore)
 // ✅ NOUVEAU 2025-11-02: Gestionnaire upload images/vidéos dédié
@@ -27,9 +27,9 @@ import ModernGPSModal from '../components/ModernGPSModal';
 // Code corrigé (remplace @ts-ignore)
 import PaymentMethodSelector from '../components/PaymentMethodSelector';
 // Code corrigé (remplace @ts-ignore)
-import { NativeButton, NativeCard, NativeDivider, NativeInput } from '../components/NativeDesign';
-import StableTextInput from '../components/StableTextInput';
+import { NativeButton, NativeCard, NativeDivider } from '../components/NativeDesign';
 import NavigatorToolbar from '../components/NavigatorToolbar';
+import StableTextInput from '../components/StableTextInput';
 // ✅ SUPPRIMÉ: ProductManagerMobile intégré directement dans le formulaire
 import LinearAutocompleteEditor from '../components/LinearAutocompleteEditor';
 import LocationSelector, { LocationObject } from '../components/LocationSelector';
@@ -40,11 +40,11 @@ import SafeIcon from '../components/SafeIcon';
 import { useAuth } from '../contexts/AuthContext';
 // TODO: Fix TypeScript type issue
 // Code corrigé (remplace @ts-ignore)
+import DeliveryAutoConfigPromptModal from '../components/delivery/DeliveryAutoConfigPromptModal';
+import ProductDeliveryConfigModal from '../components/delivery/ProductDeliveryConfigModal';
 import { modernColors } from '../theme/modernTheme';
 import { DynamicField, IASuggestion, processIASuggestion } from '../utils/formDispatcher';
 import { MAX_PRODUCT_IMAGES, mergeImageSources, orderImagesWithPrimary } from '../utils/mediaHelpers';
-import ProductDeliveryConfigModal from '../components/delivery/ProductDeliveryConfigModal';
-import DeliveryAutoConfigPromptModal from '../components/delivery/DeliveryAutoConfigPromptModal';
 // ✅ NOUVEAU 2026-02-10: Import de la modal Google Business
 import GoogleBusinessModal from '../components/GoogleBusinessModal';
 // ✅ NOUVEAU: Import des fonctions de synchronisation prix_variation <-> sous-caractéristiques
@@ -243,11 +243,11 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     suggestion?.service_data?.base64_image,
     suggestion?.base64_image
   );
-  
+
   // Combiner en mettant mediaDataImages en premier
   const initialProductImages: string[] = [];
   const seenImages = new Set<string>();
-  
+
   // Ajouter d'abord les images de mediaData
   mediaDataImages.forEach((img: string) => {
     if (img && !seenImages.has(img) && initialProductImages.length < MAX_PRODUCT_IMAGES) {
@@ -255,7 +255,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       seenImages.add(img);
     }
   });
-  
+
   // Puis ajouter les autres images
   otherImageSources.forEach((img: string) => {
     if (img && !seenImages.has(img) && initialProductImages.length < MAX_PRODUCT_IMAGES) {
@@ -420,7 +420,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
     // ✅ Garantir que currentDisplayIndex est toujours valide
     const validDisplayIndex = Math.max(0, Math.min(currentDisplayIndex, displayedBlocks.length - 1));
-    
+
     if (validDisplayIndex !== currentDisplayIndex) {
       if (__DEV__) {
         console.log('[NAVIGATION_SYNC] 🔄 Correction currentDisplayIndex:', {
@@ -1003,12 +1003,12 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           variantCurrency ||
           'XAF'
         );
-        
+
         // ✅ Mettre à jour formValues avec la devise automatique (sans afficher le champ)
         if (!formValues.devise_produit) {
           formValues.devise_produit = autoCurrency;
         }
-        
+
         console.log('[FormulaireYukpoIntelligentScreen] ✅ Devise déterminée automatiquement:', autoCurrency);
       }
 
@@ -1326,7 +1326,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     const titreServiceValue = valeursFormulaire.titre_service;
     const titreServiceField = composants.find(f => f.name === 'titre_service');
     const isStructureNameField = titreServiceField?.isStructureName || titreServiceField?.label?.includes('structure');
-    
+
     if (isStructureNameField && titreServiceField?.required) {
       const isEmpty = !titreServiceValue || (typeof titreServiceValue === 'string' && titreServiceValue.trim() === '');
       if (isEmpty) {
@@ -1391,7 +1391,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
       // ✅ REFONTE: Utiliser currentDisplayIndex directement (source de vérité)
       const nextDisplayIndex = currentDisplayIndex + 1;
-      
+
       if (nextDisplayIndex < displayedBlocks.length) {
         console.log('[NAVIGATION_BLOC] ✅ Navigation vers bloc suivant:', {
           from: currentDisplayIndex,
@@ -1399,24 +1399,19 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           blockId: displayedBlocks[nextDisplayIndex]?.block?.id,
           blockTitle: displayedBlocks[nextDisplayIndex]?.block?.title,
         });
-        
+
         setCurrentDisplayIndex(nextDisplayIndex);
-        
+
         // ✅ REFONTE: Scroller vers le début du ScrollView pour afficher le nouveau bloc
         requestAnimationFrame(() => {
           requestAnimationFrame(() => {
             try {
               if (mainScrollViewRef.current) {
-                const scrollView = mainScrollViewRef.current;
+                const scrollView = mainScrollViewRef.current as any;
                 if (typeof scrollView.scrollTo === 'function') {
                   scrollView.scrollTo({ x: 0, y: 0, animated: true });
                 } else if (typeof scrollView.scrollToPosition === 'function') {
                   scrollView.scrollToPosition(0, 0, true);
-                } else if (typeof scrollView.getScrollResponder === 'function') {
-                  const scrollResponder = scrollView.getScrollResponder();
-                  if (scrollResponder && typeof scrollResponder.scrollTo === 'function') {
-                    scrollResponder.scrollTo({ x: 0, y: 0, animated: true });
-                  }
                 }
               }
             } catch (scrollError) {
@@ -1444,7 +1439,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
       // ✅ REFONTE: Utiliser currentDisplayIndex directement
       const previousDisplayIndex = currentDisplayIndex - 1;
-      
+
       if (previousDisplayIndex >= 0) {
         console.log('[NAVIGATION_BLOC] ✅ Navigation vers bloc précédent:', {
           from: currentDisplayIndex,
@@ -1452,24 +1447,19 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           blockId: displayedBlocks[previousDisplayIndex]?.block?.id,
           blockTitle: displayedBlocks[previousDisplayIndex]?.block?.title,
         });
-        
+
         setCurrentDisplayIndex(previousDisplayIndex);
-        
+
         // ✅ Scroller vers le début du ScrollView
         requestAnimationFrame(() => {
           requestAnimationFrame(() => {
             try {
               if (mainScrollViewRef.current) {
-                const scrollView = mainScrollViewRef.current;
+                const scrollView = mainScrollViewRef.current as any;
                 if (typeof scrollView.scrollTo === 'function') {
                   scrollView.scrollTo({ x: 0, y: 0, animated: true });
                 } else if (typeof scrollView.scrollToPosition === 'function') {
                   scrollView.scrollToPosition(0, 0, true);
-                } else if (typeof scrollView.getScrollResponder === 'function') {
-                  const scrollResponder = scrollView.getScrollResponder();
-                  if (scrollResponder && typeof scrollResponder.scrollTo === 'function') {
-                    scrollResponder.scrollTo({ x: 0, y: 0, animated: true });
-                  }
                 }
               }
             } catch (scrollError) {
@@ -1496,7 +1486,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
       // ✅ REFONTE: Trouver le displayIndex correspondant au blockIndex
       const displayIndex = displayedBlocks.findIndex(item => item && item.index === blockIndex);
-      
+
       if (displayIndex === -1) {
         console.warn('[NAVIGATION_BLOC] ⚠️ Bloc non trouvé dans displayedBlocks:', blockIndex);
         return;
@@ -1522,24 +1512,19 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         blockId: displayedBlocks[displayIndex]?.block?.id,
         blockTitle: displayedBlocks[displayIndex]?.block?.title,
       });
-      
+
       setCurrentDisplayIndex(displayIndex);
-      
+
       // ✅ Scroller vers le début du ScrollView
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           try {
             if (mainScrollViewRef.current) {
-              const scrollView = mainScrollViewRef.current;
+              const scrollView = mainScrollViewRef.current as any;
               if (typeof scrollView.scrollTo === 'function') {
                 scrollView.scrollTo({ x: 0, y: 0, animated: true });
               } else if (typeof scrollView.scrollToPosition === 'function') {
                 scrollView.scrollToPosition(0, 0, true);
-              } else if (typeof scrollView.getScrollResponder === 'function') {
-                const scrollResponder = scrollView.getScrollResponder();
-                if (scrollResponder && typeof scrollResponder.scrollTo === 'function') {
-                  scrollResponder.scrollTo({ x: 0, y: 0, animated: true });
-                }
               }
             }
           } catch (scrollError) {
@@ -1568,16 +1553,15 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       ) {
         try {
           // Vérifier si l'utilisateur a déjà des services
-          const response = await apiGet('/api/prestataire/services', {
+          const response = await apiGet<any>('/api/prestataire/services', {
             params: {
               page: 0,
-              limit: 1, // On a juste besoin de savoir s'il y en a au moins un
+              limit: 1,
             },
           });
 
           let hasExistingServices = false;
           if (response.success && response.data) {
-            // Essayer différentes structures possibles
             if (Array.isArray(response.data)) {
               hasExistingServices = response.data.length > 0;
             } else if (Array.isArray(response.data.data)) {
@@ -1702,20 +1686,20 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             // Les produits sont maintenant chargés depuis service_products et ajoutés dans data.produits.valeur
             if (serviceData?.data?.produits) {
               const produitsData = serviceData.data.produits;
-              
+
               // ✅ NOUVEAU 2026-02-07: Extraire product_labels depuis produitsData pour les prestations
               if (produitsData.type_donnee === 'autocomplete' && Array.isArray(produitsData.product_labels)) {
                 formValues.product_labels = produitsData.product_labels.filter((label: any) => typeof label === 'string' && label.trim().length > 0);
                 console.log('[FormulaireYukpoIntelligentScreen] ✅ product_labels chargé depuis produits:', formValues.product_labels);
               }
-              
+
               // Extraire le tableau de produits (peut être dans .valeur ou directement)
-              const produitsArray = Array.isArray(produitsData?.valeur) 
-                ? produitsData.valeur 
-                : Array.isArray(produitsData) 
-                  ? produitsData 
+              const produitsArray = Array.isArray(produitsData?.valeur)
+                ? produitsData.valeur
+                : Array.isArray(produitsData)
+                  ? produitsData
                   : [];
-              
+
               // Si on a au moins un produit, extraire ses champs pour pré-remplir le formulaire
               if (produitsArray.length > 0) {
                 const firstProduct = produitsArray[0];
@@ -1865,11 +1849,11 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       // ✅ CORRECTION : Gérer le cas où suggestion est vide ou mal formatée
       if (!suggestion || !suggestion.data || typeof suggestion.data !== 'object') {
         console.log('[FormulaireYukpoIntelligentScreen] Aucune donnée IA, génération composants par défaut');
-        
+
         // Générer des composants par défaut
         const defaultSuggestion: IASuggestion = {};
         const components = processIASuggestion(defaultSuggestion);
-        
+
         if (Array.isArray(components)) {
           const organizedBlocks = organizeFieldsIntoBlocks(components, {});
           setComposants(components);
@@ -1928,7 +1912,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               // Pour autocomplete, garder toute la structure avec sous_caracteristiques
               // ✅ CORRECTION CRITIQUE: Extraire product_labels depuis plusieurs emplacements possibles
               let productLabels: string[] | undefined = undefined;
-              
+
               // PRIORITÉ 1: fieldData.product_labels (dans l'objet structuré du champ)
               if (Array.isArray(fieldData.product_labels) && fieldData.product_labels.length > 0) {
                 productLabels = fieldData.product_labels.filter((label: any) => typeof label === 'string' && label.trim().length > 0);
@@ -2004,7 +1988,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   console.log('[FormulaireYukpoIntelligentScreen] ✅ productLabels extrait depuis service_data.data.sous_caracteristiques (niveau racine, fallback):', keys);
                 }
               }
-              
+
               initialValues[fieldName] = {
                 type_donnee: 'autocomplete',
                 valeur: Array.isArray(fieldData.valeur) ? fieldData.valeur : [],
@@ -2015,7 +1999,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 filtrable: fieldData.filtrable !== false,
                 origine_champs: fieldData.origine_champs || 'ia'
               };
-              
+
               // ✅ NOUVEAU: Stocker aussi product_labels au niveau racine de initialValues pour accès facile
               if (productLabels && productLabels.length > 0) {
                 initialValues.product_labels = productLabels;
@@ -2023,7 +2007,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               } else {
                 console.warn(`[FormulaireYukpoIntelligentScreen] ⚠️ product_labels non trouvé dans fieldData pour produits (autocomplete)`);
               }
-              
+
               console.log(`[FormulaireYukpoIntelligentScreen] ✅ Champ produits (autocomplete) pré-rempli:`, initialValues[fieldName]);
             }
             // ✅ NOUVEAU: Traitement spécial pour price_variant (variabilite_prix)
@@ -2158,7 +2142,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           // Produit
           nom_produit: initialValues.nom_produit,
           categorie: initialValues.categorie_produit,
-          description: initialValues.description_produit
+          description_produit: initialValues.description_produit
         });
 
         // ✅ NOUVEAU: Pré-remplir le GPS depuis ChatInputMobile si disponible
@@ -2214,13 +2198,13 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         suggestion: suggestion ? 'présent' : 'absent',
         suggestionData: suggestion?.data ? 'présent' : 'absent',
       });
-      
+
       // ✅ AMÉLIORATION : Essayer de générer des composants par défaut en cas d'erreur
       try {
         console.log('[FormulaireYukpoIntelligentScreen] Tentative de récupération avec composants par défaut...');
         const defaultSuggestion: IASuggestion = {};
         const components = processIASuggestion(defaultSuggestion);
-        
+
         if (Array.isArray(components)) {
           const organizedBlocks = organizeFieldsIntoBlocks(components, {});
           setComposants(components);
@@ -2233,17 +2217,19 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       } catch (fallbackError) {
         console.error('[FormulaireYukpoIntelligentScreen] ❌ Erreur lors de la récupération par défaut:', fallbackError);
       }
-      
+
       // Ne pas crasher l'app, afficher un message d'erreur
       Alert.alert(
         'Erreur de chargement',
         'Impossible de charger les données du formulaire. Veuillez réessayer.',
-        [{ text: 'OK', onPress: () => {
-          // ✅ AMÉLIORATION : Retour automatique si l'utilisateur est venu de MesProduits
-          if (fromMesProduits) {
-            navigation.goBack();
+        [{
+          text: 'OK', onPress: () => {
+            // ✅ AMÉLIORATION : Retour automatique si l'utilisateur est venu de MesProduits
+            if (fromMesProduits) {
+              navigation.goBack();
+            }
           }
-        }}]
+        }]
       );
     }
   }, [suggestion, fromMesProduits, navigation]); // Se déclenche quand suggestion change
@@ -2292,14 +2278,17 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     }
   }, [isAddingProduct, duplicateProduct, suggestion, blocks]);
 
-  // Organiser les champs en blocs quand les composants ou valeursFormulaire changent
+  // Organiser les champs en blocs quand les composants changent
+  // ✅ CORRECTION CRITIQUE: NE PAS inclure valeursFormulaire dans les dépendances !
+  // Sinon chaque frappe clavier → handleFieldBlur → setValeursFormulaire → setBlocks → re-render complet → perte de focus (curseur saute)
   useEffect(() => {
     if (composants.length > 0) {
       const organizedBlocks = organizeFieldsIntoBlocks(composants, valeursFormulaire);
       setBlocks(organizedBlocks);
-      console.log('[FormulaireYukpoIntelligentScreen] Blocs organisés avec valeurs:', organizedBlocks);
+      console.log('[FormulaireYukpoIntelligentScreen] Blocs organisés:', organizedBlocks.map(b => b.id));
     }
-  }, [composants, valeursFormulaire]); // Se déclenche quand valeursFormulaire change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [composants]); // ✅ UNIQUEMENT composants — les blocs ne changent pas quand les valeurs changent
 
 
   // ✅ NOUVEAU : Scroll automatique vers le bloc produits si focusBlock === 'produits'
@@ -2491,7 +2480,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     // Cela évite les re-renders pendant la saisie qui causent les sauts de curseur
     // La conversion en nombre pour 'prix' se fera au blur dans handleFieldBlur
     const isTextInput = typeof value === 'string';
-    
+
     if (isTextInput) {
       // Pour les champs texte: stocker dans pendingValuesRef seulement (garder comme string)
       // La mise à jour de valeursFormulaire se fera au blur via handleFieldBlur
@@ -2520,7 +2509,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     // Si une valeur temporaire existe, la sauvegarder dans valeursFormulaire
     if (pendingValuesRef.current[fieldName] !== undefined) {
       let value = pendingValuesRef.current[fieldName];
-      
+
       // ✅ Convertir automatiquement les prix en nombres au blur
       if (fieldName === 'prix' && typeof value === 'string' && value.trim() !== '') {
         const numericValue = parseFloat(value);
@@ -2528,7 +2517,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           value = numericValue;
         }
       }
-      
+
       setValeursFormulaire(prev => {
         if (prev[fieldName] === value) {
           return prev;
@@ -2813,16 +2802,16 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       const nbCaracteristiques = Object.keys(currentSousCaracs).length;
 
       // ✅ DEBUG CRITIQUE: Vérifier l'alignement des labels et valeurs pour les prestations
-      const alignmentStatus = productLabels && Object.keys(currentSousCaracs).length > 0 
-        ? (productLabels.length === Object.keys(currentSousCaracs).length 
-            ? '✅ Aligné' 
-            : `⚠️ Désaligné: ${productLabels.length} labels vs ${Object.keys(currentSousCaracs).length} clés`)
+      const alignmentStatus = productLabels && Object.keys(currentSousCaracs).length > 0
+        ? (productLabels.length === Object.keys(currentSousCaracs).length
+          ? '✅ Aligné'
+          : `⚠️ Désaligné: ${productLabels.length} labels vs ${Object.keys(currentSousCaracs).length} clés`)
         : 'N/A';
-      
+
       // ✅ DEBUG: Vérifier que tous les labels dans productLabels existent dans sousCaracteristiques
       const missingLabels = productLabels ? productLabels.filter(label => !currentSousCaracs.hasOwnProperty(label)) : [];
       const extraKeys = Object.keys(currentSousCaracs).filter(key => productLabels && !productLabels.includes(key));
-      
+
       if (missingLabels.length > 0 || extraKeys.length > 0 || alignmentStatus.includes('⚠️')) {
         console.warn('[FormulaireYukpoIntelligentScreen] ⚠️ PROBLÈME D\'ALIGNEMENT DÉTECTÉ pour', field.name, {
           productLabels,
@@ -2832,7 +2821,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           alignmentStatus
         });
       }
-      
+
       console.log('[FormulaireYukpoIntelligentScreen] ✅ Rendu autocomplete pour:', field.name, {
         nbModalites,
         nbCaracteristiques,
@@ -2905,7 +2894,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
               // Mettre à jour le champ produits
               handleFieldChange(field.name, updatedProduitsValue);
-              
+
               // ✅ CORRECTION CRITIQUE: Préserver product_labels au niveau racine pour qu'il soit disponible lors de la sauvegarde
               if (productLabels && productLabels.length > 0) {
                 handleFieldChange('product_labels', productLabels);
@@ -2961,7 +2950,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       const iaModalites = Array.isArray(field.modalites) ? field.modalites : [];
       // ✅ CORRECTION: Vérifier les deux noms possibles (variabilite_prix et price_variant)
       // comme dans AjouterProduitSimpleScreen pour garantir la récupération des modalités
-      const userModalites = 
+      const userModalites =
         valeursFormulaire[field.name]?.modalites ||
         valeursFormulaire['variabilite_prix']?.modalites ||
         valeursFormulaire['price_variant']?.modalites;
@@ -3008,8 +2997,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               const produitsFieldName = Object.keys(valeursFormulaire).find(
                 key => {
                   const fieldValue = valeursFormulaire[key];
-                  return fieldValue && typeof fieldValue === 'object' && 
-                         (fieldValue.type_donnee === 'autocomplete' || key === 'produits');
+                  return fieldValue && typeof fieldValue === 'object' &&
+                    (fieldValue.type_donnee === 'autocomplete' || key === 'produits');
                 }
               );
 
@@ -3142,7 +3131,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           </View>
         );
       }
-      
+
       // Rendu normal pour les autres champs location
       return (
         <View key={field.name} style={styles.fieldContainer}>
@@ -3167,10 +3156,10 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               field.label?.toLowerCase().includes('quartier') || field.label?.toLowerCase().includes('zone') || field.label?.toLowerCase().includes('neighborhood')
                 ? 'neighborhood'
                 : field.label?.toLowerCase().includes('ville') || field.label?.toLowerCase().includes('city')
-                ? 'city'
-                : field.label?.toLowerCase().includes('pays') || field.label?.toLowerCase().includes('country')
-                ? 'all'
-                : 'all' // Par défaut: recherche universelle pour "lieu" et autres
+                  ? 'city'
+                  : field.label?.toLowerCase().includes('pays') || field.label?.toLowerCase().includes('country')
+                    ? 'all'
+                    : 'all' // Par défaut: recherche universelle pour "lieu" et autres
             }
             required={field.required}
             enrichWithBackend={true} // ✅ Activer enrichissement GeoNames pour tous les champs location
@@ -3324,16 +3313,16 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       case 'url':
         const hasError = fieldErrors[field.name];
         const isProductField = ['nom_produit', 'categorie_produit'].includes(field.name);
-        
+
         // ✅ CORRECTION: Déterminer le keyboardType approprié pour les champs email et url
-        const keyboardType = field.type === 'email' || field.name === 'email' 
-          ? 'email-address' 
+        const keyboardType = field.type === 'email' || field.name === 'email'
+          ? 'email-address'
           : (field.type === 'url' || field.name === 'website' ? 'default' : 'default');
 
         // ✅ CORRECTION CRITIQUE: Extraire la valeur AVANT le JSX pour éviter les re-renders
         // ✅ NOUVEAU: Utiliser la valeur temporaire si disponible (pendant la saisie) pour éviter les sauts de curseur
-        const rawValue = pendingValuesRef.current[field.name] !== undefined 
-          ? pendingValuesRef.current[field.name] 
+        const rawValue = pendingValuesRef.current[field.name] !== undefined
+          ? pendingValuesRef.current[field.name]
           : valeursFormulaire[field.name];
         let fieldValue = '';
         if (rawValue) {
@@ -3385,7 +3374,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 </View>
               )}
             </View>
-            
+
             {/* ✅ NOUVEAU 2026-02-10: Hint pour "Nom de votre structure" */}
             {isStructureName && field.hint && (
               <View style={styles.hintBox}>
@@ -3438,8 +3427,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         // ✅ REFONTE COMPLÈTE: Utiliser le même comportement pour tous les textarea (description et description_produit)
         // ✅ CORRECTION: Extraire la valeur AVANT le JSX pour éviter les re-renders
         // ✅ NOUVEAU: Utiliser la valeur temporaire si disponible (pendant la saisie) pour éviter les sauts de curseur
-        const textareaRawValue = pendingValuesRef.current[field.name] !== undefined 
-          ? pendingValuesRef.current[field.name] 
+        const textareaRawValue = pendingValuesRef.current[field.name] !== undefined
+          ? pendingValuesRef.current[field.name]
           : valeursFormulaire[field.name];
         let textareaValue = '';
         if (textareaRawValue) {
@@ -3459,16 +3448,16 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             textareaValue = String(textareaRawValue);
           }
         }
-        
+
         // ✅ REFONTE: Utiliser les mêmes paramètres pour tous les textarea (comme description)
         // ✅ CORRECTION CRITIQUE: Utiliser minimum 6 lignes pour description_produit pour permettre un meilleur affichage
-        const linesMinimum = field.name === 'description_produit' 
+        const linesMinimum = field.name === 'description_produit'
           ? Math.max(field.minLines || 6, 6)  // Minimum 6 lignes pour description_produit (augmenté pour meilleure visibilité)
           : (field.minLines || 3); // 3 lignes pour description standard
-        
+
         // ✅ CORRECTION CRITIQUE: S'assurer que description_produit a les mêmes styles et comportement que description
         const isProductDescription = field.name === 'description_produit';
-        
+
         return (
           <View key={field.name} style={styles.fieldContainer}>
             <Text style={styles.fieldLabel}>
@@ -3491,37 +3480,27 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               numberOfLines={linesMinimum}
               textAlignVertical="top"
               debounceMs={0}
-              scrollEnabled={true}
-              // ✅ CORRECTION CRITIQUE: Propriétés pour permettre les retours à la ligne automatiques
-              textBreakStrategy="highQuality" // Android: permet les retours à la ligne de qualité
-              blurOnSubmit={false} // Empêche la fermeture du clavier lors de la touche Entrée
-              returnKeyType="default" // Type de touche retour par défaut pour multiline
+              scrollEnabled={false}
+              textBreakStrategy="highQuality"
+              blurOnSubmit={false}
+              returnKeyType="default"
               style={[
                 styles.fieldInput,
                 styles.textareaInput,
-                // ✅ CORRECTION CRITIQUE: S'assurer que description_produit a une hauteur suffisante pour afficher tout le contenu
-                isProductDescription && {
-                  minHeight: 150, // Hauteur minimale augmentée pour description_produit (6 lignes * 24px + padding)
-                  maxHeight: 300, // Hauteur maximale pour éviter que le champ prenne tout l'écran, avec scroll si nécessaire
-                },
-                // ✅ CORRECTION CRITIQUE: Forcer la largeur à 100% et s'assurer que le texte peut se retourner
-                {
-                  width: '100%',
-                  flexShrink: 1, // Permettre au textarea de rétrécir si nécessaire
-                }
+                isProductDescription && styles.productDescriptionInput,
               ]}
             />
           </View>
         );
       case 'number':
         // ✅ CORRECTION CRITIQUE: Utiliser pendingValuesRef pour l'affichage pendant la saisie
-        const numberRawValue = pendingValuesRef.current[field.name] !== undefined 
-          ? pendingValuesRef.current[field.name] 
+        const numberRawValue = pendingValuesRef.current[field.name] !== undefined
+          ? pendingValuesRef.current[field.name]
           : valeursFormulaire[field.name];
-        const numberValue = numberRawValue !== undefined && numberRawValue !== null 
-          ? String(numberRawValue) 
+        const numberValue = numberRawValue !== undefined && numberRawValue !== null
+          ? String(numberRawValue)
           : '';
-        
+
         // ✅ Cas spécial : Prix et Devise sur la même ligne
         if (field.name === 'prix') {
           return (
@@ -3857,12 +3836,12 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             // ✅ AMÉLIORÉ: S'assurer que les images sont bien des tableaux et non undefined
             const productImages = Array.isArray(media.images) ? media.images.slice(0, 10) : [];
             const productBase64Images = Array.isArray(media.images) ? media.images.slice(0, 10) : [];
-            
+
             // ✅ NOUVEAU: Logger pour diagnostic
             if (productImages.length > 0) {
               console.log(`[FormulaireYukpoIntelligentScreen] 📦 buildBaseProduct: ${productImages.length} image(s) pour le produit`);
             }
-            
+
             return {
               nom: nomFallback,
               // ✅ CORRECTION: Limiter à 10 images maximum (limite backend)
@@ -4072,7 +4051,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           if (mergedImages.length > 0) {
             nouveauProduit.images = mergedImages;
             nouveauProduit.base64_image = mergedImages;
-            
+
             // ✅ NOUVEAU: Logger pour diagnostic
             console.log(`[FormulaireYukpoIntelligentScreen] ✅ ${mergedImages.length} image(s) fusionnée(s) et assignée(s) à 'images' et 'base64_image'`);
           } else {
@@ -4118,14 +4097,14 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         // ✅ NOUVEAU: Vérifier et logger le format des images avant envoi
         const imagesCount = nouveauProduit.images?.length || 0;
         const base64ImageCount = nouveauProduit.base64_image?.length || 0;
-        
+
         console.log('[FormulaireYukpoIntelligentScreen] 📦 Données du nouveau produit (complètes):', {
           ...nouveauProduit,
           images: imagesCount,
           base64_image: base64ImageCount,
           videos: compressedMedia?.videos?.length || 0
         });
-        
+
         // ✅ NOUVEAU: Vérifier que les images sont bien présentes et dans le bon format
         if (imagesCount === 0 && base64ImageCount === 0) {
           console.warn('[FormulaireYukpoIntelligentScreen] ⚠️ AUCUNE image dans nouveauProduit avant envoi!');
@@ -4133,7 +4112,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           console.log('[FormulaireYukpoIntelligentScreen] 🔍 compressedMedia?.images:', compressedMedia?.images?.length || 0);
         } else {
           console.log(`[FormulaireYukpoIntelligentScreen] ✅ Images prêtes: ${imagesCount} dans 'images', ${base64ImageCount} dans 'base64_image'`);
-          
+
           // ✅ NOUVEAU: Vérifier le format des premières images
           const firstImage = nouveauProduit.images?.[0] || nouveauProduit.base64_image?.[0];
           if (firstImage) {
@@ -4201,9 +4180,9 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   // ✅ NOUVEAU: Vérification finale avant envoi
                   const finalImagesCount = nouveauProduit.images?.length || 0;
                   const finalBase64Count = nouveauProduit.base64_image?.length || 0;
-                  
+
                   console.log(`[FormulaireYukpoIntelligentScreen] 🚀 Envoi produit avec ${finalImagesCount} image(s) dans 'images' et ${finalBase64Count} dans 'base64_image'`);
-                  
+
                   // ✅ NOUVEAU: S'assurer que les images sont dans les deux champs pour compatibilité maximale
                   if (finalImagesCount > 0 && finalBase64Count === 0) {
                     nouveauProduit.base64_image = nouveauProduit.images;
@@ -4212,7 +4191,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                     nouveauProduit.images = nouveauProduit.base64_image;
                     console.log('[FormulaireYukpoIntelligentScreen] ✅ Copié base64_image vers images avant envoi');
                   }
-                  
+
                   // Appeler /api/services/{serviceId}/products
                   const userId = parseInt(user?.id || '0', 10);
                   const response = await apiPost(`/api/services/${serviceId}/products`, {
@@ -4225,7 +4204,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   }
 
                   console.log('[FormulaireYukpoIntelligentScreen] ✅ Produit ajouté avec succès:', response);
-                  
+
                   // ✅ NOUVEAU: Vérifier le statut du traitement des médias dans la réponse
                   if (response.data) {
                     const resultData = response.data as any;
@@ -4236,7 +4215,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                         console.error(`[FormulaireYukpoIntelligentScreen] ❌ Échec traitement médias: ${resultData.media_insertion_count || 0} média(x) sauvegardé(s) sur ${resultData.media_expected_count || 0} attendu(s)`);
                       }
                     }
-                    
+
                     // Si un job_id est retourné, informer l'utilisateur
                     if (resultData.job_id) {
                       console.log(`[FormulaireYukpoIntelligentScreen] 📋 Job ID: ${resultData.job_id} - Le traitement se fait en arrière-plan`);
@@ -4244,13 +4223,14 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   }
 
                   const responseData: any = response.data ?? {};
-                  const costPaid = Number(responseData.cost ?? response.cost ?? effectiveCost);
+                  const responseAny: any = response;
+                  const costPaid = Number(responseData.cost ?? responseAny.cost ?? effectiveCost);
                   const newBalanceValue = Number(
-                    responseData.new_balance ?? response.new_balance ?? (soldeActuel - effectiveCost)
+                    responseData.new_balance ?? responseAny.new_balance ?? (soldeActuel - effectiveCost)
                   );
                   const productIndexResult =
                     responseData.product_index ??
-                    response.product_index ??
+                    responseAny.product_index ??
                     (typeof responseData === 'object' && responseData.data
                       ? responseData.data.product_index
                       : undefined);
@@ -4500,7 +4480,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
           if (sousCaracteristiques && typeof sousCaracteristiques === 'object') {
             nouveauProduit.sous_caracteristiques = sousCaracteristiques;
-            
+
             // Garder aussi product_labels pour compatibilité (clés uniquement)
             if (!nouveauProduit.product_labels) {
               // ✅ CORRECTION: Prioriser product_labels depuis valeursFormulaire si disponible (ordre garanti)
@@ -4576,7 +4556,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             throw new Error(response.error || 'Erreur ajout produit');
           }
 
-          const { cost, new_balance, product_index } = response.data;
+          const { cost, new_balance, product_index } = response.data as any;
 
           console.log('[FormulaireYukpoIntelligentScreen] ✅ Produit ajouté avec succès:', {
             cost,
@@ -4642,55 +4622,48 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         );
       }
 
-      // 💰 ÉTAPE 1 : Récupérer le coût depuis la suggestion IA initiale (si disponible)
-      // Le formulaire a déjà été généré par l'IA via genererSuggestionsService, donc on récupère le coût déjà calculé
-      // Structure de suggestion depuis HomeScreen : { ...result.data, data: result.data.data }
-      // result.data contient : tokens_consumed, ia_model_used, data, service_data, etc.
+      // 💰 ÉTAPE 1 : Vérifier le coût effectif via le backend (phase de lancement = gratuit)
+      console.log('💰 [FormulaireYukpoIntelligentScreen] Vérification coût effectif et solde pour création service...');
+      const [costResponse, balanceResponse] = await Promise.all([
+        apiGet<{ cost: number; is_free: boolean }>('/api/users/product-add-cost'),
+        apiGet<{ tokens_balance: number }>('/api/users/balance')
+      ]);
+
+      // Coût effectif depuis le backend (respecte la phase de lancement)
       const tokensIAExterne = suggestion?.tokens_consumed
         || suggestion?.tokens_used
         || suggestion?.tokens
         || suggestion?.service_data?.tokens_consumed
         || (suggestion?.data && typeof suggestion.data === 'object' && (suggestion.data.tokens_consumed || suggestion.data.tokens_used || suggestion.data.tokens))
-        || 0; // Fallback : 0 si pas de tokens (sera calculé côté backend)
+        || 0;
 
-      console.log('[FormulaireYukpoIntelligentScreen] ✅ Tokens IA récupérés depuis suggestion initiale:', tokensIAExterne);
-      console.log('[FormulaireYukpoIntelligentScreen] 📊 Structure suggestion:', {
-        hasTokensConsumed: !!suggestion?.tokens_consumed,
-        hasServiceData: !!suggestion?.service_data,
-        hasData: !!suggestion?.data,
-        suggestionKeys: suggestion ? Object.keys(suggestion) : []
-      });
+      const isFreeFromBackend = costResponse.success && costResponse.data?.is_free;
 
-      // Si aucun token n'est disponible dans la suggestion, estimer basé sur la taille des données
-      let tokensEstimes = tokensIAExterne;
-      if (tokensEstimes === 0) {
-        // Estimation basée sur la taille des données : ~1 token par 4 caractères + coût images
-        const texteLength = JSON.stringify(valeursFormulaire).length;
-        const imageCount = compressedMedia.images.length;
-        tokensEstimes = Math.ceil(texteLength / 4) + (imageCount * 170); // ~170 tokens par image (GPT-4 Vision)
-        console.log('[FormulaireYukpoIntelligentScreen] ⚠️ Aucun token trouvé dans suggestion, estimation:', tokensEstimes);
+      // Si le backend dit que c'est gratuit (phase de lancement), coût = 0
+      // Sinon, calculer le coût basé sur les tokens IA
+      let coutReel: number;
+      if (isFreeFromBackend) {
+        coutReel = 0;
+        console.log('💰 [FormulaireYukpoIntelligentScreen] 🆓 Création GRATUITE (phase de lancement)');
+      } else {
+        let tokensEstimes = tokensIAExterne;
+        if (tokensEstimes === 0) {
+          const texteLength = JSON.stringify(valeursFormulaire).length;
+          const imageCount = compressedMedia.images.length;
+          tokensEstimes = Math.ceil(texteLength / 4) + (imageCount * 170);
+          console.log('[FormulaireYukpoIntelligentScreen] ⚠️ Aucun token trouvé dans suggestion, estimation:', tokensEstimes);
+        }
+        const coutTokenOpenAIFCFA = 0.004;
+        const tokensPourCalcul = tokensIAExterne > 0 ? tokensIAExterne : tokensEstimes;
+        coutReel = Math.round(tokensPourCalcul * coutTokenOpenAIFCFA * 100);
+        console.log('💰 [FormulaireYukpoIntelligentScreen] Coût calculé:', coutReel, 'FCFA pour', tokensPourCalcul, 'tokens');
       }
-      const coutTokenOpenAIFCFA = 0.004;
-      // Utiliser tokensEstimes si tokensIAExterne est 0
-      const tokensPourCalcul = tokensIAExterne > 0 ? tokensIAExterne : tokensEstimes;
-      const coutReel = Math.round(tokensPourCalcul * coutTokenOpenAIFCFA * 100); // x100 pour création de service
-      console.log('💰 [FormulaireYukpoIntelligentScreen] Coût RÉEL calculé:', coutReel, 'FCFA pour', tokensPourCalcul, 'tokens');
-
-      // Vérifier le solde actuel
-      // ✅ CORRIGÉ: Utilise apiGet avec nouvelle structure ApiResponse
-      console.log('💰 [FormulaireYukpoIntelligentScreen] Vérification du solde...');
-      console.log('💰 [FormulaireYukpoIntelligentScreen] Token actuel:', user?.token ? 'Présent' : 'ABSENT');
-
-      const balanceResponse = await apiGet<{ tokens_balance: number }>('/api/users/balance');
-
-      console.log('💰 [FormulaireYukpoIntelligentScreen] Réponse balance complète:', JSON.stringify(balanceResponse, null, 2));
+      const isFree = coutReel === 0;
 
       if (!balanceResponse.success) {
         const errorMsg = balanceResponse.error || 'Impossible de vérifier votre solde';
         console.error('💰 [FormulaireYukpoIntelligentScreen] ❌ Erreur vérification solde:', errorMsg);
-        console.error('💰 [FormulaireYukpoIntelligentScreen] ❌ Data reçue:', balanceResponse.data);
 
-        // Si problème d'authentification, rediriger vers login
         if (errorMsg.includes('401') || errorMsg.includes('Unauthorized') || errorMsg.includes('authentification')) {
           Alert.alert(
             'Session expirée',
@@ -4709,10 +4682,10 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       }
 
       const soldeActuel = balanceResponse.data.tokens_balance || 0;
-      console.log('💰 [FormulaireYukpoIntelligentScreen] ✅ Solde actuel récupéré:', soldeActuel);
+      console.log('💰 [FormulaireYukpoIntelligentScreen] ✅ Solde actuel récupéré:', soldeActuel, 'Coût effectif:', coutReel, isFree ? '(gratuit - phase lancement)' : 'FCFA');
 
-      // Vérifier si le solde est suffisant
-      if (soldeActuel < coutReel) {
+      // Bloquer seulement si coût > 0 et solde insuffisant
+      if (coutReel > 0 && soldeActuel < coutReel) {
         Alert.alert(
           '💸 Solde insuffisant',
           `Coût réel : ${coutReel.toLocaleString()} FCFA\nVotre solde : ${soldeActuel.toLocaleString()} FCFA\n\nVeuillez recharger votre compte avant de créer ce service.`,
@@ -4721,10 +4694,13 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         return;
       }
 
-      // Demander confirmation avec le coût RÉEL
+      // Demander confirmation avec le coût effectif
+      const confirmMessage = isFree
+        ? "🆓 Gratuit (période de lancement)\n\nConfirmez-vous la création de ce service ?"
+        : `Coût réel : ${coutReel.toLocaleString()} FCFA\nVotre solde : ${soldeActuel.toLocaleString()} FCFA\nSolde après création : ${(soldeActuel - coutReel).toLocaleString()} FCFA\n\nConfirmez-vous la création de ce service ?`;
       Alert.alert(
         '💰 Création de service',
-        `Coût réel : ${coutReel.toLocaleString()} FCFA\nTokens consommés : ${tokensPourCalcul.toLocaleString()}${tokensIAExterne === 0 ? ' (estimé)' : ''}\nVotre solde : ${soldeActuel.toLocaleString()} FCFA\nSolde après création : ${(soldeActuel - coutReel).toLocaleString()} FCFA\n\nConfirmez-vous la création de ce service ?`,
+        confirmMessage,
         [
           {
             text: 'Annuler',
@@ -5260,19 +5236,19 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 const typeOffre = valeursFormulaire.type_offre || finalServiceData.type_offre?.valeur || 'produit';
                 const isPrestation = typeOffre === 'prestation' || typeOffre === 'service';
                 const serviceIdCreated = result?.id || result?.service_id;
-                
+
                 // Vérifier si le service a des produits
-                const hasProducts = finalServiceData.produits && 
+                const hasProducts = finalServiceData.produits &&
                   finalServiceData.produits.type_donnee === 'listeproduit' &&
                   Array.isArray(finalServiceData.produits.valeur) &&
                   finalServiceData.produits.valeur.length > 0;
-                
+
                 if (!isPrestation && hasProducts && serviceIdCreated) {
                   // C'est un produit, préparer les données pour la modal de confirmation
                   const firstProductIndex = 0;
                   const firstProduct = finalServiceData.produits.valeur[0];
                   const productName = firstProduct?.nom || valeursFormulaire.nom_produit || 'Nouveau produit';
-                  
+
                   // Afficher la modal de confirmation
                   setSuccessModalData({
                     serviceId: typeof serviceIdCreated === 'number' ? serviceIdCreated : parseInt(String(serviceIdCreated), 10),
@@ -5555,16 +5531,16 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                     </Text>
                   </View>
 
-                  {/* Navigation entre blocs (tabs simples sans scroll horizontal) */}
-                  {/* ✅ CORRIGÉ 2026-01-12: Utiliser currentDisplayIndex pour synchroniser avec le bloc affiché */}
-                  {/* ✅ REFONTE: Navigation synchronisée avec currentDisplayIndex */}
-                  {/* ✅ CORRECTION CRITIQUE: Utiliser une clé unique basée sur currentDisplayIndex pour forcer le re-render */}
-                  <View key={`navigation-block-${currentDisplayIndex}`} style={styles.blockNavigation}>
+                  {/* ✅ CORRECTION: Navigation avec ScrollView horizontal pour aligner les tabs avec les noms de blocs */}
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.blockNavigationScroll}
+                    style={styles.blockNavigationContainer}
+                  >
                     {displayedBlocks.map(({ block, index: originalIndex }, displayIndex) => {
-                      // ✅ REFONTE: Utiliser currentDisplayIndex comme source de vérité unique
-                      // ✅ CORRECTION CRITIQUE: Vérifier explicitement que displayIndex correspond à currentDisplayIndex
                       const isActive = displayIndex === currentDisplayIndex;
-                      
+
                       return (
                         <TouchableOpacity
                           key={`tab-${block.id}-${displayIndex}`}
@@ -5573,13 +5549,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                             isActive && styles.blockTabActive
                           ]}
                           onPress={() => {
-                            console.log('[NAVIGATION_TABS] Clic sur onglet:', {
-                              blockId: block.id,
-                              originalIndex,
-                              displayIndex,
-                              currentDisplayIndexAvant: currentDisplayIndex,
-                            });
-                            // ✅ REFONTE: Utiliser goToBlock avec originalIndex (sera converti en displayIndex)
                             goToBlock(originalIndex);
                           }}
                           activeOpacity={0.7}
@@ -5588,13 +5557,13 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                           <Text style={[
                             styles.blockTabText,
                             isActive && styles.blockTabTextActive
-                          ]}>
+                          ]} numberOfLines={1}>
                             {block.title}
                           </Text>
                         </TouchableOpacity>
                       );
                     })}
-                  </View>
+                  </ScrollView>
                 </View>
 
                 {/* ✅ CORRIGÉ 2025-12-23: Afficher UNIQUEMENT le bloc actif (currentBlock) */}
@@ -5634,49 +5603,49 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                             </Text>
                           </LinearGradient>
 
-                        <NativeCard style={styles.sectionContent}>
-                          {/* ✅ CORRIGÉ: Utiliser currentBlockFields calculé avec useMemo au niveau du composant */}
-                          {currentBlockFields.map((field) => (
-                            <React.Fragment key={field.name}>
-                              {renderField(field)}
-                            </React.Fragment>
-                          ))}
-                        </NativeCard>
+                          <NativeCard style={styles.sectionContent}>
+                            {/* ✅ CORRIGÉ: Utiliser currentBlockFields calculé avec useMemo au niveau du composant */}
+                            {currentBlockFields.map((field) => (
+                              <React.Fragment key={field.name}>
+                                {renderField(field)}
+                              </React.Fragment>
+                            ))}
+                          </NativeCard>
 
-                        {!isReadonly && activeBlockData && activeBlockData.block.id === 'payment' && (
-                          <View style={styles.finalActionContainer}>
-                            <Text style={styles.finalActionTitle}>Finaliser le service</Text>
-                            <Text style={styles.finalActionSubtitle}>
-                              Vérifiez vos informations puis validez la création du service.
-                            </Text>
+                          {!isReadonly && activeBlockData && activeBlockData.block.id === 'payment' && (
+                            <View style={styles.finalActionContainer}>
+                              <Text style={styles.finalActionTitle}>Finaliser le service</Text>
+                              <Text style={styles.finalActionSubtitle}>
+                                Vérifiez vos informations puis validez la création du service.
+                              </Text>
 
-                            <TouchableOpacity
-                              style={[styles.finalActionButton, (loading || isSubmitting) && styles.finalActionButtonDisabled]}
-                              onPress={soumettreFormulaire}
-                              disabled={loading || isSubmitting}
-                            >
-                              <LinearGradient
-                                colors={modernColors.primaryGradient}
-                                style={styles.finalActionButtonGradient}
-                                start={{ x: 0, y: 0 }}
-                                end={{ x: 1, y: 0 }}
+                              <TouchableOpacity
+                                style={[styles.finalActionButton, (loading || isSubmitting) && styles.finalActionButtonDisabled]}
+                                onPress={soumettreFormulaire}
+                                disabled={loading || isSubmitting}
                               >
-                                <Text style={styles.finalActionButtonText}>
-                                  {(loading || isSubmitting)
-                                    ? (isAddingProductToExistingService ? 'Création du produit...' : 
-                                      isEditingServiceInfo ? 'Mise à jour...' :
-                                        mode === 'edit' ? 'Modification...' : 'Création...')
-                                    : (isAddingProductToExistingService ? 'Créer le produit' :
-                                      isEditingServiceInfo ? 'Modifier les données du service' :
-                                        mode === 'edit' ? 'Modifier le service' : 'Créer le service')}
-                                </Text>
-                                <SafeIcon name="check" size={20} color="#FFFFFF" />
-                              </LinearGradient>
-                            </TouchableOpacity>
-                          </View>
-                        )}
+                                <LinearGradient
+                                  colors={modernColors.primaryGradient}
+                                  style={styles.finalActionButtonGradient}
+                                  start={{ x: 0, y: 0 }}
+                                  end={{ x: 1, y: 0 }}
+                                >
+                                  <Text style={styles.finalActionButtonText}>
+                                    {(loading || isSubmitting)
+                                      ? (isAddingProductToExistingService ? 'Création du produit...' :
+                                        isEditingServiceInfo ? 'Mise à jour...' :
+                                          mode === 'edit' ? 'Modification...' : 'Création...')
+                                      : (isAddingProductToExistingService ? 'Créer le produit' :
+                                        isEditingServiceInfo ? 'Modifier les données du service' :
+                                          mode === 'edit' ? 'Modifier le service' : 'Créer le service')}
+                                  </Text>
+                                  <SafeIcon name="check" size={20} color="#FFFFFF" />
+                                </LinearGradient>
+                              </TouchableOpacity>
+                            </View>
+                          )}
+                        </View>
                       </View>
-                    </View>
                     );
                   })() : null}
 
@@ -5739,7 +5708,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               {successModalData?.isPrestation ? 'Service créé avec succès !' : 'Produit créé avec succès !'}
             </Text>
             <Text style={styles.successModalMessage}>
-              {successModalData?.isPrestation 
+              {successModalData?.isPrestation
                 ? `Votre service a été créé avec succès.${successModalData?.cout ? `\nCoût: ${successModalData.cout} tokens` : ''}`
                 : 'Votre produit a été ajouté à votre service avec succès.'}
             </Text>
@@ -5748,7 +5717,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               variant="primary"
               onPress={async () => {
                 setShowSuccessModal(false);
-                
+
                 // ✅ NOUVEAU: Si c'est un produit (pas une prestation), afficher d'abord le modal de confirmation
                 if (successModalData && !successModalData.isPrestation && successModalData.productIndex >= 0) {
                   // Afficher le modal de confirmation de livraison automatique
@@ -5783,7 +5752,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           if (firstPoint.length === 2) {
             const lat = parseFloat(firstPoint[0]);
             const lng = parseFloat(firstPoint[1]);
-            
+
             if (!isNaN(lat) && !isNaN(lng)) {
               setSelectedLocation({ lat, lng });
 
@@ -5794,11 +5763,11 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   const geocodeResult = await reverseGeocodeWithRetry(lat, lng, {
                     fallbackAddress: `${lat.toFixed(6)}, ${lng.toFixed(6)}`
                   });
-                  
+
                   if (geocodeResult) {
                     const fullAddress = geocodeResult.address;
                     const placeName = geocodeResult.name || geocodeResult.street || geocodeResult.district || geocodeResult.city || 'Lieu sélectionné';
-                    
+
                     // Construire un LocationObject avec le nom complet
                     const locationObject: LocationObject = {
                       raw: fullAddress,
@@ -5811,7 +5780,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                       },
                       coordinates: { lat, lng },
                     };
-                    
+
                     // Sauvegarder dans le formulaire
                     handleFieldChange(gpsModalForField, {
                       type_donnee: 'location',
@@ -5867,8 +5836,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           setGpsModalForField(null);
         }}
         currentLocation={selectedLocation}
-        title={gpsModalForField === 'lieu_produit' || gpsModalForField === 'lieu_commercial' || gpsModalForField === 'lieu_commercialisation' 
-          ? "Sélectionner le lieu de commercialisation" 
+        title={gpsModalForField === 'lieu_produit' || gpsModalForField === 'lieu_commercial' || gpsModalForField === 'lieu_commercialisation'
+          ? "Sélectionner le lieu de commercialisation"
           : "Sélection de localisation GPS"}
         allowZoneSelection={gpsModalForField !== 'lieu_produit' && gpsModalForField !== 'lieu_commercial' && gpsModalForField !== 'lieu_commercialisation'}
       />
@@ -5882,7 +5851,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             setShowDeliveryAutoPrompt(false);
             // ✅ Attendre un délai pour permettre la synchronisation du produit
             await new Promise(resolve => setTimeout(resolve, 1500));
-            
+
             setProductDeliveryConfigData({
               serviceId: successModalData.serviceId,
               productIndex: successModalData.productIndex,
@@ -6082,15 +6051,26 @@ const styles = StyleSheet.create({
     color: modernColors.textSecondary,
     textAlign: 'center',
   },
+  blockNavigationContainer: {
+    maxHeight: 72,
+  },
+  blockNavigationScroll: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingHorizontal: 4,
+    paddingBottom: 4,
+  },
   blockNavigation: {
     flexDirection: 'row',
     gap: 8,
     paddingHorizontal: 4,
   },
   blockTab: {
-    minWidth: 120,
+    minWidth: 100,
+    maxWidth: 140,
     alignItems: 'center',
-    padding: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
     borderRadius: 12,
     backgroundColor: modernColors.background,
     borderWidth: 1,
@@ -6136,6 +6116,11 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 12,
   },
   fieldContainer: {
+    marginBottom: 20,
+  },
+  fieldRow: {
+    flexDirection: 'row',
+    gap: 12,
     marginBottom: 20,
   },
   variantCallout: {
@@ -6221,19 +6206,14 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   textareaInput: {
-    minHeight: 100, // ✅ REFONTE: Hauteur minimale réduite pour permettre un affichage normal (3 lignes * 24px + padding)
+    minHeight: 100,
     paddingTop: 14,
     paddingBottom: 14,
-    textAlignVertical: 'top', // ✅ CORRECTION: Aligner le texte en haut pour multiline
-    // ✅ CORRECTION CRITIQUE: Permettre la croissance automatique et les retours à la ligne
-    width: '100%', // ✅ CORRECTION: S'assurer que le textarea prend toute la largeur disponible
-    // ✅ CORRECTION CRITIQUE: Surcharger les propriétés de fieldInput pour le multiline
-    // Note: Le multiline={true} avec width: '100%' devrait permettre les retours à la ligne automatiques
-    // Pas besoin de flexWrap car TextInput gère cela automatiquement avec multiline
-    // ✅ CORRECTION CRITIQUE: S'assurer qu'aucune propriété n'empêche le retour à la ligne
-    maxWidth: '100%', // S'assurer que le textarea ne dépasse pas la largeur disponible
+    textAlignVertical: 'top',
   },
-  // ✅ SUPPRIMÉ: productDescriptionInput et productDescriptionText - description_produit utilise maintenant les mêmes styles que description
+  productDescriptionInput: {
+    minHeight: 150,
+  },
   navigationButtons: {
     flexDirection: 'row',
     justifyContent: 'space-between',

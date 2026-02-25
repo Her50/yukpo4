@@ -22,6 +22,8 @@ pub fn service_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/services/shared/{id}", get(get_shared_service))
         // ✅ NOUVEAU 2026-01-20: Endpoint public pour récupérer les services d'un utilisateur (boutique prestataire)
         .route("/services/user/{user_id}", get(get_services_by_user_id))
+        // ✅ ALIAS: /api/services/user/{user_id} (compatibilité mobile)
+        .route("/api/services/user/{user_id}", get(get_services_by_user_id))
         .with_state(state.clone());
 
     // ✅ Routes protégées (avec authentification JWT)

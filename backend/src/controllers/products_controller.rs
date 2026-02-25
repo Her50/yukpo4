@@ -435,6 +435,21 @@ pub async fn get_products_by_user(
     Ok(Json(response))
 }
 
+/// GET /api/products/user/{user_id} - Alias pour compatibilité mobile
+/// Wrapper qui extrait user_id du path au lieu de query params
+pub async fn get_products_by_user_path(
+    Path(user_id): Path<i32>,
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+) -> AppResult<Json<Vec<ProductResponse>>> {
+    get_products_by_user(
+        Query(GetProductsByUserQuery { user_id }),
+        State(state),
+        Extension(user),
+    )
+    .await
+}
+
 /// POST /api/services/{service_id}/products/{product_index}/duplicate
 /// Duplique un produit (crée une copie avec un nouvel index)
 pub async fn duplicate_product(

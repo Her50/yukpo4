@@ -106,8 +106,8 @@ pub struct DuckingSegment {
 pub async fn detect_beats(audio_url: &str) -> AppResult<(Vec<Beat>, f64)> {
     info!("[AudioAnalysis] Détection beats - audio_url: {}", audio_url);
 
-    // 1. Obtenir la durée de l'audio
-    let duration_output = Command::new("ffprobe")
+    // 1. Obtenir la durée de l'audio via ffprobe (si disponible)
+    let duration: f64 = match Command::new("ffprobe")
         .args(&[
             "-v",
             "error",
@@ -119,25 +119,25 @@ pub async fn detect_beats(audio_url: &str) -> AppResult<(Vec<Beat>, f64)> {
         ])
         .output()
         .await
-        .map_err(|e| AppError::Internal(format!("Erreur ffprobe: {}", e)))?;
+    {
+        Ok(output) => String::from_utf8_lossy(&output.stdout).trim().parse().unwrap_or(30.0),
+        Err(e) => {
+            log::warn!(
+                "[AudioAnalysis] ffprobe non disponible ({}), utilisation durée par défaut 30s",
+                e
+            );
+            30.0
+        }
+    };
 
-    let duration: f64 =
-        String::from_utf8_lossy(&duration_output.stdout).trim().parse().unwrap_or(30.0);
-
-    // 2. Analyser le signal audio pour estimer le BPM
-    // Utiliser une approche basée sur l'analyse d'énergie
-    let volume_output = Command::new("ffmpeg")
+    // 2. Analyser le signal audio pour estimer le BPM (si ffmpeg disponible)
+    let _ = Command::new("ffmpeg")
         .args(&["-i", audio_url, "-af", "volumedetect", "-f", "null", "-"])
         .output()
         .await;
 
     // Estimer BPM (par défaut 120, peut être amélioré avec analyse plus poussée)
     let estimated_bpm = 120.0;
-    if let Ok(_output) = volume_output {
-        // Analyser les variations de volume pour estimer le tempo
-        // (simplification - une vraie implémentation utiliserait FFT)
-        // Pour l'instant, on garde 120 BPM par défaut
-    }
 
     // 3. Générer les beats basés sur le BPM estimé
     let beat_interval = 60.0 / estimated_bpm;

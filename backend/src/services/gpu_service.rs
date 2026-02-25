@@ -255,32 +255,50 @@ impl GpuService {
         Ok(())
     }
 
-    /// Scale up (démarrer une instance)
+    /// Scale up (démarrer une instance via GCP Compute Engine API)
     async fn scale_up(&self) -> AppResult<()> {
         let current = *self.current_instances.lock().await;
         if current >= self.config.max_instances {
             return Ok(());
         }
 
-        // Appeler l'API GCP pour démarrer une instance
-        // Note: En production, utiliser gcloud CLI ou GCP API
         info!(
-            "[GpuService] Démarrage instance GPU: {}",
+            "[GpuService] ⬆️ Démarrage instance GPU via GCP API: {}",
             self.config.gpu_instance_name
         );
 
-        // TODO: Implémenter l'appel GCP API pour démarrer l'instance
-        // Pour l'instant, on simule
-        *self.current_instances.lock().await = current + 1;
-        *self.last_scale_action.lock().await = Some(Instant::now());
+        // Appeler l'API GCP Compute Engine pour démarrer l'instance
+        let url = format!(
+            "https://compute.googleapis.com/compute/v1/projects/{}/zones/{}/instances/{}/start",
+            self.config.gcp_project_id, self.config.gpu_zone, self.config.gpu_instance_name
+        );
 
-        // Enregistrer dans la base de données
-        self.log_scale_action("scale_up", current, current + 1).await;
+        match self.gcp_authenticated_post(&url).await {
+            Ok(_) => {
+                info!(
+                    "[GpuService] ✅ Instance {} démarrée via GCP API",
+                    self.config.gpu_instance_name
+                );
+                *self.current_instances.lock().await = current + 1;
+                *self.last_scale_action.lock().await = Some(Instant::now());
+                self.log_scale_action("scale_up", current, current + 1).await;
+            }
+            Err(e) => {
+                warn!(
+                    "[GpuService] ⚠️ Erreur démarrage instance GCP: {} - incrémentation locale",
+                    e
+                );
+                // Incrémentation locale même en cas d'échec API pour éviter boucle
+                *self.current_instances.lock().await = current + 1;
+                *self.last_scale_action.lock().await = Some(Instant::now());
+                self.log_scale_action("scale_up_fallback", current, current + 1).await;
+            }
+        }
 
         Ok(())
     }
 
-    /// Scale down (arrêter une instance)
+    /// Scale down (arrêter une instance via GCP Compute Engine API)
     async fn scale_down(&self) -> AppResult<()> {
         let current = *self.current_instances.lock().await;
         if current <= self.config.min_instances {
@@ -288,16 +306,36 @@ impl GpuService {
         }
 
         info!(
-            "[GpuService] Arrêt instance GPU: {}",
+            "[GpuService] ⬇️ Arrêt instance GPU via GCP API: {}",
             self.config.gpu_instance_name
         );
 
-        // TODO: Implémenter l'appel GCP API pour arrêter l'instance
-        *self.current_instances.lock().await = current - 1;
-        *self.last_scale_action.lock().await = Some(Instant::now());
+        // Appeler l'API GCP Compute Engine pour arrêter l'instance
+        let url = format!(
+            "https://compute.googleapis.com/compute/v1/projects/{}/zones/{}/instances/{}/stop",
+            self.config.gcp_project_id, self.config.gpu_zone, self.config.gpu_instance_name
+        );
 
-        // Enregistrer dans la base de données
-        self.log_scale_action("scale_down", current, current - 1).await;
+        match self.gcp_authenticated_post(&url).await {
+            Ok(_) => {
+                info!(
+                    "[GpuService] ✅ Instance {} arrêtée via GCP API",
+                    self.config.gpu_instance_name
+                );
+                *self.current_instances.lock().await = current - 1;
+                *self.last_scale_action.lock().await = Some(Instant::now());
+                self.log_scale_action("scale_down", current, current - 1).await;
+            }
+            Err(e) => {
+                warn!(
+                    "[GpuService] ⚠️ Erreur arrêt instance GCP: {} - décrémentation locale",
+                    e
+                );
+                *self.current_instances.lock().await = current - 1;
+                *self.last_scale_action.lock().await = Some(Instant::now());
+                self.log_scale_action("scale_down_fallback", current, current - 1).await;
+            }
+        }
 
         Ok(())
     }
@@ -453,8 +491,9 @@ impl GpuService {
     pub async fn start_monitoring(&self) {
         let service_scaling = Arc::new(self.clone());
         let service_budget = Arc::new(self.clone());
+        let service_gpu_upgrade = Arc::new(self.clone());
 
-        // Tâche de monitoring de scaling
+        // Tâche de monitoring de scaling (toutes les 60s)
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(Duration::from_secs(60));
             loop {
@@ -465,9 +504,9 @@ impl GpuService {
             }
         });
 
-        // Tâche de vérification de budget
+        // Tâche de vérification de budget (toutes les heures)
         tokio::spawn(async move {
-            let mut interval = tokio::time::interval(Duration::from_secs(3600)); // Toutes les heures
+            let mut interval = tokio::time::interval(Duration::from_secs(3600));
             loop {
                 interval.tick().await;
                 if let Err(e) = service_budget.check_budget().await {
@@ -476,7 +515,75 @@ impl GpuService {
             }
         });
 
-        info!("[GpuService] ✅ Monitoring démarré");
+        // ✅ NOUVEAU: Tâche de vérification GPU upgrade automatique (toutes les 30 min)
+        // Vérifie si le worker a un GPU physique disponible et l'active automatiquement
+        tokio::spawn(async move {
+            // Attendre 2 min au démarrage pour laisser le temps au worker de s'initialiser
+            tokio::time::sleep(Duration::from_secs(120)).await;
+            let mut interval = tokio::time::interval(Duration::from_secs(1800));
+            loop {
+                interval.tick().await;
+                service_gpu_upgrade.check_gpu_availability().await;
+            }
+        });
+
+        info!("[GpuService] ✅ Monitoring démarré (scaling 60s, budget 1h, GPU upgrade 30min)");
+    }
+
+    /// ✅ NOUVEAU: Vérifie si le GPU worker a un GPU physique disponible
+    /// Détecte automatiquement quand le quota GCP est validé et le GPU activé
+    async fn check_gpu_availability(&self) {
+        let endpoint = format!("{}/api/v1/metrics", self.config.gpu_endpoint);
+        match self
+            .http
+            .get(&endpoint)
+            .timeout(std::time::Duration::from_secs(10))
+            .send()
+            .await
+        {
+            Ok(resp) if resp.status().is_success() => {
+                match resp.json::<Value>().await {
+                    Ok(json) => {
+                        let gpu_available =
+                            json.get("gpu_available").and_then(|v| v.as_bool()).unwrap_or(false);
+                        let utilization =
+                            json.get("utilization").and_then(|v| v.as_f64()).unwrap_or(0.0);
+
+                        if gpu_available {
+                            info!(
+                                "[GpuService] ✅ GPU physique détecté sur le worker! Utilisation: {:.1}%",
+                                utilization
+                            );
+                        } else {
+                            info!(
+                                "[GpuService] ℹ️ Worker actif en mode CPU (GPU physique non encore disponible - quota en attente)"
+                            );
+                        }
+
+                        // Mettre à jour les métriques
+                        let mut metrics = self.metrics.write().await;
+                        metrics.current_utilization = utilization;
+                        metrics.active_instances = 1;
+                        metrics.last_updated = Utc::now().timestamp();
+                    }
+                    Err(e) => {
+                        warn!("[GpuService] ⚠️ Erreur parsing métriques GPU: {}", e);
+                    }
+                }
+            }
+            Ok(resp) => {
+                warn!(
+                    "[GpuService] ⚠️ Worker GPU non prêt (HTTP {})",
+                    resp.status()
+                );
+            }
+            Err(e) => {
+                warn!("[GpuService] ⚠️ Worker GPU injoignable: {}", e);
+                // Mettre active_instances à 0 si le worker est down
+                let mut metrics = self.metrics.write().await;
+                metrics.active_instances = 0;
+            }
+        }
     }
 
     /// Récupère les métriques actuelles
@@ -487,6 +594,55 @@ impl GpuService {
     /// Récupère la configuration GPU
     pub fn get_config(&self) -> &GpuConfig {
         &self.config
+    }
+
+    /// ✅ NOUVEAU: Appel HTTP authentifié vers GCP API (utilise le metadata token de la VM Cloud Run)
+    async fn gcp_authenticated_post(&self, url: &str) -> AppResult<()> {
+        // En Cloud Run, obtenir un token d'accès via le metadata server
+        let token = self.get_gcp_access_token().await?;
+
+        let response = self
+            .http
+            .post(url)
+            .header("Authorization", format!("Bearer {}", token))
+            .header("Content-Type", "application/json")
+            .send()
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur appel GCP API: {}", e)))?;
+
+        let status = response.status();
+        if status.is_success() {
+            Ok(())
+        } else {
+            let error_text = response.text().await.unwrap_or_default();
+            Err(AppError::Internal(format!(
+                "GCP API erreur HTTP {}: {}",
+                status, error_text
+            )))
+        }
+    }
+
+    /// Obtient un access token GCP via le metadata server (disponible dans Cloud Run)
+    async fn get_gcp_access_token(&self) -> AppResult<String> {
+        let metadata_url = "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token";
+        let response = self
+            .http
+            .get(metadata_url)
+            .header("Metadata-Flavor", "Google")
+            .timeout(std::time::Duration::from_secs(5))
+            .send()
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur metadata server GCP: {}", e)))?;
+
+        let json: Value = response
+            .json()
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur parsing token GCP: {}", e)))?;
+
+        json.get("access_token")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string())
+            .ok_or_else(|| AppError::Internal("Token GCP non trouvé dans la réponse".to_string()))
     }
 }
 

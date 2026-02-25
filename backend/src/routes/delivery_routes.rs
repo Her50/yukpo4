@@ -4334,7 +4334,7 @@ async fn list_storage_locations(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<AuthenticatedUser>,
 ) -> AppResult<Json<Value>> {
-    let locations = sqlx::query_as::<_, crate::models::delivery_model::MerchantStorageLocation>(
+    let locations = match sqlx::query_as::<_, crate::models::delivery_model::MerchantStorageLocation>(
         r#"
         SELECT id, merchant_user_id, name, address, latitude, longitude, zone_id, is_active, created_at, updated_at
         FROM merchant_storage_locations
@@ -4345,7 +4345,15 @@ async fn list_storage_locations(
     .bind(user.id)
     .fetch_all(&state.pg)
     .await
-    .map_err(|e| AppError::Internal(format!("Erreur récupération lieux de stock: {}", e)))?;
+    {
+        Ok(locs) => locs,
+        Err(e) => {
+            // ✅ CORRIGÉ 2026-02-25: Si la table n'existe pas encore (migration non exécutée),
+            // retourner une liste vide au lieu de crasher avec 500
+            log::warn!("[delivery] Erreur récupération lieux de stock (table peut ne pas exister): {}", e);
+            vec![]
+        }
+    };
 
     Ok(Json(json!({
         "locations": locations,

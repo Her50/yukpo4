@@ -27,15 +27,18 @@ export const productDeliveryService = {
      * Retourne : is_immediately_available, preparation_time_minutes, availability_days
      */
     getDeliveryConfig: async (serviceId: number, productIndex: number): Promise<ProductDeliveryConfig | null> => {
-        // ✅ CORRIGÉ 2026-01-21: Utiliser SafeStorage directement pour récupérer le token
+        // ✅ CORRIGÉ 2026-02-25: Fallback vers clé 'token' pour compatibilité
         let token: string | null = null;
         try {
             token = await SafeStorage.getItem('auth_token');
+            if (!token) {
+                token = await SafeStorage.getItem('token');
+            }
         } catch (tokenError: any) {
             console.warn('[productDeliveryService] Erreur récupération token:', tokenError?.message || tokenError);
             throw new Error('Token d\'authentification manquant');
         }
-        
+
         if (!token) {
             throw new Error('Token d\'authentification manquant');
         }
