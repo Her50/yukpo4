@@ -634,15 +634,8 @@ jobs:
         run: |
           echo "🔄 Deploying to Cloud Run..."
           
-          # ✅ CRITIQUE 2026-02-17: Nettoyer les instances Cloud SQL avant d'ajouter
-          # Cela évite d'avoir plusieurs instances configurées (yukpo-db + yukpo-postgres)
-          echo "🧹 Nettoyage des instances Cloud SQL existantes..."
-          gcloud run services update ${{ env.GCP_SERVICE_NAME }} \
-            --region ${{ env.GCP_REGION }} \
-            --clear-cloudsql-instances \
-            --project ${{ secrets.GCP_PROJECT_ID }} 2>&1 | grep -v "does not exist\|not found\|No change\|does not have" || true
-          
           # ✅ CORRIGÉ: Utiliser --update-env-vars au lieu de --env-vars-file pour ne pas écraser
+          # NOTE: --set-cloudsql-instances dans le deploy remplace atomiquement (pas besoin de clear séparé)
           # les variables dynamiques (LIVEKIT_API_URL, LIVEKIT_WS_URL, SRS_*) définies par deploy-livekit-gcp.ps1
           echo "Construction de la liste des variables depuis env-vars.json..."
           if command -v jq &> /dev/null; then
@@ -659,7 +652,7 @@ jobs:
             --allow-unauthenticated \
             --update-env-vars="$ENV_VARS" \
             --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,MONGODB_URL=mongodb-url:latest,OPENAI_API_KEY=openai-api-key:latest,S3_ACCESS_KEY=s3-access-key:latest,S3_SECRET_KEY=s3-secret-key:latest,LIVEKIT_API_KEY=livekit-api-key:latest,LIVEKIT_API_SECRET=livekit-api-secret:latest" \
-            --add-cloudsql-instances ${{ secrets.GCP_PROJECT_ID }}:${{ env.GCP_REGION }}:yukpo-postgres \
+            --set-cloudsql-instances=${{ secrets.GCP_PROJECT_ID }}:${{ env.GCP_REGION }}:yukpo-postgres \
             --memory 2Gi \
             --cpu 2 \
             --timeout 900 \
