@@ -768,28 +768,27 @@ async fn save_product_delivery_config(
     );
 
     // Acquire a single connection with a small timeout and run the following DB work in a transaction
-    let conn = match tokio::time::timeout(std::time::Duration::from_secs(10), state.pg.acquire())
-        .await
-    {
-        Ok(Ok(c)) => c,
-        Ok(Err(e)) => {
-            log::error!(
-                "[save_product_delivery_config] Erreur acquisition connexion DB: {}",
-                e
-            );
-            return Err(AppError::Internal(
-                "Erreur lors de l'acquisition de la connexion à la base de données".into(),
-            ));
-        }
-        Err(_) => {
-            log::warn!(
+    let conn =
+        match tokio::time::timeout(std::time::Duration::from_secs(10), state.pg.acquire()).await {
+            Ok(Ok(c)) => c,
+            Ok(Err(e)) => {
+                log::error!(
+                    "[save_product_delivery_config] Erreur acquisition connexion DB: {}",
+                    e
+                );
+                return Err(AppError::Internal(
+                    "Erreur lors de l'acquisition de la connexion à la base de données".into(),
+                ));
+            }
+            Err(_) => {
+                log::warn!(
                 "[save_product_delivery_config] ❌ Timeout lors de l'acquisition de connexion DB"
             );
-            return Err(AppError::TooManyRequests(
-                "Base de données occupée, veuillez réessayer dans quelques instants".into(),
-            ));
-        }
-    };
+                return Err(AppError::TooManyRequests(
+                    "Base de données occupée, veuillez réessayer dans quelques instants".into(),
+                ));
+            }
+        };
 
     let mut tx = conn.begin().await?;
 
