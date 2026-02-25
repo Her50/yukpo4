@@ -7,10 +7,7 @@
  */
 
 import { Platform } from 'react-native';
-
-// ✅ react-native-vision-camera retiré pour réduire la taille APK (~5-10 MB)
-// Type Frame défini localement pour compatibilité
-type Frame = { width: number; height: number; timestamp: number };
+import { Frame } from 'react-native-vision-camera';
 
 export interface ARPlane {
     id: string;

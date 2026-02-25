@@ -17,26 +17,11 @@ import {
     View
 } from 'react-native';
 import { runOnJS, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
+import { Camera, Frame, useCameraDevice, useCameraPermission, useFrameProcessor } from 'react-native-vision-camera';
 import { createARPlugin } from '../native/ARPlugin';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
 import { NativeButton, NativeCard } from './SafeNativeDesign';
-// ✅ react-native-vision-camera retiré pour réduire la taille APK
-// Import dynamique conditionnel
-let Camera: any = null;
-let useCameraDevice: any = () => null;
-let useCameraPermission: any = () => ({ hasPermission: false, requestPermission: async () => false });
-let useFrameProcessor: any = () => null;
-type Frame = { width: number; height: number; timestamp: number };
-try {
-    const vc = require('react-native-vision-camera');
-    Camera = vc.Camera;
-    useCameraDevice = vc.useCameraDevice;
-    useCameraPermission = vc.useCameraPermission;
-    useFrameProcessor = vc.useFrameProcessor;
-} catch (e) {
-    console.warn('[ARVideoEditor] react-native-vision-camera non disponible');
-}
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 

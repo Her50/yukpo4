@@ -89,6 +89,7 @@
     "react-native-share": "^10.0.2",
     "react-native-skeleton-placeholder": "^5.2.4",
     "react-native-svg": "15.8.0",
+    "react-native-vision-camera": "^4.0.0",
     "react-native-webrtc": "^124.0.3",
     "react-query": "^3.39.3",
     "sentry-expo": "~7.0.0"
