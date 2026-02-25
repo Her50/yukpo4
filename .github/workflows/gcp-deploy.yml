@@ -124,7 +124,7 @@ jobs:
                 "GPU_MONTHLY_BUDGET": "100.0",
                 "GPU_SCALE_UP_THRESHOLD": "70.0",
                 "GPU_SCALE_DOWN_THRESHOLD": "20.0",
-                "GPU_MAX_INSTANCES": "3",
+                "GPU_MAX_INSTANCES": "10",
                 "GPU_MIN_INSTANCES": "0",
                 "GPU_SCALE_DOWN_COOLDOWN": "300",
                 "GPU_REQUEST_TIMEOUT": "60",
@@ -208,7 +208,7 @@ jobs:
             "GPU_ZONE": "europe-west1-b",
             "GPU_INSTANCE_NAME": "yukpo-gpu-worker",
             "GPU_MONTHLY_BUDGET": "100.0",
-            "GPU_MAX_INSTANCES": "3",
+            "GPU_MAX_INSTANCES": "10",
             "GPU_MIN_INSTANCES": "0",
             "VIDEO_RENDERER_RPC_URL": "http://34.140.79.59:8080/render",
             "VIDEO_RENDERER_ENABLE_GPU": "true",
@@ -330,7 +330,7 @@ jobs:
           echo "Construction de la liste des variables d'environnement..."
           if command -v jq &> /dev/null; then
             # Extraire toutes les clés sauf les secrets - CRITIQUE: Exclure explicitement tous les secrets
-            ENV_VARS=$(jq -r 'to_entries | map(select(.key != "DATABASE_URL" and .key != "REDIS_URL" and .key != "MONGODB_URL" and .key != "JWT_SECRET")) | map("\(.key)=\(.value)") | join(",")' ${{ steps.prepare-env.outputs.env_file }})
+            ENV_VARS=$(jq -r 'to_entries | map(select(.key != "DATABASE_URL" and .key != "REDIS_URL" and .key != "MONGODB_URL" and .key != "JWT_SECRET")) | map("\(.key)=\(.value)") | join(";")' ${{ steps.prepare-env.outputs.env_file }})
             echo "Variables d'environnement à définir: $ENV_VARS"
             
             # Vérifier que les secrets ne sont pas dans ENV_VARS
@@ -352,7 +352,7 @@ jobs:
                 --allow-unauthenticated \
                 --port 8080 \
                 --startup-probe=timeoutSeconds=10,periodSeconds=15,initialDelaySeconds=180,failureThreshold=30,httpGet.port=8080,httpGet.path=/health \
-                --update-env-vars="$ENV_VARS" \
+                --update-env-vars="^;^$ENV_VARS" \
                 --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,MONGODB_URL=mongodb-url:latest,OPENAI_API_KEY=openai-api-key:latest,S3_ACCESS_KEY=s3-access-key:latest,S3_SECRET_KEY=s3-secret-key:latest,LIVEKIT_API_KEY=livekit-api-key:latest,LIVEKIT_API_SECRET=livekit-api-secret:latest" \
                 --set-cloudsql-instances="$CLOUD_SQL_INSTANCE" \
                 --memory 2Gi \
