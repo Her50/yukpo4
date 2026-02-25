@@ -199,6 +199,8 @@ const STEPS = [
     { id: 'products', label: 'Produits', icon: 'package' },
     { id: 'media', label: 'Médias', icon: 'video' },
     { id: 'budget', label: 'Budget', icon: 'dollar-sign' },
+    { id: 'targeting', label: 'Ciblage', icon: 'target' },
+    { id: 'confirm', label: 'Créer', icon: 'check-circle' },
 ];
 
 const CreatePubliciteScreen: React.FC = () => {
@@ -233,15 +235,12 @@ const CreatePubliciteScreen: React.FC = () => {
 
     // ✅ NOUVEAU: États pour l'UX améliorée
     const [currentStep, setCurrentStep] = useState(0);
-    const [showPreview, setShowPreview] = useState(true);
     const [suggestions, setSuggestions] = useState<string[]>([]);
     const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
     const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
     const [showTemplates, setShowTemplates] = useState(false);
 
-    // ✅ NOUVEAU: Refs pour la navigation entre sections
     const scrollViewRef = useRef<KeyboardAwareScrollView>(null);
-    const sectionPositions = useRef<{ [key: string]: number }>({});
 
     // ✅ NOUVEAU: États pour fonctionnalités avancées (100% parité)
     const [targeting, setTargeting] = useState({
@@ -897,71 +896,13 @@ const CreatePubliciteScreen: React.FC = () => {
         return labels[zone] || zone;
     };
 
-    // ✅ NOUVEAU: Déterminer l'étape actuelle basée sur la progression
-    useEffect(() => {
-        if (titre.trim().length > 0 && description.trim().length > 0) {
-            if (selectedProduits.length > 0) {
-                if (videos.length > 0) {
-                    setCurrentStep(3); // Budget
-                } else {
-                    setCurrentStep(2); // Médias
-                }
-            } else {
-                setCurrentStep(1); // Produits
-            }
-        } else {
-            setCurrentStep(0); // Infos
-        }
-    }, [titre, description, selectedProduits, videos]);
+    // ✅ Navigation manuelle uniquement via boutons Précédent/Suivant
+    // (plus d'auto-calcul de currentStep qui empêchait la navigation)
 
-    // ✅ NOUVEAU: Capturer la position d'une section
-    const handleSectionLayout = useCallback((stepId: string, event: any) => {
-        // ✅ CORRIGÉ: Vérifier que event et nativeEvent existent
-        if (event && event.nativeEvent && event.nativeEvent.layout) {
-            const { y } = event.nativeEvent.layout;
-            // La position Y est relative au parent (ScrollView content)
-            if (typeof y === 'number') {
-                sectionPositions.current[stepId] = y;
-            }
-        }
-    }, []);
-
-    // ✅ NOUVEAU: Navigation vers une section spécifique
-    const scrollToSection = useCallback((stepIndex: number) => {
-        const stepId = STEPS[stepIndex]?.id;
-        if (!stepId) return;
-
-        const position = sectionPositions.current[stepId];
-        if (position !== undefined && scrollViewRef.current) {
-            // Scroll avec un offset pour ne pas coller au bord supérieur
-            // On soustrait aussi la hauteur du header et du stepper (environ 120px)
-            const scrollY = Math.max(0, position - 100);
-            const scrollView = scrollViewRef.current;
-
-            // ✅ CORRIGÉ: Vérifier que scrollView est bien un objet avant d'appeler des méthodes
-            if (scrollView && typeof scrollView === 'object') {
-                // KeyboardAwareScrollView supporte scrollToPosition
-                if (typeof (scrollView as any).scrollToPosition === 'function') {
-                    (scrollView as any).scrollToPosition(0, scrollY, true);
-                } else if (typeof (scrollView as any).scrollTo === 'function') {
-                    (scrollView as any).scrollTo({ x: 0, y: scrollY, animated: true });
-                } else if (typeof (scrollView as any).scrollToOffset === 'function') {
-                    (scrollView as any).scrollToOffset({ offset: scrollY, animated: true });
-                }
-            }
-        } else {
-            console.warn('[CreatePublicite] Position non disponible pour la section:', stepId);
-        }
-    }, []);
-
-    // ✅ NOUVEAU: Gestion du clic sur une étape du stepper
+    // Navigation directe par clic sur le stepper
     const handleStepPress = useCallback((stepIndex: number) => {
         setCurrentStep(stepIndex);
-        // Petit délai pour s'assurer que les positions sont bien calculées
-        setTimeout(() => {
-            scrollToSection(stepIndex);
-        }, 150);
-    }, [scrollToSection]);
+    }, []);
 
     return (
         <View style={styles.container}>
@@ -998,207 +939,135 @@ const CreatePubliciteScreen: React.FC = () => {
                 keyboardDismissMode="on-drag"
                 scrollEnabled={true}
                 bounces={true}
-                removeClippedSubviews={false}
                 nestedScrollEnabled={true}
                 enableResetScrollToCoords={false}
-                keyboardOpeningTime={0}
-                alwaysBounceVertical={true}
-                scrollEventThrottle={16}
             >
-                {/* ✅ NOUVEAU: Section Templates */}
-                {!titre && !showTemplates && (
-                    <NativeCard style={styles.templatesCard}>
-                        <TouchableOpacity
-                            style={styles.templatesToggle}
-                            onPress={() => setShowTemplates(true)}
-                        >
-                            <SafeIcon name="sparkles" size={20} color={modernColors.primary} />
-                            <Text style={styles.templatesToggleText}>
-                                Utiliser un template
-                            </Text>
-                            <SafeIcon name="chevron-right" size={16} color={modernColors.textSecondary} />
-                        </TouchableOpacity>
-                    </NativeCard>
-                )}
+                {/* ═══════════ ÉTAPE 0 : INFORMATIONS ═══════════ */}
+                {currentStep === 0 && (
+                    <View>
+                        {/* Templates rapides */}
+                        {!titre && !showTemplates && (
+                            <NativeCard style={styles.templatesCard}>
+                                <TouchableOpacity
+                                    style={styles.templatesToggle}
+                                    onPress={() => setShowTemplates(true)}
+                                >
+                                    <SafeIcon name="sparkles" size={20} color={modernColors.primary} />
+                                    <Text style={styles.templatesToggleText}>Utiliser un template</Text>
+                                    <SafeIcon name="chevron-right" size={16} color={modernColors.textSecondary} />
+                                </TouchableOpacity>
+                            </NativeCard>
+                        )}
+                        {showTemplates && (
+                            <NativeCard style={styles.templatesCard}>
+                                <View style={styles.templatesHeader}>
+                                    <Text style={styles.templatesTitle}>Templates</Text>
+                                    <TouchableOpacity onPress={() => setShowTemplates(false)}>
+                                        <SafeIcon name="x" size={20} color={modernColors.textSecondary} />
+                                    </TouchableOpacity>
+                                </View>
+                                <AdTemplates onSelectTemplate={handleTemplateSelect} />
+                            </NativeCard>
+                        )}
 
-                {showTemplates && (
-                    <NativeCard style={styles.templatesCard}>
-                        <View style={styles.templatesHeader}>
-                            <Text style={styles.templatesTitle}>Templates</Text>
-                            <TouchableOpacity onPress={() => setShowTemplates(false)}>
-                                <SafeIcon name="x" size={20} color={modernColors.textSecondary} />
-                            </TouchableOpacity>
-                        </View>
-                        <AdTemplates onSelectTemplate={handleTemplateSelect} />
-                    </NativeCard>
-                )}
+                        <NativeCard style={styles.sectionCard}>
+                            <Text style={styles.sectionTitle}>📝 Informations générales</Text>
 
-                {/* ✅ NOUVEAU: Prévisualisation en temps réel */}
-                {showPreview && (titre || videos.length > 0 || selectedProduits.length > 0) && (
-                    <NativeCard style={styles.previewCard}>
-                        <View style={styles.previewHeader}>
-                            <Text style={styles.previewTitle}>Aperçu en temps réel</Text>
-                            <TouchableOpacity onPress={() => setShowPreview(false)}>
-                                <SafeIcon name="x" size={16} color={modernColors.textSecondary} />
-                            </TouchableOpacity>
-                        </View>
-                        <AdPreviewCard
-                            titre={titre || 'Titre de votre publicité'}
-                            description={description}
-                            thumbnail={previewThumbnail}
-                            videoCount={videos.length}
-                            productCount={selectedProduits.length}
-                            zone={zoneGeographique}
-                            duree={parseInt(duree) || 7}
-                        />
-                    </NativeCard>
-                )}
+                            <View style={styles.fieldContainer}>
+                                <View style={styles.fieldLabelRow}>
+                                    <Text style={styles.fieldLabel}>
+                                        {t('publicite.title')} <Text style={styles.required}>*</Text>
+                                    </Text>
+                                </View>
+                                <NativeInput
+                                    placeholder="Ex: Promotion Immobilier - 20% de remise"
+                                    value={titre}
+                                    onChangeText={setTitre}
+                                    style={[styles.input, validationErrors.titre && styles.inputError]}
+                                />
+                                {validationErrors.titre && (
+                                    <Text style={styles.errorText}>{validationErrors.titre}</Text>
+                                )}
+                                {selectedProduits.length > 0 && (
+                                    <AISuggestionsGenerator
+                                        field="titre"
+                                        products={produitsList.filter(p => selectedProduits.includes(p.id))}
+                                        targetAudience={{ ageRange: targeting.ageRange, gender: targeting.gender, interests: targeting.interests }}
+                                        campaignGoal="conversion"
+                                        onSuggestionSelect={(s) => { setTitre(s); setSuggestions([]); }}
+                                        currentValue={titre}
+                                    />
+                                )}
+                            </View>
 
-                {!showPreview && (
-                    <TouchableOpacity
-                        style={styles.showPreviewButton}
-                        onPress={() => setShowPreview(true)}
-                    >
-                        <SafeIcon name="eye" size={16} color={modernColors.primary} />
-                        <Text style={styles.showPreviewText}>Afficher l'aperçu</Text>
-                    </TouchableOpacity>
-                )}
-                {/* Info facturation */}
-                <NativeCard style={styles.infoCard}>
-                    <View style={styles.infoHeader}>
-                        <SafeIcon name="info" size={20} color={modernColors.primary} />
-                        <Text style={styles.infoTitle}>{t('publicite.pricing')}</Text>
+                            <View style={styles.fieldContainer}>
+                                <Text style={styles.fieldLabel}>{t('publicite.description')}</Text>
+                                <NativeInput
+                                    placeholder="Décrivez votre offre promotionnelle..."
+                                    value={description}
+                                    onChangeText={setDescription}
+                                    style={styles.input}
+                                    multiline
+                                    numberOfLines={3}
+                                />
+                                {selectedProduits.length > 0 && (
+                                    <AISuggestionsGenerator
+                                        field="description"
+                                        products={produitsList.filter(p => selectedProduits.includes(p.id))}
+                                        targetAudience={{ ageRange: targeting.ageRange, gender: targeting.gender, interests: targeting.interests }}
+                                        campaignGoal="conversion"
+                                        onSuggestionSelect={(s) => setDescription(s)}
+                                        currentValue={description}
+                                    />
+                                )}
+                            </View>
+
+                            <View style={styles.fieldContainer}>
+                                <Text style={styles.fieldLabel}>{t('publicite.duration')} <Text style={styles.required}>*</Text></Text>
+                                <View style={styles.dureeButtons}>
+                                    {['7', '14', '30', '60', '90'].map((d) => (
+                                        <TouchableOpacity
+                                            key={d}
+                                            style={[styles.dureeButton, duree === d && styles.dureeButtonActive]}
+                                            onPress={() => setDuree(d)}
+                                        >
+                                            <Text style={[styles.dureeText, duree === d && styles.dureeTextActive]}>{d} jours</Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                            </View>
+
+                            <View style={styles.fieldContainer}>
+                                <Text style={styles.fieldLabel}>{t('publicite.zone')} <Text style={styles.required}>*</Text></Text>
+                                <Text style={styles.fieldHint}>{t('publicite.zone.select')}</Text>
+                                <View style={styles.zoneButtons}>
+                                    {['local', 'regional', 'international'].map((zone) => (
+                                        <TouchableOpacity
+                                            key={zone}
+                                            style={[styles.zoneButton, zoneGeographique === zone && styles.zoneButtonActive]}
+                                            onPress={() => setZoneGeographique(zone)}
+                                        >
+                                            <SafeIcon
+                                                name={zone === 'local' ? 'map-pin' : 'globe'}
+                                                size={20}
+                                                color={zoneGeographique === zone ? '#fff' : modernColors.primary}
+                                            />
+                                            <Text style={[styles.zoneText, zoneGeographique === zone && styles.zoneTextActive]}>
+                                                {getZoneLabel(zone)}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                            </View>
+                        </NativeCard>
                     </View>
-                    <Text style={styles.infoText}>• {t('publicite.price_per_day')}</Text>
-                    <Text style={styles.infoText}>• +2 000 FCFA par vidéo</Text>
-                    <Text style={styles.infoText}>• Conversion automatique en {userCurrency}</Text>
-                    <Text style={styles.infoText}>• Facturation journalière</Text>
-                </NativeCard>
+                )}
 
-                {/* Titre et description */}
-                <View
-                    onLayout={(e) => handleSectionLayout('info', e)}
-                >
-                    <NativeCard style={styles.sectionCard}>
-                        <Text style={styles.sectionTitle}>📝 Informations générales</Text>
-
-                        <View style={styles.fieldContainer}>
-                            <View style={styles.fieldLabelRow}>
-                                <Text style={styles.fieldLabel}>
-                                    {t('publicite.title')} <Text style={styles.required}>*</Text>
-                                </Text>
-                            </View>
-                            <NativeInput
-                                placeholder="Ex: Promotion Immobilier - 20% de remise"
-                                value={titre}
-                                onChangeText={setTitre}
-                                style={[
-                                    styles.input,
-                                    validationErrors.titre && styles.inputError,
-                                ]}
-                            />
-                            {validationErrors.titre && (
-                                <Text style={styles.errorText}>{validationErrors.titre}</Text>
-                            )}
-                            {/* ✅ NOUVEAU: Composant IA Suggestions */}
-                            {selectedProduits.length > 0 && (
-                                <AISuggestionsGenerator
-                                    field="titre"
-                                    products={produitsList.filter(p => selectedProduits.includes(p.id))}
-                                    targetAudience={{
-                                        ageRange: targeting.ageRange,
-                                        gender: targeting.gender,
-                                        interests: targeting.interests,
-                                    }}
-                                    campaignGoal="conversion"
-                                    onSuggestionSelect={(suggestion) => {
-                                        setTitre(suggestion);
-                                        setSuggestions([]);
-                                    }}
-                                    currentValue={titre}
-                                />
-                            )}
-                        </View>
-
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>{t('publicite.description')}</Text>
-                            <NativeInput
-                                placeholder="Décrivez votre offre promotionnelle..."
-                                value={description}
-                                onChangeText={setDescription}
-                                style={styles.input}
-                                multiline
-                                numberOfLines={3}
-                            />
-                            {/* ✅ NOUVEAU: Composant IA Suggestions pour description */}
-                            {selectedProduits.length > 0 && (
-                                <AISuggestionsGenerator
-                                    field="description"
-                                    products={produitsList.filter(p => selectedProduits.includes(p.id))}
-                                    targetAudience={{
-                                        ageRange: targeting.ageRange,
-                                        gender: targeting.gender,
-                                        interests: targeting.interests,
-                                    }}
-                                    campaignGoal="conversion"
-                                    onSuggestionSelect={(suggestion) => {
-                                        setDescription(suggestion);
-                                    }}
-                                    currentValue={description}
-                                />
-                            )}
-                        </View>
-
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>{t('publicite.duration')} <Text style={styles.required}>*</Text></Text>
-                            <View style={styles.dureeButtons}>
-                                {['7', '14', '30', '60', '90'].map((d) => (
-                                    <TouchableOpacity
-                                        key={d}
-                                        style={[styles.dureeButton, duree === d && styles.dureeButtonActive]}
-                                        onPress={() => setDuree(d)}
-                                    >
-                                        <Text style={[styles.dureeText, duree === d && styles.dureeTextActive]}>
-                                            {d} jours
-                                        </Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-                        </View>
-
-                        {/* ✅ Sélection zone géographique */}
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>{t('publicite.zone')} <Text style={styles.required}>*</Text></Text>
-                            <Text style={styles.fieldHint}>{t('publicite.zone.select')}</Text>
-                            <View style={styles.zoneButtons}>
-                                {['local', 'regional', 'international'].map((zone) => (
-                                    <TouchableOpacity
-                                        key={zone}
-                                        style={[styles.zoneButton, zoneGeographique === zone && styles.zoneButtonActive]}
-                                        onPress={() => setZoneGeographique(zone)}
-                                    >
-                                        <SafeIcon
-                                            name={zone === 'local' ? 'map-pin' : zone === 'regional' ? 'globe' : 'globe'}
-                                            size={20}
-                                            color={zoneGeographique === zone ? '#fff' : modernColors.primary}
-                                        />
-                                        <Text style={[styles.zoneText, zoneGeographique === zone && styles.zoneTextActive]}>
-                                            {getZoneLabel(zone)}
-                                        </Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-                        </View>
-                    </NativeCard>
-                </View>
-
-                {/* Sélection des produits */}
-                <View
-                    onLayout={(e) => handleSectionLayout('products', e)}
-                >
+                {/* ═══════════ ÉTAPE 1 : PRODUITS ═══════════ */}
+                {currentStep === 1 && (
                     <NativeCard style={styles.sectionCard}>
                         <Text style={styles.sectionTitle}>📦 {t('publicite.products')} ({selectedProduits.length})</Text>
-                        <Text style={styles.sectionHint}>✨ Optionnel - Sélectionnez les produits à promouvoir</Text>
+                        <Text style={styles.sectionHint}>Optionnel — Sélectionnez les produits à promouvoir</Text>
 
                         {loading ? (
                             <ActivityIndicator size="small" color={modernColors.primary} />
@@ -1219,18 +1088,14 @@ const CreatePubliciteScreen: React.FC = () => {
                                             onPress={() => toggleProduitSelection(produit.id)}
                                         >
                                             <View style={[styles.checkbox, isSelected && styles.checkboxChecked]}>
-                                                {isSelected && (
-                                                    <SafeIcon name="check" size={16} color="#fff" />
-                                                )}
+                                                {isSelected && <SafeIcon name="check" size={16} color="#fff" />}
                                             </View>
                                             <View style={styles.productInfo}>
                                                 <Text style={styles.productName}>{produit.nom || 'Produit'}</Text>
                                                 <Text style={styles.productService}>Service: {produit.serviceTitre}</Text>
-                                                {produit.prix && (
-                                                    <Text style={styles.productPrice}>
-                                                        {produit.prix} {produit.devise || 'FCFA'}
-                                                    </Text>
-                                                )}
+                                                {produit.prix ? (
+                                                    <Text style={styles.productPrice}>{produit.prix} {produit.devise || 'FCFA'}</Text>
+                                                ) : null}
                                             </View>
                                         </TouchableOpacity>
                                     );
@@ -1238,12 +1103,10 @@ const CreatePubliciteScreen: React.FC = () => {
                             </View>
                         )}
                     </NativeCard>
-                </View>
+                )}
 
-                {/* Vidéos promotionnelles */}
-                <View
-                    onLayout={(e) => handleSectionLayout('media', e)}
-                >
+                {/* ═══════════ ÉTAPE 2 : MÉDIAS ═══════════ */}
+                {currentStep === 2 && (
                     <NativeCard style={styles.sectionCard}>
                         <Text style={styles.sectionTitle}>🎬 {t('publicite.videos')} ({videos.length})</Text>
                         <Text style={styles.sectionHint}>Maximum 30 secondes par vidéo</Text>
@@ -1261,16 +1124,16 @@ const CreatePubliciteScreen: React.FC = () => {
                             <View style={styles.noticeRow}>
                                 <SafeIcon name="info" size={16} color={modernColors.primary} />
                                 <Text style={styles.noticeText}>
-                                    Les vidéos ajoutées auparavant ne sont pas rechargées automatiquement. Importez-les à nouveau ou générez une nouvelle version carrée avec Yukpo IA.
+                                    Les vidéos existantes ne sont pas rechargées. Importez-les à nouveau ou générez une nouvelle version avec Yukpo IA.
                                 </Text>
                             </View>
                         )}
 
                         <Text style={[styles.fieldHint, { marginTop: 12 }]}>
-                            ✨ Générer automatiquement une vidéo carrée optimisée grâce à Yukpo IA.
+                            Générer automatiquement une vidéo carrée optimisée grâce à Yukpo IA.
                         </Text>
                         <NativeButton
-                            title={isConvertingVideo ? 'Génération IA en cours…' : '✨ Générer une vidéo carrée IA'}
+                            title={isConvertingVideo ? 'Génération IA en cours...' : 'Générer une vidéo carrée IA'}
                             onPress={openVideoCreator}
                             variant="secondary"
                             size="medium"
@@ -1280,7 +1143,7 @@ const CreatePubliciteScreen: React.FC = () => {
                         {isConvertingVideo && (
                             <View style={styles.aiProgressRow}>
                                 <ActivityIndicator size="small" color={modernColors.primary} />
-                                <Text style={styles.aiProgressText}>Conversion du média IA…</Text>
+                                <Text style={styles.aiProgressText}>Conversion du média IA...</Text>
                             </View>
                         )}
 
@@ -1292,242 +1155,239 @@ const CreatePubliciteScreen: React.FC = () => {
                                             source={{ uri: `data:image/jpeg;base64,${video.thumbnail}` }}
                                             style={styles.videoThumbnail}
                                         />
-                                        <TouchableOpacity
-                                            style={styles.removeVideoButton}
-                                            onPress={() => removeVideo(index)}
-                                        >
+                                        <TouchableOpacity style={styles.removeVideoButton} onPress={() => removeVideo(index)}>
                                             <SafeIcon name="x" size={16} color="#fff" />
                                         </TouchableOpacity>
                                         <View style={styles.videoDuration}>
                                             <SafeIcon name="play" size={12} color="#fff" />
-                                            <Text style={styles.videoDurationText}>
-                                                {String(Math.round((video.duration || 0) / 1000))}s
-                                            </Text>
+                                            <Text style={styles.videoDurationText}>{String(Math.round((video.duration || 0) / 1000))}s</Text>
                                         </View>
                                     </View>
                                 ))}
                             </View>
                         )}
-                    </NativeCard>
-                </View>
 
-                {/* ✅ AMÉLIORÉ: Budget avec slider interactif */}
-                <View
-                    onLayout={(e) => handleSectionLayout('budget', e)}
-                >
-                    <NativeCard style={[styles.sectionCard, styles.summaryCard]}>
-                        <Text style={styles.sectionTitle}>💰 Budget & Performance</Text>
-
-                        <BudgetSlider
-                            value={coutEstime}
-                            min={Math.max(100, Math.round(coutEstime * 0.5))}
-                            max={Math.round(coutEstime * 3)}
-                            step={100}
-                            currency={userCurrency}
-                            onValueChange={(value) => {
-                                // Ajuster la durée pour correspondre au budget
-                                const exchangeRate = EXCHANGE_RATES[userCurrency] || 1;
-                                const valueFCFA = Math.round(value * exchangeRate);
-                                const baseCost = 2000 * videos.length;
-                                const daysFromBudget = Math.max(1, Math.round((valueFCFA - baseCost) / PRICE_PER_DAY_FCFA));
-                                if (daysFromBudget <= 90) {
-                                    setDuree(daysFromBudget.toString());
-                                }
-                            }}
-                            estimatedReach={estimatedMetrics.estimatedReach}
-                            estimatedImpressions={estimatedMetrics.estimatedImpressions}
-                        />
-
-                        {/* ✅ NOUVEAU: Stratégie d'enchères */}
-                        <BidStrategySelector
-                            strategy={bidStrategy}
-                            onStrategyChange={setBidStrategy}
-                        />
-
-                        <View style={styles.divider} />
-
-                        <View style={styles.summaryRow}>
-                            <Text style={styles.summaryLabel}>{t('publicite.products_selected')}</Text>
-                            <Text style={styles.summaryValue}>{selectedProduits.length}</Text>
-                        </View>
-                        <View style={styles.summaryRow}>
-                            <Text style={styles.summaryLabel}>{t('publicite.videos_added')}</Text>
-                            <Text style={styles.summaryValue}>{videos.length}</Text>
-                        </View>
-                        <View style={styles.summaryRow}>
-                            <Text style={styles.summaryLabel}>{t('publicite.duration')}</Text>
-                            <Text style={styles.summaryValue}>{duree} jours</Text>
-                        </View>
-                        <View style={styles.summaryRow}>
-                            <Text style={styles.summaryLabel}>{t('publicite.zone')}</Text>
-                            <Text style={styles.summaryValue}>{getZoneLabel(zoneGeographique)}</Text>
-                        </View>
-                        <View style={styles.divider} />
-                        <View style={styles.summaryRow}>
-                            <Text style={styles.totalLabel}>{t('publicite.total_cost')}</Text>
-                            <Text style={styles.totalValue}>{coutEstime.toLocaleString()} {userCurrency}</Text>
+                        {/* Bibliothèque de Médias */}
+                        <View style={{ marginTop: 16 }}>
+                            <AssetLibrary
+                                type="all"
+                                onSelectAsset={(asset) => {
+                                    if (asset.type === 'video') {
+                                        setVideos((prev) => [...prev, {
+                                            uri: asset.url, base64: '', thumbnail: asset.thumbnail || '',
+                                            duration: 0, source: 'library', format: 'video', ai_generated: false,
+                                        }]);
+                                    }
+                                    setSelectedAssets([...selectedAssets, asset.id]);
+                                }}
+                                userId={user ? parseInt(user.id) : undefined}
+                                selectedAssets={selectedAssets}
+                            />
                         </View>
                     </NativeCard>
-                </View>
-
-                {/* ✅ NOUVEAU: Ciblage avancé */}
-                <AdvancedTargeting
-                    targeting={targeting}
-                    onTargetingChange={setTargeting}
-                />
-
-                {/* ✅ NOUVEAU: A/B Testing Basique */}
-                <ABTestingVariants
-                    variants={abVariants}
-                    onVariantsChange={setAbVariants}
-                    onAddVariant={() => {
-                        setAbVariants([
-                            ...abVariants,
-                            {
-                                id: Date.now().toString(),
-                                titre: '',
-                                description: '',
-                                isActive: false,
-                            },
-                        ]);
-                    }}
-                    onRemoveVariant={(id) => {
-                        setAbVariants(abVariants.filter(v => v.id !== id));
-                    }}
-                />
-
-                {/* ✅ NOUVEAU: A/B Testing Avancé avec Statistiques */}
-                {abVariants.length > 0 && (
-                    <AdvancedABTesting
-                        campaignId={publiciteId || undefined}
-                        variants={abVariants}
-                        onVariantsChange={setAbVariants}
-                        onAddVariant={() => {
-                            setAbVariants([
-                                ...abVariants,
-                                {
-                                    id: Date.now().toString(),
-                                    titre: '',
-                                    description: '',
-                                    isActive: false,
-                                },
-                            ]);
-                        }}
-                        onRemoveVariant={(id) => {
-                            setAbVariants(abVariants.filter(v => v.id !== id));
-                        }}
-                        userId={user ? parseInt(user.id) : undefined}
-                    />
                 )}
 
-                {/* ✅ NOUVEAU: Optimisation Automatique */}
-                <AutoOptimizationSettings
-                    userId={user ? parseInt(user.id) : undefined}
-                    campaignId={publiciteId || undefined}
-                    onSettingsChange={(settings) => {
-                        console.log('[CreatePubliciteScreen] Auto optimization settings changed:', settings);
-                    }}
-                />
+                {/* ═══════════ ÉTAPE 3 : BUDGET ═══════════ */}
+                {currentStep === 3 && (
+                    <View>
+                        {/* Info facturation */}
+                        <NativeCard style={styles.infoCard}>
+                            <View style={styles.infoHeader}>
+                                <SafeIcon name="info" size={20} color={modernColors.primary} />
+                                <Text style={styles.infoTitle}>{t('publicite.pricing')}</Text>
+                            </View>
+                            <Text style={styles.infoText}>• {t('publicite.price_per_day')}</Text>
+                            <Text style={styles.infoText}>• +2 000 FCFA par vidéo</Text>
+                            <Text style={styles.infoText}>• Conversion automatique en {userCurrency}</Text>
+                        </NativeCard>
 
-                {/* ✅ NOUVEAU: Planification */}
-                <CampaignScheduler
-                    schedule={schedule}
-                    onScheduleChange={setSchedule}
-                />
+                        <NativeCard style={[styles.sectionCard, styles.summaryCard]}>
+                            <Text style={styles.sectionTitle}>💰 Budget & Performance</Text>
 
-                {/* ✅ NOUVEAU: Placements */}
-                <PlacementSelector
-                    placements={placements}
-                    onPlacementsChange={setPlacements}
-                    totalBudget={coutEstime}
-                />
+                            <BudgetSlider
+                                value={coutEstime}
+                                min={Math.max(100, Math.round(coutEstime * 0.5))}
+                                max={Math.round(coutEstime * 3)}
+                                step={100}
+                                currency={userCurrency}
+                                onValueChange={(value) => {
+                                    const exchangeRate = EXCHANGE_RATES[userCurrency] || 1;
+                                    const valueFCFA = Math.round(value * exchangeRate);
+                                    const baseCost = 2000 * videos.length;
+                                    const daysFromBudget = Math.max(1, Math.round((valueFCFA - baseCost) / PRICE_PER_DAY_FCFA));
+                                    if (daysFromBudget <= 90) setDuree(daysFromBudget.toString());
+                                }}
+                                estimatedReach={estimatedMetrics.estimatedReach}
+                                estimatedImpressions={estimatedMetrics.estimatedImpressions}
+                            />
 
-                {/* ✅ NOUVEAU: Retargeting */}
-                <RetargetingOptions
-                    rules={retargetingRules}
-                    onRulesChange={setRetargetingRules}
-                />
+                            <BidStrategySelector strategy={bidStrategy} onStrategyChange={setBidStrategy} />
 
-                {/* ✅ NOUVEAU: Audiences Personnalisées */}
-                <CustomAudienceManager
-                    selectedAudiences={selectedAudiences}
-                    onAudiencesChange={setSelectedAudiences}
-                    userId={user ? parseInt(user.id) : undefined}
-                />
+                            <View style={styles.divider} />
+                            <View style={styles.summaryRow}>
+                                <Text style={styles.summaryLabel}>{t('publicite.products_selected')}</Text>
+                                <Text style={styles.summaryValue}>{selectedProduits.length}</Text>
+                            </View>
+                            <View style={styles.summaryRow}>
+                                <Text style={styles.summaryLabel}>{t('publicite.videos_added')}</Text>
+                                <Text style={styles.summaryValue}>{videos.length}</Text>
+                            </View>
+                            <View style={styles.summaryRow}>
+                                <Text style={styles.summaryLabel}>{t('publicite.duration')}</Text>
+                                <Text style={styles.summaryValue}>{duree} jours</Text>
+                            </View>
+                            <View style={styles.summaryRow}>
+                                <Text style={styles.summaryLabel}>{t('publicite.zone')}</Text>
+                                <Text style={styles.summaryValue}>{getZoneLabel(zoneGeographique)}</Text>
+                            </View>
+                            <View style={styles.divider} />
+                            <View style={styles.summaryRow}>
+                                <Text style={styles.totalLabel}>{t('publicite.total_cost')}</Text>
+                                <Text style={styles.totalValue}>{coutEstime.toLocaleString()} {userCurrency}</Text>
+                            </View>
+                        </NativeCard>
+                    </View>
+                )}
 
-                {/* ✅ NOUVEAU: Bibliothèque de Médias */}
-                <AssetLibrary
-                    type="all"
-                    onSelectAsset={(asset) => {
-                        if (asset.type === 'video') {
-                            // Ajouter la vidéo à la liste
-                            setVideos((prev) => [
-                                ...prev,
-                                {
-                                    uri: asset.url,
-                                    base64: '', // Sera chargé depuis l'URL
-                                    thumbnail: asset.thumbnail || '',
-                                    duration: 0,
-                                    source: 'library',
-                                    format: 'video',
-                                    ai_generated: false,
-                                },
-                            ]);
-                        }
-                        setSelectedAssets([...selectedAssets, asset.id]);
-                    }}
-                    userId={user ? parseInt(user.id) : undefined}
-                    selectedAssets={selectedAssets}
-                />
+                {/* ═══════════ ÉTAPE 4 : CIBLAGE & OPTIONS ═══════════ */}
+                {currentStep === 4 && (
+                    <View>
+                        <AdvancedTargeting targeting={targeting} onTargetingChange={setTargeting} />
 
-                {/* Bouton de création/modification */}
-                <NativeButton
-                    title={loading ? t('message.loading') :
-                        mode === 'edit' ? '💾 Enregistrer les modifications' :
-                            mode === 'relance' ? '🔄 Relancer la publicité' :
-                                `🚀 ${t('publicite.create')}`}
-                    onPress={handleCreatePublicite}
-                    disabled={loading || !titre.trim()} // ✅ CORRECTION: Produit optionnel
-                    variant="primary"
-                    size="large"
-                    style={styles.createButton}
-                />
+                        <ABTestingVariants
+                            variants={abVariants}
+                            onVariantsChange={setAbVariants}
+                            onAddVariant={() => setAbVariants([...abVariants, { id: Date.now().toString(), titre: '', description: '', isActive: false }])}
+                            onRemoveVariant={(id) => setAbVariants(abVariants.filter(v => v.id !== id))}
+                        />
 
-                <View style={{ height: 120 }} />
+                        {abVariants.length > 0 && (
+                            <AdvancedABTesting
+                                campaignId={publiciteId || undefined}
+                                variants={abVariants}
+                                onVariantsChange={setAbVariants}
+                                onAddVariant={() => setAbVariants([...abVariants, { id: Date.now().toString(), titre: '', description: '', isActive: false }])}
+                                onRemoveVariant={(id) => setAbVariants(abVariants.filter(v => v.id !== id))}
+                                userId={user ? parseInt(user.id) : undefined}
+                            />
+                        )}
+
+                        <AutoOptimizationSettings
+                            userId={user ? parseInt(user.id) : undefined}
+                            campaignId={publiciteId || undefined}
+                            onSettingsChange={(settings) => console.log('[CreatePubliciteScreen] Auto optimization:', settings)}
+                        />
+
+                        <CampaignScheduler schedule={schedule} onScheduleChange={setSchedule} />
+
+                        <PlacementSelector placements={placements} onPlacementsChange={setPlacements} totalBudget={coutEstime} />
+
+                        <RetargetingOptions rules={retargetingRules} onRulesChange={setRetargetingRules} />
+
+                        <CustomAudienceManager
+                            selectedAudiences={selectedAudiences}
+                            onAudiencesChange={setSelectedAudiences}
+                            userId={user ? parseInt(user.id) : undefined}
+                        />
+                    </View>
+                )}
+
+                {/* ═══════════ ÉTAPE 5 : CONFIRMATION & CRÉATION ═══════════ */}
+                {currentStep === 5 && (
+                    <View>
+                        {/* Aperçu final */}
+                        {(titre || videos.length > 0 || selectedProduits.length > 0) && (
+                            <NativeCard style={styles.previewCard}>
+                                <Text style={styles.previewTitle}>Aperçu de votre publicité</Text>
+                                <AdPreviewCard
+                                    titre={titre || 'Titre de votre publicité'}
+                                    description={description}
+                                    thumbnail={previewThumbnail}
+                                    videoCount={videos.length}
+                                    productCount={selectedProduits.length}
+                                    zone={zoneGeographique}
+                                    duree={parseInt(duree) || 7}
+                                />
+                            </NativeCard>
+                        )}
+
+                        {/* Récapitulatif final */}
+                        <NativeCard style={[styles.sectionCard, styles.summaryCard]}>
+                            <Text style={styles.sectionTitle}>Récapitulatif</Text>
+                            <View style={styles.summaryRow}>
+                                <Text style={styles.summaryLabel}>Titre</Text>
+                                <Text style={[styles.summaryValue, { flex: 1, textAlign: 'right' }]} numberOfLines={1}>{titre || '—'}</Text>
+                            </View>
+                            <View style={styles.summaryRow}>
+                                <Text style={styles.summaryLabel}>{t('publicite.products_selected')}</Text>
+                                <Text style={styles.summaryValue}>{selectedProduits.length}</Text>
+                            </View>
+                            <View style={styles.summaryRow}>
+                                <Text style={styles.summaryLabel}>{t('publicite.videos_added')}</Text>
+                                <Text style={styles.summaryValue}>{videos.length}</Text>
+                            </View>
+                            <View style={styles.summaryRow}>
+                                <Text style={styles.summaryLabel}>{t('publicite.duration')}</Text>
+                                <Text style={styles.summaryValue}>{duree} jours</Text>
+                            </View>
+                            <View style={styles.summaryRow}>
+                                <Text style={styles.summaryLabel}>{t('publicite.zone')}</Text>
+                                <Text style={styles.summaryValue}>{getZoneLabel(zoneGeographique)}</Text>
+                            </View>
+                            <View style={styles.divider} />
+                            <View style={styles.summaryRow}>
+                                <Text style={styles.totalLabel}>{t('publicite.total_cost')}</Text>
+                                <Text style={styles.totalValue}>{coutEstime.toLocaleString()} {userCurrency}</Text>
+                            </View>
+                        </NativeCard>
+
+                        {/* Bouton de création */}
+                        <NativeButton
+                            title={loading ? t('message.loading') :
+                                mode === 'edit' ? 'Enregistrer les modifications' :
+                                    mode === 'relance' ? 'Relancer la publicité' :
+                                        t('publicite.create')}
+                            onPress={handleCreatePublicite}
+                            disabled={loading || !titre.trim()}
+                            variant="primary"
+                            size="large"
+                            style={styles.createButton}
+                        />
+                    </View>
+                )}
+
+                <View style={{ height: 100 }} />
             </KeyboardAwareScrollView>
 
-            {/* ✅ AMÉLIORÉ: Boutons de navigation sticky en bas de l'écran */}
+            {/* Boutons de navigation sticky en bas */}
             <View style={styles.stickyNavigationButtons}>
-                {currentStep > 0 && (
+                {currentStep > 0 ? (
                     <TouchableOpacity
                         style={[styles.navButton, styles.navButtonPrev]}
-                        onPress={() => {
-                            const prevStep = Math.max(0, currentStep - 1);
-                            setCurrentStep(prevStep);
-                            setTimeout(() => scrollToSection(prevStep), 150);
-                        }}
+                        onPress={() => setCurrentStep(Math.max(0, currentStep - 1))}
                     >
                         <SafeIcon name="chevron-left" size={20} color={modernColors.primary} />
                         <Text style={styles.navButtonTextPrev}>Précédent</Text>
                     </TouchableOpacity>
+                ) : (
+                    <View style={styles.navButton} />
                 )}
-                {currentStep < STEPS.length - 1 && (
+                {currentStep < STEPS.length - 1 ? (
                     <TouchableOpacity
                         style={[styles.navButton, styles.navButtonNext]}
                         onPress={() => {
-                            // Validation basique avant de passer à l'étape suivante
                             if (currentStep === 0 && !titre.trim()) {
                                 Alert.alert('Champ requis', 'Veuillez saisir un titre pour continuer');
                                 return;
                             }
-                            const nextStep = Math.min(STEPS.length - 1, currentStep + 1);
-                            setCurrentStep(nextStep);
-                            setTimeout(() => scrollToSection(nextStep), 150);
+                            setCurrentStep(Math.min(STEPS.length - 1, currentStep + 1));
                         }}
                     >
                         <Text style={styles.navButtonTextNext}>Suivant</Text>
                         <SafeIcon name="chevron-right" size={20} color="#fff" />
                     </TouchableOpacity>
+                ) : (
+                    <View style={styles.navButton} />
                 )}
             </View>
 

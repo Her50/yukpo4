@@ -115,7 +115,7 @@ module.exports = {
             config: {
                 encoding: "UTF-8",
                 googleMaps: {
-                    apiKey: getEnvVar('EXPO_PUBLIC_GOOGLE_MAPS_API_KEY', '')
+                    apiKey: getEnvVar('EXPO_PUBLIC_GOOGLE_MAPS_API_KEY', 'AIzaSyDqlMAysWsGzv1jQtR6WJn8LZXpH75SwFo')
                 }
             },
             "meta-data": [

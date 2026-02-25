@@ -6,10 +6,11 @@ export const ENVIRONMENT = {
     GOOGLE_TRANSLATE_API_KEY: process.env.EXPO_PUBLIC_GOOGLE_TRANSLATE_API_KEY || '',
 
     // Clés API Google Maps (Places, Geocoding, etc.)
-    // ✅ 2026-02-25: Clés séparées Android/iOS pour sécurité (recommandation Google)
+    // ✅ 2026-02-25: Clés séparées Android/iOS (restreintes par package/bundle ID)
+    // Les clés Maps côté client sont publiques par nature — protégées par restrictions plateforme
     GOOGLE_MAPS_API_KEY: Platform.OS === 'ios'
-        ? (process.env.EXPO_PUBLIC_GOOGLE_MAPS_IOS_API_KEY || process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || '')
-        : (process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || ''),
+        ? (process.env.EXPO_PUBLIC_GOOGLE_MAPS_IOS_API_KEY || 'AIzaSyBHGQavkIvn0pgj52WuTEapSkdKUmljqs8')
+        : (process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || 'AIzaSyDqlMAysWsGzv1jQtR6WJn8LZXpH75SwFo'),
 
     // URL de l'API backend - Configurable via .env
     // ✅ 2026-02-14: Migration vers GCP Cloud Run
