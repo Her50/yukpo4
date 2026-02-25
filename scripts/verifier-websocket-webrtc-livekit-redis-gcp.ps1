@@ -113,12 +113,19 @@ Write-Host ""
 Write-Host "[ETAPE 4/5] Verification WebSocket/WebRTC..." -ForegroundColor Yellow
 
 Write-Host "   [INFO] WebSocket/WebRTC integres dans le backend Rust" -ForegroundColor Cyan
-Write-Host "   [INFO] Routes WebSocket:" -ForegroundColor Cyan
-Write-Host "      - /ws/chat/* (Chat WebSocket avec Redis pub/sub)" -ForegroundColor White
+Write-Host "   [INFO] Routes WebSocket (Cloud Run):" -ForegroundColor Cyan
+Write-Host "      - /ws/chat/{s}/{p}/{u} (Chat WebSocket avec Redis pub/sub)" -ForegroundColor White
+Write-Host "      - /ws/webrtc (WebRTC signaling WebSocket)" -ForegroundColor White
 Write-Host "      - /ws/delivery/* (Delivery tracking WebSocket)" -ForegroundColor White
 Write-Host "      - /ws/flash-sale/* (Flash Sales WebSocket)" -ForegroundColor White
-Write-Host "   [INFO] Routes WebRTC:" -ForegroundColor Cyan
-Write-Host "      - /api/webrtc/* (WebRTC signaling)" -ForegroundColor White
+Write-Host "   [INFO] Routes REST WebRTC:" -ForegroundColor Cyan
+Write-Host "      - POST /api/webrtc/notify-call (Push notification appel)" -ForegroundColor White
+Write-Host "   [INFO] LiveKit sur GCE (yukpo-livekit-server):" -ForegroundColor Cyan
+Write-Host "      - Port 7880: API + WebSocket LiveKit" -ForegroundColor White
+Write-Host "      - Port 7881: TCP fallback" -ForegroundColor White
+Write-Host "      - UDP 50000-60000: WebRTC media" -ForegroundColor White
+Write-Host "      - Port 1935: SRS RTMP ingest" -ForegroundColor White
+Write-Host "      - Port 8080: SRS HLS streaming" -ForegroundColor White
 
 if ($foundVars.ContainsKey("REDIS_URL")) {
     Write-Host "   [OK] Redis disponible pour WebSocket pub/sub" -ForegroundColor Green

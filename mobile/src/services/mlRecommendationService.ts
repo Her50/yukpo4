@@ -10,15 +10,9 @@
 
 // ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
 import SafeStorage from '../utils/safeStorage';
-// ✅ INTÉGRÉ: TensorFlow Lite activé (import conditionnel)
-// Le service fonctionne en mode fallback si TensorFlow n'est pas disponible
+// ✅ TensorFlow retiré pour réduire la taille de l'APK (~30-50 MB)
+// Le service fonctionne en mode fallback (algorithme local sans TF)
 let tf: any = null;
-try {
-    tf = require('@tensorflow/tfjs');
-    require('@tensorflow/tfjs-react-native');
-} catch (error) {
-    console.warn('[MLRecommendationService] TensorFlow non disponible, utilisation mode fallback');
-}
 
 interface UserInteraction {
     contentId: string;

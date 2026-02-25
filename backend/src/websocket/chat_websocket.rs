@@ -12,6 +12,7 @@ use axum::{
 use chrono::{DateTime, Utc};
 use futures::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
+use sqlx;
 use std::{
     collections::HashMap,
     sync::{
@@ -276,23 +277,28 @@ async fn handle_chat_websocket(
 ) {
     let (mut sender, mut receiver) = socket.split();
 
-    // ID de conversation (peut être service_id ou UUID pour conversations privées)
-    let conversation_id = format!("{}_{}_{}", service_id, prestataire_id, user_id);
+    // ✅ CORRIGÉ: Normaliser le conversation_id pour que les deux parties (client et prestataire)
+    // rejoignent le MÊME canal. On trie les user IDs pour garantir l'unicité.
+    let (user_a, user_b) = if prestataire_id <= user_id {
+        (prestataire_id, user_id)
+    } else {
+        (user_id, prestataire_id)
+    };
+    let conversation_id = format!("{}_{}_{}", service_id, user_a, user_b);
 
     log::info!(
-        "🔌 [ChatWS] Connexion WebSocket chat - Conversation: {}, User: {}",
+        "🔌 [ChatWS] Connexion WebSocket chat - Conversation: {}, User: {}, Prestataire: {}",
         conversation_id,
-        user_id
+        user_id,
+        prestataire_id
     );
 
     record_chat_ws_connection_open();
 
     // Obtenir le manager de chat WebSocket depuis AppState
-    // Note: On doit créer le manager s'il n'existe pas encore
     let chat_manager = if let Some(manager) = &state.chat_ws_manager {
         manager.clone()
     } else {
-        // Créer un manager temporaire (normalement créé au démarrage)
         log::warn!("[ChatWS] ChatWebSocketManager non initialisé, création temporaire");
         Arc::new(ChatWebSocketManager::new(
             64,
@@ -321,12 +327,16 @@ async fn handle_chat_websocket(
         }
     });
 
+    // Cloner les valeurs nécessaires pour la tâche de réception
+    let chat_manager_recv = chat_manager.clone();
+    let conversation_id_recv = conversation_id.clone();
+    let state_recv = state.clone();
+
     // Tâche de réception des messages du client
     let mut recv_task = tokio::spawn(async move {
         while let Some(Ok(msg)) = receiver.next().await {
             match msg {
                 Message::Text(text) => {
-                    // Traiter les messages du client (ping, auth, etc.)
                     if let Ok(ws_msg) = serde_json::from_str::<serde_json::Value>(&text) {
                         if let Some(msg_type) = ws_msg.get("type").and_then(|t| t.as_str()) {
                             match msg_type {
@@ -335,6 +345,243 @@ async fn handle_chat_websocket(
                                 }
                                 "auth" => {
                                     log::debug!("[ChatWS] Auth reçu de user {}", user_id);
+                                }
+                                "message" => {
+                                    // ✅ NOUVEAU: Relayer le message au destinataire via broadcast
+                                    let content = ws_msg
+                                        .get("content")
+                                        .and_then(|c| c.as_str())
+                                        .unwrap_or("")
+                                        .to_string();
+                                    let message_type = ws_msg
+                                        .get("messageType")
+                                        .and_then(|t| t.as_str())
+                                        .unwrap_or("text")
+                                        .to_string();
+                                    let msg_id = ws_msg
+                                        .get("id")
+                                        .and_then(|i| i.as_str())
+                                        .unwrap_or("")
+                                        .to_string();
+                                    let to_user = ws_msg
+                                        .get("to")
+                                        .and_then(|t| t.as_i64())
+                                        .unwrap_or(prestataire_id as i64)
+                                        as i32;
+
+                                    log::info!(
+                                        "📨 [ChatWS] Message de user {} vers user {} dans conversation {}: {}",
+                                        user_id, to_user, conversation_id_recv, &content.chars().take(50).collect::<String>()
+                                    );
+
+                                    // Broadcast le message à tous les abonnés de cette conversation
+                                    let broadcast_msg = ChatWsMessage {
+                                        message_type: "message".to_string(),
+                                        conversation_id: conversation_id_recv.clone(),
+                                        user_id,
+                                        data: serde_json::json!({
+                                            "type": "message",
+                                            "id": msg_id,
+                                            "content": content,
+                                            "messageType": message_type,
+                                            "from": user_id,
+                                            "to": to_user,
+                                            "serviceId": service_id,
+                                            "timestamp": Utc::now().to_rfc3339(),
+                                            "status": "delivered",
+                                            "audioUrl": ws_msg.get("audioUrl"),
+                                            "imageUrl": ws_msg.get("imageUrl"),
+                                            "fileUrl": ws_msg.get("fileUrl"),
+                                            "mentioned_users": ws_msg.get("mentioned_users"),
+                                            "reply_to_id": ws_msg.get("reply_to_id")
+                                        }),
+                                        timestamp: Utc::now(),
+                                        instance_id: None,
+                                    };
+
+                                    chat_manager_recv
+                                        .broadcast_message(&conversation_id_recv, broadcast_msg)
+                                        .await;
+
+                                    // ✅ NOUVEAU: Sauvegarder le message en base de données
+                                    let db_msg_id = if msg_id.is_empty() {
+                                        format!("msg_{}", Utc::now().timestamp_millis())
+                                    } else {
+                                        msg_id.clone()
+                                    };
+
+                                    // Créer ou récupérer la conversation en DB
+                                    let db_conv_id =
+                                        format!("ws_conv_{}_{}", service_id, conversation_id_recv);
+                                    let _ = sqlx::query(
+                                        r#"INSERT INTO conversations (id, client_id, prestataire_id, service_id, service_title, status, is_active)
+                                           VALUES ($1, $2, $3, $4, 'Conversation directe', 'active', true)
+                                           ON CONFLICT (id) DO UPDATE SET last_message_at = NOW()"#
+                                    )
+                                    .bind(&db_conv_id)
+                                    .bind(user_id.min(to_user))
+                                    .bind(user_id.max(to_user))
+                                    .bind(service_id)
+                                    .execute(&state_recv.pg)
+                                    .await;
+
+                                    // Sauvegarder le message
+                                    let _ = sqlx::query(
+                                        r#"INSERT INTO chat_messages (id, conversation_id, from_user_id, content, message_type)
+                                           VALUES ($1, $2, $3, $4, $5)
+                                           ON CONFLICT (id) DO NOTHING"#
+                                    )
+                                    .bind(&db_msg_id)
+                                    .bind(&db_conv_id)
+                                    .bind(user_id)
+                                    .bind(&content)
+                                    .bind(&message_type)
+                                    .execute(&state_recv.pg)
+                                    .await;
+
+                                    // Note: Le trigger PostgreSQL 'increment_unread_count' s'occupe
+                                    // automatiquement d'incrémenter chat_unread_counts à l'insertion du message
+
+                                    // ✅ NOUVEAU: Envoyer une push notification au destinataire
+                                    let push_title = format!("💬 Nouveau message");
+                                    let push_body = if content.is_empty() {
+                                        match message_type.as_str() {
+                                            "image" => "📷 Image".to_string(),
+                                            "audio" => "🎤 Message vocal".to_string(),
+                                            "file" => "📎 Document".to_string(),
+                                            _ => "Nouveau message".to_string(),
+                                        }
+                                    } else if content.len() > 100 {
+                                        format!("{}...", &content[..100])
+                                    } else {
+                                        content.clone()
+                                    };
+
+                                    let _ = crate::services::push_notification_service::send_push_notification(
+                                        &state_recv.pg,
+                                        to_user,
+                                        push_title,
+                                        push_body,
+                                        Some(serde_json::json!({
+                                            "type": "new_message",
+                                            "service_id": service_id,
+                                            "sender_id": user_id,
+                                            "conversation_id": db_conv_id,
+                                        })),
+                                        Some("message_notification.mp3".to_string()),
+                                    )
+                                    .await;
+
+                                    // ✅ NOUVEAU: Créer une notification en base de données
+                                    let _ = crate::services::notification_service::create_notification(
+                                        &state_recv.pg,
+                                        to_user,
+                                        crate::services::notification_service::NotificationType::NewMessage,
+                                        format!("💬 Nouveau message"),
+                                        format!("Vous avez reçu un nouveau message"),
+                                        Some(serde_json::json!({
+                                            "service_id": service_id,
+                                            "sender_id": user_id,
+                                            "conversation_id": db_conv_id,
+                                            "message_preview": content.chars().take(100).collect::<String>()
+                                        })),
+                                    )
+                                    .await;
+
+                                    log::info!(
+                                        "[ChatWS] ✅ Message sauvegardé et notification envoyée"
+                                    );
+                                }
+                                "typing" => {
+                                    // ✅ NOUVEAU: Relayer l'indicateur de frappe
+                                    let is_typing = ws_msg
+                                        .get("isTyping")
+                                        .and_then(|t| t.as_bool())
+                                        .unwrap_or(true);
+                                    let typing_msg = ChatWsMessage {
+                                        message_type: "typing".to_string(),
+                                        conversation_id: conversation_id_recv.clone(),
+                                        user_id,
+                                        data: serde_json::json!({
+                                            "type": "typing",
+                                            "isTyping": is_typing,
+                                            "from": user_id
+                                        }),
+                                        timestamp: Utc::now(),
+                                        instance_id: None,
+                                    };
+                                    chat_manager_recv
+                                        .broadcast_message(&conversation_id_recv, typing_msg)
+                                        .await;
+                                }
+                                "mark_read" => {
+                                    // ✅ NOUVEAU: Relayer la confirmation de lecture
+                                    let read_msg = ChatWsMessage {
+                                        message_type: "message_read".to_string(),
+                                        conversation_id: conversation_id_recv.clone(),
+                                        user_id,
+                                        data: serde_json::json!({
+                                            "type": "message_read",
+                                            "from": user_id
+                                        }),
+                                        timestamp: Utc::now(),
+                                        instance_id: None,
+                                    };
+                                    chat_manager_recv
+                                        .broadcast_message(&conversation_id_recv, read_msg)
+                                        .await;
+                                }
+                                "edit_message" => {
+                                    // ✅ NOUVEAU: Relayer l'édition de message
+                                    let message_id = ws_msg
+                                        .get("messageId")
+                                        .and_then(|i| i.as_str())
+                                        .unwrap_or("")
+                                        .to_string();
+                                    let new_content = ws_msg
+                                        .get("newContent")
+                                        .and_then(|c| c.as_str())
+                                        .unwrap_or("")
+                                        .to_string();
+                                    let edit_msg = ChatWsMessage {
+                                        message_type: "message_edited".to_string(),
+                                        conversation_id: conversation_id_recv.clone(),
+                                        user_id,
+                                        data: serde_json::json!({
+                                            "type": "message_edited",
+                                            "messageId": message_id,
+                                            "newContent": new_content,
+                                            "from": user_id
+                                        }),
+                                        timestamp: Utc::now(),
+                                        instance_id: None,
+                                    };
+                                    chat_manager_recv
+                                        .broadcast_message(&conversation_id_recv, edit_msg)
+                                        .await;
+                                }
+                                "delete_message" => {
+                                    // ✅ NOUVEAU: Relayer la suppression de message
+                                    let message_id = ws_msg
+                                        .get("messageId")
+                                        .and_then(|i| i.as_str())
+                                        .unwrap_or("")
+                                        .to_string();
+                                    let delete_msg = ChatWsMessage {
+                                        message_type: "message_deleted".to_string(),
+                                        conversation_id: conversation_id_recv.clone(),
+                                        user_id,
+                                        data: serde_json::json!({
+                                            "type": "message_deleted",
+                                            "messageId": message_id,
+                                            "from": user_id
+                                        }),
+                                        timestamp: Utc::now(),
+                                        instance_id: None,
+                                    };
+                                    chat_manager_recv
+                                        .broadcast_message(&conversation_id_recv, delete_msg)
+                                        .await;
                                 }
                                 _ => {
                                     log::debug!("[ChatWS] Message type inconnu: {}", msg_type);

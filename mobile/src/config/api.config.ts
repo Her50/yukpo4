@@ -102,8 +102,8 @@ export const API_ENDPOINTS = {
 export const WS_ENDPOINTS = {
     CHAT: (serviceId: number, prestataireId: number, userId: number) =>
         `${WS_BASE_URL}/ws/chat/${serviceId}/${prestataireId}/${userId}`,
-    WEBRTC: (callId: string) =>
-        `${WS_BASE_URL}/ws/webrtc/${callId}`,
+    WEBRTC: (_callId?: string) =>
+        `${WS_BASE_URL}/ws/webrtc`,
 };
 
 // Helper pour construire une URL complète

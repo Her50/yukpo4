@@ -77,10 +77,10 @@ export const useWebSocketChat = (serviceId: number, prestataireId: number, userI
     const connectWebSocket = useCallback(() => {
         // ✅ CORRIGÉ: Vérifier que les IDs sont valides avant de se connecter
         // ✅ CORRIGÉ 2025-12-20: Conversion explicite en number pour gérer les cas où userId peut être string
-        const serviceIdNum = typeof serviceId === 'string' ? parseInt(serviceId, 10) : serviceId;
-        const prestataireIdNum = typeof prestataireId === 'string' ? parseInt(prestataireId.toString(), 10) : prestataireId;
-        const userIdNum = typeof userId === 'string' ? parseInt(userId.toString(), 10) : userId;
-        
+        const serviceIdNum = Number(serviceId);
+        const prestataireIdNum = Number(prestataireId);
+        const userIdNum = Number(userId);
+
         if (!serviceIdNum || typeof serviceIdNum !== 'number' || isNaN(serviceIdNum) || serviceIdNum <= 0) {
             console.error('❌ [useWebSocketChat] serviceId invalide:', serviceId, '(type:', typeof serviceId, ')');
             return;
@@ -130,14 +130,27 @@ export const useWebSocketChat = (serviceId: number, prestataireId: number, userI
 
             wsRef.current.onmessage = (event) => {
                 try {
-                    const data = JSON.parse(event.data);
-                    console.log('📨 [useWebSocketChat] Message reçu:', data);
+                    const rawData = JSON.parse(event.data);
+                    console.log('📨 [useWebSocketChat] Message reçu:', rawData);
 
-                    switch (data.type) {
+                    // ✅ CORRIGÉ: Le serveur envoie ChatWsMessage avec { message_type, data, user_id, ... }
+                    // On doit extraire le payload depuis rawData.data si c'est le nouveau format
+                    const isNewFormat = rawData.message_type !== undefined && rawData.data !== undefined;
+                    const data = isNewFormat ? rawData.data : rawData;
+                    const msgType = isNewFormat ? rawData.message_type : data.type;
+                    const senderUserId = isNewFormat ? rawData.user_id : data.from;
+
+                    // ✅ CORRIGÉ: Ignorer les messages envoyés par nous-mêmes (déjà ajoutés localement)
+                    if (msgType === 'message' && senderUserId === userIdNum) {
+                        console.log('📨 [useWebSocketChat] Message de nous-même ignoré (déjà ajouté localement)');
+                        return;
+                    }
+
+                    switch (msgType) {
                         case 'message':
                             const newMessage: ChatMessage = {
                                 id: data.id || Date.now().toString(),
-                                from: data.from === userId ? 'client' : 'prestataire',
+                                from: senderUserId === userIdNum ? 'client' : 'prestataire',
                                 content: data.content,
                                 timestamp: new Date(data.timestamp || Date.now()),
                                 status: data.status || 'delivered',
@@ -145,14 +158,17 @@ export const useWebSocketChat = (serviceId: number, prestataireId: number, userI
                                 audioUrl: data.audioUrl,
                                 imageUrl: data.imageUrl,
                                 fileUrl: data.fileUrl,
-                                editable: data.from === userId
+                                editable: senderUserId === userIdNum
                             };
 
                             setMessages(prev => [...prev, newMessage]);
                             break;
 
                         case 'typing':
-                            setIsTyping(data.isTyping);
+                            // ✅ CORRIGÉ: N'afficher typing que si c'est l'autre utilisateur
+                            if (senderUserId !== userIdNum) {
+                                setIsTyping(data.isTyping);
+                            }
                             break;
 
                         case 'message_edited':
@@ -174,13 +190,10 @@ export const useWebSocketChat = (serviceId: number, prestataireId: number, userI
                             break;
 
                         case 'reaction_added':
-                            // ✅ NOUVEAU: Gérer l'ajout de réaction
-                            // Cette logique sera gérée dans ChatModalMobile via un callback
                             console.log('✅ [useWebSocketChat] Réaction ajoutée:', data);
                             break;
 
                         case 'reaction_removed':
-                            // ✅ NOUVEAU: Gérer la suppression de réaction
                             console.log('✅ [useWebSocketChat] Réaction supprimée:', data);
                             break;
 
@@ -375,25 +388,25 @@ export const useWebSocketChat = (serviceId: number, prestataireId: number, userI
                     }
                 }
             }
-            
+
             if (!wsSendSuccess) {
                 console.warn('⚠️ [useWebSocketChat] WebSocket non connecté, envoi via API REST');
 
                 // ✅ CORRIGÉ: Fallback via API REST avec apiPost
                 try {
                     const response = await apiPost(API_ENDPOINTS.CHAT.SEND_MESSAGE, {
-                        serviceId,
-                        prestataireId,
+                        recipient_id: prestataireId,
+                        service_id: serviceId,
                         content: msg.content,
-                        messageType: msg.type,
-                        timestamp: msg.timestamp.toISOString(),
-                        // ✅ NOUVEAU: Inclure les médias
-                        audioUrl: msg.audioUrl,
-                        imageUrl: msg.imageUrl,
-                        fileUrl: msg.fileUrl,
-                        // ✅ NOUVEAU: Inclure les mentions et réponses
-                        mentioned_users: mediaData?.mentioned_users,
-                        reply_to_id: mediaData?.reply_to_id
+                        type: msg.type,
+                        metadata: {
+                            timestamp: msg.timestamp.toISOString(),
+                            audioUrl: msg.audioUrl,
+                            imageUrl: msg.imageUrl,
+                            fileUrl: msg.fileUrl,
+                            mentioned_users: mediaData?.mentioned_users,
+                            reply_to_id: mediaData?.reply_to_id
+                        }
                     });
 
                     if (response.success) {
@@ -458,7 +471,7 @@ export const useWebSocketChat = (serviceId: number, prestataireId: number, userI
                 console.error('❌ [useWebSocketChat] Erreur envoi édition WebSocket:', error);
             }
         }
-        
+
         if (!wsEditSuccess) {
             // ✅ CORRIGÉ: Fallback REST avec apiPut
             try {
@@ -491,7 +504,7 @@ export const useWebSocketChat = (serviceId: number, prestataireId: number, userI
                 console.error('❌ [useWebSocketChat] Erreur envoi suppression WebSocket:', error);
             }
         }
-        
+
         if (!wsDeleteSuccess) {
             // ✅ CORRIGÉ: Fallback REST avec apiDelete
             try {

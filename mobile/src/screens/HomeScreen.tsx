@@ -186,6 +186,8 @@ const HomeScreen: React.FC = () => {
     const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null);
     // ✅ NOUVEAU: Nombre de notifications non lues
     const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
+    // ✅ NOUVEAU: Nombre de messages chat non lus
+    const [unreadChatCount, setUnreadChatCount] = useState(0);
 
 
     // Navigation simplifiée
@@ -222,31 +224,59 @@ const HomeScreen: React.FC = () => {
         }
     }, [user?.id]);
 
+    // ✅ NOUVEAU: Charger le nombre de messages chat non lus
+    const loadUnreadChatCount = useCallback(async () => {
+        if (!user?.id) {
+            setUnreadChatCount(0);
+            return;
+        }
+
+        try {
+            const response = await apiGet('/api/chat/conversations');
+            if (response.success && Array.isArray(response.data)) {
+                const totalUnread = (response.data as any[]).reduce(
+                    (total: number, conv: any) => total + (conv.unread_count || conv.unreadCount || 0),
+                    0
+                );
+                setUnreadChatCount(totalUnread);
+                console.log('[HomeScreen] 💬 Messages chat non lus:', totalUnread);
+            } else {
+                setUnreadChatCount(0);
+            }
+        } catch (error) {
+            console.error('[HomeScreen] Erreur chargement chat non lus:', error);
+            setUnreadChatCount(0);
+        }
+    }, [user?.id]);
+
     // ✅ NOUVEAU: Charger le nombre au démarrage et quand l'utilisateur change
     React.useEffect(() => {
         loadUnreadNotificationsCount();
-    }, [loadUnreadNotificationsCount]);
+        loadUnreadChatCount();
+    }, [loadUnreadNotificationsCount, loadUnreadChatCount]);
 
     // ✅ NOUVEAU: Recharger le nombre quand l'écran est focus (utilisateur revient sur l'écran)
     useFocusEffect(
         useCallback(() => {
             loadUnreadNotificationsCount();
-        }, [loadUnreadNotificationsCount])
+            loadUnreadChatCount();
+        }, [loadUnreadNotificationsCount, loadUnreadChatCount])
     );
 
     // ✅ NOUVEAU: Recharger le nombre quand l'app revient au premier plan (notification reçue en arrière-plan)
     React.useEffect(() => {
         const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
             if (nextAppState === 'active') {
-                // L'app revient au premier plan, recharger le nombre de notifications
+                // L'app revient au premier plan, recharger le nombre de notifications et chat
                 loadUnreadNotificationsCount();
+                loadUnreadChatCount();
             }
         });
 
         return () => {
             subscription.remove();
         };
-    }, [loadUnreadNotificationsCount]);
+    }, [loadUnreadNotificationsCount, loadUnreadChatCount]);
 
     // ✅ NOUVEAU: Écouter les événements de notifications reçues pour mettre à jour le badge en temps réel
     React.useEffect(() => {
@@ -254,12 +284,13 @@ const HomeScreen: React.FC = () => {
             // Recharger le nombre de notifications non lues quand une notification est reçue
             console.log('[HomeScreen] 📬 Notification reçue, mise à jour du badge...');
             loadUnreadNotificationsCount();
+            loadUnreadChatCount();
         });
 
         return () => {
             listener.remove();
         };
-    }, [loadUnreadNotificationsCount]);
+    }, [loadUnreadNotificationsCount, loadUnreadChatCount]);
 
     // ✅ NOUVEAU: Recharger quand le modal de notifications se ferme (notifications lues)
     const handleNotificationModalClose = useCallback(() => {
@@ -681,7 +712,7 @@ const HomeScreen: React.FC = () => {
                         />
                     </TouchableOpacity>
                     <TouchableOpacity
-                        style={styles.headerButton}
+                        style={[styles.headerButton, styles.notificationButton]}
                         onPress={() => {
                             // ✅ DÉSACTIVÉ: Haptic feedback désactivé pour fluidité
                             // hapticPress();
@@ -689,6 +720,14 @@ const HomeScreen: React.FC = () => {
                         }}
                     >
                         <Text style={styles.headerButtonIcon}>💬</Text>
+                        {/* ✅ NOUVEAU: Badge rouge avec le nombre de messages chat non lus */}
+                        {unreadChatCount > 0 && (
+                            <View style={styles.notificationBadge}>
+                                <Text style={styles.notificationBadgeText}>
+                                    {unreadChatCount > 99 ? '99+' : String(unreadChatCount)}
+                                </Text>
+                            </View>
+                        )}
                     </TouchableOpacity>
                     <TouchableOpacity
                         style={[styles.headerButton, styles.notificationButton]}
@@ -873,7 +912,11 @@ const HomeScreen: React.FC = () => {
             {showChatModal && (
                 <ChatHistoryModal
                     isOpen={true}
-                    onClose={() => setShowChatModal(false)}
+                    onClose={() => {
+                        setShowChatModal(false);
+                        // ✅ NOUVEAU: Recharger le nombre de messages non lus après fermeture du chat
+                        setTimeout(() => { loadUnreadChatCount(); }, 500);
+                    }}
                     onOpenChat={(chatId: string) => {
                         console.log('Ouvrir chat:', chatId);
                         setShowChatModal(false);

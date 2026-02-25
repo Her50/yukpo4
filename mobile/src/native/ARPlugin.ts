@@ -7,7 +7,10 @@
  */
 
 import { Platform } from 'react-native';
-import { Frame } from 'react-native-vision-camera';
+
+// ✅ react-native-vision-camera retiré pour réduire la taille APK (~5-10 MB)
+// Type Frame défini localement pour compatibilité
+type Frame = { width: number; height: number; timestamp: number };
 
 export interface ARPlane {
     id: string;
@@ -170,7 +173,7 @@ export function createARPlugin() {
     // ✅ CORRIGÉ: Créer le plugin selon la plateforme en dehors du worklet
     // Les fonctions createARKitPlugin et createARCorePlugin sont des worklets,
     // mais elles sont créées ici et stockées pour être utilisées dans le frameProcessor
-    
+
     if (Platform.OS === 'ios') {
         // Note: createARKitPlugin() retourne un objet avec detectPlanes qui est un worklet
         // On peut stocker cet objet et l'utiliser dans le worklet

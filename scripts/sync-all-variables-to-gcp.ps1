@@ -117,6 +117,20 @@ $secretMapping = @{
     "S3_SECRET_KEY" = "s3-secret-key"
 }
 
+# ✅ Auto-résolution IP LiveKit GCE
+$LiveKitInstanceName = "yukpo-livekit-server"
+$LiveKitZone = "europe-west1-b"
+$LiveKitGceIp = gcloud compute instances describe $LiveKitInstanceName --zone=$LiveKitZone --project=$GcpProjectId --format="value(networkInterfaces[0].accessConfigs[0].natIP)" 2>&1
+if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrEmpty($LiveKitGceIp)) {
+    # Fallback: utiliser l'IP statique réservée
+    $LiveKitGceIp = gcloud compute addresses describe yukpo-livekit-ip --region="europe-west1" --project=$GcpProjectId --format="value(address)" 2>&1
+    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrEmpty($LiveKitGceIp)) {
+        Write-Host "⚠️  LiveKit GCE IP non trouvée - lancez d'abord: gcp\livekit-infrastructure\deploy-livekit-gcp.ps1" -ForegroundColor Yellow
+        $LiveKitGceIp = "LIVEKIT_GCE_IP"
+    }
+}
+Write-Host "🎥 LiveKit GCE IP: $LiveKitGceIp" -ForegroundColor Green
+
 # Variables d'environnement non-sensibles
 $envVars = @{
     # Pool DB (corrigé pour éviter saturation)
@@ -162,7 +176,7 @@ $envVars = @{
     "CUDA_VISIBLE_DEVICES" = "0,1"
     "NVIDIA_VISIBLE_DEVICES" = "all"
     "GPU_ENABLED" = "true"
-    "GPU_ENDPOINT" = "http://yukpo-gpu-workers:8080"
+    "GPU_ENDPOINT" = "http://34.140.79.59:8080"
     "GPU_ZONE" = "europe-west1-b"
     "GPU_INSTANCE_NAME" = "yukpo-gpu-worker"
     "GCP_PROJECT_ID" = "yukpo-project"
@@ -180,7 +194,8 @@ $envVars = @{
     "VIDEO_RENDERER_TIMEOUT_SECS" = "900"
     "VIDEO_RENDERER_PROJECT_ROOT" = "/srv/yukpo/video-renderer"
     "VIDEO_RENDERER_SHARED_VOLUME" = "/srv/yukpo/jobs"
-    "VIDEO_RENDERER_RPC_URL" = "http://46.224.14.85:8088/render"
+    # ✅ MIGRÉ: Video renderer sur GCP GPU worker (34.140.79.59)
+    "VIDEO_RENDERER_RPC_URL" = "http://34.140.79.59:8080/render"
     "AUDIO_SYNC_TIMEOUT_SECONDS" = "180"
     "MAX_VIDEO_SIZE_MB" = "50"
     "MAX_AUDIO_SIZE_MB" = "10"
@@ -205,20 +220,22 @@ $envVars = @{
     "AUPHONIC_POLL_INTERVAL_SECS" = "5"
     "AUPHONIC_PRESET" = "yukpo_preset"
     
-    # LiveKit Configuration
-    "LIVEKIT_API_URL" = "http://46.224.14.85:7880"
-    "LIVEKIT_WS_URL" = "ws://46.224.14.85:7880"
-    "LIVEKIT_HLS_URL" = "http://46.224.14.85:8080/live"
+    # ✅ MIGRÉ vers GCP: LiveKit sur GCE (yukpo-livekit-server)
+    # IP sera mise à jour automatiquement par deploy-livekit-gcp.ps1
+    # Placeholder: utiliser l'IP de l'instance GCE yukpo-livekit-server
+    "LIVEKIT_API_URL" = "http://${LiveKitGceIp}:7880"
+    "LIVEKIT_WS_URL" = "ws://${LiveKitGceIp}:7880"
+    "LIVEKIT_HLS_URL" = "http://${LiveKitGceIp}:8080/live"
     "LIVEKIT_INGRESS_MODE" = "rtmp"
     "LIVEKIT_INGRESS_NAME" = "prod-ingress-1"
-    "LIVEKIT_INGRESS_REGION" = "eu-central"
+    "LIVEKIT_INGRESS_REGION" = "europe-west1"
     "LIVEKIT_INGRESS_ROOM" = "live-events"
     "LIVE_FALLBACK_ENABLED" = "true"
     "LIVE_RECORDING_ENABLED" = "true"
     
-    # SRS Configuration
-    "SRS_HLS_URL" = "https://srs.46.224.14.85.sslip.io/live"
-    "SRS_RTMP_URL" = "rtmp://46.224.14.85:1935/live"
+    # ✅ MIGRÉ vers GCP: SRS sur GCE (yukpo-livekit-server)
+    "SRS_HLS_URL" = "http://${LiveKitGceIp}:8080/live"
+    "SRS_RTMP_URL" = "rtmp://${LiveKitGceIp}:1935/live"
     
     # S3/GCS Configuration - GCP (CDN S3 naif GCP: Cloud Storage + Cloud CDN)
     "S3_BUCKET" = "yukpo-project-yukpo-backend-media"

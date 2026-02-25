@@ -233,6 +233,9 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
     let chat_websocket = create_chat_websocket_router();
     // ✅ NOUVEAU: Routes WebSocket pour mises à jour temps réel Flash Sales
     let flash_sale_websocket = create_flash_sale_websocket_router();
+    // ✅ NOUVEAU: Routes WebSocket pour signaling WebRTC (appels audio/vidéo)
+    let webrtc_manager = crate::websocket::create_webrtc_manager();
+    let webrtc_signaling_ws = crate::websocket::create_webrtc_router(webrtc_manager);
 
     // ✅ Routes critiques ajoutées
     let delivery = delivery_routes(state.clone());
@@ -357,6 +360,7 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .merge(websocket)
         .merge(chat_websocket.with_state(state.clone()))
         .merge(flash_sale_websocket.with_state(state.clone()))
+        .merge(webrtc_signaling_ws.with_state(state.clone())) // ✅ NOUVEAU: WebSocket signaling WebRTC
         // ✅ Routes critiques ajoutées
         .merge(delivery)
         .merge(delivery_public)

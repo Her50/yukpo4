@@ -17,11 +17,26 @@ import {
     View
 } from 'react-native';
 import { runOnJS, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
-import { Camera, Frame, useCameraDevice, useCameraPermission, useFrameProcessor } from 'react-native-vision-camera';
 import { createARPlugin } from '../native/ARPlugin';
 import { modernColors } from '../theme/modernTheme';
-import { NativeButton, NativeCard } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
+import { NativeButton, NativeCard } from './SafeNativeDesign';
+// ✅ react-native-vision-camera retiré pour réduire la taille APK
+// Import dynamique conditionnel
+let Camera: any = null;
+let useCameraDevice: any = () => null;
+let useCameraPermission: any = () => ({ hasPermission: false, requestPermission: async () => false });
+let useFrameProcessor: any = () => null;
+type Frame = { width: number; height: number; timestamp: number };
+try {
+    const vc = require('react-native-vision-camera');
+    Camera = vc.Camera;
+    useCameraDevice = vc.useCameraDevice;
+    useCameraPermission = vc.useCameraPermission;
+    useFrameProcessor = vc.useFrameProcessor;
+} catch (e) {
+    console.warn('[ARVideoEditor] react-native-vision-camera non disponible');
+}
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -256,84 +271,84 @@ export const ARVideoEditorVisionCamera: React.FC<ARVideoEditorVisionCameraProps>
                     video={true}
                     audio={true}
                 >
-                {/* Overlay AR */}
-                <View style={styles.overlay}>
-                    {/* Indicateur de tracking AR */}
-                    <View style={[styles.trackingIndicator, animatedTrackingStyle]}>
-                        <LinearGradient
-                            colors={[
-                                trackingState === 'tracking'
-                                    ? modernColors.primary + '80'
-                                    : '#f59e0b80',
-                                trackingState === 'tracking'
-                                    ? modernColors.primary + '20'
-                                    : '#f59e0b20'
-                            ]}
-                            style={styles.trackingGradient}
-                        >
-                            <SafeIcon
-                                name={
+                    {/* Overlay AR */}
+                    <View style={styles.overlay}>
+                        {/* Indicateur de tracking AR */}
+                        <View style={[styles.trackingIndicator, animatedTrackingStyle]}>
+                            <LinearGradient
+                                colors={[
                                     trackingState === 'tracking'
-                                        ? 'check-circle'
-                                        : trackingState === 'error'
-                                            ? 'alert-circle'
-                                            : 'search'
-                                }
-                                size={24}
-                                color={
+                                        ? modernColors.primary + '80'
+                                        : '#f59e0b80',
                                     trackingState === 'tracking'
-                                        ? '#ffffff'
-                                        : '#f59e0b'
-                                }
-                            />
-                            <Text style={styles.trackingText}>{getTrackingMessage()}</Text>
-                        </LinearGradient>
-                    </View>
-
-                    {/* Indicateur de plan détecté */}
-                    {arTrackingResult?.planePosition && (
-                        <View style={styles.planeIndicator}>
-                            <Text style={styles.planeText}>
-                                Position: ({arTrackingResult.planePosition.x.toFixed(2)}, {arTrackingResult.planePosition.y.toFixed(2)}, {arTrackingResult.planePosition.z.toFixed(2)})
-                            </Text>
-                        </View>
-                    )}
-
-                    {/* Contrôles */}
-                    <View style={styles.controls}>
-                        {!videoUri && !isRecording ? (
-                            <NativeButton
-                                title="Démarrer l'enregistrement"
-                                variant="primary"
-                                size="large"
-                                onPress={handleStartRecording}
-                                disabled={trackingState !== 'tracking'}
-                            />
-                        ) : (
-                            <View style={styles.recordingControls}>
-                                <NativeButton
-                                    title={`Arrêter (${recordingDuration}s)`}
-                                    variant="danger"
-                                    size="large"
-                                    onPress={handleStopRecording}
+                                        ? modernColors.primary + '20'
+                                        : '#f59e0b20'
+                                ]}
+                                style={styles.trackingGradient}
+                            >
+                                <SafeIcon
+                                    name={
+                                        trackingState === 'tracking'
+                                            ? 'check-circle'
+                                            : trackingState === 'error'
+                                                ? 'alert-circle'
+                                                : 'search'
+                                    }
+                                    size={24}
+                                    color={
+                                        trackingState === 'tracking'
+                                            ? '#ffffff'
+                                            : '#f59e0b'
+                                    }
                                 />
+                                <Text style={styles.trackingText}>{getTrackingMessage()}</Text>
+                            </LinearGradient>
+                        </View>
+
+                        {/* Indicateur de plan détecté */}
+                        {arTrackingResult?.planePosition && (
+                            <View style={styles.planeIndicator}>
+                                <Text style={styles.planeText}>
+                                    Position: ({arTrackingResult.planePosition.x.toFixed(2)}, {arTrackingResult.planePosition.y.toFixed(2)}, {arTrackingResult.planePosition.z.toFixed(2)})
+                                </Text>
                             </View>
                         )}
 
-                        {!videoUri && onClose && (
-                            <NativeButton
-                                title="Fermer"
-                                variant="secondary"
-                                size="medium"
-                                onPress={onClose}
-                                style={styles.closeButton}
-                            />
-                        )}
+                        {/* Contrôles */}
+                        <View style={styles.controls}>
+                            {!videoUri && !isRecording ? (
+                                <NativeButton
+                                    title="Démarrer l'enregistrement"
+                                    variant="primary"
+                                    size="large"
+                                    onPress={handleStartRecording}
+                                    disabled={trackingState !== 'tracking'}
+                                />
+                            ) : (
+                                <View style={styles.recordingControls}>
+                                    <NativeButton
+                                        title={`Arrêter (${recordingDuration}s)`}
+                                        variant="danger"
+                                        size="large"
+                                        onPress={handleStopRecording}
+                                    />
+                                </View>
+                            )}
+
+                            {!videoUri && onClose && (
+                                <NativeButton
+                                    title="Fermer"
+                                    variant="secondary"
+                                    size="medium"
+                                    onPress={onClose}
+                                    style={styles.closeButton}
+                                />
+                            )}
+                        </View>
                     </View>
-                </View>
                 </Camera>
             )}
-            
+
             {/* ✅ Interface post-capture */}
             {videoUri && (
                 <View style={styles.postCaptureOverlay}>
@@ -347,7 +362,7 @@ export const ARVideoEditorVisionCamera: React.FC<ARVideoEditorVisionCameraProps>
                             <Text style={styles.successText}>Vidéo enregistrée avec succès !</Text>
                             <Text style={styles.successSubtext}>Prêt pour l'étape suivante</Text>
                         </NativeCard>
-                        
+
                         <View style={styles.actionButtons}>
                             <NativeButton
                                 title="✅ Utiliser cette vidéo"
@@ -360,7 +375,7 @@ export const ARVideoEditorVisionCamera: React.FC<ARVideoEditorVisionCameraProps>
                                 }}
                                 style={styles.continueButton}
                             />
-                            
+
                             <NativeButton
                                 title="🔄 Réenregistrer"
                                 variant="secondary"

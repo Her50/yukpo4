@@ -22,17 +22,17 @@ on:
       push_to_registry:
         description: 'Push to registry'
         required: false
-        default: 'false'
+        default: false
         type: boolean
       push_to_aws:
         description: 'Push to AWS ECR'
         required: false
-        default: 'false'
+        default: false
         type: boolean
       push_to_gcp:
         description: 'Push to GCP Cloud Run'
         required: false
-        default: 'false'
+        default: false
         type: boolean
 
 env:
@@ -468,52 +468,148 @@ jobs:
           echo "Preparing environment variables from GitHub secrets..."
           
           # Créer un fichier JSON pour les variables d'environnement
-          # NOTE: DATABASE_URL est géré par gcp-deploy.yml comme secret (database-url:latest)
-          # Ne pas l'ajouter ici pour éviter les conflits entre variable d'environnement et secret
-          # Utiliser jq si disponible, sinon construire manuellement
+          # NOTE: DATABASE_URL, REDIS_URL, MONGODB_URL, JWT_SECRET gérés comme secrets GCP
+          # ✅ IMPORTANT: Toutes les variables doivent être ici pour éviter l'écrasement au déploiement
           if command -v jq &> /dev/null; then
             echo '{}' | jq \
               --arg allowed_origins "https://api.yukpo.com,https://yukpo.com" \
               '. + {
-                # DATABASE_URL supprimé - géré par gcp-deploy.yml comme secret (database-url:latest)
+                "CLOUD_RUN": "true",
                 "ENABLE_AUTO_MIGRATIONS": "true",
                 "SQLX_OFFLINE": "true",
+                "HOST": "0.0.0.0",
+                "PORT": "8080",
                 "RUST_LOG": "info",
+                "LOG_FORMAT": "json",
+                "APP_ENV": "production",
                 "ENVIRONMENT": "production",
                 "ALLOWED_ORIGINS": $allowed_origins,
-                "CLOUD_RUN": "true",
+                "LAUNCH_PHASE_START_DATE": "2026-02-10T00:00:00Z",
+                "GCP_PROJECT_ID": "${{ env.GCP_PROJECT_ID }}",
+                "INSTANCE_ID": "backend-1",
+
+                "DB_POOL_SIZE": "10",
+                "DB_POOL_MIN_SIZE": "2",
+                "DB_ACQUIRE_TIMEOUT_SECS": "30",
+                "DB_HEALTH_CHECK_INTERVAL_SECS": "30",
+                "DATABASE_TIMEOUT": "10",
+
+                "API_MAX_PAYLOAD_SIZE": "10485760",
+                "API_RATE_LIMIT_PER_MINUTE": "100",
+                "API_REQUEST_TIMEOUT": "30",
+                "REQUEST_TIMEOUT": "30",
+                "RATE_LIMIT_IP": "200",
+
+                "AI_REQUEST_TIMEOUT_SECONDS": "120",
+                "ENABLE_AI_OPTIMIZATIONS": "true",
+                "EMBEDDING_MAX_RETRIES": "3",
+                "EMBEDDING_TIMEOUT_SECONDS": "60",
+
                 "GPU_ENABLED": "true",
-                "GPU_ENDPOINT": "http://yukpo-gpu-workers:8080",
+                "GPU_ENDPOINT": "http://34.140.79.59:8080",
                 "GPU_ZONE": "europe-west1-b",
                 "GPU_INSTANCE_NAME": "yukpo-gpu-worker",
-                "GCP_PROJECT_ID": "${{ env.GCP_PROJECT_ID }}",
                 "GPU_MONTHLY_BUDGET": "100.0",
                 "GPU_SCALE_UP_THRESHOLD": "70.0",
                 "GPU_SCALE_DOWN_THRESHOLD": "20.0",
                 "GPU_MAX_INSTANCES": "3",
-                "GPU_MIN_INSTANCES": "0"
+                "GPU_MIN_INSTANCES": "0",
+
+                "VIDEO_GENERATION_TIMEOUT_SECONDS": "600",
+                "VIDEO_ANALYSIS_TIMEOUT_SECONDS": "180",
+                "VIDEO_RENDERER_ENABLE_GPU": "true",
+                "VIDEO_RENDERER_MAX_RETRIES": "2",
+                "VIDEO_RENDERER_TIMEOUT_SECS": "900",
+                "VIDEO_RENDERER_RPC_URL": "http://34.140.79.59:8080/render",
+                "AUDIO_SYNC_TIMEOUT_SECONDS": "180",
+                "MAX_VIDEO_SIZE_MB": "50",
+                "MAX_AUDIO_SIZE_MB": "10",
+                "MAX_IMAGE_SIZE_MB": "10",
+
+                "UPLOAD_BASE_URL": "https://storage.googleapis.com/yukpo-project-yukpo-backend-media",
+                "PUBLIC_BASE_URL": "https://storage.googleapis.com/yukpo-project-yukpo-backend-media",
+                "UPLOAD_STORAGE_PATH": "uploads",
+                "S3_BUCKET": "yukpo-project-yukpo-backend-media",
+                "S3_REGION": "europe-west1",
+                "S3_ENDPOINT": "https://storage.googleapis.com",
+                "S3_FORCE_PATH_STYLE": "false",
+                "RENDERER_S3_UPLOAD": "true",
+
+                "LIVEKIT_INGRESS_MODE": "rtmp",
+                "LIVEKIT_INGRESS_NAME": "prod-ingress-1",
+                "LIVEKIT_INGRESS_REGION": "europe-west1",
+                "LIVEKIT_INGRESS_ROOM": "live-events",
+                "LIVE_FALLBACK_ENABLED": "true",
+                "LIVE_RECORDING_ENABLED": "true",
+
+                "EMAIL_ENABLED": "true",
+                "EMAIL_PROVIDER": "sendgrid",
+                "SENDGRID_FROM_EMAIL": "noreply@yukpomnang.com",
+                "SENDGRID_FROM_NAME": "Yukpomnang",
+                "SMS_ENABLED": "true",
+                "SMS_PROVIDER": "twilio",
+
+                "SEARCH_DEFAULT_LANGUAGE": "fr",
+                "SEARCH_DEFAULT_RADIUS_KM": "20",
+                "SEARCH_MAX_RESULTS": "50",
+                "SEARCH_TITLE_BOOST": "2.0",
+                "SEMANTIC_CACHE_THRESHOLD": "0.85",
+                "CACHE_DEFAULT_TTL": "3600",
+                "CACHE_TTL_SEARCH": "600",
+
+                "DELIVERY_MATCHING_WORKER_BATCH_SIZE": "50",
+                "DELIVERY_MATCHING_WORKER_INTERVAL_SECS": "30",
+                "DELIVERY_MATCHING_WORKER_PARALLEL": "3",
+                "DELIVERY_PENDING_TIMEOUT_MINUTES": "60",
+                "DELIVERY_TIMEOUT_MONITOR_INTERVAL_SECS": "60",
+                "MATCHING_MIN_SCORE_THRESHOLD": "0.6",
+
+                "SLA_PROMISED_MINUTES": "30",
+                "SLA_THRESHOLD_RATIO": "1.10",
+                "SLA_LOOKBACK_MINUTES": "60",
+                "SLA_MONITOR_INTERVAL_SECONDS": "300",
+
+                "GLOBAL_PROMO_SCHEDULER_INTERVAL_SECS": "30",
+                "JWT_EXPIRATION_HOURS": "24",
+                "KYC_PROVIDER": "manual",
+                "ML_MODELS_DIR": "models",
+                "YUKPO_IMMO_COMMISSION_RATE": "0.05"
               }' > env-vars.json
           else
-            # Fallback: construire JSON manuellement avec échappement
-            # NOTE: DATABASE_URL supprimé - géré par gcp-deploy.yml comme secret (database-url:latest)
+            # Fallback: JSON manuel (variables les plus critiques)
+            # NOTE: DATABASE_URL, REDIS_URL, MONGODB_URL, JWT_SECRET gérés comme secrets GCP
             cat > env-vars.json << EOF
           {
+            "CLOUD_RUN": "true",
             "ENABLE_AUTO_MIGRATIONS": "true",
             "SQLX_OFFLINE": "true",
+            "HOST": "0.0.0.0",
+            "PORT": "8080",
             "RUST_LOG": "info",
+            "APP_ENV": "production",
             "ENVIRONMENT": "production",
             "ALLOWED_ORIGINS": "https://api.yukpo.com,https://yukpo.com",
-            "CLOUD_RUN": "true",
+            "GCP_PROJECT_ID": "${{ secrets.GCP_PROJECT_ID }}",
             "GPU_ENABLED": "true",
-            "GPU_ENDPOINT": "http://yukpo-gpu-workers:8080",
+            "GPU_ENDPOINT": "http://34.140.79.59:8080",
             "GPU_ZONE": "europe-west1-b",
             "GPU_INSTANCE_NAME": "yukpo-gpu-worker",
-            "GCP_PROJECT_ID": "${{ secrets.GCP_PROJECT_ID }}",
             "GPU_MONTHLY_BUDGET": "100.0",
-            "GPU_SCALE_UP_THRESHOLD": "70.0",
-            "GPU_SCALE_DOWN_THRESHOLD": "20.0",
             "GPU_MAX_INSTANCES": "3",
-            "GPU_MIN_INSTANCES": "0"
+            "GPU_MIN_INSTANCES": "0",
+            "VIDEO_RENDERER_RPC_URL": "http://34.140.79.59:8080/render",
+            "VIDEO_RENDERER_ENABLE_GPU": "true",
+            "LIVEKIT_INGRESS_MODE": "rtmp",
+            "LIVEKIT_INGRESS_REGION": "europe-west1",
+            "LIVE_FALLBACK_ENABLED": "true",
+            "LIVE_RECORDING_ENABLED": "true",
+            "S3_BUCKET": "yukpo-project-yukpo-backend-media",
+            "S3_REGION": "europe-west1",
+            "S3_ENDPOINT": "https://storage.googleapis.com",
+            "S3_FORCE_PATH_STYLE": "false",
+            "SEARCH_DEFAULT_LANGUAGE": "fr",
+            "JWT_EXPIRATION_HOURS": "24",
+            "KYC_PROVIDER": "manual"
           }
           EOF
           fi
@@ -550,13 +646,23 @@ jobs:
             --clear-cloudsql-instances \
             --project ${{ secrets.GCP_PROJECT_ID }} 2>&1 | grep -v "does not exist\|not found\|No change\|does not have" || true
           
+          # ✅ CORRIGÉ: Utiliser --update-env-vars au lieu de --env-vars-file pour ne pas écraser
+          # les variables dynamiques (LIVEKIT_API_URL, LIVEKIT_WS_URL, SRS_*) définies par deploy-livekit-gcp.ps1
+          echo "Construction de la liste des variables depuis env-vars.json..."
+          if command -v jq &> /dev/null; then
+            ENV_VARS=$(jq -r 'to_entries | map("\(.key)=\(.value)") | join(",")' ${{ steps.prepare-env.outputs.env_file }})
+          else
+            ENV_VARS=$(python3 -c "import json; d=json.load(open('${{ steps.prepare-env.outputs.env_file }}')); print(','.join(f'{k}={v}' for k,v in d.items()))")
+          fi
+          
           echo "🚀 Déploiement vers Cloud Run avec instance yukpo-postgres uniquement..."
           gcloud run deploy ${{ env.GCP_SERVICE_NAME }} \
             --image ${{ env.GCP_IMAGE_NAME }}:latest \
             --platform managed \
             --region ${{ env.GCP_REGION }} \
             --allow-unauthenticated \
-            --env-vars-file ${{ steps.prepare-env.outputs.env_file }} \
+            --update-env-vars="$ENV_VARS" \
+            --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,MONGODB_URL=mongodb-url:latest,OPENAI_API_KEY=openai-api-key:latest,S3_ACCESS_KEY=s3-access-key:latest,S3_SECRET_KEY=s3-secret-key:latest,LIVEKIT_API_KEY=livekit-api-key:latest,LIVEKIT_API_SECRET=livekit-api-secret:latest" \
             --add-cloudsql-instances ${{ secrets.GCP_PROJECT_ID }}:${{ env.GCP_REGION }}:yukpo-postgres \
             --memory 2Gi \
             --cpu 2 \
@@ -565,7 +671,7 @@ jobs:
             --cpu-boost \
             --cpu-throttling \
             --service-account ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }} \
-            --project ${{ secrets.GCP_PROJECT_ID }} \
+            --project ${{ secrets.GCP_PROJECT_ID }}
           
           echo "✅ Cloud Run deployment completed"
 

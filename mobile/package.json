@@ -30,8 +30,6 @@
     "@react-navigation/native": "^6.1.18",
     "@react-navigation/stack": "^6.4.1",
     "@shopify/flash-list": "1.7.3",
-    "@tensorflow/tfjs": "^4.15.0",
-    "@tensorflow/tfjs-react-native": "^0.8.0",
     "axios": "^1.12.2",
     "buffer": "^6.0.3",
     "expo": "~52.0.0",
@@ -50,7 +48,6 @@
     "expo-document-picker": "~13.0.3",
     "expo-file-system": "~18.0.12",
     "expo-font": "~13.0.4",
-    "expo-gl": "~15.0.5",
     "expo-haptics": "~14.0.1",
     "expo-image-manipulator": "~13.0.6",
     "expo-image-picker": "~16.0.6",
@@ -92,7 +89,6 @@
     "react-native-share": "^10.0.2",
     "react-native-skeleton-placeholder": "^5.2.4",
     "react-native-svg": "15.8.0",
-    "react-native-vision-camera": "^4.0.0",
     "react-native-webrtc": "^124.0.3",
     "react-query": "^3.39.3",
     "sentry-expo": "~7.0.0"
@@ -120,8 +116,6 @@
       "reactNativeDirectoryCheck": {
         "listUnknownPackages": false,
         "exclude": [
-          "@tensorflow/tfjs",
-          "@tensorflow/tfjs-react-native",
           "buffer",
           "expo-av",
           "expo-barcode-scanner",

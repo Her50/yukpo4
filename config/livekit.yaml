@@ -18,8 +18,10 @@ port: 7880
 
 # when redis is set, LiveKit will automatically operate in a fully distributed fashion
 # clients could connect to any node and be routed to the same room
+# ✅ MIGRÉ vers GCP: Redis Upstash (ou GCP Memorystore)
+# L'adresse sera configurée via variable d'environnement ou /etc/livekit/livekit.yaml sur GCE
 redis:
-  address: redis.host:6379
+  address: ${REDIS_HOST}:${REDIS_PORT}
   # db: 0
   # username: myuser
   # password: mypassword
