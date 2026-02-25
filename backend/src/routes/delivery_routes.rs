@@ -768,7 +768,7 @@ async fn save_product_delivery_config(
     );
 
     // Acquire a single connection with a small timeout and run the following DB work in a transaction
-    let conn =
+    let mut conn =
         match tokio::time::timeout(std::time::Duration::from_secs(10), state.pg.acquire()).await {
             Ok(Ok(c)) => c,
             Ok(Err(e)) => {

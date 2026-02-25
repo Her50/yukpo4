@@ -73,3 +73,118 @@ env_template/
 # Cibles Rust, node_modules à la racine
 **/target/
 **/node_modules/
+/node_modules
+node_modules/
+
+# ============================================
+# Fichiers volumineux à la racine (~40+ MB)
+# Utiliser / prefix pour cibler uniquement la racine
+# et ne pas exclure les fichiers nécessaires dans mobile/
+# ============================================
+
+# Archives racine
+/livekit.tar.gz
+/*.tar.gz
+/*.zip
+/*.rar
+/*.7z
+/*.tbz
+
+# Logs CSV/JSON téléchargés à la racine (~25 MB)
+/*.csv
+/log-events-viewer-result*
+/downloaded-logs-*.json
+/logs-*.json
+/all-logs-*.json
+
+# SQL temporaires racine
+/temp_execute_migrations.sql
+/temp_*.sql
+
+# Fichiers HTML racine
+/*.html
+
+# Fichiers temporaires / backups
+/*.backup
+/*.bak
+/*.old
+/*.tmp
+/temp_old_*.tsx
+
+# Fichiers xlsx/xls racine
+/*.xlsx
+/*.xls
+
+# Fichiers md à la racine (documentation non nécessaire pour le build)
+/*.md
+
+# Fichiers Python racine
+/*.py
+/*.pyc
+
+# Fichiers divers à la racine
+/*.log
+/*.txt
+/*.ps1
+/*.sh
+/*.bat
+
+# JSON racine (configs, logs, etc.) - pas ceux dans mobile/
+/*.json
+!mobile/**/*.json
+
+# SQL racine
+/*.sql
+
+# JS/TS racine (scripts debug/fix)
+/*.js
+/*.ts
+/*.tsx
+
+# Fichiers env racine
+/.env*
+
+# YAML/YML racine
+/*.yml
+/*.yaml
+
+# Fichiers binaires racine
+/*.bin
+
+# Gradle racine
+/*.gradle
+
+# Toml racine
+/*.toml
+
+# Fichier UUID orphelin et noms bizarres
+/92313537-*
+/ers23767*
+/cd
+/tatus*
+/hort
+/tall
+
+# Package-lock racine (pas celui de mobile)
+/package-lock.json
+/package.json
+
+# Fichiers jpg racine
+/*.jpg
+/*.jpeg
+
+# Fichier .cursorrules racine
+/.cursorrules
+
+# Netlify/vercel config racine
+/netlify.toml
+/vercel.json
+
+# Docker compose racine
+/docker-compose*.yml
+
+# Dossier --date=format (nom bizarre)
+/ --date=format
+
+# Fichier gitattributes/gitignore racine (inclus dans .git déjà)
+# Garder .gitignore et .easignore car EAS en a besoin
