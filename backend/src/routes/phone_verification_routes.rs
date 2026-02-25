@@ -9,6 +9,7 @@ use std::sync::Arc;
 
 use crate::core::types::{AppError, AppResult};
 use crate::middlewares::jwt::{jwt_auth, AuthenticatedUser};
+use crate::services::sms_service::{SmsResult, SmsService};
 use crate::state::AppState;
 use axum::extract::Extension;
 
@@ -369,92 +370,62 @@ async fn verify_otp_for_user(
     }))
 }
 
-// ── Envoi SMS/WhatsApp via Twilio ──────────────────────────────────────────
+// ── Envoi SMS/WhatsApp via SmsService (utilise le service existant) ─────────────
 
 async fn send_otp_via_provider(phone: &str, code: &str) -> Result<(), String> {
-    // Récupérer les credentials Twilio
-    let account_sid = std::env::var("TWILIO_ACCOUNT_SID").map_err(|_| {
-        "TWILIO_ACCOUNT_SID non configuré. Le code OTP a été enregistré en base de données."
-            .to_string()
-    })?;
-    let auth_token = std::env::var("TWILIO_AUTH_TOKEN")
-        .map_err(|_| "TWILIO_AUTH_TOKEN non configuré".to_string())?;
-    let from_number = std::env::var("TWILIO_PHONE_NUMBER")
-        .map_err(|_| "TWILIO_PHONE_NUMBER non configuré".to_string())?;
+    let sms_service = SmsService::new();
+
+    // Vérifier si le service SMS est configuré
+    if !sms_service.is_available() {
+        warn!(
+            "[send_otp] ⚠️ Service SMS non configuré. Le code OTP a été enregistré en base de données."
+        );
+        return Err(
+            "Service SMS non configuré. Vérifiez SMS_ENABLED et les credentials Twilio."
+                .to_string(),
+        );
+    }
 
     let message_body = format!(
         "Yukpo - Votre code de vérification est : {}. Il expire dans 10 minutes. Ne partagez ce code avec personne.",
         code
     );
 
-    // Essayer d'abord WhatsApp, puis SMS classique
-    let whatsapp_from = std::env::var("TWILIO_WHATSAPP_NUMBER")
-        .unwrap_or_else(|_| format!("whatsapp:{}", from_number));
-
-    let client = reqwest::Client::new();
-
-    // Tentative WhatsApp
-    let whatsapp_result = client
-        .post(format!(
-            "https://api.twilio.com/2010-04-01/Accounts/{}/Messages.json",
-            account_sid
-        ))
-        .basic_auth(&account_sid, Some(&auth_token))
-        .form(&[
-            ("To", format!("whatsapp:{}", phone)),
-            ("From", whatsapp_from),
-            ("Body", message_body.clone()),
-        ])
-        .timeout(std::time::Duration::from_secs(10))
-        .send()
-        .await;
-
-    match whatsapp_result {
-        Ok(resp) if resp.status().is_success() => {
+    // Utiliser SmsService pour envoyer le SMS
+    match sms_service.send_sms(phone, &message_body).await {
+        Ok(SmsResult {
+            success: true,
+            message_id,
+            error: None,
+        }) => {
             info!(
-                "[send_otp] ✅ OTP envoyé via WhatsApp à {}",
-                mask_phone(phone)
+                "[send_otp] ✅ OTP envoyé via SMS à {} (Message ID: {:?})",
+                mask_phone(phone),
+                message_id
             );
-            return Ok(());
-        }
-        Ok(resp) => {
-            warn!(
-                "[send_otp] ⚠️ WhatsApp a échoué (status {}), fallback SMS",
-                resp.status()
-            );
-        }
-        Err(e) => {
-            warn!("[send_otp] ⚠️ WhatsApp erreur ({}), fallback SMS", e);
-        }
-    }
-
-    // Fallback SMS classique
-    let sms_result = client
-        .post(format!(
-            "https://api.twilio.com/2010-04-01/Accounts/{}/Messages.json",
-            account_sid
-        ))
-        .basic_auth(&account_sid, Some(&auth_token))
-        .form(&[
-            ("To", phone.to_string()),
-            ("From", from_number),
-            ("Body", message_body),
-        ])
-        .timeout(std::time::Duration::from_secs(10))
-        .send()
-        .await;
-
-    match sms_result {
-        Ok(resp) if resp.status().is_success() => {
-            info!("[send_otp] ✅ OTP envoyé via SMS à {}", mask_phone(phone));
             Ok(())
         }
-        Ok(resp) => {
-            let status = resp.status();
-            let body = resp.text().await.unwrap_or_default();
-            Err(format!("SMS échoué (status {}): {}", status, body))
+        Ok(SmsResult {
+            success: false,
+            message_id,
+            error: Some(error_msg),
+        }) => {
+            error!(
+                "[send_otp] ❌ Échec envoi SMS à {} (Message ID: {:?}): {}",
+                mask_phone(phone),
+                message_id,
+                error_msg
+            );
+            Err(format!("Échec envoi SMS: {}", error_msg))
         }
-        Err(e) => Err(format!("Erreur envoi SMS: {}", e)),
+        Err(e) => {
+            error!(
+                "[send_otp] ❌ Erreur service SMS pour {}: {}",
+                mask_phone(phone),
+                e
+            );
+            Err(format!("Erreur service SMS: {}", e))
+        }
     }
 }
 
