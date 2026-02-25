@@ -18,7 +18,7 @@ use log;
 use rust_decimal::{prelude::FromPrimitive, Decimal};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use sqlx::{Executor, FromRow, Row};
+use sqlx::{Acquire, FromRow, Row};
 use uuid::Uuid;
 
 #[derive(FromRow)]
@@ -790,7 +790,7 @@ async fn save_product_delivery_config(
             }
         };
 
-    let mut tx = conn.begin().await?;
+    let mut tx: sqlx::Transaction<'_, sqlx::Postgres> = conn.begin().await?;
 
     let config_row = match sqlx::query(
         r#"

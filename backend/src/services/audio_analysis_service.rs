@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use tokio::process::Command;
 
 use crate::{
-    core::types::{AppError, AppResult},
+    core::types::AppResult,
     services::immersive_timeline::{AudioCueKind, ImmersiveAudioCue, ImmersiveTimeline},
 };
 
