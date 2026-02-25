@@ -1,11 +1,11 @@
-import React, { useEffect, useMemo, useState, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { apiGet } from '../services/api';
-import { PlaceScope, placesService, PlaceResult } from '../services/placesService';
-import { modernColors } from '../theme/modernTheme';
-import SafeIcon from './SafeIcon';
 import ENVIRONMENT from '../config/environment';
 import { useLocation } from '../contexts/LocationContext';
+import { apiGet } from '../services/api';
+import { PlaceResult, PlaceScope, placesService } from '../services/placesService';
+import { modernColors } from '../theme/modernTheme';
+import SafeIcon from './SafeIcon';
 
 // ✅ AMÉLIORÉ: Parser string location en composants (gère établissements, "Pays - Ville", "Quartier, Ville, Pays", "Pays" seul)
 const parseLocationString = (locationStr: string): LocationObject => {
@@ -15,15 +15,15 @@ const parseLocationString = (locationStr: string): LocationObject => {
     // ✅ AMÉLIORÉ: Liste étendue pour détecter les établissements, sites, bâtiments, boutiques
     const establishmentKeywords = [
         'restaurant', 'café', 'cafe', 'hôtel', 'hotel', 'hôpital', 'hopital', 'clinique', 'pharmacie',
-        'école', 'ecole', 'université', 'universite', 'banque', 'supermarché', 'supermarche', 
-        'marché', 'marche', 'gare', 'aéroport', 'aeroport', 'station', 'église', 'eglise', 
+        'école', 'ecole', 'université', 'universite', 'banque', 'supermarché', 'supermarche',
+        'marché', 'marche', 'gare', 'aéroport', 'aeroport', 'station', 'église', 'eglise',
         'mosquée', 'mosquee', 'stade', 'cinéma', 'cinema', 'théâtre', 'theatre', 'musée', 'musee',
         'bibliothèque', 'bibliotheque', 'parc', 'jardin', 'plage', 'bar', 'discothèque', 'discotheque',
         'boîte', 'boite', 'magasin', 'boutique', 'centre commercial', 'mall', 'bâtiment', 'batiment',
         'immeuble', 'tour', 'tower', 'centre', 'center', 'complexe', 'complex', 'siège', 'siege',
         'bureau', 'office', 'agence', 'poste', 'mairie', 'préfecture', 'prefecture'
     ];
-    const isEstablishment = establishmentKeywords.some(keyword => 
+    const isEstablishment = establishmentKeywords.some(keyword =>
         locationStr.toLowerCase().includes(keyword)
     );
 
@@ -69,12 +69,12 @@ const parseLocationString = (locationStr: string): LocationObject => {
     // Format 3 : Simple (pays seul, établissement seul ou lieu simple)
     else {
         // ✅ NOUVEAU: Vérifier si c'est un pays connu
-        const paysConnus = ['Cameroun', 'Côte d\'Ivoire', 'Sénégal', 'Mali', 'Burkina Faso', 
-                           'Niger', 'Tchad', 'Guinée', 'Bénin', 'Togo', 'Congo', 'Gabon', 
-                           'Centrafrique', 'Madagascar', 'Burundi', 'Rwanda', 'Djibouti', 
-                           'Comores', 'Mauritanie', 'RD Congo'];
+        const paysConnus = ['Cameroun', 'Côte d\'Ivoire', 'Sénégal', 'Mali', 'Burkina Faso',
+            'Niger', 'Tchad', 'Guinée', 'Bénin', 'Togo', 'Congo', 'Gabon',
+            'Centrafrique', 'Madagascar', 'Burundi', 'Rwanda', 'Djibouti',
+            'Comores', 'Mauritanie', 'RD Congo'];
         const isPays = paysConnus.some(p => locationStr.toLowerCase() === p.toLowerCase());
-        
+
         if (isPays) {
             // C'est un pays
             components.pays = locationStr;
@@ -102,37 +102,37 @@ const mapGoogleTypesToLocalType = (googleTypes?: string[]): 'city' | 'neighborho
     if (!googleTypes || googleTypes.length === 0) {
         return 'city'; // Par défaut
     }
-    
+
     // Priorité: établissement > quartier > ville > pays
     // Types Google Places: https://developers.google.com/maps/documentation/places/web-service/autocomplete#place-types
-    
+
     // Établissements (establishment, point_of_interest, etc.)
     const establishmentTypes = [
-        'establishment', 'point_of_interest', 'restaurant', 'food', 'cafe', 'bar', 
-        'hospital', 'pharmacy', 'doctor', 'dentist', 'school', 'university', 
+        'establishment', 'point_of_interest', 'restaurant', 'food', 'cafe', 'bar',
+        'hospital', 'pharmacy', 'doctor', 'dentist', 'school', 'university',
         'store', 'shopping_mall', 'supermarket', 'bank', 'atm', 'gas_station',
         'church', 'mosque', 'synagogue', 'hindu_temple', 'stadium', 'movie_theater',
         'museum', 'library', 'park', 'zoo', 'amusement_park', 'gym', 'spa',
         'hotel', 'lodging', 'airport', 'train_station', 'bus_station', 'subway_station',
         'post_office', 'police', 'fire_station', 'courthouse', 'city_hall'
     ];
-    
+
     // Quartiers (sublocality, neighborhood, etc.)
     const neighborhoodTypes = [
-        'sublocality', 'sublocality_level_1', 'sublocality_level_2', 
+        'sublocality', 'sublocality_level_1', 'sublocality_level_2',
         'neighborhood', 'political'
     ];
-    
+
     // Villes (locality, administrative_area_level_2, etc.)
     const cityTypes = [
         'locality', 'administrative_area_level_2', 'administrative_area_level_3'
     ];
-    
+
     // Pays (country, administrative_area_level_1, etc.)
     const countryTypes = [
         'country', 'administrative_area_level_1', 'political'
     ];
-    
+
     // Vérifier dans l'ordre de priorité
     if (googleTypes.some(type => establishmentTypes.includes(type))) {
         return 'establishment';
@@ -146,14 +146,14 @@ const mapGoogleTypesToLocalType = (googleTypes?: string[]): 'city' | 'neighborho
     if (googleTypes.some(type => countryTypes.includes(type))) {
         return 'country';
     }
-    
+
     return 'city'; // Par défaut
 };
 
 // ✅ FALLBACK: Détecter le type de lieu depuis le texte (seulement si types Google non disponibles)
 const detectPlaceTypeFromText = (placeText: string): 'city' | 'neighborhood' | 'establishment' | 'country' => {
     const text = placeText.toLowerCase();
-    
+
     // ✅ LISTE ÉTENDUE: Mots-clés indiquant un établissement, site, bâtiment, boutique, etc.
     const establishmentKeywords = [
         // Restaurants & Cafés
@@ -165,7 +165,7 @@ const detectPlaceTypeFromText = (placeText: string): 'city' | 'neighborhood' | '
         // Éducation
         'école', 'ecole', 'université', 'universite', 'lycée', 'lycee', 'collège', 'college', 'institut',
         // Commerce
-        'banque', 'supermarché', 'supermarche', 'marché', 'marche', 'magasin', 'boutique', 'shop', 
+        'banque', 'supermarché', 'supermarche', 'marché', 'marche', 'magasin', 'boutique', 'shop',
         'centre commercial', 'mall', 'galerie', 'librairie', 'papeterie',
         // Transport
         'gare', 'aéroport', 'aeroport', 'station', 'terminal', 'arrêt', 'arret',
@@ -183,22 +183,22 @@ const detectPlaceTypeFromText = (placeText: string): 'city' | 'neighborhood' | '
         'poste', 'post office', 'mairie', 'préfecture', 'prefecture', 'tribunal', 'palais de justice',
         'commissariat', 'gendarmerie', 'caserne', 'ambassade', 'consulat'
     ];
-    
+
     // ✅ Détection améliorée: vérifier si le texte contient un mot-clé d'établissement
     if (establishmentKeywords.some(keyword => text.includes(keyword))) {
         return 'establishment';
     }
-    
+
     // ✅ Détection par format: Si contient une virgule avec plusieurs parties
     if (text.includes(',')) {
         const parts = text.split(',').map(p => p.trim());
         const firstPart = parts[0].toLowerCase();
-        
+
         // Si le premier élément contient un mot-clé d'établissement, c'est un établissement
         if (establishmentKeywords.some(keyword => firstPart.includes(keyword))) {
             return 'establishment';
         }
-        
+
         // Si le premier élément est court (< 20 caractères) et ne ressemble pas à une ville, c'est probablement un quartier
         if (parts.length >= 2 && parts[0].length < 20 && !firstPart.includes(' - ')) {
             // Vérifier si ce n'est pas un établissement avec un nom court
@@ -208,29 +208,29 @@ const detectPlaceTypeFromText = (placeText: string): 'city' | 'neighborhood' | '
             }
         }
     }
-    
+
     // ✅ Si contient " - " c'est probablement "Pays - Ville"
     if (text.includes(' - ')) {
         return 'city';
     }
-    
+
     // ✅ Vérifier si c'est un pays connu
-    const paysConnus = ['cameroun', 'côte d\'ivoire', 'cote d\'ivoire', 'sénégal', 'senegal', 
-                        'mali', 'burkina faso', 'niger', 'tchad', 'guinée', 'guinee', 
-                        'bénin', 'benin', 'togo', 'congo', 'gabon', 'centrafrique', 
-                        'madagascar', 'burundi', 'rwanda', 'djibouti', 'comores', 
-                        'mauritanie', 'rd congo'];
+    const paysConnus = ['cameroun', 'côte d\'ivoire', 'cote d\'ivoire', 'sénégal', 'senegal',
+        'mali', 'burkina faso', 'niger', 'tchad', 'guinée', 'guinee',
+        'bénin', 'benin', 'togo', 'congo', 'gabon', 'centrafrique',
+        'madagascar', 'burundi', 'rwanda', 'djibouti', 'comores',
+        'mauritanie', 'rd congo'];
     if (paysConnus.includes(text.trim())) {
         return 'country';
     }
-    
+
     // Par défaut, considérer comme ville
     return 'city';
 };
 
 // ✅ AMÉLIORÉ: Obtenir l'icône selon le type de lieu (utilise types Google Places si disponibles)
 const getPlaceIcon = (
-    placeType: 'city' | 'neighborhood' | 'establishment' | 'country', 
+    placeType: 'city' | 'neighborhood' | 'establishment' | 'country',
     placeText?: string,
     googleTypes?: string[]
 ): string => {
@@ -267,7 +267,7 @@ const getPlaceIcon = (
                     return 'dollar-sign';
                 }
             }
-            
+
             // ✅ Fallback: Détection depuis le texte si types Google non disponibles
             if (placeText) {
                 const text = placeText.toLowerCase();
@@ -467,35 +467,35 @@ const determineScopeFromLabel = (label?: string, providedScope?: PlaceScope | 'a
     if (providedScope) {
         return providedScope;
     }
-    
+
     // Si pas de label, retourner 'all' par défaut
     if (!label || typeof label !== 'string') {
         return 'all';
     }
-    
+
     // Sinon, déterminer le scope basé sur le label
     const labelLower = label.toLowerCase().trim();
-    
+
     // Détection pour "ville"
     if (labelLower.includes('ville') && !labelLower.includes('quartier') && !labelLower.includes('lieu')) {
         return 'city';
     }
-    
+
     // Détection pour "quartier"
     if (labelLower.includes('quartier') && !labelLower.includes('lieu')) {
         return 'neighborhood';
     }
-    
+
     // Détection pour "pays"
     if (labelLower.includes('pays') && !labelLower.includes('lieu') && !labelLower.includes('ville') && !labelLower.includes('quartier')) {
         return 'all'; // 'all' pour rechercher les pays
     }
-    
+
     // Pour "lieu" ou autres champs génériques → recherche universelle (établissements + géographie)
     if (labelLower.includes('lieu') || labelLower.includes('localisation') || labelLower.includes('adresse')) {
         return 'all'; // Recherche universelle pour les lieux/établissements
     }
-    
+
     // Par défaut, recherche universelle
     return 'all';
 };
@@ -513,15 +513,15 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
 }) => {
     // ✅ NOUVEAU: Déterminer automatiquement le scope basé sur le label si non fourni
     const finalScope = determineScopeFromLabel(label, scope);
-    
+
     // ✅ NOUVEAU: Déterminer le placeholder par défaut basé sur le scope
     const defaultPlaceholder = placeholder || (
         finalScope === 'city' ? 'Rechercher une ville...' :
-        finalScope === 'neighborhood' ? 'Rechercher un quartier...' :
-        finalScope === 'all' && label && typeof label === 'string' && label.toLowerCase().includes('pays') ? 'Rechercher un pays...' :
-        'Rechercher un lieu, ville, quartier...'
+            finalScope === 'neighborhood' ? 'Rechercher un quartier...' :
+                finalScope === 'all' && label && typeof label === 'string' && label.toLowerCase().includes('pays') ? 'Rechercher un pays...' :
+                    'Rechercher un lieu, ville, quartier...'
     );
-    
+
     // ✅ NOUVEAU 2026-01-04: Utiliser useLocation pour obtenir la localisation de l'utilisateur
     const { location: userLocation } = useLocation();
 
@@ -597,7 +597,11 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
                         locationBias = { lat: 4.031716, lng: 9.817201 };
                     }
 
-                    const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(debouncedQuery)}&location=${locationBias.lat},${locationBias.lng}&radius=50000&key=${GOOGLE_MAPS_API_KEY}&language=fr`;
+                    // ✅ CORRIGÉ 2026-02-25: Ajout components=country:cm pour biaiser vers le Cameroun/Afrique
+                    // + strictbounds pour prioriser la zone GPS de l'utilisateur
+                    // + PAS de paramètre types pour inclure TOUS les résultats:
+                    //   quartiers, hôpitaux, pharmacies, restaurants, écoles, stations, etc.
+                    const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(debouncedQuery)}&location=${locationBias.lat},${locationBias.lng}&radius=50000&strictbounds=true&components=country:cm|country:ci|country:sn|country:cd|country:ga|country:cg|country:bf|country:ml|country:td|country:ne|country:gn|country:bj|country:tg&key=${GOOGLE_MAPS_API_KEY}&language=fr`;
 
                     const response = await fetch(url);
                     const data = await response.json();
@@ -670,10 +674,10 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
 
     const handleSelectOption = async (opt: string, index: number) => {
         console.log('[LocationSelector] handleSelectOption appelé:', { opt, index });
-        
+
         // ✅ CRITIQUE: Marquer qu'on est en train de sélectionner pour empêcher onBlur de fermer
         selectingOptionRef.current = true;
-        
+
         // ✅ Parser composants du lieu
         const locationObj = parseLocationString(opt);
         const enrichedResult = optionsEnriched[index];
@@ -752,7 +756,7 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
                     {label} {required && <Text style={styles.required}>*</Text>}
                 </Text>
             )}
-            
+
             {/* ✅ NOUVEAU: Champ de saisie directe au lieu de TouchableOpacity */}
             <View style={[styles.selector, !displayValue && !isFocused && styles.selectorPlaceholder]}>
                 <SafeIcon name="search" size={18} color={modernColors.textSecondary} />
@@ -789,7 +793,7 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
                 />
                 {/* ✅ NOUVEAU: Croix rouge pour effacer rapidement le contenu */}
                 {((isFocused && query.length > 0) || (!isFocused && displayValue)) && (
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         onPress={() => {
                             if (isFocused) {
                                 setQuery('');
@@ -813,7 +817,7 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
             {/* ✅ NOUVEAU: Suggestions affichées directement sous le champ (pas dans un modal) */}
             {isFocused && (query.length >= 2 || options.length > 0) && (
                 <View style={styles.suggestionsContainer}>
-                    <ScrollView 
+                    <ScrollView
                         style={styles.suggestionsList}
                         keyboardShouldPersistTaps="handled" // ✅ CRITIQUE: Permet les clics même quand le clavier est ouvert
                         nestedScrollEnabled={true}
@@ -827,11 +831,11 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
                             options.map((opt, index) => {
                                 // ✅ AMÉLIORÉ: Utiliser les types Google Places au lieu du hardcodage
                                 const enrichedResult = optionsEnriched[index];
-                                const placeType = enrichedResult?.types 
+                                const placeType = enrichedResult?.types
                                     ? mapGoogleTypesToLocalType(enrichedResult.types)
                                     : detectPlaceTypeFromText(opt);
                                 const placeIcon = getPlaceIcon(placeType, opt, enrichedResult?.types);
-                                
+
                                 return (
                                     <Pressable
                                         key={`${opt}-${index}`}
@@ -848,10 +852,10 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
                                         hitSlop={{ top: 12, bottom: 12, left: 0, right: 0 }} // ✅ AUGMENTÉ: Zone de clic plus grande
                                     >
                                         <View style={styles.optionContent}>
-                                            <SafeIcon 
-                                                name={placeIcon} 
-                                                size={18} 
-                                                color={placeType === 'establishment' ? modernColors.primary : modernColors.textSecondary} 
+                                            <SafeIcon
+                                                name={placeIcon}
+                                                size={18}
+                                                color={placeType === 'establishment' ? modernColors.primary : modernColors.textSecondary}
                                             />
                                             <Text style={styles.optionText}>{opt}</Text>
                                         </View>
@@ -882,9 +886,9 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     selectorPlaceholder: { borderColor: modernColors.border },
-    input: { 
-        flex: 1, 
-        fontSize: 14, 
+    input: {
+        flex: 1,
+        fontSize: 14,
         color: modernColors.text,
         padding: 0, // ✅ Important pour éviter le padding supplémentaire
     },
@@ -918,10 +922,10 @@ const styles = StyleSheet.create({
     },
     loadingText: { padding: 16, color: modernColors.textSecondary, textAlign: 'center' },
     emptyText: { padding: 16, color: modernColors.textSecondary, textAlign: 'center' },
-    optionItem: { 
-        paddingHorizontal: 16, 
-        paddingVertical: 14, 
-        borderBottomWidth: 1, 
+    optionItem: {
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+        borderBottomWidth: 1,
         borderBottomColor: modernColors.border,
         backgroundColor: modernColors.surface,
     },

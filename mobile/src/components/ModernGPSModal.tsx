@@ -15,12 +15,12 @@ import {
 } from 'react-native';
 import ENVIRONMENT from '../config/environment';
 import { useLocation } from '../contexts/LocationContext';
+import { useSavedAddresses } from '../hooks/useSavedAddresses';
 import { modernColors } from '../theme/modernTheme';
 import ErrorBoundary from './ErrorBoundary';
 import InteractiveMapView from './InteractiveMapView';
-import SafeIcon from './SafeIcon';
-import { useSavedAddresses } from '../hooks/useSavedAddresses';
 import { LocationObject } from './LocationSelector';
+import SafeIcon from './SafeIcon';
 
 const { width, height } = Dimensions.get('window');
 
@@ -68,7 +68,7 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
             requestLocationPermission().catch(error => {
                 console.error('[ModernGPSModal] Erreur requestLocationPermission:', error);
             });
-            
+
             // ✅ NOUVEAU: Toujours centrer sur la position GPS courante de l'utilisateur à l'ouverture
             if (userLocation?.coords?.latitude && userLocation?.coords?.longitude) {
                 const currentUserLocation = {
@@ -218,7 +218,11 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                     locationBias = { lat: 4.031716, lng: 9.817201 };
                 }
 
-                const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(query)}&location=${locationBias.lat},${locationBias.lng}&radius=50000&key=${GOOGLE_MAPS_API_KEY}&language=fr`;
+                // ✅ CORRIGÉ 2026-02-25: Ajout components=country:cm pour biaiser vers le Cameroun
+                // + strictbounds pour prioriser la zone autour de l'utilisateur
+                // + PAS de paramètre types pour inclure TOUS les résultats:
+                //   villes, quartiers, hôpitaux, pharmacies, restaurants, écoles, stations, etc.
+                const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(query)}&location=${locationBias.lat},${locationBias.lng}&radius=50000&strictbounds=true&components=country:cm|country:ci|country:sn|country:cd|country:ga|country:cg|country:bf|country:ml|country:td|country:ne|country:gn|country:bj|country:tg&key=${GOOGLE_MAPS_API_KEY}&language=fr`;
 
                 const response = await fetch(url);
                 const data = await response.json();
@@ -226,7 +230,7 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                 if (data.status === 'OK' && data.predictions) {
                     // ✅ NOUVEAU 2026-01-04: Ajouter les lieux sauvegardés aux suggestions
                     const savedMatches = savedAddresses
-                        .filter(addr => 
+                        .filter(addr =>
                             addr.label.toLowerCase().includes(query.toLowerCase()) ||
                             addr.address.toLowerCase().includes(query.toLowerCase())
                         )
@@ -240,7 +244,7 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                             is_saved: true,
                             saved_address: addr
                         }));
-                    
+
                     // Combiner les suggestions Google avec les lieux sauvegardés (lieux sauvegardés en premier)
                     setPlaceSuggestions([...savedMatches, ...data.predictions]);
                     setShowSuggestions(true);
@@ -330,7 +334,7 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
         setIsManualSelection(false);
         try {
             // ✅ NOUVEAU 2026-01-04: Vérifier d'abord dans les lieux sauvegardés
-            const savedMatch = savedAddresses.find(addr => 
+            const savedMatch = savedAddresses.find(addr =>
                 addr.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 addr.address.toLowerCase().includes(searchQuery.toLowerCase())
             );
@@ -386,7 +390,7 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                 Alert.alert('Erreur', 'Veuillez sélectionner une position sur la carte.');
                 return;
             }
-            
+
             // ✅ NOUVEAU: Ouvrir le modal de nom de lieu UNIQUEMENT si c'est une sélection manuelle (clic sur la carte)
             // Si c'est une sélection via recherche, retourner directement les coordonnées
             if (isManualSelection) {
@@ -399,7 +403,7 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                     // Si le géocodage échoue, utiliser les coordonnées comme nom par défaut
                     setSaveLocationName(`${selectedLocation.lat.toFixed(6)}, ${selectedLocation.lng.toFixed(6)}`);
                 }
-                
+
                 // Ouvrir le modal de sauvegarde de nom
                 setShowSaveLocationModal(true);
             } else {
@@ -443,18 +447,18 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
     const getAddressFromCoordinates = async (lat: number, lng: number): Promise<string> => {
         try {
             const GOOGLE_MAPS_API_KEY = ENVIRONMENT.GOOGLE_MAPS_API_KEY;
-            
+
             if (GOOGLE_MAPS_API_KEY) {
                 // Utiliser Google Geocoding API pour obtenir l'adresse
                 const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&language=fr&key=${GOOGLE_MAPS_API_KEY}`;
                 const response = await fetch(url);
                 const data = await response.json();
-                
+
                 if (data.status === 'OK' && data.results && data.results.length > 0) {
                     return data.results[0].formatted_address;
                 }
             }
-            
+
             // Fallback: utiliser expo-location
             const results = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lng });
             if (results.length > 0) {
@@ -469,7 +473,7 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
         } catch (error) {
             console.error('[ModernGPSModal] Erreur reverse geocoding:', error);
         }
-        
+
         // Fallback final: retourner les coordonnées
         return `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
     };
@@ -495,7 +499,7 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
         try {
             // Obtenir l'adresse complète depuis les coordonnées
             const fullAddress = await getAddressFromCoordinates(selectedLocation.lat, selectedLocation.lng);
-            
+
             // Créer un LocationObject depuis les coordonnées sélectionnées
             const locationObject: LocationObject = {
                 raw: fullAddress,
@@ -509,18 +513,18 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
 
             // ✅ NOUVEAU: Optionnel - Sauvegarder le lieu si l'utilisateur le souhaite (pour retrouver facilement)
             // On peut laisser cette fonctionnalité optionnelle, mais pour l'instant on ne force pas la sauvegarde
-            
+
             // Retourner les coordonnées avec le nom du lieu
             const coordsString = `${selectedLocation.lat},${selectedLocation.lng}`;
-            
+
             // Fermer le modal de sauvegarde
             setShowSaveLocationModal(false);
             setSaveLocationName('');
             setSavingLocation(false);
-            
+
             // Appeler onSelect avec les coordonnées
             onSelect(coordsString);
-            
+
             // Fermer le modal principal
             onClose();
         } catch (error: any) {
@@ -703,10 +707,10 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                                         ]}
                                         onPress={() => handleSelectSuggestion(suggestion.place_id, suggestion.description, suggestion)}
                                     >
-                                        <SafeIcon 
-                                            name={suggestion.is_saved ? "bookmark" : "map-pin"} 
-                                            size={14} 
-                                            color={suggestion.is_saved ? modernColors.primary : modernColors.textSecondary} 
+                                        <SafeIcon
+                                            name={suggestion.is_saved ? "bookmark" : "map-pin"}
+                                            size={14}
+                                            color={suggestion.is_saved ? modernColors.primary : modernColors.textSecondary}
                                         />
                                         <View style={styles.suggestionTextContainer}>
                                             <Text style={styles.suggestionMainText} numberOfLines={1}>
@@ -839,7 +843,7 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                                 <Text style={styles.saveModalHint}>
                                     Un nom par défaut vous est proposé. Vous pouvez le modifier selon vos besoins.
                                 </Text>
-                                
+
                                 <TextInput
                                     style={styles.saveModalInput}
                                     placeholder="Nom du lieu..."
