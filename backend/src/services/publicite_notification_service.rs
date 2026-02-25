@@ -4,6 +4,8 @@ use sqlx::{PgPool, Row};
 use std::time::Duration;
 use tokio::time::sleep;
 
+use crate::services::push_notification_service;
+
 #[derive(Debug, Clone)]
 pub struct PubliciteAlert {
     pub user_id: i32,
@@ -178,8 +180,33 @@ pub async fn send_alerts_to_users(
             }
         }
 
-        // TODO: Envoyer aussi une push notification si l'utilisateur a un token
-        // TODO: Envoyer un email si l'alerte est critique
+        // Envoyer aussi une push notification Expo
+        let push_data = json!({
+            "type": "publicite_alert",
+            "alert_type": alert.alert_type,
+            "campaign_id": alert.campaign_id,
+            "severity": alert.severity,
+            "redirect": {
+                "screen": "PubliciteDashboard",
+                "params": { "campaign_id": alert.campaign_id }
+            }
+        });
+        if let Err(e) = push_notification_service::send_push_notification(
+            pool,
+            alert.user_id,
+            format!("Alerte Publicité: {}", alert.alert_type),
+            alert.message.clone(),
+            Some(push_data),
+            Some("default".to_string()),
+        )
+        .await
+        {
+            log::warn!(
+                "⚠️ Push notification échouée pour alerte pub user {}: {:?}",
+                alert.user_id,
+                e
+            );
+        }
     }
 
     Ok(sent_count)

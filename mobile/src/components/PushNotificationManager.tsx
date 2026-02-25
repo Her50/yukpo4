@@ -157,6 +157,24 @@ const PushNotificationManager: React.FC = () => {
                     ]
                 );
             }
+            // ✅ Alertes Publicités (performance faible, CTR bas, CPC élevé, fin imminente)
+            else if (data?.type === 'publicite_alert') {
+                console.log('[PushNotificationManager] 📊 Alerte Publicité:', data.alert_type, data.campaign_id);
+
+                Alert.alert(
+                    notification.request.content.title || '📊 Alerte Publicité',
+                    notification.request.content.body || '',
+                    [
+                        { text: 'Fermer', style: 'cancel' },
+                        {
+                            text: 'Voir le dashboard',
+                            onPress: () => {
+                                (navigation as any).navigate('PubliciteDashboard');
+                            }
+                        }
+                    ]
+                );
+            }
             else {
                 // Autres notifications - afficher une alerte
                 Alert.alert(
@@ -235,6 +253,11 @@ const PushNotificationManager: React.FC = () => {
                 } else if (data.primary_service_id) {
                     (navigation as any).navigate('ServiceDetail', { serviceId: data.primary_service_id });
                 }
+            }
+            // ✅ Tap sur alerte publicité → naviguer vers le dashboard
+            else if (data?.type === 'publicite_alert') {
+                console.log('[PushNotificationManager] 📊 Tap alerte Publicité:', data.alert_type);
+                (navigation as any).navigate('PubliciteDashboard');
             }
         });
 
