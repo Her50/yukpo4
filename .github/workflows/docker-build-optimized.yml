@@ -545,7 +545,7 @@ jobs:
                 "EMAIL_PROVIDER": "sendgrid",
                 "SENDGRID_FROM_EMAIL": "noreply@yukpomnang.com",
                 "SENDGRID_FROM_NAME": "Yukpomnang",
-                "SMS_ENABLED": "true",
+                "SMS_ENABLED": "false",
                 "SMS_PROVIDER": "twilio",
 
                 "SEARCH_DEFAULT_LANGUAGE": "fr",
@@ -655,7 +655,7 @@ jobs:
             --region ${{ env.GCP_REGION }} \
             --allow-unauthenticated \
             --update-env-vars="^;^$ENV_VARS" \
-            --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,MONGODB_URL=mongodb-url:latest,OPENAI_API_KEY=openai-api-key:latest,S3_ACCESS_KEY=s3-access-key:latest,S3_SECRET_KEY=s3-secret-key:latest,LIVEKIT_API_KEY=livekit-api-key:latest,LIVEKIT_API_SECRET=livekit-api-secret:latest,TWILIO_ACCOUNT_SID=twilio-account-sid:latest,TWILIO_AUTH_TOKEN=twilio-auth-token:latest,TWILIO_FROM_NUMBER=twilio-from-number:latest,GOOGLE_MAPS_API_KEY=google-maps-api-key:latest" \
+            --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,MONGODB_URL=mongodb-url:latest,OPENAI_API_KEY=openai-api-key:latest,S3_ACCESS_KEY=s3-access-key:latest,S3_SECRET_KEY=s3-secret-key:latest,LIVEKIT_API_KEY=livekit-api-key:latest,LIVEKIT_API_SECRET=livekit-api-secret:latest,GOOGLE_MAPS_API_KEY=google-maps-api-key:latest" \
             --set-cloudsql-instances=${{ secrets.GCP_PROJECT_ID }}:${{ env.GCP_REGION }}:yukpo-postgres \
             --memory 2Gi \
             --cpu 2 \
