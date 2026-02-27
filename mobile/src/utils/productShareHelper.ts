@@ -24,12 +24,9 @@ export const generateSmartShareLink = (
   productId: string | number,
   serviceId: string | number
 ): string => {
-  const baseUrl = process.env.EXPO_PUBLIC_SHARE_URL || 'https://yukpomnang.com';
-  // Lien web unique qui sera géré par le backend pour la redirection intelligente
-  // Format: /product/:productId?serviceId=:serviceId
-  // Le backend détectera le User-Agent et redirigera vers l'app si mobile, ou affichera la page web si desktop
-  // ✅ IMPORTANT: Sur Android, les intentFilters dans app.config.js permettront à l'app d'intercepter
-  // directement ce lien HTTPS même si le backend ne répond pas
+  // ✅ CORRIGÉ 2026-02-27: Utiliser l'URL du backend Cloud Run qui sert la route /product/:id
+  // yukpomnang.com ne route PAS vers le backend — le backend Cloud Run est le seul qui sert cette page
+  const baseUrl = process.env.EXPO_PUBLIC_SHARE_URL || 'https://yukpo-backend-376093909298.europe-west1.run.app';
   return `${baseUrl}/product/${productId}?serviceId=${serviceId}`;
 };
 
@@ -61,8 +58,8 @@ export const generateProductShareMessage = (data: ProductShareData): string => {
 
   // Prix (si disponible)
   if (price) {
-    const priceStr = typeof price === 'number' 
-      ? price.toLocaleString() 
+    const priceStr = typeof price === 'number'
+      ? price.toLocaleString()
       : price;
     const deviseStr = devise || 'XAF';
     message += `💰 Prix: ${priceStr} ${deviseStr}\n`;
@@ -77,7 +74,7 @@ export const generateProductShareMessage = (data: ProductShareData): string => {
   // Le lien web intelligent sera intercepté par l'app mobile si installée (via intentFilters)
   // Sinon, il ouvrira la page web. Le backend peut aussi rediriger vers l'app si mobile.
   const smartLink = generateSmartShareLink(productId, serviceId);
-  
+
   // ✅ UN SEUL lien intelligent qui fonctionne sur tous les appareils
   message += `\n🔗 Voir ce produit:\n${smartLink}`;
 

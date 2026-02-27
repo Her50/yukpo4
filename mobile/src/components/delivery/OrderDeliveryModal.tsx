@@ -1,3 +1,4 @@
+import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
 import React, { useEffect, useState } from 'react';
@@ -11,15 +12,15 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { apiGet, apiPost } from '../../services/api';
+import { UserSavedAddress } from '../../hooks/useSavedAddresses';
+import { apiGet, apiPost, userApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
+import { LocationObject } from '../LocationSelector';
 import ModernGPSModal from '../ModernGPSModal';
 import NativeDatePicker from '../NativeDatePicker';
 import NativeTimePicker from '../NativeTimePicker';
 import SafeIcon from '../SafeIcon';
 import { SavedAddressSelector } from './SavedAddressSelector';
-import { LocationObject } from '../LocationSelector';
-import { UserSavedAddress } from '../../hooks/useSavedAddresses';
 
 interface ProductVariant {
     valeur?: string;
@@ -111,13 +112,14 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
     productVariants, // ✅ NOUVEAU 2026-01-23: Variations de prix
     selectedVariantIndex, // ✅ NOUVEAU 2026-01-23: Index de variation présélectionné
 }) => {
+    const navigation = useNavigation();
     const [loading, setLoading] = useState(false);
     const [pickupLocation, setPickupLocation] = useState<Location | null>(null);
     const [dropoffLocation, setDropoffLocation] = useState<Location | null>(null);
     const [notes, setNotes] = useState('');
     const [userGPS, setUserGPS] = useState<Location | null>(null);
     const [showGPSModal, setShowGPSModal] = useState(false); // ✅ NOUVEAU : Pour ouvrir le modal GPS
-    
+
     // ✅ NOUVEAU 2026-01-23: État pour la sélection de variation et quantité
     const [selectedVariantIdx, setSelectedVariantIdx] = useState<number>(
         selectedVariantIndex !== undefined ? selectedVariantIndex : (productVariants && productVariants.length > 0 ? 0 : -1)
@@ -139,6 +141,10 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
     const [isDeliveryFree, setIsDeliveryFree] = useState<boolean>(false);
     const [loadingCosts, setLoadingCosts] = useState(false);
 
+    // ✅ NOUVEAU: Assurance et solde utilisateur
+    const [insuranceCost, setInsuranceCost] = useState<number>(0);
+    const [userBalance, setUserBalance] = useState<number>(0);
+
     // ✅ Phase 8 - Amélioration 26 : Sélection multi-produits
     const [selectedProducts, setSelectedProducts] = useState<number[]>(() =>
         productIndex !== undefined ? [productIndex] : []
@@ -158,11 +164,11 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                         loadUserGPS().catch(err => console.warn('[OrderDeliveryModal] Erreur loadUserGPS:', err)),
                         loadAvailableProducts().catch(err => console.warn('[OrderDeliveryModal] Erreur loadAvailableProducts:', err)),
                     ]);
-                    
+
                     if (productIndex !== undefined) {
                         setSelectedProducts([productIndex]);
                     }
-                    
+
                     // ✅ NOUVEAU : Charger automatiquement la position actuelle de l'utilisateur
                     // Cette fonction essaie d'abord la position actuelle, puis utilise le GPS de l'API comme fallback
                     loadCurrentLocationAutomatically().catch(err => {
@@ -174,7 +180,7 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                     // Ne pas afficher d'alerte pour éviter de bloquer l'utilisateur
                 }
             };
-            
+
             loadData();
         } else if (visible && (!serviceId || typeof serviceId !== 'number' || serviceId <= 0)) {
             // ✅ CORRIGÉ: Afficher une erreur si serviceId est invalide
@@ -204,7 +210,45 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
         }
     }, [visible, selectedProducts, dropoffLocation, selectedVariantIdx, quantity]);
 
-    // ✅ NOUVEAU : Fonction helper pour formater l'adresse avec quartier
+    // NOUVEAU: Calculer l'assurance quand le prix produit change
+    useEffect(() => {
+        if (productPrice && productPrice > 0) {
+            const insuranceRates = [
+                { min: 0, max: 10000, rate: 0.02 },
+                { min: 10001, max: 50000, rate: 0.015 },
+                { min: 50001, max: 100000, rate: 0.01 },
+                { min: 100001, max: 500000, rate: 0.008 },
+                { min: 500001, max: Infinity, rate: 0.005 },
+            ];
+            for (const tier of insuranceRates) {
+                if (productPrice >= tier.min && productPrice <= tier.max) {
+                    setInsuranceCost(Math.ceil(productPrice * tier.rate));
+                    break;
+                }
+            }
+        } else {
+            setInsuranceCost(0);
+        }
+    }, [productPrice]);
+
+    // NOUVEAU: Charger le solde utilisateur
+    useEffect(() => {
+        const loadBalance = async () => {
+            try {
+                const response = await userApi.getTokensBalance() as any;
+                if (response.success && response.data) {
+                    setUserBalance(response.data.tokens_balance || 0);
+                }
+            } catch (error) {
+                console.error('[OrderDeliveryModal] Erreur chargement solde:', error);
+            }
+        };
+        if (visible) {
+            loadBalance();
+        }
+    }, [visible]);
+
+    // NOUVEAU : Fonction helper pour formater l'adresse avec quartier
     const formatAddressWithDistrict = (addr: Location.LocationGeocodedAddress): string => {
         const addressParts: string[] = [];
 
@@ -278,7 +322,7 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                 }
                 return;
             }
-            
+
             // Vérifier les permissions
             const { status } = await Location.requestForegroundPermissionsAsync();
             if (status !== 'granted') {
@@ -501,7 +545,7 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
         try {
             // ✅ CORRIGÉ 2026-01-23: Calculer le prix total en tenant compte de la variation et de la quantité
             let totalProductPrice = 0;
-            
+
             // Si on a des variations de prix pour le produit principal
             if (productVariants && productVariants.length > 0 && selectedVariantIdx >= 0 && selectedVariantIdx < productVariants.length) {
                 const selectedVariant = productVariants[selectedVariantIdx];
@@ -517,7 +561,7 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                     }
                 });
             }
-            
+
             setProductPrice(totalProductPrice);
 
             // ✅ Le coût de livraison est calculé UNE SEULE FOIS, indépendamment du nombre de produits
@@ -713,6 +757,34 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
             return;
         }
 
+        // ✅ NOUVEAU: Vérifier le solde avant de soumettre
+        const totalCost = (productPrice || 0) + (isDeliveryFree ? 0 : (deliveryCost || 0)) + insuranceCost;
+        try {
+            const balanceResponse = await userApi.getTokensBalance() as any;
+            const currentBalance = balanceResponse?.data?.tokens_balance || 0;
+            setUserBalance(currentBalance);
+
+            if (currentBalance < totalCost) {
+                Alert.alert(
+                    'Solde insuffisant',
+                    `Votre solde (${currentBalance.toLocaleString('fr-FR')} FCFA) est insuffisant pour couvrir le total de ${totalCost.toLocaleString('fr-FR')} FCFA.\n\nVeuillez recharger votre compte.`,
+                    [
+                        { text: 'Annuler', style: 'cancel' },
+                        {
+                            text: 'Recharger',
+                            onPress: () => {
+                                onClose();
+                                (navigation as any).navigate('RechargeTokens');
+                            },
+                        },
+                    ]
+                );
+                return;
+            }
+        } catch (balanceError) {
+            console.warn('[OrderDeliveryModal] Erreur vérification solde:', balanceError);
+        }
+
         setLoading(true);
         try {
             // ✅ Phase 8 - Amélioration 26 : Si plusieurs produits, créer plusieurs commandes
@@ -871,8 +943,8 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                                 <SafeIcon name="package" size={18} color="#9333EA" />
                                 <Text style={styles.sectionTitle}>Variation de prix *</Text>
                             </View>
-                            <ScrollView 
-                                horizontal 
+                            <ScrollView
+                                horizontal
                                 showsHorizontalScrollIndicator={false}
                                 style={styles.variantsScrollView}
                                 contentContainerStyle={styles.variantsScrollContent}
@@ -881,7 +953,7 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                                     const variantPrice = variant.prix || variant.price || 0;
                                     const variantValue = variant.valeur || variant.value || variant.conditionnement || `Option ${idx + 1}`;
                                     const isSelected = selectedVariantIdx === idx;
-                                    
+
                                     return (
                                         <TouchableOpacity
                                             key={idx}
@@ -1391,14 +1463,38 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                                     </View>
                                 )}
 
+                                {/* Assurance */}
+                                {insuranceCost > 0 && (
+                                    <View style={styles.costRow}>
+                                        <Text style={styles.costLabel}>Assurance</Text>
+                                        <Text style={styles.costValue}>{insuranceCost.toLocaleString('fr-FR')} FCFA</Text>
+                                    </View>
+                                )}
+
                                 {/* Total */}
                                 {(productPrice !== null || deliveryCost !== null) && (
                                     <View style={[styles.costRow, styles.totalRow]}>
                                         <Text style={styles.totalLabel}>Total</Text>
                                         <Text style={styles.totalValue}>
-                                            {((productPrice || 0) + (isDeliveryFree ? 0 : (deliveryCost || 0))).toLocaleString('fr-FR')} FCFA
+                                            {((productPrice || 0) + (isDeliveryFree ? 0 : (deliveryCost || 0)) + insuranceCost).toLocaleString('fr-FR')} FCFA
                                         </Text>
                                     </View>
+                                )}
+
+                                {/* Solde utilisateur */}
+                                <View style={styles.costRow}>
+                                    <Text style={styles.costLabel}>Votre solde</Text>
+                                    <Text style={[
+                                        styles.costValue,
+                                        userBalance < ((productPrice || 0) + (isDeliveryFree ? 0 : (deliveryCost || 0)) + insuranceCost) && { color: '#EF4444' }
+                                    ]}>
+                                        {userBalance.toLocaleString('fr-FR')} FCFA
+                                    </Text>
+                                </View>
+                                {userBalance < ((productPrice || 0) + (isDeliveryFree ? 0 : (deliveryCost || 0)) + insuranceCost) && (
+                                    <Text style={{ fontSize: 12, color: '#EF4444', marginTop: 4, fontStyle: 'italic' }}>
+                                        ⚠️ Solde insuffisant. Vous serez redirigé vers la recharge.
+                                    </Text>
                                 )}
                             </View>
                         </View>

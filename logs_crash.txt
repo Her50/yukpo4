@@ -1,0 +1,58 @@
+﻿
+
+? [HEALTH] Serveur HTTP minimal pr?t sur port 8080
+? [HEALTH] D?marrage serveur HTTP minimal Python sur port 8080...
+? [WRAPPER] Attente que Cloud Run valide le startup probe (90 secondes)...
+? [WRAPPER] Serveur HTTP minimal d?marr? (PID: 2)
+? [WRAPPER] D?marrage serveur HTTP minimal Python...
+? [WRAPPER] D?marrage wrapper Cloud Run...
+? [ENTRYPOINT] Utilisation de startup-wrapper.sh pour Cloud Run
+? [ENTRYPOINT] Environnement Cloud Run d?tect?
+   - HOST: 0.0.0.0
+   - PORT: 8080
+   - CLOUD_RUN: true
+? [ENTRYPOINT] Variables d'environnement d?tect?es:
+? [ENTRYPOINT] D?marrage du conteneur...
+Starting new instance. Reason: MANUAL_OR_CUSTOMER_MIN_INSTANCE - Instance started because of customer-configured min-instances or manual scaling.
+The request failed because either the HTTP response was malformed or connection to the instance had an error. Additional troubleshooting documentation can be found at: https://cloud.google.com/run/docs/troubleshooting#malformed-response-or-connection-error
+? [WRAPPER] Attente lib?ration du port (5 secondes)...
+? [WRAPPER] Arr?t du serveur Python pour lib?rer le port...
+? [WRAPPER] Cloud Run devrait avoir valid? le startup probe
+[HEALTH] GET /health HTTP/1.1
+[HEALTH] GET /health HTTP/1.1
+[HEALTH] GET /health HTTP/1.1
+STARTUP HTTP probe succeeded after 1 attempt for container "yukpo-backend-1" on port 8080 path "/health".
+[HEALTH] GET /health HTTP/1.1
+
+
+
+
+
+
+
+
+
+
+
+? [HEALTH] Serveur HTTP minimal pr?t sur port 8080
+? [HEALTH] D?marrage serveur HTTP minimal Python sur port 8080...
+? [WRAPPER] Attente que Cloud Run valide le startup probe (90 secondes)...
+? [WRAPPER] Serveur HTTP minimal d?marr? (PID: 2)
+? [WRAPPER] D?marrage serveur HTTP minimal Python...
+? [WRAPPER] D?marrage wrapper Cloud Run...
+? [ENTRYPOINT] Utilisation de startup-wrapper.sh pour Cloud Run
+? [ENTRYPOINT] Environnement Cloud Run d?tect?
+   - HOST: 0.0.0.0
+   - PORT: 8080
+   - CLOUD_RUN: true
+? [ENTRYPOINT] Variables d'environnement d?tect?es:
+? [ENTRYPOINT] D?marrage du conteneur...
+Starting new instance. Reason: AUTOSCALING - Instance started due to configured scaling factors (e.g. CPU utilization, request throughput, etc.) or no existing capacity for current traffic.
+
+The request failed because either the HTTP response was malformed or connection to the instance had an error. Additional troubleshooting documentation can be found at: https://cloud.google.com/run/docs/troubleshooting#malformed-response-or-connection-error
+? [WRAPPER] Attente lib?ration du port (5 secondes)...
+? [WRAPPER] Arr?t du serveur Python pour lib?rer le port...
+? [WRAPPER] Cloud Run devrait avoir valid? le startup probe
+STARTUP HTTP probe succeeded after 1 attempt for container "yukpo-backend-1" on port 8080 path "/health".
+[HEALTH] GET /health HTTP/1.1
+

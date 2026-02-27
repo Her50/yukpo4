@@ -1,7 +1,7 @@
 import { LinkingOptions } from '@react-navigation/native';
 
 const linking: LinkingOptions<any> = {
-  prefixes: ['yukpomnang://', 'https://yukpomnang.com'],
+  prefixes: ['yukpomnang://', 'https://yukpomnang.com', 'https://yukpo-backend-376093909298.europe-west1.run.app'],
   config: {
     screens: {
       // ✅ Auth screens (AuthStack - pour utilisateurs non connectés)

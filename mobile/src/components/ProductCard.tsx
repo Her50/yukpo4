@@ -681,21 +681,26 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
   // 5. service.data->'images'/'videos' (médias du service)
   // 6. service.images/videos (médias du service au niveau racine)
 
+  // ✅ CORRIGÉ 2026-02-27: Helper pour extraire un tableau de médias depuis différents formats
+  // Gère: tableau simple, objet {valeur: [...]}, string simple
+  const asMediaArray = (field: any): any[] => {
+    if (Array.isArray(field) && field.length > 0) return field;
+    if (field && typeof field === 'object' && Array.isArray(field.valeur) && field.valeur.length > 0) return field.valeur;
+    if (field && typeof field === 'string' && field.trim()) return [field];
+    return [];
+  };
+
   // ✅ PRIORITÉ 1: product.images/videos (passés directement par ResultatBesoinScreen) - PRIORITÉ ABSOLUE
-  // ✅ CORRIGÉ 2026-01-23: Vérifier TOUJOURS product.images/videos EN PREMIER car ResultatBesoinScreen les passe là
-  // ✅ CRITIQUE: Ne pas utiliser productData.images si product.images existe, car productData peut être product.product_data
-  // qui peut ne pas contenir les images même si product.images les contient
   const rawImages =
-    (Array.isArray(product.images) && product.images.length > 0) ? product.images
-      : (Array.isArray(product.product_data?.images) && product.product_data.images.length > 0) ? product.product_data.images
-        : (Array.isArray(productData.images) && productData.images.length > 0 && productData !== product) ? productData.images
-          : (Array.isArray(productData.data?.images) && productData.data.images.length > 0) ? productData.data.images
+    asMediaArray(product.images).length > 0 ? asMediaArray(product.images)
+      : asMediaArray(product.product_data?.images).length > 0 ? asMediaArray(product.product_data?.images)
+        : asMediaArray(productData.images).length > 0 && productData !== product ? asMediaArray(productData.images)
+          : asMediaArray(productData.data?.images).length > 0 ? asMediaArray(productData.data?.images)
             : (Array.isArray(service?.data?.produits) && productIndex !== undefined && service.data.produits[productIndex])
-              ? (service.data.produits[productIndex].images || [])
-              : (Array.isArray(service?.data?.images?.valeur) && service.data.images.valeur.length > 0) ? service.data.images.valeur
-                : (Array.isArray(service?.data?.images) && service.data.images.length > 0) ? service.data.images
-                  : (Array.isArray(service?.images) && service.images.length > 0) ? service.images
-                    : [];
+              ? asMediaArray(service.data.produits[productIndex].images)
+              : asMediaArray(service?.data?.images?.valeur).length > 0 ? asMediaArray(service?.data?.images?.valeur)
+                : asMediaArray(service?.data?.images).length > 0 ? asMediaArray(service?.data?.images)
+                  : asMediaArray(service?.images);
 
   // Filtrer et normaliser les images avec la fonction globale
   const images = rawImages
@@ -703,20 +708,16 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
     .filter((img): img is string => img !== null && img !== '');
 
   // ✅ PRIORITÉ 1: product.videos (passés directement par ResultatBesoinScreen) - PRIORITÉ ABSOLUE
-  // ✅ CORRIGÉ 2026-01-23: Vérifier TOUJOURS product.videos EN PREMIER car ResultatBesoinScreen les passe là
-  // ✅ CRITIQUE: Ne pas utiliser productData.videos si product.videos existe, car productData peut être product.product_data
-  // qui peut ne pas contenir les vidéos même si product.videos les contient
   const rawVideos =
-    (Array.isArray(product.videos) && product.videos.length > 0) ? product.videos
-      : (Array.isArray(product.product_data?.videos) && product.product_data.videos.length > 0) ? product.product_data.videos
-        : (Array.isArray(productData.videos) && productData.videos.length > 0 && productData !== product) ? productData.videos
-          : (Array.isArray(productData.data?.videos) && productData.data.videos.length > 0) ? productData.data.videos
+    asMediaArray(product.videos).length > 0 ? asMediaArray(product.videos)
+      : asMediaArray(product.product_data?.videos).length > 0 ? asMediaArray(product.product_data?.videos)
+        : asMediaArray(productData.videos).length > 0 && productData !== product ? asMediaArray(productData.videos)
+          : asMediaArray(productData.data?.videos).length > 0 ? asMediaArray(productData.data?.videos)
             : (Array.isArray(service?.data?.produits) && productIndex !== undefined && service.data.produits[productIndex])
-              ? (service.data.produits[productIndex].videos || [])
-              : (Array.isArray(service?.data?.videos?.valeur) && service.data.videos.valeur.length > 0) ? service.data.videos.valeur
-                : (Array.isArray(service?.data?.videos) && service.data.videos.length > 0) ? service.data.videos
-                  : (Array.isArray(service?.videos) && service.videos.length > 0) ? service.videos
-                    : [];
+              ? asMediaArray(service.data.produits[productIndex].videos)
+              : asMediaArray(service?.data?.videos?.valeur).length > 0 ? asMediaArray(service?.data?.videos?.valeur)
+                : asMediaArray(service?.data?.videos).length > 0 ? asMediaArray(service?.data?.videos)
+                  : asMediaArray(service?.videos);
 
   // Filtrer et normaliser les vidéos avec la fonction globale
   const videos = rawVideos
@@ -2126,7 +2127,7 @@ const styles = StyleSheet.create({
   imageContainer: {
     position: 'relative',
     width: '100%',
-    height: 120, // ✅ RÉDUIT 2026-01-14: 200 -> 120 (réduction de 40%)
+    height: 180, // ✅ CORRIGÉ 2026-02-27: 120 → 180 pour aligner avec ProductMediaCarousel et rendre les médias visibles
     overflow: 'hidden',
     borderTopLeftRadius: 12,
     borderTopRightRadius: 12,

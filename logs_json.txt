@@ -1,0 +1,102 @@
+﻿[
+  {
+    "insertId": "699f08d300001262884048f8",
+    "labels": {
+      "instanceId": "00da6cd2c4e7b9636845c574673c8fa785beab2b23d2cadad8a8e7d80db01a4e27dc8e5c9c0e7240e6e8dc57111a01efc00d5347202fdc10ced7655ad70645ff223b53de837268bb188129be446fee"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-25T14:36:03.025086499Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00359-bvk",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "   - Chemin binaire: /app/yukpomnang_backend",
+    "timestamp": "2026-02-25T14:36:03.004706Z"
+  },
+  {
+    "insertId": "699f08d300001251631e373d",
+    "labels": {
+      "instanceId": "00da6cd2c4e7b9636845c574673c8fa785beab2b23d2cadad8a8e7d80db01a4e27dc8e5c9c0e7240e6e8dc57111a01efc00d5347202fdc10ced7655ad70645ff223b53de837268bb188129be446fee"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-25T14:36:03.025086499Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00359-bvk",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "? [WRAPPER] ?tape 4.1: V?rification finale avant exec...",
+    "timestamp": "2026-02-25T14:36:03.004689Z"
+  },
+  {
+    "insertId": "699f08d30000124eafc8a05c",
+    "labels": {
+      "instanceId": "00da6cd2c4e7b9636845c574673c8fa785beab2b23d2cadad8a8e7d80db01a4e27dc8e5c9c0e7240e6e8dc57111a01efc00d5347202fdc10ced7655ad70645ff223b53de837268bb188129be446fee"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-25T14:36:03.025086499Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00359-bvk",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "? [WRAPPER] Toutes les erreurs seront captur?es ci-dessous...",
+    "timestamp": "2026-02-25T14:36:03.004686Z"
+  },
+  {
+    "insertId": "699f08d30000123c04658697",
+    "labels": {
+      "instanceId": "00da6cd2c4e7b9636845c574673c8fa785beab2b23d2cadad8a8e7d80db01a4e27dc8e5c9c0e7240e6e8dc57111a01efc00d5347202fdc10ced7655ad70645ff223b53de837268bb188129be446fee"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-25T14:36:03.025086499Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00359-bvk",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "? [WRAPPER] ?tape 4: D?marrage application Rust...",
+    "timestamp": "2026-02-25T14:36:03.004668Z"
+  },
+  {
+    "insertId": "699f08d30000123a4680af6e",
+    "labels": {
+      "instanceId": "00da6cd2c4e7b9636845c574673c8fa785beab2b23d2cadad8a8e7d80db01a4e27dc8e5c9c0e7240e6e8dc57111a01efc00d5347202fdc10ced7655ad70645ff223b53de837268bb188129be446fee"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-25T14:36:03.025086499Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00359-bvk",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "? [WRAPPER] Passage ? l'?tape 4...",
+    "timestamp": "2026-02-25T14:36:03.004666Z"
+  }
+]

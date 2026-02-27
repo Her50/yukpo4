@@ -124,6 +124,36 @@ node_modules/**/*.tbz
 node_modules/**/*.tar.gz
 
 # ============================================
+# FICHIERS LOURDS À LA RACINE DE mobile/ (4.31 MB de .md!)
+# ============================================
+*.md
+*.txt
+*.csv
+*.json
+*.sql
+*.yml
+*.yaml
+*.ps1
+*.bat
+*.sh
+*.js
+*.ts
+*.py
+*.toml
+*.gradle
+*.bin
+*.tmp
+*.log
+*.err
+*.cache
+*.lock
+
+# ============================================
+# ASSETS INUTILES POUR LE BUILD
+# ============================================
+assets/icon-designs/
+
+# ============================================
 # BUILD DIRECTORIES (CRITIQUE - 603MB!)
 # ============================================
 # Exclusion absolue de tous les dossiers de build Android

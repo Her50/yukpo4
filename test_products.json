@@ -1,0 +1,487 @@
+﻿{
+    "value":  [
+                  {
+                      "id":  1,
+                      "service_id":  1,
+                      "product_index":  0,
+                      "product_data":  {
+                                           "nom":  "Service de MÃ©canique Automobile",
+                                           "prix":  0,
+                                           "devise":  "XAF",
+                                           "categorie":  "Service de RÃ©paration Automobile",
+                                           "description":  "Service complet de mÃ©canique automobile incluant la rÃ©paration, l\u0027entretien et le diagnostic pour divers systÃ¨mes de vÃ©hicules.",
+                                           "origine_champs":  "ia",
+                                           "product_labels":  [
+                                                                  "type_service",
+                                                                  "specialite",
+                                                                  "niveau_experience",
+                                                                  "outils_utilises",
+                                                                  "duree_intervention",
+                                                                  "tarif_horaire",
+                                                                  "modalite",
+                                                                  "disponibilite"
+                                                              ],
+                                           "location_vector":  [
+
+                                                               ],
+                                           "combinaison_brute":  "RÃ©paration,Entretien,Diagnostic,Freins,Suspension,Moteur,Transmission,Ãlectrique",
+                                           "characteristic_vector":  [
+                                                                         "RÃ©paration",
+                                                                         "Entretien",
+                                                                         "Diagnostic",
+                                                                         "Freins",
+                                                                         "Suspension",
+                                                                         "Moteur",
+                                                                         "Transmission",
+                                                                         "Ãlectrique"
+                                                                     ]
+                                       },
+                      "product_name":  "Service de MÃ©canique Automobile",
+                      "product_type":  "autre",
+                      "product_price":  "0",
+                      "is_active":  true,
+                      "created_at":  "2026-02-24T02:51:21.453496Z",
+                      "updated_at":  "2026-02-25T04:41:23.542409Z",
+                      "auto_deactivate_at":  null
+                  },
+                  {
+                      "id":  2,
+                      "service_id":  1,
+                      "product_index":  1,
+                      "product_data":  {
+                                           "audios":  [
+
+                                                      ],
+                                           "produits":  [
+                                                            "Escarpins,Noir,38,Cuir,Classique"
+                                                        ],
+                                           "variants":  [
+                                                            {
+                                                                "prix":  50000,
+                                                                "stock":  10,
+                                                                "value":  "36",
+                                                                "devise":  "XAF",
+                                                                "valeur":  "36"
+                                                            },
+                                                            {
+                                                                "prix":  50000,
+                                                                "stock":  8,
+                                                                "value":  "37",
+                                                                "devise":  "XAF",
+                                                                "valeur":  "37"
+                                                            },
+                                                            {
+                                                                "prix":  50000,
+                                                                "stock":  5,
+                                                                "value":  "38",
+                                                                "devise":  "XAF",
+                                                                "valeur":  "38"
+                                                            },
+                                                            {
+                                                                "prix":  50000,
+                                                                "stock":  7,
+                                                                "value":  "39",
+                                                                "devise":  "XAF",
+                                                                "valeur":  "39"
+                                                            },
+                                                            {
+                                                                "prix":  50000,
+                                                                "stock":  6,
+                                                                "value":  "40",
+                                                                "devise":  "XAF",
+                                                                "valeur":  "40"
+                                                            },
+                                                            {
+                                                                "prix":  50000,
+                                                                "stock":  4,
+                                                                "value":  "41",
+                                                                "devise":  "XAF",
+                                                                "valeur":  "41"
+                                                            }
+                                                        ],
+                                           "documents":  [
+
+                                                         ],
+                                           "has_variant":  true,
+                                           "nom_produit":  "Escarpins en cuir noir",
+                                           "lieu_produit":  {
+                                                                "raw":  "4.029495, 9.818596",
+                                                                "components":  {
+
+                                                                               },
+                                                                "place_name":  "Lieu sÃ©lectionnÃ©",
+                                                                "coordinates":  {
+                                                                                    "lat":  4.029495,
+                                                                                    "lng":  9.8185963
+                                                                                }
+                                                            },
+                                           "prix_produit":  "50000",
+                                           "price_variant":  {
+                                                                 "variable":  "pointure",
+                                                                 "filtrable":  true,
+                                                                 "modalites":  [
+                                                                                   {
+                                                                                       "prix":  50000,
+                                                                                       "stock":  10,
+                                                                                       "devise":  "XAF",
+                                                                                       "valeur":  "36"
+                                                                                   },
+                                                                                   {
+                                                                                       "prix":  50000,
+                                                                                       "stock":  8,
+                                                                                       "devise":  "XAF",
+                                                                                       "valeur":  "37"
+                                                                                   },
+                                                                                   {
+                                                                                       "prix":  50000,
+                                                                                       "stock":  5,
+                                                                                       "devise":  "XAF",
+                                                                                       "valeur":  "38"
+                                                                                   },
+                                                                                   {
+                                                                                       "prix":  50000,
+                                                                                       "stock":  7,
+                                                                                       "devise":  "XAF",
+                                                                                       "valeur":  "39"
+                                                                                   },
+                                                                                   {
+                                                                                       "prix":  50000,
+                                                                                       "stock":  6,
+                                                                                       "devise":  "XAF",
+                                                                                       "valeur":  "40"
+                                                                                   },
+                                                                                   {
+                                                                                       "prix":  50000,
+                                                                                       "stock":  4,
+                                                                                       "devise":  "XAF",
+                                                                                       "valeur":  "41"
+                                                                                   }
+                                                                               ],
+                                                                 "type_donnee":  "price_variant",
+                                                                 "origine_champs":  "ia"
+                                                             },
+                                           "devise_produit":  "XAF",
+                                           "origine_champs":  "formulaire",
+                                           "product_labels":  [
+                                                                  "type",
+                                                                  "couleur",
+                                                                  "pointure",
+                                                                  "materiau",
+                                                                  "style"
+                                                              ],
+                                           "location_vector":  [
+
+                                                               ],
+                                           "variabilite_prix":  {
+                                                                    "variable":  "pointure",
+                                                                    "filtrable":  true,
+                                                                    "modalites":  [
+                                                                                      {
+                                                                                          "prix":  50000,
+                                                                                          "stock":  10,
+                                                                                          "devise":  "XAF",
+                                                                                          "valeur":  "36"
+                                                                                      },
+                                                                                      {
+                                                                                          "prix":  50000,
+                                                                                          "stock":  8,
+                                                                                          "devise":  "XAF",
+                                                                                          "valeur":  "37"
+                                                                                      },
+                                                                                      {
+                                                                                          "prix":  50000,
+                                                                                          "stock":  5,
+                                                                                          "devise":  "XAF",
+                                                                                          "valeur":  "38"
+                                                                                      },
+                                                                                      {
+                                                                                          "prix":  50000,
+                                                                                          "stock":  7,
+                                                                                          "devise":  "XAF",
+                                                                                          "valeur":  "39"
+                                                                                      },
+                                                                                      {
+                                                                                          "prix":  50000,
+                                                                                          "stock":  6,
+                                                                                          "devise":  "XAF",
+                                                                                          "valeur":  "40"
+                                                                                      },
+                                                                                      {
+                                                                                          "prix":  50000,
+                                                                                          "stock":  4,
+                                                                                          "devise":  "XAF",
+                                                                                          "valeur":  "41"
+                                                                                      }
+                                                                                  ],
+                                                                    "type_donnee":  "price_variant",
+                                                                    "origine_champs":  "ia"
+                                                                },
+                                           "categorie_produit":  "Chaussures pour femmes",
+                                           "combinaison_brute":  "Escarpins,Noir,38,Cuir,Classique",
+                                           "variant_dimension":  "pointure",
+                                           "description_produit":  "Escarpins Ã©lÃ©gants en cuir noir, parfaits pour une tenue chic et sophistiquÃ©e.",
+                                           "characteristic_vector":  [
+                                                                         "Escarpins",
+                                                                         "Noir",
+                                                                         "38",
+                                                                         "Cuir",
+                                                                         "Classique"
+                                                                     ],
+                                           "sous_caracteristiques":  {
+                                                                         "type":  [
+                                                                                      "Escarpins",
+                                                                                      "Sandales",
+                                                                                      "Bottes",
+                                                                                      "Ballerines"
+                                                                                  ],
+                                                                         "style":  [
+                                                                                       "Classique",
+                                                                                       "Moderne",
+                                                                                       "Sportif",
+                                                                                       "DÃ©contractÃ©"
+                                                                                   ],
+                                                                         "couleur":  [
+                                                                                         "Noir",
+                                                                                         "Blanc",
+                                                                                         "Rouge",
+                                                                                         "Bleu",
+                                                                                         "Beige"
+                                                                                     ],
+                                                                         "materiau":  [
+                                                                                          "Cuir",
+                                                                                          "SynthÃ©tique",
+                                                                                          "Tissu"
+                                                                                      ],
+                                                                         "pointure":  [
+                                                                                          "36",
+                                                                                          "37",
+                                                                                          "38",
+                                                                                          "39",
+                                                                                          "40",
+                                                                                          "41"
+                                                                                      ]
+                                                                     }
+                                       },
+                      "product_name":  "Escarpins en cuir noir",
+                      "product_type":  "autre",
+                      "product_price":  null,
+                      "is_active":  true,
+                      "created_at":  "2026-02-24T03:07:46.164478Z",
+                      "updated_at":  "2026-02-25T04:41:23.555127Z",
+                      "auto_deactivate_at":  null
+                  },
+                  {
+                      "id":  3,
+                      "service_id":  1,
+                      "product_index":  2,
+                      "product_data":  {
+                                           "audios":  [
+
+                                                      ],
+                                           "produits":  [
+                                                            "Veste,XL,Noir,Coton,Classique,Automne"
+                                                        ],
+                                           "variants":  [
+                                                            {
+                                                                "prix":  48000,
+                                                                "stock":  10,
+                                                                "value":  "S",
+                                                                "devise":  "XAF",
+                                                                "valeur":  "S"
+                                                            },
+                                                            {
+                                                                "prix":  49000,
+                                                                "stock":  15,
+                                                                "value":  "M",
+                                                                "devise":  "XAF",
+                                                                "valeur":  "M"
+                                                            },
+                                                            {
+                                                                "prix":  50000,
+                                                                "stock":  20,
+                                                                "value":  "L",
+                                                                "devise":  "XAF",
+                                                                "valeur":  "L"
+                                                            },
+                                                            {
+                                                                "prix":  52000,
+                                                                "stock":  5,
+                                                                "value":  "XL",
+                                                                "devise":  "XAF",
+                                                                "valeur":  "XL"
+                                                            },
+                                                            {
+                                                                "prix":  54000,
+                                                                "stock":  3,
+                                                                "value":  "XXL",
+                                                                "devise":  "XAF",
+                                                                "valeur":  "XXL"
+                                                            }
+                                                        ],
+                                           "documents":  [
+
+                                                         ],
+                                           "has_variant":  true,
+                                           "nom_produit":  "Veste homme classique",
+                                           "lieu_produit":  {
+                                                                "raw":  "4.029495, 9.818596",
+                                                                "components":  {
+
+                                                                               },
+                                                                "place_name":  "Lieu sÃ©lectionnÃ©",
+                                                                "coordinates":  {
+                                                                                    "lat":  4.029495,
+                                                                                    "lng":  9.8185963
+                                                                                }
+                                                            },
+                                           "prix_produit":  "50000",
+                                           "price_variant":  {
+                                                                 "variable":  "taille",
+                                                                 "filtrable":  true,
+                                                                 "modalites":  [
+                                                                                   {
+                                                                                       "prix":  48000,
+                                                                                       "stock":  10,
+                                                                                       "devise":  "XAF",
+                                                                                       "valeur":  "S"
+                                                                                   },
+                                                                                   {
+                                                                                       "prix":  49000,
+                                                                                       "stock":  15,
+                                                                                       "devise":  "XAF",
+                                                                                       "valeur":  "M"
+                                                                                   },
+                                                                                   {
+                                                                                       "prix":  50000,
+                                                                                       "stock":  20,
+                                                                                       "devise":  "XAF",
+                                                                                       "valeur":  "L"
+                                                                                   },
+                                                                                   {
+                                                                                       "prix":  52000,
+                                                                                       "stock":  5,
+                                                                                       "devise":  "XAF",
+                                                                                       "valeur":  "XL"
+                                                                                   },
+                                                                                   {
+                                                                                       "prix":  54000,
+                                                                                       "stock":  3,
+                                                                                       "devise":  "XAF",
+                                                                                       "valeur":  "XXL"
+                                                                                   }
+                                                                               ],
+                                                                 "type_donnee":  "price_variant",
+                                                                 "origine_champs":  "ia"
+                                                             },
+                                           "devise_produit":  "XAF",
+                                           "origine_champs":  "formulaire",
+                                           "product_labels":  [
+                                                                  "type",
+                                                                  "taille",
+                                                                  "couleur",
+                                                                  "matiere",
+                                                                  "style",
+                                                                  "saison"
+                                                              ],
+                                           "location_vector":  [
+
+                                                               ],
+                                           "variabilite_prix":  {
+                                                                    "variable":  "taille",
+                                                                    "filtrable":  true,
+                                                                    "modalites":  [
+                                                                                      {
+                                                                                          "prix":  48000,
+                                                                                          "stock":  10,
+                                                                                          "devise":  "XAF",
+                                                                                          "valeur":  "S"
+                                                                                      },
+                                                                                      {
+                                                                                          "prix":  49000,
+                                                                                          "stock":  15,
+                                                                                          "devise":  "XAF",
+                                                                                          "valeur":  "M"
+                                                                                      },
+                                                                                      {
+                                                                                          "prix":  50000,
+                                                                                          "stock":  20,
+                                                                                          "devise":  "XAF",
+                                                                                          "valeur":  "L"
+                                                                                      },
+                                                                                      {
+                                                                                          "prix":  52000,
+                                                                                          "stock":  5,
+                                                                                          "devise":  "XAF",
+                                                                                          "valeur":  "XL"
+                                                                                      },
+                                                                                      {
+                                                                                          "prix":  54000,
+                                                                                          "stock":  3,
+                                                                                          "devise":  "XAF",
+                                                                                          "valeur":  "XXL"
+                                                                                      }
+                                                                                  ],
+                                                                    "type_donnee":  "price_variant",
+                                                                    "origine_champs":  "ia"
+                                                                },
+                                           "categorie_produit":  "VÃªtements",
+                                           "combinaison_brute":  "Veste,XL,Noir,Coton,Classique,Automne",
+                                           "variant_dimension":  "taille",
+                                           "description_produit":  "Veste Ã©lÃ©gante pour homme, idÃ©ale pour l\u0027automne, disponible en plusieurs tailles et couleurs.",
+                                           "characteristic_vector":  [
+                                                                         "Veste",
+                                                                         "XL",
+                                                                         "Noir",
+                                                                         "Coton",
+                                                                         "Classique",
+                                                                         "Automne"
+                                                                     ],
+                                           "sous_caracteristiques":  {
+                                                                         "type":  [
+                                                                                      "Veste",
+                                                                                      "Blouson",
+                                                                                      "Manteau"
+                                                                                  ],
+                                                                         "style":  [
+                                                                                       "Classique",
+                                                                                       "DÃ©contractÃ©",
+                                                                                       "Sport"
+                                                                                   ],
+                                                                         "saison":  [
+                                                                                        "Printemps",
+                                                                                        "ÃtÃ©",
+                                                                                        "Automne",
+                                                                                        "Hiver"
+                                                                                    ],
+                                                                         "taille":  [
+                                                                                        "S",
+                                                                                        "M",
+                                                                                        "L",
+                                                                                        "XL",
+                                                                                        "XXL"
+                                                                                    ],
+                                                                         "couleur":  [
+                                                                                         "Noir",
+                                                                                         "Bleu",
+                                                                                         "Gris",
+                                                                                         "Marron"
+                                                                                     ],
+                                                                         "matiere":  [
+                                                                                         "Coton",
+                                                                                         "Laine",
+                                                                                         "Polyester",
+                                                                                         "Cuir"
+                                                                                     ]
+                                                                     }
+                                       },
+                      "product_name":  "Veste homme classique",
+                      "product_type":  "autre",
+                      "product_price":  null,
+                      "is_active":  true,
+                      "created_at":  "2026-02-25T04:41:23.395347Z",
+                      "updated_at":  "2026-02-25T04:41:23.562640Z",
+                      "auto_deactivate_at":  null
+                  }
+              ],
+    "Count":  3
+}

@@ -1,0 +1,602 @@
+﻿[
+  {
+    "insertId": "699e8d39000db2aebd0fbed4",
+    "labels": {
+      "instanceId": "00da6cd2c4ef958031fd77c08b11a9b7a02a9cf79d70f4ffbe3867f5edbc9f5f56f9ef039d9fa74ecffa17ea2bded3a96819c47245883063ea046fb52d4f3d5c44442aef01086632b0e3533ef17e"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-25T05:48:42.222349257Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00345-n6n",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "\u001b[2m2026-02-25T05:48:41.898479Z\u001b[0m \u001b[33m WARN\u001b[0m \u001b[2myukpomnang_backend::routers::router_yukpo\u001b[0m\u001b[2m:\u001b[0m [serve_media_file] Fichier non trouv?: uploads/services/product/1/0",
+    "timestamp": "2026-02-25T05:48:41.897710Z"
+  },
+  {
+    "insertId": "699e8d39000db0ba4f39d12d",
+    "labels": {
+      "instanceId": "00da6cd2c4ef958031fd77c08b11a9b7a02a9cf79d70f4ffbe3867f5edbc9f5f56f9ef039d9fa74ecffa17ea2bded3a96819c47245883063ea046fb52d4f3d5c44442aef01086632b0e3533ef17e"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-25T05:48:42.222349257Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00345-n6n",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "\u001b[2m2026-02-25T05:48:41.897967Z\u001b[0m \u001b[32m INFO\u001b[0m \u001b[2myukpomnang_backend::routers::router_yukpo\u001b[0m\u001b[2m:\u001b[0m [serve_media_file] Chemin normalis?: uploads/services/product/1/0",
+    "timestamp": "2026-02-25T05:48:41.897210Z"
+  },
+  {
+    "insertId": "699e8d39000db0ae8e857baf",
+    "labels": {
+      "instanceId": "00da6cd2c4ef958031fd77c08b11a9b7a02a9cf79d70f4ffbe3867f5edbc9f5f56f9ef039d9fa74ecffa17ea2bded3a96819c47245883063ea046fb52d4f3d5c44442aef01086632b0e3533ef17e"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-25T05:48:42.222349257Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00345-n6n",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "\u001b[2m2026-02-25T05:48:41.897903Z\u001b[0m \u001b[32m INFO\u001b[0m \u001b[2myukpomnang_backend::routers::router_yukpo\u001b[0m\u001b[2m:\u001b[0m [serve_media_file] Demande fichier: product/1/0",
+    "timestamp": "2026-02-25T05:48:41.897198Z"
+  },
+  {
+    "insertId": "699e8c6c000b55532e3bbe3b",
+    "labels": {
+      "instanceId": "00da6cd2c4ef958031fd77c08b11a9b7a02a9cf79d70f4ffbe3867f5edbc9f5f56f9ef039d9fa74ecffa17ea2bded3a96819c47245883063ea046fb52d4f3d5c44442aef01086632b0e3533ef17e"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-25T05:45:16.747672575Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00345-n6n",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "\u001b[2m2026-02-25T05:45:16.344069Z\u001b[0m \u001b[33m WARN\u001b[0m \u001b[2msqlx::query\u001b[0m\u001b[2m:\u001b[0m slow statement: execution time exceeded alert threshold \u001b[3msummary\u001b[0m\u001b[2m=\u001b[0m\"SELECT id, service_id, user_id, ?\" \u001b[3mdb.statement\u001b[0m\u001b[2m=\u001b[0m\"\\n\\n\\n            SELECT \\n                id, service_id, user_id, product_data,\\n                images_to_process,\\n                status, priority, attempt_count, max_attempts,\\n                error_message, result_data,\\n                created_at, started_at, completed_at\\n            FROM product_creation_queue\\n            WHERE status = 'pending'\\n            ORDER BY priority ASC, created_at ASC\\n            LIMIT $1\\n            FOR UPDATE SKIP LOCKED\\n            \\n\" \u001b[3mrows_affected\u001b[0m\u001b[2m=\u001b[0m0 \u001b[3mrows_returned\u001b[0m\u001b[2m=\u001b[0m0 \u001b[3melapsed\u001b[0m\u001b[2m=\u001b[0m1.000127758s \u001b[3melapsed_secs\u001b[0m\u001b[2m=\u001b[0m1.000127758 \u001b[3mslow_threshold\u001b[0m\u001b[2m=\u001b[0m1s",
+    "timestamp": "2026-02-25T05:45:16.742739Z"
+  },
+  {
+    "insertId": "699e8bdb000e6279c50ad729",
+    "labels": {
+      "instanceId": "00da6cd2c4ef958031fd77c08b11a9b7a02a9cf79d70f4ffbe3867f5edbc9f5f56f9ef039d9fa74ecffa17ea2bded3a96819c47245883063ea046fb52d4f3d5c44442aef01086632b0e3533ef17e"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-25T05:42:52.044046437Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00345-n6n",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "\u001b[2m2026-02-25T05:42:51.943488Z\u001b[0m \u001b[32m INFO\u001b[0m \u001b[2myukpomnang_backend::services::specialized_services_optimizer\u001b[0m\u001b[2m:\u001b[0m [Optimizer] Index trouv?: idx_services_has_media sur services (unique: false)",
+    "timestamp": "2026-02-25T05:42:51.942713Z"
+  },
+  {
+    "insertId": "699e8bda0006c39aede518c5",
+    "labels": {
+      "instanceId": "00da6cd2c4ef958031fd77c08b11a9b7a02a9cf79d70f4ffbe3867f5edbc9f5f56f9ef039d9fa74ecffa17ea2bded3a96819c47245883063ea046fb52d4f3d5c44442aef01086632b0e3533ef17e"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-25T05:42:50.714000062Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00345-n6n",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "\u001b[2m2026-02-25T05:42:50.444224Z\u001b[0m \u001b[32m INFO\u001b[0m \u001b[2myukpomnang_backend::services::specialized_services_optimizer\u001b[0m\u001b[2m:\u001b[0m [Optimizer] Index trouv?: idx_labs_available_composite sur laboratoires_imagerie (unique: false)",
+    "timestamp": "2026-02-25T05:42:50.443290Z"
+  },
+  {
+    "insertId": "699e8bda0006c387e3437f5f",
+    "labels": {
+      "instanceId": "00da6cd2c4ef958031fd77c08b11a9b7a02a9cf79d70f4ffbe3867f5edbc9f5f56f9ef039d9fa74ecffa17ea2bded3a96819c47245883063ea046fb52d4f3d5c44442aef01086632b0e3533ef17e"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-25T05:42:50.714000062Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00345-n6n",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "\u001b[2m2026-02-25T05:42:50.444216Z\u001b[0m \u001b[32m INFO\u001b[0m \u001b[2myukpomnang_backend::services::specialized_services_optimizer\u001b[0m\u001b[2m:\u001b[0m [Optimizer] Index trouv?: idx_labs_type_laboratoire sur laboratoires_imagerie (unique: false)",
+    "timestamp": "2026-02-25T05:42:50.443271Z"
+  },
+  {
+    "insertId": "699e8bda0006c383f7559dac",
+    "labels": {
+      "instanceId": "00da6cd2c4ef958031fd77c08b11a9b7a02a9cf79d70f4ffbe3867f5edbc9f5f56f9ef039d9fa74ecffa17ea2bded3a96819c47245883063ea046fb52d4f3d5c44442aef01086632b0e3533ef17e"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-25T05:42:50.714000062Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00345-n6n",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "\u001b[2m2026-02-25T05:42:50.444208Z\u001b[0m \u001b[32m INFO\u001b[0m \u001b[2myukpomnang_backend::services::specialized_services_optimizer\u001b[0m\u001b[2m:\u001b[0m [Optimizer] Index trouv?: idx_labs_ville_quartier sur laboratoires_imagerie (unique: false)",
+    "timestamp": "2026-02-25T05:42:50.443267Z"
+  },
+  {
+    "insertId": "699e8bda0006c37f2ef89adb",
+    "labels": {
+      "instanceId": "00da6cd2c4ef958031fd77c08b11a9b7a02a9cf79d70f4ffbe3867f5edbc9f5f56f9ef039d9fa74ecffa17ea2bded3a96819c47245883063ea046fb52d4f3d5c44442aef01086632b0e3533ef17e"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-25T05:42:50.714000062Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00345-n6n",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "\u001b[2m2026-02-25T05:42:50.444194Z\u001b[0m \u001b[32m INFO\u001b[0m \u001b[2myukpomnang_backend::services::specialized_services_optimizer\u001b[0m\u001b[2m:\u001b[0m [Optimizer] Index trouv?: idx_labs_imagerie_gin sur laboratoires_imagerie (unique: false)",
+    "timestamp": "2026-02-25T05:42:50.443263Z"
+  },
+  {
+    "insertId": "699e8bda0006c37b29fa721c",
+    "labels": {
+      "instanceId": "00da6cd2c4ef958031fd77c08b11a9b7a02a9cf79d70f4ffbe3867f5edbc9f5f56f9ef039d9fa74ecffa17ea2bded3a96819c47245883063ea046fb52d4f3d5c44442aef01086632b0e3533ef17e"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-25T05:42:50.714000062Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00345-n6n",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "\u001b[2m2026-02-25T05:42:50.444186Z\u001b[0m \u001b[32m INFO\u001b[0m \u001b[2myukpomnang_backend::services::specialized_services_optimizer\u001b[0m\u001b[2m:\u001b[0m [Optimizer] Index trouv?: idx_labs_analyses_gin sur laboratoires_imagerie (unique: false)",
+    "timestamp": "2026-02-25T05:42:50.443259Z"
+  },
+  {
+    "insertId": "699e8bda0006c36260f32102",
+    "labels": {
+      "instanceId": "00da6cd2c4ef958031fd77c08b11a9b7a02a9cf79d70f4ffbe3867f5edbc9f5f56f9ef039d9fa74ecffa17ea2bded3a96819c47245883063ea046fb52d4f3d5c44442aef01086632b0e3533ef17e"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-25T05:42:50.714000062Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00345-n6n",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "\u001b[2m2026-02-25T05:42:50.444178Z\u001b[0m \u001b[32m INFO\u001b[0m \u001b[2myukpomnang_backend::services::specialized_services_optimizer\u001b[0m\u001b[2m:\u001b[0m [Optimizer] Index trouv?: idx_labs_gps_active sur laboratoires_imagerie (unique: false)",
+    "timestamp": "2026-02-25T05:42:50.443234Z"
+  },
+  {
+    "insertId": "699e8bda0006c35eb59ea96d",
+    "labels": {
+      "instanceId": "00da6cd2c4ef958031fd77c08b11a9b7a02a9cf79d70f4ffbe3867f5edbc9f5f56f9ef039d9fa74ecffa17ea2bded3a96819c47245883063ea046fb52d4f3d5c44442aef01086632b0e3533ef17e"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-25T05:42:50.714000062Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00345-n6n",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "\u001b[2m2026-02-25T05:42:50.444170Z\u001b[0m \u001b[32m INFO\u001b[0m \u001b[2myukpomnang_backend::services::specialized_services_optimizer\u001b[0m\u001b[2m:\u001b[0m [Optimizer] Index trouv?: idx_laboratoires_is_available sur laboratoires_imagerie (unique: false)",
+    "timestamp": "2026-02-25T05:42:50.443230Z"
+  },
+  {
+    "insertId": "699e8bda0006c35374f628ed",
+    "labels": {
+      "instanceId": "00da6cd2c4ef958031fd77c08b11a9b7a02a9cf79d70f4ffbe3867f5edbc9f5f56f9ef039d9fa74ecffa17ea2bded3a96819c47245883063ea046fb52d4f3d5c44442aef01086632b0e3533ef17e"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-25T05:42:50.714000062Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00345-n6n",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "\u001b[2m2026-02-25T05:42:50.444162Z\u001b[0m \u001b[32m INFO\u001b[0m \u001b[2myukpomnang_backend::services::specialized_services_optimizer\u001b[0m\u001b[2m:\u001b[0m [Optimizer] Index trouv?: idx_laboratoires_imagerie_gin sur laboratoires_imagerie (unique: false)",
+    "timestamp": "2026-02-25T05:42:50.443219Z"
+  },
+  {
+    "insertId": "699e8bda0006c34ff2462b9a",
+    "labels": {
+      "instanceId": "00da6cd2c4ef958031fd77c08b11a9b7a02a9cf79d70f4ffbe3867f5edbc9f5f56f9ef039d9fa74ecffa17ea2bded3a96819c47245883063ea046fb52d4f3d5c44442aef01086632b0e3533ef17e"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-25T05:42:50.714000062Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00345-n6n",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "\u001b[2m2026-02-25T05:42:50.444153Z\u001b[0m \u001b[32m INFO\u001b[0m \u001b[2myukpomnang_backend::services::specialized_services_optimizer\u001b[0m\u001b[2m:\u001b[0m [Optimizer] Index trouv?: idx_laboratoires_analyses_gin sur laboratoires_imagerie (unique: false)",
+    "timestamp": "2026-02-25T05:42:50.443215Z"
+  },
+  {
+    "insertId": "699e8bda0006c33e7373bada",
+    "labels": {
+      "instanceId": "00da6cd2c4ef958031fd77c08b11a9b7a02a9cf79d70f4ffbe3867f5edbc9f5f56f9ef039d9fa74ecffa17ea2bded3a96819c47245883063ea046fb52d4f3d5c44442aef01086632b0e3533ef17e"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-25T05:42:50.714000062Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00345-n6n",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "\u001b[2m2026-02-25T05:42:50.444132Z\u001b[0m \u001b[32m INFO\u001b[0m \u001b[2myukpomnang_backend::services::specialized_services_optimizer\u001b[0m\u001b[2m:\u001b[0m [Optimizer] Index trouv?: idx_laboratoires_type sur laboratoires_imagerie (unique: false)",
+    "timestamp": "2026-02-25T05:42:50.443198Z"
+  },
+  {
+    "insertId": "699e8bda0006c29080e52bdf",
+    "labels": {
+      "instanceId": "00da6cd2c4ef958031fd77c08b11a9b7a02a9cf79d70f4ffbe3867f5edbc9f5f56f9ef039d9fa74ecffa17ea2bded3a96819c47245883063ea046fb52d4f3d5c44442aef01086632b0e3533ef17e"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-25T05:42:50.714000062Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00345-n6n",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "\u001b[2m2026-02-25T05:42:50.443964Z\u001b[0m \u001b[32m INFO\u001b[0m \u001b[2myukpomnang_backend::services::specialized_services_optimizer\u001b[0m\u001b[2m:\u001b[0m [Optimizer] Index trouv?: idx_laboratoires_service_id sur laboratoires_imagerie (unique: false)",
+    "timestamp": "2026-02-25T05:42:50.443024Z"
+  },
+  {
+    "insertId": "699e8bda0006c2875adac24b",
+    "labels": {
+      "instanceId": "00da6cd2c4ef958031fd77c08b11a9b7a02a9cf79d70f4ffbe3867f5edbc9f5f56f9ef039d9fa74ecffa17ea2bded3a96819c47245883063ea046fb52d4f3d5c44442aef01086632b0e3533ef17e"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-25T05:42:50.714000062Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00345-n6n",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "\u001b[2m2026-02-25T05:42:50.443956Z\u001b[0m \u001b[32m INFO\u001b[0m \u001b[2myukpomnang_backend::services::specialized_services_optimizer\u001b[0m\u001b[2m:\u001b[0m [Optimizer] Index trouv?: idx_laboratoires_user_id sur laboratoires_imagerie (unique: false)",
+    "timestamp": "2026-02-25T05:42:50.443015Z"
+  },
+  {
+    "insertId": "699e8bda0006c27c052fcbf8",
+    "labels": {
+      "instanceId": "00da6cd2c4ef958031fd77c08b11a9b7a02a9cf79d70f4ffbe3867f5edbc9f5f56f9ef039d9fa74ecffa17ea2bded3a96819c47245883063ea046fb52d4f3d5c44442aef01086632b0e3533ef17e"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-25T05:42:50.714000062Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00345-n6n",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "\u001b[2m2026-02-25T05:42:50.443948Z\u001b[0m \u001b[32m INFO\u001b[0m \u001b[2myukpomnang_backend::services::specialized_services_optimizer\u001b[0m\u001b[2m:\u001b[0m [Optimizer] Index trouv?: unique_laboratory_service sur laboratoires_imagerie (unique: true)",
+    "timestamp": "2026-02-25T05:42:50.443004Z"
+  },
+  {
+    "insertId": "699e8bda0006c27976aab329",
+    "labels": {
+      "instanceId": "00da6cd2c4ef958031fd77c08b11a9b7a02a9cf79d70f4ffbe3867f5edbc9f5f56f9ef039d9fa74ecffa17ea2bded3a96819c47245883063ea046fb52d4f3d5c44442aef01086632b0e3533ef17e"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-25T05:42:50.714000062Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00345-n6n",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "\u001b[2m2026-02-25T05:42:50.443940Z\u001b[0m \u001b[32m INFO\u001b[0m \u001b[2myukpomnang_backend::services::specialized_services_optimizer\u001b[0m\u001b[2m:\u001b[0m [Optimizer] Index trouv?: laboratoires_imagerie_pkey sur laboratoires_imagerie (unique: true)",
+    "timestamp": "2026-02-25T05:42:50.443001Z"
+  },
+  {
+    "insertId": "699e8bda0006c1d4cba304f1",
+    "labels": {
+      "instanceId": "00da6cd2c4ef958031fd77c08b11a9b7a02a9cf79d70f4ffbe3867f5edbc9f5f56f9ef039d9fa74ecffa17ea2bded3a96819c47245883063ea046fb52d4f3d5c44442aef01086632b0e3533ef17e"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-25T05:42:50.714000062Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00345-n6n",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "\u001b[2m2026-02-25T05:42:50.443582Z\u001b[0m \u001b[33m WARN\u001b[0m \u001b[2msqlx::query\u001b[0m\u001b[2m:\u001b[0m slow statement: execution time exceeded alert threshold \u001b[3msummary\u001b[0m\u001b[2m=\u001b[0m\"SELECT t.relname::text as tablename, ?\" \u001b[3mdb.statement\u001b[0m\u001b[2m=\u001b[0m\"\\n\\n\\n            SELECT \\n                t.relname::text as tablename,\\n                c.relname::text as indexname,\\n                COALESCE(i.indisunique, false) as indisunique\\n            FROM pg_index i\\n            JOIN pg_class c ON c.oid = i.indexrelid\\n            JOIN pg_class t ON t.oid = i.indrelid\\n            JOIN pg_namespace n ON n.oid = t.relnamespace\\n            WHERE n.nspname = 'public'\\n              AND t.relname IN ('services', 'pharmacies', 'hopitaux_cliniques', 'laboratoires_imagerie', 'agences_voyage', 'covoiturages', 'taxis_ville')\\n            \\n\" \u001b[3mrows_affected\u001b[0m\u001b[2m=\u001b[0m193 \u001b[3mrows_returned\u001b[0m\u001b[2m=\u001b[0m193 \u001b[3melapsed\u001b[0m\u001b[2m=\u001b[0m1.099962478s \u001b[3melapsed_secs\u001b[0m\u001b[2m=\u001b[0m1.099962478 \u001b[3mslow_threshold\u001b[0m\u001b[2m=\u001b[0m1s",
+    "timestamp": "2026-02-25T05:42:50.442836Z"
+  },
+  {
+    "insertId": "699e8bc100072d410e53daa2",
+    "labels": {
+      "instanceId": "00da6cd2c4ef958031fd77c08b11a9b7a02a9cf79d70f4ffbe3867f5edbc9f5f56f9ef039d9fa74ecffa17ea2bded3a96819c47245883063ea046fb52d4f3d5c44442aef01086632b0e3533ef17e"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-25T05:42:25.735324515Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00345-n6n",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "\u001b[2m2026-02-25T05:42:25.470800Z\u001b[0m \u001b[32m INFO\u001b[0m \u001b[2myukpomnang_backend::services::media_storage_service\u001b[0m\u001b[2m:\u001b[0m [MediaStorage] Stockage distant activ? (bucket=yukpo-project-yukpo-backend-media, endpoint=Some(\"https://storage.googleapis.com\"))",
+    "timestamp": "2026-02-25T05:42:25.470337Z"
+  },
+  {
+    "insertId": "699e88e80005fd768b3104a7",
+    "labels": {
+      "instanceId": "00da6cd2c43e86351e51a44a690c2cb2a93d85480b85d707a41afa7508d2e4bd61ae74c005963424433ed25942b3f635a85d74eeb52c7987ffa693277d0c538b4c5317f358ab5b25d756768e9dfc14"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-25T05:30:16.662402986Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00344-khw",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "\u001b[2m2026-02-25T05:30:16.392922Z\u001b[0m \u001b[33m WARN\u001b[0m \u001b[2msqlx::query\u001b[0m\u001b[2m:\u001b[0m slow statement: execution time exceeded alert threshold \u001b[3msummary\u001b[0m\u001b[2m=\u001b[0m\"SELECT id, service_id, user_id, ?\" \u001b[3mdb.statement\u001b[0m\u001b[2m=\u001b[0m\"\\n\\n\\n            SELECT \\n                id, service_id, user_id, product_data,\\n                images_to_process,\\n                status, priority, attempt_count, max_attempts,\\n                error_message, result_data,\\n                created_at, started_at, completed_at\\n            FROM product_creation_queue\\n            WHERE status = 'pending'\\n            ORDER BY priority ASC, created_at ASC\\n            LIMIT $1\\n            FOR UPDATE SKIP LOCKED\\n            \\n\" \u001b[3mrows_affected\u001b[0m\u001b[2m=\u001b[0m0 \u001b[3mrows_returned\u001b[0m\u001b[2m=\u001b[0m0 \u001b[3melapsed\u001b[0m\u001b[2m=\u001b[0m1.099672838s \u001b[3melapsed_secs\u001b[0m\u001b[2m=\u001b[0m1.099672838 \u001b[3mslow_threshold\u001b[0m\u001b[2m=\u001b[0m1s",
+    "timestamp": "2026-02-25T05:30:16.392566Z"
+  },
+  {
+    "insertId": "699e88d1000169856742177d",
+    "labels": {
+      "instanceId": "00da6cd2c43e86351e51a44a690c2cb2a93d85480b85d707a41afa7508d2e4bd61ae74c005963424433ed25942b3f635a85d74eeb52c7987ffa693277d0c538b4c5317f358ab5b25d756768e9dfc14"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-25T05:29:53.353103591Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00344-khw",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "\u001b[2m2026-02-25T05:29:53.093464Z\u001b[0m \u001b[32m INFO\u001b[0m \u001b[2myukpomnang_backend::services::specialized_services_optimizer\u001b[0m\u001b[2m:\u001b[0m [Optimizer] Index trouv?: idx_services_has_media sur services (unique: false)",
+    "timestamp": "2026-02-25T05:29:53.092549Z"
+  },
+  {
+    "insertId": "699e88ce00047861ff21d07d",
+    "labels": {
+      "instanceId": "00da6cd2c43e86351e51a44a690c2cb2a93d85480b85d707a41afa7508d2e4bd61ae74c005963424433ed25942b3f635a85d74eeb52c7987ffa693277d0c538b4c5317f358ab5b25d756768e9dfc14"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-25T05:29:50.355160617Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00344-khw",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "\u001b[2m2026-02-25T05:29:50.293948Z\u001b[0m \u001b[32m INFO\u001b[0m \u001b[2myukpomnang_backend::services::specialized_services_optimizer\u001b[0m\u001b[2m:\u001b[0m [Optimizer] Index trouv?: idx_labs_available_composite sur laboratoires_imagerie (unique: false)",
+    "timestamp": "2026-02-25T05:29:50.292961Z"
+  },
+  {
+    "insertId": "699e88ce00047853cec27809",
+    "labels": {
+      "instanceId": "00da6cd2c43e86351e51a44a690c2cb2a93d85480b85d707a41afa7508d2e4bd61ae74c005963424433ed25942b3f635a85d74eeb52c7987ffa693277d0c538b4c5317f358ab5b25d756768e9dfc14"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-25T05:29:50.355160617Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00344-khw",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "\u001b[2m2026-02-25T05:29:50.293937Z\u001b[0m \u001b[32m INFO\u001b[0m \u001b[2myukpomnang_backend::services::specialized_services_optimizer\u001b[0m\u001b[2m:\u001b[0m [Optimizer] Index trouv?: idx_labs_type_laboratoire sur laboratoires_imagerie (unique: false)",
+    "timestamp": "2026-02-25T05:29:50.292947Z"
+  },
+  {
+    "insertId": "699e88ce00047850da80857a",
+    "labels": {
+      "instanceId": "00da6cd2c43e86351e51a44a690c2cb2a93d85480b85d707a41afa7508d2e4bd61ae74c005963424433ed25942b3f635a85d74eeb52c7987ffa693277d0c538b4c5317f358ab5b25d756768e9dfc14"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-25T05:29:50.355160617Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00344-khw",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "\u001b[2m2026-02-25T05:29:50.293926Z\u001b[0m \u001b[32m INFO\u001b[0m \u001b[2myukpomnang_backend::services::specialized_services_optimizer\u001b[0m\u001b[2m:\u001b[0m [Optimizer] Index trouv?: idx_labs_ville_quartier sur laboratoires_imagerie (unique: false)",
+    "timestamp": "2026-02-25T05:29:50.292944Z"
+  },
+  {
+    "insertId": "699e88ce0004784e3f75e7b0",
+    "labels": {
+      "instanceId": "00da6cd2c43e86351e51a44a690c2cb2a93d85480b85d707a41afa7508d2e4bd61ae74c005963424433ed25942b3f635a85d74eeb52c7987ffa693277d0c538b4c5317f358ab5b25d756768e9dfc14"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-25T05:29:50.355160617Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00344-khw",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "\u001b[2m2026-02-25T05:29:50.293915Z\u001b[0m \u001b[32m INFO\u001b[0m \u001b[2myukpomnang_backend::services::specialized_services_optimizer\u001b[0m\u001b[2m:\u001b[0m [Optimizer] Index trouv?: idx_labs_imagerie_gin sur laboratoires_imagerie (unique: false)",
+    "timestamp": "2026-02-25T05:29:50.292942Z"
+  },
+  {
+    "insertId": "699e88ce0004784a0040e11a",
+    "labels": {
+      "instanceId": "00da6cd2c43e86351e51a44a690c2cb2a93d85480b85d707a41afa7508d2e4bd61ae74c005963424433ed25942b3f635a85d74eeb52c7987ffa693277d0c538b4c5317f358ab5b25d756768e9dfc14"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-25T05:29:50.355160617Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00344-khw",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "\u001b[2m2026-02-25T05:29:50.293903Z\u001b[0m \u001b[32m INFO\u001b[0m \u001b[2myukpomnang_backend::services::specialized_services_optimizer\u001b[0m\u001b[2m:\u001b[0m [Optimizer] Index trouv?: idx_labs_analyses_gin sur laboratoires_imagerie (unique: false)",
+    "timestamp": "2026-02-25T05:29:50.292938Z"
+  },
+  {
+    "insertId": "699e88ce00047845e8f2c4bc",
+    "labels": {
+      "instanceId": "00da6cd2c43e86351e51a44a690c2cb2a93d85480b85d707a41afa7508d2e4bd61ae74c005963424433ed25942b3f635a85d74eeb52c7987ffa693277d0c538b4c5317f358ab5b25d756768e9dfc14"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-25T05:29:50.355160617Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00344-khw",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "\u001b[2m2026-02-25T05:29:50.293892Z\u001b[0m \u001b[32m INFO\u001b[0m \u001b[2myukpomnang_backend::services::specialized_services_optimizer\u001b[0m\u001b[2m:\u001b[0m [Optimizer] Index trouv?: idx_labs_gps_active sur laboratoires_imagerie (unique: false)",
+    "timestamp": "2026-02-25T05:29:50.292933Z"
+  },
+  {
+    "insertId": "699e88ce0004782907d08682",
+    "labels": {
+      "instanceId": "00da6cd2c43e86351e51a44a690c2cb2a93d85480b85d707a41afa7508d2e4bd61ae74c005963424433ed25942b3f635a85d74eeb52c7987ffa693277d0c538b4c5317f358ab5b25d756768e9dfc14"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-25T05:29:50.355160617Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00344-khw",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "\u001b[2m2026-02-25T05:29:50.293878Z\u001b[0m \u001b[32m INFO\u001b[0m \u001b[2myukpomnang_backend::services::specialized_services_optimizer\u001b[0m\u001b[2m:\u001b[0m [Optimizer] Index trouv?: idx_laboratoires_is_available sur laboratoires_imagerie (unique: false)",
+    "timestamp": "2026-02-25T05:29:50.292905Z"
+  }
+]

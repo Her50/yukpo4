@@ -754,49 +754,53 @@ const ResultatBesoinScreen: React.FC = () => {
                             let extractedImages: any[] = [];
                             let extractedVideos: any[] = [];
 
-                            // Source 1: productFromAPI.images/videos (direct - peut venir de la table media enrichie par le backend)
-                            if (Array.isArray(productFromAPI.images) && productFromAPI.images.length > 0) {
-                                extractedImages = productFromAPI.images;
-                            } else if (productFromAPI.images && !Array.isArray(productFromAPI.images)) {
-                                extractedImages = [productFromAPI.images];
-                            }
+                            // ✅ CORRIGÉ 2026-02-27: Helper pour extraire un tableau de médias depuis différents formats
+                            // Gère: tableau simple, objet {valeur: [...]}, string simple
+                            const extractMediaField = (field: any): any[] => {
+                                if (Array.isArray(field) && field.length > 0) return field;
+                                if (field && typeof field === 'object' && Array.isArray(field.valeur)) return field.valeur;
+                                if (field && typeof field === 'string') return [field];
+                                return [];
+                            };
 
-                            if (Array.isArray(productFromAPI.videos) && productFromAPI.videos.length > 0) {
-                                extractedVideos = productFromAPI.videos;
-                            } else if (productFromAPI.videos && !Array.isArray(productFromAPI.videos)) {
-                                extractedVideos = [productFromAPI.videos];
-                            }
+                            // Source 1: productFromAPI.images/videos (direct - peut venir de la table media enrichie par le backend)
+                            extractedImages = extractMediaField(productFromAPI.images);
+                            extractedVideos = extractMediaField(productFromAPI.videos);
 
                             // Source 2: productData.images/videos (où le backend enrichit avec les médias de la table media)
                             if (extractedImages.length === 0 && productData) {
-                                if (Array.isArray(productData.images) && productData.images.length > 0) {
-                                    extractedImages = productData.images;
-                                } else if (productData.images && !Array.isArray(productData.images)) {
-                                    extractedImages = [productData.images];
-                                }
+                                extractedImages = extractMediaField(productData.images);
                             }
-
                             if (extractedVideos.length === 0 && productData) {
-                                if (Array.isArray(productData.videos) && productData.videos.length > 0) {
-                                    extractedVideos = productData.videos;
-                                } else if (productData.videos && !Array.isArray(productData.videos)) {
-                                    extractedVideos = [productData.videos];
-                                }
+                                extractedVideos = extractMediaField(productData.videos);
                             }
 
                             // ✅ AMÉLIORÉ: Normaliser les images/vidéos (extraire les URLs si ce sont des objets)
                             const normalizeMediaArray = (mediaArray: any[]): string[] => {
-                                return mediaArray
-                                    .map((item: any) => {
-                                        if (typeof item === 'string') {
-                                            return item.trim();
-                                        } else if (item && typeof item === 'object') {
-                                            // Extraire l'URL depuis différents formats d'objets
-                                            return item.url || item.path || item.valeur || item.uri || item.src || null;
+                                const result: string[] = [];
+                                for (const item of mediaArray) {
+                                    if (typeof item === 'string' && item.trim() && item !== 'false') {
+                                        result.push(item.trim());
+                                    } else if (item && typeof item === 'object') {
+                                        // ✅ CORRIGÉ 2026-02-27: Si valeur est un tableau, le dérouler (format {valeur: [...]})
+                                        const val = item.url || item.path || item.uri || item.src;
+                                        if (typeof val === 'string' && val.trim()) {
+                                            result.push(val.trim());
+                                        } else if (item.valeur) {
+                                            if (typeof item.valeur === 'string' && item.valeur.trim()) {
+                                                result.push(item.valeur.trim());
+                                            } else if (Array.isArray(item.valeur)) {
+                                                // Dérouler le tableau imbriqué
+                                                for (const sub of item.valeur) {
+                                                    if (typeof sub === 'string' && sub.trim() && sub !== 'false') {
+                                                        result.push(sub.trim());
+                                                    }
+                                                }
+                                            }
                                         }
-                                        return null;
-                                    })
-                                    .filter((url): url is string => url !== null && url !== '' && url !== 'false');
+                                    }
+                                }
+                                return result;
                             };
 
                             const normalizedImages = normalizeMediaArray(extractedImages);

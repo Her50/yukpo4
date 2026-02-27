@@ -1,0 +1,602 @@
+﻿[
+  {
+    "insertId": "699e8507000f1f8a6956e835",
+    "labels": {
+      "instanceId": "00da6cd2c48e28161544cf521a17bdda72082051d5b09703cbe59642ef1d836944b449fc9b3971e81897410bee3e713d824e652b9885b8253ffe514dfdde0395beacee78ac4a01ff90f7a50a0103ac"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-25T05:13:44.222863398Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00343-zgh",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "\u001b[2m2026-02-25T05:13:43.992268Z\u001b[0m \u001b[33m WARN\u001b[0m \u001b[2myukpomnang_backend::services::gpu_service\u001b[0m\u001b[2m:\u001b[0m [GpuService] ?? Impossible de r?cup?rer m?triques GPU apr?s 3 tentatives: Erreur r?seau: error sending request for url (http://yukpo-gpu-workers:8080/api/v1/metrics): error trying to connect: dns error: failed to lookup address information: Name or service not known - Utilisation par d?faut",
+    "timestamp": "2026-02-25T05:13:43.991114Z"
+  },
+  {
+    "insertId": "699e84fe000da048e750f5c5",
+    "labels": {
+      "instanceId": "00da6cd2c48e28161544cf521a17bdda72082051d5b09703cbe59642ef1d836944b449fc9b3971e81897410bee3e713d824e652b9885b8253ffe514dfdde0395beacee78ac4a01ff90f7a50a0103ac"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-25T05:13:34.896933874Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00343-zgh",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "\u001b[2m2026-02-25T05:13:34.894106Z\u001b[0m \u001b[33m WARN\u001b[0m \u001b[2msqlx::pool::acquire\u001b[0m\u001b[2m:\u001b[0m acquired connection, but time to acquire exceeded slow threshold \u001b[3maquired_after_secs\u001b[0m\u001b[2m=\u001b[0m2.201614167 \u001b[3mslow_acquire_threshold_secs\u001b[0m\u001b[2m=\u001b[0m2.0",
+    "timestamp": "2026-02-25T05:13:34.893Z"
+  },
+  {
+    "insertId": "699e84cb000904957780d7bf",
+    "labels": {
+      "instanceId": "00da6cd2c48e28161544cf521a17bdda72082051d5b09703cbe59642ef1d836944b449fc9b3971e81897410bee3e713d824e652b9885b8253ffe514dfdde0395beacee78ac4a01ff90f7a50a0103ac"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-25T05:12:43.751842818Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00343-zgh",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "\u001b[2m2026-02-25T05:12:43.592128Z\u001b[0m \u001b[33m WARN\u001b[0m \u001b[2myukpomnang_backend::services::gpu_service\u001b[0m\u001b[2m:\u001b[0m [GpuService] ?? Impossible de r?cup?rer m?triques GPU apr?s 3 tentatives: Erreur r?seau: error sending request for url (http://yukpo-gpu-workers:8080/api/v1/metrics): error trying to connect: dns error: failed to lookup address information: Name or service not known - Utilisation par d?faut",
+    "timestamp": "2026-02-25T05:12:43.590997Z"
+  },
+  {
+    "insertId": "699e84c3000781a9de8b5795",
+    "labels": {
+      "instanceId": "00da6cd2c48e28161544cf521a17bdda72082051d5b09703cbe59642ef1d836944b449fc9b3971e81897410bee3e713d824e652b9885b8253ffe514dfdde0395beacee78ac4a01ff90f7a50a0103ac"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-25T05:12:35.761722500Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00343-zgh",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "\u001b[2m2026-02-25T05:12:35.493001Z\u001b[0m \u001b[33m WARN\u001b[0m \u001b[2msqlx::query\u001b[0m\u001b[2m:\u001b[0m slow statement: execution time exceeded alert threshold \u001b[3msummary\u001b[0m\u001b[2m=\u001b[0m\"SELECT id, delivery_id, zone_id, ?\" \u001b[3mdb.statement\u001b[0m\u001b[2m=\u001b[0m\"\\n\\n\\n                        SELECT\\n                            id,\\n                            delivery_id,\\n                            zone_id,\\n                            status,\\n                            priority,\\n                            attempt_count,\\n                            payload,\\n                            next_attempt_at,\\n                            enqueued_at,\\n                            updated_at\\n                        FROM delivery_matching_queue\\n                        WHERE status IN ('queued', 'searching')\\n                          AND next_attempt_at <= NOW()\\n                        ORDER BY priority ASC, next_attempt_at ASC\\n                        LIMIT $1\\n                        \\n\" \u001b[3mrows_affected\u001b[0m\u001b[2m=\u001b[0m0 \u001b[3mrows_returned\u001b[0m\u001b[2m=\u001b[0m0 \u001b[3melapsed\u001b[0m\u001b[2m=\u001b[0m1.797362816s \u001b[3melapsed_secs\u001b[0m\u001b[2m=\u001b[0m1.7973628160000001 \u001b[3mslow_threshold\u001b[0m\u001b[2m=\u001b[0m1s",
+    "timestamp": "2026-02-25T05:12:35.491945Z"
+  },
+  {
+    "insertId": "699e84c30001632db3de8d2d",
+    "labels": {
+      "instanceId": "00da6cd2c48e28161544cf521a17bdda72082051d5b09703cbe59642ef1d836944b449fc9b3971e81897410bee3e713d824e652b9885b8253ffe514dfdde0395beacee78ac4a01ff90f7a50a0103ac"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-25T05:12:35.426359540Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00343-zgh",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "\u001b[2m2026-02-25T05:12:34.991818Z\u001b[0m \u001b[33m WARN\u001b[0m \u001b[2msqlx::query\u001b[0m\u001b[2m:\u001b[0m slow statement: execution time exceeded alert threshold \u001b[3msummary\u001b[0m\u001b[2m=\u001b[0m\"SELECT oid::regtype::text, typtype, typcategory, ?\" \u001b[3mdb.statement\u001b[0m\u001b[2m=\u001b[0m\"\\n\\nSELECT oid::regtype::text, typtype, typcategory, typrelid, typelem, typbasetype FROM pg_catalog.pg_type WHERE oid = $1\\n\" \u001b[3mrows_affected\u001b[0m\u001b[2m=\u001b[0m1 \u001b[3mrows_returned\u001b[0m\u001b[2m=\u001b[0m1 \u001b[3melapsed\u001b[0m\u001b[2m=\u001b[0m1.000018062s \u001b[3melapsed_secs\u001b[0m\u001b[2m=\u001b[0m1.000018062 \u001b[3mslow_threshold\u001b[0m\u001b[2m=\u001b[0m1s",
+    "timestamp": "2026-02-25T05:12:35.090925Z"
+  },
+  {
+    "insertId": "699e84c200016519bd6559a5",
+    "labels": {
+      "instanceId": "00da6cd2c48e28161544cf521a17bdda72082051d5b09703cbe59642ef1d836944b449fc9b3971e81897410bee3e713d824e652b9885b8253ffe514dfdde0395beacee78ac4a01ff90f7a50a0103ac"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-25T05:12:34.095645401Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00343-zgh",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "\u001b[2m2026-02-25T05:12:34.091778Z\u001b[0m \u001b[33m WARN\u001b[0m \u001b[2msqlx::pool::acquire\u001b[0m\u001b[2m:\u001b[0m acquired connection, but time to acquire exceeded slow threshold \u001b[3maquired_after_secs\u001b[0m\u001b[2m=\u001b[0m2.099042097 \u001b[3mslow_acquire_threshold_secs\u001b[0m\u001b[2m=\u001b[0m2.0",
+    "timestamp": "2026-02-25T05:12:34.091417Z"
+  },
+  {
+    "insertId": "699e849900077e9885b729ef",
+    "labels": {
+      "instanceId": "00da6cd2c48e28161544cf521a17bdda72082051d5b09703cbe59642ef1d836944b449fc9b3971e81897410bee3e713d824e652b9885b8253ffe514dfdde0395beacee78ac4a01ff90f7a50a0103ac"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-25T05:11:53.646013540Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00343-zgh",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "\u001b[2m2026-02-25T05:11:53.492330Z\u001b[0m \u001b[33m WARN\u001b[0m \u001b[2msqlx::query\u001b[0m\u001b[2m:\u001b[0m slow statement: execution time exceeded alert threshold \u001b[3msummary\u001b[0m\u001b[2m=\u001b[0m\"SELECT 1\" \u001b[3mdb.statement\u001b[0m\u001b[2m=\u001b[0m\"\" \u001b[3mrows_affected\u001b[0m\u001b[2m=\u001b[0m1 \u001b[3mrows_returned\u001b[0m\u001b[2m=\u001b[0m1 \u001b[3melapsed\u001b[0m\u001b[2m=\u001b[0m1.000078018s \u001b[3melapsed_secs\u001b[0m\u001b[2m=\u001b[0m1.000078018 \u001b[3mslow_threshold\u001b[0m\u001b[2m=\u001b[0m1s",
+    "timestamp": "2026-02-25T05:11:53.491160Z"
+  },
+  {
+    "insertId": "699e8490000475e157003b52",
+    "labels": {
+      "instanceId": "00da6cd2c48e28161544cf521a17bdda72082051d5b09703cbe59642ef1d836944b449fc9b3971e81897410bee3e713d824e652b9885b8253ffe514dfdde0395beacee78ac4a01ff90f7a50a0103ac"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-25T05:11:44.321587486Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00343-zgh",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "\u001b[2m2026-02-25T05:11:44.293356Z\u001b[0m \u001b[33m WARN\u001b[0m \u001b[2myukpomnang_backend::services::gpu_service\u001b[0m\u001b[2m:\u001b[0m [GpuService] ?? Impossible de r?cup?rer m?triques GPU apr?s 3 tentatives: Erreur r?seau: error sending request for url (http://yukpo-gpu-workers:8080/api/v1/metrics): error trying to connect: dns error: failed to lookup address information: Name or service not known - Utilisation par d?faut",
+    "timestamp": "2026-02-25T05:11:44.292321Z"
+  },
+  {
+    "insertId": "699e84550002ea4826c83737",
+    "labels": {
+      "instanceId": "00da6cd2c48e28161544cf521a17bdda72082051d5b09703cbe59642ef1d836944b449fc9b3971e81897410bee3e713d824e652b9885b8253ffe514dfdde0395beacee78ac4a01ff90f7a50a0103ac"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-25T05:10:45.391725601Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00343-zgh",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "\u001b[2m2026-02-25T05:10:45.192149Z\u001b[0m \u001b[33m WARN\u001b[0m \u001b[2msqlx::query\u001b[0m\u001b[2m:\u001b[0m slow statement: execution time exceeded alert threshold \u001b[3msummary\u001b[0m\u001b[2m=\u001b[0m\"SELECT delivery_id, suggested_status, created_at, ?\" \u001b[3mdb.statement\u001b[0m\u001b[2m=\u001b[0m\"\\n\\n\\n        SELECT \\n            delivery_id,\\n            suggested_status,\\n            created_at,\\n            auto_confirm_after_seconds\\n        FROM delivery_proximity_suggestions\\n        WHERE \\n            status = 'pending'\\n            AND auto_confirm_after_seconds IS NOT NULL\\n            AND created_at + (auto_confirm_after_seconds || ' seconds')::interval <= NOW()\\n        LIMIT 50\\n        \\n\" \u001b[3mrows_affected\u001b[0m\u001b[2m=\u001b[0m0 \u001b[3mrows_returned\u001b[0m\u001b[2m=\u001b[0m0 \u001b[3melapsed\u001b[0m\u001b[2m=\u001b[0m1.70028699s \u001b[3melapsed_secs\u001b[0m\u001b[2m=\u001b[0m1.70028699 \u001b[3mslow_threshold\u001b[0m\u001b[2m=\u001b[0m1s",
+    "timestamp": "2026-02-25T05:10:45.191048Z"
+  },
+  {
+    "insertId": "699e8454000c12cb49a349d7",
+    "labels": {
+      "instanceId": "00da6cd2c48e28161544cf521a17bdda72082051d5b09703cbe59642ef1d836944b449fc9b3971e81897410bee3e713d824e652b9885b8253ffe514dfdde0395beacee78ac4a01ff90f7a50a0103ac"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-25T05:10:45.059195559Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00343-zgh",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "\u001b[2m2026-02-25T05:10:44.792315Z\u001b[0m \u001b[33m WARN\u001b[0m \u001b[2myukpomnang_backend::services::gpu_service\u001b[0m\u001b[2m:\u001b[0m [GpuService] ?? Impossible de r?cup?rer m?triques GPU apr?s 3 tentatives: Erreur r?seau: error sending request for url (http://yukpo-gpu-workers:8080/api/v1/metrics): error trying to connect: dns error: failed to lookup address information: Name or service not known - Utilisation par d?faut",
+    "timestamp": "2026-02-25T05:10:44.791243Z"
+  },
+  {
+    "insertId": "699e844d000d98a5db992c33",
+    "labels": {
+      "instanceId": "00da6cd2c48e28161544cf521a17bdda72082051d5b09703cbe59642ef1d836944b449fc9b3971e81897410bee3e713d824e652b9885b8253ffe514dfdde0395beacee78ac4a01ff90f7a50a0103ac"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-25T05:10:38.057744160Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00343-zgh",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "\u001b[2m2026-02-25T05:10:37.492412Z\u001b[0m \u001b[33m WARN\u001b[0m \u001b[2msqlx::query\u001b[0m\u001b[2m:\u001b[0m slow statement: execution time exceeded alert threshold \u001b[3msummary\u001b[0m\u001b[2m=\u001b[0m\"SELECT id, delivery_id, zone_id, ?\" \u001b[3mdb.statement\u001b[0m\u001b[2m=\u001b[0m\"\\n\\n\\n                        SELECT\\n                            id,\\n                            delivery_id,\\n                            zone_id,\\n                            status,\\n                            priority,\\n                            attempt_count,\\n                            payload,\\n                            next_attempt_at,\\n                            enqueued_at,\\n                            updated_at\\n                        FROM delivery_matching_queue\\n                        WHERE status IN ('queued', 'searching')\\n                          AND next_attempt_at <= NOW()\\n                        ORDER BY priority ASC, next_attempt_at ASC\\n                        LIMIT $1\\n                        \\n\" \u001b[3mrows_affected\u001b[0m\u001b[2m=\u001b[0m0 \u001b[3mrows_returned\u001b[0m\u001b[2m=\u001b[0m0 \u001b[3melapsed\u001b[0m\u001b[2m=\u001b[0m1.499632161s \u001b[3melapsed_secs\u001b[0m\u001b[2m=\u001b[0m1.499632161 \u001b[3mslow_threshold\u001b[0m\u001b[2m=\u001b[0m1s",
+    "timestamp": "2026-02-25T05:10:37.891045Z"
+  },
+  {
+    "insertId": "699e844d0007a61bf49665b5",
+    "labels": {
+      "instanceId": "00da6cd2c48e28161544cf521a17bdda72082051d5b09703cbe59642ef1d836944b449fc9b3971e81897410bee3e713d824e652b9885b8253ffe514dfdde0395beacee78ac4a01ff90f7a50a0103ac"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-25T05:10:37.728816092Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00343-zgh",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "\u001b[2m2026-02-25T05:10:37.502400Z\u001b[0m \u001b[33m WARN\u001b[0m \u001b[2msqlx::query\u001b[0m\u001b[2m:\u001b[0m slow statement: execution time exceeded alert threshold \u001b[3msummary\u001b[0m\u001b[2m=\u001b[0m\"SELECT id, delivery_id, zone_id, ?\" \u001b[3mdb.statement\u001b[0m\u001b[2m=\u001b[0m\"\\n\\n\\n                        SELECT\\n                            id,\\n                            delivery_id,\\n                            zone_id,\\n                            status,\\n                            priority,\\n                            attempt_count,\\n                            payload,\\n                            next_attempt_at,\\n                            enqueued_at,\\n                            updated_at\\n                        FROM delivery_matching_queue\\n                        WHERE status IN ('queued', 'searching')\\n                          AND next_attempt_at <= NOW()\\n                        ORDER BY priority ASC, next_attempt_at ASC\\n                        LIMIT $1\\n                        \\n\" \u001b[3mrows_affected\u001b[0m\u001b[2m=\u001b[0m0 \u001b[3mrows_returned\u001b[0m\u001b[2m=\u001b[0m0 \u001b[3melapsed\u001b[0m\u001b[2m=\u001b[0m1.509855659s \u001b[3melapsed_secs\u001b[0m\u001b[2m=\u001b[0m1.5098556589999999 \u001b[3mslow_threshold\u001b[0m\u001b[2m=\u001b[0m1s",
+    "timestamp": "2026-02-25T05:10:37.501275Z"
+  },
+  {
+    "insertId": "699e844d0005f94e441ec359",
+    "labels": {
+      "instanceId": "00da6cd2c48e28161544cf521a17bdda72082051d5b09703cbe59642ef1d836944b449fc9b3971e81897410bee3e713d824e652b9885b8253ffe514dfdde0395beacee78ac4a01ff90f7a50a0103ac"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-25T05:10:37.728816092Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00343-zgh",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "\u001b[2m2026-02-25T05:10:37.392626Z\u001b[0m \u001b[33m WARN\u001b[0m \u001b[2msqlx::query\u001b[0m\u001b[2m:\u001b[0m slow statement: execution time exceeded alert threshold \u001b[3msummary\u001b[0m\u001b[2m=\u001b[0m\"SELECT id, delivery_id, zone_id, ?\" \u001b[3mdb.statement\u001b[0m\u001b[2m=\u001b[0m\"\\n\\n\\n                        SELECT\\n                            id,\\n                            delivery_id,\\n                            zone_id,\\n                            status,\\n                            priority,\\n                            attempt_count,\\n                            payload,\\n                            next_attempt_at,\\n                            enqueued_at,\\n                            updated_at\\n                        FROM delivery_matching_queue\\n                        WHERE status IN ('queued', 'searching')\\n                          AND next_attempt_at <= NOW()\\n                        ORDER BY priority ASC, next_attempt_at ASC\\n                        LIMIT $1\\n                        \\n\" \u001b[3mrows_affected\u001b[0m\u001b[2m=\u001b[0m0 \u001b[3mrows_returned\u001b[0m\u001b[2m=\u001b[0m0 \u001b[3melapsed\u001b[0m\u001b[2m=\u001b[0m1.800539886s \u001b[3melapsed_secs\u001b[0m\u001b[2m=\u001b[0m1.8005398860000001 \u001b[3mslow_threshold\u001b[0m\u001b[2m=\u001b[0m1s",
+    "timestamp": "2026-02-25T05:10:37.391502Z"
+  },
+  {
+    "insertId": "699e844b000f21ccc0398ceb",
+    "labels": {
+      "instanceId": "00da6cd2c48e28161544cf521a17bdda72082051d5b09703cbe59642ef1d836944b449fc9b3971e81897410bee3e713d824e652b9885b8253ffe514dfdde0395beacee78ac4a01ff90f7a50a0103ac"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-25T05:10:36.060940163Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00343-zgh",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "\u001b[2m2026-02-25T05:10:35.992733Z\u001b[0m \u001b[33m WARN\u001b[0m \u001b[2msqlx::pool::acquire\u001b[0m\u001b[2m:\u001b[0m acquired connection, but time to acquire exceeded slow threshold \u001b[3maquired_after_secs\u001b[0m\u001b[2m=\u001b[0m3.799943973 \u001b[3mslow_acquire_threshold_secs\u001b[0m\u001b[2m=\u001b[0m2.0",
+    "timestamp": "2026-02-25T05:10:35.991692Z"
+  },
+  {
+    "insertId": "699e844b000f212f0d9c7cd5",
+    "labels": {
+      "instanceId": "00da6cd2c48e28161544cf521a17bdda72082051d5b09703cbe59642ef1d836944b449fc9b3971e81897410bee3e713d824e652b9885b8253ffe514dfdde0395beacee78ac4a01ff90f7a50a0103ac"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-25T05:10:36.060940163Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00343-zgh",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "\u001b[2m2026-02-25T05:10:35.992437Z\u001b[0m \u001b[33m WARN\u001b[0m \u001b[2msqlx::pool::acquire\u001b[0m\u001b[2m:\u001b[0m acquired connection, but time to acquire exceeded slow threshold \u001b[3maquired_after_secs\u001b[0m\u001b[2m=\u001b[0m3.9992013809999998 \u001b[3mslow_acquire_threshold_secs\u001b[0m\u001b[2m=\u001b[0m2.0",
+    "timestamp": "2026-02-25T05:10:35.991535Z"
+  },
+  {
+    "insertId": "699e844b0002e9a69442c922",
+    "labels": {
+      "instanceId": "00da6cd2c48e28161544cf521a17bdda72082051d5b09703cbe59642ef1d836944b449fc9b3971e81897410bee3e713d824e652b9885b8253ffe514dfdde0395beacee78ac4a01ff90f7a50a0103ac"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-25T05:10:35.395336185Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00343-zgh",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "\u001b[2m2026-02-25T05:10:35.092113Z\u001b[0m \u001b[33m WARN\u001b[0m \u001b[2msqlx::pool::acquire\u001b[0m\u001b[2m:\u001b[0m acquired connection, but time to acquire exceeded slow threshold \u001b[3maquired_after_secs\u001b[0m\u001b[2m=\u001b[0m2.699596281 \u001b[3mslow_acquire_threshold_secs\u001b[0m\u001b[2m=\u001b[0m2.0",
+    "timestamp": "2026-02-25T05:10:35.190886Z"
+  },
+  {
+    "insertId": "699e844a000a8cdfc0bdf8f2",
+    "labels": {
+      "instanceId": "00da6cd2c48e28161544cf521a17bdda72082051d5b09703cbe59642ef1d836944b449fc9b3971e81897410bee3e713d824e652b9885b8253ffe514dfdde0395beacee78ac4a01ff90f7a50a0103ac"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-25T05:10:34.728670125Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00343-zgh",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "\u001b[2m2026-02-25T05:10:34.692529Z\u001b[0m \u001b[33m WARN\u001b[0m \u001b[2msqlx::query\u001b[0m\u001b[2m:\u001b[0m slow statement: execution time exceeded alert threshold \u001b[3msummary\u001b[0m\u001b[2m=\u001b[0m\"SET statement_timeout = 0\" \u001b[3mdb.statement\u001b[0m\u001b[2m=\u001b[0m\"\" \u001b[3mrows_affected\u001b[0m\u001b[2m=\u001b[0m0 \u001b[3mrows_returned\u001b[0m\u001b[2m=\u001b[0m0 \u001b[3melapsed\u001b[0m\u001b[2m=\u001b[0m1.000278552s \u001b[3melapsed_secs\u001b[0m\u001b[2m=\u001b[0m1.000278552 \u001b[3mslow_threshold\u001b[0m\u001b[2m=\u001b[0m1s",
+    "timestamp": "2026-02-25T05:10:34.691423Z"
+  },
+  {
+    "insertId": "699e844a0005facece8d4d9b",
+    "labels": {
+      "instanceId": "00da6cd2c48e28161544cf521a17bdda72082051d5b09703cbe59642ef1d836944b449fc9b3971e81897410bee3e713d824e652b9885b8253ffe514dfdde0395beacee78ac4a01ff90f7a50a0103ac"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-25T05:10:34.395082802Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00343-zgh",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "\u001b[2m2026-02-25T05:10:34.392888Z\u001b[0m \u001b[33m WARN\u001b[0m \u001b[2msqlx::query\u001b[0m\u001b[2m:\u001b[0m slow statement: execution time exceeded alert threshold \u001b[3msummary\u001b[0m\u001b[2m=\u001b[0m\"SELECT lfs.id, lfs.live_session_id, lfs.service_id, ?\" \u001b[3mdb.statement\u001b[0m\u001b[2m=\u001b[0m\"\\n\\n\\n            SELECT\\n                lfs.id,\\n                lfs.live_session_id,\\n                lfs.service_id,\\n                lfs.end_at,\\n                lfs.ending_notification_sent_at,\\n                ls.host_user_id,\\n                ls.service_id AS primary_service_id,\\n                ls.metadata,\\n                ls.title\\n            FROM live_flash_sales lfs\\n            JOIN live_sessions ls ON ls.id = lfs.live_session_id\\n            WHERE lfs.status = 'live'\\n              AND lfs.end_at <= $1\\n              AND lfs.ending_notification_sent_at IS NULL\\n            \\n\" \u001b[3mrows_affected\u001b[0m\u001b[2m=\u001b[0m0 \u001b[3mrows_returned\u001b[0m\u001b[2m=\u001b[0m0 \u001b[3melapsed\u001b[0m\u001b[2m=\u001b[0m1.000278762s \u001b[3melapsed_secs\u001b[0m\u001b[2m=\u001b[0m1.000278762 \u001b[3mslow_threshold\u001b[0m\u001b[2m=\u001b[0m1s",
+    "timestamp": "2026-02-25T05:10:34.391886Z"
+  },
+  {
+    "insertId": "699e842100091757558d39b6",
+    "labels": {
+      "instanceId": "00da6cd2c48e28161544cf521a17bdda72082051d5b09703cbe59642ef1d836944b449fc9b3971e81897410bee3e713d824e652b9885b8253ffe514dfdde0395beacee78ac4a01ff90f7a50a0103ac"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-25T05:09:53.611682382Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00343-zgh",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "\u001b[2m2026-02-25T05:09:53.597046Z\u001b[0m \u001b[33m WARN\u001b[0m \u001b[2msqlx::query\u001b[0m\u001b[2m:\u001b[0m slow statement: execution time exceeded alert threshold \u001b[3msummary\u001b[0m\u001b[2m=\u001b[0m\"SELECT id, delivery_id, zone_id, ?\" \u001b[3mdb.statement\u001b[0m\u001b[2m=\u001b[0m\"\\n\\n\\n                        SELECT\\n                            id,\\n                            delivery_id,\\n                            zone_id,\\n                            status,\\n                            priority,\\n                            attempt_count,\\n                            payload,\\n                            next_attempt_at,\\n                            enqueued_at,\\n                            updated_at\\n                        FROM delivery_matching_queue\\n                        WHERE status IN ('queued', 'searching')\\n                          AND next_attempt_at <= NOW()\\n                        ORDER BY priority ASC, next_attempt_at ASC\\n                        LIMIT $1\\n                        \\n\" \u001b[3mrows_affected\u001b[0m\u001b[2m=\u001b[0m0 \u001b[3mrows_returned\u001b[0m\u001b[2m=\u001b[0m0 \u001b[3melapsed\u001b[0m\u001b[2m=\u001b[0m1.404492067s \u001b[3melapsed_secs\u001b[0m\u001b[2m=\u001b[0m1.404492067 \u001b[3mslow_threshold\u001b[0m\u001b[2m=\u001b[0m1s",
+    "timestamp": "2026-02-25T05:09:53.595799Z"
+  },
+  {
+    "insertId": "699e842100090676a9bcf5ef",
+    "labels": {
+      "instanceId": "00da6cd2c48e28161544cf521a17bdda72082051d5b09703cbe59642ef1d836944b449fc9b3971e81897410bee3e713d824e652b9885b8253ffe514dfdde0395beacee78ac4a01ff90f7a50a0103ac"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-25T05:09:53.611682382Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00343-zgh",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "\u001b[2m2026-02-25T05:09:53.592685Z\u001b[0m \u001b[33m WARN\u001b[0m \u001b[2msqlx::query\u001b[0m\u001b[2m:\u001b[0m slow statement: execution time exceeded alert threshold \u001b[3msummary\u001b[0m\u001b[2m=\u001b[0m\"SELECT id, delivery_id, zone_id, ?\" \u001b[3mdb.statement\u001b[0m\u001b[2m=\u001b[0m\"\\n\\n\\n                        SELECT\\n                            id,\\n                            delivery_id,\\n                            zone_id,\\n                            status,\\n                            priority,\\n                            attempt_count,\\n                            payload,\\n                            next_attempt_at,\\n                            enqueued_at,\\n                            updated_at\\n                        FROM delivery_matching_queue\\n                        WHERE status IN ('queued', 'searching')\\n                          AND next_attempt_at <= NOW()\\n                        ORDER BY priority ASC, next_attempt_at ASC\\n                        LIMIT $1\\n                        \\n\" \u001b[3mrows_affected\u001b[0m\u001b[2m=\u001b[0m0 \u001b[3mrows_returned\u001b[0m\u001b[2m=\u001b[0m0 \u001b[3melapsed\u001b[0m\u001b[2m=\u001b[0m1.400282687s \u001b[3melapsed_secs\u001b[0m\u001b[2m=\u001b[0m1.400282687 \u001b[3mslow_threshold\u001b[0m\u001b[2m=\u001b[0m1s",
+    "timestamp": "2026-02-25T05:09:53.591478Z"
+  },
+  {
+    "insertId": "699e8421000906627a5e8778",
+    "labels": {
+      "instanceId": "00da6cd2c48e28161544cf521a17bdda72082051d5b09703cbe59642ef1d836944b449fc9b3971e81897410bee3e713d824e652b9885b8253ffe514dfdde0395beacee78ac4a01ff90f7a50a0103ac"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-25T05:09:53.611682382Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00343-zgh",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "\u001b[2m2026-02-25T05:09:53.592648Z\u001b[0m \u001b[33m WARN\u001b[0m \u001b[2msqlx::query\u001b[0m\u001b[2m:\u001b[0m slow statement: execution time exceeded alert threshold \u001b[3msummary\u001b[0m\u001b[2m=\u001b[0m\"SELECT id, delivery_id, zone_id, ?\" \u001b[3mdb.statement\u001b[0m\u001b[2m=\u001b[0m\"\\n\\n\\n                        SELECT\\n                            id,\\n                            delivery_id,\\n                            zone_id,\\n                            status,\\n                            priority,\\n                            attempt_count,\\n                            payload,\\n                            next_attempt_at,\\n                            enqueued_at,\\n                            updated_at\\n                        FROM delivery_matching_queue\\n                        WHERE status IN ('queued', 'searching')\\n                          AND next_attempt_at <= NOW()\\n                        ORDER BY priority ASC, next_attempt_at ASC\\n                        LIMIT $1\\n                        \\n\" \u001b[3mrows_affected\u001b[0m\u001b[2m=\u001b[0m0 \u001b[3mrows_returned\u001b[0m\u001b[2m=\u001b[0m0 \u001b[3melapsed\u001b[0m\u001b[2m=\u001b[0m1.40015174s \u001b[3melapsed_secs\u001b[0m\u001b[2m=\u001b[0m1.40015174 \u001b[3mslow_threshold\u001b[0m\u001b[2m=\u001b[0m1s",
+    "timestamp": "2026-02-25T05:09:53.591458Z"
+  },
+  {
+    "insertId": "699e8419000a8ae9c0cdc206",
+    "labels": {
+      "instanceId": "00da6cd2c48e28161544cf521a17bdda72082051d5b09703cbe59642ef1d836944b449fc9b3971e81897410bee3e713d824e652b9885b8253ffe514dfdde0395beacee78ac4a01ff90f7a50a0103ac"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-25T05:09:45.952107789Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00343-zgh",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "\u001b[2m2026-02-25T05:09:45.492127Z\u001b[0m \u001b[33m WARN\u001b[0m \u001b[2myukpomnang_backend::services::gpu_service\u001b[0m\u001b[2m:\u001b[0m [GpuService] ?? Impossible de r?cup?rer m?triques GPU apr?s 3 tentatives: Erreur r?seau: error sending request for url (http://yukpo-gpu-workers:8080/api/v1/metrics): error trying to connect: dns error: failed to lookup address information: Name or service not known - Utilisation par d?faut",
+    "timestamp": "2026-02-25T05:09:45.690921Z"
+  },
+  {
+    "insertId": "699e840e000479b43b826168",
+    "labels": {
+      "instanceId": "00da6cd2c48e28161544cf521a17bdda72082051d5b09703cbe59642ef1d836944b449fc9b3971e81897410bee3e713d824e652b9885b8253ffe514dfdde0395beacee78ac4a01ff90f7a50a0103ac"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-25T05:09:34.297737504Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00343-zgh",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "\u001b[2m2026-02-25T05:09:34.294323Z\u001b[0m \u001b[33m WARN\u001b[0m \u001b[2msqlx::pool::acquire\u001b[0m\u001b[2m:\u001b[0m acquired connection, but time to acquire exceeded slow threshold \u001b[3maquired_after_secs\u001b[0m\u001b[2m=\u001b[0m2.002055164 \u001b[3mslow_acquire_threshold_secs\u001b[0m\u001b[2m=\u001b[0m2.0",
+    "timestamp": "2026-02-25T05:09:34.293300Z"
+  },
+  {
+    "insertId": "699e83fa0002e9fdc14ad538",
+    "labels": {
+      "instanceId": "00da6cd2c48e28161544cf521a17bdda72082051d5b09703cbe59642ef1d836944b449fc9b3971e81897410bee3e713d824e652b9885b8253ffe514dfdde0395beacee78ac4a01ff90f7a50a0103ac"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-25T05:09:14.244041022Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00343-zgh",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "\u001b[2m2026-02-25T05:09:14.092063Z\u001b[0m \u001b[33m WARN\u001b[0m \u001b[2msqlx::query\u001b[0m\u001b[2m:\u001b[0m slow statement: execution time exceeded alert threshold \u001b[3msummary\u001b[0m\u001b[2m=\u001b[0m\"SELECT id, delivery_id, zone_id, ?\" \u001b[3mdb.statement\u001b[0m\u001b[2m=\u001b[0m\"\\n\\n\\n                        SELECT\\n                            id,\\n                            delivery_id,\\n                            zone_id,\\n                            status,\\n                            priority,\\n                            attempt_count,\\n                            payload,\\n                            next_attempt_at,\\n                            enqueued_at,\\n                            updated_at\\n                        FROM delivery_matching_queue\\n                        WHERE status IN ('queued', 'searching')\\n                          AND next_attempt_at <= NOW()\\n                        ORDER BY priority ASC, next_attempt_at ASC\\n                        LIMIT $1\\n                        \\n\" \u001b[3mrows_affected\u001b[0m\u001b[2m=\u001b[0m0 \u001b[3mrows_returned\u001b[0m\u001b[2m=\u001b[0m0 \u001b[3melapsed\u001b[0m\u001b[2m=\u001b[0m1.299949532s \u001b[3melapsed_secs\u001b[0m\u001b[2m=\u001b[0m1.299949532 \u001b[3mslow_threshold\u001b[0m\u001b[2m=\u001b[0m1s",
+    "timestamp": "2026-02-25T05:09:14.190973Z"
+  },
+  {
+    "insertId": "699e83dc000f1f6c19ff62d5",
+    "labels": {
+      "instanceId": "00da6cd2c48e28161544cf521a17bdda72082051d5b09703cbe59642ef1d836944b449fc9b3971e81897410bee3e713d824e652b9885b8253ffe514dfdde0395beacee78ac4a01ff90f7a50a0103ac"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-25T05:08:45.118334401Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00343-zgh",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "\u001b[2m2026-02-25T05:08:44.992094Z\u001b[0m \u001b[33m WARN\u001b[0m \u001b[2myukpomnang_backend::services::gpu_service\u001b[0m\u001b[2m:\u001b[0m [GpuService] ?? Impossible de r?cup?rer m?triques GPU apr?s 3 tentatives: Erreur r?seau: error sending request for url (http://yukpo-gpu-workers:8080/api/v1/metrics): error trying to connect: dns error: failed to lookup address information: Name or service not known - Utilisation par d?faut",
+    "timestamp": "2026-02-25T05:08:44.991084Z"
+  },
+  {
+    "insertId": "699e83d2000d99f5636058c3",
+    "labels": {
+      "instanceId": "00da6cd2c48e28161544cf521a17bdda72082051d5b09703cbe59642ef1d836944b449fc9b3971e81897410bee3e713d824e652b9885b8253ffe514dfdde0395beacee78ac4a01ff90f7a50a0103ac"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-25T05:08:35.127918997Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00343-zgh",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "\u001b[2m2026-02-25T05:08:34.892266Z\u001b[0m \u001b[33m WARN\u001b[0m \u001b[2msqlx::query\u001b[0m\u001b[2m:\u001b[0m slow statement: execution time exceeded alert threshold \u001b[3msummary\u001b[0m\u001b[2m=\u001b[0m\"SELECT id, delivery_id, zone_id, ?\" \u001b[3mdb.statement\u001b[0m\u001b[2m=\u001b[0m\"\\n\\n\\n                        SELECT\\n                            id,\\n                            delivery_id,\\n                            zone_id,\\n                            status,\\n                            priority,\\n                            attempt_count,\\n                            payload,\\n                            next_attempt_at,\\n                            enqueued_at,\\n                            updated_at\\n                        FROM delivery_matching_queue\\n                        WHERE status IN ('queued', 'searching')\\n                          AND next_attempt_at <= NOW()\\n                        ORDER BY priority ASC, next_attempt_at ASC\\n                        LIMIT $1\\n                        \\n\" \u001b[3mrows_affected\u001b[0m\u001b[2m=\u001b[0m0 \u001b[3mrows_returned\u001b[0m\u001b[2m=\u001b[0m0 \u001b[3melapsed\u001b[0m\u001b[2m=\u001b[0m1.100069119s \u001b[3melapsed_secs\u001b[0m\u001b[2m=\u001b[0m1.100069119 \u001b[3mslow_threshold\u001b[0m\u001b[2m=\u001b[0m1s",
+    "timestamp": "2026-02-25T05:08:34.891381Z"
+  },
+  {
+    "insertId": "699e83d2000c1345dd2b89a3",
+    "labels": {
+      "instanceId": "00da6cd2c48e28161544cf521a17bdda72082051d5b09703cbe59642ef1d836944b449fc9b3971e81897410bee3e713d824e652b9885b8253ffe514dfdde0395beacee78ac4a01ff90f7a50a0103ac"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-25T05:08:34.795151105Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00343-zgh",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "\u001b[2m2026-02-25T05:08:34.792313Z\u001b[0m \u001b[33m WARN\u001b[0m \u001b[2msqlx::pool::acquire\u001b[0m\u001b[2m:\u001b[0m acquired connection, but time to acquire exceeded slow threshold \u001b[3maquired_after_secs\u001b[0m\u001b[2m=\u001b[0m2.397959287 \u001b[3mslow_acquire_threshold_secs\u001b[0m\u001b[2m=\u001b[0m2.0",
+    "timestamp": "2026-02-25T05:08:34.791365Z"
+  },
+  {
+    "insertId": "699e83a90003022793c9f78d",
+    "labels": {
+      "instanceId": "00da6cd2c48e28161544cf521a17bdda72082051d5b09703cbe59642ef1d836944b449fc9b3971e81897410bee3e713d824e652b9885b8253ffe514dfdde0395beacee78ac4a01ff90f7a50a0103ac"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-25T05:07:53.275044982Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00343-zgh",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "\u001b[2m2026-02-25T05:07:53.198143Z\u001b[0m \u001b[33m WARN\u001b[0m \u001b[2msqlx::query\u001b[0m\u001b[2m:\u001b[0m slow statement: execution time exceeded alert threshold \u001b[3msummary\u001b[0m\u001b[2m=\u001b[0m\"SELECT id, delivery_id, zone_id, ?\" \u001b[3mdb.statement\u001b[0m\u001b[2m=\u001b[0m\"\\n\\n\\n                        SELECT\\n                            id,\\n                            delivery_id,\\n                            zone_id,\\n                            status,\\n                            priority,\\n                            attempt_count,\\n                            payload,\\n                            next_attempt_at,\\n                            enqueued_at,\\n                            updated_at\\n                        FROM delivery_matching_queue\\n                        WHERE status IN ('queued', 'searching')\\n                          AND next_attempt_at <= NOW()\\n                        ORDER BY priority ASC, next_attempt_at ASC\\n                        LIMIT $1\\n                        \\n\" \u001b[3mrows_affected\u001b[0m\u001b[2m=\u001b[0m0 \u001b[3mrows_returned\u001b[0m\u001b[2m=\u001b[0m0 \u001b[3melapsed\u001b[0m\u001b[2m=\u001b[0m1.105929753s \u001b[3melapsed_secs\u001b[0m\u001b[2m=\u001b[0m1.105929753 \u001b[3mslow_threshold\u001b[0m\u001b[2m=\u001b[0m1s",
+    "timestamp": "2026-02-25T05:07:53.197159Z"
+  },
+  {
+    "insertId": "699e83a90002eb939836f223",
+    "labels": {
+      "instanceId": "00da6cd2c48e28161544cf521a17bdda72082051d5b09703cbe59642ef1d836944b449fc9b3971e81897410bee3e713d824e652b9885b8253ffe514dfdde0395beacee78ac4a01ff90f7a50a0103ac"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-25T05:07:53.275044982Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00343-zgh",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "\u001b[2m2026-02-25T05:07:53.192321Z\u001b[0m \u001b[33m WARN\u001b[0m \u001b[2msqlx::query\u001b[0m\u001b[2m:\u001b[0m slow statement: execution time exceeded alert threshold \u001b[3msummary\u001b[0m\u001b[2m=\u001b[0m\"SELECT id, delivery_id, zone_id, ?\" \u001b[3mdb.statement\u001b[0m\u001b[2m=\u001b[0m\"\\n\\n\\n                        SELECT\\n                            id,\\n                            delivery_id,\\n                            zone_id,\\n                            status,\\n                            priority,\\n                            attempt_count,\\n                            payload,\\n                            next_attempt_at,\\n                            enqueued_at,\\n                            updated_at\\n                        FROM delivery_matching_queue\\n                        WHERE status IN ('queued', 'searching')\\n                          AND next_attempt_at <= NOW()\\n                        ORDER BY priority ASC, next_attempt_at ASC\\n                        LIMIT $1\\n                        \\n\" \u001b[3mrows_affected\u001b[0m\u001b[2m=\u001b[0m0 \u001b[3mrows_returned\u001b[0m\u001b[2m=\u001b[0m0 \u001b[3melapsed\u001b[0m\u001b[2m=\u001b[0m1.099970482s \u001b[3melapsed_secs\u001b[0m\u001b[2m=\u001b[0m1.099970482 \u001b[3mslow_threshold\u001b[0m\u001b[2m=\u001b[0m1s",
+    "timestamp": "2026-02-25T05:07:53.191379Z"
+  },
+  {
+    "insertId": "699e83a1000c11da98e06418",
+    "labels": {
+      "instanceId": "00da6cd2c48e28161544cf521a17bdda72082051d5b09703cbe59642ef1d836944b449fc9b3971e81897410bee3e713d824e652b9885b8253ffe514dfdde0395beacee78ac4a01ff90f7a50a0103ac"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-25T05:07:45.951046914Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00343-zgh",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "\u001b[2m2026-02-25T05:07:45.792100Z\u001b[0m \u001b[33m WARN\u001b[0m \u001b[2myukpomnang_backend::services::gpu_service\u001b[0m\u001b[2m:\u001b[0m [GpuService] ?? Impossible de r?cup?rer m?triques GPU apr?s 3 tentatives: Erreur r?seau: error sending request for url (http://yukpo-gpu-workers:8080/api/v1/metrics): error trying to connect: dns error: failed to lookup address information: Name or service not known - Utilisation par d?faut",
+    "timestamp": "2026-02-25T05:07:45.791002Z"
+  }
+]

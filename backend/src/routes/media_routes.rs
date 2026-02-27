@@ -16,7 +16,7 @@ use crate::controllers::{
         delete_media, get_effect, get_effects_by_category, get_template, get_templates_by_industry,
         list_effects, list_templates, serve_example_video, upload_media,
     },
-    media_product_controller::get_product_media,
+    media_product_controller::{get_product_media, get_service_media},
     product_video_controller::{
         estimate_video_cost_for_product, generate_video_for_product,
         get_video_generation_job_status,
@@ -72,6 +72,11 @@ pub fn media_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route(
             "/api/templates/industry/{industry}",
             get(get_templates_by_industry),
+        )
+        // ✅ NOUVEAU 2026-02-27: Route pour récupérer TOUS les médias d'un service
+        .route(
+            "/api/services/{service_id}/media",
+            get(get_service_media),
         )
         // ✅ NOUVEAU: Route pour récupérer les médias d'un produit spécifique
         .route(

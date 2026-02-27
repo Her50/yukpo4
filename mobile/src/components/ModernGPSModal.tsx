@@ -220,14 +220,18 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                     locationBias = { lat: 4.031716, lng: 9.817201 };
                 }
 
-                // ✅ CORRIGÉ 2026-02-25: Ajout components=country:cm pour biaiser vers le Cameroun
-                // + strictbounds pour prioriser la zone autour de l'utilisateur
-                // + PAS de paramètre types pour inclure TOUS les résultats:
-                //   villes, quartiers, hôpitaux, pharmacies, restaurants, écoles, stations, etc.
-                const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(query)}&location=${locationBias.lat},${locationBias.lng}&radius=50000&strictbounds=true&components=country:cm|country:ci|country:sn|country:cd|country:ga|country:cg|country:bf|country:ml|country:td|country:ne|country:gn|country:bj|country:tg&key=${GOOGLE_MAPS_API_KEY}&language=fr`;
+                // ✅ FIX 2026-02-27: Google Places API limite components à 5 pays MAX
+                // Avant: 13 pays → Google retournait silencieusement 0 résultat
+                // Maintenant: 5 pays (cm, ci, sn, cd, ga) + PAS de strictbounds
+                const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(query)}&location=${locationBias.lat},${locationBias.lng}&radius=50000&components=country:cm|country:ci|country:sn|country:cd|country:ga&key=${GOOGLE_MAPS_API_KEY}&language=fr`;
 
+                console.log('[ModernGPSModal] Google Places API call:', url.replace(GOOGLE_MAPS_API_KEY, 'KEY_HIDDEN'));
                 const response = await fetch(url);
                 const data = await response.json();
+
+                if (data.status !== 'OK') {
+                    console.warn('[ModernGPSModal] Google Places API status:', data.status, 'error:', data.error_message || 'none');
+                }
 
                 if (data.status === 'OK' && data.predictions) {
                     // ✅ NOUVEAU 2026-01-04: Ajouter les lieux sauvegardés aux suggestions

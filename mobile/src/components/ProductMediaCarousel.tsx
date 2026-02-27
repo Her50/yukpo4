@@ -20,6 +20,7 @@ import SafeIcon from './SafeIcon';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CAROUSEL_WIDTH = SCREEN_WIDTH - 32;
+const CAROUSEL_HEIGHT = 180;
 
 interface ProductMediaCarouselProps {
     images: string[];
@@ -164,9 +165,22 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
         }
     }, [fullscreenMedia]);
 
-    // ✅ CORRIGÉ 2026-02-25: Supprimé auto-scroll, auto-play vidéo et préchargement agressif
-    // Ces fonctionnalités causaient le verrouillage de l'écran dans ResultatBesoinScreen
-    // car elles saturaient le thread JS avec des re-renders et des opérations réseau en boucle
+    // ✅ CORRIGÉ 2026-02-27: Auto-scroll léger (une seule fois) pour signaler qu'il y a d'autres médias
+    const hasAutoScrolled = useRef(false);
+    useEffect(() => {
+        if (allMedia.length > 1 && !hasAutoScrolled.current && scrollViewRef.current) {
+            hasAutoScrolled.current = true;
+            // Attendre que le composant soit monté, puis scroller brièvement vers le 2e média
+            const timer = setTimeout(() => {
+                scrollViewRef.current?.scrollTo({ x: CAROUSEL_WIDTH * 0.3, animated: true });
+                // Revenir au premier après 600ms
+                setTimeout(() => {
+                    scrollViewRef.current?.scrollTo({ x: 0, animated: true });
+                }, 600);
+            }, 1500);
+            return () => clearTimeout(timer);
+        }
+    }, [allMedia.length]);
 
     if (allMedia.length === 0) {
         return (
@@ -179,7 +193,8 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
         );
     }
 
-    // ✅ CORRIGÉ 2026-02-25: Fonction de rendu d'un média individuel (réutilisée pour 1 ou N médias)
+    // ✅ CORRIGÉ 2026-02-27: Fonction de rendu d'un média individuel
+    // Bug 3 fix: Toujours monter le <Video> pour que la ref soit disponible, contrôler shouldPlay
     const renderMediaItem = (media: { type: 'image' | 'video'; uri: string; index: number }, index: number) => {
         return (
             <View key={index} style={styles.slide}>
@@ -194,6 +209,7 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
                             style={styles.media}
                             priority={index === currentIndex ? "high" : "low"}
                             cachePolicy="memory-disk"
+                            webp={false}
                         />
                         <LinearGradient
                             colors={['transparent', 'rgba(0,0,0,0.3)']}
@@ -202,34 +218,33 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
                     </TouchableOpacity>
                 ) : (
                     <View style={styles.videoContainer}>
-                        {playingVideoIndex === index ? (
-                            <Video
-                                ref={(ref) => {
-                                    if (ref) {
-                                        videoRefs.current.set(index, ref);
-                                    } else {
-                                        videoRefs.current.delete(index);
-                                    }
-                                }}
-                                source={{ uri: media.uri }}
-                                style={styles.media}
-                                resizeMode={ResizeMode.COVER}
-                                shouldPlay={true}
-                                isLooping
-                                isMuted={false}
-                                useNativeControls={true}
-                                onError={(error) => {
-                                    const errorMessage = error?.message || String(error);
-                                    if (!errorMessage.includes('404')) {
-                                        console.error('[ProductMediaCarousel] ❌ Erreur vidéo:', error);
-                                    }
-                                    setPlayingVideoIndex(null);
-                                }}
-                            />
-                        ) : (
-                            <View style={[styles.media, { backgroundColor: '#1a1a2e', alignItems: 'center', justifyContent: 'center' }]}>
-                                <SafeIcon name="video" size={36} color="rgba(255,255,255,0.5)" />
-                            </View>
+                        {/* ✅ CORRIGÉ 2026-02-27: Toujours monter le Video pour que la ref soit disponible */}
+                        <Video
+                            ref={(ref) => {
+                                if (ref) {
+                                    videoRefs.current.set(index, ref);
+                                } else {
+                                    videoRefs.current.delete(index);
+                                }
+                            }}
+                            source={{ uri: media.uri }}
+                            style={styles.media}
+                            resizeMode={ResizeMode.COVER}
+                            shouldPlay={playingVideoIndex === index}
+                            isLooping
+                            isMuted={playingVideoIndex !== index}
+                            useNativeControls={playingVideoIndex === index}
+                            onError={(error) => {
+                                const errorMessage = error?.message || String(error);
+                                if (!errorMessage.includes('404')) {
+                                    console.error('[ProductMediaCarousel] ❌ Erreur vidéo:', error);
+                                }
+                                setPlayingVideoIndex(null);
+                            }}
+                        />
+                        {/* Overlay sombre + icône quand la vidéo n'est pas en lecture */}
+                        {playingVideoIndex !== index && (
+                            <View style={styles.videoOverlay} />
                         )}
                         <TouchableOpacity
                             style={styles.fullscreenButton}
@@ -263,7 +278,6 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
                     <ScrollView
                         ref={scrollViewRef}
                         horizontal
-                        pagingEnabled
                         showsHorizontalScrollIndicator={false}
                         onScroll={handleScroll}
                         scrollEventThrottle={100}
@@ -367,11 +381,11 @@ const styles = StyleSheet.create({
     container: {
         position: 'relative',
         width: '100%',
-        height: 140, // ✅ RÉDUIT: 220 → 140 (pour correspondre à imageContainer)
+        height: CAROUSEL_HEIGHT, // ✅ CORRIGÉ 2026-02-27: Aligné avec ProductCard.imageContainer (180px)
     },
     slide: {
         width: CAROUSEL_WIDTH,
-        height: 140, // ✅ RÉDUIT: 220 → 140
+        height: CAROUSEL_HEIGHT, // ✅ CORRIGÉ 2026-02-27: Aligné avec container
     },
     imageContainer: {
         width: '100%',
@@ -468,9 +482,13 @@ const styles = StyleSheet.create({
         fontSize: 11,
         fontWeight: '600',
     },
+    videoOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'rgba(0,0,0,0.4)',
+    },
     placeholder: {
         width: '100%',
-        height: 140, // ✅ RÉDUIT: 220 → 140
+        height: CAROUSEL_HEIGHT, // ✅ CORRIGÉ 2026-02-27: Aligné avec container
         backgroundColor: '#EEF2FF',
         alignItems: 'center',
         justifyContent: 'center',

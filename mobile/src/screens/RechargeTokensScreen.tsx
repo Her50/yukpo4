@@ -46,28 +46,28 @@ const RechargeTokensScreen: React.FC = () => {
     {
       id: 'option1',
       amount: 1000,
-      tokens: 200,
+      tokens: 1000,
       bonus: 0,
     },
     {
       id: 'option2',
       amount: 2500,
-      tokens: 500,
-      bonus: 50,
+      tokens: 2500,
+      bonus: 0,
       popular: true,
     },
     {
       id: 'option3',
       amount: 5000,
-      tokens: 1000,
-      bonus: 200,
+      tokens: 5000,
+      bonus: 0,
       savings: 10,
     },
     {
       id: 'option4',
       amount: 10000,
-      tokens: 2000,
-      bonus: 500,
+      tokens: 10000,
+      bonus: 0,
       savings: 15,
     },
   ];
@@ -192,9 +192,9 @@ const RechargeTokensScreen: React.FC = () => {
   const getSelectedTokens = () => {
     if (selectedOption) {
       const option = rechargeOptions.find(opt => opt.id === selectedOption);
-      return (option?.tokens || 0) + (option?.bonus || 0);
+      return option?.amount || 0;
     }
-    return Math.floor((parseInt(customAmount) || 0) / 5); // 1 token = 5 XAF
+    return parseInt(customAmount) || 0;
   };
 
   const renderAmountStep = () => (
@@ -224,13 +224,10 @@ const RechargeTokensScreen: React.FC = () => {
 
             <View style={styles.optionContent}>
               <Text style={styles.optionAmount}>
-                {option.amount.toLocaleString()} XAF
+                {option.amount.toLocaleString()} FCFA
               </Text>
               <Text style={styles.optionTokens}>
-                {option.tokens} tokens
-                {option.bonus > 0 && (
-                  <Text style={styles.bonusText}> + {option.bonus} bonus</Text>
-                )}
+                Crédité à votre solde
               </Text>
               {option.savings && (
                 <Text style={styles.savingsText}>
@@ -267,7 +264,7 @@ const RechargeTokensScreen: React.FC = () => {
           />
           {customAmount && (
             <Text style={styles.customTokens}>
-              Vous recevrez {getSelectedTokens()} tokens
+              {parseInt(customAmount).toLocaleString() || 0} FCFA seront crédités à votre solde
             </Text>
           )}
         </Card.Content>
@@ -380,8 +377,8 @@ const RechargeTokensScreen: React.FC = () => {
           </View>
 
           <View style={styles.confirmRow}>
-            <Text style={styles.confirmLabel}>Tokens à recevoir:</Text>
-            <Text style={styles.confirmValue}>{getSelectedTokens()}</Text>
+            <Text style={styles.confirmLabel}>Montant crédité:</Text>
+            <Text style={styles.confirmValue}>{getSelectedAmount().toLocaleString()} FCFA</Text>
           </View>
 
           <View style={styles.confirmRow}>
@@ -430,7 +427,7 @@ const RechargeTokensScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.container}>
       <NavigatorToolbar
-        title="Recharger mes tokens"
+        title="Recharger mon solde"
         subtitle={balanceLabel}
         showHandle={false}
         density="compact"

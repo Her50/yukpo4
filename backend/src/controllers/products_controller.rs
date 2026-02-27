@@ -117,13 +117,29 @@ pub async fn get_products_by_service(
 
             // ✅ Enrichir product_data avec les médias (fusionner avec existants)
             if let Some(obj) = product_data.as_object_mut() {
+                // ✅ CORRIGÉ 2026-02-27: Helper pour extraire les URLs depuis un champ média
+                // Gère: tableau simple ["url1","url2"], objet {valeur: ["url1","url2"]}, string "url1"
+                fn extract_media_urls(val: &serde_json::Value) -> Vec<String> {
+                    match val {
+                        serde_json::Value::Array(arr) => {
+                            arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect()
+                        }
+                        serde_json::Value::Object(obj) => {
+                            // Format {valeur: [...]} du formulaire dynamique
+                            obj.get("valeur")
+                                .and_then(|v| v.as_array())
+                                .map(|arr| arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect())
+                                .unwrap_or_default()
+                        }
+                        serde_json::Value::String(s) if !s.is_empty() => vec![s.clone()],
+                        _ => Vec::new(),
+                    }
+                }
+
                 // Fusionner les images
                 let existing_images: Vec<String> = obj
                     .get("images")
-                    .and_then(|v| v.as_array())
-                    .map(|arr| {
-                        arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect()
-                    })
+                    .map(|v| extract_media_urls(v))
                     .unwrap_or_default();
 
                 let mut merged_images = existing_images;
@@ -140,10 +156,7 @@ pub async fn get_products_by_service(
                 // Fusionner les vidéos
                 let existing_videos: Vec<String> = obj
                     .get("videos")
-                    .and_then(|v| v.as_array())
-                    .map(|arr| {
-                        arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect()
-                    })
+                    .map(|v| extract_media_urls(v))
                     .unwrap_or_default();
 
                 let mut merged_videos = existing_videos;
@@ -514,19 +527,16 @@ pub async fn share_product_redirect(
     // Récupérer le User-Agent
     let user_agent = headers.get("user-agent").and_then(|h| h.to_str().ok()).unwrap_or("");
 
-    // Vérifier si c'est un appareil mobile
-    if is_mobile_user_agent(user_agent) {
-        // Rediriger vers le deep link de l'app
-        let deep_link = generate_deep_link(&product_id, service_id);
-        log::info!(
-            "📱 Redirection mobile vers deep link: {} (User-Agent: {})",
-            deep_link,
-            user_agent
-        );
-        return Ok(Redirect::temporary(&deep_link).into_response());
-    }
+    // ✅ CORRIGÉ 2026-02-27: Ne PLUS rediriger mobile vers yukpomnang:// (les navigateurs bloquent les custom schemes)
+    // Au lieu de ça, toujours servir la page HTML qui gère intelligemment la redirection
+    // via intent:// (Android Chrome) et Universal Links (iOS)
+    let is_mobile = is_mobile_user_agent(user_agent);
 
-    // Sinon, afficher la page web du produit
+    log::info!(
+        "🔗 [share_product_redirect] product_id={}, service_id={}, mobile={}, UA={}",
+        product_id, service_id, is_mobile, &user_agent[..user_agent.len().min(80)]
+    );
+
     // Récupérer les informations du produit
     let products_service = &state.products_service;
 
@@ -560,15 +570,16 @@ pub async fn share_product_redirect(
     let product_name = &product.product_name;
     let product_price = product.product_price.as_ref().map(|p| p.to_string());
 
-    // ✅ NOUVEAU: Récupérer toutes les images du produit depuis la table media
+    // ✅ Récupérer toutes les images du produit depuis la table media
     let product_images_db: Vec<String> = sqlx::query_scalar::<_, Option<String>>(
         r#"
         SELECT path
         FROM media
         WHERE service_id = $1
-        AND product_index = $2
+        AND (product_index = $2 OR product_index IS NULL)
         AND (type = 'image' OR media_type = 'image')
         ORDER BY 
+            CASE WHEN product_index = $2 THEN 0 ELSE 1 END,
             COALESCE(is_main_image, FALSE) DESC,
             COALESCE(display_order, 0) ASC, 
             id ASC
@@ -591,429 +602,343 @@ pub async fn share_product_redirect(
     })
     .collect();
 
-    // Récupérer aussi les images depuis product_data
-    let product_images_from_data: Vec<String> = product_data
-        .as_object()
-        .and_then(|obj| obj.get("images"))
-        .and_then(|v| v.as_array())
-        .map(|arr| arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect())
-        .unwrap_or_default();
+    // ✅ CORRIGÉ 2026-02-27: Extraire images depuis product_data (format tableau OU {valeur: [...]})
+    let product_images_from_data: Vec<String> = {
+        let images_val = product_data.as_object().and_then(|obj| obj.get("images"));
+        match images_val {
+            Some(v) if v.is_array() => {
+                v.as_array().unwrap().iter()
+                    .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                    .collect()
+            }
+            Some(v) if v.is_object() => {
+                // Format {valeur: [...]} du formulaire dynamique
+                v.as_object().unwrap()
+                    .get("valeur")
+                    .and_then(|v| v.as_array())
+                    .map(|arr| arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect())
+                    .unwrap_or_default()
+            }
+            _ => Vec::new()
+        }
+    };
 
     // Fusionner les images (DB en priorité, puis product_data)
     let mut all_product_images = product_images_db;
     for img in product_images_from_data {
-        if !all_product_images.contains(&img) {
+        if !img.is_empty() && !all_product_images.contains(&img) {
             all_product_images.push(img);
         }
     }
 
-    // Image principale (première de la liste)
-    let product_image_url = all_product_images.first().cloned().unwrap_or_else(|| {
-        // Fallback final: logo Yukpomnang
-        std::env::var("PUBLIC_BASE_URL").unwrap_or_else(|_| "https://yukpomnang.com".to_string())
-            + "/logo.png"
-    });
-
-    // Générer le HTML pour la galerie d'images
-    let (images_gallery_html, images_js_array) = if all_product_images.len() > 1 {
-        let gallery_items: String = all_product_images
-            .iter()
-            .enumerate()
-            .map(|(idx, img_url)| {
-                let active_class = if idx == 0 { " active" } else { "" };
-                format!(
-                    r#"<img src="{}" alt="{} - Image {}" class="gallery-thumb{}" onclick="showImage({})" />"#,
-                    img_url,
-                    product_name,
-                    idx + 1,
-                    active_class,
-                    idx
-                )
-            })
-            .collect::<Vec<_>>()
-            .join("\n            ");
-
-        // Générer le tableau JavaScript des images
-        let images_js = format!(
-            "[{}]",
-            all_product_images
-                .iter()
-                .map(|url| format!("\"{}\"", url.replace('"', "\\\"")))
-                .collect::<Vec<_>>()
-                .join(", ")
-        );
-
-        let html = format!(
-            r#"
-        <div class="gallery-container">
-            <div class="gallery-main">
-                <img id="main-image" src="{}" alt="{}" />
-            </div>
-            <div class="gallery-thumbs">
-                {}
-            </div>
-        </div>"#,
-            all_product_images[0], product_name, gallery_items
-        );
-        (html, images_js)
-    } else {
-        let html = format!(
-            r#"<div class="product-image">
-            <img src="{}" alt="{}" />
-        </div>"#,
-            product_image_url, product_name
-        );
-        (html, "[]".to_string())
-    };
-
-    // ✅ NOUVEAU: Construire l'URL complète de partage
-    let share_url = format!(
-        "{}/product/{}?serviceId={}",
-        std::env::var("PUBLIC_BASE_URL").unwrap_or_else(|_| "https://yukpomnang.com".to_string()),
-        product_id,
-        service_id
+    log::info!(
+        "🖼️ [share_product_redirect] {} images trouvées pour produit {}",
+        all_product_images.len(), product_id
     );
 
-    // ✅ NOUVEAU: Description enrichie
+    // ✅ CORRIGÉ 2026-02-27: Utiliser SHARE_BASE_URL (URL du backend) au lieu de PUBLIC_BASE_URL (bucket GCS)
+    let share_base_url = std::env::var("SHARE_BASE_URL")
+        .or_else(|_| std::env::var("BACKEND_URL"))
+        .unwrap_or_else(|_| "https://yukpo-backend-376093909298.europe-west1.run.app".to_string());
+
+    // Image principale (première de la liste ou logo par défaut)
+    let product_image_url = all_product_images.first().cloned().unwrap_or_else(|| {
+        format!("{}/logo.png", &share_base_url)
+    });
+
+    // Construire la galerie HTML d'images
+    let images_gallery_html = if all_product_images.is_empty() {
+        String::new()
+    } else if all_product_images.len() == 1 {
+        format!(
+            r#"<div class="product-image"><img src="{}" alt="{}" /></div>"#,
+            all_product_images[0], product_name
+        )
+    } else {
+        let thumbs: String = all_product_images.iter().enumerate().map(|(idx, url)| {
+            let active = if idx == 0 { " active" } else { "" };
+            format!(
+                r#"<img src="{}" alt="{} - Image {}" class="gallery-thumb{}" onclick="showImage({})" />"#,
+                url, product_name, idx + 1, active, idx
+            )
+        }).collect::<Vec<_>>().join("\n            ");
+
+        format!(
+            r#"<div class="gallery-container">
+            <div class="gallery-main"><img id="main-image" src="{}" alt="{}" /></div>
+            <div class="gallery-thumbs">{}</div>
+        </div>"#,
+            all_product_images[0], product_name, thumbs
+        )
+    };
+
+    // Construire le tableau JS des images
+    let images_js_array = format!(
+        "[{}]",
+        all_product_images.iter()
+            .map(|url| format!("\"{}\"", url.replace('"', "\\\"")))
+            .collect::<Vec<_>>()
+            .join(", ")
+    );
+
+    let share_url = format!("{}/product/{}?serviceId={}", &share_base_url, product_id, service_id);
+
+    // Description enrichie
     let product_description = product_data
         .as_object()
-        .and_then(|obj| obj.get("description"))
-        .and_then(|v| v.as_str())
-        .unwrap_or("Découvrez ce produit exceptionnel sur Yukpomnang")
+        .and_then(|obj| {
+            obj.get("description")
+                .and_then(|v| v.as_str().map(|s| s.to_string()))
+                .or_else(|| {
+                    // Format {valeur: "..."} du formulaire dynamique
+                    obj.get("description")
+                        .and_then(|v| v.as_object())
+                        .and_then(|o| o.get("valeur"))
+                        .and_then(|v| v.as_str().map(|s| s.to_string()))
+                })
+        })
+        .unwrap_or_else(|| "Découvrez ce produit exceptionnel sur Yukpomnang".to_string())
         .chars()
         .take(200)
         .collect::<String>();
 
-    // ✅ NOUVEAU: Prix formaté pour Open Graph
-    let price_amount =
-        product.product_price.as_ref().and_then(|p| p.to_string().parse::<f64>().ok());
+    let price_amount = product.product_price.as_ref().and_then(|p| p.to_string().parse::<f64>().ok());
     let price_currency = "XAF";
 
-    // Générer le deep link pour le fallback JavaScript
     let deep_link = generate_deep_link(&product_id, service_id);
 
-    // ✅ AMÉLIORATION: Générer la page HTML avec tous les meta tags standards
-    let html = format!(
-        r#"
-<!DOCTYPE html>
+    // ✅ CORRIGÉ 2026-02-27: Utiliser intent:// pour Android Chrome (fonctionne contrairement à yukpomnang://)
+    let android_intent_url = format!(
+        "intent://product/{}?serviceId={}#Intent;scheme=yukpomnang;package=com.yukpomnang.mobile;S.browser_fallback_url=https://play.google.com/store/apps/details?id=com.yukpomnang.mobile;end",
+        product_id, service_id
+    );
+
+    // Prix HTML
+    let price_html = product_price.as_ref()
+        .map(|p| format!(r#"<div class="price">{} XAF</div>"#, p))
+        .unwrap_or_default();
+
+    // Prix OG meta tags
+    let price_og_html = price_amount
+        .map(|p| format!(
+            r#"<meta property="product:price:amount" content="{}" />
+    <meta property="product:price:currency" content="{}" />
+    <meta property="product:availability" content="in stock" />"#,
+            p, price_currency
+        ))
+        .unwrap_or_default();
+
+    let price_schema = price_amount.map(|p| p.to_string()).unwrap_or_else(|| "0".to_string());
+
+    // ✅ CORRIGÉ 2026-02-27: Construire le HTML par concaténation au lieu de format!()
+    // Cela évite les conflits entre {{}} de Rust et {} de JavaScript
+    let mut html = String::with_capacity(8000);
+    html.push_str(r#"<!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
-    <!-- ✅ TITRE ET DESCRIPTION DE BASE -->
-    <title>{} - Yukpomnang</title>
-    <meta name="description" content="{}" />
-    
-    <!-- ✅ OPEN GRAPH (Facebook, LinkedIn, WhatsApp, etc.) -->
+    <title>"#);
+    html.push_str(product_name);
+    html.push_str(r#" - Yukpomnang</title>
+    <meta name="description" content=""#);
+    html.push_str(&product_description);
+    html.push_str(r#"" />
     <meta property="og:type" content="product" />
-    <meta property="og:title" content="{}" />
-    <meta property="og:description" content="{}" />
-    <meta property="og:image" content="{}" />
+    <meta property="og:title" content=""#);
+    html.push_str(product_name);
+    html.push_str(r#"" />
+    <meta property="og:description" content=""#);
+    html.push_str(&product_description);
+    html.push_str(r#"" />
+    <meta property="og:image" content=""#);
+    html.push_str(&product_image_url);
+    html.push_str(r#"" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="{}" />
-    <meta property="og:url" content="{}" />
+    <meta property="og:image:alt" content=""#);
+    html.push_str(product_name);
+    html.push_str(r#"" />
+    <meta property="og:url" content=""#);
+    html.push_str(&share_url);
+    html.push_str(r#"" />
     <meta property="og:site_name" content="Yukpomnang" />
     <meta property="og:locale" content="fr_FR" />
-    <meta property="og:locale:alternate" content="en_US" />
-    
-    <!-- ✅ OPEN GRAPH PRODUCT (Prix, devise, disponibilité) -->
-    {}
-    
-    <!-- ✅ TWITTER CARDS -->
+    "#);
+    html.push_str(&price_og_html);
+    html.push_str(r#"
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="{}" />
-    <meta name="twitter:description" content="{}" />
-    <meta name="twitter:image" content="{}" />
-    <meta name="twitter:image:alt" content="{}" />
+    <meta name="twitter:title" content=""#);
+    html.push_str(product_name);
+    html.push_str(r#"" />
+    <meta name="twitter:description" content=""#);
+    html.push_str(&product_description);
+    html.push_str(r#"" />
+    <meta name="twitter:image" content=""#);
+    html.push_str(&product_image_url);
+    html.push_str(r#"" />
+    <meta name="twitter:image:alt" content=""#);
+    html.push_str(product_name);
+    html.push_str(r#"" />
     <meta name="twitter:site" content="@yukpomnang" />
-    <meta name="twitter:creator" content="@yukpomnang" />
-    
-    <!-- ✅ SCHEMA.ORG JSON-LD (Google, Rich Snippets) -->
     <script type="application/ld+json">
-    {{
+    {
         "@context": "https://schema.org",
         "@type": "Product",
-        "name": "{}",
-        "description": "{}",
-        "image": "{}",
-        "offers": {{
+        "name": ""#);
+    html.push_str(product_name);
+    html.push_str(r#"",
+        "description": ""#);
+    html.push_str(&product_description);
+    html.push_str(r#"",
+        "image": ""#);
+    html.push_str(&product_image_url);
+    html.push_str(r#"",
+        "offers": {
             "@type": "Offer",
-            "price": "{}",
-            "priceCurrency": "{}",
+            "price": ""#);
+    html.push_str(&price_schema);
+    html.push_str(r#"",
+            "priceCurrency": ""#);
+    html.push_str(price_currency);
+    html.push_str(r#"",
             "availability": "https://schema.org/InStock",
-            "url": "{}"
-        }},
-        "brand": {{
-            "@type": "Brand",
-            "name": "Yukpomnang"
-        }}
-    }}
+            "url": ""#);
+    html.push_str(&share_url);
+    html.push_str(r#""
+        },
+        "brand": { "@type": "Brand", "name": "Yukpomnang" }
+    }
     </script>
-    
-    <!-- ✅ APP LINKS (Deep Linking Mobile) -->
-    <meta name="apple-itunes-app" content="app-id=YOUR_APP_ID, app-argument={}">
     <meta name="google-play-app" content="app-id=com.yukpomnang.mobile">
-    <meta property="al:ios:url" content="{}" />
-    <meta property="al:ios:app_store_id" content="YOUR_APP_ID" />
-    <meta property="al:android:url" content="{}" />
+    <meta property="al:android:url" content=""#);
+    html.push_str(&deep_link);
+    html.push_str(r#"" />
     <meta property="al:android:package" content="com.yukpomnang.mobile" />
     <meta property="al:android:app_name" content="Yukpomnang" />
-    
-    <!-- ✅ FAVICON -->
-    <link rel="icon" type="image/png" href="/favicon.png" />
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <style>
-        body {{
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            margin: 0;
-            padding: 20px;
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0; padding: 20px;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }}
-        .container {{
-            background: white;
-            border-radius: 16px;
-            padding: 32px;
-            max-width: 600px;
-            width: 100%;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-        }}
-        h1 {{
-            color: #1f2937;
-            margin: 0 0 16px 0;
-            font-size: 28px;
-        }}
-        .price {{
-            font-size: 24px;
-            font-weight: bold;
-            color: #10b981;
-            margin: 16px 0;
-        }}
-        .description {{
-            color: #6b7280;
-            line-height: 1.6;
-            margin: 16px 0;
-        }}
-        .button {{
+            min-height: 100vh; display: flex; align-items: center; justify-content: center;
+        }
+        .container {
+            background: white; border-radius: 16px; padding: 32px;
+            max-width: 600px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 { color: #1f2937; margin: 0 0 16px 0; font-size: 28px; }
+        .price { font-size: 24px; font-weight: bold; color: #10b981; margin: 16px 0; }
+        .description { color: #6b7280; line-height: 1.6; margin: 16px 0; }
+        .button {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            padding: 16px 32px;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            width: 100%;
-            margin-top: 24px;
-            transition: transform 0.2s;
-        }}
-        .button:hover {{
-            transform: translateY(-2px);
-        }}
-        .button:active {{
-            transform: translateY(0);
-        }}
-        /* ✅ GALERIE D'IMAGES */
-        .product-image {{
-            margin: 20px 0;
-            text-align: center;
-        }}
-        .product-image img {{
-            max-width: 100%;
-            height: auto;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        }}
-        .gallery-container {{
-            margin: 20px 0;
-        }}
-        .gallery-main {{
-            margin-bottom: 16px;
-            text-align: center;
-        }}
-        .gallery-main img {{
-            max-width: 100%;
-            height: auto;
-            max-height: 500px;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            object-fit: contain;
-        }}
-        .gallery-thumbs {{
-            display: flex;
-            gap: 8px;
-            justify-content: center;
-            flex-wrap: wrap;
-            margin-top: 12px;
-        }}
-        .gallery-thumb {{
-            width: 80px;
-            height: 80px;
-            object-fit: cover;
-            border-radius: 8px;
-            cursor: pointer;
-            border: 2px solid transparent;
-            transition: all 0.2s;
-            opacity: 0.7;
-        }}
-        .gallery-thumb:hover {{
-            opacity: 1;
-            border-color: #667eea;
-            transform: scale(1.05);
-        }}
-        .gallery-thumb.active {{
-            opacity: 1;
-            border-color: #667eea;
-        }}
+            color: white; border: none; padding: 16px 32px; border-radius: 8px;
+            font-size: 16px; font-weight: 600; cursor: pointer; width: 100%;
+            margin-top: 16px; transition: transform 0.2s; display: block; text-align: center;
+            text-decoration: none;
+        }
+        .button:hover { transform: translateY(-2px); }
+        .button-secondary {
+            background: #10b981; margin-top: 8px;
+        }
+        .product-image { margin: 20px 0; text-align: center; }
+        .product-image img { max-width: 100%; height: auto; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .gallery-container { margin: 20px 0; }
+        .gallery-main { margin-bottom: 16px; text-align: center; }
+        .gallery-main img { max-width: 100%; height: auto; max-height: 500px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); object-fit: contain; }
+        .gallery-thumbs { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 12px; }
+        .gallery-thumb { width: 80px; height: 80px; object-fit: cover; border-radius: 8px; cursor: pointer; border: 2px solid transparent; transition: all 0.2s; opacity: 0.7; }
+        .gallery-thumb:hover { opacity: 1; border-color: #667eea; transform: scale(1.05); }
+        .gallery-thumb.active { opacity: 1; border-color: #667eea; }
+        .store-badges { display: flex; gap: 12px; justify-content: center; margin-top: 16px; flex-wrap: wrap; }
+        .store-badge { height: 40px; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>{}</h1>
-        {}
-        {}
-        <div class="description">
-            Découvrez ce produit et bien plus sur Yukpomnang
-        </div>
-        <button class="button" onclick="openApp()">
-            📱 Ouvrir dans l'app Yukpomnang
-        </button>
+        <h1>"#);
+    html.push_str(product_name);
+    html.push_str(r#"</h1>
+        "#);
+    html.push_str(&price_html);
+    html.push_str(&images_gallery_html);
+    html.push_str(r#"
+        <div class="description">"#);
+    html.push_str(&product_description);
+    html.push_str(r#"</div>
+        <a id="open-app-btn" class="button" href="#">📱 Ouvrir dans l'app Yukpomnang</a>
+        <a class="button button-secondary" href="https://play.google.com/store/apps/details?id=com.yukpomnang.mobile" target="_blank">📥 Télécharger l'app</a>
     </div>
     <script>
-        // ✅ CORRECTION CRITIQUE: Redirection automatique vers l'app sur mobile
-        (function() {{
-            const deepLink = 'yukpomnang://product/{}?serviceId={}';
-            const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-            
-            // Sur mobile, essayer d'ouvrir l'app automatiquement
-            if (isMobile) {{
-                // Essayer d'ouvrir l'app immédiatement
-                window.location.href = deepLink;
-                
-                // Fallback: Si l'app n'est pas installée, rediriger vers le store après 2.5s
-                setTimeout(() => {{
-                    const appStoreUrl = 'https://apps.apple.com/app/yukpomnang';
-                    const playStoreUrl = 'https://play.google.com/store/apps/details?id=com.yukpomnang.mobile';
-                    
-                    if (navigator.userAgent.match(/iPhone|iPad|iPod/i)) {{
-                        window.location.href = appStoreUrl;
-                    }} else {{
-                        window.location.href = playStoreUrl;
-                    }}
-                }}, 2500);
-            }}
-        }})();
-        
-        function openApp() {{
-            const deepLink = 'yukpomnang://product/{}?serviceId={}';
-            const appStoreUrl = 'https://apps.apple.com/app/yukpomnang';
-            const playStoreUrl = 'https://play.google.com/store/apps/details?id=com.yukpomnang.mobile';
-            
-            // Essayer d'ouvrir l'app
-            window.location.href = deepLink;
-            
-            // Si l'app n'est pas installée, redirect après 2s
-            setTimeout(() => {{
-                if (navigator.userAgent.match(/iPhone|iPad|iPod/i)) {{
-                    window.location.href = appStoreUrl;
-                }} else {{
-                    window.location.href = playStoreUrl;
-                }}
-            }}, 2000);
-        }}
-        
-        // ✅ GALERIE D'IMAGES
-        const productImages = {{}};
-        function showImage(index) {{
-            const mainImg = document.getElementById('main-image');
-            if (mainImg && productImages[index]) {{
+        var DEEP_LINK = '"#);
+    html.push_str(&deep_link);
+    html.push_str(r#"';
+        var INTENT_URL = '"#);
+    html.push_str(&android_intent_url);
+    html.push_str(r#"';
+        var PLAY_STORE = 'https://play.google.com/store/apps/details?id=com.yukpomnang.mobile';
+        var APP_STORE = 'https://apps.apple.com/app/yukpomnang';
+        var productImages = "#);
+    html.push_str(&images_js_array);
+    html.push_str(r#";
+
+        // Galerie d'images
+        function showImage(index) {
+            var mainImg = document.getElementById('main-image');
+            if (mainImg && productImages[index]) {
                 mainImg.src = productImages[index];
-                // Mettre à jour les miniatures actives
-                document.querySelectorAll('.gallery-thumb').forEach((thumb, idx) => {{
-                    if (idx === index) {{
-                        thumb.classList.add('active');
-                    }} else {{
-                        thumb.classList.remove('active');
-                    }}
-                }});
-            }}
-        }}
-        // Initialiser le tableau d'images et la galerie
-        (function() {{
-            const images = {{images_array}};
-            // Copier les images dans productImages depuis le tableau
-            if (Array.isArray(images) && images.length > 0) {{
-                images.forEach((img, idx) => {{
-                    productImages[idx] = img;
-                }});
-            }}
-            const thumbs = document.querySelectorAll('.gallery-thumb');
-            if (thumbs.length > 0) {{
-                thumbs[0].classList.add('active');
-            }}
-        }})();
+                var thumbs = document.querySelectorAll('.gallery-thumb');
+                for (var i = 0; i < thumbs.length; i++) {
+                    thumbs[i].className = thumbs[i].className.replace(' active', '');
+                    if (i === index) thumbs[i].className += ' active';
+                }
+            }
+        }
+
+        // Détection plateforme
+        var ua = navigator.userAgent || '';
+        var isAndroid = /Android/i.test(ua);
+        var isIOS = /iPhone|iPad|iPod/i.test(ua);
+        var isMobile = isAndroid || isIOS;
+
+        // Configurer le bouton "Ouvrir dans l'app"
+        var openBtn = document.getElementById('open-app-btn');
+        if (openBtn) {
+            if (isAndroid) {
+                // Android: utiliser intent:// qui fonctionne dans Chrome et redirige vers le Play Store si l'app n'est pas installée
+                openBtn.href = INTENT_URL;
+            } else if (isIOS) {
+                // iOS: essayer le custom scheme, fallback vers App Store
+                openBtn.href = DEEP_LINK;
+                openBtn.onclick = function() {
+                    setTimeout(function() { window.location.href = APP_STORE; }, 1500);
+                };
+            } else {
+                // Desktop: cacher le bouton "Ouvrir dans l'app", garder le téléchargement
+                openBtn.style.display = 'none';
+            }
+        }
+
+        // Sur mobile, tenter l'ouverture automatique de l'app après un court délai
+        if (isMobile) {
+            setTimeout(function() {
+                if (isAndroid) {
+                    // intent:// URL gère automatiquement le fallback vers le Play Store
+                    window.location.href = INTENT_URL;
+                } else if (isIOS) {
+                    window.location.href = DEEP_LINK;
+                    setTimeout(function() { window.location.href = APP_STORE; }, 1500);
+                }
+            }, 800);
+        }
     </script>
 </body>
-</html>
-"#,
-        // Titre et description
-        product_name,
-        &product_description,
-        // Open Graph
-        product_name,
-        &product_description,
-        &product_image_url,
-        product_name,
-        &share_url,
-        // Open Graph Product (prix)
-        price_amount
-            .map(|p| format!(
-                r#"<meta property="product:price:amount" content="{}" />
-    <meta property="product:price:currency" content="{}" />
-    <meta property="product:availability" content="in stock" />"#,
-                p, price_currency
-            ))
-            .unwrap_or_else(|| "".to_string()),
-        // Twitter Cards
-        product_name,
-        &product_description,
-        &product_image_url,
-        product_name,
-        // Schema.org JSON-LD
-        product_name,
-        &product_description,
-        &product_image_url,
-        price_amount.map(|p| p.to_string()).unwrap_or_else(|| "0".to_string()),
-        price_currency,
-        &share_url,
-        // App Links
-        &deep_link,
-        &deep_link,
-        &deep_link,
-        // Body content
-        product_name,
-        product_price
-            .map(|p| format!(r#"<div class="price">{} XAF</div>"#, p))
-            .unwrap_or_else(|| "".to_string()),
-        &images_gallery_html,
-        product_id,
-        service_id,
-        product_id,
-        service_id
-    );
-
-    // Remplacer le placeholder du tableau d'images dans le JavaScript
-    let html = html.replace("{images_array}", &images_js_array);
+</html>"#);
 
     log::info!(
-        "🌐 Affichage page web produit: {} (User-Agent: {})",
-        product_id,
-        user_agent
+        "🌐 [share_product_redirect] Page HTML générée: product={}, images={}, mobile={}",
+        product_id, all_product_images.len(), is_mobile
     );
 
     Ok(Html(html).into_response())

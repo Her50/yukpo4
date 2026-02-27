@@ -3,37 +3,36 @@
  * Design moderne niveau Uber Eats / DoorDash
  */
 
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
 import React, { useEffect, useState } from 'react';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import {
     Alert,
     Animated,
-    FlatList,
     Modal,
     ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
-    View,
+    View
 } from 'react-native';
-import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import HapticTouchable from '../../components/delivery/HapticTouchable';
+import { SavedAddressSelector } from '../../components/delivery/SavedAddressSelector';
 import StepWizardForm from '../../components/delivery/StepWizardForm';
+import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
+import { LocationObject } from '../../components/LocationSelector';
 import MediaUploadManager from '../../components/MediaUploadManager';
 import ModernGPSModal from '../../components/ModernGPSModal';
-import { SavedAddressSelector } from '../../components/delivery/SavedAddressSelector';
-import { NativeButton, NativeCard, NativeInput } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeButton, NativeCard, NativeInput } from '../../components/SafeNativeDesign';
+import { VEHICLE_TRANSPORT_OPTIONS } from '../../config/deliveryConfig';
 import { useLocation } from '../../contexts/LocationContext';
+import { UserSavedAddress } from '../../hooks/useSavedAddresses';
 import { CreateDeliveryRequestPayload, deliveryApi, userApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 import { useScreenEnter } from '../../utils/animations';
-import { LocationObject } from '../../components/LocationSelector';
-import { UserSavedAddress } from '../../hooks/useSavedAddresses';
-import { VEHICLE_TRANSPORT_OPTIONS } from '../../config/deliveryConfig';
-import { useNavigation } from '@react-navigation/native';
 import SafeStorage from '../../utils/safeStorage';
 
 interface DeliveryParcelFlowNewProps {
@@ -58,7 +57,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
     const [loading, setLoading] = useState(false);
     const [loadingLocation, setLoadingLocation] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
-    
+
     // ✅ États pour coûts et assurance
     const [deliveryCost, setDeliveryCost] = useState<number | null>(null);
     const [insuranceCost, setInsuranceCost] = useState<number>(0);
@@ -76,7 +75,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
     const [numberOfItems, setNumberOfItems] = useState<string>(''); // Nombre d'éléments à transporter
     const [notes, setNotes] = useState('');
     const [photos, setPhotos] = useState<string[]>([]);
-    
+
     // États pour formulaire adaptatif (conservés pour compatibilité mais non utilisés dans l'UI)
     const [numberOfPages, setNumberOfPages] = useState<string>(''); // Document
     const [numberOfBoxes, setNumberOfBoxes] = useState<string>(''); // Déménagement
@@ -89,7 +88,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
     const [dropoffLocation, setDropoffLocation] = useState<LocationData | null>(null);
     const [showPickupGPS, setShowPickupGPS] = useState(false);
     const [showDropoffGPS, setShowDropoffGPS] = useState(false);
-    
+
     // ✅ États pour aller-retour
     const [isRoundTrip, setIsRoundTrip] = useState<boolean>(false);
     const [returnPickupLocation, setReturnPickupLocation] = useState<LocationData | null>(null);
@@ -101,7 +100,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
     const [preferredDeliveryDate, setPreferredDeliveryDate] = useState<string>('');
     const [preferredDeliveryTimeStart, setPreferredDeliveryTimeStart] = useState<string>('');
     const [preferredDeliveryTimeEnd, setPreferredDeliveryTimeEnd] = useState<string>('');
-    
+
     // ✅ Planification
     const [isScheduled, setIsScheduled] = useState<boolean>(false);
     const [scheduledDateTime, setScheduledDateTime] = useState<Date>(() => {
@@ -193,14 +192,14 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
                     const data = JSON.parse(pendingData);
                     const balanceResponse = await userApi.getTokensBalance() as any;
                     const currentBalance = balanceResponse?.data?.tokens_balance || 0;
-                    
+
                     // Calculer les coûts pour cette commande en attente
                     const declaredValueNum = parseFloat(data.declaredValue || '0');
                     const insurance = calculateInsurance(declaredValueNum);
                     // Estimation basique du coût de livraison (sera recalculé si nécessaire)
                     const estimatedDeliveryCost = estimatedDistance ? Math.max(1000, Math.ceil(estimatedDistance * 500)) : 0;
                     const totalCost = estimatedDeliveryCost + insurance;
-                    
+
                     if (currentBalance >= totalCost) {
                         // Solde suffisant, restaurer les données et permettre la création
                         setPendingDeliveryData(data);
@@ -229,7 +228,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
                         setRecipientAllowTracking(data.recipientAllowTracking || false);
                         setPickupLocation(data.pickupLocation);
                         setDropoffLocation(data.dropoffLocation);
-                        
+
                         // Afficher une notification
                         Alert.alert(
                             'Commande en attente',
@@ -242,7 +241,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
                 console.error('Erreur vérification commande en attente:', error);
             }
         };
-        
+
         if (visible) {
             checkPendingDelivery();
         }
@@ -562,7 +561,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
 
         // ✅ Utiliser les données en attente si disponibles
         const deliveryData = deliveryDataToUse;
-        
+
         // ✅ Validation aller-retour
         if (deliveryData.isRoundTrip && (!deliveryData.returnPickupLocation || !deliveryData.returnDropoffLocation)) {
             Alert.alert('Erreur', 'Veuillez sélectionner les points de collecte et de livraison pour le retour');
@@ -572,7 +571,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
         setLoading(true);
         try {
             // ✅ Par défaut: "motorcycle" si aucun type spécifié (sera géré par le backend)
-        const payload: CreateDeliveryRequestPayload = {
+            const payload: CreateDeliveryRequestPayload = {
                 preferred_vehicle_type: deliveryData.transportMode || undefined, // Backend utilisera "motorcycle" par défaut
                 is_round_trip: deliveryData.isRoundTrip || undefined,
                 // ✅ Planification
@@ -635,7 +634,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
                 // ✅ Nettoyer la commande en attente si elle existait
                 await SafeStorage.removeItem('pending_delivery');
                 setPendingDeliveryData(null);
-                
+
                 Alert.alert(
                     'Livraison créée',
                     'Votre demande de livraison a été créée avec succès. Le matching d\'un coursier est en cours.',
@@ -679,10 +678,10 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
                 <Text style={styles.label}>Type de colis</Text>
                 <View style={styles.typeButtonsGrid}>
                     {[
-                        { id: 'document', label: 'Document', icon: 'file-text' },
-                        { id: 'package', label: 'Paquet/Sac', icon: 'package' },
-                        { id: 'moving', label: 'Déménagement', icon: 'truck' },
-                        { id: 'cake', label: 'Gâteau', icon: 'cake' },
+                        { id: 'document', label: 'Document', icon: 'file-text', desc: 'Courrier, dossier, contrat...' },
+                        { id: 'package', label: 'Paquet/Sac', icon: 'package', desc: 'Carton, sac, objet emballé...' },
+                        { id: 'moving', label: 'Déménagement', icon: 'truck', desc: 'Meubles, appareils, cartons...' },
+                        { id: 'cake', label: 'Gâteau', icon: 'cake', desc: 'Pâtisserie, gâteau fragile...' },
                     ].map((type) => (
                         <HapticTouchable
                             key={type.id}
@@ -708,14 +707,84 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
                             >
                                 {type.label}
                             </Text>
+                            {parcelType === type.id && (
+                                <Text style={styles.typeDescText} numberOfLines={2}>
+                                    {type.desc}
+                                </Text>
+                            )}
                         </HapticTouchable>
                     ))}
                 </View>
             </View>
 
+            {/* Formulaire adaptatif selon le type de colis */}
+            {parcelType === 'document' && (
+                <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Nombre de pages / documents</Text>
+                    <NativeInput
+                        placeholder="Ex: 10"
+                        value={numberOfPages}
+                        onChangeText={setNumberOfPages}
+                        keyboardType="numeric"
+                    />
+                </View>
+            )}
+
+            {parcelType === 'moving' && (
+                <>
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Nombre de cartons / boîtes</Text>
+                        <NativeInput
+                            placeholder="Ex: 5"
+                            value={numberOfBoxes}
+                            onChangeText={setNumberOfBoxes}
+                            keyboardType="numeric"
+                        />
+                    </View>
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Meubles à transporter</Text>
+                        <NativeInput
+                            placeholder="Ex: lit, armoire, frigo..."
+                            value={movingFurniture}
+                            onChangeText={setMovingFurniture}
+                        />
+                    </View>
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Accès (étage, escalier, ascenseur)</Text>
+                        <NativeInput
+                            placeholder="Ex: 3ème étage sans ascenseur"
+                            value={movingAccess}
+                            onChangeText={setMovingAccess}
+                        />
+                    </View>
+                </>
+            )}
+
+            {parcelType === 'cake' && (
+                <>
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Taille du gâteau</Text>
+                        <NativeInput
+                            placeholder="Ex: 30 cm de diamètre"
+                            value={cakeSize}
+                            onChangeText={setCakeSize}
+                        />
+                    </View>
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Nombre d'étages</Text>
+                        <NativeInput
+                            placeholder="Ex: 3"
+                            value={cakeLayers}
+                            onChangeText={setCakeLayers}
+                            keyboardType="numeric"
+                        />
+                    </View>
+                </>
+            )}
+
             {/* Champ Nombre */}
             <View style={styles.inputGroup}>
-                <Text style={styles.label}>Nombre</Text>
+                <Text style={styles.label}>Nombre d'éléments</Text>
                 <NativeInput
                     placeholder="Nombre d'éléments à transporter"
                     value={numberOfItems}
@@ -1292,9 +1361,9 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
                     <Text style={styles.summaryLabel}>Type</Text>
                     <Text style={styles.summaryValue}>
                         {parcelType === 'document' ? 'Document' :
-                         parcelType === 'package' ? 'Paquet/Sac' :
-                         parcelType === 'moving' ? 'Déménagement' :
-                         parcelType === 'cake' ? 'Gâteau' : parcelType}
+                            parcelType === 'package' ? 'Paquet/Sac' :
+                                parcelType === 'moving' ? 'Déménagement' :
+                                    parcelType === 'cake' ? 'Gâteau' : parcelType}
                     </Text>
                 </View>
                 {numberOfItems && (
@@ -1349,15 +1418,15 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
                 <View style={styles.summaryRow}>
                     <Text style={styles.summaryLabel}>Collecte</Text>
                     <Text style={[styles.summaryValue, { flex: 2 }]}>
-                        {pickupLocation?.address || 
-                         (pickupLocation ? `${pickupLocation.latitude.toFixed(6)}, ${pickupLocation.longitude.toFixed(6)}` : 'Non défini')}
+                        {pickupLocation?.address ||
+                            (pickupLocation ? `${pickupLocation.latitude.toFixed(6)}, ${pickupLocation.longitude.toFixed(6)}` : 'Non défini')}
                     </Text>
                 </View>
                 <View style={styles.summaryRow}>
                     <Text style={styles.summaryLabel}>Livraison</Text>
                     <Text style={[styles.summaryValue, { flex: 2 }]}>
-                        {dropoffLocation?.address || 
-                         (dropoffLocation ? `${dropoffLocation.latitude.toFixed(6)}, ${dropoffLocation.longitude.toFixed(6)}` : 'Non défini')}
+                        {dropoffLocation?.address ||
+                            (dropoffLocation ? `${dropoffLocation.latitude.toFixed(6)}, ${dropoffLocation.longitude.toFixed(6)}` : 'Non défini')}
                     </Text>
                 </View>
                 {estimatedDistance !== null && (
@@ -1371,15 +1440,15 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
                         <View style={styles.summaryRow}>
                             <Text style={styles.summaryLabel}>Collecte retour</Text>
                             <Text style={[styles.summaryValue, { flex: 2 }]}>
-                                {returnPickupLocation.address || 
-                                 `${returnPickupLocation.latitude.toFixed(6)}, ${returnPickupLocation.longitude.toFixed(6)}`}
+                                {returnPickupLocation.address ||
+                                    `${returnPickupLocation.latitude.toFixed(6)}, ${returnPickupLocation.longitude.toFixed(6)}`}
                             </Text>
                         </View>
                         <View style={styles.summaryRow}>
                             <Text style={styles.summaryLabel}>Livraison retour</Text>
                             <Text style={[styles.summaryValue, { flex: 2 }]}>
-                                {returnDropoffLocation.address || 
-                                 `${returnDropoffLocation.latitude.toFixed(6)}, ${returnDropoffLocation.longitude.toFixed(6)}`}
+                                {returnDropoffLocation.address ||
+                                    `${returnDropoffLocation.latitude.toFixed(6)}, ${returnDropoffLocation.longitude.toFixed(6)}`}
                             </Text>
                         </View>
                         {returnDistance !== null && (
@@ -1492,7 +1561,20 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
             label: 'Colis',
             icon: 'package',
             component: ParcelInfoStep,
-            validation: () => !!parcelType && !!declaredValue && !isNaN(parseFloat(declaredValue)) && parseFloat(declaredValue) > 0,
+            validation: () => {
+                if (!parcelType) {
+                    Alert.alert('Champ requis', 'Veuillez sélectionner un type de colis.');
+                    return false;
+                }
+                if (!declaredValue || isNaN(parseFloat(declaredValue)) || parseFloat(declaredValue) <= 0) {
+                    Alert.alert(
+                        'Valeur déclarée obligatoire',
+                        'Veuillez renseigner la valeur estimée de votre colis (en FCFA) pour pouvoir continuer. Cette valeur permet de calculer l\'assurance de votre envoi.'
+                    );
+                    return false;
+                }
+                return true;
+            },
         },
         {
             id: 'pickup',
@@ -1784,6 +1866,13 @@ const styles = StyleSheet.create({
     },
     typeButtonTextActive: {
         color: '#FFFFFF',
+    },
+    typeDescText: {
+        fontSize: 9,
+        color: 'rgba(255, 255, 255, 0.85)',
+        textAlign: 'center',
+        lineHeight: 12,
+        marginTop: 2,
     },
     inputGroup: {
         marginBottom: 16,

@@ -45,6 +45,14 @@ const ProductGalleryPickerModal: React.FC<ProductGalleryPickerModalProps> = ({
     const loadMedia = async () => {
         const mediaList: any[] = [];
 
+        // ✅ CORRIGÉ 2026-02-27: Helper pour extraire tableau depuis {valeur: [...]} ou tableau simple
+        const extractMediaArray = (field: any): any[] => {
+            if (Array.isArray(field) && field.length > 0) return field;
+            if (field && typeof field === 'object' && Array.isArray(field.valeur) && field.valeur.length > 0) return field.valeur;
+            if (field && typeof field === 'string' && field.trim()) return [field];
+            return [];
+        };
+
         // Logo
         if (service.data?.logo?.valeur) {
             mediaList.push({
@@ -65,43 +73,67 @@ const ProductGalleryPickerModal: React.FC<ProductGalleryPickerModalProps> = ({
             });
         }
 
-        // ✅ CORRIGÉ 2026-01-23: Charger médias depuis les données du service (comme ProductCard)
-        // Priorité: 1) Données JSON du service (service.data.produits), 2) API si nécessaire
-        // ✅ NOUVEAU: Vérifier aussi si le service contient directement des produits (depuis API service_products)
-        // Les produits peuvent être dans service.data.produits (ancien système) ou service.products (nouveau système)
-        const produits = 
+        // ✅ CORRIGÉ 2026-02-27: Charger médias depuis l'API media table (nouveau système prioritaire)
+        const serviceId = service.id || service.service_id;
+        if (serviceId) {
+            try {
+                const { mediaApi } = await import('../services/api');
+                const mediaResponse = await mediaApi.getServiceMediaDetailed(serviceId);
+                if (mediaResponse.success && mediaResponse.data) {
+                    const respData = mediaResponse.data as any;
+                    const apiMedia = Array.isArray(respData) ? respData
+                        : respData?.media || respData?.data || [];
+
+                    apiMedia.forEach((m: any) => {
+                        const path = m.path || m.url || m.file_path;
+                        const imgUrl = typeof path === 'string' ? path.trim() : null;
+                        if (imgUrl) {
+                            const fullUrl = imgUrl.startsWith('http') ? imgUrl : imgUrl;
+                            mediaList.push({
+                                type: m.type === 'video' ? 'video' : 'image',
+                                url: fullUrl,
+                                category: 'products',
+                                description: m.product_index !== null && m.product_index !== undefined
+                                    ? `Produit ${m.product_index + 1}`
+                                    : (m.type === 'video' ? 'Vidéo' : 'Image'),
+                                source: 'media_table'
+                            });
+                        }
+                    });
+                    console.log(`[ProductGalleryPickerModal] ✅ ${apiMedia.length} médias depuis API`);
+                }
+            } catch (error) {
+                console.warn('[ProductGalleryPickerModal] ⚠️ Erreur API médias:', error);
+            }
+        }
+
+        // Fallback: Médias depuis service.data.produits ou service.products
+        const produits =
             (Array.isArray(service.products) && service.products.length > 0) ? service.products
-            : (service.data?.produits?.valeur || service.data?.produits || []);
+                : (service.data?.produits?.valeur || service.data?.produits || []);
+        const seenUrls = new Set(mediaList.map(m => m.url));
         if (Array.isArray(produits) && produits.length > 0) {
             for (let idx = 0; idx < produits.length; idx++) {
                 const product = produits[idx];
                 const productName = product.nom || product.titre || product.name || `Produit ${idx + 1}`;
 
-                // ✅ PRIORITÉ 1: Extraire les médias directement depuis le JSON du produit (comme ProductCard)
-                // ✅ CORRIGÉ 2026-01-23: Vérifier product.product_data.images/videos comme ProductCard
-                // Vérifier plusieurs emplacements possibles pour les images (même logique que ProductCard)
-                const productImages = 
-                    (Array.isArray(product.images) && product.images.length > 0) ? product.images
-                    : (Array.isArray(product.product_data?.images) && product.product_data.images.length > 0) ? product.product_data.images
-                    : (Array.isArray(product.data?.images) && product.data.images.length > 0) ? product.data.images
-                    : (Array.isArray(product.Images) && product.Images.length > 0) ? product.Images
-                    : [];
+                // ✅ CORRIGÉ 2026-02-27: Utiliser extractMediaArray pour gérer {valeur: [...]}
+                const productImages = extractMediaArray(product.images).length > 0 ? extractMediaArray(product.images)
+                    : extractMediaArray(product.product_data?.images).length > 0 ? extractMediaArray(product.product_data?.images)
+                        : extractMediaArray(product.data?.images);
 
-                // Vérifier plusieurs emplacements possibles pour les vidéos (même logique que ProductCard)
-                const productVideos = 
-                    (Array.isArray(product.videos) && product.videos.length > 0) ? product.videos
-                    : (Array.isArray(product.product_data?.videos) && product.product_data.videos.length > 0) ? product.product_data.videos
-                    : (Array.isArray(product.data?.videos) && product.data.videos.length > 0) ? product.data.videos
-                    : (Array.isArray(product.Videos) && product.Videos.length > 0) ? product.Videos
-                    : [];
+                const productVideos = extractMediaArray(product.videos).length > 0 ? extractMediaArray(product.videos)
+                    : extractMediaArray(product.product_data?.videos).length > 0 ? extractMediaArray(product.product_data?.videos)
+                        : extractMediaArray(product.data?.videos);
 
-                // Ajouter les images trouvées dans le JSON
+                // Ajouter les images trouvées dans le JSON (avec déduplication)
                 productImages.forEach((img: any, imgIdx: number) => {
                     const imgUrl = typeof img === 'string' ? img : (img?.url || img?.path || img?.valeur);
-                    if (imgUrl && typeof imgUrl === 'string' && imgUrl.trim()) {
+                    if (imgUrl && typeof imgUrl === 'string' && imgUrl.trim() && !seenUrls.has(imgUrl.trim())) {
+                        seenUrls.add(imgUrl.trim());
                         mediaList.push({
                             type: 'image',
-                            url: imgUrl,
+                            url: imgUrl.trim(),
                             category: 'products',
                             description: `${productName} - Image ${imgIdx + 1}`,
                             productName: productName,
@@ -110,13 +142,14 @@ const ProductGalleryPickerModal: React.FC<ProductGalleryPickerModalProps> = ({
                     }
                 });
 
-                // Ajouter les vidéos trouvées dans le JSON
+                // Ajouter les vidéos trouvées dans le JSON (avec déduplication)
                 productVideos.forEach((vid: any, vidIdx: number) => {
                     const vidUrl = typeof vid === 'string' ? vid : (vid?.url || vid?.path || vid?.valeur);
-                    if (vidUrl && typeof vidUrl === 'string' && vidUrl.trim()) {
+                    if (vidUrl && typeof vidUrl === 'string' && vidUrl.trim() && !seenUrls.has(vidUrl.trim())) {
+                        seenUrls.add(vidUrl.trim());
                         mediaList.push({
                             type: 'video',
-                            url: vidUrl,
+                            url: vidUrl.trim(),
                             category: 'products',
                             description: `${productName} - Vidéo ${vidIdx + 1}`,
                             productName: productName,
@@ -129,7 +162,7 @@ const ProductGalleryPickerModal: React.FC<ProductGalleryPickerModalProps> = ({
                 if (productImages.length === 0 && productVideos.length === 0 && service.id) {
                     try {
                         const { apiGet } = await import('../services/api');
-                        
+
                         // Charger images depuis API
                         const imagesResp = await apiGet(`/api/media/product/${service.id}/${idx}/images`);
                         if (imagesResp.success && imagesResp.data) {
@@ -310,8 +343,8 @@ const ProductGalleryPickerModal: React.FC<ProductGalleryPickerModalProps> = ({
                             <SafeIcon name="image" size={64} color="#D1D5DB" />
                             <Text style={styles.emptyText}>Aucun média disponible</Text>
                             <Text style={styles.emptySubtext}>
-                                {media.length === 0 
-                                    ? 'Aucun média trouvé dans ce service' 
+                                {media.length === 0
+                                    ? 'Aucun média trouvé dans ce service'
                                     : `Aucun média correspondant au filtre "${filter}"`}
                             </Text>
                             {/* ✅ DEBUG: Afficher les infos de débogage en développement */}

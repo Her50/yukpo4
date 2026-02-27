@@ -65,19 +65,19 @@ interface NavigationStats {
 
 // ── Constantes POI ─────────────────────────────────────────────────────────
 const POI_CATEGORIES: Record<string, { label: string; icon: string; color: string; types: string[] }> = {
-    health: { label: 'Sant\u00e9', icon: '\uD83C\uDFE5', color: '#EF4444', types: ['pharmacy'] },
-    food: { label: 'Alimentation', icon: '\uD83C\uDF5E', color: '#F59E0B', types: ['bakery', 'supermarket', 'restaurant'] },
-    fuel: { label: 'Carburant', icon: '\u26FD', color: '#3B82F6', types: ['gas_station'] },
-    leisure: { label: 'Loisirs & Divers', icon: '\uD83C\uDFAD', color: '#8B5CF6', types: ['wine_shop', 'entertainment'] },
+    health: { label: 'Santé', icon: '🏥', color: '#EF4444', types: ['pharmacy'] },
+    food: { label: 'Alimentation', icon: '🍞', color: '#F59E0B', types: ['bakery', 'supermarket', 'restaurant'] },
+    fuel: { label: 'Carburant', icon: '⛽', color: '#3B82F6', types: ['gas_station'] },
+    leisure: { label: 'Loisirs & Divers', icon: '🎭', color: '#8B5CF6', types: ['wine_shop', 'entertainment'] },
 };
 
 const POI_TYPE_LABELS: Record<string, string> = {
     pharmacy: 'Pharmacie',
     bakery: 'Boulangerie',
     gas_station: 'Station-service',
-    supermarket: 'Supermarch\u00e9',
+    supermarket: 'Supermarché',
     restaurant: 'Restaurant/Snack',
-    wine_shop: 'Cave \u00e0 vin',
+    wine_shop: 'Cave à vin',
     entertainment: 'Espace de loisir',
 };
 
@@ -102,7 +102,7 @@ const NavigationScreen: React.FC = () => {
     const [showStats, setShowStats] = useState(false);
     const [stats, setStats] = useState<NavigationStats | null>(null);
 
-    // Waypoints & pr\u00e9f\u00e9rences
+    // Waypoints & préférences
     const [waypoints, setWaypoints] = useState<Array<{ lat: number; lng: number; name: string }>>([]);
     const [avoidTolls, setAvoidTolls] = useState(false);
     const [avoidHighways, setAvoidHighways] = useState(false);
@@ -113,12 +113,12 @@ const NavigationScreen: React.FC = () => {
         id: string; label: string; custom_label?: string; address: string; latitude: number; longitude: number;
     }>>([]);
 
-    // UI \u00e9tat des blocs POI ouverts/ferm\u00e9s
+    // UI état des blocs POI ouverts/fermés
     const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({
         health: true, food: false, fuel: false, leisure: false,
     });
 
-    // ── POIs group\u00e9s par cat\u00e9gorie (m\u00e9moris\u00e9) ──
+    // ── POIs groupés par catégorie (mémorisé) ──
     const groupedPOIs = useMemo(() => {
         const groups: Record<string, PointOfInterest[]> = {};
         for (const [catKey, cat] of Object.entries(POI_CATEGORIES)) {
@@ -135,7 +135,7 @@ const NavigationScreen: React.FC = () => {
             }
             const { status } = await Location.requestForegroundPermissionsAsync();
             if (status !== 'granted') {
-                Alert.alert('Permission requise', 'Veuillez autoriser l\'acc\u00e8s \u00e0 la localisation');
+                Alert.alert('Permission requise', 'Veuillez autoriser l\'accès à la localisation');
                 return null;
             }
             const location = await Location.getCurrentPositionAsync({});
@@ -168,7 +168,7 @@ const NavigationScreen: React.FC = () => {
     const getTrafficLabel = (level: string) => {
         switch (level) {
             case 'low': return 'Fluide';
-            case 'medium': return 'Mod\u00e9r\u00e9';
+            case 'medium': return 'Modéré';
             case 'high': return 'Dense';
             default: return '';
         }
@@ -199,7 +199,7 @@ const NavigationScreen: React.FC = () => {
                     return { lat: response.data.latitude, lng: response.data.longitude, address: response.data.address };
                 }
             } catch (error) {
-                console.error('Erreur r\u00e9cup\u00e9ration destination favorite:', error);
+                console.error('Erreur récupération destination favorite:', error);
             }
         }
         try {
@@ -208,7 +208,7 @@ const NavigationScreen: React.FC = () => {
                 return { lat: response.data.location.lat, lng: response.data.location.lng, address: response.data.formatted_address || dest };
             }
         } catch (error) {
-            console.error('Erreur g\u00e9ocodage:', error);
+            console.error('Erreur géocodage:', error);
         }
         return null;
     }, []);
@@ -226,13 +226,13 @@ const NavigationScreen: React.FC = () => {
             setDestinationCoords(destCoords);
         }
         if (!destCoords && !destination.trim()) {
-            Alert.alert('Destination requise', 'Veuillez s\u00e9lectionner ou saisir une destination');
+            Alert.alert('Destination requise', 'Veuillez sélectionner ou saisir une destination');
             return;
         }
         setLoading(true);
         try {
             const origin = await getCurrentPosition();
-            if (!origin) { Alert.alert('Erreur', 'Impossible de d\u00e9terminer votre position'); setLoading(false); return; }
+            if (!origin) { Alert.alert('Erreur', 'Impossible de déterminer votre position'); setLoading(false); return; }
             if (!destCoords) {
                 destCoords = await geocodeDestination(destination);
                 if (!destCoords) { Alert.alert('Erreur', 'Impossible de trouver cette destination'); setLoading(false); return; }
@@ -258,7 +258,7 @@ const NavigationScreen: React.FC = () => {
                     loadPointsOfInterest(response.data.routes[0]);
                 }
             } else {
-                Alert.alert('Erreur', 'Aucune route trouv\u00e9e');
+                Alert.alert('Erreur', 'Aucune route trouvée');
             }
         } catch (error: any) {
             console.error('Erreur recherche routes:', error);
@@ -268,7 +268,7 @@ const NavigationScreen: React.FC = () => {
         }
     }, [destination, destinationCoords, selectedLocation, getCurrentPosition, geocodeDestination, avoidTolls, avoidHighways, avoidFerries, waypoints]);
 
-    // ── Points d'int\u00e9r\u00eat ────────────────────────────────────────────────
+    // ── Points d'intérêt ────────────────────────────────────────────────
     const loadPointsOfInterest = useCallback(async (route: RouteOption) => {
         if (!route || !destinationCoords) { setPointsOfInterest([]); return; }
         setLoadingPOI(true);
@@ -281,7 +281,7 @@ const NavigationScreen: React.FC = () => {
             );
             if (response?.data?.pois) {
                 setPointsOfInterest(response.data.pois);
-                // Ouvrir la premi\u00e8re cat\u00e9gorie qui a des r\u00e9sultats
+                // Ouvrir la première catégorie qui a des résultats
                 const firstCatWithResults = Object.entries(POI_CATEGORIES).find(([key]) => {
                     const cat = POI_CATEGORIES[key];
                     return (response.data.pois as PointOfInterest[]).some((p: PointOfInterest) => cat.types.includes(p.type));
@@ -305,7 +305,7 @@ const NavigationScreen: React.FC = () => {
         }
     }, [destinationCoords, getCurrentPosition]);
 
-    // ── D\u00e9marrer la navigation ────────────────────────────────────────────
+    // ── Démarrer la navigation ────────────────────────────────────────────
     const startNavigation = useCallback(async (route: RouteOption) => {
         if (!route || !destinationCoords) return;
         try {
@@ -350,21 +350,21 @@ const NavigationScreen: React.FC = () => {
                 label, custom_label: customLabel, address: destination,
                 latitude: destinationCoords.lat, longitude: destinationCoords.lng, place_id: null,
             });
-            if (response?.data) { Alert.alert('Succ\u00e8s', `Destination "${label}" enregistr\u00e9e`); loadSavedDestinations(); }
+            if (response?.data) { Alert.alert('Succès', `Destination "${label}" enregistrée`); loadSavedDestinations(); }
         } catch (error: any) {
             console.error('Erreur sauvegarde destination:', error);
             Alert.alert('Erreur', error?.message || 'Impossible d\'enregistrer la destination');
         }
     }, [destinationCoords, destination, loadSavedDestinations]);
 
-    // ── Ajouter un POI comme \u00e9tape ────────────────────────────────────────
+    // ── Ajouter un POI comme étape ────────────────────────────────────────
     const addWaypoint = useCallback((poi: PointOfInterest) => {
         if (waypoints.some(wp => wp.lat === poi.location.lat && wp.lng === poi.location.lng)) {
-            Alert.alert('D\u00e9j\u00e0 ajout\u00e9', 'Ce lieu est d\u00e9j\u00e0 dans vos \u00e9tapes');
+            Alert.alert('Déjà ajouté', 'Ce lieu est déjà dans vos étapes');
             return;
         }
         setWaypoints(prev => [...prev, { lat: poi.location.lat, lng: poi.location.lng, name: poi.name }]);
-        Alert.alert('\u00c9tape ajout\u00e9e', `${poi.name} ajout\u00e9 comme \u00e9tape de votre trajet`);
+        Alert.alert('Étape ajoutée', `${poi.name} ajouté comme étape de votre trajet`);
     }, [waypoints]);
 
     const removeWaypoint = useCallback((index: number) => {
@@ -390,7 +390,7 @@ const NavigationScreen: React.FC = () => {
                 <View style={styles.header}>
                     <View>
                         <Text style={styles.title}>Navigation</Text>
-                        <Text style={styles.subtitle}>Trouvez le meilleur itin\u00e9raire</Text>
+                        <Text style={styles.subtitle}>Trouvez le meilleur itinéraire</Text>
                     </View>
                     <TouchableOpacity style={styles.statsButton} onPress={() => setShowStats(!showStats)}>
                         <SafeIcon name="BarChart2" size={22} color={showStats ? modernColors.primary : modernColors.textSecondary} />
@@ -469,7 +469,7 @@ const NavigationScreen: React.FC = () => {
                                         });
                                     }
                                 }}
-                                placeholder="O\u00f9 allez-vous ?"
+                                placeholder="Où allez-vous ?"
                                 scope="all"
                                 style={styles.locationSelector}
                             />
@@ -486,7 +486,7 @@ const NavigationScreen: React.FC = () => {
                         {loading ? (
                             <><ActivityIndicator color="white" size="small" /><Text style={styles.searchButtonText}> Recherche en cours...</Text></>
                         ) : (
-                            <><SafeIcon name="Navigation" size={18} color="white" /><Text style={styles.searchButtonText}> Trouver mon itin\u00e9raire</Text></>
+                            <><SafeIcon name="Navigation" size={18} color="white" /><Text style={styles.searchButtonText}> Trouver mon itinéraire</Text></>
                         )}
                     </TouchableOpacity>
 
@@ -505,25 +505,25 @@ const NavigationScreen: React.FC = () => {
                     )}
                 </NativeCard>
 
-                {/* ━━ Pr\u00e9f\u00e9rences de route (chips toggle) ━━━━━━━━━━━━━━━━━━━━ */}
+                {/* ━━ Préférences de route (chips toggle) ━━━━━━━━━━━━━━━━━━━━ */}
                 {(routes.length > 0 || destination.trim().length > 0) && (
                     <View style={styles.prefsRow}>
                         <TouchableOpacity style={[styles.prefChip, avoidTolls && styles.prefChipActive]} onPress={() => setAvoidTolls(!avoidTolls)}>
-                            <Text style={[styles.prefChipText, avoidTolls && styles.prefChipTextActive]}>\u26D4 P\u00e9ages</Text>
+                            <Text style={[styles.prefChipText, avoidTolls && styles.prefChipTextActive]}>⛔ Péages</Text>
                         </TouchableOpacity>
                         <TouchableOpacity style={[styles.prefChip, avoidHighways && styles.prefChipActive]} onPress={() => setAvoidHighways(!avoidHighways)}>
-                            <Text style={[styles.prefChipText, avoidHighways && styles.prefChipTextActive]}>\uD83D\uDEE3\uFE0F Autoroutes</Text>
+                            <Text style={[styles.prefChipText, avoidHighways && styles.prefChipTextActive]}>🛣️ Autoroutes</Text>
                         </TouchableOpacity>
                         <TouchableOpacity style={[styles.prefChip, avoidFerries && styles.prefChipActive]} onPress={() => setAvoidFerries(!avoidFerries)}>
-                            <Text style={[styles.prefChipText, avoidFerries && styles.prefChipTextActive]}>\u26F4\uFE0F Ferries</Text>
+                            <Text style={[styles.prefChipText, avoidFerries && styles.prefChipTextActive]}>⛴️ Ferries</Text>
                         </TouchableOpacity>
                     </View>
                 )}
 
-                {/* ━━ \u00c9tapes (waypoints) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+                {/* ━━ Étapes (waypoints) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
                 {waypoints.length > 0 && (
                     <NativeCard style={styles.waypointsCard}>
-                        <Text style={styles.waypointsTitle}>Mes \u00e9tapes ({waypoints.length})</Text>
+                        <Text style={styles.waypointsTitle}>Mes étapes ({waypoints.length})</Text>
                         {waypoints.map((wp, idx) => (
                             <View key={idx} style={styles.waypointRow}>
                                 <View style={styles.waypointBadge}>
@@ -537,7 +537,7 @@ const NavigationScreen: React.FC = () => {
                         ))}
                         <TouchableOpacity style={styles.recalcButton} onPress={searchRoutes}>
                             <SafeIcon name="RefreshCw" size={14} color={modernColors.primary} />
-                            <Text style={styles.recalcText}>Recalculer avec \u00e9tapes</Text>
+                            <Text style={styles.recalcText}>Recalculer avec étapes</Text>
                         </TouchableOpacity>
                     </NativeCard>
                 )}
@@ -545,7 +545,7 @@ const NavigationScreen: React.FC = () => {
                 {/* ━━ Routes disponibles ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
                 {routes.length > 0 && (
                     <View style={styles.routesSection}>
-                        <Text style={styles.sectionTitle}>{routes.length} itin\u00e9raire{routes.length > 1 ? 's' : ''} trouv\u00e9{routes.length > 1 ? 's' : ''}</Text>
+                        <Text style={styles.sectionTitle}>{routes.length} itinéraire{routes.length > 1 ? 's' : ''} trouvé{routes.length > 1 ? 's' : ''}</Text>
                         <FlatList
                             data={routes}
                             keyExtractor={(item) => item.id}
@@ -565,7 +565,7 @@ const NavigationScreen: React.FC = () => {
                                         onPress={() => { setSelectedRoute(item); loadPointsOfInterest(item); }}
                                         activeOpacity={0.7}
                                     >
-                                        {/* Badge num\u00e9ro + trafic */}
+                                        {/* Badge numéro + trafic */}
                                         <View style={styles.routeTopRow}>
                                             <View style={styles.routeNumberBadge}>
                                                 <Text style={styles.routeNumber}>{index + 1}</Text>
@@ -576,7 +576,7 @@ const NavigationScreen: React.FC = () => {
                                             </View>
                                             {isSelected && <SafeIcon name="CheckCircle" size={18} color={modernColors.primary} />}
                                         </View>
-                                        <Text style={styles.routeSummary} numberOfLines={1}>{item.summary || `Itin\u00e9raire ${index + 1}`}</Text>
+                                        <Text style={styles.routeSummary} numberOfLines={1}>{item.summary || `Itinéraire ${index + 1}`}</Text>
                                         <View style={styles.routeMetrics}>
                                             <View style={styles.routeMetric}>
                                                 <SafeIcon name="Clock" size={13} color={modernColors.textSecondary} />
@@ -597,7 +597,7 @@ const NavigationScreen: React.FC = () => {
                     </View>
                 )}
 
-                {/* ━━ Points d'int\u00e9r\u00eat group\u00e9s par cat\u00e9gorie ━━━━━━━━━━━━━━━━━━━ */}
+                {/* ━━ Points d'intérêt groupés par catégorie ━━━━━━━━━━━━━━━━━━━ */}
                 {selectedRoute && (
                     <View style={styles.poiSection}>
                         <View style={styles.poiSectionHeader}>
@@ -608,12 +608,12 @@ const NavigationScreen: React.FC = () => {
                         {loadingPOI && pointsOfInterest.length === 0 ? (
                             <NativeCard style={styles.poiLoadingCard}>
                                 <ActivityIndicator size="small" color={modernColors.primary} />
-                                <Text style={styles.poiLoadingText}>Recherche des lieux cl\u00e9s...</Text>
+                                <Text style={styles.poiLoadingText}>Recherche des lieux clés...</Text>
                             </NativeCard>
                         ) : pointsOfInterest.length === 0 && !loadingPOI ? (
                             <NativeCard style={styles.poiEmptyCard}>
                                 <SafeIcon name="MapPin" size={24} color={modernColors.textSecondary} />
-                                <Text style={styles.poiEmptyText}>Aucun lieu cl\u00e9 trouv\u00e9 sur ce trajet</Text>
+                                <Text style={styles.poiEmptyText}>Aucun lieu clé trouvé sur ce trajet</Text>
                             </NativeCard>
                         ) : (
                             Object.entries(POI_CATEGORIES).map(([catKey, cat]) => {
@@ -650,7 +650,7 @@ const NavigationScreen: React.FC = () => {
                                                                 {poi.is_open != null && (
                                                                     <View style={[styles.openBadge, { backgroundColor: poi.is_open ? '#DCFCE7' : '#FEE2E2' }]}>
                                                                         <Text style={[styles.openBadgeText, { color: poi.is_open ? '#16A34A' : '#DC2626' }]}>
-                                                                            {poi.is_open ? 'Ouvert' : 'Ferm\u00e9'}
+                                                                            {poi.is_open ? 'Ouvert' : 'Fermé'}
                                                                         </Text>
                                                                     </View>
                                                                 )}
@@ -673,11 +673,11 @@ const NavigationScreen: React.FC = () => {
                     </View>
                 )}
 
-                {/* ━━ Bouton d\u00e9marrer ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+                {/* ━━ Bouton démarrer ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
                 {selectedRoute && (
                     <TouchableOpacity style={styles.goButton} onPress={() => startNavigation(selectedRoute)} activeOpacity={0.85}>
                         <SafeIcon name="Navigation" size={22} color="white" />
-                        <Text style={styles.goButtonText}>D\u00e9marrer la navigation</Text>
+                        <Text style={styles.goButtonText}>Démarrer la navigation</Text>
                     </TouchableOpacity>
                 )}
             </KeyboardAwareScrollView>

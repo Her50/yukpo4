@@ -8,34 +8,32 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-    ActivityIndicator,
     Alert,
     DeviceEventEmitter,
     Modal,
-    Platform,
     StyleSheet,
     Text,
     TouchableOpacity,
     View
 } from 'react-native';
-import { KeyboardAwareScreen } from '../components/KeyboardAwareScreen';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
+import DeliveryAutoConfigPromptModal from '../components/delivery/DeliveryAutoConfigPromptModal';
+import ProductDeliveryConfigModal from '../components/delivery/ProductDeliveryConfigModal';
+import { KeyboardAwareScreen } from '../components/KeyboardAwareScreen';
 import LinearAutocompleteEditor from '../components/LinearAutocompleteEditor';
-import LocationSelector, { LocationObject } from '../components/LocationSelector';
-import ModernGPSModal from '../components/ModernGPSModal';
+import { LocationObject } from '../components/LocationSelector';
 import MediaUploadManager from '../components/MediaUploadManager';
-import { NativeButton, NativeCard, NativeInput } from '../components/SafeNativeDesign';
+import ModernGPSModal from '../components/ModernGPSModal';
 import NavigatorToolbar from '../components/NavigatorToolbar';
 import PriceVariantSelector from '../components/PriceVariantSelector';
 import SafeIcon from '../components/SafeIcon';
+import { NativeButton, NativeCard, NativeInput } from '../components/SafeNativeDesign';
 import { useToaster } from '../components/ToasterProvider'; // ✅ NOUVEAU: Pour les toasts de confirmation
 import { useAuth } from '../contexts/AuthContext';
 import { apiGet, apiPatch, apiPost } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import { MAX_PRODUCT_IMAGES, mergeImageSources, orderImagesWithPrimary } from '../utils/mediaHelpers';
 import { applyPriceVariantToProduits, extractPriceVariant } from '../utils/priceVariant';
-import ProductDeliveryConfigModal from '../components/delivery/ProductDeliveryConfigModal';
-import DeliveryAutoConfigPromptModal from '../components/delivery/DeliveryAutoConfigPromptModal';
 
 /**
  * ✅ CORRECTION DÉFINITIVE: Mapping intelligent des valeurs aux labels
@@ -48,7 +46,7 @@ const mapProductVectorToSousCaracteristiques = (
     sousCaracteristiquesIA?: Record<string, string[]>
 ): Record<string, string[]> => {
     const sousCaracsObj: Record<string, string[]> = {};
-    
+
     // Si longueurs identiques, mapping direct par index
     if (productVector.length === productLabels.length) {
         productVector.forEach((value: string, index: number) => {
@@ -66,13 +64,13 @@ const mapProductVectorToSousCaracteristiques = (
         });
         return sousCaracsObj;
     }
-    
+
     // Si longueurs différentes et sous_caracteristiques disponibles, mapping intelligent
     if (sousCaracteristiquesIA && typeof sousCaracteristiquesIA === 'object') {
         // Construire un index inversé : valeur -> dimensions possibles
         const valueToDimensions: Record<string, string[]> = {};
         const dimensionOrder: string[] = Object.keys(sousCaracteristiquesIA);
-        
+
         for (const dimension of dimensionOrder) {
             const valuesArray = sousCaracteristiquesIA[dimension];
             if (Array.isArray(valuesArray)) {
@@ -87,18 +85,18 @@ const mapProductVectorToSousCaracteristiques = (
                 }
             }
         }
-        
+
         // Track des dimensions assignées
         const assignedDimensions = new Set<string>();
-        const mappedValues: Array<{dimension: string, value: string}> = [];
-        
+        const mappedValues: Array<{ dimension: string, value: string }> = [];
+
         // Étape 1: Mapper les valeurs qui correspondent à une dimension
         for (const value of productVector) {
             if (!value || typeof value !== 'string') continue;
-            
+
             const normalizedValue = value.trim().toLowerCase();
             const possibleDimensions = valueToDimensions[normalizedValue];
-            
+
             if (possibleDimensions && possibleDimensions.length > 0) {
                 // Prendre la première dimension non assignée, ou la première disponible
                 const dimension = possibleDimensions.find(d => !assignedDimensions.has(d)) || possibleDimensions[0];
@@ -106,7 +104,7 @@ const mapProductVectorToSousCaracteristiques = (
                 assignedDimensions.add(dimension);
             }
         }
-        
+
         // Étape 2: Construire l'objet final dans l'ordre des dimensions
         for (const dimension of dimensionOrder) {
             const mapped = mappedValues.find(m => m.dimension === dimension);
@@ -119,12 +117,12 @@ const mapProductVectorToSousCaracteristiques = (
                 }
             }
         }
-        
+
         // Étape 3: Ajouter les valeurs non mappées avec leur label par index si disponible
         for (let i = 0; i < productVector.length; i++) {
             const value = productVector[i];
             if (!value || typeof value !== 'string') continue;
-            
+
             const alreadyMapped = mappedValues.some(m => m.value === value);
             if (!alreadyMapped && i < productLabels.length) {
                 const label = productLabels[i];
@@ -138,10 +136,10 @@ const mapProductVectorToSousCaracteristiques = (
                 }
             }
         }
-        
+
         return sousCaracsObj;
     }
-    
+
     // Fallback: mapping par index avec les labels disponibles
     productVector.forEach((value: string, index: number) => {
         if (index < productLabels.length) {
@@ -158,7 +156,7 @@ const mapProductVectorToSousCaracteristiques = (
             }
         }
     });
-    
+
     return sousCaracsObj;
 };
 
@@ -199,7 +197,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
     } | null>(null);
     // ✅ NOUVEAU: État pour le modal de confirmation de livraison automatique
     const [showDeliveryAutoPrompt, setShowDeliveryAutoPrompt] = useState(false);
-    
+
     // ✅ NOUVEAU: États pour la modal de confirmation de création de produit
     const [showSuccessModal, setShowSuccessModal] = useState(false);
     const [successModalData, setSuccessModalData] = useState<{
@@ -223,7 +221,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                     setProductAddIsFree(res.data.is_free);
                 }
             })
-            .catch(() => {});
+            .catch(() => { });
     }, [user?.id]);
 
     // ✅ FONCTION HELPER: Extraire valeur avec fallback intelligent (IDENTIQUE AU GRAND FORMULAIRE)
@@ -277,7 +275,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
     console.log('[AjouterProduitSimple] 🔍 suggestionIA.service_data.data présent?', !!suggestionIA?.service_data?.data);
     console.log('[AjouterProduitSimple] 🔍 suggestionIA.data présent?', !!suggestionIA?.data);
     console.log('[AjouterProduitSimple] 🔍 suggestionIA.service_data complet:', JSON.stringify(suggestionIA?.service_data, null, 2));
-    
+
     // ✅ CORRIGÉ: Extraire suggestionData avec toutes les sources possibles
     // 1. service_data.data (données complètes avec produits si présents)
     // 2. data (données de base du service)
@@ -296,6 +294,11 @@ const AjouterProduitSimpleScreen: React.FC = () => {
 
         if (Array.isArray(value)) {
             return value.filter((item) => item !== null && item !== undefined);
+        }
+
+        // ✅ CORRIGÉ 2026-02-27: Gérer le format {valeur: [...]} du formulaire dynamique IA
+        if (typeof value === 'object' && Array.isArray(value.valeur)) {
+            return value.valeur.filter((item: any) => item !== null && item !== undefined);
         }
 
         return [value];
@@ -335,7 +338,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
     const prefilledDocuments = normalizeMediaList(prefill.documents);
 
     // ✅ CORRIGÉ: En mode edit/duplicate, fusionner prefill.images avec mediaData pour s'assurer que tous les médias sont chargés
-    const prefilledImagesFromMediaData = isEditing || isDuplicate 
+    const prefilledImagesFromMediaData = isEditing || isDuplicate
         ? combineUnique(
             prefilledImages,
             normalizeMediaList(mediaData?.base64_image),
@@ -375,11 +378,11 @@ const AjouterProduitSimpleScreen: React.FC = () => {
         suggestionData?.images,
         suggestionIA?.service_data?.base64_image
     );
-    
+
     // Combiner en mettant mediaDataImages en premier
     const mergedImageSources: string[] = [];
     const seenImages = new Set<string>();
-    
+
     // Ajouter d'abord les images de mediaData
     mediaDataImages.forEach(img => {
         if (img && !seenImages.has(img) && mergedImageSources.length < MAX_PRODUCT_IMAGES) {
@@ -387,7 +390,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
             seenImages.add(img);
         }
     });
-    
+
     // Puis ajouter les autres images
     otherImageSources.forEach(img => {
         if (img && !seenImages.has(img) && mergedImageSources.length < MAX_PRODUCT_IMAGES) {
@@ -453,15 +456,15 @@ const AjouterProduitSimpleScreen: React.FC = () => {
     // ✅ CORRECTION: Extraire exactement comme dans FormulaireYukpoIntelligentScreen (lignes 1388-1405)
     // Parcourir suggestionData comme Object.keys() et extraire depuis fieldData.modalites avec normalisation
     let iaPriceVariant = null;
-    
+
     // ✅ MÊME LOGIQUE QUE FormulaireYukpoIntelligentScreen: Parcourir les champs et extraire price_variant
     Object.keys(suggestionData || {}).forEach(fieldName => {
         const fieldData = suggestionData[fieldName];
-        
+
         // ✅ IDENTIQUE À FormulaireYukpoIntelligentScreen (ligne 1388)
         if (fieldData && typeof fieldData === 'object' && 'type_donnee' in fieldData) {
             const typeDonnee = fieldData.type_donnee || 'string';
-            
+
             // ✅ IDENTIQUE À FormulaireYukpoIntelligentScreen (ligne 1388): Traitement spécial pour price_variant
             if (typeDonnee === 'price_variant' || fieldName === 'variabilite_prix') {
                 // ✅ IDENTIQUE À FormulaireYukpoIntelligentScreen (lignes 1390-1395): Normaliser les modalités
@@ -471,7 +474,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                     devise: mod.devise || 'XAF',
                     stock: mod.stock
                 }));
-                
+
                 // ✅ IDENTIQUE À FormulaireYukpoIntelligentScreen (lignes 1397-1403)
                 iaPriceVariant = {
                     type_donnee: 'price_variant',
@@ -484,7 +487,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
             }
         }
     });
-    
+
     // ✅ FALLBACK: Utiliser extractPriceVariant si aucune extraction directe n'a fonctionné (pour structures imbriquées)
     if (!iaPriceVariant) {
         iaPriceVariant =
@@ -496,7 +499,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
             console.log('[AjouterProduitSimple] ✅ variabilite_prix extrait via extractPriceVariant (fallback):', iaPriceVariant.modalites?.length || 0, 'modalités');
         }
     }
-    
+
     // ✅ NOUVEAU 2026-01-04: Extraire variabilite_prix depuis suggestionData.produits.valeur[0] si présent
     // Les produits sont maintenant chargés depuis service_products et ajoutés dans data.produits.valeur
     if (!iaPriceVariant && suggestionData?.produits) {
@@ -507,7 +510,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
             : Array.isArray(produitsData)
                 ? produitsData
                 : [];
-        
+
         // Si on a au moins un produit, extraire variabilite_prix depuis le premier produit
         if (produitsArray.length > 0) {
             const firstProduct = produitsArray[0];
@@ -526,32 +529,32 @@ const AjouterProduitSimpleScreen: React.FC = () => {
             }
         }
     }
-    
+
     const prefillPriceVariant =
         extractPriceVariant(prefill.variabilite_prix || prefill.price_variant) ||
         extractPriceVariant(prefill.produits);
-    
+
     // ✅ NOUVEAU 2026-01-14: Si pas de prix_variation détecté mais qu'on a des sous-caractéristiques, générer automatiquement
     if (!iaPriceVariant && suggestionData?.produits?.sous_caracteristiques) {
         const produitsData = suggestionData.produits;
         const sousCaracs = produitsData.sous_caracteristiques;
         const productLabels = produitsData.product_labels || [];
-        
+
         // Détecter les caractéristiques qui peuvent avoir des variations de prix
         const priceVariableLabels = ['taille', 'pointure', 'quantite', 'volume', 'poids', 'capacite'];
-        const hasPriceVariable = productLabels.some((label: string) => 
+        const hasPriceVariable = productLabels.some((label: string) =>
             priceVariableLabels.includes(label.toLowerCase())
         );
-        
+
         if (hasPriceVariable && Object.keys(sousCaracs).length > 0) {
             // Trouver le premier label qui peut avoir des variations de prix
-            const variableLabel = productLabels.find((label: string) => 
+            const variableLabel = productLabels.find((label: string) =>
                 priceVariableLabels.includes(label.toLowerCase())
             );
-            
+
             if (variableLabel && sousCaracs[variableLabel]) {
                 const variableValues = sousCaracs[variableLabel];
-                
+
                 if (Array.isArray(variableValues) && variableValues.length > 0) {
                     // Générer des variations de prix basées sur les sous-caractéristiques
                     const modalites = variableValues.map((val: string) => ({
@@ -560,7 +563,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                         devise: 'XAF',
                         stock: null
                     }));
-                    
+
                     iaPriceVariant = {
                         type_donnee: 'price_variant',
                         variable: variableLabel,
@@ -568,7 +571,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                         filtrable: true,
                         origine_champs: 'auto_generated'
                     };
-                    
+
                     console.log('[AjouterProduitSimple] ✅ Prix_variation généré automatiquement depuis sous-caractéristiques:', {
                         variable: variableLabel,
                         modalites_count: iaPriceVariant.modalites.length,
@@ -619,7 +622,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
         suggestionData.produits.product_labels && Array.isArray(suggestionData.produits.product_labels) &&
         suggestionData.produits.product_vector.length > 0) {
         const sousCaracsObj: Record<string, string[]> = {};
-        
+
         // ✅ DEBUG: Logger pour diagnostiquer
         console.log('[AjouterProduitSimple] 🔍 Construction initiale depuis product_vector/product_labels:', {
             product_vector: suggestionData.produits.product_vector,
@@ -628,24 +631,24 @@ const AjouterProduitSimpleScreen: React.FC = () => {
             length_labels: suggestionData.produits.product_labels.length,
             sous_caracteristiques_ia: suggestionData.produits.sous_caracteristiques
         });
-        
+
         // ✅ CORRECTION DÉFINITIVE: Utiliser la fonction helper pour mapping intelligent
         const iaSousCaracs = suggestionData.produits.sous_caracteristiques;
         const hasLengthMismatch = suggestionData.produits.product_vector.length !== suggestionData.produits.product_labels.length;
-        
+
         if (hasLengthMismatch) {
             console.warn(`[AjouterProduitSimple] ⚠️ Incohérence détectée: ${suggestionData.produits.product_vector.length} valeurs pour ${suggestionData.produits.product_labels.length} labels. Mapping intelligent activé.`);
         }
-        
+
         const mappedSousCaracs = mapProductVectorToSousCaracteristiques(
             suggestionData.produits.product_vector,
             suggestionData.produits.product_labels,
             iaSousCaracs
         );
-        
+
         // Copier le résultat dans sousCaracsObj
         Object.assign(sousCaracsObj, mappedSousCaracs);
-        
+
         console.log('[AjouterProduitSimple] ✅ Résultat construction initiale:', sousCaracsObj);
         if (Object.keys(sousCaracsObj).length > 0) {
             sous_caracteristiques = sousCaracsObj;
@@ -712,18 +715,18 @@ const AjouterProduitSimpleScreen: React.FC = () => {
             const finalSousCaracs = sous_caracteristiques || prefill.sous_caracteristiques || {};
             if (finalSousCaracs && typeof finalSousCaracs === 'object' && Object.keys(finalSousCaracs).length > 0) {
                 const firstValues: string[] = [];
-                
+
                 // ✅ CRITIQUE: Utiliser productLabels pour garantir l'ordre correct (au lieu de Object.entries qui ne garantit pas l'ordre)
                 const orderedLabels = (productLabels && Array.isArray(productLabels) && productLabels.length > 0)
                     ? productLabels.filter(label => label && typeof label === 'string' && finalSousCaracs[label])
                     : Object.keys(finalSousCaracs);
-                
+
                 console.log('[AjouterProduitSimple] 🔍 Construction valeur depuis sous_caracteristiques:', {
                     orderedLabels,
                     sousCaracsKeys: Object.keys(finalSousCaracs),
                     productLabels: productLabels || 'non disponible'
                 });
-                
+
                 // Parcourir les labels dans l'ordre garanti
                 orderedLabels.forEach((label) => {
                     const values = finalSousCaracs[label];
@@ -735,7 +738,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                         console.warn(`[AjouterProduitSimple] ⚠️ Label "${label}" - Valeurs invalides ou vides:`, values);
                     }
                 });
-                
+
                 if (firstValues.length > 0) {
                     initialProduitsValues = [firstValues.join(safeSeparateur)];
                     console.log('[AjouterProduitSimple] ✅ Valeur initiale construite depuis sous_caracteristiques (ordre garanti par productLabels):', initialProduitsValues[0]);
@@ -811,7 +814,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
             if (suggestionData.produits && typeof suggestionData.produits === 'object' && 'type_donnee' in suggestionData.produits) {
                 // Si c'est un objet structuré, extraire depuis characteristic_vector ou product_vector
                 return (suggestionData.produits.characteristic_vector && Array.isArray(suggestionData.produits.characteristic_vector) ? suggestionData.produits.characteristic_vector : undefined) ||
-                       (suggestionData.produits.product_vector && Array.isArray(suggestionData.produits.product_vector) ? suggestionData.produits.product_vector : undefined);
+                    (suggestionData.produits.product_vector && Array.isArray(suggestionData.produits.product_vector) ? suggestionData.produits.product_vector : undefined);
             }
             // Sinon, extraction directe
             return (suggestionData.produits?.product_vector && Array.isArray(suggestionData.produits.product_vector) ? suggestionData.produits.product_vector : undefined);
@@ -991,7 +994,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
     }, [mode, prefill, initialFormValues]);
 
     const [formValues, setFormValues] = useState<any>(initialFormValues);
-    
+
     // ✅ NOUVEAU: Mettre à jour formValues quand prefill ou mediaData changent en mode édition
     React.useEffect(() => {
         if (isEditing || isDuplicate) {
@@ -1000,7 +1003,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
             const currentPrefilledVideos = normalizeMediaList(prefill.videos);
             const currentPrefilledAudios = normalizeMediaList(prefill.audios);
             const currentPrefilledDocuments = normalizeMediaList(prefill.documents);
-            
+
             const currentMediaDataImages = combineUnique(
                 normalizeMediaList(mediaData?.base64_image),
                 normalizeMediaList(mediaData?.image_base64)
@@ -1011,12 +1014,12 @@ const AjouterProduitSimpleScreen: React.FC = () => {
             );
             const currentMediaDataAudios = normalizeMediaList(mediaData?.audio_base64);
             const currentMediaDataDocuments = normalizeMediaList(mediaData?.doc_base64);
-            
+
             const updatedImages = combineUnique(currentPrefilledImages, currentMediaDataImages);
             const updatedVideos = combineUnique(currentPrefilledVideos, currentMediaDataVideos);
             const updatedAudios = combineUnique(currentPrefilledAudios, currentMediaDataAudios);
             const updatedDocuments = combineUnique(currentPrefilledDocuments, currentMediaDataDocuments);
-            
+
             console.log('[AjouterProduitSimple] 🔄 Mise à jour formValues avec médias en mode édition:', {
                 prefill_images: currentPrefilledImages.length,
                 mediaData_images: currentMediaDataImages.length,
@@ -1026,12 +1029,12 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                 final_videos: updatedVideos.length,
                 first_image: updatedImages[0] ? (typeof updatedImages[0] === 'string' ? updatedImages[0].substring(0, 50) + '...' : typeof updatedImages[0]) : 'none',
             });
-            
+
             // ✅ CORRIGÉ: Mettre à jour seulement si les médias ont changé
             setFormValues((prev: any) => {
                 const imagesChanged = JSON.stringify(prev.images || []) !== JSON.stringify(updatedImages);
                 const videosChanged = JSON.stringify(prev.videos || []) !== JSON.stringify(updatedVideos);
-                
+
                 if (imagesChanged || videosChanged) {
                     return {
                         ...prev,
@@ -1056,14 +1059,14 @@ const AjouterProduitSimpleScreen: React.FC = () => {
             if (hasLoadedCombinations.current) {
                 return;
             }
-            
+
             // Vérifier si on a un session_id et que produits OU sous_caracteristiques sont vides
             // ✅ CORRIGÉ: Extraire session_id depuis toutes les sources possibles
-            const sessionId = suggestionIA?.session_id 
-                || suggestionIA?.data?.session_id 
+            const sessionId = suggestionIA?.session_id
+                || suggestionIA?.data?.session_id
                 || suggestionIA?.service_data?.session_id
                 || suggestionIA?.service_data?.data?.session_id;
-            
+
             console.log('[AjouterProduitSimple] 🔍 Extraction session_id:', {
                 sessionId,
                 from_suggestionIA_session_id: !!suggestionIA?.session_id,
@@ -1087,7 +1090,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                         count: combinationsResponse?.count,
                         fullResponse: combinationsResponse
                     });
-                    
+
                     // ✅ CORRIGÉ: L'API backend retourne { success: true, data: combinations[], count: number }
                     // Donc on doit utiliser combinationsResponse?.data au lieu de combinationsResponse?.combinations
                     const combinations = combinationsResponse?.data || combinationsResponse?.combinations || [];
@@ -1141,7 +1144,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                             dataType: Array.isArray(retryResponse?.data) ? 'array' : typeof retryResponse?.data,
                             dataLength: Array.isArray(retryResponse?.data) ? retryResponse.data.length : 0,
                         });
-                        
+
                         // ✅ CORRIGÉ: Utiliser retryResponse?.data au lieu de retryResponse?.combinations
                         const retryCombinations = retryResponse?.data || retryResponse?.combinations || [];
                         if (Array.isArray(retryCombinations) && retryCombinations.length > 0) {
@@ -1399,11 +1402,11 @@ const AjouterProduitSimpleScreen: React.FC = () => {
             const confirmationMessage = isFree
                 ? `🆓 Gratuit (période de lancement)\n\nConfirmez-vous l'${isDuplicate ? 'duplication' : 'ajout'} de ce produit à votre service ?`
                 : `Coût : ${effectiveCost.toLocaleString()} FCFA\n` +
-                  `Votre solde : ${soldeActuel.toLocaleString()} FCFA\n` +
-                  `Solde après ${isDuplicate ? 'duplication' : 'ajout'} : ${(soldeActuel - effectiveCost).toLocaleString()} FCFA\n\n` +
-                  (isDuplicate
-                      ? 'Confirmez-vous la duplication de ce produit sur votre service ?'
-                      : 'Confirmez-vous l\'ajout de ce produit à votre service ?');
+                `Votre solde : ${soldeActuel.toLocaleString()} FCFA\n` +
+                `Solde après ${isDuplicate ? 'duplication' : 'ajout'} : ${(soldeActuel - effectiveCost).toLocaleString()} FCFA\n\n` +
+                (isDuplicate
+                    ? 'Confirmez-vous la duplication de ce produit sur votre service ?'
+                    : 'Confirmez-vous l\'ajout de ce produit à votre service ?');
 
             console.log('[AjouterProduitSimple] 📋 Confirmation création produit:', {
                 serviceId,
@@ -1488,6 +1491,26 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                     }
                                 });
 
+                                // ✅ CORRIGÉ 2026-02-27: Normaliser images/videos depuis le format {valeur: [...]} du formulaire dynamique IA
+                                if (nouveauProduit.images && !Array.isArray(nouveauProduit.images)) {
+                                    if (Array.isArray(nouveauProduit.images.valeur)) {
+                                        nouveauProduit.images = nouveauProduit.images.valeur;
+                                    } else if (typeof nouveauProduit.images === 'string') {
+                                        nouveauProduit.images = [nouveauProduit.images];
+                                    } else {
+                                        nouveauProduit.images = [];
+                                    }
+                                }
+                                if (nouveauProduit.videos && !Array.isArray(nouveauProduit.videos)) {
+                                    if (Array.isArray(nouveauProduit.videos.valeur)) {
+                                        nouveauProduit.videos = nouveauProduit.videos.valeur;
+                                    } else if (typeof nouveauProduit.videos === 'string') {
+                                        nouveauProduit.videos = [nouveauProduit.videos];
+                                    } else {
+                                        nouveauProduit.videos = [];
+                                    }
+                                }
+
                                 // ✅ Ajouter le stock si quantite_disponible est défini
                                 // ✅ Note: Validation backend dans creer_service.rs (sécurité ultime)
                                 if (formValues.quantite_disponible !== null && formValues.quantite_disponible !== undefined && formValues.quantite_disponible !== '') {
@@ -1533,7 +1556,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                 // ✅ CORRECTION: Inclure sous_caracteristiques dans le payload (OBJET COMPLET avec valeurs)
                                 if (formValues.sous_caracteristiques && typeof formValues.sous_caracteristiques === 'object') {
                                     nouveauProduit.sous_caracteristiques = formValues.sous_caracteristiques;
-                                    
+
                                     // ✅ CORRECTION CRITIQUE: Prioriser product_labels depuis formValues si disponible (ordre garanti)
                                     // Sinon utiliser Object.keys() comme fallback (ordre non garanti)
                                     if (!nouveauProduit.product_labels) {
@@ -1632,13 +1655,13 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                 // ✅ OPTIMISATION CRITIQUE: Vérifier AVANT l'import s'il y a des médias à compresser
                                 // Évite l'import dynamique coûteux et les opérations inutiles si pas de médias
                                 let compressedMedia: any = null;
-                                
+
                                 // Vérifier rapidement s'il y a des médias base64/file à compresser
-                                const hasImagesToCompress = nouveauProduit.images && Array.isArray(nouveauProduit.images) && 
+                                const hasImagesToCompress = nouveauProduit.images && Array.isArray(nouveauProduit.images) &&
                                     nouveauProduit.images.some((img: string) => img && (img.startsWith('data:') || img.startsWith('file://')));
-                                const hasVideosToCompress = nouveauProduit.videos && Array.isArray(nouveauProduit.videos) && 
+                                const hasVideosToCompress = nouveauProduit.videos && Array.isArray(nouveauProduit.videos) &&
                                     nouveauProduit.videos.some((vid: string) => vid && (vid.startsWith('data:') || vid.startsWith('file://')));
-                                
+
                                 if (hasImagesToCompress || hasVideosToCompress) {
                                     // ✅ SEULEMENT si on a des médias à compresser, importer et compresser
                                     console.log('[AjouterProduitSimple] 🔄 Compression des médias avant envoi...');
@@ -1727,7 +1750,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                     // Vérifier s'il y a des URLs existantes à préserver
                                     const existingImageUrls: string[] = [];
                                     const existingVideoUrls: string[] = [];
-                                    
+
                                     if (nouveauProduit.images && Array.isArray(nouveauProduit.images)) {
                                         nouveauProduit.images.forEach((img: string) => {
                                             if (img && (img.startsWith('http://') || img.startsWith('https://'))) {
@@ -1741,7 +1764,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                             delete nouveauProduit.images;
                                         }
                                     }
-                                    
+
                                     if (nouveauProduit.videos && Array.isArray(nouveauProduit.videos)) {
                                         nouveauProduit.videos.forEach((vid: string) => {
                                             if (vid && (vid.startsWith('http://') || vid.startsWith('https://'))) {
@@ -1755,7 +1778,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                             delete nouveauProduit.videos;
                                         }
                                     }
-                                    
+
                                     console.log('[AjouterProduitSimple] ✅ Pas de médias à compresser, traitement rapide');
                                 }
 
@@ -1813,34 +1836,34 @@ const AjouterProduitSimpleScreen: React.FC = () => {
 
                                 // ✅ NOUVEAU: Activer le loading spécifique pour l'ajout de produit
                                 setIsAddingProductLoading(true);
-                                
+
                                 // ✅ CRITIQUE: Nettoyer les médias base64 AVANT l'envoi pour éviter les timeouts
                                 // Le backend nettoie aussi, mais il vaut mieux le faire côté client pour réduire la taille du payload
                                 // Les médias base64 seront traités séparément par le backend (upload vers Wasabi + table media)
                                 const productDataForAPI = { ...nouveauProduit };
-                                
+
                                 // Garder seulement les URLs dans images/videos (pas de base64)
                                 // Les base64 sont dans base64_image/video_base64 et seront nettoyés par le backend
                                 if (productDataForAPI.images && Array.isArray(productDataForAPI.images)) {
                                     // Filtrer pour garder seulement les URLs (pas de base64)
-                                    productDataForAPI.images = productDataForAPI.images.filter((img: string) => 
+                                    productDataForAPI.images = productDataForAPI.images.filter((img: string) =>
                                         img && (img.startsWith('http://') || img.startsWith('https://'))
                                     );
                                     if (productDataForAPI.images.length === 0) {
                                         delete productDataForAPI.images;
                                     }
                                 }
-                                
+
                                 if (productDataForAPI.videos && Array.isArray(productDataForAPI.videos)) {
                                     // Filtrer pour garder seulement les URLs (pas de base64)
-                                    productDataForAPI.videos = productDataForAPI.videos.filter((vid: string) => 
+                                    productDataForAPI.videos = productDataForAPI.videos.filter((vid: string) =>
                                         vid && (vid.startsWith('http://') || vid.startsWith('https://'))
                                     );
                                     if (productDataForAPI.videos.length === 0) {
                                         delete productDataForAPI.videos;
                                     }
                                 }
-                                
+
                                 // ✅ NOUVEAU: Calculer et logger la taille du payload pour diagnostic
                                 const payload = {
                                     user_id: userId,
@@ -1851,18 +1874,18 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                 // Pour base64, c'est ~4/3 de la taille de la string
                                 const payloadSizeBytes = payloadJson.length * 2; // Approximation conservative
                                 const payloadSizeMB = (payloadSizeBytes / (1024 * 1024)).toFixed(2);
-                                
+
                                 // Calculer la taille des médias base64 séparément
-                                const base64ImagesSize = nouveauProduit.base64_image ? 
-                                    (Array.isArray(nouveauProduit.base64_image) ? 
-                                        nouveauProduit.base64_image.reduce((acc: number, img: string) => acc + (img?.length || 0) * 2, 0) : 
+                                const base64ImagesSize = nouveauProduit.base64_image ?
+                                    (Array.isArray(nouveauProduit.base64_image) ?
+                                        nouveauProduit.base64_image.reduce((acc: number, img: string) => acc + (img?.length || 0) * 2, 0) :
                                         (nouveauProduit.base64_image.length || 0) * 2) : 0;
-                                const base64VideosSize = nouveauProduit.video_base64 ? 
-                                    (Array.isArray(nouveauProduit.video_base64) ? 
-                                        nouveauProduit.video_base64.reduce((acc: number, vid: string) => acc + (vid?.length || 0) * 2, 0) : 
+                                const base64VideosSize = nouveauProduit.video_base64 ?
+                                    (Array.isArray(nouveauProduit.video_base64) ?
+                                        nouveauProduit.video_base64.reduce((acc: number, vid: string) => acc + (vid?.length || 0) * 2, 0) :
                                         (nouveauProduit.video_base64.length || 0) * 2) : 0;
                                 const totalBase64SizeMB = ((base64ImagesSize + base64VideosSize) / (1024 * 1024)).toFixed(2);
-                                
+
                                 console.log('[AjouterProduitSimple] 📤 Appel API création produit:', {
                                     url: `/api/services/${serviceId}/products`,
                                     userId,
@@ -1880,7 +1903,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                     hasVariants: !!(productDataForAPI.variants && productDataForAPI.variants.length > 0),
                                     variantsCount: productDataForAPI.variants ? productDataForAPI.variants.length : 0
                                 });
-                                
+
                                 // ✅ NOUVEAU: Avertir si le payload est très volumineux
                                 if (payloadSizeBytes > 10 * 1024 * 1024) { // > 10 MB
                                     console.warn('[AjouterProduitSimple] ⚠️ Payload très volumineux:', payloadSizeMB, 'MB');
@@ -1892,14 +1915,14 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                 // ✅ SIMPLIFIÉ: Appel direct sans retry (le timeout de 180s devrait suffire)
                                 // Les retries peuvent causer des timeouts cumulatifs qui dépassent le timeout
                                 console.log(`[AjouterProduitSimple] 📤 Appel API création produit (timeout: 180s)...`);
-                                
+
                                 const startTime = Date.now();
                                 const response = await apiPost(`/api/services/${serviceId}/products`, {
                                     user_id: userId,
                                     product_data: productDataForAPI // ✅ Utiliser les données nettoyées (sans base64 dans images/videos)
                                 });
                                 const duration = Date.now() - startTime;
-                                
+
                                 console.log('[AjouterProduitSimple] 📥 Réponse API création produit:', {
                                     success: response.success,
                                     hasData: !!response.data,
@@ -1915,36 +1938,36 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                 const responseData: any = response.data ?? {};
                                 const costPaid = Number(responseData.cost ?? effectiveCost);
                                 const newBalanceValue = Number(responseData.new_balance ?? (soldeActuel - effectiveCost));
-                                
+
                                 // ✅ NOUVEAU 2026-01-02: Vérifier si c'est une queue asynchrone (job_id présent)
                                 const jobId = responseData.job_id;
-                                
+
                                 if (jobId) {
                                     // ✅ NOUVEAU: Le backend utilise une queue asynchrone, il faut interroger le statut
                                     console.log('[AjouterProduitSimple] 🔄 Job créé, interrogation du statut (job_id:', jobId, ')');
                                     toaster.info('⏳ Création du produit en cours...');
-                                    
+
                                     // Fonction pour interroger le statut du job
                                     const pollJobStatus = async (): Promise<{ productIndex: number | null; error: string | null }> => {
                                         const maxAttempts = 60; // 60 tentatives max (5 minutes avec intervalle de 5s)
                                         const pollInterval = 5000; // 5 secondes entre chaque tentative
-                                        
+
                                         for (let attempt = 0; attempt < maxAttempts; attempt++) {
                                             try {
                                                 await new Promise(resolve => setTimeout(resolve, pollInterval));
-                                                
+
                                                 const statusResponse = await apiGet(`/api/services/${serviceId}/products/queue/${jobId}`);
-                                                
+
                                                 if (!statusResponse.success) {
                                                     console.warn('[AjouterProduitSimple] ⚠️ Erreur récupération statut job:', statusResponse.error);
                                                     continue;
                                                 }
-                                                
+
                                                 const statusData: any = statusResponse.data ?? {};
                                                 const jobStatus = statusData.status;
-                                                
+
                                                 console.log('[AjouterProduitSimple] 📊 Statut job:', jobStatus, '(tentative', attempt + 1, '/', maxAttempts, ')');
-                                                
+
                                                 if (jobStatus === 'completed') {
                                                     // Job terminé avec succès, extraire product_index depuis result_data
                                                     const resultData = statusData.result;
@@ -1975,35 +1998,35 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                                 continue;
                                             }
                                         }
-                                        
+
                                         // Timeout après maxAttempts
                                         return { productIndex: null, error: 'Timeout: La création du produit a pris trop de temps' };
                                     };
-                                    
+
                                     // Interroger le statut du job
                                     const jobResult = await pollJobStatus();
-                                    
+
                                     if (jobResult.error) {
                                         throw new Error(jobResult.error);
                                     }
-                                    
+
                                     // ✅ NOUVEAU: Afficher la modal de confirmation au lieu du toast
                                     const typeOffre = formValues.type_offre || 'produit';
                                     const isPrestation = typeOffre === 'prestation' || typeOffre === 'service';
-                                    
+
                                     // Rafraîchir la liste des services pour afficher le nouveau produit
                                     setTimeout(() => {
-                                      DeviceEventEmitter.emit('service:refresh');
-                                      // ✅ NOUVEAU: Émettre aussi un événement spécifique pour les produits
-                                      DeviceEventEmitter.emit('product:created');
+                                        DeviceEventEmitter.emit('service:refresh');
+                                        // ✅ NOUVEAU: Émettre aussi un événement spécifique pour les produits
+                                        DeviceEventEmitter.emit('product:created');
                                     }, 2000);
-                                    
+
                                     if (!isPrestation && jobResult.productIndex !== null && serviceId) {
                                         // C'est un produit, préparer les données pour la modal de confirmation
                                         const finalServiceId = typeof serviceId === 'string' ? parseInt(serviceId, 10) : serviceId;
                                         const finalProductIndex = jobResult.productIndex;
                                         const productName = formValues.nom_produit || 'Nouveau produit';
-                                        
+
                                         // Afficher la modal de confirmation
                                         setSuccessModalData({
                                             serviceId: finalServiceId,
@@ -2024,36 +2047,36 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                         });
                                         setShowSuccessModal(true);
                                     }
-                                    
+
                                     setIsAddingProductLoading(false); // ✅ NOUVEAU: Désactiver le loading
                                     return;
                                 }
-                                
+
                                 // ✅ ANCIEN CODE: Si pas de job_id, traitement synchrone (ancien format)
                                 console.log('[AjouterProduitSimple] ✅ Produit ajouté avec succès (format synchrone):', response);
-                                
+
                                 // ✅ NOUVEAU: Afficher la modal de confirmation au lieu du toast
                                 const productIndexResult =
                                     responseData.product_index ??
                                     (typeof responseData === 'object' && responseData.data ? responseData.data.product_index : undefined);
-                                
+
                                 // ✅ NOUVEAU: Si c'est un produit (pas une prestation), préparer l'ouverture de la configuration de livraison
                                 const typeOffre = formValues.type_offre || 'produit';
                                 const isPrestation = typeOffre === 'prestation' || typeOffre === 'service';
-                                
+
                                 // Rafraîchir la liste des services pour afficher le nouveau produit
                                 setTimeout(() => {
-                                  DeviceEventEmitter.emit('service:refresh');
-                                  // ✅ NOUVEAU: Émettre aussi un événement spécifique pour les produits
-                                  DeviceEventEmitter.emit('product:created');
+                                    DeviceEventEmitter.emit('service:refresh');
+                                    // ✅ NOUVEAU: Émettre aussi un événement spécifique pour les produits
+                                    DeviceEventEmitter.emit('product:created');
                                 }, 2000);
-                                
+
                                 if (!isPrestation && productIndexResult !== undefined && serviceId) {
                                     // C'est un produit, préparer les données pour la modal de confirmation
                                     const finalServiceId = typeof serviceId === 'string' ? parseInt(serviceId, 10) : serviceId;
                                     const finalProductIndex = typeof productIndexResult === 'number' ? productIndexResult : parseInt(String(productIndexResult), 10);
                                     const productName = formValues.nom_produit || 'Nouveau produit';
-                                    
+
                                     // Afficher la modal de confirmation
                                     setSuccessModalData({
                                         serviceId: finalServiceId,
@@ -2074,13 +2097,13 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                     });
                                     setShowSuccessModal(true);
                                 }
-                                
+
                                 // Rafraîchir la liste des services pour afficher le nouveau produit
                                 setTimeout(() => {
-                                  DeviceEventEmitter.emit('service:refresh');
-                                  DeviceEventEmitter.emit('product:created');
+                                    DeviceEventEmitter.emit('service:refresh');
+                                    DeviceEventEmitter.emit('product:created');
                                 }, 2000);
-                                
+
                                 setIsAddingProductLoading(false); // ✅ NOUVEAU: Désactiver le loading
                                 return;
                             } catch (error: any) {
@@ -2092,29 +2115,31 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                     status: error?.response?.status,
                                     code: error?.code,
                                 });
-                                
+
                                 setIsAddingProductLoading(false); // ✅ NOUVEAU: Désactiver le loading en cas d'erreur
-                                
+
                                 // ✅ AMÉLIORÉ: Afficher un message d'erreur plus détaillé
                                 let errorMessage = 'Impossible d\'ajouter le produit.';
                                 let errorTitle = 'Erreur';
-                                
+
                                 // Gérer les erreurs selon leur type
                                 if (error?.code === 'TIMEOUT' || error?.message?.includes('timeout') || error?.message?.includes('Timeout') || error?.name === 'AbortError' || error?.message === 'Aborted') {
                                     errorTitle = '⏱️ Timeout';
                                     errorMessage = 'L\'ajout du produit a pris trop de temps (plus de 3 minutes). Cela peut être dû à :\n\n• Un grand nombre de médias\n• Des variants complexes\n• Une connexion internet lente\n• Un serveur temporairement surchargé\n• Des opérations backend lourdes\n\n⚠️ Le produit peut avoir été créé malgré l\'erreur. Vérifiez votre liste de produits avant de réessayer.';
-                                    
+
                                     // ✅ NOUVEAU: Afficher un toast d'erreur
                                     toaster.error('⏱️ Timeout lors de la création du produit');
-                                    
+
                                     Alert.alert(
                                         errorTitle,
                                         errorMessage,
                                         [
-                                            { text: 'Vérifier mes produits', onPress: () => {
-                                                DeviceEventEmitter.emit('service:refresh');
-                                                (navigation as any).navigate('Main', { screen: 'Services' });
-                                            }},
+                                            {
+                                                text: 'Vérifier mes produits', onPress: () => {
+                                                    DeviceEventEmitter.emit('service:refresh');
+                                                    (navigation as any).navigate('Main', { screen: 'Services' });
+                                                }
+                                            },
                                             { text: 'Réessayer', onPress: () => soumettreFormulaire() }
                                         ]
                                     );
@@ -2132,10 +2157,10 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                     if (backendError && typeof backendError === 'string') {
                                         // Si le message contient des détails utiles, les afficher
                                         if (backendError.includes('Timeout') || backendError.includes('timeout')) {
-                                            errorMessage = 'Le serveur a mis trop de temps à répondre. Veuillez réessayer dans quelques instants.\n\n' + 
+                                            errorMessage = 'Le serveur a mis trop de temps à répondre. Veuillez réessayer dans quelques instants.\n\n' +
                                                 (backendError.includes('remboursé') ? 'Votre solde a été remboursé.' : '');
                                         } else if (backendError.includes('surchargée') || backendError.includes('surchargé')) {
-                                            errorMessage = 'Le serveur est temporairement surchargé. Veuillez réessayer dans quelques instants.\n\n' + 
+                                            errorMessage = 'Le serveur est temporairement surchargé. Veuillez réessayer dans quelques instants.\n\n' +
                                                 (backendError.includes('remboursé') ? 'Votre solde a été remboursé.' : '');
                                         } else {
                                             errorMessage = backendError;
@@ -2160,7 +2185,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                 } else {
                                     toaster.error('❌ Erreur lors de la création du produit');
                                 }
-                                
+
                                 Alert.alert(errorTitle, errorMessage);
                             } finally {
                                 setLoading(false);
@@ -2178,11 +2203,11 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                 status: error?.response?.status,
                 code: error?.code,
             });
-            
+
             // ✅ AMÉLIORÉ: Afficher un message d'erreur plus détaillé
             let errorMessage = 'Impossible d\'ajouter le produit.';
             let errorTitle = 'Erreur';
-            
+
             // Gérer les erreurs selon leur type
             if (error?.code === 'TIMEOUT' || error?.message?.includes('timeout') || error?.message?.includes('Timeout')) {
                 errorTitle = '⏱️ Timeout';
@@ -2197,10 +2222,10 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                 if (backendError && typeof backendError === 'string') {
                     // Si le message contient des détails utiles, les afficher
                     if (backendError.includes('Timeout') || backendError.includes('timeout')) {
-                        errorMessage = 'Le serveur a mis trop de temps à répondre. Veuillez réessayer dans quelques instants.\n\n' + 
+                        errorMessage = 'Le serveur a mis trop de temps à répondre. Veuillez réessayer dans quelques instants.\n\n' +
                             (backendError.includes('remboursé') ? 'Votre solde a été remboursé.' : '');
                     } else if (backendError.includes('surchargée') || backendError.includes('surchargé')) {
-                        errorMessage = 'Le serveur est temporairement surchargé. Veuillez réessayer dans quelques instants.\n\n' + 
+                        errorMessage = 'Le serveur est temporairement surchargé. Veuillez réessayer dans quelques instants.\n\n' +
                             (backendError.includes('remboursé') ? 'Votre solde a été remboursé.' : '');
                     } else {
                         errorMessage = backendError;
@@ -2219,7 +2244,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
             } else if (error?.message) {
                 errorMessage = error.message;
             }
-            
+
             Alert.alert('Erreur', errorMessage);
             setLoading(false);
         }
@@ -2398,7 +2423,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                         }
                                         return undefined;
                                     })();
-                                    
+
                                     if (currentProductLabels && currentProductLabels.length > 0) {
                                         handleFieldChange('product_labels', currentProductLabels);
                                         console.log('[AjouterProduitSimple] ✅ product_labels préservé lors de la modification:', currentProductLabels);
@@ -2507,7 +2532,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                             formValues.product_labels,
                                             formValues.sous_caracteristiques
                                         );
-                                        
+
                                         console.log('[AjouterProduitSimple] 🔍 Construction depuis product_vector/product_labels:', {
                                             product_vector: formValues.product_vector,
                                             product_labels: formValues.product_labels,
@@ -2515,7 +2540,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                             length_labels: formValues.product_labels.length,
                                             resultDimensions: Object.keys(sousCaracsFromPreferred)
                                         });
-                                        
+
                                         console.log('[AjouterProduitSimple] ✅ Résultat construction depuis product_vector/product_labels:', sousCaracsFromPreferred);
 
                                         if (Object.keys(sousCaracsFromPreferred).length > 0) {
@@ -2746,7 +2771,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                     if (firstPoint.length === 2) {
                         const lat = parseFloat(firstPoint[0]);
                         const lng = parseFloat(firstPoint[1]);
-                        
+
                         if (!isNaN(lat) && !isNaN(lng)) {
                             setSelectedLocation({ lat, lng });
 
@@ -2756,10 +2781,10 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                 const geocodeResult = await reverseGeocodeWithRetry(lat, lng, {
                                     fallbackAddress: coordinatesString
                                 });
-                                
+
                                 if (geocodeResult) {
                                     const fullAddress = geocodeResult.address;
-                                    
+
                                     // Construire un LocationObject avec le nom complet
                                     const locationObject: LocationObject = {
                                         raw: fullAddress,
@@ -2772,7 +2797,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                         },
                                         coordinates: { lat, lng },
                                     };
-                                    
+
                                     // Sauvegarder dans le formulaire
                                     handleFieldChange('lieu_produit', locationObject);
                                 } else {
@@ -2822,13 +2847,13 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                             <Text style={styles.successModalIconText}>✅</Text>
                         </View>
                         <Text style={styles.successModalTitle}>
-                            {successModalData?.isDuplicate 
+                            {successModalData?.isDuplicate
                                 ? (successModalData?.isPrestation ? 'Prestation dupliquée avec succès !' : 'Produit dupliqué avec succès !')
                                 : (successModalData?.isPrestation ? 'Prestation créée avec succès !' : 'Produit créé avec succès !')}
                         </Text>
                         <Text style={styles.successModalMessage}>
-                            {successModalData?.isPrestation 
-                                ? (successModalData?.isDuplicate 
+                            {successModalData?.isPrestation
+                                ? (successModalData?.isDuplicate
                                     ? 'Votre prestation a été dupliquée avec succès.'
                                     : 'Votre prestation a été ajoutée à votre service.')
                                 : (successModalData?.isDuplicate
@@ -2840,7 +2865,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                             variant="primary"
                             onPress={async () => {
                                 setShowSuccessModal(false);
-                                
+
                                 // ✅ NOUVEAU: Si c'est un produit (pas une prestation), afficher d'abord le modal de confirmation
                                 if (successModalData && !successModalData.isPrestation && successModalData.productIndex >= 0) {
                                     // Afficher le modal de confirmation de livraison automatique
@@ -2865,7 +2890,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                         setShowDeliveryAutoPrompt(false);
                         // ✅ Attendre un délai pour permettre la synchronisation du produit
                         await new Promise(resolve => setTimeout(resolve, 1500));
-                        
+
                         setProductDeliveryConfigData({
                             serviceId: successModalData.serviceId,
                             productIndex: successModalData.productIndex,

@@ -1302,15 +1302,28 @@ pub async fn rechercher_besoin_direct(
 
                             // ✅ CORRIGÉ 2026-01-22: Fusionner avec les images/vidéos existantes dans product_data
                             if let Some(obj) = enriched_product.as_object_mut() {
+                                // ✅ CORRIGÉ 2026-02-27: Helper pour extraire les URLs depuis un champ média
+                                // Gère: tableau simple, objet {valeur: [...]}, string simple
+                                fn extract_media_urls_rb(val: &serde_json::Value) -> Vec<String> {
+                                    match val {
+                                        serde_json::Value::Array(arr) => {
+                                            arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect()
+                                        }
+                                        serde_json::Value::Object(o) => {
+                                            o.get("valeur")
+                                                .and_then(|v| v.as_array())
+                                                .map(|arr| arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect())
+                                                .unwrap_or_default()
+                                        }
+                                        serde_json::Value::String(s) if !s.is_empty() => vec![s.clone()],
+                                        _ => Vec::new(),
+                                    }
+                                }
+
                                 // Fusionner les images
                                 let existing_images: Vec<String> = obj
                                     .get("images")
-                                    .and_then(|v| v.as_array())
-                                    .map(|arr| {
-                                        arr.iter()
-                                            .filter_map(|v| v.as_str().map(|s| s.to_string()))
-                                            .collect()
-                                    })
+                                    .map(|v| extract_media_urls_rb(v))
                                     .unwrap_or_default();
 
                                 let mut merged_images = existing_images;
@@ -1327,12 +1340,7 @@ pub async fn rechercher_besoin_direct(
                                 // Fusionner les vidéos
                                 let existing_videos: Vec<String> = obj
                                     .get("videos")
-                                    .and_then(|v| v.as_array())
-                                    .map(|arr| {
-                                        arr.iter()
-                                            .filter_map(|v| v.as_str().map(|s| s.to_string()))
-                                            .collect()
-                                    })
+                                    .map(|v| extract_media_urls_rb(v))
                                     .unwrap_or_default();
 
                                 let mut merged_videos = existing_videos;

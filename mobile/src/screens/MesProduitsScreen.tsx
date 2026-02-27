@@ -6,6 +6,7 @@ import {
     ActivityIndicator,
     Alert,
     DeviceEventEmitter,
+    Image,
     Modal,
     Platform,
     RefreshControl,
@@ -22,10 +23,10 @@ import Animated, {
     useSharedValue,
 } from 'react-native-reanimated';
 import ProductDeliveryConfigModal from '../components/delivery/ProductDeliveryConfigModal';
-import { NativeCard } from '../components/SafeNativeDesign';
 import NavigatorToolbar from '../components/NavigatorToolbar';
 import ProductVideoCreationModal from '../components/ProductVideoCreationModal';
 import SafeIcon from '../components/SafeIcon';
+import { NativeCard } from '../components/SafeNativeDesign';
 import ServiceMediaGallery from '../components/ServiceMediaGallery';
 import ServiceTeamManager from '../components/ServiceTeamManager';
 import config from '../config/environment';
@@ -37,8 +38,8 @@ import { modernColors } from '../theme/modernTheme';
 import { ManagedProduct } from '../types/ManagedProduct';
 import { GeneratedVideoResponse } from '../types/VideoGeneration';
 import { getFieldValue } from '../utils/productNormalizer';
-import { navigateToVideoWizard } from '../utils/videoNavigation';
 import { generateProductShareMessage, generateSmartShareLink } from '../utils/productShareHelper';
+import { navigateToVideoWizard } from '../utils/videoNavigation';
 
 // ✅ CORRIGÉ: Utiliser getFieldValue standardisé au lieu d'extractValue locale
 const extractValue = (field: any): string | null => {
@@ -310,7 +311,7 @@ const MesProduitsScreen: React.FC = () => {
             // ✅ Convertir les produits de l'API service_products en format ManagedProduct
             const allProducts: ManagedProduct[] = products.map((product) => {
                 const productData = product.product_data || {};
-                
+
                 // ✅ product_index est garanti par la table service_products (NOT NULL)
                 if (typeof product.product_index !== 'number' || product.product_index < 0) {
                     console.error('[MesProduitsScreen] ❌ product_index invalide depuis service_products:', {
@@ -321,14 +322,14 @@ const MesProduitsScreen: React.FC = () => {
                     });
                     throw new Error(`Produit ${product.id} a un product_index invalide: ${product.product_index}`);
                 }
-                
+
                 const productIndex = product.product_index;
-                
+
                 // ✅ CORRIGÉ 2026-02-10: Extraire le prix correctement (sans conversion incorrecte)
                 // product_price est déjà en unités (pas en centimes), donc on l'utilise tel quel
                 // Le backend sérialise Decimal en string ou number selon la configuration
                 let prixValue: number | string | undefined = undefined;
-                
+
                 // Priorité 1: product_price depuis la colonne générée (déjà en unités)
                 if (product.product_price !== null && product.product_price !== undefined) {
                     // ✅ CORRIGÉ: Convertir Decimal (sérialisé en string ou number) en number
@@ -341,24 +342,24 @@ const MesProduitsScreen: React.FC = () => {
                         prixValue = parseFloat(String(product.product_price)) || 0;
                     }
                 }
-                
+
                 // Priorité 2: prix depuis product_data (déjà en unités)
                 if (!prixValue || prixValue === 0) {
                     const prixFromData = productData.prix || productData.prix_produit;
                     if (prixFromData !== null && prixFromData !== undefined) {
                         if (typeof prixFromData === 'object' && 'valeur' in prixFromData) {
                             const valeur = prixFromData.valeur;
-                            prixValue = typeof valeur === 'number' 
-                                ? valeur 
+                            prixValue = typeof valeur === 'number'
+                                ? valeur
                                 : parseFloat(String(valeur)) || 0;
                         } else {
-                            prixValue = typeof prixFromData === 'number' 
-                                ? prixFromData 
+                            prixValue = typeof prixFromData === 'number'
+                                ? prixFromData
                                 : parseFloat(String(prixFromData)) || 0;
                         }
                     }
                 }
-                
+
                 // ✅ DEBUG: Logger les prix pour diagnostiquer le problème de multiplication
                 if (__DEV__ && prixValue && prixValue > 0) {
                     const priceVariant = productData.price_variant || productData.variabilite_prix || productData.variation_prix;
@@ -366,15 +367,18 @@ const MesProduitsScreen: React.FC = () => {
                         product_price: product.product_price,
                         prixValue,
                         hasPriceVariant: !!priceVariant,
-                        priceVariantModalites: priceVariant && typeof priceVariant === 'object' && 'modalites' in priceVariant 
+                        priceVariantModalites: priceVariant && typeof priceVariant === 'object' && 'modalites' in priceVariant
                             ? (priceVariant.modalites || []).map((m: any) => ({ valeur: m.valeur, prix: m.prix }))
                             : null,
                         productDataPrix: productData.prix,
                         productDataPrixProduit: productData.prix_produit,
                     });
                 }
-                
+
                 return {
+                    // ✅ CORRIGÉ 2026-02-27: Spread productData EN PREMIER pour que les champs explicites
+                    // puissent l'overrider (sinon productData.images écrase nos arrays normalisés)
+                    ...productData,
                     id: `${product.service_id}_${productIndex}`,
                     rawProductId: product.id.toString(),
                     serviceId: product.service_id.toString(),
@@ -385,16 +389,19 @@ const MesProduitsScreen: React.FC = () => {
                     devise: productData.devise || productData.devise_produit || 'XAF',
                     description: productData.description || productData.description_produit || '',
                     categorie: product.product_type || productData.categorie || productData.categorie_produit || '',
-                    images: Array.isArray(productData.images) ? productData.images : [],
-                    videos: Array.isArray(productData.videos) ? productData.videos : [],
+                    // ✅ CORRIGÉ 2026-02-27: Gérer le format {valeur: [...]} du formulaire dynamique IA
+                    images: Array.isArray(productData.images) ? productData.images
+                        : (productData.images && typeof productData.images === 'object' && Array.isArray(productData.images.valeur)) ? productData.images.valeur
+                            : (typeof productData.images === 'string' && productData.images.trim()) ? [productData.images]
+                                : [],
+                    videos: Array.isArray(productData.videos) ? productData.videos
+                        : (productData.videos && typeof productData.videos === 'object' && Array.isArray(productData.videos.valeur)) ? productData.videos.valeur
+                            : (typeof productData.videos === 'string' && productData.videos.trim()) ? [productData.videos]
+                                : [],
                     is_active: product.is_active,
                     createdAt: product.created_at,
                     updatedAt: product.updated_at,
-                    // serviceTitre est optionnel (peut être récupéré séparément si nécessaire)
                     serviceTitre: undefined,
-                    // Préserver toutes les autres données du produit depuis product_data
-                    // ✅ IMPORTANT: Préserver price_variant/variabilite_prix pour l'affichage des variations
-                    ...productData,
                 } as ManagedProduct;
             });
 
@@ -407,7 +414,23 @@ const MesProduitsScreen: React.FC = () => {
 
             setProducts(allProducts);
             console.log('[MesProduitsScreen] ✅ Produits chargés depuis service_products:', allProducts.length);
-            } catch (error) {
+
+            // ✅ CORRIGÉ 2026-02-27: Charger les services pour que l'icône galerie médias fonctionne
+            // Sans cela, services reste [] et le bouton affiche "Aucun service"
+            try {
+                const servicesResponse = await apiGet('/api/prestataire/services', {
+                    params: { page: 0, limit: 20 }
+                });
+                const servicesData = servicesResponse.success
+                    ? (Array.isArray(servicesResponse.data) ? servicesResponse.data : servicesResponse.data?.services || servicesResponse.data?.data || [])
+                    : [];
+                if (servicesData.length > 0) {
+                    setServices(servicesData);
+                }
+            } catch (e) {
+                console.warn('[MesProduitsScreen] ⚠️ Erreur chargement services (non bloquant):', e);
+            }
+        } catch (error) {
             // ✅ Erreur lors du chargement - afficher et logger
             const errorMessage = error instanceof Error ? error.message : String(error);
             const errorStack = error instanceof Error ? error.stack : undefined;
@@ -653,7 +676,11 @@ const MesProduitsScreen: React.FC = () => {
                 if (currentBalance < activationCost) {
                     Alert.alert(
                         '💰 Solde insuffisant',
-                        `Coût de réactivation: ${activationCost.toLocaleString()} FCFA\nVotre solde: ${currentBalance.toLocaleString()} FCFA\n\nVeuillez recharger votre compte.`
+                        `Coût de réactivation: ${activationCost.toLocaleString()} FCFA\nVotre solde: ${currentBalance.toLocaleString()} FCFA\n\nVeuillez recharger votre compte.`,
+                        [
+                            { text: 'Annuler', style: 'cancel' },
+                            { text: 'Recharger', onPress: () => (navigation as any).navigate('RechargeTokens') },
+                        ]
                     );
                     return;
                 }
@@ -809,7 +836,7 @@ const MesProduitsScreen: React.FC = () => {
                             // ✅ CORRIGÉ: Vérifier les deux propriétés possibles (product_index et productIndex)
                             const productIndexValue = product.product_index ?? product.productIndex;
                             const serviceIdValue = product.serviceId;
-                            
+
                             // ✅ CORRIGÉ: Validation robuste des identifiants
                             if (!serviceIdValue) {
                                 console.error('[MesProduitsScreen] ❌ serviceId manquant pour suppression:', {
@@ -855,7 +882,7 @@ const MesProduitsScreen: React.FC = () => {
                             }
 
                             const productIndex = productIndexValue;
-                            
+
                             console.log('[MesProduitsScreen] 🗑️ Suppression produit:', {
                                 serviceId,
                                 productIndex,
@@ -1044,9 +1071,9 @@ const MesProduitsScreen: React.FC = () => {
             // ✅ NOUVEAU 2026-01-XX: Utiliser la fonction utilitaire pour générer le message de partage uniforme
             // Extraire la localisation si disponible (depuis les données brutes du produit)
             const location = product.location || product.lieu || product.adresse || product.address || undefined;
-            
+
             // Préparer le prix (peut être string ou number)
-            const price = product.prix 
+            const price = product.prix
                 ? (typeof product.prix === 'string' ? parseFloat(product.prix) || undefined : product.prix)
                 : undefined;
 
@@ -1252,14 +1279,14 @@ const MesProduitsScreen: React.FC = () => {
                                     const input = {
                                         texte: 'Création d\'un nouveau service',
                                     };
-                                    
+
                                     const result = await genererSuggestionsService(input);
                                     console.log('[MesProduitsScreen] Résultat génération suggestions:', JSON.stringify(result, null, 2));
-                                    
+
                                     if (result && result.data) {
                                         // Extraire les données comme dans HomeScreen
                                         const suggestionData = result.data.service_data?.data || result.data.data || result.data;
-                                        
+
                                         (navigation as any).navigate('FormulaireYukpoIntelligent', {
                                             suggestion: {
                                                 data: suggestionData,
@@ -1700,13 +1727,13 @@ const MesProduitsScreen: React.FC = () => {
         if (!prefill.variabilite_prix && !prefill.price_variant) {
             // Chercher dans product directement (déjà copié depuis ...productData)
             const variantRaw = product.variabilite_prix || product.price_variant || product.variation_prix;
-            
+
             // Si variantRaw est un objet avec 'valeur', extraire la valeur
             let variantValue = variantRaw;
             if (variantRaw && typeof variantRaw === 'object' && 'valeur' in variantRaw) {
                 variantValue = variantRaw.valeur;
             }
-            
+
             // Si variantValue est valide, l'assigner
             if (variantValue !== undefined && variantValue !== null) {
                 // Si variantValue est déjà un objet avec modalites, l'utiliser tel quel
@@ -1849,14 +1876,14 @@ const MesProduitsScreen: React.FC = () => {
     const renderProductCard = (product: ManagedProduct) => {
         // ✅ CORRIGÉ: Extraire la devise du produit (priorité: devise_produit > devise)
         const productCurrency = product.devise_produit || product.devise;
-        
+
         // ✅ CORRIGÉ 2026-02-10: Vérifier les variations de prix avant d'afficher le prix unique
         // Si le produit a des variations de prix, calculer le prix minimum
         const priceVariant = product.price_variant || product.variabilite_prix || product.variation_prix;
         const hasVariants = priceVariant && typeof priceVariant === 'object' && Array.isArray(priceVariant.modalites) && priceVariant.modalites.length > 0;
-        
+
         let priceValue: string | null = null;
-        
+
         if (hasVariants) {
             // ✅ CORRIGÉ 2026-02-10: Calculer le prix minimum des variations
             const modalites = priceVariant.modalites || [];
@@ -1866,7 +1893,7 @@ const MesProduitsScreen: React.FC = () => {
                     return typeof prix === 'number' ? prix : parseFloat(String(prix)) || 0;
                 })
                 .filter((p: number) => p > 0);
-            
+
             if (variantPrices.length > 0) {
                 const minPrice = Math.min(...variantPrices);
                 const prixFormatted = minPrice.toLocaleString('fr-FR');
@@ -1876,7 +1903,7 @@ const MesProduitsScreen: React.FC = () => {
                     : `À partir de ${prixFormatted}`;
             }
         }
-        
+
         // Si pas de variations ou pas de prix dans les variations, utiliser le prix unique
         if (!priceValue) {
             priceValue = product.prix !== undefined && product.prix !== null && product.prix !== 0
@@ -1884,7 +1911,7 @@ const MesProduitsScreen: React.FC = () => {
                     const prixNum = typeof product.prix === 'number' ? product.prix : parseFloat(String(product.prix)) || 0;
                     const prixFormatted = prixNum.toLocaleString('fr-FR');
                     // ✅ CORRIGÉ: N'afficher la devise que si elle existe, sinon ne pas en mettre
-                    return productCurrency && productCurrency.trim() 
+                    return productCurrency && productCurrency.trim()
                         ? `${prixFormatted} ${productCurrency.trim()}`
                         : prixFormatted;
                 })()
@@ -1915,6 +1942,28 @@ const MesProduitsScreen: React.FC = () => {
                 key={`${product.serviceId}_${product.id}_${product.product_index}`}
                 style={styles.productCard}
             >
+                {/* ✅ NOUVEAU 2026-02-27: Thumbnail produit */}
+                {(() => {
+                    const allMedia = [...(Array.isArray(product.images) ? product.images : []), ...(Array.isArray(product.videos) ? product.videos : [])];
+                    const firstImage = allMedia.find((m: any) => typeof m === 'string' && !m.includes('.mp4') && !m.includes('.webm'));
+                    const thumbUrl = firstImage ? buildMediaUrl(firstImage) : null;
+                    if (thumbUrl) {
+                        return (
+                            <Image
+                                source={{ uri: thumbUrl }}
+                                style={{ width: '100%', height: 160, borderTopLeftRadius: 12, borderTopRightRadius: 12 }}
+                                resizeMode="cover"
+                            />
+                        );
+                    }
+                    return (
+                        <View style={{ width: '100%', height: 80, backgroundColor: '#F3F4F6', borderTopLeftRadius: 12, borderTopRightRadius: 12, justifyContent: 'center', alignItems: 'center' }}>
+                            <SafeIcon name="image" size={32} color="#D1D5DB" />
+                            <Text style={{ color: '#9CA3AF', fontSize: 11, marginTop: 4 }}>Aucune image</Text>
+                        </View>
+                    );
+                })()}
+
                 <View style={styles.productHeader}>
                     <View style={styles.productTitleContainer}>
                         <Text style={styles.productName} numberOfLines={2}>

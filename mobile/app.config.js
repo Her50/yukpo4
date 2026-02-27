@@ -103,6 +103,11 @@ module.exports = {
                             pathPrefix: "/service"
                         },
                         {
+                            scheme: "https",
+                            host: "yukpo-backend-376093909298.europe-west1.run.app",
+                            pathPrefix: "/product"
+                        },
+                        {
                             scheme: "yukpomnang"
                         }
                     ],

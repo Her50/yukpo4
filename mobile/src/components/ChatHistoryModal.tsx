@@ -87,8 +87,24 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
       const response = await apiGet('/api/chat/conversations');
 
       if (response.success && response.data) {
-        const conversations = Array.isArray(response.data) ? response.data : [];
-        console.log('[ChatHistoryModal] Conversations chargées:', conversations);
+        const rawConversations = Array.isArray(response.data) ? response.data : [];
+        console.log('[ChatHistoryModal] Conversations brutes:', rawConversations.length);
+        // Mapper snake_case (API) → camelCase (interface TypeScript)
+        const conversations: ChatHistory[] = rawConversations.map((conv: any) => ({
+          id: conv.id || conv.conversation_id || String(Date.now()),
+          clientId: conv.clientId || conv.client_id || '',
+          prestataireId: conv.prestataireId || conv.prestataire_id || '',
+          clientName: conv.clientName || conv.client_name || 'Client',
+          prestataireName: conv.prestataireName || conv.prestataire_name || 'Prestataire',
+          clientPhoto: conv.clientPhoto || conv.client_photo || undefined,
+          prestatairePhoto: conv.prestatairePhoto || conv.prestataire_photo || undefined,
+          lastMessage: conv.lastMessage || conv.last_message || '',
+          lastMessageTime: new Date(conv.lastMessageTime || conv.last_message_time || Date.now()),
+          unreadCount: conv.unreadCount ?? conv.unread_count ?? 0,
+          isActive: conv.isActive ?? conv.is_active ?? true,
+          serviceTitle: conv.serviceTitle || conv.service_title || undefined,
+          status: conv.status || 'active',
+        }));
         setChatHistories(conversations);
       } else {
         console.warn('[ChatHistoryModal] Endpoint conversations non disponible, affichage liste vide');
@@ -184,7 +200,7 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
         }
       ];
 
-      setChatMessages(mockMessages);
+      setChatMessages(mockMessages_OLD);
     } catch (error) {
       console.error('Erreur chargement messages:', error);
     }
@@ -262,11 +278,16 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
       const matchesStatus = filterStatus === 'all' || chat.status === filterStatus;
       return matchesSearch && matchesStatus;
     })
-    .sort((a, b) => (b.lastMessageTime?.getTime?.() || 0) - (a.lastMessageTime?.getTime?.() || 0));
+    .sort((a, b) => {
+      const timeB = b.lastMessageTime instanceof Date ? b.lastMessageTime.getTime() : new Date(b.lastMessageTime || 0).getTime();
+      const timeA = a.lastMessageTime instanceof Date ? a.lastMessageTime.getTime() : new Date(a.lastMessageTime || 0).getTime();
+      return timeB - timeA;
+    });
 
-  const formatTime = (date: Date) => {
+  const formatTime = (date: Date | string | number) => {
     const now = new Date();
-    const diff = now.getTime() - date.getTime();
+    const parsedDate = date instanceof Date ? date : new Date(date || 0);
+    const diff = now.getTime() - parsedDate.getTime();
     const minutes = Math.floor(diff / (1000 * 60));
     const hours = Math.floor(diff / (1000 * 60 * 60));
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
@@ -324,7 +345,7 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
             <View style={styles.chatHeaderInfo}>
               <Avatar.Text
                 size={40}
-                label={selectedChat.clientName.charAt(0)}
+                label={(selectedChat.clientName || 'C').charAt(0)}
                 style={styles.chatAvatar}
               />
               <View style={styles.chatHeaderText}>
@@ -502,7 +523,7 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
               >
                 <Avatar.Text
                   size={50}
-                  label={chat.clientName.charAt(0)}
+                  label={(chat.clientName || 'C').charAt(0)}
                   style={styles.chatAvatar}
                 />
 

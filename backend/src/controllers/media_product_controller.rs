@@ -37,6 +37,102 @@ pub struct ProductMediaResponse {
     pub product_index: i32,
 }
 
+/// ✅ NOUVEAU 2026-02-27: Récupérer TOUS les médias d'un service (tous produits confondus)
+/// Route: GET /api/services/{service_id}/media
+pub async fn get_service_media(
+    State(state): State<Arc<AppState>>,
+    Path(service_id): Path<i32>,
+) -> AppResult<impl IntoResponse> {
+    log_info(&format!(
+        "[MediaProduct] Récupération de TOUS les médias du service: service_id={}",
+        service_id
+    ));
+
+    let pool = &state.pg;
+
+    let rows = sqlx::query(
+        r#"
+        SELECT 
+            id,
+            service_id,
+            product_id,
+            product_index,
+            type as media_type,
+            path,
+            COALESCE(is_main_image, FALSE) as is_main_image,
+            COALESCE(display_order, 0) as display_order,
+            uploaded_at,
+            ai_description,
+            ai_tags
+        FROM media
+        WHERE service_id = $1
+        ORDER BY 
+            product_index ASC NULLS FIRST,
+            COALESCE(is_main_image, FALSE) DESC,
+            COALESCE(display_order, 0) ASC,
+            id ASC
+        "#,
+    )
+    .bind(service_id)
+    .fetch_all(pool)
+    .await
+    .map_err(|e| {
+        log_error(&format!("[MediaProduct] Erreur SQL get_service_media: {}", e));
+        AppError::Internal(format!("Erreur récupération médias service: {}", e))
+    })?;
+
+    log_info(&format!(
+        "[MediaProduct] {} médias trouvés pour service {}",
+        rows.len(),
+        service_id
+    ));
+
+    let media: Vec<ProductMediaItem> = rows
+        .iter()
+        .map(|row| {
+            let path: String = row.get::<String, _>("path");
+            let full_url = if path.starts_with("http://") || path.starts_with("https://") {
+                path
+            } else if state.media_storage.is_remote() {
+                state.media_storage.build_public_url(&path)
+            } else {
+                let api_base_url = std::env::var("PUBLIC_BASE_URL")
+                    .or_else(|_| std::env::var("UPLOAD_BASE_URL"))
+                    .unwrap_or_else(|_| "https://yukpomnang.onrender.com".to_string());
+                let clean_path = path.trim_start_matches('/');
+                format!(
+                    "{}/api/media/files/{}",
+                    api_base_url.trim_end_matches('/'),
+                    clean_path
+                )
+            };
+
+            ProductMediaItem {
+                id: row.get::<i32, _>("id"),
+                service_id: row.get::<i32, _>("service_id"),
+                product_id: row.get::<Option<String>, _>("product_id"),
+                product_index: row.get::<Option<i32>, _>("product_index"),
+                media_type: row.get::<String, _>("media_type"),
+                path: full_url,
+                is_main_image: row.get::<bool, _>("is_main_image"),
+                display_order: row.get::<i32, _>("display_order"),
+                uploaded_at: row.get::<DateTime<Utc>, _>("uploaded_at").to_rfc3339(),
+                ai_description: row.get::<Option<String>, _>("ai_description"),
+                ai_tags: row.get::<Option<Vec<String>>, _>("ai_tags"),
+            }
+        })
+        .collect();
+
+    let count = media.len();
+
+    Ok(Json(serde_json::json!({
+        "success": true,
+        "data": media,
+        "count": count,
+        "service_id": service_id
+    })))
+}
+
 /// Récupérer tous les médias d'un produit spécifique
 pub async fn get_product_media(
     State(state): State<Arc<AppState>>,

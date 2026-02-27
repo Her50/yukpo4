@@ -3747,8 +3747,15 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       };
 
       const mergeMediaArrays = (existing: any, incoming: any, maxImages?: number): any[] => {
-        const base = Array.isArray(incoming) ? incoming : [];
-        const current = Array.isArray(existing) ? existing : [];
+        // ✅ CORRIGÉ 2026-02-27: Gérer le format {valeur: [...]} du formulaire dynamique IA
+        const extractArray = (input: any): any[] => {
+          if (Array.isArray(input)) return input;
+          if (input && typeof input === 'object' && Array.isArray(input.valeur)) return input.valeur;
+          if (input && typeof input === 'string') return [input];
+          return [];
+        };
+        const base = extractArray(incoming);
+        const current = extractArray(existing);
         const merged = [...base, ...current];
         const unique = merged.filter(Boolean).filter((value, index, self) => self.indexOf(value) === index);
         // ✅ CORRECTION: Limiter les images si maxImages est spécifié (pour respecter la limite backend de 10)
@@ -4056,6 +4063,27 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           }
         });
 
+        // ✅ CORRIGÉ 2026-02-27: Normaliser images/videos depuis le format {valeur: [...]} du formulaire dynamique IA
+        // valeursFormulaire.images peut être {valeur: ["url1","url2",...]} au lieu de ["url1","url2",...]
+        if (nouveauProduit.images && !Array.isArray(nouveauProduit.images)) {
+          if (Array.isArray(nouveauProduit.images.valeur)) {
+            nouveauProduit.images = nouveauProduit.images.valeur;
+          } else if (typeof nouveauProduit.images === 'string') {
+            nouveauProduit.images = [nouveauProduit.images];
+          } else {
+            nouveauProduit.images = [];
+          }
+        }
+        if (nouveauProduit.videos && !Array.isArray(nouveauProduit.videos)) {
+          if (Array.isArray(nouveauProduit.videos.valeur)) {
+            nouveauProduit.videos = nouveauProduit.videos.valeur;
+          } else if (typeof nouveauProduit.videos === 'string') {
+            nouveauProduit.videos = [nouveauProduit.videos];
+          } else {
+            nouveauProduit.videos = [];
+          }
+        }
+
         const compressedMedia = await getCompressedMedia();
 
         if (compressedMedia?.images?.length) {
@@ -4169,7 +4197,10 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           Alert.alert(
             '💸 Solde insuffisant',
             `Coût d'ajout de produit : ${effectiveCost.toLocaleString()} FCFA\nVotre solde : ${soldeActuel.toLocaleString()} FCFA\n\nVeuillez recharger votre compte pour ajouter ce produit.`,
-            [{ text: 'OK' }]
+            [
+              { text: 'Annuler', style: 'cancel' },
+              { text: 'Recharger', onPress: () => (navigation as any).navigate('RechargeTokens') },
+            ]
           );
           return;
         }
@@ -4434,6 +4465,26 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               nouveauProduit[key] = value;
             }
           });
+
+          // ✅ CORRIGÉ 2026-02-27: Normaliser images/videos depuis le format {valeur: [...]} du formulaire dynamique IA
+          if (nouveauProduit.images && !Array.isArray(nouveauProduit.images)) {
+            if (Array.isArray(nouveauProduit.images.valeur)) {
+              nouveauProduit.images = nouveauProduit.images.valeur;
+            } else if (typeof nouveauProduit.images === 'string') {
+              nouveauProduit.images = [nouveauProduit.images];
+            } else {
+              nouveauProduit.images = [];
+            }
+          }
+          if (nouveauProduit.videos && !Array.isArray(nouveauProduit.videos)) {
+            if (Array.isArray(nouveauProduit.videos.valeur)) {
+              nouveauProduit.videos = nouveauProduit.videos.valeur;
+            } else if (typeof nouveauProduit.videos === 'string') {
+              nouveauProduit.videos = [nouveauProduit.videos];
+            } else {
+              nouveauProduit.videos = [];
+            }
+          }
 
           // ✅ Ajouter le stock si quantite_disponible est défini
           if (valeursFormulaire.quantite_disponible !== null && valeursFormulaire.quantite_disponible !== undefined && valeursFormulaire.quantite_disponible !== '') {
@@ -4702,7 +4753,10 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         Alert.alert(
           '💸 Solde insuffisant',
           `Coût réel : ${coutReel.toLocaleString()} FCFA\nVotre solde : ${soldeActuel.toLocaleString()} FCFA\n\nVeuillez recharger votre compte avant de créer ce service.`,
-          [{ text: 'OK' }]
+          [
+            { text: 'Annuler', style: 'cancel' },
+            { text: 'Recharger', onPress: () => (navigation as any).navigate('RechargeTokens') },
+          ]
         );
         return;
       }

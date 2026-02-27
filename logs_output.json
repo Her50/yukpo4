@@ -1,0 +1,547 @@
+﻿[
+  {
+    "httpRequest": {
+      "latency": "0.008748819s",
+      "protocol": "HTTP/1.1",
+      "remoteIp": "129.0.99.121",
+      "requestMethod": "GET",
+      "requestSize": "674",
+      "requestUrl": "https://yukpo-backend-376093909298.europe-west1.run.app/api/delivery/product-config/1/1",
+      "responseSize": "256",
+      "serverIp": "34.143.74.2",
+      "status": 403,
+      "userAgent": "okhttp/4.12.0"
+    },
+    "insertId": "699e7fbb0005f9e40f735f6b",
+    "labels": {
+      "instanceId": "00da6cd2c48e28161544cf521a17bdda72082051d5b09703cbe59642ef1d836944b449fc9b3971e81897410bee3e713d824e652b9885b8253ffe514dfdde0395beacee78ac4a01ff90f7a50a0103ac"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Frequests",
+    "receiveTimestamp": "2026-02-25T04:51:07.629741901Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00343-zgh",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "severity": "WARNING",
+    "spanId": "1a4df00708796224",
+    "timestamp": "2026-02-25T04:51:07.381832Z",
+    "trace": "projects/yukpo-project/traces/e8f212d4179cdf04983ea0352210fb8b"
+  },
+  {
+    "httpRequest": {
+      "latency": "0.009001239s",
+      "protocol": "HTTP/1.1",
+      "remoteIp": "129.0.99.121",
+      "requestMethod": "GET",
+      "requestSize": "674",
+      "requestUrl": "https://yukpo-backend-376093909298.europe-west1.run.app/api/delivery/product-config/1/0",
+      "responseSize": "256",
+      "serverIp": "34.143.74.2",
+      "status": 403,
+      "userAgent": "okhttp/4.12.0"
+    },
+    "insertId": "699e7fbb0005027d291eadd4",
+    "labels": {
+      "instanceId": "00da6cd2c48e28161544cf521a17bdda72082051d5b09703cbe59642ef1d836944b449fc9b3971e81897410bee3e713d824e652b9885b8253ffe514dfdde0395beacee78ac4a01ff90f7a50a0103ac"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Frequests",
+    "receiveTimestamp": "2026-02-25T04:51:07.629741901Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00343-zgh",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "severity": "WARNING",
+    "spanId": "9b48916852fdcbcc",
+    "timestamp": "2026-02-25T04:51:07.318174Z",
+    "trace": "projects/yukpo-project/traces/10b5b2f90af026b4983ea0352210f3a4"
+  },
+  {
+    "httpRequest": {
+      "latency": "0.008975800s",
+      "protocol": "HTTP/1.1",
+      "remoteIp": "129.0.99.121",
+      "requestMethod": "GET",
+      "requestSize": "673",
+      "requestUrl": "https://yukpo-backend-376093909298.europe-west1.run.app/api/delivery/product-config/1/2",
+      "responseSize": "256",
+      "serverIp": "34.143.74.2",
+      "status": 403,
+      "userAgent": "okhttp/4.12.0"
+    },
+    "insertId": "699e7fbb0002534cd08da7c9",
+    "labels": {
+      "instanceId": "00da6cd2c48e28161544cf521a17bdda72082051d5b09703cbe59642ef1d836944b449fc9b3971e81897410bee3e713d824e652b9885b8253ffe514dfdde0395beacee78ac4a01ff90f7a50a0103ac"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Frequests",
+    "receiveTimestamp": "2026-02-25T04:51:07.295224327Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00343-zgh",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "severity": "WARNING",
+    "spanId": "c0320c743981cc6e",
+    "timestamp": "2026-02-25T04:51:07.142144Z",
+    "trace": "projects/yukpo-project/traces/e351b9d85c8b7fc3983ea0352210ff68"
+  },
+  {
+    "httpRequest": {
+      "latency": "0.002446400s",
+      "protocol": "HTTP/1.1",
+      "remoteIp": "129.0.99.121",
+      "requestMethod": "GET",
+      "requestSize": "725",
+      "requestUrl": "https://yukpo-backend-376093909298.europe-west1.run.app/api/products/user/1",
+      "responseSize": "67",
+      "serverIp": "34.143.74.2",
+      "status": 404,
+      "userAgent": "Yukpo-Mobile/1.0.0"
+    },
+    "insertId": "699e7fb500042dd155c2f7f6",
+    "labels": {
+      "instanceId": "00da6cd2c48e28161544cf521a17bdda72082051d5b09703cbe59642ef1d836944b449fc9b3971e81897410bee3e713d824e652b9885b8253ffe514dfdde0395beacee78ac4a01ff90f7a50a0103ac"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Frequests",
+    "receiveTimestamp": "2026-02-25T04:51:01.293836936Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00343-zgh",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "severity": "WARNING",
+    "spanId": "379336ffb107cdf5",
+    "timestamp": "2026-02-25T04:51:01.270468Z",
+    "trace": "projects/yukpo-project/traces/e28513ccb524ea5b983ea0352210fa63"
+  },
+  {
+    "httpRequest": {
+      "latency": "0.003716170s",
+      "protocol": "HTTP/1.1",
+      "remoteIp": "129.0.99.121",
+      "requestMethod": "POST",
+      "requestSize": "827",
+      "requestUrl": "https://yukpo-backend-376093909298.europe-west1.run.app/api/ia/video/audio-sync",
+      "responseSize": "262",
+      "serverIp": "34.143.72.2",
+      "status": 500,
+      "userAgent": "Yukpo-Mobile/1.0.0"
+    },
+    "insertId": "699e7e1e000d3c7ab8615a9e",
+    "labels": {
+      "instanceId": "00da6cd2c48e28161544cf521a17bdda72082051d5b09703cbe59642ef1d836944b449fc9b3971e81897410bee3e713d824e652b9885b8253ffe514dfdde0395beacee78ac4a01ff90f7a50a0103ac"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Frequests",
+    "receiveTimestamp": "2026-02-25T04:44:14.899230884Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00343-zgh",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "severity": "ERROR",
+    "spanId": "5d4c545a8d750d8c",
+    "timestamp": "2026-02-25T04:44:14.862437Z",
+    "trace": "projects/yukpo-project/traces/b80fc63a53bc52862c589351efd11780",
+    "traceSampled": true
+  },
+  {
+    "httpRequest": {
+      "latency": "0.002878190s",
+      "protocol": "HTTP/1.1",
+      "remoteIp": "129.0.99.121",
+      "requestMethod": "POST",
+      "requestSize": "745",
+      "requestUrl": "https://yukpo-backend-376093909298.europe-west1.run.app/api/studio/sessions/95e2e285-3c08-4ff1-9fe2-d55c7a0f100f/preview/short",
+      "responseSize": "361",
+      "serverIp": "34.143.72.2",
+      "status": 400,
+      "userAgent": "Yukpo-Mobile/1.0.0"
+    },
+    "insertId": "699e7e08000aa3609c6972d3",
+    "labels": {
+      "instanceId": "00da6cd2c48e28161544cf521a17bdda72082051d5b09703cbe59642ef1d836944b449fc9b3971e81897410bee3e713d824e652b9885b8253ffe514dfdde0395beacee78ac4a01ff90f7a50a0103ac"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Frequests",
+    "receiveTimestamp": "2026-02-25T04:43:52.835610760Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00343-zgh",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "severity": "WARNING",
+    "spanId": "28fdbef04e075ccf",
+    "timestamp": "2026-02-25T04:43:52.692835Z",
+    "trace": "projects/yukpo-project/traces/8d306840b21d233fe1caeb17916053a7"
+  },
+  {
+    "httpRequest": {
+      "latency": "0.003155710s",
+      "protocol": "HTTP/1.1",
+      "remoteIp": "129.0.99.121",
+      "requestMethod": "GET",
+      "requestSize": "723",
+      "requestUrl": "https://yukpo-backend-376093909298.europe-west1.run.app/api/media/product/1/2",
+      "responseSize": "299",
+      "serverIp": "34.143.72.2",
+      "status": 404,
+      "userAgent": "Yukpo-Mobile/1.0.0"
+    },
+    "insertId": "699e7dec000180ad2af0d304",
+    "labels": {
+      "instanceId": "00da6cd2c48e28161544cf521a17bdda72082051d5b09703cbe59642ef1d836944b449fc9b3971e81897410bee3e713d824e652b9885b8253ffe514dfdde0395beacee78ac4a01ff90f7a50a0103ac"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Frequests",
+    "receiveTimestamp": "2026-02-25T04:43:24.194615894Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00343-zgh",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "severity": "WARNING",
+    "spanId": "f729a824ea6e4e04",
+    "timestamp": "2026-02-25T04:43:24.094079Z",
+    "trace": "projects/yukpo-project/traces/7b33d1522b80815b09acf8f3430d70f3"
+  },
+  {
+    "httpRequest": {
+      "latency": "0.003139890s",
+      "protocol": "HTTP/1.1",
+      "remoteIp": "129.0.99.121",
+      "requestMethod": "GET",
+      "requestSize": "723",
+      "requestUrl": "https://yukpo-backend-376093909298.europe-west1.run.app/api/media/product/1/2",
+      "responseSize": "299",
+      "serverIp": "34.143.72.2",
+      "status": 404,
+      "userAgent": "Yukpo-Mobile/1.0.0"
+    },
+    "insertId": "699e7de20003ed3026a08410",
+    "labels": {
+      "instanceId": "00da6cd2c48e28161544cf521a17bdda72082051d5b09703cbe59642ef1d836944b449fc9b3971e81897410bee3e713d824e652b9885b8253ffe514dfdde0395beacee78ac4a01ff90f7a50a0103ac"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Frequests",
+    "receiveTimestamp": "2026-02-25T04:43:14.537054300Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00343-zgh",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "severity": "WARNING",
+    "spanId": "2aeded42e9cf8845",
+    "timestamp": "2026-02-25T04:43:14.253095Z",
+    "trace": "projects/yukpo-project/traces/bd35a68b47b3d19de8da7979ef887dd8"
+  },
+  {
+    "httpRequest": {
+      "latency": "0.007482290s",
+      "protocol": "HTTP/1.1",
+      "remoteIp": "129.0.99.121",
+      "requestMethod": "GET",
+      "requestSize": "673",
+      "requestUrl": "https://yukpo-backend-376093909298.europe-west1.run.app/api/media/product/1/2",
+      "responseSize": "299",
+      "serverIp": "34.143.72.2",
+      "status": 404,
+      "userAgent": "Yukpo-Mobile/1.0.0"
+    },
+    "insertId": "699e7db8000641918db51f68",
+    "labels": {
+      "instanceId": "00da6cd2c48e28161544cf521a17bdda72082051d5b09703cbe59642ef1d836944b449fc9b3971e81897410bee3e713d824e652b9885b8253ffe514dfdde0395beacee78ac4a01ff90f7a50a0103ac"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Frequests",
+    "receiveTimestamp": "2026-02-25T04:42:32.578641970Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00343-zgh",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "severity": "WARNING",
+    "spanId": "79010e38b26c9453",
+    "timestamp": "2026-02-25T04:42:32.401583Z",
+    "trace": "projects/yukpo-project/traces/83fdeaa775260e1a9ff2fc995c74871c"
+  },
+  {
+    "httpRequest": {
+      "latency": "0.007029380s",
+      "protocol": "HTTP/1.1",
+      "remoteIp": "129.0.99.121",
+      "requestMethod": "GET",
+      "requestSize": "722",
+      "requestUrl": "https://yukpo-backend-376093909298.europe-west1.run.app/api/studio/templates",
+      "responseSize": "67",
+      "serverIp": "34.143.72.2",
+      "status": 404,
+      "userAgent": "Yukpo-Mobile/1.0.0"
+    },
+    "insertId": "699e7db800063e6272732255",
+    "labels": {
+      "instanceId": "00da6cd2c48e28161544cf521a17bdda72082051d5b09703cbe59642ef1d836944b449fc9b3971e81897410bee3e713d824e652b9885b8253ffe514dfdde0395beacee78ac4a01ff90f7a50a0103ac"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Frequests",
+    "receiveTimestamp": "2026-02-25T04:42:32.578641970Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00343-zgh",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "severity": "WARNING",
+    "spanId": "1b192ed6005007d5",
+    "timestamp": "2026-02-25T04:42:32.401146Z",
+    "trace": "projects/yukpo-project/traces/6d3adc4c39a6883b9ff2fc995c748035"
+  },
+  {
+    "httpRequest": {
+      "latency": "0.001855150s",
+      "protocol": "HTTP/1.1",
+      "remoteIp": "129.0.99.121",
+      "requestMethod": "GET",
+      "requestSize": "720",
+      "requestUrl": "https://yukpo-backend-376093909298.europe-west1.run.app/api/audio-library",
+      "responseSize": "67",
+      "serverIp": "34.143.72.2",
+      "status": 404,
+      "userAgent": "Yukpo-Mobile/1.0.0"
+    },
+    "insertId": "699e7db6000d540b68be3d69",
+    "labels": {
+      "instanceId": "00da6cd2c48e28161544cf521a17bdda72082051d5b09703cbe59642ef1d836944b449fc9b3971e81897410bee3e713d824e652b9885b8253ffe514dfdde0395beacee78ac4a01ff90f7a50a0103ac"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Frequests",
+    "receiveTimestamp": "2026-02-25T04:42:30.911217041Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00343-zgh",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "severity": "WARNING",
+    "spanId": "4c260cac3acf4600",
+    "timestamp": "2026-02-25T04:42:30.870513Z",
+    "trace": "projects/yukpo-project/traces/4fb9f933cd330ccf9ff2fc995c7483f5"
+  },
+  {
+    "httpRequest": {
+      "latency": "0.005508840s",
+      "protocol": "HTTP/1.1",
+      "remoteIp": "129.0.99.121",
+      "requestMethod": "GET",
+      "requestSize": "682",
+      "requestUrl": "https://yukpo-backend-376093909298.europe-west1.run.app/api/delivery/storage-locations",
+      "responseSize": "299",
+      "serverIp": "34.143.72.2",
+      "status": 500,
+      "userAgent": "Yukpo-Mobile/1.0.0"
+    },
+    "insertId": "699e7d7d00024c56896c7382",
+    "labels": {
+      "instanceId": "00da6cd2c48e28161544cf521a17bdda72082051d5b09703cbe59642ef1d836944b449fc9b3971e81897410bee3e713d824e652b9885b8253ffe514dfdde0395beacee78ac4a01ff90f7a50a0103ac"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Frequests",
+    "receiveTimestamp": "2026-02-25T04:41:33.299843899Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00343-zgh",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "severity": "ERROR",
+    "spanId": "3b52fe49bd172e57",
+    "timestamp": "2026-02-25T04:41:33.144011Z",
+    "trace": "projects/yukpo-project/traces/2db913ec83a6ac44199f455445271d72"
+  },
+  {
+    "httpRequest": {
+      "latency": "0.008180669s",
+      "protocol": "HTTP/1.1",
+      "remoteIp": "129.0.99.121",
+      "requestMethod": "GET",
+      "requestSize": "683",
+      "requestUrl": "https://yukpo-backend-376093909298.europe-west1.run.app/api/delivery/storage-locations",
+      "responseSize": "299",
+      "serverIp": "34.143.72.2",
+      "status": 500,
+      "userAgent": "Yukpo-Mobile/1.0.0"
+    },
+    "insertId": "699e7d7c000dccfe81bb60ca",
+    "labels": {
+      "instanceId": "00da6cd2c48e28161544cf521a17bdda72082051d5b09703cbe59642ef1d836944b449fc9b3971e81897410bee3e713d824e652b9885b8253ffe514dfdde0395beacee78ac4a01ff90f7a50a0103ac"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Frequests",
+    "receiveTimestamp": "2026-02-25T04:41:32.967799375Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00343-zgh",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "severity": "ERROR",
+    "spanId": "94ac8249d1a4ffa7",
+    "timestamp": "2026-02-25T04:41:32.894921Z",
+    "trace": "projects/yukpo-project/traces/17243444f0286e2d199f455445271049"
+  },
+  {
+    "httpRequest": {
+      "latency": "0.002487920s",
+      "protocol": "HTTP/1.1",
+      "remoteIp": "129.0.99.121",
+      "requestMethod": "GET",
+      "requestSize": "721",
+      "requestUrl": "https://yukpo-backend-376093909298.europe-west1.run.app/api/products/user/2",
+      "responseSize": "67",
+      "serverIp": "34.143.72.2",
+      "status": 404,
+      "userAgent": "Yukpo-Mobile/1.0.0"
+    },
+    "insertId": "699e7d23000170628b56a7fb",
+    "labels": {
+      "instanceId": "00da6cd2c48e28161544cf521a17bdda72082051d5b09703cbe59642ef1d836944b449fc9b3971e81897410bee3e713d824e652b9885b8253ffe514dfdde0395beacee78ac4a01ff90f7a50a0103ac"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Frequests",
+    "receiveTimestamp": "2026-02-25T04:40:03.098802594Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00343-zgh",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "severity": "WARNING",
+    "spanId": "b6861096519d96d9",
+    "timestamp": "2026-02-25T04:40:03.090467Z",
+    "trace": "projects/yukpo-project/traces/eba895b8bc13c735217877675e75ce38"
+  },
+  {
+    "httpRequest": {
+      "latency": "0.002405530s",
+      "protocol": "HTTP/1.1",
+      "remoteIp": "129.0.99.121",
+      "requestMethod": "GET",
+      "requestSize": "724",
+      "requestUrl": "https://yukpo-backend-376093909298.europe-west1.run.app/api/products/user/1",
+      "responseSize": "67",
+      "serverIp": "34.143.72.2",
+      "status": 404,
+      "userAgent": "Yukpo-Mobile/1.0.0"
+    },
+    "insertId": "699e7d0b0008a7b7a3a129cc",
+    "labels": {
+      "instanceId": "00da6cd2c48e28161544cf521a17bdda72082051d5b09703cbe59642ef1d836944b449fc9b3971e81897410bee3e713d824e652b9885b8253ffe514dfdde0395beacee78ac4a01ff90f7a50a0103ac"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Frequests",
+    "receiveTimestamp": "2026-02-25T04:39:39.790508927Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00343-zgh",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "severity": "WARNING",
+    "spanId": "a1197057c79bdda7",
+    "timestamp": "2026-02-25T04:39:39.563624Z",
+    "trace": "projects/yukpo-project/traces/b79ebb0d6887e653dcb1d8b3ae2c289e"
+  },
+  {
+    "httpRequest": {
+      "latency": "0.002334809s",
+      "protocol": "HTTP/1.1",
+      "remoteIp": "129.0.99.121",
+      "requestMethod": "GET",
+      "requestSize": "374",
+      "requestUrl": "https://yukpo-backend-376093909298.europe-west1.run.app/api/meta/feature-flags",
+      "responseSize": "67",
+      "serverIp": "34.143.72.2",
+      "status": 404,
+      "userAgent": "okhttp/4.12.0"
+    },
+    "insertId": "699e7d0a000357faf1077913",
+    "labels": {
+      "instanceId": "00da6cd2c48e28161544cf521a17bdda72082051d5b09703cbe59642ef1d836944b449fc9b3971e81897410bee3e713d824e652b9885b8253ffe514dfdde0395beacee78ac4a01ff90f7a50a0103ac"
+    },
+    "logName": "projects/yukpo-project/logs/run.googleapis.com%2Frequests",
+    "receiveTimestamp": "2026-02-25T04:39:38.457666506Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "yukpo-backend",
+        "location": "europe-west1",
+        "project_id": "yukpo-project",
+        "revision_name": "yukpo-backend-00343-zgh",
+        "service_name": "yukpo-backend"
+      },
+      "type": "cloud_run_revision"
+    },
+    "severity": "WARNING",
+    "spanId": "36ac01da6ce1b6c2",
+    "timestamp": "2026-02-25T04:39:38.215455Z",
+    "trace": "projects/yukpo-project/traces/6c3538b47c4de2e9dcb1d8b3ae2c29ac"
+  }
+]

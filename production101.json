@@ -1,0 +1,18 @@
+{
+  "EXPO_PUBLIC_API_URL": "https://yukpo-backend-376093909298.europe-west1.run.app",
+  "EXPO_PUBLIC_CDN_CLOUDFLARE_URL": "https://d3jyvgg46kev8.cloudfront.net",
+  "EXPO_PUBLIC_CDN_GCP_URL": "https://storage.googleapis.com/yukpo-project-yukpo-backend-media",
+  "EXPO_PUBLIC_ENVIRONMENT": "production",
+  "EXPO_PUBLIC_GCP_STORAGE_DIRECT_URL": "https://storage.googleapis.com/yukpo-project-yukpo-backend-media",
+  "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "738929393617-i2ss2ql4nr25hsffr5ri97gnesh0go3t.apps.googleusercontent.com",
+  "EXPO_PUBLIC_GOOGLE_CLIENT_ID": "738929393617-4kt4e9ed1g79j70dng7epskqn7rkqnm2.apps.googleusercontent.com",
+  "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "738929393617-j47rj98t5nprrlmdl1nk56mfa2cnmeee.apps.googleusercontent.com",
+  "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyDqlMAysWsGzv1jQtR6WJn8LZXpH75SwFo",
+  "EXPO_PUBLIC_GOOGLE_MAPS_IOS_API_KEY": "AIzaSyBHGQavkIvn0pgj52WuTEapSkdKUmljqs8",
+  "EXPO_PUBLIC_GOOGLE_TRANSLATE_API_KEY": "AIzaSyDqlMAysWsGzv1jQtR6WJn8LZXpH75SwFo",
+  "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "738929393617-4kt4e9ed1g79j70dng7epskqn7rkqnm2.apps.googleusercontent.com",
+  "EXPO_PUBLIC_SHARE_URL": "https://yukpomnang.com",
+  "EXPO_PUBLIC_UPLOAD_BASE_URL": "https://storage.googleapis.com/yukpo-project-yukpo-backend-media",
+  "EXPO_PUBLIC_WASABI_DIRECT_URL": "http://34.54.117.97",
+  "EXPO_PUBLIC_WS_URL": "wss://yukpo-backend-376093909298.europe-west1.run.app"
+}

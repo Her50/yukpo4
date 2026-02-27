@@ -41,24 +41,36 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
 }) => {
     const [isLoading, setIsLoading] = React.useState(true);
     const [hasError, setHasError] = React.useState(false);
+    const [useOriginalUri, setUseOriginalUri] = React.useState(false);
 
-    // ✅ GÉANT-LEVEL: Convertir URI en WebP si supporté et demandé
+    // ✅ CORRIGÉ 2026-02-27: Ne PAS ajouter ?format=webp aux URLs CDN complètes
+    // (GCP Storage, S3, etc. ne supportent pas ces query params et retournent des erreurs)
     const optimizedUri = React.useMemo(() => {
         if (!uri) return uri;
+        // Si on a déjà échoué avec l'URI optimisée, utiliser l'originale
+        if (useOriginalUri) return uri;
 
-        // Si WebP est activé et que l'URL contient déjà des paramètres
+        // Ne JAMAIS modifier les URLs CDN complètes (storage.googleapis.com, cloudfront, etc.)
+        if (uri.startsWith('https://storage.googleapis.com') ||
+            uri.startsWith('https://cdn.') ||
+            uri.startsWith('data:') ||
+            uri.includes('cloudfront.net') ||
+            uri.includes('wasabi') ||
+            uri.includes('s3.')) {
+            return uri;
+        }
+
+        // Appliquer WebP uniquement sur les URLs qui supportent la transformation
         if (webp && uri.includes('?')) {
-            // Ajouter format=webp si pas déjà présent
             if (!uri.includes('format=webp') && !uri.includes('format=avif')) {
                 return `${uri}&format=webp&quality=${quality}`;
             }
         } else if (webp && !uri.includes('format=')) {
-            // Ajouter paramètres si URL simple
             return `${uri}?format=webp&quality=${quality}`;
         }
 
         return uri;
-    }, [uri, webp, quality]);
+    }, [uri, webp, quality, useOriginalUri]);
 
     // Placeholder par défaut (blur hash ou couleur)
     const defaultPlaceholder = placeholder || 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
@@ -86,17 +98,23 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
                     transition: 200,
                     priority: priority,
                     cachePolicy: cachePolicy,
-                } : {})}
+                } : { resizeMode: "cover" })}
                 onLoadStart={() => {
                     setIsLoading(true);
                     setHasError(false);
                 }}
                 onLoadEnd={() => setIsLoading(false)}
                 onError={() => {
+                    // ✅ CORRIGÉ 2026-02-27: Si l'URI optimisée échoue, retenter avec l'originale
+                    if (!useOriginalUri && optimizedUri !== uri) {
+                        console.log('[OptimizedImage] Retry avec URI originale:', uri?.substring(0, 80));
+                        setUseOriginalUri(true);
+                        return;
+                    }
                     setHasError(true);
                     setIsLoading(false);
                 }}
-                style={[StyleSheet.absoluteFill, { opacity: isLoading ? 0 : 1 }]}
+                style={StyleSheet.absoluteFill}
                 {...props}
             />
 
