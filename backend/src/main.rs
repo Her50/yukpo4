@@ -3293,70 +3293,17 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
         log::info!("✅ Port libéré, démarrage serveur complet...");
     }
 
-    // ✅ CORRIGÉ 2026-02-27: Cloud Run - signaler au wrapper que Rust est prêt
-    // Le wrapper garde Python sur port 8080 pendant l'init Rust
-    // Rust signale qu'il est prêt, le wrapper tue Python, puis Rust bind le port
-    if is_cloud_run {
-        eprintln!("[MAIN] 📡 Cloud Run: Signalement au wrapper que Rust est prêt...");
-        let _ = std::fs::write("/tmp/rust_ready", "ready");
-
-        // Attendre que le wrapper ait tué Python (fichier /tmp/python_stopped)
-        let mut wait_count = 0;
-        while !std::path::Path::new("/tmp/python_stopped").exists() {
-            if wait_count >= 30 {
-                eprintln!(
-                    "[MAIN] ⚠️ Timeout attente python_stopped, on tente le bind quand même..."
-                );
-                break;
-            }
-            if wait_count % 5 == 0 {
-                eprintln!("[MAIN] ⏳ Attente arrêt Python... ({}s)", wait_count);
-            }
-            tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-            wait_count += 1;
-        }
-        eprintln!(
-            "[MAIN] ✅ Python arrêté, tentative de bind port {}...",
-            port
-        );
-        // Petit délai supplémentaire pour que le port soit vraiment libéré
-        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-    }
-
     log::info!("✅ Serveur lance sur http://{}:{}", host, port);
     println!("✅ Serveur lance sur http://{}:{}", host, port);
 
-    // ✅ CORRIGÉ 2026-02-27: Retry logic pour le bind (le port peut mettre un instant à être libéré)
     eprintln!("[MAIN] 🔌 Début du bind sur {}:{}...", host, port);
-    let mut listener_result = None;
-    for attempt in 1..=10 {
-        match tokio::net::TcpListener::bind(addr).await {
-            Ok(l) => {
-                eprintln!(
-                    "[MAIN] ✅ Bind réussi sur port {} (tentative {})",
-                    port, attempt
-                );
-                listener_result = Some(l);
-                break;
-            }
-            Err(e) => {
-                if attempt < 10 {
-                    eprintln!(
-                        "[MAIN] ⏳ Port {} occupé (tentative {}): {}, réessai dans 2s...",
-                        port, attempt, e
-                    );
-                    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
-                } else {
-                    eprintln!(
-                        "[MAIN] ❌ ERREUR CRITIQUE: Impossible de bind sur {}:{} après 10 tentatives - {}",
-                        host, port, e
-                    );
-                    return Err(e.into());
-                }
-            }
-        }
-    }
-    let listener = listener_result.expect("listener should be set after retry loop");
+    let listener = tokio::net::TcpListener::bind(addr).await.map_err(|e| {
+        eprintln!(
+            "[MAIN] ❌ ERREUR CRITIQUE: Impossible de bind sur {}:{} - {}",
+            host, port, e
+        );
+        e
+    })?;
     eprintln!("[MAIN] ✅ Bind réussi, démarrage du serveur HTTP complet...");
     eprintln!(
         "[MAIN] 🚀 Serveur HTTP complet démarre sur http://{}:{}",
