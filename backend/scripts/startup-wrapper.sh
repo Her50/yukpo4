@@ -13,20 +13,7 @@ python3 /app/health-server-python.py &
 HEALTH_PID=$!
 echo "✅ [WRAPPER] Serveur HTTP minimal démarré (PID: $HEALTH_PID)"
 
-# ✅ CORRIGÉ 2026-02-18: Attendre que Cloud Run valide le startup probe
-# Le startup probe a initialDelaySeconds=90, donc on attend 90s
-# pour que Cloud Run commence les health checks et valide le probe
-echo "⏳ [WRAPPER] Attente que Cloud Run valide le startup probe (90 secondes)..."
-sleep 90
-echo "✅ [WRAPPER] Cloud Run devrait avoir validé le startup probe"
-
-# Maintenant tuer Python et démarrer Rust
-echo "🛑 [WRAPPER] Arrêt du serveur Python pour libérer le port..."
-kill $HEALTH_PID 2>/dev/null || true
-wait $HEALTH_PID 2>/dev/null || true
-echo "⏳ [WRAPPER] Attente libération du port (5 secondes)..."
-sleep 5
-echo "✅ [WRAPPER] Port libéré, démarrage de Rust..."
+# ✅ Python reste en vie pendant toute l'initialisation pour répondre aux health checks
 # ✅ CRITIQUE 2026-02-17: Ajouter des logs détaillés pour diagnostiquer où le wrapper s'arrête
 echo "🔍 [WRAPPER] Étape 1: Vérification existence du binaire Rust..."
 if [ ! -f /app/yukpomnang_backend ]; then
@@ -133,23 +120,17 @@ else
     exit 1
 fi
 
-# ✅ CORRIGÉ 2026-02-18: Stratégie simplifiée - Garder Python en vie plus longtemps
-# Le startup probe a initialDelaySeconds=90, donc on attend 90s pour que Cloud Run valide
-# Ensuite on démarre Rust qui va essayer de bind (avec retry logic dans main.rs)
-echo "⏳ [WRAPPER] Attente que Cloud Run valide le startup probe (90 secondes)..."
-sleep 90
-echo "✅ [WRAPPER] Cloud Run devrait avoir validé le startup probe"
-
-# Maintenant tuer Python et démarrer Rust
+# ✅ CORRIGÉ 2026-02-27: Tuer Python juste avant de démarrer Rust
+# Python est resté en vie pendant toute l'initialisation pour répondre aux health checks
 echo "🛑 [WRAPPER] Arrêt du serveur Python pour libérer le port..."
 kill $HEALTH_PID 2>/dev/null || true
 wait $HEALTH_PID 2>/dev/null || true
-echo "⏳ [WRAPPER] Attente libération du port (5 secondes)..."
-sleep 5
+sleep 2
 echo "✅ [WRAPPER] Port libéré, démarrage de Rust..."
 
 # ✅ CRITIQUE: Utiliser exec pour que Rust devienne le processus principal (PID 1)
 # Cloud Run nécessite que le processus principal reste actif
+# Rust a sa propre retry logic dans main.rs pour bind le port
 echo "🚀 [WRAPPER] Démarrage de Rust (remplace le wrapper)..."
 exec /app/yukpomnang_backend 2>&1
 
