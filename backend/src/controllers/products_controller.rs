@@ -534,7 +534,10 @@ pub async fn share_product_redirect(
 
     log::info!(
         "🔗 [share_product_redirect] product_id={}, service_id={}, mobile={}, UA={}",
-        product_id, service_id, is_mobile, &user_agent[..user_agent.len().min(80)]
+        product_id,
+        service_id,
+        is_mobile,
+        &user_agent[..user_agent.len().min(80)]
     );
 
     // Récupérer les informations du produit
@@ -606,20 +609,24 @@ pub async fn share_product_redirect(
     let product_images_from_data: Vec<String> = {
         let images_val = product_data.as_object().and_then(|obj| obj.get("images"));
         match images_val {
-            Some(v) if v.is_array() => {
-                v.as_array().unwrap().iter()
-                    .filter_map(|v| v.as_str().map(|s| s.to_string()))
-                    .collect()
-            }
+            Some(v) if v.is_array() => v
+                .as_array()
+                .unwrap()
+                .iter()
+                .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                .collect(),
             Some(v) if v.is_object() => {
                 // Format {valeur: [...]} du formulaire dynamique
-                v.as_object().unwrap()
+                v.as_object()
+                    .unwrap()
                     .get("valeur")
                     .and_then(|v| v.as_array())
-                    .map(|arr| arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect())
+                    .map(|arr| {
+                        arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect()
+                    })
                     .unwrap_or_default()
             }
-            _ => Vec::new()
+            _ => Vec::new(),
         }
     };
 
@@ -633,7 +640,8 @@ pub async fn share_product_redirect(
 
     log::info!(
         "🖼️ [share_product_redirect] {} images trouvées pour produit {}",
-        all_product_images.len(), product_id
+        all_product_images.len(),
+        product_id
     );
 
     // ✅ CORRIGÉ 2026-02-27: Utiliser SHARE_BASE_URL (URL du backend) au lieu de PUBLIC_BASE_URL (bucket GCS)
@@ -642,9 +650,10 @@ pub async fn share_product_redirect(
         .unwrap_or_else(|_| "https://yukpo-backend-376093909298.europe-west1.run.app".to_string());
 
     // Image principale (première de la liste ou logo par défaut)
-    let product_image_url = all_product_images.first().cloned().unwrap_or_else(|| {
-        format!("{}/logo.png", &share_base_url)
-    });
+    let product_image_url = all_product_images
+        .first()
+        .cloned()
+        .unwrap_or_else(|| format!("{}/logo.png", &share_base_url));
 
     // Construire la galerie HTML d'images
     let images_gallery_html = if all_product_images.is_empty() {
@@ -675,13 +684,17 @@ pub async fn share_product_redirect(
     // Construire le tableau JS des images
     let images_js_array = format!(
         "[{}]",
-        all_product_images.iter()
+        all_product_images
+            .iter()
             .map(|url| format!("\"{}\"", url.replace('"', "\\\"")))
             .collect::<Vec<_>>()
             .join(", ")
     );
 
-    let share_url = format!("{}/product/{}?serviceId={}", &share_base_url, product_id, service_id);
+    let share_url = format!(
+        "{}/product/{}?serviceId={}",
+        &share_base_url, product_id, service_id
+    );
 
     // Description enrichie
     let product_description = product_data
@@ -702,7 +715,8 @@ pub async fn share_product_redirect(
         .take(200)
         .collect::<String>();
 
-    let price_amount = product.product_price.as_ref().and_then(|p| p.to_string().parse::<f64>().ok());
+    let price_amount =
+        product.product_price.as_ref().and_then(|p| p.to_string().parse::<f64>().ok());
     let price_currency = "XAF";
 
     let deep_link = generate_deep_link(&product_id, service_id);
@@ -714,18 +728,21 @@ pub async fn share_product_redirect(
     );
 
     // Prix HTML
-    let price_html = product_price.as_ref()
+    let price_html = product_price
+        .as_ref()
         .map(|p| format!(r#"<div class="price">{} XAF</div>"#, p))
         .unwrap_or_default();
 
     // Prix OG meta tags
     let price_og_html = price_amount
-        .map(|p| format!(
-            r#"<meta property="product:price:amount" content="{}" />
+        .map(|p| {
+            format!(
+                r#"<meta property="product:price:amount" content="{}" />
     <meta property="product:price:currency" content="{}" />
     <meta property="product:availability" content="in stock" />"#,
-            p, price_currency
-        ))
+                p, price_currency
+            )
+        })
         .unwrap_or_default();
 
     let price_schema = price_amount.map(|p| p.to_string()).unwrap_or_else(|| "0".to_string());
@@ -733,85 +750,123 @@ pub async fn share_product_redirect(
     // ✅ CORRIGÉ 2026-02-27: Construire le HTML par concaténation au lieu de format!()
     // Cela évite les conflits entre {{}} de Rust et {} de JavaScript
     let mut html = String::with_capacity(8000);
-    html.push_str(r#"<!DOCTYPE html>
+    html.push_str(
+        r#"<!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>"#);
+    <title>"#,
+    );
     html.push_str(product_name);
-    html.push_str(r#" - Yukpomnang</title>
-    <meta name="description" content=""#);
+    html.push_str(
+        r#" - Yukpomnang</title>
+    <meta name="description" content=""#,
+    );
     html.push_str(&product_description);
-    html.push_str(r#"" />
+    html.push_str(
+        r#"" />
     <meta property="og:type" content="product" />
-    <meta property="og:title" content=""#);
+    <meta property="og:title" content=""#,
+    );
     html.push_str(product_name);
-    html.push_str(r#"" />
-    <meta property="og:description" content=""#);
+    html.push_str(
+        r#"" />
+    <meta property="og:description" content=""#,
+    );
     html.push_str(&product_description);
-    html.push_str(r#"" />
-    <meta property="og:image" content=""#);
+    html.push_str(
+        r#"" />
+    <meta property="og:image" content=""#,
+    );
     html.push_str(&product_image_url);
-    html.push_str(r#"" />
+    html.push_str(
+        r#"" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content=""#);
+    <meta property="og:image:alt" content=""#,
+    );
     html.push_str(product_name);
-    html.push_str(r#"" />
-    <meta property="og:url" content=""#);
+    html.push_str(
+        r#"" />
+    <meta property="og:url" content=""#,
+    );
     html.push_str(&share_url);
-    html.push_str(r#"" />
+    html.push_str(
+        r#"" />
     <meta property="og:site_name" content="Yukpomnang" />
     <meta property="og:locale" content="fr_FR" />
-    "#);
+    "#,
+    );
     html.push_str(&price_og_html);
-    html.push_str(r#"
+    html.push_str(
+        r#"
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content=""#);
+    <meta name="twitter:title" content=""#,
+    );
     html.push_str(product_name);
-    html.push_str(r#"" />
-    <meta name="twitter:description" content=""#);
+    html.push_str(
+        r#"" />
+    <meta name="twitter:description" content=""#,
+    );
     html.push_str(&product_description);
-    html.push_str(r#"" />
-    <meta name="twitter:image" content=""#);
+    html.push_str(
+        r#"" />
+    <meta name="twitter:image" content=""#,
+    );
     html.push_str(&product_image_url);
-    html.push_str(r#"" />
-    <meta name="twitter:image:alt" content=""#);
+    html.push_str(
+        r#"" />
+    <meta name="twitter:image:alt" content=""#,
+    );
     html.push_str(product_name);
-    html.push_str(r#"" />
+    html.push_str(
+        r#"" />
     <meta name="twitter:site" content="@yukpomnang" />
     <script type="application/ld+json">
     {
         "@context": "https://schema.org",
         "@type": "Product",
-        "name": ""#);
+        "name": ""#,
+    );
     html.push_str(product_name);
-    html.push_str(r#"",
-        "description": ""#);
+    html.push_str(
+        r#"",
+        "description": ""#,
+    );
     html.push_str(&product_description);
-    html.push_str(r#"",
-        "image": ""#);
+    html.push_str(
+        r#"",
+        "image": ""#,
+    );
     html.push_str(&product_image_url);
-    html.push_str(r#"",
+    html.push_str(
+        r#"",
         "offers": {
             "@type": "Offer",
-            "price": ""#);
+            "price": ""#,
+    );
     html.push_str(&price_schema);
-    html.push_str(r#"",
-            "priceCurrency": ""#);
+    html.push_str(
+        r#"",
+            "priceCurrency": ""#,
+    );
     html.push_str(price_currency);
-    html.push_str(r#"",
+    html.push_str(
+        r#"",
             "availability": "https://schema.org/InStock",
-            "url": ""#);
+            "url": ""#,
+    );
     html.push_str(&share_url);
-    html.push_str(r#""
+    html.push_str(
+        r#""
         },
         "brand": { "@type": "Brand", "name": "Yukpomnang" }
     }
     </script>
     <meta name="google-play-app" content="app-id=com.yukpomnang.mobile">
-    <meta property="al:android:url" content=""#);
+    <meta property="al:android:url" content=""#,
+    );
     html.push_str(&deep_link);
     html.push_str(r#"" />
     <meta property="al:android:package" content="com.yukpomnang.mobile" />
@@ -859,27 +914,31 @@ pub async fn share_product_redirect(
     <div class="container">
         <h1>"#);
     html.push_str(product_name);
-    html.push_str(r#"</h1>
-        "#);
+    html.push_str(
+        r#"</h1>
+        "#,
+    );
     html.push_str(&price_html);
     html.push_str(&images_gallery_html);
-    html.push_str(r#"
-        <div class="description">"#);
+    html.push_str(
+        r#"
+        <div class="description">"#,
+    );
     html.push_str(&product_description);
-    html.push_str(r#"</div>
-        <a id="open-app-btn" class="button" href="#">📱 Ouvrir dans l'app Yukpomnang</a>
-        <a class="button button-secondary" href="https://play.google.com/store/apps/details?id=com.yukpomnang.mobile" target="_blank">📥 Télécharger l'app</a>
-    </div>
-    <script>
-        var DEEP_LINK = '"#);
+    html.push_str("</div>\n");
+    html.push_str("        <a id=\"open-app-btn\" class=\"button\" href=\"#\">\u{1F4F1} Ouvrir dans l'app Yukpomnang</a>\n");
+    html.push_str("        <a class=\"button button-secondary\" href=\"https://play.google.com/store/apps/details?id=com.yukpomnang.mobile\" target=\"_blank\">\u{1F4E5} T\u{00E9}l\u{00E9}charger l'app</a>\n");
+    html.push_str("    </div>\n");
+    html.push_str("    <script>\n");
+    html.push_str("        var DEEP_LINK = '");
     html.push_str(&deep_link);
-    html.push_str(r#"';
-        var INTENT_URL = '"#);
+    html.push_str("';\n");
+    html.push_str("        var INTENT_URL = '");
     html.push_str(&android_intent_url);
-    html.push_str(r#"';
-        var PLAY_STORE = 'https://play.google.com/store/apps/details?id=com.yukpomnang.mobile';
-        var APP_STORE = 'https://apps.apple.com/app/yukpomnang';
-        var productImages = "#);
+    html.push_str("';\n");
+    html.push_str("        var PLAY_STORE = 'https://play.google.com/store/apps/details?id=com.yukpomnang.mobile';\n");
+    html.push_str("        var APP_STORE = 'https://apps.apple.com/app/yukpomnang';\n");
+    html.push_str("        var productImages = ");
     html.push_str(&images_js_array);
     html.push_str(r#";
 
@@ -938,7 +997,9 @@ pub async fn share_product_redirect(
 
     log::info!(
         "🌐 [share_product_redirect] Page HTML générée: product={}, images={}, mobile={}",
-        product_id, all_product_images.len(), is_mobile
+        product_id,
+        all_product_images.len(),
+        is_mobile
     );
 
     Ok(Html(html).into_response())

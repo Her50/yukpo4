@@ -74,10 +74,7 @@ pub fn media_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             get(get_templates_by_industry),
         )
         // ✅ NOUVEAU 2026-02-27: Route pour récupérer TOUS les médias d'un service
-        .route(
-            "/api/services/{service_id}/media",
-            get(get_service_media),
-        )
+        .route("/api/services/{service_id}/media", get(get_service_media))
         // ✅ NOUVEAU: Route pour récupérer les médias d'un produit spécifique
         .route(
             "/api/media/product/{service_id}/{product_index}",

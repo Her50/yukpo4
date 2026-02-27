@@ -1306,16 +1306,24 @@ pub async fn rechercher_besoin_direct(
                                 // Gère: tableau simple, objet {valeur: [...]}, string simple
                                 fn extract_media_urls_rb(val: &serde_json::Value) -> Vec<String> {
                                     match val {
-                                        serde_json::Value::Array(arr) => {
-                                            arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect()
+                                        serde_json::Value::Array(arr) => arr
+                                            .iter()
+                                            .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                                            .collect(),
+                                        serde_json::Value::Object(o) => o
+                                            .get("valeur")
+                                            .and_then(|v| v.as_array())
+                                            .map(|arr| {
+                                                arr.iter()
+                                                    .filter_map(|v| {
+                                                        v.as_str().map(|s| s.to_string())
+                                                    })
+                                                    .collect()
+                                            })
+                                            .unwrap_or_default(),
+                                        serde_json::Value::String(s) if !s.is_empty() => {
+                                            vec![s.clone()]
                                         }
-                                        serde_json::Value::Object(o) => {
-                                            o.get("valeur")
-                                                .and_then(|v| v.as_array())
-                                                .map(|arr| arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect())
-                                                .unwrap_or_default()
-                                        }
-                                        serde_json::Value::String(s) if !s.is_empty() => vec![s.clone()],
                                         _ => Vec::new(),
                                     }
                                 }

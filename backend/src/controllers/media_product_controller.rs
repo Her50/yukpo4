@@ -77,7 +77,10 @@ pub async fn get_service_media(
     .fetch_all(pool)
     .await
     .map_err(|e| {
-        log_error(&format!("[MediaProduct] Erreur SQL get_service_media: {}", e));
+        log_error(&format!(
+            "[MediaProduct] Erreur SQL get_service_media: {}",
+            e
+        ));
         AppError::Internal(format!("Erreur récupération médias service: {}", e))
     })?;
 
