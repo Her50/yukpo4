@@ -266,7 +266,7 @@ async fn verify_otp_public(
 async fn verify_otp_for_user(
     state: &Arc<AppState>,
     user_id: i32,
-    phone: &str,
+    _phone: &str,
     code: &str,
 ) -> AppResult<Json<VerifyOtpResponse>> {
     let db = &state.pg;
@@ -414,6 +414,23 @@ async fn send_otp_via_provider(phone: &str, code: &str) -> Result<(), String> {
                 "[send_otp] ❌ Échec envoi SMS à {} (Message ID: {:?}): {}",
                 mask_phone(phone),
                 message_id,
+                error_msg
+            );
+            Err(format!("Échec envoi SMS: {}", error_msg))
+        }
+        Ok(SmsResult { success: true, .. }) => {
+            info!("[send_otp] ✅ OTP envoyé via SMS à {}", mask_phone(phone));
+            Ok(())
+        }
+        Ok(SmsResult {
+            success: false,
+            error,
+            ..
+        }) => {
+            let error_msg = error.unwrap_or_else(|| "Erreur inconnue".to_string());
+            error!(
+                "[send_otp] ❌ Échec envoi SMS à {}: {}",
+                mask_phone(phone),
                 error_msg
             );
             Err(format!("Échec envoi SMS: {}", error_msg))
