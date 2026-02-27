@@ -1408,11 +1408,11 @@ const styles = StyleSheet.create({
         backgroundColor: modernColors.background,
     },
     header: {
-        paddingTop: 60,
-        paddingBottom: 24,
+        paddingTop: 50,
+        paddingBottom: 16,
         paddingHorizontal: 20,
-        borderBottomLeftRadius: 30,
-        borderBottomRightRadius: 30,
+        borderBottomLeftRadius: 24,
+        borderBottomRightRadius: 24,
     },
     content: {
         flex: 1,
@@ -1732,7 +1732,7 @@ const styles = StyleSheet.create({
     // ✅ NOUVEAU: Styles pour les nouvelles fonctionnalités
     stepperContainer: {
         backgroundColor: modernColors.surface,
-        paddingVertical: 12,
+        paddingVertical: 4,
         borderBottomWidth: 1,
         borderBottomColor: modernColors.border,
     },

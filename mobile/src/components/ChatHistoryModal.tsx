@@ -315,7 +315,7 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
     }
   };
 
-  const unreadTotalCount = chatHistories.reduce((total, chat) => total + chat.unreadCount, 0);
+  const unreadTotalCount = chatHistories.reduce((total, chat) => total + (chat?.unreadCount || 0), 0);
 
   if (showChatMessages && selectedChat) {
     return (
@@ -345,12 +345,12 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
             <View style={styles.chatHeaderInfo}>
               <Avatar.Text
                 size={40}
-                label={(selectedChat.clientName || 'C').charAt(0)}
+                label={String(selectedChat?.clientName || 'C').charAt(0)}
                 style={styles.chatAvatar}
               />
               <View style={styles.chatHeaderText}>
-                <Text style={styles.chatClientName}>{selectedChat.clientName}</Text>
-                <Text style={styles.chatServiceTitle}>{selectedChat.serviceTitle}</Text>
+                <Text style={styles.chatClientName}>{selectedChat?.clientName || 'Client'}</Text>
+                <Text style={styles.chatServiceTitle}>{selectedChat?.serviceTitle || ''}</Text>
               </View>
             </View>
 
@@ -515,7 +515,7 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
                 key={chat.id}
                 style={[
                   styles.chatCard,
-                  chat.unreadCount > 0 && styles.unreadChatCard
+                  (chat?.unreadCount || 0) > 0 && styles.unreadChatCard
                 ]}
                 onPress={() => {
                   handleOpenChatModal(chat);
@@ -523,7 +523,7 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
               >
                 <Avatar.Text
                   size={50}
-                  label={(chat.clientName || 'C').charAt(0)}
+                  label={String(chat?.clientName || 'C').charAt(0)}
                   style={styles.chatAvatar}
                 />
 
@@ -531,33 +531,33 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
                   <View style={styles.chatHeader}>
                     <Text style={[
                       styles.chatClientName,
-                      chat.unreadCount > 0 && styles.unreadText
+                      (chat?.unreadCount || 0) > 0 && styles.unreadText
                     ]}>
-                      {chat.clientName}
+                      {chat?.clientName || 'Client'}
                     </Text>
                     <Text style={styles.chatTime}>
-                      {formatTime(chat.lastMessageTime)}
+                      {formatTime(chat?.lastMessageTime || Date.now())}
                     </Text>
                   </View>
 
                   <Text style={styles.chatServiceTitle}>
-                    {chat.serviceTitle}
+                    {chat?.serviceTitle || ''}
                   </Text>
 
                   <Text style={[
                     styles.chatLastMessage,
-                    chat.unreadCount > 0 && styles.unreadText
+                    chat?.unreadCount > 0 && styles.unreadText
                   ]}>
-                    {chat.lastMessage}
+                    {chat?.lastMessage || ''}
                   </Text>
 
                   <View style={styles.chatFooter}>
                     <View style={[
                       styles.statusBadge,
-                      { backgroundColor: getStatusColor(chat.status) }
+                      { backgroundColor: getStatusColor(chat?.status || 'active') }
                     ]}>
                       <Text style={styles.statusText}>
-                        {getStatusText(chat.status)}
+                        {getStatusText(chat?.status || 'active')}
                       </Text>
                     </View>
 

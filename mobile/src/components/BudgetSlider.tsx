@@ -98,9 +98,9 @@ export const BudgetSlider: React.FC<BudgetSliderProps> = ({
                 <Text style={styles.rangeLabel}>{max.toLocaleString()}</Text>
             </View>
 
-            {(estimatedReach || estimatedImpressions) && (
+            {!!(estimatedReach || estimatedImpressions) && (
                 <View style={styles.estimates}>
-                    {estimatedReach && (
+                    {!!estimatedReach && (
                         <View style={styles.estimateItem}>
                             <SafeIcon name="users" size={14} color={modernColors.primary} />
                             <Text style={styles.estimateLabel}>Portée estimée:</Text>
@@ -109,7 +109,7 @@ export const BudgetSlider: React.FC<BudgetSliderProps> = ({
                             </Text>
                         </View>
                     )}
-                    {estimatedImpressions && (
+                    {!!estimatedImpressions && (
                         <View style={styles.estimateItem}>
                             <SafeIcon name="eye" size={14} color={modernColors.primary} />
                             <Text style={styles.estimateLabel}>Impressions:</Text>
