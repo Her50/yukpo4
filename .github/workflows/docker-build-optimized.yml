@@ -574,9 +574,7 @@ jobs:
                 "ML_MODELS_DIR": "models",
                 "YUKPO_IMMO_COMMISSION_RATE": "0.05",
 
-                "GOOGLE_CLIENT_ID": "738929393617-4kt4e9ed1g79j70dng7epskqn7rkqnm2.apps.googleusercontent.com",
-
-                "GOOGLE_MAPS_API_KEY": "AIzaSyDqlMAysWsGzv1jQtR6WJn8LZXpH75SwFo"
+                "GOOGLE_CLIENT_ID": "738929393617-4kt4e9ed1g79j70dng7epskqn7rkqnm2.apps.googleusercontent.com"
               }' > env-vars.json
           else
             # Fallback: JSON manuel (variables les plus critiques)
