@@ -109,8 +109,6 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
         eprintln!("🚨 PANIC: {} ({})", message, location);
     }));
 
-    // ✅ CRITIQUE Cloud Run 2026-02-17: Le wrapper Python gère déjà le serveur minimal
-    // Ne PAS démarrer de serveur minimal dans Rust si on est dans Cloud Run
     let is_cloud_run = env::var("CLOUD_RUN").unwrap_or_default() == "true";
     eprintln!("[MAIN] 🔍 CLOUD_RUN détecté: {}", is_cloud_run);
 
@@ -121,18 +119,11 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
     eprintln!("[MAIN] 🔍 Port configuré: {}", port);
 
-    // ✅ CORRIGÉ 2026-02-17: Ne PAS démarrer de serveur minimal si Cloud Run (le wrapper Python le gère)
-    // Le wrapper tue Python et attend que le port soit libre avant de démarrer Rust
-    // Donc Rust n'a pas besoin d'attendre, le port devrait être libre
-    let health_server_handle = if is_cloud_run {
-        eprintln!(
-            "[MAIN] ℹ️  Cloud Run: Le wrapper Python a déjà libéré le port, on continue directement..."
-        );
-        // Ne PAS créer de serveur minimal dans Rust, le wrapper Python le gère
-        // Le port est déjà libre, on peut continuer directement
-        None
-    } else {
-        eprintln!("[MAIN] 🚀 Pas Cloud Run: Démarrage serveur HTTP minimal pour health check...");
+    // ✅ CORRIGÉ 2026-02-28: TOUJOURS démarrer le serveur minimal (Cloud Run ou pas)
+    // Rust bind le port 8080 immédiatement avec /health, la startup probe est satisfaite
+    // Le serveur complet remplace le minimal une fois l'init terminée
+    let health_server_handle = {
+        eprintln!("[MAIN] 🚀 Démarrage serveur HTTP minimal pour health check...");
 
         // Créer un serveur minimal avec juste /health
         use axum::{http::StatusCode, routing::get, Router};
