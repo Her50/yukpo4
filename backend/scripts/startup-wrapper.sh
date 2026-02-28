@@ -24,6 +24,9 @@ if [ -n "$DATABASE_URL" ]; then
 fi
 
 echo "🔍 [WRAPPER] Env: DATABASE_URL=${DATABASE_URL:+OK(${#DATABASE_URL}c)} JWT=${JWT_SECRET:+OK} REDIS=${REDIS_URL:+OK}"
+echo "🔍 [WRAPPER] Binaire: $(ls -lh /app/yukpomnang_backend 2>&1)"
+echo "🔍 [WRAPPER] ldd: $(ldd /app/yukpomnang_backend 2>&1 | head -5)"
+echo "🔍 [WRAPPER] PORT=$PORT HOST=$HOST"
 
 # ── Lancer Rust immédiatement ────────────────────────────────────────
 # Rust bind port 8080 avec un health handler dès le démarrage,
