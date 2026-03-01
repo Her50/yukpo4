@@ -44,6 +44,7 @@ pub mod delivery_ai_recommendations; // ✅ NOUVEAU: AI Product Recommendations
 pub mod delivery_demand_forecasting; // ✅ NOUVEAU: Demand Forecasting ML
 pub mod delivery_engine_pricing_service; // ✅ NOUVEAU: Service de calcul coût selon type d'engin
 pub mod delivery_fraud_detection; // ✅ NOUVEAU: Fraud Detection System
+pub mod delivery_insurance_service; // ✅ NOUVEAU: Service calcul frais d'assurance
 pub mod delivery_ml_eta; // ✅ NOUVEAU: ML pour prédiction ETA précise
 pub mod delivery_ml_models; // ✅ NOUVEAU: Infrastructure ML TensorFlow/PyTorch
 pub mod delivery_notification_service; // ✅ RECOMMANDATION 3: Notifications SMS/Email pour clients sans app

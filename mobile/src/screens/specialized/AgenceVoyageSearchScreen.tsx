@@ -1,6 +1,6 @@
 // ✅ Écran de recherche d'agences de voyage (Mobile) - VERSION REFONDUE
-import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState } from 'react';
 import {
     Alert,
@@ -11,14 +11,14 @@ import {
     View
 } from 'react-native';
 import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
+import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 import ModernGPSModal from '../../components/ModernGPSModal';
-import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeInput } from '../../components/SafeNativeDesign';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useLocation } from '../../contexts/LocationContext';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
-import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 
 interface AgenceVoyageSearchFilters {
     ville?: string;
@@ -83,7 +83,7 @@ const AgenceVoyageSearchScreen: React.FC = () => {
         if (searchMode === 'tickets') {
             const villeDepartStr = typeof villeDepart === 'string' ? villeDepart : (villeDepart as LocationObject)?.components?.ville || (villeDepart as LocationObject)?.place_name || '';
             const villeArriveeStr = typeof villeArrivee === 'string' ? villeArrivee : (villeArrivee as LocationObject)?.components?.ville || (villeArrivee as LocationObject)?.place_name || '';
-            
+
             if (!villeDepartStr.trim() || !villeArriveeStr.trim()) {
                 Alert.alert('Erreur', 'Veuillez renseigner la ville de départ et d\'arrivée');
                 return;
@@ -102,7 +102,7 @@ const AgenceVoyageSearchScreen: React.FC = () => {
                 filters.lng = gpsData.lng;
             }
             if (maxDistance > 0) filters.max_distance_km = maxDistance;
-            
+
             // Navigation vers recherche tickets
             navigation.navigate('BusTicketSearch' as never, { filters } as never);
             return;
@@ -277,7 +277,7 @@ const AgenceVoyageSearchScreen: React.FC = () => {
                             <Text style={styles.sectionDescription}>
                                 Recherchez des tickets de bus pour votre trajet. Les villes de départ et d'arrivée sont obligatoires.
                             </Text>
-                            
+
                             {/* Ville de départ - OBLIGATOIRE */}
                             <View style={styles.inputGroup}>
                                 <LocationSelector
@@ -286,8 +286,8 @@ const AgenceVoyageSearchScreen: React.FC = () => {
                                     onSelect={(location: LocationObject) => {
                                         setVilleDepart(location);
                                     }}
-                                    placeholder="Rechercher une ville de départ..."
-                                    scope="city"
+                                    placeholder="Lieu de départ (ville, quartier, gare...)"
+                                    scope="all"
                                     enrichWithBackend={true}
                                     required={true}
                                 />
@@ -304,8 +304,8 @@ const AgenceVoyageSearchScreen: React.FC = () => {
                                     onSelect={(location: LocationObject) => {
                                         setVilleArrivee(location);
                                     }}
-                                    placeholder="Rechercher une ville d'arrivée..."
-                                    scope="city"
+                                    placeholder="Lieu d'arrivée (ville, quartier, gare...)"
+                                    scope="all"
                                     enrichWithBackend={true}
                                     required={true}
                                 />
@@ -355,7 +355,7 @@ const AgenceVoyageSearchScreen: React.FC = () => {
                             <Text style={styles.sectionDescription}>
                                 Ajoutez votre position pour trouver des tickets à proximité
                             </Text>
-                            
+
                             {/* GPS */}
                             <View style={styles.inputGroup}>
                                 <Text style={styles.label}>
@@ -494,7 +494,7 @@ const AgenceVoyageSearchScreen: React.FC = () => {
                     {/* Options */}
                     <View style={styles.optionsSection}>
                         <Text style={styles.sectionTitle}>⚙️ Options de recherche</Text>
-                        
+
                         <View style={styles.optionCard}>
                             <View style={styles.optionContent}>
                                 <View style={styles.optionIconContainer}>
@@ -532,10 +532,10 @@ const AgenceVoyageSearchScreen: React.FC = () => {
                         <View style={styles.searchButtonContent}>
                             <SafeIcon name={searchMode === 'tickets' ? "ticket" : "search"} size={20} color="#FFFFFF" type="lucide" />
                             <Text style={styles.searchButtonText}>
-                                {loading 
-                                    ? 'Recherche en cours...' 
-                                    : searchMode === 'tickets' 
-                                        ? 'Rechercher des tickets' 
+                                {loading
+                                    ? 'Recherche en cours...'
+                                    : searchMode === 'tickets'
+                                        ? 'Rechercher des tickets'
                                         : 'Lancer la recherche'}
                             </Text>
                         </View>

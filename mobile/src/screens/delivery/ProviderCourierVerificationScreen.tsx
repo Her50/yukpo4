@@ -50,6 +50,7 @@ interface VerificationResult {
   dropoff_address?: string;
   client_name?: string;
   delivery_price?: number;
+  insurance_cost?: number;
 }
 
 interface ProviderCourierVerificationScreenProps {
@@ -287,8 +288,8 @@ const ProviderCourierVerificationScreen: React.FC<ProviderCourierVerificationScr
             </View>
           )}
 
-          {/* Résumé des prix */}
-          {(verificationResult.products_to_pickup.length > 0 || verificationResult.delivery_price) && (
+          {/* Résumé des prix - même structure que estimate_delivery_costs */}
+          {(verificationResult.products_to_pickup.length > 0 || verificationResult.delivery_price || verificationResult.insurance_cost) && (
             <View style={styles.priceSummaryCard}>
               <Text style={styles.priceSummaryTitle}>📋 Résumé des coûts</Text>
 
@@ -309,21 +310,32 @@ const ProviderCourierVerificationScreen: React.FC<ProviderCourierVerificationScr
               {/* Prix de livraison */}
               {verificationResult.delivery_price && (
                 <View style={styles.priceRow}>
-                  <Text style={styles.priceLabel}>Livraison</Text>
+                  <Text style={styles.priceLabel}>🚚 Livraison</Text>
                   <Text style={styles.priceValue}>
                     {verificationResult.delivery_price.toLocaleString()} FCFA
                   </Text>
                 </View>
               )}
 
+              {/* Frais d'assurance */}
+              {verificationResult.insurance_cost && verificationResult.insurance_cost > 0 && (
+                <View style={styles.priceRow}>
+                  <Text style={styles.priceLabel}>🛡️ Assurance</Text>
+                  <Text style={styles.priceValue}>
+                    {verificationResult.insurance_cost.toLocaleString()} FCFA
+                  </Text>
+                </View>
+              )}
+
               {/* Total général */}
               <View style={[styles.priceRow, styles.totalRow]}>
-                <Text style={styles.totalLabel}>Total à payer</Text>
+                <Text style={styles.totalLabel}>💰 Total à payer</Text>
                 <Text style={styles.totalValue}>
                   {(
                     verificationResult.products_to_pickup
                       .reduce((sum, product) => sum + (product.product_price || 0) * product.quantity, 0) +
-                    (verificationResult.delivery_price || 0)
+                    (verificationResult.delivery_price || 0) +
+                    (verificationResult.insurance_cost || 0)
                   ).toLocaleString()} FCFA
                 </Text>
               </View>

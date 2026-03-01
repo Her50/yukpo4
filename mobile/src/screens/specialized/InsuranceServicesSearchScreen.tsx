@@ -1,23 +1,22 @@
 // ✅ Écran de recherche Assurance - Produits d'assurance (Mobile) - VERSION REFONDUE
-import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState } from 'react';
 import {
-    Alert,
     ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
     View
 } from 'react-native';
+import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 import ModernGPSModal from '../../components/ModernGPSModal';
-import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useLocation } from '../../contexts/LocationContext';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
-import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 
 interface SearchFilters {
     type_assurance?: string;
@@ -194,7 +193,7 @@ const InsuranceServicesSearchScreen: React.FC = () => {
                 {/* Formulaire de recherche */}
                 <View style={styles.searchFormCard}>
                     <Text style={styles.sectionTitle}>🛡️ Type d'assurance</Text>
-                    
+
                     {/* Type assurance */}
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>
@@ -248,7 +247,7 @@ const InsuranceServicesSearchScreen: React.FC = () => {
 
                     {/* Localisation */}
                     <Text style={styles.sectionTitle}>📍 Localisation</Text>
-                    
+
                     {/* Ville */}
                     <View style={styles.inputGroup}>
                         <LocationSelector
@@ -257,8 +256,8 @@ const InsuranceServicesSearchScreen: React.FC = () => {
                             onSelect={(location: LocationObject) => {
                                 setVille(location);
                             }}
-                            placeholder="Rechercher une ville..."
-                            scope="city"
+                            placeholder="Rechercher un lieu (ville, quartier, adresse...)"
+                            scope="all"
                             enrichWithBackend={true}
                         />
                     </View>
@@ -271,8 +270,8 @@ const InsuranceServicesSearchScreen: React.FC = () => {
                             onSelect={(location: LocationObject) => {
                                 setQuartier(location);
                             }}
-                            placeholder="Rechercher un quartier..."
-                            scope="neighborhood"
+                            placeholder="Rechercher un lieu précis (quartier, rue, adresse...)"
+                            scope="all"
                             cityContext={typeof ville === 'string' ? ville : (ville as LocationObject)?.components?.ville || (ville as LocationObject)?.place_name || ''}
                             enrichWithBackend={true}
                         />
@@ -333,7 +332,7 @@ const InsuranceServicesSearchScreen: React.FC = () => {
 
                     {/* Prix */}
                     <Text style={styles.sectionTitle}>💰 Prime annuelle</Text>
-                    
+
                     <View style={styles.priceRow}>
                         <View style={styles.priceInputContainer}>
                             <Text style={styles.label}>Prix minimum (FCFA)</Text>

@@ -2634,6 +2634,7 @@ struct EstimateCostsPayload {
 struct EstimateCostsResponse {
     product_price_cents: i64,
     delivery_cost_cents: i64,
+    insurance_cost_cents: i64,
     total_cents: i64,
     billing_mode: String,
     is_delivery_free: bool,
@@ -2860,6 +2861,21 @@ async fn estimate_delivery_costs(
 
         let delivery_cost_cents = (delivery_cost_fcfa * 100.0) as i64; // Convertir en centimes
 
+        // 4. Calculer les frais d'assurance
+        let product_value_fcfa = product_price_cents as f64 / 100.0;
+        let insurance_service =
+            crate::services::delivery_insurance_service::DeliveryInsuranceService::new(
+                state.pg.clone(),
+            );
+        let insurance_cost_fcfa = insurance_service
+            .calculate_insurance_fee(engine_type, product_value_fcfa)
+            .await
+            .unwrap_or_else(|_| {
+                // Fallback si erreur : pas de frais d'assurance
+                0.0
+            });
+        let insurance_cost_cents = (insurance_cost_fcfa * 100.0) as i64;
+
         // ✅ Monitoring : Enregistrer distance et coût
         if let Ok(metrics) = &*crate::services::delivery_pricing_metrics::DELIVERY_PRICING_METRICS {
             metrics.delivery_distance_km.observe(distance_km);
@@ -2882,7 +2898,7 @@ async fn estimate_delivery_costs(
         + if is_delivery_free {
             0
         } else {
-            delivery_cost_cents
+            delivery_cost_cents + insurance_cost_cents
         };
 
     // ✅ Monitoring : Enregistrer métriques
@@ -2910,6 +2926,7 @@ async fn estimate_delivery_costs(
     Ok(Json(EstimateCostsResponse {
         product_price_cents,
         delivery_cost_cents,
+        insurance_cost_cents,
         total_cents,
         billing_mode,
         is_delivery_free,

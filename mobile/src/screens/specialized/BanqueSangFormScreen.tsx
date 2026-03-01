@@ -12,8 +12,8 @@ import {
 import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 import ModernGPSModal from '../../components/ModernGPSModal';
-import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 // ✅ SUPPRIMÉ : WeekScheduleSelector (planning hebdomadaire supprimé)
 import { useAuth } from '../../contexts/AuthContext';
 import { useLocation } from '../../contexts/LocationContext';
@@ -63,10 +63,10 @@ const BanqueSangFormScreen: React.FC = () => {
                 try {
                     // Récupérer les données du partenaire depuis /api/partners/me
                     const response = await apiGet('/api/partners/me');
-                    
+
                     if (response.success && response.data) {
                         const partnerData = response.data;
-                        
+
                         // Si le partenaire a déjà une banque de sang, charger ses données
                         if (partnerData.banque_sang_id) {
                             const banqueResponse = await apiGet(`/api/banques-sang/${partnerData.banque_sang_id}`);
@@ -395,16 +395,16 @@ const BanqueSangFormScreen: React.FC = () => {
                             onSelect={(location: LocationObject) => {
                                 // ✅ CORRECTION: Extraire la valeur à stocker (string ou LocationObject selon besoin)
                                 const quartierValue = location.raw || location.place_name || '';
-                                setFormData({ 
-                                    ...formData, 
+                                setFormData({
+                                    ...formData,
                                     quartier: quartierValue,
                                     // ✅ NOUVEAU: Extraire automatiquement ville et pays si disponibles
                                     ville: location.components?.ville || formData.ville,
                                     pays: location.components?.pays || formData.pays,
                                 });
                             }}
-                            placeholder="Rechercher un quartier (inclut ville et pays)..."
-                            scope="neighborhood"
+                            placeholder="Rechercher un lieu (ville, quartier, adresse...)"
+                            scope="all"
                             enrichWithBackend
                         />
                         <Text style={styles.hintText}>

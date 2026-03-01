@@ -340,8 +340,8 @@ const OffresEmploiFormScreen: React.FC = () => {
                             onSelect={(location: LocationObject) => {
                                 setFormData({ ...formData, lieu_travail: location });
                             }}
-                            placeholder="Rechercher une ville..."
-                            scope="city"
+                            placeholder="Rechercher un lieu (ville, quartier, adresse...)"
+                            scope="all"
                             enrichWithBackend={true}
                         />
                         <View style={styles.switchGroup}>

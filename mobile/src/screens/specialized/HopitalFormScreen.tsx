@@ -470,8 +470,8 @@ const HopitalFormScreen: React.FC = () => {
                                     pays: location.components?.pays || formData.pays,
                                 });
                             }}
-                            placeholder="Rechercher un quartier (inclut ville et pays)..."
-                            scope="neighborhood"
+                            placeholder="Rechercher un lieu (ville, quartier, adresse...)"
+                            scope="all"
                             enrichWithBackend
                         />
                         <Text style={styles.hintText}>

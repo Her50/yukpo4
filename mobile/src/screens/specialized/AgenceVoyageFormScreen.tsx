@@ -10,14 +10,14 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import BusModelForm, { BusModel } from '../../components/bus/BusModelForm';
 import CompanySelector, { Company } from '../../components/CompanySelector';
+import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 import ModernGPSModal from '../../components/ModernGPSModal';
 // ✅ SUPPRIMÉ: PartnerSelector - Les données partenaire sont chargées automatiquement depuis /api/partners/me
-import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import WeekDaysSelector from '../../components/WeekDaysSelector';
 import { getCurrencyIntelligently } from '../../utils/currencyUtils';
 // ✅ SUPPRIMÉ : WeekScheduleSelector (planning hebdomadaire supprimé)
@@ -560,60 +560,60 @@ const AgenceVoyageFormScreen: React.FC = () => {
                                 const productId = (productResponse.data as any).id;
 
                                 // Lier le produit à l'agence
-                            const linkResponse = await apiPost('/api/bus-tickets/link', {
-                                agency_id: agencyId,
-                                product_id: productId,
-                                nom_modele: model.nom_modele,
-                                classe: model.classe,
-                                equipements: model.equipements,
-                            });
+                                const linkResponse = await apiPost('/api/bus-tickets/link', {
+                                    agency_id: agencyId,
+                                    product_id: productId,
+                                    nom_modele: model.nom_modele,
+                                    classe: model.classe,
+                                    equipements: model.equipements,
+                                });
 
-                            if (linkResponse.success) {
-                                successCount++;
+                                if (linkResponse.success) {
+                                    successCount++;
+                                } else {
+                                    errorCount++;
+                                    console.error('Erreur liaison produit:', linkResponse.error);
+                                }
                             } else {
                                 errorCount++;
-                                console.error('Erreur liaison produit:', linkResponse.error);
+                                console.error('Erreur création produit:', productResponse.error);
                             }
-                        } else {
+                        } catch (error: any) {
                             errorCount++;
-                            console.error('Erreur création produit:', productResponse.error);
+                            console.error('Erreur traitement modèle:', error);
                         }
-                    } catch (error: any) {
-                        errorCount++;
-                        console.error('Erreur traitement modèle:', error);
                     }
-                }
 
-                // ✅ NOUVEAU: Créer les horaires de départ si des destinations sont configurées
-                if (selectedDestinations.length > 0 && formData.peut_emettre_tickets_bus) {
-                    // Note: Les horaires peuvent être créés après, via la section dédiée
-                    // Ici on ne fait que notifier l'utilisateur
-                }
+                    // ✅ NOUVEAU: Créer les horaires de départ si des destinations sont configurées
+                    if (selectedDestinations.length > 0 && formData.peut_emettre_tickets_bus) {
+                        // Note: Les horaires peuvent être créés après, via la section dédiée
+                        // Ici on ne fait que notifier l'utilisateur
+                    }
 
-                // Afficher le résultat
-                if (successCount > 0) {
-                    const message = errorCount > 0
-                        ? `Agence créée avec succès !\n${successCount} modèle(s) de bus créé(s).\n${errorCount} erreur(s) lors de la création.`
-                        : `Agence créée avec succès !\n${successCount} modèle(s) de bus créé(s) et lié(s).`;
+                    // Afficher le résultat
+                    if (successCount > 0) {
+                        const message = errorCount > 0
+                            ? `Agence créée avec succès !\n${successCount} modèle(s) de bus créé(s).\n${errorCount} erreur(s) lors de la création.`
+                            : `Agence créée avec succès !\n${successCount} modèle(s) de bus créé(s) et lié(s).`;
 
-                    Alert.alert('Succès', message, [
-                        { text: 'OK', onPress: () => navigation.goBack() }
-                    ]);
+                        Alert.alert('Succès', message, [
+                            { text: 'OK', onPress: () => navigation.goBack() }
+                        ]);
+                    } else {
+                        Alert.alert(
+                            'Agence créée',
+                            'L\'agence a été créée, mais aucun modèle de bus n\'a pu être créé.',
+                            [{ text: 'OK', onPress: () => navigation.goBack() }]
+                        );
+                    }
                 } else {
+                    // Pas de modèles de bus, juste confirmer la création de l'agence
                     Alert.alert(
-                        'Agence créée',
-                        'L\'agence a été créée, mais aucun modèle de bus n\'a pu être créé.',
+                        'Succès',
+                        'Agence de voyage enregistrée avec succès !',
                         [{ text: 'OK', onPress: () => navigation.goBack() }]
                     );
                 }
-            } else {
-                // Pas de modèles de bus, juste confirmer la création de l'agence
-                Alert.alert(
-                    'Succès',
-                    'Agence de voyage enregistrée avec succès !',
-                    [{ text: 'OK', onPress: () => navigation.goBack() }]
-                );
-            }
             } else {
                 Alert.alert('Erreur', response.error || 'Impossible d\'enregistrer l\'agence');
             }
@@ -636,7 +636,7 @@ const AgenceVoyageFormScreen: React.FC = () => {
                         <Text style={styles.title}>Enregistrer une Agence de Voyage</Text>
                         {/* ✅ NOUVEAU: Afficher le nom du partenaire dans l'en-tête avec bouton de modification */}
                         {user?.role === 'partenaire' && partnerData && (
-                            <TouchableOpacity 
+                            <TouchableOpacity
                                 style={styles.partnerHeader}
                                 onPress={() => {
                                     setPartnerProfileForm({
@@ -709,16 +709,16 @@ const AgenceVoyageFormScreen: React.FC = () => {
                             onSelect={(location: LocationObject) => {
                                 // ✅ CORRECTION: Extraire la valeur à stocker (string ou LocationObject selon besoin)
                                 const quartierValue = location.raw || location.place_name || '';
-                                setFormData({ 
-                                    ...formData, 
+                                setFormData({
+                                    ...formData,
                                     quartier: quartierValue,
                                     // ✅ NOUVEAU: Extraire automatiquement ville et pays si disponibles
                                     ville: location.components?.ville || formData.ville,
                                     pays: location.components?.pays || formData.pays,
                                 });
                             }}
-                            placeholder="Rechercher un quartier (inclut ville et pays)..."
-                            scope="neighborhood"
+                            placeholder="Rechercher un lieu (ville, quartier, adresse...)"
+                            scope="all"
                             enrichWithBackend
                         />
                         <Text style={styles.hintText}>
@@ -1230,8 +1230,8 @@ const AgenceVoyageFormScreen: React.FC = () => {
                                             departure_city: location.raw || location.place_name || '',
                                         });
                                     }}
-                                    placeholder="Rechercher une ville de départ..."
-                                    scope="city"
+                                    placeholder="Lieu de départ (ville, quartier, gare...)"
+                                    scope="all"
                                     enrichWithBackend={true}
                                 />
                             </View>
@@ -1247,8 +1247,8 @@ const AgenceVoyageFormScreen: React.FC = () => {
                                             arrival_city: location.raw || location.place_name || '',
                                         });
                                     }}
-                                    placeholder="Rechercher une ville d'arrivée..."
-                                    scope="city"
+                                    placeholder="Lieu d'arrivée (ville, quartier, gare...)"
+                                    scope="all"
                                     enrichWithBackend={true}
                                 />
                             </View>

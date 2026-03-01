@@ -265,8 +265,8 @@ export const LocationProximityFilter: React.FC<LocationProximityFilterProps> = (
                             label="Ville ou quartier"
                             value={customLocation}
                             onSelect={handleLocationSelect}
-                            placeholder="Ex: Yaoundé, Douala, Bonamoussadi..."
-                            scope="city"
+                            placeholder="Rechercher un lieu (ville, quartier, adresse...)"
+                            scope="all"
                         />
                     </View>
                 </Modal>

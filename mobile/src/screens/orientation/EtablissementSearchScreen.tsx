@@ -1,23 +1,22 @@
 // ✅ Écran de recherche d'établissements (Mobile) - VERSION REFONDUE
-import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
-    FlatList,
     ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
-    View,
+    View
 } from 'react-native';
-import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
+import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { apiGet } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
-import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 
 interface Etablissement {
     id: number;
@@ -234,15 +233,15 @@ const EtablissementSearchScreen: React.FC = () => {
                 {/* Formulaire de recherche */}
                 <View style={styles.searchFormCard}>
                     <Text style={styles.sectionTitle}>📍 Localisation</Text>
-                    
+
                     {/* Ville */}
                     <View style={styles.inputGroup}>
                         <LocationSelector
                             label="Ville"
                             value={ville}
                             onSelect={(location) => setVille(location)}
-                            placeholder="Rechercher une ville..."
-                            scope="city"
+                            placeholder="Rechercher un lieu (ville, quartier, adresse...)"
+                            scope="all"
                             enrichWithBackend={true}
                         />
                     </View>
@@ -253,8 +252,8 @@ const EtablissementSearchScreen: React.FC = () => {
                             label="Région"
                             value={region}
                             onSelect={(location) => setRegion(location)}
-                            placeholder="Rechercher une région..."
-                            scope="city"
+                            placeholder="Rechercher une région ou un lieu..."
+                            scope="all"
                             enrichWithBackend={true}
                         />
                     </View>

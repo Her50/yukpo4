@@ -3164,16 +3164,10 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               });
             }}
             placeholder={field.placeholder}
-            // ✅ EXPLICITE: Déterminer le scope basé sur le label du champ (robuste même si label mal formaté)
-            scope={
-              field.label?.toLowerCase().includes('quartier') || field.label?.toLowerCase().includes('zone') || field.label?.toLowerCase().includes('neighborhood')
-                ? 'neighborhood'
-                : field.label?.toLowerCase().includes('ville') || field.label?.toLowerCase().includes('city')
-                  ? 'city'
-                  : field.label?.toLowerCase().includes('pays') || field.label?.toLowerCase().includes('country')
-                    ? 'all'
-                    : 'all' // Par défaut: recherche universelle pour "lieu" et autres
-            }
+            // ✅ CORRIGÉ 2026-03-01: Toujours utiliser scope="all" pour permettre
+            // les suggestions intelligentes (ville, quartier, lieu précis) en fonction de la saisie.
+            // L'ancien scope restrictif (neighborhood/city) limitait les résultats aux seuls quartiers/villes.
+            scope="all"
             required={field.required}
             enrichWithBackend={true} // ✅ Activer enrichissement GeoNames pour tous les champs location
           />

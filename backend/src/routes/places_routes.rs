@@ -85,7 +85,19 @@ pub async fn autocomplete_places(
     }
 
     // ✅ NOUVEAU 2025-11-04: Place type est optional maintenant, None = recherche universelle
-    let place_type = params.place_type.as_deref();
+    // ✅ CORRIGÉ 2026-03-01: Détection INTELLIGENTE du type de recherche
+    // Si le mobile envoie type=None ou type=all, le backend analyse la query pour déterminer
+    // automatiquement s'il faut chercher une ville, un quartier, ou un lieu précis.
+    let place_type = match params.place_type.as_deref() {
+        // Si un type spécifique est demandé (hospital, pharmacy, etc.), le respecter
+        Some("hospital") | Some("pharmacy") | Some("health") => params.place_type.as_deref(),
+        // Pour city, neighborhood, point, establishment → on laisse passer aussi
+        Some("city") | Some("neighborhood") | Some("point") | Some("establishment") => {
+            params.place_type.as_deref()
+        }
+        // Pour "all" ou None → recherche universelle (pas de filtre type Google)
+        _ => None,
+    };
 
     // ✅ CORRIGÉ 2026-02-25: Clé Google Maps depuis env var ou fallback
     let google_api_key = std::env::var("GOOGLE_MAPS_API_KEY").unwrap_or_else(|_| {

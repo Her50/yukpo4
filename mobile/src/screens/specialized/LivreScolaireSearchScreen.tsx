@@ -1,6 +1,6 @@
 // ✅ Écran de recherche de livres scolaires (Mobile) - VERSION REFONDUE
-import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState } from 'react';
 import {
     Alert,
@@ -10,14 +10,14 @@ import {
     View
 } from 'react-native';
 import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
+import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 import ModernGPSModal from '../../components/ModernGPSModal';
-import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeInput } from '../../components/SafeNativeDesign';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useLocation } from '../../contexts/LocationContext';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
-import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 
 interface SearchFilters {
     classe_actuelle?: string;
@@ -370,7 +370,7 @@ const LivreScolaireSearchScreen: React.FC = () => {
 
                     {/* Localisation */}
                     <Text style={styles.sectionTitle}>📍 Localisation</Text>
-                    
+
                     {/* Ville */}
                     <View style={styles.inputGroup}>
                         <LocationSelector
@@ -379,8 +379,8 @@ const LivreScolaireSearchScreen: React.FC = () => {
                             onSelect={(location: LocationObject) => {
                                 setVille(location);
                             }}
-                            placeholder="Rechercher une ville..."
-                            scope="city"
+                            placeholder="Rechercher un lieu (ville, quartier, adresse...)"
+                            scope="all"
                             enrichWithBackend={true}
                         />
                     </View>
@@ -393,8 +393,8 @@ const LivreScolaireSearchScreen: React.FC = () => {
                             onSelect={(location: LocationObject) => {
                                 setQuartier(location);
                             }}
-                            placeholder="Rechercher un quartier..."
-                            scope="neighborhood"
+                            placeholder="Rechercher un lieu précis (quartier, rue, adresse...)"
+                            scope="all"
                             cityContext={typeof ville === 'string' ? ville : (ville as LocationObject)?.components?.ville || (ville as LocationObject)?.place_name || ''}
                             enrichWithBackend={true}
                         />

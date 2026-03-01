@@ -1,23 +1,22 @@
 // ✅ Écran de recherche Automobile - Véhicules (Mobile) - VERSION REFONDUE
-import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState } from 'react';
 import {
-    Alert,
     ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
     View
 } from 'react-native';
+import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 import ModernGPSModal from '../../components/ModernGPSModal';
-import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useLocation } from '../../contexts/LocationContext';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
-import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 
 interface SearchFilters {
     type_vehicule?: string;
@@ -193,7 +192,7 @@ const AutoServicesSearchScreen: React.FC = () => {
                 {/* Formulaire de recherche */}
                 <View style={styles.searchFormCard}>
                     <Text style={styles.sectionTitle}>🚗 Type de véhicule</Text>
-                    
+
                     {/* Type véhicule */}
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>
@@ -278,7 +277,7 @@ const AutoServicesSearchScreen: React.FC = () => {
 
                     {/* Localisation */}
                     <Text style={styles.sectionTitle}>📍 Localisation</Text>
-                    
+
                     {/* Ville */}
                     <View style={styles.inputGroup}>
                         <LocationSelector
@@ -287,8 +286,8 @@ const AutoServicesSearchScreen: React.FC = () => {
                             onSelect={(location: LocationObject) => {
                                 setVille(location);
                             }}
-                            placeholder="Rechercher une ville..."
-                            scope="city"
+                            placeholder="Rechercher un lieu (ville, quartier, adresse...)"
+                            scope="all"
                             enrichWithBackend={true}
                         />
                     </View>
@@ -301,8 +300,8 @@ const AutoServicesSearchScreen: React.FC = () => {
                             onSelect={(location: LocationObject) => {
                                 setQuartier(location);
                             }}
-                            placeholder="Rechercher un quartier..."
-                            scope="neighborhood"
+                            placeholder="Rechercher un lieu précis (quartier, rue, adresse...)"
+                            scope="all"
                             cityContext={typeof ville === 'string' ? ville : (ville as LocationObject)?.components?.ville || (ville as LocationObject)?.place_name || ''}
                             enrichWithBackend={true}
                         />
@@ -363,7 +362,7 @@ const AutoServicesSearchScreen: React.FC = () => {
 
                     {/* Prix */}
                     <Text style={styles.sectionTitle}>💰 Prix</Text>
-                    
+
                     <View style={styles.priceRow}>
                         <View style={styles.priceInputContainer}>
                             <Text style={styles.label}>Prix minimum (FCFA)</Text>
@@ -387,7 +386,7 @@ const AutoServicesSearchScreen: React.FC = () => {
 
                     {/* Année */}
                     <Text style={styles.sectionTitle}>📅 Année</Text>
-                    
+
                     <View style={styles.priceRow}>
                         <View style={styles.priceInputContainer}>
                             <Text style={styles.label}>Année minimum</Text>

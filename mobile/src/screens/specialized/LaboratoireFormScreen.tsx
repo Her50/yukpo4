@@ -13,13 +13,13 @@ import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 import ModernGPSModal from '../../components/ModernGPSModal';
 // ✅ SUPPRIMÉ: PartnerSelector - Les données partenaire sont chargées automatiquement depuis /api/partners/me
-import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import SimplePrestationSelector from '../../components/SimplePrestationSelector';
 // ✅ SUPPRIMÉ : WeekScheduleSelector (planning hebdomadaire supprimé)
 import { useAuth } from '../../contexts/AuthContext';
 import { useLocation } from '../../contexts/LocationContext';
-import { apiDelete, apiGet, apiPatch, apiPost, servicesApi } from '../../services/api';
+import { apiGet, apiPost, servicesApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 
 // ✅ NOUVEAU: Interface pour les types d'examens
@@ -306,7 +306,7 @@ const LaboratoireFormScreen: React.FC = () => {
 
         // Ajouter à la liste locale (pour l'instant, pas d'endpoint backend dédié)
         if (editingExamination) {
-            setExaminationTypes(prev => prev.map(e => 
+            setExaminationTypes(prev => prev.map(e =>
                 e.nom === editingExamination.nom ? examinationFormData : e
             ));
         } else {
@@ -534,16 +534,16 @@ const LaboratoireFormScreen: React.FC = () => {
                             onSelect={(location: LocationObject) => {
                                 // ✅ CORRECTION: Extraire la valeur à stocker (string ou LocationObject selon besoin)
                                 const quartierValue = location.raw || location.place_name || '';
-                                setFormData({ 
-                                    ...formData, 
+                                setFormData({
+                                    ...formData,
                                     quartier: quartierValue,
                                     // ✅ NOUVEAU: Extraire automatiquement ville et pays si disponibles
                                     ville: location.components?.ville || formData.ville,
                                     pays: location.components?.pays || formData.pays,
                                 });
                             }}
-                            placeholder="Rechercher un quartier (inclut ville et pays)..."
-                            scope="neighborhood"
+                            placeholder="Rechercher un lieu (ville, quartier, adresse...)"
+                            scope="all"
                             enrichWithBackend
                         />
                         <Text style={styles.hintText}>
@@ -876,9 +876,9 @@ const LaboratoireFormScreen: React.FC = () => {
                                     <Text style={styles.label}>Prix (FCFA)</Text>
                                     <NativeInput
                                         value={examinationFormData.prix?.toString() || ''}
-                                        onChangeText={(text) => setExaminationFormData({ 
-                                            ...examinationFormData, 
-                                            prix: text ? parseFloat(text) : undefined 
+                                        onChangeText={(text) => setExaminationFormData({
+                                            ...examinationFormData,
+                                            prix: text ? parseFloat(text) : undefined
                                         })}
                                         placeholder="0"
                                         keyboardType="numeric"

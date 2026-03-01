@@ -442,8 +442,8 @@ const CovoiturageFormScreen: React.FC = () => {
                                     onSelect={(location: LocationObject) => {
                                         setFormData({ ...formData, depart: location });
                                     }}
-                                    placeholder="Ville de départ"
-                                    scope="city"
+                                    placeholder="Lieu de départ (ville, quartier, adresse...)"
+                                    scope="all"
                                     enrichWithBackend
                                     required
                                 />
@@ -474,8 +474,8 @@ const CovoiturageFormScreen: React.FC = () => {
                                     onSelect={(location: LocationObject) => {
                                         setFormData({ ...formData, destination: location });
                                     }}
-                                    placeholder="Ville d'arrivée"
-                                    scope="city"
+                                    placeholder="Lieu d'arrivée (ville, quartier, adresse...)"
+                                    scope="all"
                                     enrichWithBackend
                                     required
                                 />

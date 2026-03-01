@@ -6,7 +6,6 @@ import React, { useEffect, useState } from 'react';
 import {
     Alert,
     StyleSheet,
-    Switch,
     Text,
     TouchableOpacity,
     View
@@ -14,17 +13,17 @@ import {
 import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 import ModernGPSModal from '../../components/ModernGPSModal';
-import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
+import MediaUploader, { MediaItem } from '../../components/specialized/MediaUploader';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLocation } from '../../contexts/LocationContext';
+import { getCurrencyFromGPS, useCurrencyDetection } from '../../hooks/useCurrencyDetection';
 import { apiGet, apiPost, servicesApi } from '../../services/api';
 import { googlePlacesMediaService } from '../../services/googlePlacesMediaService';
 import { uploadFiles } from '../../services/uploadApi';
 import { modernColors } from '../../theme/modernTheme';
 import { getCurrencyIntelligently } from '../../utils/currencyUtils';
-import { useCurrencyDetection, getCurrencyFromGPS } from '../../hooks/useCurrencyDetection';
-import MediaUploader, { MediaItem } from '../../components/specialized/MediaUploader';
 
 const ImmobilierFormScreen: React.FC = () => {
     const navigation = useNavigation();
@@ -55,11 +54,11 @@ const ImmobilierFormScreen: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [showGPSModal, setShowGPSModal] = useState(false);
     const [selectedGPS, setSelectedGPS] = useState<string | null>(null);
-    
+
     // ✅ NOUVEAU: Détection automatique de devise depuis GPS/localisation
     const defaultCurrency = useCurrencyDetection(formData.ville || formData.quartier);
     const [devise, setDevise] = useState(defaultCurrency);
-    
+
     // ✅ NOUVEAU: Gestion des médias (images et vidéos)
     const [media, setMedia] = useState<MediaItem[]>([]);
     const [importingGoogleMedia, setImportingGoogleMedia] = useState(false);
@@ -374,10 +373,10 @@ const ImmobilierFormScreen: React.FC = () => {
                                         ]}
                                     >
                                         {type === 'maison' ? 'Maison' :
-                                         type === 'appartement' ? 'Appartement' :
-                                         type === 'terrain' ? 'Terrain' :
-                                         type === 'bureau' ? 'Bureau' :
-                                         'Local commercial'}
+                                            type === 'appartement' ? 'Appartement' :
+                                                type === 'terrain' ? 'Terrain' :
+                                                    type === 'bureau' ? 'Bureau' :
+                                                        'Local commercial'}
                                     </Text>
                                 </TouchableOpacity>
                             ))}
@@ -403,8 +402,8 @@ const ImmobilierFormScreen: React.FC = () => {
                                         ]}
                                     >
                                         {statut === 'vente' ? 'Vente' :
-                                         statut === 'location' ? 'Location' :
-                                         'Les deux'}
+                                            statut === 'location' ? 'Location' :
+                                                'Les deux'}
                                     </Text>
                                 </TouchableOpacity>
                             ))}
@@ -419,8 +418,8 @@ const ImmobilierFormScreen: React.FC = () => {
                             onSelect={(location: LocationObject) => {
                                 setFormData({ ...formData, ville: location });
                             }}
-                            placeholder="Rechercher une ville..."
-                            scope="city"
+                            placeholder="Rechercher un lieu (ville, quartier, adresse...)"
+                            scope="all"
                             enrichWithBackend={true}
                         />
                     </View>
@@ -433,8 +432,8 @@ const ImmobilierFormScreen: React.FC = () => {
                             onSelect={(location: LocationObject) => {
                                 setFormData({ ...formData, quartier: location });
                             }}
-                            placeholder="Rechercher un quartier..."
-                            scope="neighborhood"
+                            placeholder="Rechercher un lieu précis (quartier, rue, adresse...)"
+                            scope="all"
                             cityContext={formData.ville?.raw || formData.ville?.place_name || ''}
                             enrichWithBackend={true}
                         />

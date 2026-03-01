@@ -1,6 +1,6 @@
 // ✅ Écran de recherche de biens immobiliers (Mobile) - VERSION REFONDUE
-import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState } from 'react';
 import {
     Alert,
@@ -10,15 +10,14 @@ import {
     View,
 } from 'react-native';
 import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
+import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 import ModernGPSModal from '../../components/ModernGPSModal';
 import RealEstateAIFeatures from '../../components/RealEstateAIFeatures';
-import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeInput } from '../../components/SafeNativeDesign';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useLocation } from '../../contexts/LocationContext';
-import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
-import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 
 interface ImmobilierSearchFilters {
     ville?: string;
@@ -116,7 +115,7 @@ const ImmobilierSearchScreen: React.FC = () => {
         }
         const villeStr = typeof ville === 'string' ? ville : (ville as LocationObject)?.components?.ville || (ville as LocationObject)?.place_name || '';
         const quartierStr = typeof quartier === 'string' ? quartier : (quartier as LocationObject)?.components?.quartier || (quartier as LocationObject)?.place_name || '';
-        
+
         if (searchMode === 'point' && !villeStr.trim() && !quartierStr.trim() && !gpsData) {
             Alert.alert('Erreur', 'Veuillez renseigner une ville/quartier ou sélectionner un point GPS');
             return;
@@ -335,8 +334,8 @@ const ImmobilierSearchScreen: React.FC = () => {
                                 onSelect={(location: LocationObject) => {
                                     setVille(location);
                                 }}
-                                placeholder="Rechercher une ville..."
-                                scope="city"
+                                placeholder="Rechercher un lieu (ville, quartier, adresse...)"
+                                scope="all"
                                 enrichWithBackend={true}
                             />
                             <View style={{ marginTop: 12 }}>
@@ -346,8 +345,8 @@ const ImmobilierSearchScreen: React.FC = () => {
                                     onSelect={(location: LocationObject) => {
                                         setQuartier(location);
                                     }}
-                                    placeholder="Rechercher un quartier..."
-                                    scope="neighborhood"
+                                    placeholder="Rechercher un lieu précis (quartier, rue, adresse...)"
+                                    scope="all"
                                     cityContext={typeof ville === 'string' ? ville : (ville as LocationObject)?.components?.ville || (ville as LocationObject)?.place_name || ''}
                                     enrichWithBackend={true}
                                 />

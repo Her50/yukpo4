@@ -625,8 +625,8 @@ const LivreScolaireFormScreen: React.FC = () => {
                                     ville: location.components?.ville || formData.ville,
                                 });
                             }}
-                            placeholder="Rechercher un quartier..."
-                            scope="neighborhood"
+                            placeholder="Rechercher un lieu (ville, quartier, adresse...)"
+                            scope="all"
                         />
                     </View>
 

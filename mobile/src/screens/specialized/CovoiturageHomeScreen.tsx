@@ -438,8 +438,8 @@ const CovoiturageHomeScreen: React.FC = () => {
                                             }, 150);
                                         }
                                     }}
-                                    placeholder="Ville de départ..."
-                                    scope="city"
+                                    placeholder="Lieu de départ (ville, quartier, adresse...)"
+                                    scope="all"
                                     enrichWithBackend={true}
                                 />
                             </View>
@@ -471,8 +471,8 @@ const CovoiturageHomeScreen: React.FC = () => {
                                             }, 150);
                                         }
                                     }}
-                                    placeholder="Ville de destination..."
-                                    scope="city"
+                                    placeholder="Lieu de destination (ville, quartier, adresse...)"
+                                    scope="all"
                                     enrichWithBackend={true}
                                 />
                             </View>
