@@ -11,10 +11,10 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
-import { apiGet } from '../../services/api';
+import { offreEmploiService } from '../../services/offreEmploiService';
 import { modernColors } from '../../theme/modernTheme';
 
 interface DashboardStats {
@@ -46,7 +46,7 @@ const OffresEmploiHubScreen: React.FC = () => {
             }
 
             if (user) {
-                const response = await apiGet('/api/offres-emploi/dashboard/candidat');
+                const response = await offreEmploiService.getDashboardCandidat();
                 if (response.success) {
                     setStats(response.data);
                 }

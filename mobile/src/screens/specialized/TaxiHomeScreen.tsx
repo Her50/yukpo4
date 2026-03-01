@@ -105,6 +105,11 @@ const TaxiHomeScreen: React.FC = () => {
     const [hasSearched, setHasSearched] = useState(false); // ✅ NOUVEAU: Indique si une recherche a été effectuée
     const [initializingDepart, setInitializingDepart] = useState(true); // ✅ NOUVEAU: Indique si on initialise le départ avec GPS
 
+    // ✅ IA: Recommandations personnalisées et prédiction de demande
+    const [recommendations, setRecommendations] = useState<Taxi[]>([]);
+    const [loadingRecommendations, setLoadingRecommendations] = useState(false);
+    const [demandPrediction, setDemandPrediction] = useState<{ level: string; predicted_demand: number; confidence: number } | null>(null);
+
     // ✅ NOUVEAU: Détection automatique de devise depuis GPS/localisation
     const detectedCurrency = useCurrencyDetection(
         typeof depart === 'object' ? depart :
@@ -217,6 +222,55 @@ const TaxiHomeScreen: React.FC = () => {
             setLoading(false);
         }
     }, [location, availableOnly]);
+
+    // ✅ IA: Charger recommandations personnalisées et prédiction de demande
+    const loadIARecommendations = useCallback(async () => {
+        if (!user?.id || !location?.coords) return;
+        try {
+            setLoadingRecommendations(true);
+            const userId = typeof user.id === 'string' ? parseInt(user.id, 10) : (user.id as number);
+            const [recoResponse, demandResponse] = await Promise.allSettled([
+                taxiService.getPersonalizedRecommendations(
+                    userId,
+                    location.coords.latitude,
+                    location.coords.longitude
+                ),
+                taxiService.predictDemand(
+                    'default',
+                    new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening'
+                ),
+            ]);
+
+            if (recoResponse.status === 'fulfilled' && recoResponse.value?.success) {
+                const recoVal = recoResponse.value as any;
+                const recoData = recoVal.data?.recommendations || recoVal.recommendations || [];
+                setRecommendations(Array.isArray(recoData) ? recoData.slice(0, 5) : []);
+            }
+
+            if (demandResponse.status === 'fulfilled' && demandResponse.value?.success) {
+                const demandVal = demandResponse.value as any;
+                const pred = demandVal.data?.prediction || demandVal.prediction || demandVal.data;
+                if (pred) {
+                    setDemandPrediction({
+                        level: pred.demand_level || pred.level || 'normal',
+                        predicted_demand: pred.predicted_demand || pred.demand || 0,
+                        confidence: pred.confidence || 0,
+                    });
+                }
+            }
+        } catch (err) {
+            console.warn('[TaxiHomeScreen] IA recommandations non disponibles:', err);
+        } finally {
+            setLoadingRecommendations(false);
+        }
+    }, [user, location]);
+
+    // ✅ IA: Charger recommandations au montage
+    useEffect(() => {
+        if (user?.id && location?.coords && !hasSearched) {
+            loadIARecommendations();
+        }
+    }, [user?.id, location?.coords]);
 
     // ✅ MODIFIÉ: Vérifier si le bouton de recherche doit être activé (départ peut être GPS, destination obligatoire)
     const canSearch = () => {
@@ -645,13 +699,98 @@ const TaxiHomeScreen: React.FC = () => {
             {viewMode === 'search' ? (
                 // Mode recherche : Liste des taxis
                 !hasSearched && !loading ? (
-                    <View style={styles.centerContainer}>
-                        <SafeIcon name="map-pin" size={64} color="#9CA3AF" />
-                        <Text style={styles.emptyText}>Sélectionnez votre trajet</Text>
-                        <Text style={styles.emptySubtext} numberOfLines={3}>
-                            Choisissez un point de départ et une destination précise, puis cliquez sur "Rechercher"
-                        </Text>
-                    </View>
+                    <FlatList
+                        data={recommendations}
+                        keyExtractor={(item) => `reco-${item.id}`}
+                        contentContainerStyle={styles.listContent}
+                        ListHeaderComponent={
+                            <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
+                                <View style={{ alignItems: 'center', marginBottom: 16 }}>
+                                    <SafeIcon name="map-pin" size={48} color="#9CA3AF" />
+                                    <Text style={styles.emptyText}>Sélectionnez votre trajet</Text>
+                                    <Text style={[styles.emptySubtext, { marginBottom: 8 }]} numberOfLines={3}>
+                                        Choisissez un point de départ et une destination précise, puis cliquez sur "Rechercher"
+                                    </Text>
+                                </View>
+
+                                {/* ✅ IA: Prédiction de demande en temps réel */}
+                                {demandPrediction && (
+                                    <View style={styles.iaDemandCard}>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+                                            <SafeIcon name="trending-up" size={16} color="#06B6D4" type="lucide" />
+                                            <Text style={styles.iaDemandTitle}>Demande en temps réel</Text>
+                                        </View>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                                            <View style={[
+                                                styles.iaDemandBadge,
+                                                demandPrediction.level === 'high' ? { backgroundColor: '#FEE2E2' } :
+                                                    demandPrediction.level === 'low' ? { backgroundColor: '#D1FAE5' } :
+                                                        { backgroundColor: '#FEF3C7' }
+                                            ]}>
+                                                <Text style={[
+                                                    styles.iaDemandBadgeText,
+                                                    demandPrediction.level === 'high' ? { color: '#DC2626' } :
+                                                        demandPrediction.level === 'low' ? { color: '#059669' } :
+                                                            { color: '#D97706' }
+                                                ]}>
+                                                    {demandPrediction.level === 'high' ? 'Forte demande' :
+                                                        demandPrediction.level === 'low' ? 'Faible demande' : 'Demande normale'}
+                                                </Text>
+                                            </View>
+                                            {demandPrediction.confidence > 0 && (
+                                                <Text style={styles.iaConfidenceText}>
+                                                    Confiance: {Math.round(demandPrediction.confidence * 100)}%
+                                                </Text>
+                                            )}
+                                        </View>
+                                        {demandPrediction.level === 'high' && (
+                                            <Text style={styles.iaDemandHint}>
+                                                Les tarifs peuvent être majorés en période de forte demande
+                                            </Text>
+                                        )}
+                                    </View>
+                                )}
+
+                                {/* ✅ IA: Titre recommandations */}
+                                {(loadingRecommendations || recommendations.length > 0) && (
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12, marginBottom: 8 }}>
+                                        <SafeIcon name="sparkles" size={16} color="#06B6D4" type="lucide" />
+                                        <Text style={styles.iaRecoTitle}>Recommandés pour vous</Text>
+                                        {loadingRecommendations && (
+                                            <ActivityIndicator size="small" color="#06B6D4" style={{ marginLeft: 8 }} />
+                                        )}
+                                    </View>
+                                )}
+                            </View>
+                        }
+                        renderItem={({ item }) => (
+                            <TaxiCard
+                                taxi={item}
+                                onPress={() => navigation.navigate('TaxiDetails' as never, { taxiId: item.id } as never)}
+                                onCall={() => {
+                                    hapticPress();
+                                    if (item.telephone) Linking.openURL(`tel:${item.telephone}`);
+                                }}
+                                onBook={() => {
+                                    hapticPress();
+                                    navigation.navigate('TaxiBooking' as never, {
+                                        taxiId: item.id,
+                                        depart: typeof depart === 'object' ? (depart as LocationObject)?.place_name : depart,
+                                        destination: '',
+                                    } as never);
+                                }}
+                                formatPrice={formatPrice}
+                                formatDistance={formatDistance}
+                            />
+                        )}
+                        ListEmptyComponent={
+                            !loadingRecommendations ? null : (
+                                <View style={{ padding: 20, alignItems: 'center' }}>
+                                    <ActivityIndicator size="small" color="#06B6D4" />
+                                </View>
+                            )
+                        }
+                    />
                 ) : loading && taxis.length === 0 ? (
                     <View style={styles.centerContainer}>
                         <ActivityIndicator size="large" color={modernColors.primary} />
@@ -1573,6 +1712,46 @@ const styles = StyleSheet.create({
     submitButton: {
         marginTop: 8,
         marginBottom: 32,
+    },
+    // ✅ IA: Styles pour prédiction de demande et recommandations
+    iaDemandCard: {
+        backgroundColor: '#F0FDFA',
+        borderRadius: 12,
+        padding: 12,
+        borderWidth: 1,
+        borderColor: '#99F6E4',
+        marginBottom: 8,
+    },
+    iaDemandTitle: {
+        fontSize: 14,
+        fontWeight: '600' as const,
+        color: '#0F766E',
+        marginLeft: 6,
+    },
+    iaDemandBadge: {
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 12,
+    },
+    iaDemandBadgeText: {
+        fontSize: 13,
+        fontWeight: '600' as const,
+    },
+    iaConfidenceText: {
+        fontSize: 12,
+        color: '#6B7280',
+    },
+    iaDemandHint: {
+        fontSize: 12,
+        color: '#DC2626',
+        marginTop: 6,
+        fontStyle: 'italic' as const,
+    },
+    iaRecoTitle: {
+        fontSize: 15,
+        fontWeight: '600' as const,
+        color: '#0F766E',
+        marginLeft: 6,
     },
 });
 

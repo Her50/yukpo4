@@ -114,6 +114,48 @@ export const labService = {
         return response;
     },
 
+    // ✅ Autocomplete types d'examens
+    autocompleteExaminationTypes: async (query: string) => {
+        const response = await apiGet<{ suggestions: string[] }>(
+            '/api/laboratoires/examinations/autocomplete',
+            { params: { q: query } }
+        );
+        return response;
+    },
+
+    // ✅ Analyser image de résultats (IA)
+    analyzeExaminationImage: async (imageUrl: string, examinationType?: string) => {
+        const response = await apiPost<{ success: boolean; analysis: LabAnalysisResult }>(
+            '/api/laboratoires/examinations/analyze-image',
+            {
+                image_url: imageUrl,
+                examination_type: examinationType,
+            }
+        );
+        return response;
+    },
+
+    // ✅ Recherche pathologie IA
+    searchPathology: async (symptoms: string[], patientAge?: number, patientSex?: string) => {
+        const response = await apiPost<{
+            success: boolean;
+            data: {
+                suggested_examinations: string[];
+                possible_pathologies: string[];
+                urgency_level: string;
+                recommendations: string;
+            };
+        }>(
+            '/api/laboratoires/ai/search-pathology',
+            {
+                symptoms,
+                patient_age: patientAge,
+                patient_sex: patientSex,
+            }
+        );
+        return response;
+    },
+
     // ✅ Analytics prestataire
     getAnalytics: async (laboratoryId: number) => {
         const response = await apiGet<{ analytics: LabAnalytics }>(

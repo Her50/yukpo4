@@ -1,5 +1,5 @@
 // ✅ Service API pour Offres d'Emploi avec toutes les fonctionnalités backend
-import { apiGet, apiPost, apiPatch } from './api';
+import { apiGet, apiPatch, apiPost } from './api';
 
 // Types pour les offres d'emploi
 export interface OffreEmploi {
@@ -270,6 +270,127 @@ export const offreEmploiService = {
     getDashboardEmployeur: async () => {
         const response = await apiGet<{ success: boolean; data: any }>(
             '/api/offres-emploi/dashboard/employeur'
+        );
+        return response;
+    },
+
+    // ============================================================================
+    // FONCTIONNALITÉS BACKEND MANQUANTES CÔTÉ MOBILE
+    // ============================================================================
+
+    // ✅ Tendances du marché (publique)
+    getTendancesMarche: async (secteur?: string, ville?: string) => {
+        const params: any = {};
+        if (secteur) params.secteur = secteur;
+        if (ville) params.ville = ville;
+        const response = await apiGet<{ success: boolean; data: any }>(
+            '/api/offres-emploi/tendances',
+            { params }
+        );
+        return response;
+    },
+
+    // ✅ Alertes emploi
+    createAlerte: async (alerteData: {
+        titre_poste?: string;
+        secteur?: string;
+        type_contrat?: string;
+        lieu_travail?: string;
+        salaire_min?: number;
+        remote?: boolean;
+    }) => {
+        const response = await apiPost<{ success: boolean; data: any }>(
+            '/api/offres-emploi/alertes',
+            alerteData
+        );
+        return response;
+    },
+
+    getMesAlertes: async () => {
+        const response = await apiGet<{ success: boolean; data: any[] }>(
+            '/api/offres-emploi/alertes'
+        );
+        return response;
+    },
+
+    // ✅ Profil candidat (create/update + get)
+    createOrUpdateProfil: async (profilData: {
+        nom?: string;
+        prenom?: string;
+        date_naissance?: string;
+        telephone?: string;
+        email?: string;
+        adresse?: string;
+        ville?: string;
+        gps?: string;
+        niveau_etude?: string;
+        experience_annees?: number;
+        competences?: string[];
+        langues?: any[];
+        permis?: string[];
+        cv_url?: string;
+        lettre_motivation_url?: string;
+        disponibilite?: string;
+        salaire_souhaite_min?: number;
+        salaire_souhaite_max?: number;
+        secteur_recherche?: string;
+        type_contrat_souhaite?: string[];
+        remote_souhaite?: boolean;
+        [key: string]: any;
+    }) => {
+        const response = await apiPost<{ success: boolean; data: any }>(
+            '/api/offres-emploi/profil',
+            profilData
+        );
+        return response;
+    },
+
+    getProfil: async () => {
+        const response = await apiGet<{ success: boolean; data: any }>(
+            '/api/offres-emploi/profil'
+        );
+        return response;
+    },
+
+    // ✅ Fermer une offre (employeur)
+    closeOffre: async (offreId: number) => {
+        const response = await apiPatch<{ success: boolean; message: string }>(
+            `/api/offres-emploi/${offreId}/close`,
+            {}
+        );
+        return response;
+    },
+
+    // ✅ Statistiques d'une offre (employeur)
+    getOffreStats: async (offreId: number) => {
+        const response = await apiGet<{ success: boolean; data: any }>(
+            `/api/offres-emploi/${offreId}/stats`
+        );
+        return response;
+    },
+
+    // ✅ Candidatures pour une offre spécifique (employeur)
+    listCandidaturesOffre: async (offreId: number) => {
+        const response = await apiGet<{ success: boolean; data: any[] }>(
+            `/api/offres-emploi/${offreId}/candidatures`
+        );
+        return response;
+    },
+
+    // ✅ Mise à jour statut candidature (employeur)
+    updateStatutCandidature: async (candidatureId: number, statut: string) => {
+        const response = await apiPatch<{ success: boolean; message: string }>(
+            `/api/offres-emploi/candidatures/${candidatureId}/statut`,
+            { statut }
+        );
+        return response;
+    },
+
+    // ✅ Matching candidats pour une offre (employeur)
+    findMatchingCandidats: async (offreId: number, minScore?: number, limit?: number) => {
+        const response = await apiGet<{ success: boolean; data: any[] }>(
+            `/api/offres-emploi/${offreId}/matching/candidats`,
+            { params: { min_score: minScore, limit } }
         );
         return response;
     },

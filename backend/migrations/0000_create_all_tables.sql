@@ -2897,6 +2897,13 @@ CREATE TABLE IF NOT EXISTS product_delivery_config (
     -- Plages horaires de récupération (obligatoire)
     pickup_availability_schedule JSONB NOT NULL,
     
+    -- Temps de préparation et disponibilité
+    -- Migration: 20250120_001_add_order_preparation_system.sql
+    preparation_time_minutes INTEGER,
+    max_preparation_time_minutes INTEGER DEFAULT 60,
+    availability_days INTEGER[] DEFAULT ARRAY[0,1,2,3,4,5,6],
+    is_immediately_available BOOLEAN DEFAULT FALSE,
+    
     -- Informations additionnelles
     pickup_instructions TEXT,
     billing_mode VARCHAR(50) DEFAULT 'standard',

@@ -13,11 +13,12 @@ import {
     View,
 } from 'react-native';
 import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
-import { NativeButton, NativeCard, NativeInput } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeButton, NativeCard, NativeInput } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { apiPost } from '../../services/api';
+import { offreEmploiService } from '../../services/offreEmploiService';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
 
@@ -51,7 +52,7 @@ const CreateOffreScreen: React.FC = () => {
 
     const [competenceInput, setCompetenceInput] = useState('');
     const [tagInput, setTagInput] = useState('');
-    
+
     // ✅ NOUVEAU: États pour l'IA
     const [showAIModal, setShowAIModal] = useState(false);
     const [aiPrompt, setAiPrompt] = useState('');
@@ -139,7 +140,7 @@ const CreateOffreScreen: React.FC = () => {
 
             if (response.success && response.data) {
                 const data = response.data.data || response.data;
-                
+
                 // Remplir le formulaire avec les données extraites par l'IA
                 setFormData({
                     ...formData,
@@ -157,17 +158,17 @@ const CreateOffreScreen: React.FC = () => {
                     salaire_negociable: data.salaire_negociable?.valeur ?? data.salaire_negociable ?? formData.salaire_negociable,
                     niveau_etude: data.niveau_etude?.valeur || data.niveau_etude || formData.niveau_etude,
                     experience_min: data.experience_min?.valeur?.toString() || data.experience_min?.toString() || formData.experience_min,
-                    competences_requises: Array.isArray(data.competences_requises?.valeur) 
-                        ? data.competences_requises.valeur 
-                        : Array.isArray(data.competences_requises) 
-                            ? data.competences_requises 
+                    competences_requises: Array.isArray(data.competences_requises?.valeur)
+                        ? data.competences_requises.valeur
+                        : Array.isArray(data.competences_requises)
+                            ? data.competences_requises
                             : formData.competences_requises,
                     secteur: data.secteur?.valeur || data.secteur || formData.secteur,
                     domaine: data.domaine?.valeur || data.domaine || formData.domaine,
-                    tags: Array.isArray(data.tags?.valeur) 
-                        ? data.tags.valeur 
-                        : Array.isArray(data.tags) 
-                            ? data.tags 
+                    tags: Array.isArray(data.tags?.valeur)
+                        ? data.tags.valeur
+                        : Array.isArray(data.tags)
+                            ? data.tags
                             : formData.tags,
                     date_limite_candidature: data.date_limite_candidature?.valeur || data.date_limite_candidature || formData.date_limite_candidature,
                     date_debut_poste: data.date_debut_poste?.valeur || data.date_debut_poste || formData.date_debut_poste,
@@ -219,7 +220,7 @@ const CreateOffreScreen: React.FC = () => {
             if (formData.date_limite_candidature) payload.date_limite_candidature = formData.date_limite_candidature;
             if (formData.date_debut_poste) payload.date_debut_poste = formData.date_debut_poste;
 
-            const response = await apiPost('/api/offres-emploi', payload);
+            const response = await offreEmploiService.createOffre(payload);
 
             if (response.success) {
                 const offreId = response.data?.id || response.data?.offre_id;
@@ -489,7 +490,7 @@ const CreateOffreScreen: React.FC = () => {
                 <Text style={styles.quickAccessSubtitle}>
                     Une fois l'offre publiée, vous pourrez :
                 </Text>
-                
+
                 <View style={styles.quickAccessButtons}>
                     <TouchableOpacity
                         style={styles.quickAccessButton}

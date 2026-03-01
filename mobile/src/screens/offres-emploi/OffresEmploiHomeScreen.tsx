@@ -291,6 +291,16 @@ const OffresEmploiHomeScreen: React.FC = () => {
                             <SafeIcon name="graduation-cap" size={16} color="#FFFFFF" type="lucide" />
                             <Text style={styles.quickActionText}>Formations</Text>
                         </TouchableOpacity>
+                        <TouchableOpacity
+                            style={styles.quickActionButton}
+                            onPress={() => {
+                                hapticPress();
+                                (navigation as any).navigate('AlertesEmploi');
+                            }}
+                        >
+                            <SafeIcon name="bell" size={16} color="#FFFFFF" type="lucide" />
+                            <Text style={styles.quickActionText}>Alertes</Text>
+                        </TouchableOpacity>
                     </View>
 
                     {/* ✅ NOUVEAU: Suggestions d'offres basées sur le profil */}
@@ -299,11 +309,11 @@ const OffresEmploiHomeScreen: React.FC = () => {
                         onPress={async () => {
                             hapticPress();
                             try {
-                                const { apiGet } = require('../../services/api');
-                                const response = await apiGet('/api/offres-emploi/matching/offres?min_score=60&limit=10');
-                                if (response.success && response.data && response.data.length > 0) {
+                                const response = await offreEmploiService.getMatchingOffres(60, 10) as any;
+                                const matchData = response?.data?.data || response?.data || [];
+                                if (response.success && matchData.length > 0) {
                                     (navigation as any).navigate('OffreList', {
-                                        offres: response.data,
+                                        offres: matchData,
                                         title: 'Offres recommandées pour vous',
                                     });
                                 } else {

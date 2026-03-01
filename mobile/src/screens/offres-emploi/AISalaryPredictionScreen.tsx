@@ -12,9 +12,9 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
-import { apiGet } from '../../services/api';
+import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
+import { offreEmploiService } from '../../services/offreEmploiService';
 import { modernColors } from '../../theme/modernTheme';
 
 const AISalaryPredictionScreen: React.FC = () => {
@@ -41,20 +41,19 @@ const AISalaryPredictionScreen: React.FC = () => {
 
         try {
             setLoading(true);
-            const params: any = {
-                titre_poste: titrePoste,
-                secteur: secteur || undefined,
-                ville: ville || undefined,
-                experience_annees: experienceAnnees ? parseInt(experienceAnnees, 10) : undefined,
-                niveau_etude: niveauEtude || undefined,
-                competences: competences ? competences.split(',').map(c => c.trim()) : undefined,
-            };
-
-            const response = await apiGet('/api/offres-emploi/ai/salary-prediction', { params });
+            const compList = competences ? competences.split(',').map(c => c.trim()).filter(Boolean) : [];
+            const response = await offreEmploiService.predictSalary(
+                titrePoste,
+                secteur || 'Autre',
+                experienceAnnees ? parseInt(experienceAnnees, 10) : 0,
+                compList,
+                ville || undefined
+            );
             if (response.success) {
-                setPrediction(response.prediction || response.data?.prediction);
+                const pred = (response as any).prediction || (response as any).data?.prediction || (response as any).data;
+                setPrediction(pred);
             } else {
-                Alert.alert('Erreur', response.message || 'Impossible de prédire le salaire');
+                Alert.alert('Erreur', (response as any).message || 'Impossible de prédire le salaire');
             }
         } catch (error: any) {
             console.error('[AISalaryPrediction] Erreur:', error);
@@ -188,19 +187,19 @@ const AISalaryPredictionScreen: React.FC = () => {
                             <View style={styles.salaryItem}>
                                 <Text style={styles.salaryLabel}>Minimum</Text>
                                 <Text style={styles.salaryValue}>
-                                    {prediction.salaire_predicted_min?.toLocaleString() || 'N/A'} XAF
+                                    {(prediction.salaire_estime_min || prediction.salaire_predicted_min)?.toLocaleString() || 'N/A'} {prediction.devise || 'XAF'}
                                 </Text>
                             </View>
                             <View style={styles.salaryItem}>
                                 <Text style={styles.salaryLabel}>Médian</Text>
                                 <Text style={[styles.salaryValue, styles.salaryMedian]}>
-                                    {prediction.salaire_predicted_median?.toLocaleString() || 'N/A'} XAF
+                                    {(prediction.salaire_estime_median || prediction.salaire_predicted_median)?.toLocaleString() || 'N/A'} {prediction.devise || 'XAF'}
                                 </Text>
                             </View>
                             <View style={styles.salaryItem}>
                                 <Text style={styles.salaryLabel}>Maximum</Text>
                                 <Text style={styles.salaryValue}>
-                                    {prediction.salaire_predicted_max?.toLocaleString() || 'N/A'} XAF
+                                    {(prediction.salaire_estime_max || prediction.salaire_predicted_max)?.toLocaleString() || 'N/A'} {prediction.devise || 'XAF'}
                                 </Text>
                             </View>
                         </View>

@@ -1,5 +1,5 @@
 // ✅ Service API pour Tickets de Bus/Voyage
-import { apiGet } from './api';
+import { apiGet, apiPatch, apiPost } from './api';
 
 // Types pour les réponses (alignés avec le backend)
 export interface BusTicketSearchResult {
@@ -56,7 +56,7 @@ export const busTicketService = {
     searchBusTickets: async (filters: BusTicketSearchFilters) => {
         const response = await apiGet<{ results: BusTicketSearchResult[] }>(
             '/api/bus-tickets/search',
-            filters
+            { params: filters }
         );
         return response;
     },
@@ -73,6 +73,186 @@ export const busTicketService = {
     getAgencySchedules: async (agencyId: number) => {
         const response = await apiGet<any>(
             `/api/bus-tickets/agencies/${agencyId}/schedules`
+        );
+        return response;
+    },
+
+    // ============================================================================
+    // FONCTIONNALITÉS BACKEND MANQUANTES CÔTÉ MOBILE
+    // ============================================================================
+
+    // ✅ Créer une réservation
+    createReservation: async (reservationData: {
+        product_id: string;
+        seats: number[];
+        passenger_name: string;
+        passenger_phone: string;
+        passenger_email?: string;
+    }) => {
+        const response = await apiPost<{ success: boolean; reservation_id: string; message: string }>(
+            '/api/bus-tickets/reservations',
+            reservationData
+        );
+        return response;
+    },
+
+    // ✅ Annuler une réservation
+    cancelReservation: async (reservationId: string) => {
+        const response = await apiPatch<{ success: boolean; message: string }>(
+            `/api/bus-tickets/reservations/${reservationId}/cancel`,
+            {}
+        );
+        return response;
+    },
+
+    // ✅ Payer un ticket
+    processPayment: async (paymentData: {
+        reservation_id: string;
+        payment_method: string;
+        phone_number?: string;
+    }) => {
+        const response = await apiPost<{ success: boolean; payment_id: string; ticket_url?: string }>(
+            '/api/bus-tickets/payment',
+            paymentData
+        );
+        return response;
+    },
+
+    // ✅ Mes tickets achetés
+    getMyTickets: async () => {
+        const response = await apiGet<{ success: boolean; data: any[] }>(
+            '/api/bus-tickets/my-tickets'
+        );
+        return response;
+    },
+
+    // ✅ Détails d'un ticket
+    getTicketDetails: async (paymentId: string) => {
+        const response = await apiGet<{ success: boolean; data: any }>(
+            `/api/bus-tickets/ticket/${paymentId}`
+        );
+        return response;
+    },
+
+    // ✅ Valider un ticket par QR code
+    validateTicketQR: async (qrData: string) => {
+        const response = await apiPost<{ success: boolean; message: string; passenger?: any }>(
+            '/api/bus-tickets/validate',
+            { qr_data: qrData }
+        );
+        return response;
+    },
+
+    // ✅ Validation manuelle d'un passager
+    validatePassengerManual: async (productId: string, passengerName: string, seatNumber?: number) => {
+        const response = await apiPost<{ success: boolean; message: string }>(
+            '/api/bus-tickets/validate/manual',
+            { product_id: productId, passenger_name: passengerName, seat_number: seatNumber }
+        );
+        return response;
+    },
+
+    // ✅ Résumé d'embarquement
+    getBoardingSummary: async (productId: string) => {
+        const response = await apiGet<{ success: boolean; data: any }>(
+            `/api/bus-tickets/boarding/${productId}/summary`
+        );
+        return response;
+    },
+
+    // ✅ Liste des passagers d'un bus
+    getBusPassengers: async (productId: string) => {
+        const response = await apiGet<{ success: boolean; data: any[] }>(
+            `/api/bus-tickets/boarding/${productId}/passengers`
+        );
+        return response;
+    },
+
+    // ✅ Demande de retour (aller-retour)
+    createReturnRequest: async (requestData: {
+        original_payment_id: string;
+        return_date: string;
+        notes?: string;
+    }) => {
+        const response = await apiPost<{ success: boolean; request_id: number }>(
+            '/api/bus-tickets/return-request',
+            requestData
+        );
+        return response;
+    },
+
+    // ✅ Lister les demandes de retour
+    listReturnRequests: async () => {
+        const response = await apiGet<{ success: boolean; data: any[] }>(
+            '/api/bus-tickets/return-requests'
+        );
+        return response;
+    },
+
+    // ✅ Détails d'une demande de retour
+    getReturnRequestDetails: async (requestId: number) => {
+        const response = await apiGet<{ success: boolean; data: any }>(
+            `/api/bus-tickets/return-request/${requestId}`
+        );
+        return response;
+    },
+
+    // ✅ Confirmer une demande de retour
+    confirmReturnRequest: async (requestId: number) => {
+        const response = await apiPost<{ success: boolean; message: string }>(
+            `/api/bus-tickets/return-request/${requestId}/confirm`,
+            {}
+        );
+        return response;
+    },
+
+    // ✅ Bloquer un siège
+    blockSeat: async (productId: string, seatNumber: number, reason?: string) => {
+        const response = await apiPost<{ success: boolean; message: string }>(
+            '/api/bus-tickets/seats/block',
+            { product_id: productId, seat_number: seatNumber, reason }
+        );
+        return response;
+    },
+
+    // ✅ Débloquer un siège
+    unblockSeat: async (productId: string, seatNumber: number) => {
+        const response = await apiPost<{ success: boolean; message: string }>(
+            '/api/bus-tickets/seats/unblock',
+            { product_id: productId, seat_number: seatNumber }
+        );
+        return response;
+    },
+
+    // ✅ Sièges bloqués
+    getBlockedSeats: async (productId: string) => {
+        const response = await apiGet<{ success: boolean; data: any[] }>(
+            `/api/bus-tickets/seats/${productId}/blocks`
+        );
+        return response;
+    },
+
+    // ✅ Disponibilité avec blocs
+    getSeatAvailabilityWithBlocks: async (productId: string) => {
+        const response = await apiGet<{ success: boolean; data: any }>(
+            `/api/bus-tickets/seats/${productId}/availability`
+        );
+        return response;
+    },
+
+    // ✅ Tickets d'une agence
+    getAgencyTickets: async () => {
+        const response = await apiGet<{ success: boolean; data: any[] }>(
+            '/api/bus-tickets/agency/tickets'
+        );
+        return response;
+    },
+
+    // ✅ Créer un horaire d'agence
+    createSchedule: async (scheduleData: any) => {
+        const response = await apiPost<{ success: boolean; data: any }>(
+            '/api/bus-tickets/agencies/schedules',
+            scheduleData
         );
         return response;
     },

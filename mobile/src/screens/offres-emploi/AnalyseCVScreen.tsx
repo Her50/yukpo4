@@ -11,10 +11,10 @@ import {
     TextInput,
     View
 } from 'react-native';
-import { NativeBadge, NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeBadge, NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
-import { apiPost } from '../../services/api';
+import { offreEmploiService } from '../../services/offreEmploiService';
 import { modernColors, modernStyles } from '../../theme/modernTheme';
 
 const AnalyseCVScreen: React.FC = () => {
@@ -38,11 +38,7 @@ const AnalyseCVScreen: React.FC = () => {
 
         try {
             setLoading(true);
-            const response = await apiPost('/api/offres-emploi/ai/analyze-cv', {
-                candidat_id: user.id,
-                cv_text: cvText,
-                cv_url: cvUrl || undefined,
-            });
+            const response = await offreEmploiService.analyzeCV(cvUrl || cvText);
 
             if (response.success) {
                 setAnalysis(response.analysis || response.data?.analysis);

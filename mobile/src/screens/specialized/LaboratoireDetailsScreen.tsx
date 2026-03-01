@@ -13,9 +13,9 @@ import {
     View
 } from 'react-native';
 import ChatModalMobile from '../../components/ChatModalMobile';
-import { NativeButton, NativeCard, NativeInput } from '../../components/SafeNativeDesign';
 import ProductCommentsSection from '../../components/ProductCommentsSection';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeButton, NativeCard, NativeInput } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiGet, apiPost } from '../../services/api';
 import { ExaminationType, labService } from '../../services/labService';
@@ -66,6 +66,11 @@ const LaboratoireDetailsScreen: React.FC = () => {
     const [conversationId, setConversationId] = useState<string | null>(null);
     const [prestataireInfo, setPrestataireInfo] = useState<any>(null);
     const [ratingStats, setRatingStats] = useState<any>(null);
+    // ✅ IA: Recherche pathologie
+    const [symptomInput, setSymptomInput] = useState('');
+    const [symptoms, setSymptoms] = useState<string[]>([]);
+    const [pathologyResult, setPathologyResult] = useState<any>(null);
+    const [searchingPathology, setSearchingPathology] = useState(false);
 
     useEffect(() => {
         loadLaboratoireDetails();
@@ -268,6 +273,42 @@ const LaboratoireDetailsScreen: React.FC = () => {
         setShowChat(true);
     };
 
+    // ✅ IA: Recherche pathologie pour suggérer examens
+    const handleSearchPathology = async () => {
+        if (symptoms.length === 0) {
+            Alert.alert('Erreur', 'Ajoutez au moins un sympt\u00f4me');
+            return;
+        }
+        try {
+            setSearchingPathology(true);
+            const response = await labService.searchPathology(symptoms);
+            if (response.success) {
+                const resData = (response as any).data?.data || (response as any).data;
+                setPathologyResult(resData);
+            } else {
+                Alert.alert('IA non disponible', 'La recherche par sympt\u00f4mes n\'est pas encore op\u00e9rationnelle.');
+            }
+        } catch (error: any) {
+            console.warn('[LaboratoireDetailsScreen] Erreur recherche pathologie:', error);
+            Alert.alert('Erreur', 'Impossible d\'analyser les sympt\u00f4mes');
+        } finally {
+            setSearchingPathology(false);
+        }
+    };
+
+    const addSymptom = () => {
+        const s = symptomInput.trim();
+        if (s && !symptoms.includes(s)) {
+            setSymptoms([...symptoms, s]);
+            setSymptomInput('');
+        }
+    };
+
+    const removeSymptom = (sym: string) => {
+        setSymptoms(symptoms.filter(s => s !== sym));
+        setPathologyResult(null);
+    };
+
     // Vérifier si l'utilisateur est le propriétaire
     const isOwner = user && laboratoire && String(user.id) === String(laboratoire.user_id);
 
@@ -443,6 +484,89 @@ const LaboratoireDetailsScreen: React.FC = () => {
                         ))}
                     </NativeCard>
                 )}
+
+                {/* ✅ IA: Recherche par symptômes */}
+                <NativeCard style={styles.card}>
+                    <Text style={styles.sectionTitle}>🧠 Recherche IA par symptômes</Text>
+                    <Text style={{ fontSize: 13, color: '#6B7280', marginBottom: 10 }}>
+                        Décrivez vos symptômes et l'IA suggérera les examens pertinents
+                    </Text>
+                    <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
+                        <NativeInput
+                            placeholder="Ex: fatigue, douleur abdominale..."
+                            value={symptomInput}
+                            onChangeText={setSymptomInput}
+                            onSubmitEditing={addSymptom}
+                            style={{ flex: 1 }}
+                        />
+                        <NativeButton
+                            title="+"
+                            onPress={addSymptom}
+                            variant="outline"
+                            size="small"
+                            disabled={!symptomInput.trim()}
+                        />
+                    </View>
+                    {symptoms.length > 0 && (
+                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+                            {symptoms.map((s, i) => (
+                                <TouchableOpacity
+                                    key={i}
+                                    style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#EFF6FF', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 }}
+                                    onPress={() => removeSymptom(s)}
+                                >
+                                    <Text style={{ fontSize: 13, color: '#1D4ED8', marginRight: 4 }}>{s}</Text>
+                                    <SafeIcon name="x" size={12} color="#1D4ED8" />
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    )}
+                    <NativeButton
+                        title={searchingPathology ? 'Analyse en cours...' : 'Analyser les symptômes'}
+                        onPress={handleSearchPathology}
+                        variant="primary"
+                        disabled={symptoms.length === 0 || searchingPathology}
+                    />
+                    {pathologyResult && (
+                        <View style={{ marginTop: 12, padding: 12, backgroundColor: '#F0FDF4', borderRadius: 10, borderWidth: 1, borderColor: '#BBF7D0' }}>
+                            {pathologyResult.urgency_level && (
+                                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+                                    <SafeIcon name="alert-circle" size={16} color={
+                                        pathologyResult.urgency_level === 'critical' ? '#DC2626' :
+                                            pathologyResult.urgency_level === 'high' ? '#F59E0B' : '#059669'
+                                    } />
+                                    <Text style={{ marginLeft: 6, fontWeight: '600', color: '#111827' }}>
+                                        Urgence: {pathologyResult.urgency_level}
+                                    </Text>
+                                </View>
+                            )}
+                            {pathologyResult.suggested_examinations && pathologyResult.suggested_examinations.length > 0 && (
+                                <View style={{ marginBottom: 8 }}>
+                                    <Text style={{ fontWeight: '600', color: '#111827', marginBottom: 4 }}>Examens suggérés:</Text>
+                                    {pathologyResult.suggested_examinations.map((exam: string, idx: number) => (
+                                        <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 8, marginBottom: 2 }}>
+                                            <SafeIcon name="check" size={12} color="#059669" />
+                                            <Text style={{ marginLeft: 6, fontSize: 13, color: '#374151' }}>{exam}</Text>
+                                        </View>
+                                    ))}
+                                </View>
+                            )}
+                            {pathologyResult.possible_pathologies && pathologyResult.possible_pathologies.length > 0 && (
+                                <View style={{ marginBottom: 8 }}>
+                                    <Text style={{ fontWeight: '600', color: '#111827', marginBottom: 4 }}>Pathologies possibles:</Text>
+                                    {pathologyResult.possible_pathologies.map((p: string, idx: number) => (
+                                        <Text key={idx} style={{ marginLeft: 8, fontSize: 13, color: '#374151' }}>• {p}</Text>
+                                    ))}
+                                </View>
+                            )}
+                            {pathologyResult.recommendations && (
+                                <Text style={{ fontSize: 13, color: '#6B7280', fontStyle: 'italic' }}>
+                                    {pathologyResult.recommendations}
+                                </Text>
+                            )}
+                        </View>
+                    )}
+                </NativeCard>
 
                 <View style={styles.actionsContainer}>
                     <NativeButton

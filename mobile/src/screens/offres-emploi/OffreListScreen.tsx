@@ -11,9 +11,9 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { NativeCard } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
-import { apiGet } from '../../services/api';
+import { NativeCard } from '../../components/SafeNativeDesign';
+import { offreEmploiService, SearchOffresFilters } from '../../services/offreEmploiService';
 import { modernColors } from '../../theme/modernTheme';
 
 interface OffreEmploi {
@@ -57,23 +57,13 @@ const OffreListScreen: React.FC = () => {
             }
 
             const currentPage = isRefresh ? 1 : page;
-            const filters = params?.filters || {};
-            const queryParams = new URLSearchParams();
+            const filters: SearchOffresFilters = {
+                ...(params?.filters || {}),
+                page: currentPage,
+                limit: 20,
+            };
 
-            Object.entries(filters).forEach(([key, value]) => {
-                if (value !== undefined && value !== null && value !== '') {
-                    if (Array.isArray(value)) {
-                        queryParams.append(key, value.join(','));
-                    } else {
-                        queryParams.append(key, String(value));
-                    }
-                }
-            });
-
-            queryParams.append('page', currentPage.toString());
-            queryParams.append('limit', '20');
-
-            const response = await apiGet(`/api/offres-emploi/search?${queryParams.toString()}`);
+            const response = await offreEmploiService.searchOffres(filters);
 
             if (response.success && response.data) {
                 const newOffres = response.data.data || [];

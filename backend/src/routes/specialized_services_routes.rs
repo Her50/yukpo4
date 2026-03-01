@@ -284,35 +284,18 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             "/api/covoiturages",
             post(specialized_services_controller::create_covoiturage), // GET est dans public_routes
         )
-        // TODO: Implémenter ces fonctions dans specialized_services_controller
-        // .route(
-        //     "/api/covoiturages/:id/book",
-        //     post(specialized_services_controller::book_covoiturage), // Réservation
-        // )
-        // .route(
-        //     "/api/covoiturages/my-trips",
-        //     get(specialized_services_controller::get_my_trips), // Mes trajets
-        // )
-        // .route(
-        //     "/api/covoiturages/:id/verify-driver",
-        //     post(specialized_services_controller::verify_covoiturage_driver), // ✅ Phase 1.3: Vérification conducteur
-        // )
-        // ✅ NOUVEAU 2025-01-29: Routes trajets récurrents (protégées)
-        // TODO: Implémenter ces fonctions
-        // .route(
-        //     "/api/covoiturages/:id/recurring-instances",
-        //     get(specialized_services_controller::get_recurring_trip_instances),
-        // )
-        // .route(
-        //     "/api/covoiturages/:id/set-recurring",
-        //     post(specialized_services_controller::set_recurring_trip),
-        // )
-        // ✅ LEADER MONDIAL 2025-01-29: Matching intelligent, Assurance, QR code, Notifications
-        // TODO: Implémenter intelligent_matching
-        // .route(
-        //     "/api/covoiturages/intelligent-matching",
-        //     post(specialized_services_controller::intelligent_matching),
-        // )
+        .route(
+            "/api/covoiturages/{id}/book",
+            post(specialized_services_controller::book_covoiturage),
+        )
+        .route(
+            "/api/covoiturages/my-trips",
+            get(specialized_services_controller::get_my_trips),
+        )
+        .route(
+            "/api/covoiturages/{id}/verify-driver",
+            post(specialized_services_controller::verify_covoiturage_driver),
+        )
         // ✅ Routes Immobilier (protégées)
         .route(
             "/api/immobilier/biens",
@@ -405,15 +388,14 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             "/api/taxis",
             post(specialized_services_controller::create_taxi), // GET est dans public_routes
         )
-        // TODO: Implémenter ces fonctions
-        // .route(
-        //     "/api/taxis/:id/book",
-        //     post(specialized_services_controller::book_taxi), // Réservation/Appel
-        // )
-        // .route(
-        //     "/api/taxis/:id/update-availability",
-        //     post(specialized_services_controller::update_taxi_availability), // Mise à jour disponibilité
-        // )
+        .route(
+            "/api/taxis/{id}/book",
+            post(specialized_services_controller::book_taxi),
+        )
+        .route(
+            "/api/taxis/{id}/update-availability",
+            post(specialized_services_controller::update_taxi_availability),
+        )
         // ✅ LEADERSHIP GLOBAL 100% - IA Prédictive
         .route(
             "/api/taxi/demand-prediction",
@@ -461,15 +443,14 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             "/api/taxi/dynamic-price",
             post(taxi_dynamic_pricing_controller::calculate_dynamic_price), // Prix dynamique IA
         )
-        // TODO: Implémenter ces fonctions
-        // .route(
-        //     "/api/hopitaux/:id/book",
-        //     post(specialized_services_controller::book_hospital), // Réservation/RDV
-        // )
-        // .route(
-        //     "/api/laboratoires/:id/book",
-        //     post(specialized_services_controller::book_laboratory), // Réservation/RDV
-        // )
+        .route(
+            "/api/hopitaux/{id}/book",
+            post(specialized_services_controller::book_hospital),
+        )
+        .route(
+            "/api/laboratoires/{id}/book",
+            post(specialized_services_controller::book_laboratory),
+        )
         // Routes Banques de sang (protégées pour création/modification)
         .route(
             "/api/banques-sang",
@@ -791,32 +772,31 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             "/api/troc-livres/chaines/{id}",
             get(troc_livres_controller::get_chaine_details),
         )
-        // ✅ 2025-01-27: Nouvelles routes Hôpitaux
-        // TODO: Implémenter ces fonctions
-        // .route(
-        //     "/api/hopitaux/ai/recommendations",
-        //     post(specialized_services_controller::get_hospital_ai_recommendations),
-        // )
-        // .route(
-        //     "/api/hopitaux/ai/triage",
-        //     post(specialized_services_controller::analyze_emergency_severity),
-        // )
-        // .route(
-        //     "/api/hopitaux/:id/wait-times",
-        //     get(specialized_services_controller::get_hospital_wait_times),
-        // )
-        // .route(
-        //     "/api/hopitaux/:id/emergency-status",
-        //     get(specialized_services_controller::get_hospital_emergency_status),
-        // )
-        // .route(
-        //     "/api/hopitaux/my-consultations",
-        //     get(specialized_services_controller::get_my_hospital_consultations),
-        // )
-        // .route(
-        //     "/api/hopitaux/:id/analytics",
-        //     get(specialized_services_controller::get_hospital_analytics),
-        // )
+        // ✅ Routes Hôpitaux (anciennement commentées - maintenant actives)
+        .route(
+            "/api/hopitaux/ai/recommendations",
+            post(specialized_services_controller::get_hospital_ai_recommendations),
+        )
+        .route(
+            "/api/hopitaux/ai/triage",
+            post(specialized_services_controller::analyze_emergency_severity),
+        )
+        .route(
+            "/api/hopitaux/{id}/wait-times",
+            get(specialized_services_controller::get_hospital_wait_times),
+        )
+        .route(
+            "/api/hopitaux/{id}/emergency-status",
+            get(specialized_services_controller::get_hospital_emergency_status),
+        )
+        .route(
+            "/api/hopitaux/my-consultations",
+            get(specialized_services_controller::get_my_hospital_consultations),
+        )
+        .route(
+            "/api/hopitaux/{id}/analytics",
+            get(specialized_services_controller::get_hospital_analytics),
+        )
         .route(
             "/api/hopitaux/{id}/slots",
             post(specialized_services_controller::manage_hospital_slots),

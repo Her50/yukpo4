@@ -40,6 +40,36 @@ export interface PathologySearchResult {
     }>;
 }
 
+export interface WaitTime {
+    department?: string;
+    specialty?: string;
+    estimated_wait_minutes?: number;
+    avg_wait_time_minutes?: number;
+    max_wait_time_minutes?: number;
+    queue_length?: number;
+    consultation_count?: number;
+    last_updated?: string;
+}
+
+export interface EmergencyStatus {
+    is_open?: boolean;
+    status?: string;
+    current_capacity?: number;
+    max_capacity?: number;
+    occupancy_rate?: number;
+    average_wait_minutes?: number;
+    avg_wait_time_minutes?: number;
+    critical_count?: number;
+    total_patients?: number;
+    severity_levels?: {
+        critical: number;
+        high: number;
+        moderate: number;
+        low: number;
+    };
+    last_updated?: string;
+}
+
 export const hospitalService = {
     // ✅ Autocomplete des prestations médicales
     searchMedicalServices: async (query: string, limit: number = 20) => {
@@ -62,7 +92,7 @@ export const hospitalService = {
                     lng: location?.lng,
                 }
             );
-            
+
             // Normaliser la réponse pour gérer différents formats
             if (response.success) {
                 return {
@@ -85,6 +115,50 @@ export const hospitalService = {
                 error: error.message || error.error || 'Erreur lors de la recherche. L\'IA de recherche pathologique n\'est peut-être pas encore opérationnelle.'
             };
         }
+    },
+
+    // ✅ Temps d'attente en temps réel
+    getWaitTimes: async (hospitalId: number) => {
+        try {
+            const response = await apiGet<any>(
+                `/api/hopitaux/${hospitalId}/wait-times`
+            );
+            return response;
+        } catch (error: any) {
+            console.warn('[hospitalService] Temps d\'attente non disponibles:', error.message);
+            return { success: false, data: { wait_times: [] } };
+        }
+    },
+
+    // ✅ Statut des urgences
+    getEmergencyStatus: async (hospitalId: number) => {
+        try {
+            const response = await apiGet<any>(
+                `/api/hopitaux/${hospitalId}/emergency-status`
+            );
+            return response;
+        } catch (error: any) {
+            console.warn('[hospitalService] Statut urgences non disponible:', error.message);
+            return { success: false, data: null };
+        }
+    },
+
+    // ✅ Réserver un RDV en ligne
+    bookAppointment: async (
+        hospitalId: number,
+        bookingData: {
+            service_name?: string;
+            preferred_date?: string;
+            preferred_time?: string;
+            notes?: string;
+        }
+    ) => {
+        const response = await apiPost<{
+            success: boolean;
+            appointment_id: string;
+            message: string;
+        }>(`/api/hopitaux/${hospitalId}/book`, bookingData);
+        return response;
     },
 
     // ✅ Recherche de services médicaux disponibles (avec système de disponibilité)

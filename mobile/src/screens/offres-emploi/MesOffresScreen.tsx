@@ -13,10 +13,10 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { NativeCard } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeCard } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
-import { apiGet } from '../../services/api';
+import { offreEmploiService } from '../../services/offreEmploiService';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
 
@@ -45,7 +45,7 @@ const MesOffresScreen: React.FC = () => {
     const loadOffres = async () => {
         try {
             setLoading(true);
-            const response = await apiGet('/api/offres-emploi');
+            const response = await offreEmploiService.getMesOffres();
             if (response.success && response.data) {
                 setOffres(response.data);
             }

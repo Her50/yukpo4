@@ -1715,13 +1715,23 @@ async fn create_client_order(
             crate::services::product_availability_service::ProductAvailabilityService::new(
                 state.pg.clone(),
             );
-        let availability = availability_service
+        let availability = match availability_service
             .check_availability(
                 payload.service_id,
                 product_index,
                 None, // Maintenant
             )
-            .await?;
+            .await
+        {
+            Ok(a) => a,
+            Err(e) => {
+                log::error!(
+                    "[create_client_order] ❌ Erreur check_availability pour service_id={}, product_index={}: {:?}",
+                    payload.service_id, product_index, e
+                );
+                return Err(e);
+            }
+        };
 
         if !availability.is_available {
             // Produit non disponible, retourner produits similaires avec proximité
@@ -1762,9 +1772,10 @@ async fn create_client_order(
     }
 
     // ✅ 1. Récupérer la configuration de livraison du produit
-    let delivery_config: Option<ProductDeliveryConfigRow> =
-        if let Some(product_index) = payload.product_index {
-            sqlx::query_as(
+    let delivery_config: Option<ProductDeliveryConfigRow> = if let Some(product_index) =
+        payload.product_index
+    {
+        sqlx::query_as(
                 "SELECT pickup_address, pickup_latitude, pickup_longitude, 
                     required_vehicle_type_id, weight_kg, volume_cm3,
                     requires_isothermal, requires_fragile_handling, is_configured,
@@ -1775,10 +1786,17 @@ async fn create_client_order(
             .bind(payload.service_id)
             .bind(product_index)
             .fetch_optional(&state.pg)
-            .await?
-        } else {
-            None
-        };
+            .await
+            .map_err(|e| {
+                log::error!(
+                    "[create_client_order] ❌ Erreur récupération product_delivery_config pour service_id={}, product_index={}: {}",
+                    payload.service_id, product_index, e
+                );
+                AppError::Internal(format!("Erreur récupération configuration livraison: {}", e))
+            })?
+    } else {
+        None
+    };
 
     // ✅ NOUVEAU : Extraire le type de véhicule requis depuis la configuration
     let product_required_vehicle_type: Option<String> = if let Some(config) = &delivery_config {
@@ -2676,7 +2694,14 @@ async fn estimate_delivery_costs(
             sqlx::query_as("SELECT data FROM services WHERE id = $1")
                 .bind(payload.service_id)
                 .fetch_optional(&state.pg)
-                .await?;
+                .await
+                .map_err(|e| {
+                    log::error!(
+                        "[estimate_delivery_costs] ❌ Erreur récupération service data pour service_id={}: {}",
+                        payload.service_id, e
+                    );
+                    AppError::Internal(format!("Erreur récupération service: {}", e))
+                })?;
 
         // ✅ CORRIGÉ 2026-01-23: Récupérer le produit depuis service_products au lieu de JSONB
         {
@@ -2693,8 +2718,8 @@ async fn estimate_delivery_costs(
             .await
             .map_err(|e| {
                 log::error!(
-                    "[create_delivery_request] Erreur récupération produit: {}",
-                    e
+                    "[estimate_delivery_costs] ❌ Erreur récupération service_products pour service_id={}, product_index={}: {}",
+                    payload.service_id, product_index, e
                 );
                 AppError::Internal(format!("Erreur récupération produit: {}", e))
             })?;
@@ -2731,7 +2756,14 @@ async fn estimate_delivery_costs(
         .bind(payload.service_id)
         .bind(product_index)
         .fetch_optional(&state.pg)
-        .await?;
+        .await
+        .map_err(|e| {
+            log::error!(
+                "[estimate_delivery_costs] ❌ Erreur récupération billing_mode pour service_id={}, product_index={}: {}",
+                payload.service_id, product_index, e
+            );
+            AppError::Internal(format!("Erreur récupération billing_mode: {}", e))
+        })?;
 
         let mode = config
             .as_ref()
@@ -2754,7 +2786,14 @@ async fn estimate_delivery_costs(
             .bind(payload.service_id)
             .bind(product_index)
             .fetch_optional(&state.pg)
-            .await?;
+            .await
+            .map_err(|e| {
+                log::error!(
+                    "[estimate_delivery_costs] ❌ Erreur récupération pickup config pour service_id={}, product_index={}: {}",
+                    payload.service_id, product_index, e
+                );
+                AppError::Internal(format!("Erreur récupération pickup config: {}", e))
+            })?;
 
             if let Some(c) = config {
                 if let (Some(lat), Some(lng)) = (c.pickup_latitude, c.pickup_longitude) {

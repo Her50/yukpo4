@@ -10,10 +10,10 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
-import { apiGet, apiPost } from '../../services/api';
+import { offreEmploiService } from '../../services/offreEmploiService';
 import { modernColors } from '../../theme/modernTheme';
 
 interface OffreEmploi {
@@ -72,7 +72,7 @@ const OffreDetailsScreen: React.FC = () => {
     const loadOffre = async () => {
         try {
             setLoading(true);
-            const response = await apiGet(`/api/offres-emploi/${params.offreId}`);
+            const response = await offreEmploiService.getOffreDetails(params.offreId);
             if (response.success && response.data) {
                 setOffre(response.data);
             } else {
@@ -90,7 +90,7 @@ const OffreDetailsScreen: React.FC = () => {
 
     const loadMatchingScore = async () => {
         try {
-            const response = await apiGet('/api/offres-emploi/matching/offres?min_score=0&limit=100');
+            const response = await offreEmploiService.getMatchingOffres(0, 100);
             if (response.success && response.data) {
                 const match = response.data.find((m: any) => m.offre_id === params.offreId);
                 if (match) {
@@ -119,8 +119,7 @@ const OffreDetailsScreen: React.FC = () => {
 
         // ✅ NOUVEAU: Vérifier si l'utilisateur a un profil candidat
         try {
-            const { apiGet } = require('../../services/api');
-            const profilResponse = await apiGet('/api/offres-emploi/profil');
+            const profilResponse = await offreEmploiService.getProfil();
             const hasProfil = profilResponse.success && profilResponse.data;
             const hasCV = hasProfil && profilResponse.data.cv_url;
 
@@ -144,9 +143,7 @@ const OffreDetailsScreen: React.FC = () => {
 
         try {
             setPostulating(true);
-            const response = await apiPost('/api/offres-emploi/candidatures', {
-                offre_id: params.offreId,
-            });
+            const response = await offreEmploiService.createCandidature(params.offreId);
             if (response.success) {
                 Alert.alert('Succès', 'Candidature envoyée avec succès ! Votre CV a été transmis à l\'employeur.', [
                     { text: 'OK', onPress: () => (navigation as any).navigate('MesCandidatures') },

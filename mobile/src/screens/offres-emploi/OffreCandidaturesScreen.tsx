@@ -14,10 +14,10 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeCard } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
-import { apiGet, apiPost, apiPatch } from '../../services/api';
+import { offreEmploiService } from '../../services/offreEmploiService';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
 
@@ -59,7 +59,7 @@ const OffreCandidaturesScreen: React.FC = () => {
     const loadCandidatures = async () => {
         try {
             setLoading(true);
-            const response = await apiGet(`/api/offres-emploi/${offreId}/candidatures`);
+            const response = await offreEmploiService.listCandidaturesOffre(offreId);
             if (response.success && response.data) {
                 setCandidatures(response.data);
             }
@@ -74,7 +74,7 @@ const OffreCandidaturesScreen: React.FC = () => {
     const loadMatchingCandidats = async () => {
         try {
             setLoadingMatching(true);
-            const response = await apiGet(`/api/offres-emploi/${offreId}/matching/candidats`);
+            const response = await offreEmploiService.findMatchingCandidats(offreId);
             if (response.success && response.data) {
                 setMatchingCandidats(response.data);
             }
@@ -93,10 +93,7 @@ const OffreCandidaturesScreen: React.FC = () => {
 
         try {
             setAnalyzing(candidature.id);
-            const response = await apiPost('/api/offres-emploi/ai/analyze-cv', {
-                cv_url: candidature.candidat_cv_url,
-                offre_id: offreId,
-            });
+            const response = await offreEmploiService.analyzeCV(candidature.candidat_cv_url!, offreId);
 
             if (response.success && response.data) {
                 setSelectedCandidature({
@@ -117,9 +114,7 @@ const OffreCandidaturesScreen: React.FC = () => {
 
     const handleUpdateStatut = async (candidatureId: number, statut: string) => {
         try {
-            const response = await apiPatch(`/api/offres-emploi/candidatures/${candidatureId}/statut`, {
-                statut,
-            });
+            const response = await offreEmploiService.updateStatutCandidature(candidatureId, statut);
             if (response.success) {
                 Alert.alert('Succès', 'Statut mis à jour');
                 loadCandidatures();

@@ -12,11 +12,11 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
-import { apiGet } from '../../services/api';
-import { offreEmploiService, FormationSuggestion } from '../../services/offreEmploiService';
+// apiGet remplacé par offreEmploiService
+import { FormationSuggestion, offreEmploiService } from '../../services/offreEmploiService';
 import { modernColors } from '../../theme/modernTheme';
 
 const AISuggestFormationsScreen: React.FC = () => {
@@ -37,8 +37,8 @@ const AISuggestFormationsScreen: React.FC = () => {
     const loadProfile = async () => {
         try {
             setLoadingProfile(true);
-            const response = await apiGet('/api/offres-emploi/profil');
-            
+            const response = await offreEmploiService.getProfil();
+
             if (response.success && response.data) {
                 const profil = response.data;
                 setHasProfile(true);
@@ -75,7 +75,7 @@ const AISuggestFormationsScreen: React.FC = () => {
                 competencesManquantes,
                 objectifCarriere.trim() || undefined
             );
-            
+
             if (response.success && response.suggestions) {
                 setSuggestions(response.suggestions);
             } else if (response.success && response.data?.suggestions) {
@@ -223,8 +223,8 @@ const AISuggestFormationsScreen: React.FC = () => {
                                             formation.urgence === 'low' && styles.urgenceLow,
                                         ]}>
                                             <Text style={styles.urgenceText}>
-                                                {formation.urgence === 'high' ? 'Urgent' : 
-                                                 formation.urgence === 'medium' ? 'Moyen' : 'Faible'}
+                                                {formation.urgence === 'high' ? 'Urgent' :
+                                                    formation.urgence === 'medium' ? 'Moyen' : 'Faible'}
                                             </Text>
                                         </View>
                                     )}

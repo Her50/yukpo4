@@ -1,5 +1,5 @@
 // ✅ Service API pour Immobilier (Vente/Location)
-import { apiGet, apiPost } from './api';
+import { apiDelete, apiGet, apiPost } from './api';
 
 // Types pour les réponses
 export interface RealEstateProperty {
@@ -82,7 +82,7 @@ export const immobilierService = {
     searchProperties: async (filters: PropertySearchFilters) => {
         const response = await apiGet<{ success: boolean; data: RealEstateProperty[] }>(
             '/api/immobilier/biens',
-            filters
+            { params: filters }
         );
         return response;
     },
@@ -202,9 +202,8 @@ export const immobilierService = {
     },
 
     removeFromFavorites: async (propertyId: number) => {
-        const response = await apiPost<{ success: boolean; message: string }>(
-            `/api/immobilier/biens/${propertyId}/unfavorite`,
-            {}
+        const response = await apiDelete<{ success: boolean; message: string }>(
+            `/api/immobilier/biens/${propertyId}/unfavorite`
         );
         return response;
     },
@@ -284,6 +283,116 @@ export const immobilierService = {
         }>(`/api/immobilier/biens/${propertyId}/share`, {
             share_type: shareType,
         });
+        return response;
+    },
+
+    // ============================================================================
+    // TERRAINS
+    // ============================================================================
+
+    // ✅ Recherche de terrains
+    searchLands: async (filters?: {
+        ville?: string;
+        quartier?: string;
+        superficie_min?: number;
+        superficie_max?: number;
+        prix_min?: number;
+        prix_max?: number;
+        usage?: string;
+        lat?: number;
+        lng?: number;
+        page?: number;
+        limit?: number;
+    }) => {
+        const response = await apiGet<{ success: boolean; data: any[] }>(
+            '/api/immobilier/terrains',
+            filters ? { params: filters } : undefined
+        );
+        return response;
+    },
+
+    // ✅ Détails d'un terrain
+    getLandDetails: async (landId: number) => {
+        const response = await apiGet<{ success: boolean; data: any }>(
+            `/api/immobilier/terrains/${landId}`
+        );
+        return response;
+    },
+
+    // ✅ Analyse IA d'un terrain (potentiel, risques, valeur)
+    analyzeLand: async (
+        superficieM2: number,
+        usage: string,
+        quartier: string,
+        ville: string,
+        accesRoute?: boolean,
+        viabilise?: boolean
+    ) => {
+        const response = await apiPost<{ success: boolean; analysis: any }>(
+            '/api/immobilier/terrains/ai/analysis',
+            {
+                superficie_m2: superficieM2,
+                usage,
+                quartier,
+                ville,
+                acces_route: accesRoute,
+                viabilise,
+            }
+        );
+        return response;
+    },
+
+    // ============================================================================
+    // UPLOAD MÉDIA & VISITES VIRTUELLES
+    // ============================================================================
+
+    // ✅ Upload média (photos/vidéos) pour un bien
+    uploadPropertyMedia: async (propertyId: number, mediaUrls: string[], mediaType: 'photo' | 'video' = 'photo') => {
+        const response = await apiPost<{ success: boolean; uploaded_count: number }>(
+            `/api/immobilier/biens/${propertyId}/upload-media`,
+            {
+                media_urls: mediaUrls,
+                media_type: mediaType,
+            }
+        );
+        return response;
+    },
+
+    // ✅ Upload visite virtuelle (360°)
+    uploadVirtualTour: async (propertyId: number, tourUrl: string, tourType: string = '360_photo') => {
+        const response = await apiPost<{ success: boolean; tour_id: number }>(
+            `/api/immobilier/biens/${propertyId}/upload-virtual-tour`,
+            {
+                tour_url: tourUrl,
+                tour_type: tourType,
+            }
+        );
+        return response;
+    },
+
+    // ✅ Créer un bien immobilier
+    createProperty: async (propertyData: {
+        service_id: number;
+        titre: string;
+        description?: string;
+        type_bien: string;
+        statut: string;
+        adresse?: string;
+        quartier?: string;
+        ville?: string;
+        gps?: string;
+        superficie_m2?: number;
+        nb_chambres?: number;
+        nb_salles_bain?: number;
+        standing?: string;
+        prix_vente?: number;
+        prix_location_mensuel?: number;
+        [key: string]: any;
+    }) => {
+        const response = await apiPost<{ success: boolean; id: number; message: string }>(
+            '/api/immobilier/biens',
+            propertyData
+        );
         return response;
     },
 };

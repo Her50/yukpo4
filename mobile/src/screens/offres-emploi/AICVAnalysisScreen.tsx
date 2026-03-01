@@ -12,11 +12,11 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
-import { apiGet, apiPost } from '../../services/api';
-import { offreEmploiService, CVAnalysis } from '../../services/offreEmploiService';
+// apiGet/apiPost remplacés par offreEmploiService
+import { CVAnalysis, offreEmploiService } from '../../services/offreEmploiService';
 import { modernColors } from '../../theme/modernTheme';
 
 const AICVAnalysisScreen: React.FC = () => {
@@ -36,8 +36,8 @@ const AICVAnalysisScreen: React.FC = () => {
     const loadCVFromProfile = async () => {
         try {
             setLoadingCV(true);
-            const response = await apiGet('/api/offres-emploi/profil');
-            
+            const response = await offreEmploiService.getProfil();
+
             if (response.success && response.data) {
                 const profil = response.data;
                 if (profil.cv_url && profil.cv_url.trim()) {
@@ -78,7 +78,7 @@ const AICVAnalysisScreen: React.FC = () => {
         try {
             setLoading(true);
             const response = await offreEmploiService.analyzeCV(cvUrl);
-            
+
             if (response.success && response.analysis) {
                 setAnalysis(response.analysis);
             } else if (response.success && response.data?.analysis) {

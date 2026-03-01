@@ -7595,6 +7595,12 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Err(e) => warn!("⚠️ Erreur correction contraintes: {} (non bloquant)", e),
     }
 
+    // Correction 9: Colonnes manquantes product_delivery_config + tables pricing/insurance
+    match ensure_delivery_config_columns(pool).await {
+        Ok(_) => info!("✅ Correction critique: colonnes product_delivery_config + tables pricing/insurance vérifiées"),
+        Err(e) => warn!("⚠️ Erreur correction delivery config columns: {} (non bloquant)", e),
+    }
+
     // ✅ NOUVEAU 2026-01-24: Vérification de l'extension pgvector
     match ensure_pgvector_extension(pool).await {
         Ok(_) => info!("✅ Migration auto: pgvector extension vérifiée"),
@@ -17582,5 +17588,99 @@ pub async fn ensure_phone_verification_tables(pool: &PgPool) -> Result<(), sqlx:
     .await?;
 
     info!("✅ Tables de vérification téléphone OTP créées/vérifiées");
+    Ok(())
+}
+
+/// ✅ NOUVEAU 2026-03-01: Ajouter colonnes manquantes à product_delivery_config
+/// et créer les tables delivery_engine_pricing / delivery_insurance_fees si absentes.
+/// Ces éléments sont requis par /api/delivery/client-order et /api/delivery/estimate-costs.
+pub async fn ensure_delivery_config_columns(pool: &PgPool) -> Result<(), sqlx::Error> {
+    // 1. Ajouter colonnes manquantes à product_delivery_config
+    sqlx::query(
+        "ALTER TABLE product_delivery_config
+         ADD COLUMN IF NOT EXISTS preparation_time_minutes INTEGER,
+         ADD COLUMN IF NOT EXISTS max_preparation_time_minutes INTEGER DEFAULT 60,
+         ADD COLUMN IF NOT EXISTS availability_days INTEGER[] DEFAULT ARRAY[0,1,2,3,4,5,6],
+         ADD COLUMN IF NOT EXISTS is_immediately_available BOOLEAN DEFAULT FALSE",
+    )
+    .execute(pool)
+    .await?;
+
+    // 2. Créer le type ENUM delivery_engine_type si absent
+    sqlx::query(
+        "DO $$ BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'delivery_engine_type') THEN
+                CREATE TYPE delivery_engine_type AS ENUM (
+                    'moto', 'scooter', 'voiture', 'camionnette',
+                    'velo_cargo', 'pieton', 'camion_leger', 'autre'
+                );
+            END IF;
+        END $$",
+    )
+    .execute(pool)
+    .await?;
+
+    // 3. Créer table delivery_engine_pricing si absente
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS delivery_engine_pricing (
+            engine_type delivery_engine_type PRIMARY KEY,
+            cost_per_km_fcfa NUMERIC(10, 2) NOT NULL,
+            minimum_cost_fcfa NUMERIC(10, 2) NOT NULL,
+            fuel_consumption_l_per_km NUMERIC(6, 3),
+            description TEXT,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            updated_at TIMESTAMPTZ DEFAULT NOW()
+        )",
+    )
+    .execute(pool)
+    .await?;
+
+    // Seed default pricing values
+    sqlx::query(
+        "INSERT INTO delivery_engine_pricing (engine_type, cost_per_km_fcfa, minimum_cost_fcfa, fuel_consumption_l_per_km, description)
+         VALUES
+            ('pieton', 200, 500, NULL, 'Livraison à pied'),
+            ('velo_cargo', 200, 800, NULL, 'Vélo cargo'),
+            ('scooter', 225, 1000, 0.030, 'Scooter'),
+            ('moto', 225, 1000, 0.040, 'Moto'),
+            ('voiture', 600, 1500, 0.080, 'Voiture'),
+            ('camionnette', 1000, 5000, 0.100, 'Camionnette'),
+            ('camion_leger', 2000, 10000, 0.120, 'Camion léger'),
+            ('autre', 500, 1000, NULL, 'Autre type')
+         ON CONFLICT (engine_type) DO NOTHING"
+    ).execute(pool).await?;
+
+    // 4. Créer table delivery_insurance_fees si absente
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS delivery_insurance_fees (
+            engine_type delivery_engine_type PRIMARY KEY,
+            base_fee_fcfa NUMERIC(10, 2) NOT NULL DEFAULT 0,
+            percentage_rate NUMERIC(5, 2) NOT NULL DEFAULT 0,
+            max_fee_fcfa NUMERIC(10, 2) NOT NULL DEFAULT 0,
+            min_value_threshold NUMERIC(10, 2) NOT NULL DEFAULT 0,
+            description TEXT,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            updated_at TIMESTAMPTZ DEFAULT NOW()
+        )",
+    )
+    .execute(pool)
+    .await?;
+
+    // Seed default insurance values
+    sqlx::query(
+        "INSERT INTO delivery_insurance_fees (engine_type, base_fee_fcfa, percentage_rate, max_fee_fcfa, min_value_threshold, description)
+         VALUES
+            ('pieton', 0, 0, 0, 999999, 'Pas d''assurance'),
+            ('velo_cargo', 100, 0.5, 1000, 5000, 'Vélo cargo'),
+            ('scooter', 200, 0.8, 2500, 3000, 'Scooter'),
+            ('moto', 250, 1.0, 3000, 2000, 'Moto'),
+            ('voiture', 300, 1.2, 5000, 1000, 'Voiture'),
+            ('camionnette', 500, 1.5, 10000, 500, 'Camionnette'),
+            ('camion_leger', 1000, 2.0, 20000, 0, 'Camion léger'),
+            ('autre', 250, 1.0, 3000, 2000, 'Autre type')
+         ON CONFLICT (engine_type) DO NOTHING"
+    ).execute(pool).await?;
+
+    info!("✅ Colonnes product_delivery_config + tables delivery_engine_pricing/insurance_fees vérifiées");
     Ok(())
 }

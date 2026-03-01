@@ -19,8 +19,9 @@ import MediaUploader, { MediaItem } from '../../components/specialized/MediaUplo
 import { useAuth } from '../../contexts/AuthContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { getCurrencyFromGPS, useCurrencyDetection } from '../../hooks/useCurrencyDetection';
-import { apiGet, apiPost, servicesApi } from '../../services/api';
+import { apiPost, servicesApi } from '../../services/api';
 import { googlePlacesMediaService } from '../../services/googlePlacesMediaService';
+import { immobilierService } from '../../services/immobilierService';
 import { uploadFiles } from '../../services/uploadApi';
 import { modernColors } from '../../theme/modernTheme';
 import { getCurrencyIntelligently } from '../../utils/currencyUtils';
@@ -123,7 +124,7 @@ const ImmobilierFormScreen: React.FC = () => {
             if (mode === 'edit' && propertyId) {
                 try {
                     setLoading(true);
-                    const response = await apiGet(`/api/immobilier/biens/${propertyId}`);
+                    const response = await immobilierService.getPropertyDetails(propertyId);
 
                     if (response.success && response.data) {
                         const data = response.data;
@@ -301,7 +302,7 @@ const ImmobilierFormScreen: React.FC = () => {
                 // TODO: Vérifier si endpoint PUT existe
                 response = await apiPost(`/api/immobilier/biens/${propertyId}`, payload);
             } else {
-                response = await apiPost('/api/immobilier/biens', payload);
+                response = await immobilierService.createProperty(payload);
             }
 
             if (response.success) {

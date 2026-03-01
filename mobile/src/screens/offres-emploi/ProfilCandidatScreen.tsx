@@ -12,11 +12,11 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import { NativeButton, NativeCard, NativeInput } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeButton, NativeCard, NativeInput } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLocation } from '../../contexts/LocationContext';
-import { apiGet, apiPost } from '../../services/api';
+import { offreEmploiService } from '../../services/offreEmploiService';
 import { modernColors } from '../../theme/modernTheme';
 
 const ProfilCandidatScreen: React.FC = () => {
@@ -72,7 +72,7 @@ const ProfilCandidatScreen: React.FC = () => {
     const loadProfil = async () => {
         try {
             setLoadingData(true);
-            const response = await apiGet('/api/offres-emploi/profil');
+            const response = await offreEmploiService.getProfil();
             if (response.success && response.data) {
                 const profil = response.data;
                 setFormData({
@@ -212,7 +212,7 @@ const ProfilCandidatScreen: React.FC = () => {
             if (formData.secteur_recherche) payload.secteur_recherche = formData.secteur_recherche;
             if (formData.type_contrat_souhaite.length > 0) payload.type_contrat_souhaite = formData.type_contrat_souhaite;
 
-            const response = await apiPost('/api/offres-emploi/profil', payload);
+            const response = await offreEmploiService.createOrUpdateProfil(payload);
 
             if (response.success) {
                 Alert.alert('Succès', 'Profil mis à jour avec succès !', [
