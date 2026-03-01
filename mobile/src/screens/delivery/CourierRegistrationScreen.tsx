@@ -1,18 +1,16 @@
 import { useNavigation, useRoute } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
-    Modal,
     Platform,
-    ScrollView,
     StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
-    View,
+    View
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import LocationSelector, { LocationObject } from '../../components/LocationSelector';
@@ -21,7 +19,7 @@ import PaymentMethodSelector from '../../components/PaymentMethodSelector';
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useToaster } from '../../components/ToasterProvider';
-import { VEHICLE_TRANSPORT_OPTIONS, type VehicleOption, type VehicleType } from '../../config/deliveryConfig';
+import { VEHICLE_TRANSPORT_OPTIONS, type VehicleType } from '../../config/deliveryConfig';
 import { useAuth } from '../../contexts/AuthContext';
 import { deliveryApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
@@ -102,7 +100,7 @@ const CourierRegistrationScreen: React.FC = () => {
     // Autres
     const [bio, setBio] = useState('');
     const [experience, setExperience] = useState('');
-    
+
     // ✅ NOUVEAU: Type de coursier (obligatoire, en haut du formulaire)
     const [courierType, setCourierType] = useState<string>(''); // 'classic' | 'market_shopping' | 'taxi' | 'carpooling' | 'moving'
 
@@ -155,7 +153,7 @@ const CourierRegistrationScreen: React.FC = () => {
                 default:
                     partnerTypesToLoad = ['livraison', 'livraison_courses_marche', 'demenagement', 'chauffeur'];
             }
-            
+
             let response;
             try {
                 // ✅ CORRIGÉ 2026-01-14: Utiliser l'endpoint public pour les coursiers
@@ -174,7 +172,7 @@ const CourierRegistrationScreen: React.FC = () => {
                         }
                     }
                 }
-                
+
                 // Si toujours aucun, charger tous les partenaires actifs et filtrer côté client
                 if (partnersList.length === 0) {
                     try {
@@ -197,7 +195,7 @@ const CourierRegistrationScreen: React.FC = () => {
                         }
                     }
                 }
-                
+
                 // ✅ NOUVEAU: Créer le partenaire "Yukpo" par défaut et le placer en premier
                 const yukpoPartner = {
                     id: -1, // ID spécial pour Yukpo (virtuel)
@@ -205,7 +203,7 @@ const CourierRegistrationScreen: React.FC = () => {
                     is_active: true,
                     partner_type: 'yukpo', // Type spécial pour Yukpo
                 };
-                
+
                 // Vérifier si Yukpo existe déjà dans la liste
                 const yukpoExists = partnersList.some((p: any) => p.name?.toLowerCase() === 'yukpo');
                 if (!yukpoExists) {
@@ -219,9 +217,9 @@ const CourierRegistrationScreen: React.FC = () => {
                         partnersList = [yukpo, ...partnersList];
                     }
                 }
-                
+
                 setPartners(partnersList);
-                
+
                 // ✅ NOUVEAU: Sélectionner Yukpo par défaut s'il n'y a pas de partenaire sélectionné
                 if (!selectedPartnerId && partnersList.length > 0) {
                     const yukpoPartner = partnersList.find((p: any) => p.name?.toLowerCase() === 'yukpo');
@@ -234,12 +232,12 @@ const CourierRegistrationScreen: React.FC = () => {
                         console.log('[CourierRegistrationScreen] ✅ Premier partenaire sélectionné par défaut:', partnersList[0].name);
                     }
                 }
-                
+
                 console.log('[CourierRegistrationScreen] ✅ Partenaires chargés:', partnersList.length);
             } catch (apiError: any) {
                 // ✅ AMÉLIORÉ 2026-01-14: Gestion d'erreur avec feedback utilisateur
                 console.error('[CourierRegistrationScreen] ⚠️ Erreur avec filtres, chargement sans filtre:', apiError);
-                
+
                 // Feedback utilisateur selon le type d'erreur
                 if (apiError.response?.status === 403) {
                     Alert.alert(
@@ -253,7 +251,7 @@ const CourierRegistrationScreen: React.FC = () => {
                         'Le serveur rencontre des difficultés. Veuillez réessayer plus tard.'
                     );
                 }
-                
+
                 // Fallback: charger tous les partenaires sans filtre
                 try {
                     response = await apiGet('/api/delivery/partners/public');
@@ -265,45 +263,45 @@ const CourierRegistrationScreen: React.FC = () => {
                         const validTypes = ['livraison', 'livraison_courses_marche', 'demenagement', 'chauffeur'];
                         return isActive && validTypes.includes(partnerType);
                     });
-                
-                // ✅ NOUVEAU: Créer le partenaire "Yukpo" par défaut et le placer en premier
-                const yukpoPartner = {
-                    id: -1, // ID spécial pour Yukpo (virtuel)
-                    name: 'Yukpo',
-                    is_active: true,
-                    partner_type: 'yukpo', // Type spécial pour Yukpo
-                };
-                
-                // Vérifier si Yukpo existe déjà dans la liste
-                const yukpoExists = activePartners.some((p: any) => p.name?.toLowerCase() === 'yukpo');
-                if (!yukpoExists) {
-                    // Placer Yukpo en premier
-                    activePartners.unshift(yukpoPartner);
-                } else {
-                    // Si Yukpo existe, le déplacer en premier
-                    const yukpoIndex = activePartners.findIndex((p: any) => p.name?.toLowerCase() === 'yukpo');
-                    if (yukpoIndex > 0) {
-                        const yukpo = activePartners.splice(yukpoIndex, 1)[0];
-                        activePartners.unshift(yukpo);
-                    }
-                }
-                
-                setPartners(activePartners);
-                
-                // ✅ NOUVEAU: Sélectionner Yukpo par défaut s'il n'y a pas de partenaire sélectionné
-                if (!selectedPartnerId && activePartners.length > 0) {
-                    const yukpoPartner = activePartners.find((p: any) => p.name?.toLowerCase() === 'yukpo');
-                    if (yukpoPartner) {
-                        setSelectedPartnerId(yukpoPartner.id);
-                        console.log('[CourierRegistrationScreen] ✅ Partenaire Yukpo sélectionné par défaut (fallback)');
+
+                    // ✅ NOUVEAU: Créer le partenaire "Yukpo" par défaut et le placer en premier
+                    const yukpoPartner = {
+                        id: -1, // ID spécial pour Yukpo (virtuel)
+                        name: 'Yukpo',
+                        is_active: true,
+                        partner_type: 'yukpo', // Type spécial pour Yukpo
+                    };
+
+                    // Vérifier si Yukpo existe déjà dans la liste
+                    const yukpoExists = activePartners.some((p: any) => p.name?.toLowerCase() === 'yukpo');
+                    if (!yukpoExists) {
+                        // Placer Yukpo en premier
+                        activePartners.unshift(yukpoPartner);
                     } else {
-                        // Si Yukpo n'existe pas, sélectionner le premier partenaire
-                        setSelectedPartnerId(activePartners[0].id);
-                        console.log('[CourierRegistrationScreen] ✅ Premier partenaire sélectionné par défaut (fallback):', activePartners[0].name);
+                        // Si Yukpo existe, le déplacer en premier
+                        const yukpoIndex = activePartners.findIndex((p: any) => p.name?.toLowerCase() === 'yukpo');
+                        if (yukpoIndex > 0) {
+                            const yukpo = activePartners.splice(yukpoIndex, 1)[0];
+                            activePartners.unshift(yukpo);
+                        }
                     }
-                }
-                
-                console.log('[CourierRegistrationScreen] ✅ Partenaires chargés (fallback):', activePartners.length);
+
+                    setPartners(activePartners);
+
+                    // ✅ NOUVEAU: Sélectionner Yukpo par défaut s'il n'y a pas de partenaire sélectionné
+                    if (!selectedPartnerId && activePartners.length > 0) {
+                        const yukpoPartner = activePartners.find((p: any) => p.name?.toLowerCase() === 'yukpo');
+                        if (yukpoPartner) {
+                            setSelectedPartnerId(yukpoPartner.id);
+                            console.log('[CourierRegistrationScreen] ✅ Partenaire Yukpo sélectionné par défaut (fallback)');
+                        } else {
+                            // Si Yukpo n'existe pas, sélectionner le premier partenaire
+                            setSelectedPartnerId(activePartners[0].id);
+                            console.log('[CourierRegistrationScreen] ✅ Premier partenaire sélectionné par défaut (fallback):', activePartners[0].name);
+                        }
+                    }
+
+                    console.log('[CourierRegistrationScreen] ✅ Partenaires chargés (fallback):', activePartners.length);
                 } catch (fallbackError: any) {
                     console.error('[CourierRegistrationScreen] ❌ Erreur lors du fallback:', fallbackError);
                     Alert.alert(
@@ -361,11 +359,11 @@ const CourierRegistrationScreen: React.FC = () => {
             if (Array.isArray(services) && services.length > 0) {
                 for (const service of services) {
                     const serviceData = service.data || service;
-                    const whatsapp = serviceData.whatsapp || 
-                                   serviceData.whatsapp_contact?.valeur ||
-                                   serviceData.contact?.whatsapp ||
-                                   serviceData.contact_whatsapp?.valeur ||
-                                   serviceData.telephone_whatsapp?.valeur;
+                    const whatsapp = serviceData.whatsapp ||
+                        serviceData.whatsapp_contact?.valeur ||
+                        serviceData.contact?.whatsapp ||
+                        serviceData.contact_whatsapp?.valeur ||
+                        serviceData.telephone_whatsapp?.valeur;
 
                     if (whatsapp && typeof whatsapp === 'string' && whatsapp.trim().length > 0) {
                         setPhone(whatsapp.trim());
@@ -753,7 +751,7 @@ const CourierRegistrationScreen: React.FC = () => {
 
             // ✅ CORRIGÉ: Convertir -1 (Yukpo virtuel) en null pour éviter les erreurs de contrainte de clé étrangère
             const validPartnerId = selectedPartnerId && selectedPartnerId > 0 ? selectedPartnerId : null;
-            
+
             console.log('[CourierRegistrationScreen] 🔍 Soumission avec partner_id:', {
                 selectedPartnerId,
                 validPartnerId,
@@ -783,18 +781,18 @@ const CourierRegistrationScreen: React.FC = () => {
             // ✅ CORRIGÉ: Vérifier la réponse avec plus de flexibilité
             // Le backend retourne {success: true, application: {...}}
             // apiCall retourne {success: true, data: {success: true, application: {...}}}
-            const isSuccess = response.success === true || 
-                             (response.data && (response.data.application || response.data.success === true)) ||
-                             (!response.error && !response.status);
-            
+            const isSuccess = response.success === true ||
+                (response.data && (response.data.application || response.data.success === true)) ||
+                (!response.error && !response.status);
+
             if (isSuccess) {
                 setApplicationStatus(submit ? 'submitted' : 'draft');
-                
+
                 // ✅ CORRIGÉ: Afficher le toast de confirmation immédiatement
                 const toastMessage = submit
                     ? '✅ Candidature soumise avec succès ! Votre formulaire est en attente de validation.'
                     : '💾 Brouillon enregistré ! Vous pouvez compléter et soumettre plus tard.';
-                
+
                 console.log('[CourierRegistrationScreen] ✅ Réponse succès, affichage toast:', toastMessage);
                 console.log('[CourierRegistrationScreen] Structure réponse:', {
                     success: response.success,
@@ -802,7 +800,7 @@ const CourierRegistrationScreen: React.FC = () => {
                     hasError: !!response.error,
                     status: response.status,
                 });
-                
+
                 // ✅ CORRIGÉ: Afficher le toast immédiatement
                 try {
                     toaster.success(toastMessage);
@@ -810,7 +808,7 @@ const CourierRegistrationScreen: React.FC = () => {
                 } catch (toastError) {
                     console.error('[CourierRegistrationScreen] ❌ Erreur affichage toast:', toastError);
                 }
-                
+
                 // ✅ CORRIGÉ: Afficher l'Alert APRÈS un délai pour que le toast soit visible d'abord
                 // Le toast reste visible pendant 5 secondes, on affiche l'Alert après 1.5 secondes
                 // pour que le toast soit bien visible avant que l'Alert n'apparaisse
@@ -821,10 +819,10 @@ const CourierRegistrationScreen: React.FC = () => {
                         submit ? '✅ Candidature soumise' : '💾 Brouillon enregistré',
                         submit
                             ? 'Votre candidature a été soumise avec succès et est en attente de validation par les administrateurs.\n\n' +
-                              'Vous recevrez une notification une fois la décision prise. ' +
-                              'Merci de votre patience !'
+                            'Vous recevrez une notification une fois la décision prise. ' +
+                            'Merci de votre patience !'
                             : 'Votre candidature a été enregistrée en brouillon.\n\n' +
-                              'Vous pouvez la compléter et la soumettre plus tard depuis cet écran.',
+                            'Vous pouvez la compléter et la soumettre plus tard depuis cet écran.',
                         [
                             {
                                 text: 'OK',
@@ -837,7 +835,7 @@ const CourierRegistrationScreen: React.FC = () => {
                                     } catch (toastError2) {
                                         console.error('[CourierRegistrationScreen] ❌ Erreur réaffichage toast:', toastError2);
                                     }
-                                    
+
                                     if (submit) {
                                         // Petit délai avant navigation pour laisser le toast s'afficher
                                         setTimeout(() => {
@@ -1095,13 +1093,36 @@ const CourierRegistrationScreen: React.FC = () => {
                 <NativeCard style={styles.card}>
                     <Text style={styles.sectionTitle}>Adresse de résidence</Text>
                     <View style={styles.inputContainer}>
-                        <Text style={styles.inputLabel}>Adresse complète *</Text>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Entrez votre adresse complète"
-                            value={address}
-                            onChangeText={setAddress}
-                            multiline
+                        <LocationSelector
+                            label="Adresse complète *"
+                            value={address || ''}
+                            onSelect={(location: LocationObject) => {
+                                // ✅ CORRIGÉ 2026-03-01: Utiliser LocationSelector avec autocomplete intelligent
+                                // au lieu d'un simple TextInput pour permettre la sélection de lieux précis
+                                const fullAddress = location.raw || location.place_name || '';
+                                setAddress(fullAddress);
+                                // Extraire automatiquement ville et pays depuis les composants
+                                if (location.components?.ville && !city) {
+                                    setCity(location.components.ville);
+                                    setCityLocation({
+                                        raw: location.components.ville,
+                                        place_name: location.components.ville,
+                                        components: { ville: location.components.ville },
+                                    });
+                                }
+                                if (location.components?.pays && !country) {
+                                    setCountry(location.components.pays);
+                                    setCountryLocation({
+                                        raw: location.components.pays,
+                                        place_name: location.components.pays,
+                                        components: { pays: location.components.pays },
+                                    });
+                                }
+                            }}
+                            placeholder="Restaurant, pharmacie, rue, quartier..."
+                            scope="all"
+                            required={true}
+                            enrichWithBackend={true}
                         />
                     </View>
                     <View style={styles.inputContainer}>
@@ -1110,18 +1131,12 @@ const CourierRegistrationScreen: React.FC = () => {
                             value={cityLocation || ''}
                             onSelect={(location: LocationObject) => {
                                 console.log('[CourierRegistrationScreen] onSelect ville appelé avec:', location);
-                                // ✅ CORRIGÉ: Stocker l'objet LocationObject complet pour l'affichage
                                 setCityLocation(location);
-                                console.log('[CourierRegistrationScreen] cityLocation mis à jour:', location);
-                                // Extraire la ville pour la soumission du formulaire
                                 const ville = location.components?.ville || location.place_name || location.raw || '';
-                                console.log('[CourierRegistrationScreen] Ville extraite:', ville);
                                 setCity(ville);
-                                // Si le pays n'est pas encore défini, l'extraire aussi
                                 if (location.components?.pays && !country) {
                                     const pays = location.components.pays;
                                     setCountry(pays);
-                                    // ✅ CORRIGÉ: Créer un objet LocationObject minimal pour le pays
                                     setCountryLocation({
                                         raw: pays,
                                         place_name: pays,
@@ -1279,11 +1294,11 @@ const CourierRegistrationScreen: React.FC = () => {
                                         activeOpacity={0.7}
                                     >
                                         <View style={styles.partnerOptionContent}>
-                                            <SafeIcon 
-                                                name="building" 
-                                                size={18} 
-                                                color={selectedPartnerId === partner.id ? modernColors.surface : modernColors.primary} 
-                                                type="lucide" 
+                                            <SafeIcon
+                                                name="building"
+                                                size={18}
+                                                color={selectedPartnerId === partner.id ? modernColors.surface : modernColors.primary}
+                                                type="lucide"
                                             />
                                             <Text style={[
                                                 styles.partnerOptionText,

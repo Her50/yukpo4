@@ -196,71 +196,119 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
         // ✅ ATTENDRE 500ms avant d'appeler l'API (debounce réel)
         debounceTimerRef.current = setTimeout(async () => {
             try {
-                // ✅ Utiliser l'API Google Places Autocomplete depuis la configuration
-                const GOOGLE_MAPS_API_KEY = ENVIRONMENT.GOOGLE_MAPS_API_KEY;
+                // ✅ CORRIGÉ 2026-03-01: Utiliser le backend proxy au lieu d'appeler Google directement
+                // Avantages: pas besoin d'exposer la clé API, gestion centralisée des filtres,
+                // et pas de problème de placeholder 'SET_VIA_EAS_SECRET_OR_ENV'
 
-                if (!GOOGLE_MAPS_API_KEY) {
-                    console.warn('[ModernGPSModal] ⚠️ Clé API Google Maps non configurée');
-                    return;
-                }
-
-                // ✅ CORRIGÉ: Utiliser la localisation GPS réelle de l'utilisateur en priorité
-                let locationBias: { lat: number; lng: number };
+                // Déterminer la position GPS pour le biais géographique
+                let locationParams = '';
                 if (userLocation?.coords?.latitude && userLocation?.coords?.longitude) {
-                    locationBias = {
-                        lat: userLocation.coords.latitude,
-                        lng: userLocation.coords.longitude
-                    };
+                    locationParams = `&lat=${userLocation.coords.latitude}&lng=${userLocation.coords.longitude}&radius=50000`;
                 } else if (selectedLocation) {
-                    locationBias = selectedLocation;
+                    locationParams = `&lat=${selectedLocation.lat}&lng=${selectedLocation.lng}&radius=50000`;
                 } else if (currentLocation) {
-                    locationBias = currentLocation;
-                } else {
-                    // Fallback sur Douala, Cameroun
-                    locationBias = { lat: 4.031716, lng: 9.817201 };
+                    locationParams = `&lat=${currentLocation.lat}&lng=${currentLocation.lng}&radius=50000`;
                 }
 
-                // ✅ FIX 2026-03-01: Supprimer le filtre components=country:... qui limitait
-                // les résultats aux seuls quartiers. Sans ce filtre, Google retourne TOUS les types
-                // de lieux (villes, quartiers, établissements, restaurants, adresses, etc.)
-                // Le location + radius suffit pour biaiser vers la zone géographique de l'utilisateur.
-                const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(query)}&location=${locationBias.lat},${locationBias.lng}&radius=50000&key=${GOOGLE_MAPS_API_KEY}&language=fr`;
+                const backendUrl = `/api/places/autocomplete?query=${encodeURIComponent(query)}${locationParams}`;
+                console.log('[ModernGPSModal] Backend proxy call:', backendUrl);
 
-                console.log('[ModernGPSModal] Google Places API call:', url.replace(GOOGLE_MAPS_API_KEY, 'KEY_HIDDEN'));
-                const response = await fetch(url);
-                const data = await response.json();
+                const response = await apiGet<{
+                    success: boolean;
+                    data?: string[];
+                    results?: Array<{ description: string; place_id?: string; types?: string[] }>;
+                    error?: string;
+                }>(backendUrl);
 
-                if (data.status !== 'OK') {
-                    console.warn('[ModernGPSModal] Google Places API status:', data.status, 'error:', data.error_message || 'none');
+                // Construire les suggestions au format attendu par le composant
+                let googlePredictions: any[] = [];
+                if (response.success && response.results && response.results.length > 0) {
+                    googlePredictions = response.results.map(r => ({
+                        place_id: r.place_id || '',
+                        description: r.description,
+                        types: r.types || [],
+                        structured_formatting: {
+                            main_text: r.description.split(',')[0]?.trim() || r.description,
+                            secondary_text: r.description.split(',').slice(1).join(',').trim() || ''
+                        }
+                    }));
+                } else if (response.success && response.data && response.data.length > 0) {
+                    googlePredictions = response.data.map(desc => ({
+                        place_id: '',
+                        description: desc,
+                        structured_formatting: {
+                            main_text: desc.split(',')[0]?.trim() || desc,
+                            secondary_text: desc.split(',').slice(1).join(',').trim() || ''
+                        }
+                    }));
                 }
 
-                if (data.status === 'OK' && data.predictions) {
-                    // ✅ NOUVEAU 2026-01-04: Ajouter les lieux sauvegardés aux suggestions
-                    const savedMatches = savedAddresses
-                        .filter(addr =>
-                            addr.label.toLowerCase().includes(query.toLowerCase()) ||
-                            addr.address.toLowerCase().includes(query.toLowerCase())
-                        )
-                        .map(addr => ({
-                            place_id: `saved_${addr.id}`,
-                            description: `${addr.label} - ${addr.address}`,
-                            structured_formatting: {
-                                main_text: addr.label,
-                                secondary_text: addr.address
-                            },
-                            is_saved: true,
-                            saved_address: addr
-                        }));
+                // Ajouter les lieux sauvegardés aux suggestions
+                const savedMatches = savedAddresses
+                    .filter(addr =>
+                        addr.label.toLowerCase().includes(query.toLowerCase()) ||
+                        addr.address.toLowerCase().includes(query.toLowerCase())
+                    )
+                    .map(addr => ({
+                        place_id: `saved_${addr.id}`,
+                        description: `${addr.label} - ${addr.address}`,
+                        structured_formatting: {
+                            main_text: addr.label,
+                            secondary_text: addr.address
+                        },
+                        is_saved: true,
+                        saved_address: addr
+                    }));
 
-                    // Combiner les suggestions Google avec les lieux sauvegardés (lieux sauvegardés en premier)
-                    setPlaceSuggestions([...savedMatches, ...data.predictions]);
+                // Combiner les suggestions (lieux sauvegardés en premier)
+                const allSuggestions = [...savedMatches, ...googlePredictions];
+                if (allSuggestions.length > 0) {
+                    setPlaceSuggestions(allSuggestions);
                     setShowSuggestions(true);
                 } else {
-                    setPlaceSuggestions([]);
-                    setShowSuggestions(false);
+                    // Fallback: appel Google direct si le backend ne retourne rien
+                    const GOOGLE_MAPS_API_KEY = ENVIRONMENT.GOOGLE_MAPS_API_KEY;
+                    if (GOOGLE_MAPS_API_KEY) {
+                        let locBias = '4.05,9.7';
+                        if (userLocation?.coords?.latitude && userLocation?.coords?.longitude) {
+                            locBias = `${userLocation.coords.latitude},${userLocation.coords.longitude}`;
+                        } else if (selectedLocation) {
+                            locBias = `${selectedLocation.lat},${selectedLocation.lng}`;
+                        }
+                        const directUrl = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(query)}&location=${locBias}&radius=50000&key=${GOOGLE_MAPS_API_KEY}&language=fr`;
+                        const directResp = await fetch(directUrl);
+                        const directData = await directResp.json();
+                        if (directData.status === 'OK' && directData.predictions) {
+                            setPlaceSuggestions([...savedMatches, ...directData.predictions]);
+                            setShowSuggestions(true);
+                        } else {
+                            setPlaceSuggestions([]);
+                            setShowSuggestions(false);
+                        }
+                    } else {
+                        setPlaceSuggestions([]);
+                        setShowSuggestions(false);
+                    }
                 }
             } catch (error) {
                 console.error('[ModernGPSModal] Erreur autocomplete:', error);
+                // Fallback Google direct en cas d'erreur backend
+                try {
+                    const GOOGLE_MAPS_API_KEY = ENVIRONMENT.GOOGLE_MAPS_API_KEY;
+                    if (GOOGLE_MAPS_API_KEY) {
+                        let locBias = '4.05,9.7';
+                        if (userLocation?.coords?.latitude) locBias = `${userLocation.coords.latitude},${userLocation.coords.longitude}`;
+                        const directUrl = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(query)}&location=${locBias}&radius=50000&key=${GOOGLE_MAPS_API_KEY}&language=fr`;
+                        const directResp = await fetch(directUrl);
+                        const directData = await directResp.json();
+                        if (directData.status === 'OK' && directData.predictions) {
+                            setPlaceSuggestions(directData.predictions);
+                            setShowSuggestions(true);
+                        }
+                    }
+                } catch (fallbackErr) {
+                    console.error('[ModernGPSModal] Erreur fallback Google:', fallbackErr);
+                }
             }
         }, 500); // ✅ DEBOUNCE 500ms - Réduit drastiquement les appels API
     };

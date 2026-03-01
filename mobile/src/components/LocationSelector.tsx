@@ -458,6 +458,7 @@ interface LocationSelectorProps {
     required?: boolean;
     enrichWithBackend?: boolean;  // ✅ Si true, appelle /api/places/enrich
     onFocusChange?: (focused: boolean) => void; // ✅ NOUVEAU: Callback pour notifier le parent du changement de focus
+    style?: any; // ✅ Style personnalisé pour le conteneur
 }
 
 // ✅ NOUVEAU: Fonction pour déterminer automatiquement le scope basé sur le label
@@ -509,6 +510,7 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
     required = false,
     enrichWithBackend = false,
     onFocusChange,
+    style: containerStyle,
 }) => {
     // ✅ NOUVEAU: Déterminer automatiquement le scope basé sur le label si non fourni
     const finalScope = determineScopeFromLabel(label, scope);
@@ -747,7 +749,7 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
     };
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, containerStyle]}>
             {label && (
                 <Text style={styles.label}>
                     {label} {required && <Text style={styles.required}>*</Text>}
