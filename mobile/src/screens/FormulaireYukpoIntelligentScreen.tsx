@@ -5070,6 +5070,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                     combinaison_brute: combinationString,
                     characteristic_vector: characteristicVector,
                     product_labels: productLabelsFromAutocomplete,
+                    sous_caracteristiques: autocompleteData.sous_caracteristiques || {},
                     origine_champs: autocompleteData.origine_champs || 'formulaire'
                   };
 

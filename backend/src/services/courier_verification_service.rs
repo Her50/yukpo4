@@ -47,6 +47,7 @@ pub struct CourierVerificationResult {
     pub pickup_address: Option<String>,
     pub dropoff_address: Option<String>,
     pub client_name: Option<String>,
+    pub delivery_price: Option<f64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -241,11 +242,12 @@ impl CourierVerificationService {
                     courier_vehicle_type: None,
                     delivery_id: None,
                     order_id: None,
-                    message: "Code de vérification invalide".to_string(),
+                    message: "Code de vérification non trouvé".to_string(),
                     products_to_pickup: vec![],
                     pickup_address: None,
                     dropoff_address: None,
                     client_name: None,
+                    delivery_price: None,
                 });
             }
         };
@@ -283,6 +285,7 @@ impl CourierVerificationService {
                     pickup_address: None,
                     dropoff_address: None,
                     client_name: None,
+                    delivery_price: None,
                 });
             }
         }
@@ -306,6 +309,7 @@ impl CourierVerificationService {
                 pickup_address: None,
                 dropoff_address: None,
                 client_name: None,
+                delivery_price: None,
             });
         }
 
@@ -405,34 +409,40 @@ impl CourierVerificationService {
         let products_to_pickup =
             self.get_products_for_delivery(delivery_id).await.unwrap_or_default();
 
-        // Récupérer les adresses et le nom du client
-        let delivery_details: Option<(Option<String>, Option<String>, Option<String>)> =
-            sqlx::query(
-                r#"
+        // Récupérer les adresses, le nom du client et le prix de livraison
+        let delivery_details: Option<(
+            Option<String>,
+            Option<String>,
+            Option<String>,
+            Option<f64>,
+        )> = sqlx::query(
+            r#"
             SELECT 
                 d.metadata->>'pickup_address' as pickup_address,
                 d.metadata->>'dropoff_address' as dropoff_address,
-                u.nom_complet as client_name
+                u.nom_complet as client_name,
+                (d.metadata->>'delivery_price')::float as delivery_price
             FROM deliveries d
             LEFT JOIN users u ON u.id = d.creator_id
             WHERE d.id = $1
             "#,
+        )
+        .bind(delivery_id)
+        .map(|row: sqlx::postgres::PgRow| {
+            (
+                row.get::<Option<String>, _>("pickup_address"),
+                row.get::<Option<String>, _>("dropoff_address"),
+                row.get::<Option<String>, _>("client_name"),
+                row.get::<Option<f64>, _>("delivery_price"),
             )
-            .bind(delivery_id)
-            .map(|row: sqlx::postgres::PgRow| {
-                (
-                    row.get::<Option<String>, _>("pickup_address"),
-                    row.get::<Option<String>, _>("dropoff_address"),
-                    row.get::<Option<String>, _>("client_name"),
-                )
-            })
-            .fetch_optional(&self.pool)
-            .await
-            .ok()
-            .flatten();
+        })
+        .fetch_optional(&self.pool)
+        .await
+        .ok()
+        .flatten();
 
-        let (pickup_address, dropoff_address, client_name) =
-            delivery_details.unwrap_or((None, None, None));
+        let (pickup_address, dropoff_address, client_name, delivery_price) =
+            delivery_details.unwrap_or((None, None, None, None));
 
         info!(
             "[CourierVerification] ✅ Coursier vérifié: courier_id={:?}, name={:?}, products={}",
@@ -454,6 +464,7 @@ impl CourierVerificationService {
             pickup_address,
             dropoff_address,
             client_name,
+            delivery_price,
         })
     }
 

@@ -1355,27 +1355,6 @@ pub fn valider_service_json(data: &serde_json::Value) -> Result<serde_json::Valu
                                         .cloned()
                                         .unwrap_or_default();
 
-                                    // ✅ CORRIGÉ: Créer sous_caracteristiques cohérentes label-valeur
-                                    let mut sous_caracteristiques_coherentes =
-                                        serde_json::Map::new();
-                                    if let Some(sous_caracs_def) = valeur_obj
-                                        .get("sous_caracteristiques")
-                                        .and_then(|v| v.as_object())
-                                    {
-                                        let keys: Vec<String> =
-                                            sous_caracs_def.keys().cloned().collect();
-                                        for (i, key) in keys.iter().enumerate() {
-                                            if let Some(valeur) = autocomplete_valeurs.get(i) {
-                                                sous_caracteristiques_coherentes
-                                                    .insert(key.clone(), valeur.clone());
-                                            }
-                                        }
-                                        log::info!(
-                                            "[valider_service_json] ✅ sous_caracteristiques cohérentes créées: {} paires label-valeur",
-                                            sous_caracteristiques_coherentes.len()
-                                        );
-                                    }
-
                                     // Construire un produit basique à partir de l'autocomplete
                                     let produit_obj = serde_json::json!({
                                         "nom": autocomplete_valeurs.get(0).and_then(|v| v.as_str()).unwrap_or(""),
@@ -1385,7 +1364,7 @@ pub fn valider_service_json(data: &serde_json::Value) -> Result<serde_json::Valu
                                             .collect::<Vec<_>>()
                                             .join(","),
                                         "characteristic_vector": autocomplete_valeurs,
-                                        "sous_caracteristiques": serde_json::Value::Object(sous_caracteristiques_coherentes),
+                                        "sous_caracteristiques": valeur_obj.get("sous_caracteristiques").cloned().unwrap_or(serde_json::json!({})),
                                         "origine_champs": origine_champs.clone()
                                     });
 

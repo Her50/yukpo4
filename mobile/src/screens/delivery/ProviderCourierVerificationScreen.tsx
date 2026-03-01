@@ -9,7 +9,7 @@
  * Après vérification réussie, affiche la liste des produits à remettre au coursier.
  */
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -22,10 +22,10 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import QRCodeScanner from '../../components/QRCodeScanner';
+import SafeIcon from '../../components/SafeIcon';
 import { deliveryApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
-import SafeIcon from '../../components/SafeIcon';
-import QRCodeScanner from '../../components/QRCodeScanner';
 
 interface ProductToPickup {
   product_index: number;
@@ -49,6 +49,7 @@ interface VerificationResult {
   pickup_address?: string;
   dropoff_address?: string;
   client_name?: string;
+  delivery_price?: number;
 }
 
 interface ProviderCourierVerificationScreenProps {
@@ -283,6 +284,49 @@ const ProviderCourierVerificationScreen: React.FC<ProviderCourierVerificationScr
                   </View>
                 </View>
               ))}
+            </View>
+          )}
+
+          {/* Résumé des prix */}
+          {(verificationResult.products_to_pickup.length > 0 || verificationResult.delivery_price) && (
+            <View style={styles.priceSummaryCard}>
+              <Text style={styles.priceSummaryTitle}>📋 Résumé des coûts</Text>
+
+              {/* Total des produits */}
+              {verificationResult.products_to_pickup.length > 0 && (
+                <View style={styles.priceRow}>
+                  <Text style={styles.priceLabel}>
+                    Produits ({verificationResult.products_to_pickup.length})
+                  </Text>
+                  <Text style={styles.priceValue}>
+                    {verificationResult.products_to_pickup
+                      .reduce((sum, product) => sum + (product.product_price || 0) * product.quantity, 0)
+                      .toLocaleString()} FCFA
+                  </Text>
+                </View>
+              )}
+
+              {/* Prix de livraison */}
+              {verificationResult.delivery_price && (
+                <View style={styles.priceRow}>
+                  <Text style={styles.priceLabel}>Livraison</Text>
+                  <Text style={styles.priceValue}>
+                    {verificationResult.delivery_price.toLocaleString()} FCFA
+                  </Text>
+                </View>
+              )}
+
+              {/* Total général */}
+              <View style={[styles.priceRow, styles.totalRow]}>
+                <Text style={styles.totalLabel}>Total à payer</Text>
+                <Text style={styles.totalValue}>
+                  {(
+                    verificationResult.products_to_pickup
+                      .reduce((sum, product) => sum + (product.product_price || 0) * product.quantity, 0) +
+                    (verificationResult.delivery_price || 0)
+                  ).toLocaleString()} FCFA
+                </Text>
+              </View>
             </View>
           )}
 
@@ -791,6 +835,54 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: modernColors.textTertiary,
     marginTop: 4,
+  },
+  priceSummaryCard: {
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    padding: 18,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  priceSummaryTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: modernColors.text,
+    marginBottom: 14,
+  },
+  priceRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  priceLabel: {
+    fontSize: 14,
+    color: modernColors.textSecondary,
+  },
+  priceValue: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: modernColors.text,
+  },
+  totalRow: {
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+    marginTop: 8,
+    paddingTop: 12,
+  },
+  totalLabel: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: modernColors.text,
+  },
+  totalValue: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: modernColors.primary,
   },
   confirmButton: {
     flexDirection: 'row',
