@@ -220,10 +220,11 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                     locationBias = { lat: 4.031716, lng: 9.817201 };
                 }
 
-                // ✅ FIX 2026-02-27: Google Places API limite components à 5 pays MAX
-                // Avant: 13 pays → Google retournait silencieusement 0 résultat
-                // Maintenant: 5 pays (cm, ci, sn, cd, ga) + PAS de strictbounds
-                const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(query)}&location=${locationBias.lat},${locationBias.lng}&radius=50000&components=country:cm|country:ci|country:sn|country:cd|country:ga&key=${GOOGLE_MAPS_API_KEY}&language=fr`;
+                // ✅ FIX 2026-03-01: Supprimer le filtre components=country:... qui limitait
+                // les résultats aux seuls quartiers. Sans ce filtre, Google retourne TOUS les types
+                // de lieux (villes, quartiers, établissements, restaurants, adresses, etc.)
+                // Le location + radius suffit pour biaiser vers la zone géographique de l'utilisateur.
+                const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(query)}&location=${locationBias.lat},${locationBias.lng}&radius=50000&key=${GOOGLE_MAPS_API_KEY}&language=fr`;
 
                 console.log('[ModernGPSModal] Google Places API call:', url.replace(GOOGLE_MAPS_API_KEY, 'KEY_HIDDEN'));
                 const response = await fetch(url);

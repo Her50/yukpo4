@@ -13,8 +13,8 @@ import {
 } from 'react-native';
 import CourierStatsChart from '../../components/delivery/CourierStatsChart';
 import SkeletonDeliveryCard from '../../components/delivery/SkeletonDeliveryCard';
-import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useAuth } from '../../contexts/AuthContext';
 import { deliveryApi } from '../../services/api';
@@ -160,6 +160,17 @@ const CourierDashboardScreen: React.FC = () => {
                                                 </Text>
                                             </View>
                                         </View>
+                                        {/* Bouton code de vérification pour le prestataire */}
+                                        <TouchableOpacity
+                                            style={styles.verificationCodeButton}
+                                            onPress={(e) => {
+                                                e.stopPropagation();
+                                                (navigation as any).navigate('CourierVerificationCode', { deliveryId: delivery.id });
+                                            }}
+                                        >
+                                            <SafeIcon name="shield" size={16} color={modernColors.primary} />
+                                            <Text style={styles.verificationCodeButtonText}>Mon code de vérification</Text>
+                                        </TouchableOpacity>
                                     </NativeCard>
                                 </TouchableOpacity>
                             ))
@@ -311,6 +322,23 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: modernColors.textSecondary,
         flex: 1,
+    },
+    verificationCodeButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        marginTop: 12,
+        paddingVertical: 10,
+        borderRadius: 8,
+        backgroundColor: '#EEF2FF',
+        borderWidth: 1,
+        borderColor: modernColors.primary + '30',
+    },
+    verificationCodeButtonText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: modernColors.primary,
     },
 });
 

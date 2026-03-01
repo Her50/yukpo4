@@ -90,41 +90,44 @@ pub async fn get_service_media(
         service_id
     ));
 
-    let media: Vec<ProductMediaItem> = rows
-        .iter()
-        .map(|row| {
-            let path: String = row.get::<String, _>("path");
-            let full_url = if path.starts_with("http://") || path.starts_with("https://") {
-                path
-            } else if state.media_storage.is_remote() {
-                state.media_storage.build_public_url(&path)
-            } else {
-                let api_base_url = std::env::var("PUBLIC_BASE_URL")
-                    .or_else(|_| std::env::var("UPLOAD_BASE_URL"))
-                    .unwrap_or_else(|_| "https://yukpomnang.onrender.com".to_string());
-                let clean_path = path.trim_start_matches('/');
-                format!(
-                    "{}/api/media/files/{}",
-                    api_base_url.trim_end_matches('/'),
-                    clean_path
-                )
-            };
-
-            ProductMediaItem {
-                id: row.get::<i32, _>("id"),
-                service_id: row.get::<i32, _>("service_id"),
-                product_id: row.get::<Option<String>, _>("product_id"),
-                product_index: row.get::<Option<i32>, _>("product_index"),
-                media_type: row.get::<String, _>("media_type"),
-                path: full_url,
-                is_main_image: row.get::<bool, _>("is_main_image"),
-                display_order: row.get::<i32, _>("display_order"),
-                uploaded_at: row.get::<DateTime<Utc>, _>("uploaded_at").to_rfc3339(),
-                ai_description: row.get::<Option<String>, _>("ai_description"),
-                ai_tags: row.get::<Option<Vec<String>>, _>("ai_tags"),
+    // ✅ CORRIGÉ 2026-03-01: Utiliser des URLs pré-signées au lieu de build_public_url
+    // car le bucket GCS n'est pas public (les URLs publiques retournent 404)
+    let mut media: Vec<ProductMediaItem> = Vec::with_capacity(rows.len());
+    for row in &rows {
+        let path: String = row.get::<String, _>("path");
+        let full_url = if path.starts_with("http://") || path.starts_with("https://") {
+            path
+        } else if state.media_storage.is_remote() {
+            match state.media_storage.generate_presigned_url(&path, 7 * 24 * 3600).await {
+                Ok(presigned) => presigned,
+                Err(_) => state.media_storage.build_public_url(&path),
             }
-        })
-        .collect();
+        } else {
+            let api_base_url = std::env::var("PUBLIC_BASE_URL")
+                .or_else(|_| std::env::var("UPLOAD_BASE_URL"))
+                .unwrap_or_else(|_| "https://yukpomnang.onrender.com".to_string());
+            let clean_path = path.trim_start_matches('/');
+            format!(
+                "{}/api/media/files/{}",
+                api_base_url.trim_end_matches('/'),
+                clean_path
+            )
+        };
+
+        media.push(ProductMediaItem {
+            id: row.get::<i32, _>("id"),
+            service_id: row.get::<i32, _>("service_id"),
+            product_id: row.get::<Option<String>, _>("product_id"),
+            product_index: row.get::<Option<i32>, _>("product_index"),
+            media_type: row.get::<String, _>("media_type"),
+            path: full_url,
+            is_main_image: row.get::<bool, _>("is_main_image"),
+            display_order: row.get::<i32, _>("display_order"),
+            uploaded_at: row.get::<DateTime<Utc>, _>("uploaded_at").to_rfc3339(),
+            ai_description: row.get::<Option<String>, _>("ai_description"),
+            ai_tags: row.get::<Option<Vec<String>>, _>("ai_tags"),
+        });
+    }
 
     let count = media.len();
 
@@ -183,46 +186,44 @@ pub async fn get_product_media(
 
     log_info(&format!("[MediaProduct] {} médias trouvés", rows.len()));
 
-    // ✅ CORRIGÉ: Transformer les chemins en URLs publiques S3/Wasabi
-    // Convertir les résultats
-    let media: Vec<ProductMediaItem> = rows
-        .iter()
-        .map(|row| {
-            let path: String = row.get::<String, _>("path");
-            // Si c'est déjà une URL complète, la retourner telle quelle
-            let full_url = if path.starts_with("http://") || path.starts_with("https://") {
-                path
-            } else if state.media_storage.is_remote() {
-                // ✅ CORRIGÉ: Utiliser MediaStorageService pour construire URL S3/Wasabi
-                state.media_storage.build_public_url(&path)
-            } else {
-                // ✅ Fallback pour anciens médias locaux (temporaire, migration)
-                let api_base_url = std::env::var("PUBLIC_BASE_URL")
-                    .or_else(|_| std::env::var("UPLOAD_BASE_URL"))
-                    .unwrap_or_else(|_| "https://yukpomnang.onrender.com".to_string());
-                let clean_path = path.trim_start_matches('/');
-                format!(
-                    "{}/api/media/files/{}",
-                    api_base_url.trim_end_matches('/'),
-                    clean_path
-                )
-            };
-
-            ProductMediaItem {
-                id: row.get::<i32, _>("id"),
-                service_id: row.get::<i32, _>("service_id"),
-                product_id: row.get::<Option<String>, _>("product_id"),
-                product_index: row.get::<Option<i32>, _>("product_index"),
-                media_type: row.get::<String, _>("media_type"),
-                path: full_url,
-                is_main_image: row.get::<bool, _>("is_main_image"),
-                display_order: row.get::<i32, _>("display_order"),
-                uploaded_at: row.get::<DateTime<Utc>, _>("uploaded_at").to_rfc3339(),
-                ai_description: row.get::<Option<String>, _>("ai_description"),
-                ai_tags: row.get::<Option<Vec<String>>, _>("ai_tags"),
+    // ✅ CORRIGÉ 2026-03-01: Utiliser des URLs pré-signées au lieu de build_public_url
+    // car le bucket GCS n'est pas public (les URLs publiques retournent 404)
+    let mut media: Vec<ProductMediaItem> = Vec::with_capacity(rows.len());
+    for row in &rows {
+        let path: String = row.get::<String, _>("path");
+        let full_url = if path.starts_with("http://") || path.starts_with("https://") {
+            path
+        } else if state.media_storage.is_remote() {
+            match state.media_storage.generate_presigned_url(&path, 7 * 24 * 3600).await {
+                Ok(presigned) => presigned,
+                Err(_) => state.media_storage.build_public_url(&path),
             }
-        })
-        .collect();
+        } else {
+            let api_base_url = std::env::var("PUBLIC_BASE_URL")
+                .or_else(|_| std::env::var("UPLOAD_BASE_URL"))
+                .unwrap_or_else(|_| "https://yukpomnang.onrender.com".to_string());
+            let clean_path = path.trim_start_matches('/');
+            format!(
+                "{}/api/media/files/{}",
+                api_base_url.trim_end_matches('/'),
+                clean_path
+            )
+        };
+
+        media.push(ProductMediaItem {
+            id: row.get::<i32, _>("id"),
+            service_id: row.get::<i32, _>("service_id"),
+            product_id: row.get::<Option<String>, _>("product_id"),
+            product_index: row.get::<Option<i32>, _>("product_index"),
+            media_type: row.get::<String, _>("media_type"),
+            path: full_url,
+            is_main_image: row.get::<bool, _>("is_main_image"),
+            display_order: row.get::<i32, _>("display_order"),
+            uploaded_at: row.get::<DateTime<Utc>, _>("uploaded_at").to_rfc3339(),
+            ai_description: row.get::<Option<String>, _>("ai_description"),
+            ai_tags: row.get::<Option<Vec<String>>, _>("ai_tags"),
+        });
+    }
 
     // Extraire product_id (prendre le premier si disponible)
     let product_id = media.first().and_then(|m| m.product_id.clone());
@@ -270,28 +271,31 @@ pub async fn get_product_images(
         AppError::Internal(format!("Erreur récupération images: {}", e))
     })?;
 
-    // ✅ CORRIGÉ 2025-11-30: Transformer les chemins en URLs complètes
-    let api_base_url = std::env::var("PUBLIC_BASE_URL")
-        .or_else(|_| std::env::var("UPLOAD_BASE_URL"))
-        .unwrap_or_else(|_| "https://yukpomnang.onrender.com".to_string());
-
-    let images: Vec<String> = rows
-        .iter()
-        .map(|row| {
-            let path: String = row.get::<String, _>("path");
-            // Si c'est déjà une URL complète, la retourner telle quelle
-            if path.starts_with("http://") || path.starts_with("https://") {
-                return path;
+    // ✅ CORRIGÉ 2026-03-01: Utiliser des URLs pré-signées au lieu de build_public_url
+    // car le bucket GCS n'est pas public (les URLs publiques retournent 404)
+    let mut images: Vec<String> = Vec::with_capacity(rows.len());
+    for row in &rows {
+        let path: String = row.get::<String, _>("path");
+        let full_url = if path.starts_with("http://") || path.starts_with("https://") {
+            path
+        } else if state.media_storage.is_remote() {
+            match state.media_storage.generate_presigned_url(&path, 7 * 24 * 3600).await {
+                Ok(presigned) => presigned,
+                Err(_) => state.media_storage.build_public_url(&path),
             }
-            // Construire l'URL complète avec l'endpoint /api/media/files
+        } else {
+            let api_base_url = std::env::var("PUBLIC_BASE_URL")
+                .or_else(|_| std::env::var("UPLOAD_BASE_URL"))
+                .unwrap_or_else(|_| "https://yukpomnang.onrender.com".to_string());
             let clean_path = path.trim_start_matches('/');
             format!(
                 "{}/api/media/files/{}",
                 api_base_url.trim_end_matches('/'),
                 clean_path
             )
-        })
-        .collect();
+        };
+        images.push(full_url);
+    }
 
     Ok(Json(serde_json::json!({
         "success": true,
@@ -333,28 +337,30 @@ pub async fn get_product_videos(
         AppError::Internal(format!("Erreur récupération vidéos: {}", e))
     })?;
 
-    // ✅ CORRIGÉ 2025-11-30: Transformer les chemins en URLs complètes
-    let api_base_url = std::env::var("PUBLIC_BASE_URL")
-        .or_else(|_| std::env::var("UPLOAD_BASE_URL"))
-        .unwrap_or_else(|_| "https://yukpomnang.onrender.com".to_string());
-
-    let videos: Vec<String> = rows
-        .iter()
-        .map(|row| {
-            let path: String = row.get::<String, _>("path");
-            // Si c'est déjà une URL complète, la retourner telle quelle
-            if path.starts_with("http://") || path.starts_with("https://") {
-                return path;
+    // ✅ CORRIGÉ 2026-03-01: Utiliser des URLs pré-signées au lieu de build_public_url
+    let mut videos: Vec<String> = Vec::with_capacity(rows.len());
+    for row in &rows {
+        let path: String = row.get::<String, _>("path");
+        let full_url = if path.starts_with("http://") || path.starts_with("https://") {
+            path
+        } else if state.media_storage.is_remote() {
+            match state.media_storage.generate_presigned_url(&path, 7 * 24 * 3600).await {
+                Ok(presigned) => presigned,
+                Err(_) => state.media_storage.build_public_url(&path),
             }
-            // Construire l'URL complète avec l'endpoint /api/media/files
+        } else {
+            let api_base_url = std::env::var("PUBLIC_BASE_URL")
+                .or_else(|_| std::env::var("UPLOAD_BASE_URL"))
+                .unwrap_or_else(|_| "https://yukpomnang.onrender.com".to_string());
             let clean_path = path.trim_start_matches('/');
             format!(
                 "{}/api/media/files/{}",
                 api_base_url.trim_end_matches('/'),
                 clean_path
             )
-        })
-        .collect();
+        };
+        videos.push(full_url);
+    }
 
     Ok(Json(serde_json::json!({
         "success": true,

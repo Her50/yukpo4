@@ -50,13 +50,18 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
         // Si on a déjà échoué avec l'URI optimisée, utiliser l'originale
         if (useOriginalUri) return uri;
 
-        // Ne JAMAIS modifier les URLs CDN complètes (storage.googleapis.com, cloudfront, etc.)
+        // Ne JAMAIS modifier les URLs CDN complètes ou pré-signées
+        // (GCP Storage, S3, Wasabi, etc. ne supportent pas ces query params)
         if (uri.startsWith('https://storage.googleapis.com') ||
+            uri.includes('.storage.googleapis.com') ||
             uri.startsWith('https://cdn.') ||
             uri.startsWith('data:') ||
             uri.includes('cloudfront.net') ||
             uri.includes('wasabi') ||
-            uri.includes('s3.')) {
+            uri.includes('s3.') ||
+            uri.includes('X-Goog-Signature') ||
+            uri.includes('X-Amz-Signature') ||
+            uri.includes('X-Goog-Algorithm')) {
             return uri;
         }
 

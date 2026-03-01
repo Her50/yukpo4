@@ -929,7 +929,10 @@ const HomeScreen: React.FC = () => {
                     }}
                     onOpenChat={(chatId: string) => {
                         console.log('Ouvrir chat:', chatId);
-                        setShowChatModal(false);
+                        // ✅ CORRIGÉ: ChatHistoryModal.handleOpenChatModal gère déjà l'ouverture de ChatModalMobile
+                        // avec les bonnes données de conversation. Il suffit de ne pas fermer le modal.
+                        // La fonction handleOpenChatModal dans ChatHistoryModal ouvrira ChatModalMobile
+                        // avec service, prestataire et conversationId corrects.
                     }}
                 />
             )}

@@ -90,7 +90,7 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
     const canAcceptDelivery = useMemo(() => {
         if (!user?.id || !delivery) return false;
         if (delivery.status !== 'awaiting_courier_confirmation') return false;
-        
+
         // Vérifier si le coursier actuel a été notifié
         const notifiedUserIds = delivery.metadata?.notified_user_ids as number[] | undefined;
         return notifiedUserIds?.includes(user.id) ?? false;
@@ -164,18 +164,18 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
 
     const handleNavigation = async () => {
         if (!deliveryId) return;
-        
+
         try {
             // ✅ CORRIGÉ: Utiliser les données directement depuis delivery au lieu de l'API
             const pickup = delivery?.pickup?.location;
             const dropoff = delivery?.dropoff?.location;
-            
+
             // Déterminer l'origine et la destination selon le statut
             let origin: { lat: number; lng: number } | null = null;
             let destination: { lat: number; lng: number } | null = null;
-            
+
             const status = delivery?.status;
-            
+
             // Si le coursier n'a pas encore récupéré, aller au pickup
             if (status === 'assigned' || status === 'awaiting_courier' || status === 'en_route_pickup') {
                 // Essayer d'utiliser la position GPS actuelle du coursier comme origine
@@ -194,16 +194,16 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
                     console.warn('[DeliveryTracking] Erreur récupération GPS coursier:', gpsError);
                     // Continuer avec pickup comme origine si GPS échoue
                 }
-                
+
                 // Si pas de GPS, utiliser la position du coursier depuis delivery ou le pickup
                 if (!origin) {
-                    origin = delivery?.metadata?.last_location 
+                    origin = delivery?.metadata?.last_location
                         ? { lat: delivery.metadata.last_location.lat, lng: delivery.metadata.last_location.lng }
                         : pickup ? { lat: pickup.lat, lng: pickup.lng } : null;
                 }
-                
+
                 destination = pickup ? { lat: pickup.lat, lng: pickup.lng } : null;
-            } 
+            }
             // Si le coursier a récupéré, aller au dropoff
             else if (status === 'shopping_completed' || status === 'en_route_delivery') {
                 // Utiliser la position GPS actuelle du coursier comme origine
@@ -222,14 +222,14 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
                     console.warn('[DeliveryTracking] Erreur récupération GPS coursier:', gpsError);
                     // Continuer avec pickup comme origine si GPS échoue
                 }
-                
+
                 // Si pas de GPS, utiliser la position du coursier depuis delivery ou le pickup
                 if (!origin) {
-                    origin = delivery?.metadata?.last_location 
+                    origin = delivery?.metadata?.last_location
                         ? { lat: delivery.metadata.last_location.lat, lng: delivery.metadata.last_location.lng }
                         : pickup ? { lat: pickup.lat, lng: pickup.lng } : null;
                 }
-                
+
                 destination = dropoff ? { lat: dropoff.lat, lng: dropoff.lng } : null;
             }
             // Par défaut, utiliser pickup -> dropoff
@@ -243,7 +243,7 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
                 const missingData = [];
                 if (!origin) missingData.push('origine');
                 if (!destination) missingData.push('destination');
-                
+
                 Alert.alert(
                     'Données incomplètes',
                     `Impossible de démarrer la navigation : ${missingData.join(' et ')} manquante(s).\n\nVérifiez que les adresses de pickup et dropoff sont bien définies.`,
@@ -267,7 +267,7 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
 
             // Construire l'URL Google Maps
             const url = `https://www.google.com/maps/dir/${origin.lat},${origin.lng}/${destination.lat},${destination.lng}`;
-            
+
             const canOpen = await Linking.canOpenURL(url);
             if (canOpen) {
                 await Linking.openURL(url);
@@ -276,7 +276,7 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
                 // ✅ CORRIGÉ: Essayer avec d'autres applications de navigation
                 const appleMapsUrl = `http://maps.apple.com/?daddr=${destination.lat},${destination.lng}&saddr=${origin.lat},${origin.lng}`;
                 const canOpenApple = await Linking.canOpenURL(appleMapsUrl);
-                
+
                 if (canOpenApple) {
                     await Linking.openURL(appleMapsUrl);
                     showSuccess('Navigation ouverte');
@@ -311,7 +311,7 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
     // ✅ NOUVEAU : Accepter une course
     const handleAcceptDelivery = async () => {
         if (!deliveryId || acceptingDelivery) return;
-        
+
         Alert.alert(
             'Accepter la course',
             'Êtes-vous sûr de vouloir accepter cette course ?',
@@ -633,6 +633,17 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
                                     <Text style={styles.buttonText}>Choisir un livreur</Text>
                                 </TouchableOpacity>
                             )}
+
+                            {/* Bouton vérification coursier pour le prestataire */}
+                            {!isCourier && delivery?.courier && deliveryId &&
+                                (delivery?.status === 'assigned' || delivery?.status === 'en_route_pickup' || delivery?.status === 'shopping_pending') && (
+                                    <TouchableOpacity
+                                        style={[styles.button, { backgroundColor: '#EEF2FF', borderWidth: 1, borderColor: modernColors.primary + '40' }]}
+                                        onPress={() => (navigation as any).navigate('ProviderCourierVerification', { deliveryId })}
+                                    >
+                                        <Text style={[styles.buttonText, { color: modernColors.primary }]}>🛡️ Vérifier l'identité du coursier</Text>
+                                    </TouchableOpacity>
+                                )}
 
                             {isCourier && (
                                 <View style={styles.mediaSection}>

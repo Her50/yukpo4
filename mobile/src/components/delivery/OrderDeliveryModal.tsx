@@ -1370,135 +1370,144 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                             )}
                         </View>
                     </View>
-                    {/* ✅ Phase 7 - Amélioration 23 : Affichage coûts (produit + livraison séparés) */}
-                    {(productPrice !== null || deliveryCost !== null) && (
-                        <View style={styles.costsSection}>
-                            <Text style={styles.costsTitle}>Récapitulatif des coûts</Text>
-                            <View style={styles.costsCard}>
-                                {/* ✅ CORRIGÉ 2026-01-23: Affichage avec variation et quantité */}
-                                {productVariants && productVariants.length > 0 && selectedVariantIdx >= 0 ? (
-                                    /* Affichage avec variation de prix */
-                                    <View style={styles.productsDetail}>
-                                        <View style={styles.costRow}>
-                                            <View style={styles.costLabelContainer}>
-                                                <Text style={styles.costLabel}>
-                                                    {productName} - {productVariants[selectedVariantIdx].valeur || productVariants[selectedVariantIdx].value || productVariants[selectedVariantIdx].conditionnement || 'Variation'}
-                                                </Text>
-                                            </View>
-                                            <View style={styles.costValueContainer}>
-                                                <Text style={styles.costValue}>
-                                                    {(productVariants[selectedVariantIdx].prix || productVariants[selectedVariantIdx].price || 0).toLocaleString('fr-FR')} FCFA
-                                                </Text>
-                                            </View>
-                                        </View>
-                                        {quantity > 1 && (
-                                            <View style={styles.costRow}>
-                                                <Text style={styles.costLabel}>× {quantity}</Text>
-                                                <Text style={styles.costValue}>
-                                                    {((productVariants[selectedVariantIdx].prix || productVariants[selectedVariantIdx].price || 0) * quantity).toLocaleString('fr-FR')} FCFA
-                                                </Text>
-                                            </View>
-                                        )}
-                                    </View>
-                                ) : selectedProducts.length > 1 ? (
-                                    /* ✅ Phase 8 - Amélioration 26 : Détail par produit si plusieurs */
-                                    <View style={styles.productsDetail}>
-                                        {selectedProducts.map((idx) => {
-                                            const product = availableProducts.find(p => p.index === idx);
-                                            return product ? (
-                                                <View key={idx} style={styles.costRow}>
-                                                    <View style={styles.costLabelContainer}>
-                                                        <Text style={styles.costLabel}>{product.name}</Text>
-                                                        {product.hasPromotion && (
-                                                            <View style={styles.promoBadgeSmall}>
-                                                                <Text style={styles.promoBadgeTextSmall}>PROMO</Text>
-                                                            </View>
-                                                        )}
-                                                    </View>
-                                                    <View style={styles.costValueContainer}>
-                                                        {product.hasPromotion && product.originalPrice && (
-                                                            <Text style={styles.costOriginalPrice}>
-                                                                {product.originalPrice.toLocaleString('fr-FR')}
-                                                            </Text>
-                                                        )}
-                                                        <Text style={[
-                                                            styles.costValue,
-                                                            product.hasPromotion && styles.costValuePromo
-                                                        ]}>
-                                                            {product.price.toLocaleString('fr-FR')} FCFA
-                                                        </Text>
-                                                    </View>
-                                                </View>
-                                            ) : null;
-                                        })}
-                                        <View style={[styles.costRow, styles.subtotalRow]}>
-                                            <Text style={styles.subtotalLabel}>Sous-total produits</Text>
-                                            <Text style={styles.costValue}>{productPrice?.toLocaleString('fr-FR')} FCFA</Text>
-                                        </View>
-                                    </View>
-                                ) : (
-                                    /* Prix produit(s) - Affichage simple si un seul produit */
-                                    productPrice !== null && (
-                                        <View style={styles.costRow}>
-                                            <Text style={styles.costLabel}>Produit(s)</Text>
-                                            <Text style={styles.costValue}>{productPrice.toLocaleString('fr-FR')} FCFA</Text>
-                                        </View>
-                                    )
-                                )}
+                    {/* ✅ FIX 2026-03-01: Récapitulatif de commande complet et toujours visible
+                        Structuré comme le flux coursier (DeliveryParcelFlowNew SummaryStep) avec:
+                        - Coût du produit (détaillé avec variation/quantité)
+                        - Frais de livraison
+                        - Assurance
+                        - Total
+                        - Solde utilisateur
+                    */}
+                    <View style={styles.summarySection}>
+                        <View style={styles.summarySectionHeader}>
+                            <SafeIcon name="file-text" size={20} color={modernColors.primary} />
+                            <Text style={styles.summarySectionTitle}>Récapitulatif de commande</Text>
+                        </View>
 
-                                {/* Coût livraison */}
-                                {deliveryCost !== null && (
-                                    <View style={styles.costRow}>
+                        {/* Carte 1: Produit(s) */}
+                        <View style={styles.summaryCard}>
+                            <Text style={styles.summaryCardTitle}>Produit</Text>
+                            {productVariants && productVariants.length > 0 && selectedVariantIdx >= 0 ? (
+                                <View>
+                                    <View style={styles.summaryRow}>
+                                        <Text style={styles.summaryLabel}>{productName || 'Produit'}</Text>
+                                        <Text style={styles.summaryValue}>
+                                            {(productVariants[selectedVariantIdx].prix || productVariants[selectedVariantIdx].price || 0).toLocaleString('fr-FR')} FCFA
+                                        </Text>
+                                    </View>
+                                    <View style={styles.summaryRow}>
+                                        <Text style={styles.summaryLabelLight}>
+                                            Variation: {productVariants[selectedVariantIdx].valeur || productVariants[selectedVariantIdx].value || productVariants[selectedVariantIdx].conditionnement || '-'}
+                                        </Text>
+                                    </View>
+                                    {quantity > 1 && (
+                                        <View style={styles.summaryRow}>
+                                            <Text style={styles.summaryLabel}>Quantité × {quantity}</Text>
+                                            <Text style={styles.summaryValue}>
+                                                {((productVariants[selectedVariantIdx].prix || productVariants[selectedVariantIdx].price || 0) * quantity).toLocaleString('fr-FR')} FCFA
+                                            </Text>
+                                        </View>
+                                    )}
+                                </View>
+                            ) : selectedProducts.length > 1 ? (
+                                <View>
+                                    {selectedProducts.map((idx) => {
+                                        const product = availableProducts.find(p => p.index === idx);
+                                        return product ? (
+                                            <View key={idx} style={styles.summaryRow}>
+                                                <View style={styles.costLabelContainer}>
+                                                    <Text style={styles.summaryLabel}>{product.name}</Text>
+                                                    {product.hasPromotion && (
+                                                        <View style={styles.promoBadgeSmall}>
+                                                            <Text style={styles.promoBadgeTextSmall}>PROMO</Text>
+                                                        </View>
+                                                    )}
+                                                </View>
+                                                <View style={styles.costValueContainer}>
+                                                    {product.hasPromotion && product.originalPrice && (
+                                                        <Text style={styles.costOriginalPrice}>
+                                                            {product.originalPrice.toLocaleString('fr-FR')}
+                                                        </Text>
+                                                    )}
+                                                    <Text style={styles.summaryValue}>
+                                                        {product.price.toLocaleString('fr-FR')} FCFA
+                                                    </Text>
+                                                </View>
+                                            </View>
+                                        ) : null;
+                                    })}
+                                    <View style={[styles.summaryRow, styles.subtotalRow]}>
+                                        <Text style={styles.subtotalLabel}>Sous-total produits</Text>
+                                        <Text style={styles.summaryValue}>{(productPrice || 0).toLocaleString('fr-FR')} FCFA</Text>
+                                    </View>
+                                </View>
+                            ) : (
+                                <View style={styles.summaryRow}>
+                                    <Text style={styles.summaryLabel}>{productName || 'Produit'}{quantity > 1 ? ` × ${quantity}` : ''}</Text>
+                                    <Text style={styles.summaryValue}>
+                                        {productPrice !== null ? `${productPrice.toLocaleString('fr-FR')} FCFA` : 'Calcul en cours...'}
+                                    </Text>
+                                </View>
+                            )}
+                        </View>
+
+                        {/* Carte 2: Frais de livraison + Assurance */}
+                        <View style={styles.summaryCard}>
+                            <Text style={styles.summaryCardTitle}>Frais</Text>
+                            {loadingCosts ? (
+                                <Text style={styles.summaryLoadingText}>Calcul des frais de livraison...</Text>
+                            ) : (
+                                <>
+                                    <View style={styles.summaryRow}>
                                         <View style={styles.costLabelContainer}>
-                                            <Text style={styles.costLabel}>Livraison</Text>
+                                            <Text style={styles.summaryLabel}>Frais de livraison</Text>
                                             {isDeliveryFree && (
                                                 <View style={styles.freeBadge}>
                                                     <Text style={styles.freeBadgeText}>Gratuite</Text>
                                                 </View>
                                             )}
                                         </View>
-                                        <Text style={styles.costValue}>
-                                            {isDeliveryFree ? '0' : deliveryCost.toLocaleString('fr-FR')} FCFA
+                                        <Text style={styles.summaryValue}>
+                                            {deliveryCost !== null
+                                                ? `${isDeliveryFree ? '0' : deliveryCost.toLocaleString('fr-FR')} FCFA`
+                                                : dropoffLocation ? 'Calcul...' : 'Indiquez l\'adresse'}
                                         </Text>
                                     </View>
-                                )}
-
-                                {/* Assurance */}
-                                {insuranceCost > 0 && (
-                                    <View style={styles.costRow}>
-                                        <Text style={styles.costLabel}>Assurance</Text>
-                                        <Text style={styles.costValue}>{insuranceCost.toLocaleString('fr-FR')} FCFA</Text>
-                                    </View>
-                                )}
-
-                                {/* Total */}
-                                {(productPrice !== null || deliveryCost !== null) && (
-                                    <View style={[styles.costRow, styles.totalRow]}>
-                                        <Text style={styles.totalLabel}>Total</Text>
-                                        <Text style={styles.totalValue}>
-                                            {((productPrice || 0) + (isDeliveryFree ? 0 : (deliveryCost || 0)) + insuranceCost).toLocaleString('fr-FR')} FCFA
+                                    <View style={styles.summaryRow}>
+                                        <Text style={styles.summaryLabel}>Assurance colis</Text>
+                                        <Text style={styles.summaryValue}>
+                                            {insuranceCost > 0 ? `${insuranceCost.toLocaleString('fr-FR')} FCFA` : '0 FCFA'}
                                         </Text>
                                     </View>
-                                )}
-
-                                {/* Solde utilisateur */}
-                                <View style={styles.costRow}>
-                                    <Text style={styles.costLabel}>Votre solde</Text>
-                                    <Text style={[
-                                        styles.costValue,
-                                        userBalance < ((productPrice || 0) + (isDeliveryFree ? 0 : (deliveryCost || 0)) + insuranceCost) && { color: '#EF4444' }
-                                    ]}>
-                                        {userBalance.toLocaleString('fr-FR')} FCFA
-                                    </Text>
-                                </View>
-                                {userBalance < ((productPrice || 0) + (isDeliveryFree ? 0 : (deliveryCost || 0)) + insuranceCost) && (
-                                    <Text style={{ fontSize: 12, color: '#EF4444', marginTop: 4, fontStyle: 'italic' }}>
-                                        ⚠️ Solde insuffisant. Vous serez redirigé vers la recharge.
-                                    </Text>
-                                )}
-                            </View>
+                                </>
+                            )}
                         </View>
-                    )}
+
+                        {/* Carte 3: Total + Solde */}
+                        <View style={styles.summaryCardTotal}>
+                            <View style={[styles.summaryRow, { paddingVertical: 12 }]}>
+                                <Text style={styles.totalLabel}>Total à payer</Text>
+                                <Text style={styles.totalValue}>
+                                    {((productPrice || 0) + (isDeliveryFree ? 0 : (deliveryCost || 0)) + insuranceCost).toLocaleString('fr-FR')} FCFA
+                                </Text>
+                            </View>
+                            <View style={styles.summaryDivider} />
+                            <View style={styles.summaryRow}>
+                                <Text style={styles.summaryLabel}>Votre solde</Text>
+                                <Text style={[
+                                    styles.summaryValue,
+                                    userBalance < ((productPrice || 0) + (isDeliveryFree ? 0 : (deliveryCost || 0)) + insuranceCost) && { color: '#EF4444' }
+                                ]}>
+                                    {userBalance.toLocaleString('fr-FR')} FCFA
+                                </Text>
+                            </View>
+                            {userBalance < ((productPrice || 0) + (isDeliveryFree ? 0 : (deliveryCost || 0)) + insuranceCost) && (
+                                <Text style={styles.summaryWarning}>
+                                    ⚠️ Solde insuffisant. Rechargez votre compte avant de confirmer.
+                                </Text>
+                            )}
+                        </View>
+                    </View>
                 </ScrollView>
 
                 {/* Footer */}
@@ -1515,12 +1524,46 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                             styles.button,
                             styles.submitButton,
                             (!dropoffLocation || loading) && styles.submitButtonDisabled,
+                            userBalance < ((productPrice || 0) + (isDeliveryFree ? 0 : (deliveryCost || 0)) + insuranceCost) && styles.submitButtonWarning,
                         ]}
-                        onPress={handleSubmit}
+                        onPress={() => {
+                            const totalCost = (productPrice || 0) + (isDeliveryFree ? 0 : (deliveryCost || 0)) + insuranceCost;
+                            if (userBalance < totalCost) {
+                                // ✅ NOUVEAU 2026-03-01: Rediriger vers la recharge si solde insuffisant
+                                Alert.alert(
+                                    'Solde insuffisant',
+                                    'Votre solde est insuffisant pour cette commande. Voulez-vous recharger votre compte maintenant ?',
+                                    [
+                                        {
+                                            text: 'Annuler',
+                                            style: 'cancel',
+                                            onPress: () => { }
+                                        },
+                                        {
+                                            text: 'Recharger',
+                                            onPress: () => {
+                                                // Naviguer vers l'écran de recharge
+                                                navigation.navigate('RechargeTokens' as any);
+                                                onClose(); // Fermer le modal de livraison
+                                            }
+                                        }
+                                    ]
+                                );
+                            } else {
+                                handleSubmit();
+                            }
+                        }}
                         disabled={loading || !dropoffLocation}
                     >
-                        <Text style={styles.submitButtonText}>
-                            {loading ? 'Création...' : 'Confirmer la commande'}
+                        <Text style={[
+                            styles.submitButtonText,
+                            userBalance < ((productPrice || 0) + (isDeliveryFree ? 0 : (deliveryCost || 0)) + insuranceCost) && styles.submitButtonTextWarning
+                        ]}>
+                            {loading ? 'Création...' :
+                                userBalance < ((productPrice || 0) + (isDeliveryFree ? 0 : (deliveryCost || 0)) + insuranceCost)
+                                    ? 'Recharger pour continuer'
+                                    : `Confirmer ${((productPrice || 0) + (isDeliveryFree ? 0 : (deliveryCost || 0)) + insuranceCost) > 0 ? `• ${((productPrice || 0) + (isDeliveryFree ? 0 : (deliveryCost || 0)) + insuranceCost).toLocaleString('fr-FR')} FCFA` : ''}`
+                            }
                         </Text>
                     </TouchableOpacity>
                 </View>
@@ -1723,7 +1766,15 @@ const styles = StyleSheet.create({
         backgroundColor: '#9CA3AF',
         opacity: 0.6,
     },
+    submitButtonWarning: {
+        backgroundColor: '#EF4444',
+    },
     submitButtonText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#FFFFFF',
+    },
+    submitButtonTextWarning: {
         fontSize: 16,
         fontWeight: '600',
         color: '#FFFFFF',
@@ -1970,7 +2021,86 @@ const styles = StyleSheet.create({
         padding: 8,
         marginLeft: 8,
     },
-    // ✅ Styles pour section coûts
+    // ✅ FIX 2026-03-01: Styles pour récapitulatif de commande structuré
+    summarySection: {
+        marginTop: 24,
+        marginBottom: 8,
+    },
+    summarySectionHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 16,
+    },
+    summarySectionTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: modernColors.text,
+    },
+    summaryCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 12,
+        padding: 16,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        marginBottom: 10,
+    },
+    summaryCardTotal: {
+        backgroundColor: '#EFF6FF',
+        borderRadius: 12,
+        padding: 16,
+        borderWidth: 2,
+        borderColor: modernColors.primary,
+        marginBottom: 10,
+    },
+    summaryCardTitle: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: modernColors.primary,
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+        marginBottom: 10,
+    },
+    summaryRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingVertical: 6,
+    },
+    summaryLabel: {
+        fontSize: 14,
+        fontWeight: '500',
+        color: modernColors.text,
+        flex: 1,
+    },
+    summaryLabelLight: {
+        fontSize: 13,
+        color: modernColors.textSecondary,
+        fontStyle: 'italic',
+    },
+    summaryValue: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: modernColors.text,
+    },
+    summaryLoadingText: {
+        fontSize: 13,
+        color: modernColors.textSecondary,
+        fontStyle: 'italic',
+        paddingVertical: 8,
+    },
+    summaryDivider: {
+        height: 1,
+        backgroundColor: '#BFDBFE',
+        marginVertical: 8,
+    },
+    summaryWarning: {
+        fontSize: 12,
+        color: '#EF4444',
+        marginTop: 8,
+        fontStyle: 'italic',
+    },
+    // ✅ Styles hérités pour compatibilité
     costsSection: {
         marginTop: 24,
     },

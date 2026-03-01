@@ -79,6 +79,8 @@ pub async fn get_products_by_service(
     ));
 
     // Grouper les médias par product_index
+    // ✅ CORRIGÉ 2026-03-01: Utiliser des URLs pré-signées au lieu de build_public_url
+    // car le bucket GCS n'est pas public (les URLs publiques retournent 404)
     for row in media_rows {
         let product_index: Option<i32> = row.try_get("product_index").ok().flatten();
         let media_type: String = row.get("type");
@@ -88,11 +90,23 @@ pub async fn get_products_by_service(
             .entry(product_index)
             .or_insert_with(|| (Vec::new(), Vec::new()));
 
-        // Transformer le chemin en URL CDN si nécessaire
-        let media_url = if !path.starts_with("http://") && !path.starts_with("https://") {
-            state.media_storage.build_public_url(&path)
-        } else {
+        // Transformer le chemin en URL accessible
+        let media_url = if path.starts_with("http://") || path.starts_with("https://") {
             path
+        } else if state.media_storage.is_remote() {
+            // ✅ CORRIGÉ: Générer une URL pré-signée (7 jours) au lieu d'une URL publique
+            match state.media_storage.generate_presigned_url(&path, 7 * 24 * 3600).await {
+                Ok(presigned) => presigned,
+                Err(e) => {
+                    log_info(&format!(
+                        "[get_products_by_service] ⚠️ Erreur URL pré-signée pour {}: {}, fallback build_public_url",
+                        path, e
+                    ));
+                    state.media_storage.build_public_url(&path)
+                }
+            }
+        } else {
+            state.media_storage.build_public_url(&path)
         };
 
         match media_type.as_str() {

@@ -1690,6 +1690,16 @@ const SecondaryStack = () => {
         component={withNavigatorSafeArea(require('../screens/delivery/CourierDashboardScreen').default)}
       />
       <Stack.Screen
+        name="CourierVerificationCode"
+        component={withNavigatorSafeArea(require('../screens/delivery/CourierVerificationCodeScreen').default)}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="ProviderCourierVerification"
+        component={withNavigatorSafeArea(require('../screens/delivery/ProviderCourierVerificationScreen').default)}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
         name="CourierAdmin"
         component={withNavigatorSafeArea(CourierAdminScreen)}
         options={{

@@ -580,10 +580,13 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
         service={selectedService}
         prestataireInfo={selectedPrestataire}
         user={user}
+        conversationId={selectedChat?.id}
+        isPrivateConversation={true}
         onClose={() => {
           setShowChatModal(false);
           setSelectedService(null);
           setSelectedPrestataire(null);
+          setSelectedChat(null);
         }}
       />
     </Modal>

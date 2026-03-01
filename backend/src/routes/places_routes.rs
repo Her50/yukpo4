@@ -125,11 +125,20 @@ pub async fn autocomplete_places(
     // Filtrer par type et géolocalisation
     match place_type {
         None => {
-            // ✅ AMÉLIORÉ 2025-01-02: Recherche universelle - inclut TOUS les types (géographiques + établissements)
-            // Ne pas spécifier types pour obtenir tous les résultats (villes, quartiers, établissements, etc.)
-            // ✅ FIX 2026-02-25: Google Places API limite à 5 composants country max
-            url.push_str("&components=country:cm|country:ci|country:sn|country:cd|country:ga");
+            // ✅ FIX 2026-03-01: Recherche universelle SANS filtre components
+            // Le filtre components=country:... limitait les résultats aux quartiers uniquement
+            // car Google favorise les résultats géographiques quand on filtre par pays sans type.
+            // Sans components, Google retourne TOUS les types: villes, quartiers, établissements,
+            // restaurants, adresses, etc. On utilise language=fr pour obtenir des résultats en français.
             url.push_str("&language=fr");
+            // Utiliser les coordonnées du client si fournies, sinon biais vers Douala
+            if let (Some(lat), Some(lng)) = (params.lat, params.lng) {
+                let radius = params.radius.unwrap_or(50000);
+                url.push_str(&format!("&location={},{}&radius={}", lat, lng, radius));
+            } else {
+                // Biais vers Douala, Cameroun avec un rayon large (500km) pour couvrir la sous-région
+                url.push_str("&location=4.05,9.7&radius=500000");
+            }
         }
         Some("city") => {
             // Filtrer pour villes uniquement
@@ -139,27 +148,35 @@ pub async fn autocomplete_places(
             url.push_str("&language=fr");
         }
         Some("neighborhood") => {
-            // ✅ NOUVEAU: Quartiers et sous-localités
+            // ✅ FIX 2026-03-01: Quartiers et sous-localités SANS filtre components
             url.push_str("&types=sublocality|neighborhood");
-            // ✅ FIX 2026-02-25: Google Places API limite à 5 composants country max
-            url.push_str("&components=country:cm|country:ci|country:sn|country:cd|country:ga");
             url.push_str("&language=fr");
-            // Si contexte de ville fourni, ajouter comme biais
-            if let Some(city) = &params.city {
+            if let (Some(lat), Some(lng)) = (params.lat, params.lng) {
+                let radius = params.radius.unwrap_or(50000);
+                url.push_str(&format!("&location={},{}&radius={}", lat, lng, radius));
+            } else if let Some(city) = &params.city {
                 url.push_str(&format!("&location={}", urlencoding::encode(city)));
+            } else {
+                url.push_str("&location=4.05,9.7&radius=500000");
             }
         }
-        Some("point") => {
-            // Points d'intérêt, établissements
+        Some("point") | Some("establishment") => {
+            // Points d'intérêt, établissements (mobile envoie "point" ou "establishment")
             url.push_str("&types=establishment");
-            // Si contexte de ville fourni, ajouter comme biais
-            if let Some(city) = &params.city {
+            url.push_str("&language=fr");
+            if let (Some(lat), Some(lng)) = (params.lat, params.lng) {
+                let radius = params.radius.unwrap_or(50000);
+                url.push_str(&format!("&location={},{}&radius={}", lat, lng, radius));
+            } else if let Some(city) = &params.city {
                 url.push_str(&format!("&location={}", urlencoding::encode(city)));
+            } else {
+                url.push_str("&location=4.05,9.7&radius=500000");
             }
         }
         Some("hospital") => {
             // Recherche d'hôpitaux par proximité
             url.push_str("&types=hospital");
+            url.push_str("&language=fr");
             if let (Some(lat), Some(lng)) = (params.lat, params.lng) {
                 let radius = params.radius.unwrap_or(5000); // 5km par défaut
                 url.push_str(&format!("&location={},{}&radius={}", lat, lng, radius));
@@ -168,6 +185,7 @@ pub async fn autocomplete_places(
         Some("pharmacy") => {
             // Recherche de pharmacies par proximité
             url.push_str("&types=pharmacy");
+            url.push_str("&language=fr");
             if let (Some(lat), Some(lng)) = (params.lat, params.lng) {
                 let radius = params.radius.unwrap_or(5000);
                 url.push_str(&format!("&location={},{}&radius={}", lat, lng, radius));
@@ -176,6 +194,7 @@ pub async fn autocomplete_places(
         Some("health") => {
             // Recherche structures de santé générales (labos, cliniques, etc.)
             url.push_str("&types=health");
+            url.push_str("&language=fr");
             if let (Some(lat), Some(lng)) = (params.lat, params.lng) {
                 let radius = params.radius.unwrap_or(5000);
                 url.push_str(&format!("&location={},{}&radius={}", lat, lng, radius));
@@ -183,6 +202,10 @@ pub async fn autocomplete_places(
         }
         _ => {}
     }
+
+    // Log de l'URL finale pour diagnostic (clé masquée)
+    let masked_url = url.replace(&google_api_key, "KEY_***");
+    eprintln!("[Places API] URL finale: {}", masked_url);
 
     // Appeler l'API Google Maps
     match reqwest::get(&url).await {

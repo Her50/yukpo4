@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import ENVIRONMENT from '../config/environment';
 import { useLocation } from '../contexts/LocationContext';
 import { apiGet } from '../services/api';
 import { PlaceResult, PlaceScope, placesService } from '../services/placesService';
@@ -580,62 +579,54 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
 
             setLoading(true);
             try {
-                // ✅ NOUVEAU 2026-01-04: Utiliser directement Google Places Autocomplete API avec locationBias
-                // Comme dans ModernGPSModal pour rechercher dans la zone géographique de l'utilisateur
-                const GOOGLE_MAPS_API_KEY = ENVIRONMENT.GOOGLE_MAPS_API_KEY;
+                // ✅ FIX 2026-03-01: Utiliser le backend proxy au lieu d'appeler Google directement
+                // L'appel direct avait un filtre components=country:... qui limitait les résultats
+                // aux seuls quartiers. Le backend proxy gère correctement la recherche universelle
+                // sans ce filtre restrictif, et ne nécessite pas d'exposer la clé API côté client.
 
-                if (GOOGLE_MAPS_API_KEY) {
-                    // ✅ Utiliser la localisation GPS de l'utilisateur en priorité pour locationBias
-                    let locationBias: { lat: number; lng: number };
-                    if (userLocation?.coords?.latitude && userLocation?.coords?.longitude) {
-                        locationBias = {
-                            lat: userLocation.coords.latitude,
-                            lng: userLocation.coords.longitude
-                        };
+                // Construire l'URL du backend proxy avec les bons paramètres
+                const scopeParam = finalScope === 'all' ? '' : `&type=${finalScope}`;
+                const cityParam = cityContext ? `&city=${encodeURIComponent(cityContext)}` : '';
+
+                // Passer la localisation GPS de l'utilisateur au backend pour un biais géographique
+                let locationParams = '';
+                if (userLocation?.coords?.latitude && userLocation?.coords?.longitude) {
+                    locationParams = `&lat=${userLocation.coords.latitude}&lng=${userLocation.coords.longitude}&radius=50000`;
+                }
+
+                const backendUrl = `/api/places/autocomplete?query=${encodeURIComponent(debouncedQuery)}${scopeParam}${cityParam}${locationParams}`;
+                console.log('[LocationSelector] Backend proxy call:', backendUrl);
+
+                const response = await apiGet<{
+                    success: boolean;
+                    data?: string[];
+                    results?: PlaceResult[];
+                    error?: string;
+                }>(backendUrl);
+
+                if (!cancelled && response.success) {
+                    if (response.results && Array.isArray(response.results) && response.results.length > 0) {
+                        setOptionsEnriched(response.results);
+                        setOptions(response.results.map(r => r.description));
+                    } else if (Array.isArray(response.data) && response.data.length > 0) {
+                        const resultsFromData: PlaceResult[] = response.data.map(desc => ({ description: desc }));
+                        setOptionsEnriched(resultsFromData);
+                        setOptions(response.data);
                     } else {
-                        // Fallback sur Douala, Cameroun
-                        locationBias = { lat: 4.031716, lng: 9.817201 };
+                        // Backend a retourné vide, fallback sur placesService local
+                        const scopeForService = finalScope === 'all' ? undefined : finalScope as PlaceScope;
+                        const resultsEnriched = await placesService.autocompleteEnriched(debouncedQuery, scopeForService, cityContext);
+                        if (!cancelled) {
+                            setOptionsEnriched(resultsEnriched);
+                            setOptions(resultsEnriched.map(r => r.description));
+                        }
                     }
-
-                    // ✅ FIX 2026-02-27: Google Places API limite components à 5 pays MAX
-                    // Avant: 13 pays → Google retournait silencieusement 0 résultat
-                    // Maintenant: 5 pays (cm, ci, sn, cd, ga) + PAS de strictbounds
-                    // pour permettre des résultats même en dehors du rayon de 50km
-                    const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(debouncedQuery)}&location=${locationBias.lat},${locationBias.lng}&radius=50000&components=country:cm|country:ci|country:sn|country:cd|country:ga&key=${GOOGLE_MAPS_API_KEY}&language=fr`;
-
-                    console.log('[LocationSelector] Google Places API call:', url.replace(GOOGLE_MAPS_API_KEY, 'KEY_HIDDEN'));
-                    const response = await fetch(url);
-                    const data = await response.json();
-
-                    // ✅ Log pour diagnostic en cas de problème
-                    if (data.status !== 'OK') {
-                        console.warn('[LocationSelector] Google Places API status:', data.status, 'error:', data.error_message || 'none');
-                    }
-
-                    if (!cancelled && data.status === 'OK' && data.predictions) {
-                        // Convertir les résultats Google Places en format PlaceResult
-                        const resultsEnriched: PlaceResult[] = data.predictions.map((prediction: any) => ({
-                            description: prediction.description,
-                            place_id: prediction.place_id,
-                            types: prediction.types || []
-                        }));
-                        setOptionsEnriched(resultsEnriched);
-                        setOptions(resultsEnriched.map(r => r.description)); // Pour compatibilité
-                    } else if (!cancelled) {
-                        // Fallback sur placesService si Google Places API échoue
-                        const scopeParam = finalScope === 'all' ? undefined : finalScope as PlaceScope;
-                        const resultsEnriched = await placesService.autocompleteEnriched(debouncedQuery, scopeParam, cityContext);
-                        setOptionsEnriched(resultsEnriched);
-                        setOptions(resultsEnriched.map(r => r.description));
-                    }
-                } else {
-                    // ✅ Fallback: Utiliser placesService si clé API non configurée
-                    const scopeParam = finalScope === 'all' ? undefined : finalScope as PlaceScope;
-                    const resultsEnriched = await placesService.autocompleteEnriched(debouncedQuery, scopeParam, cityContext);
-                    if (!cancelled) {
-                        setOptionsEnriched(resultsEnriched);
-                        setOptions(resultsEnriched.map(r => r.description));
-                    }
+                } else if (!cancelled) {
+                    // Fallback sur placesService local si backend échoue
+                    const scopeForService = finalScope === 'all' ? undefined : finalScope as PlaceScope;
+                    const resultsEnriched = await placesService.autocompleteEnriched(debouncedQuery, scopeForService, cityContext);
+                    setOptionsEnriched(resultsEnriched);
+                    setOptions(resultsEnriched.map(r => r.description));
                 }
             } catch (error) {
                 console.error('[LocationSelector] Erreur autocomplete:', error);

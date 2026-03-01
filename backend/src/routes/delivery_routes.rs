@@ -434,6 +434,10 @@ pub fn delivery_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             "/api/delivery/{id}/verification-code",
             get(get_verification_code),
         )
+        .route(
+            "/api/delivery/{id}/my-verification-code",
+            get(get_my_verification_code),
+        )
         // ✅ NOUVEAU : Route pour lieux pickup
         .route(
             "/api/delivery/config/{config_id}/pickup-locations",
@@ -5113,6 +5117,37 @@ async fn get_verification_code(
     })))
 }
 
+/// GET /api/delivery/{id}/my-verification-code - Le coursier récupère son propre code de vérification
+async fn get_my_verification_code(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path(delivery_id): Path<Uuid>,
+) -> AppResult<Json<Value>> {
+    let service = delivery_service(&state)?;
+
+    // Vérifier que l'utilisateur est un coursier
+    let courier = service.repository().find_courier_by_user(user.id).await?;
+    let courier_id = courier
+        .ok_or_else(|| AppError::BadRequest("Vous n'êtes pas un coursier".into()))?
+        .id;
+
+    let verification_service = CourierVerificationService::new(state.pg.clone());
+    let verification_code = verification_service
+        .get_verification_code_for_courier(delivery_id, courier_id)
+        .await?;
+
+    // Récupérer aussi les produits à récupérer pour info au coursier
+    let products = verification_service
+        .get_products_for_delivery(delivery_id)
+        .await
+        .unwrap_or_default();
+
+    Ok(Json(json!({
+        "verification_code": verification_code,
+        "products_to_pickup": products,
+    })))
+}
+
 /// GET /api/delivery/config/{config_id}/pickup-locations - Liste des lieux pickup (adresses textuelles)
 async fn get_pickup_locations(
     State(state): State<Arc<AppState>>,
@@ -6430,6 +6465,45 @@ async fn accept_delivery(
     )
     .await;
 
+    // ✅ NOUVEAU : Générer automatiquement un code de vérification pour le coursier
+    let verification_code_info = {
+        let verification_service = CourierVerificationService::new(state.pg.clone());
+        // Récupérer l'order_id si existe
+        let order_id: Option<Uuid> = sqlx::query_scalar::<_, Uuid>(
+            "SELECT id FROM product_orders WHERE delivery_id = $1 LIMIT 1",
+        )
+        .bind(delivery_id)
+        .fetch_optional(&state.pg)
+        .await
+        .ok()
+        .flatten();
+
+        match verification_service
+            .generate_verification_code(delivery_id, courier_id, order_id, 24)
+            .await
+        {
+            Ok(code) => {
+                log::info!(
+                    "[accept_delivery] ✅ Code vérification généré: {} pour livraison {}",
+                    code.verification_code,
+                    delivery_id
+                );
+                Some(json!({
+                    "verification_code": code.verification_code,
+                    "qr_code_data": code.qr_code_data,
+                    "expires_at": code.expires_at.to_rfc3339(),
+                }))
+            }
+            Err(e) => {
+                log::error!(
+                    "[accept_delivery] ⚠️ Erreur génération code vérification: {}",
+                    e
+                );
+                None
+            }
+        }
+    };
+
     log::info!(
         "[accept_delivery] ✅ Coursier {} a accepté la livraison {}",
         courier_id,
@@ -6441,5 +6515,6 @@ async fn accept_delivery(
         "message": "Course acceptée avec succès",
         "delivery_id": delivery_id,
         "courier_id": courier_id,
+        "verification": verification_code_info,
     })))
 }

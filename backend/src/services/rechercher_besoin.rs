@@ -1205,36 +1205,46 @@ pub async fn rechercher_besoin_direct(
         }
 
         // ✅ NOUVEAU: Ajouter les images et vidéos si disponibles (avec transformation CDN)
+        // ✅ CORRIGÉ 2026-03-01: Utiliser des URLs pré-signées au lieu de build_public_url
+        // car le bucket GCS n'est pas public (les URLs publiques retournent 404)
         if let Some((images, videos)) = media_info {
-            // ✅ OPTIMISÉ: Transformer les chemins en URLs CDN
-            let images_cdn: Vec<String> = images
-                .iter()
-                .map(|img| {
-                    if let Some(ref storage) = media_storage {
-                        if !img.starts_with("http://") && !img.starts_with("https://") {
-                            storage.build_public_url(img)
-                        } else {
-                            img.clone()
+            let mut images_cdn: Vec<String> = Vec::with_capacity(images.len());
+            for img in &images {
+                let url = if img.starts_with("http://") || img.starts_with("https://") {
+                    img.clone()
+                } else if let Some(ref storage) = media_storage {
+                    if storage.is_remote() {
+                        match storage.generate_presigned_url(img, 7 * 24 * 3600).await {
+                            Ok(presigned) => presigned,
+                            Err(_) => storage.build_public_url(img),
                         }
                     } else {
-                        img.clone()
+                        storage.build_public_url(img)
                     }
-                })
-                .collect();
-            let videos_cdn: Vec<String> = videos
-                .iter()
-                .map(|vid| {
-                    if let Some(ref storage) = media_storage {
-                        if !vid.starts_with("http://") && !vid.starts_with("https://") {
-                            storage.build_public_url(vid)
-                        } else {
-                            vid.clone()
+                } else {
+                    img.clone()
+                };
+                images_cdn.push(url);
+            }
+
+            let mut videos_cdn: Vec<String> = Vec::with_capacity(videos.len());
+            for vid in &videos {
+                let url = if vid.starts_with("http://") || vid.starts_with("https://") {
+                    vid.clone()
+                } else if let Some(ref storage) = media_storage {
+                    if storage.is_remote() {
+                        match storage.generate_presigned_url(vid, 7 * 24 * 3600).await {
+                            Ok(presigned) => presigned,
+                            Err(_) => storage.build_public_url(vid),
                         }
                     } else {
-                        vid.clone()
+                        storage.build_public_url(vid)
                     }
-                })
-                .collect();
+                } else {
+                    vid.clone()
+                };
+                videos_cdn.push(url);
+            }
 
             if !images_cdn.is_empty() {
                 enriched_result["images"] = json!(images_cdn);
@@ -1261,44 +1271,59 @@ pub async fn rechercher_besoin_direct(
                         .and_then(|v| v.as_i64().map(|i| i as i32));
 
                     // ✅ CORRIGÉ 2026-01-22: Ajouter les images/vidéos depuis product_media_map si disponibles
+                    // ✅ CORRIGÉ 2026-03-01: URLs pré-signées au lieu de build_public_url
                     if let Some(prod_idx) = product_index {
                         if let Some((product_images, product_videos)) =
                             product_media_map.get(&(service_id, prod_idx))
                         {
-                            // Transformer les chemins en URLs CDN
-                            let images_cdn: Vec<String> = product_images
-                                .iter()
-                                .map(|img| {
-                                    if let Some(ref storage) = media_storage {
-                                        if !img.starts_with("http://")
-                                            && !img.starts_with("https://")
-                                        {
-                                            storage.build_public_url(img)
+                            // Transformer les chemins en URLs pré-signées
+                            let mut images_cdn: Vec<String> =
+                                Vec::with_capacity(product_images.len());
+                            for img in product_images {
+                                let url =
+                                    if img.starts_with("http://") || img.starts_with("https://") {
+                                        img.clone()
+                                    } else if let Some(ref storage) = media_storage {
+                                        if storage.is_remote() {
+                                            match storage
+                                                .generate_presigned_url(img, 7 * 24 * 3600)
+                                                .await
+                                            {
+                                                Ok(presigned) => presigned,
+                                                Err(_) => storage.build_public_url(img),
+                                            }
                                         } else {
-                                            img.clone()
+                                            storage.build_public_url(img)
                                         }
                                     } else {
                                         img.clone()
-                                    }
-                                })
-                                .collect();
+                                    };
+                                images_cdn.push(url);
+                            }
 
-                            let videos_cdn: Vec<String> = product_videos
-                                .iter()
-                                .map(|vid| {
-                                    if let Some(ref storage) = media_storage {
-                                        if !vid.starts_with("http://")
-                                            && !vid.starts_with("https://")
-                                        {
-                                            storage.build_public_url(vid)
+                            let mut videos_cdn: Vec<String> =
+                                Vec::with_capacity(product_videos.len());
+                            for vid in product_videos {
+                                let url =
+                                    if vid.starts_with("http://") || vid.starts_with("https://") {
+                                        vid.clone()
+                                    } else if let Some(ref storage) = media_storage {
+                                        if storage.is_remote() {
+                                            match storage
+                                                .generate_presigned_url(vid, 7 * 24 * 3600)
+                                                .await
+                                            {
+                                                Ok(presigned) => presigned,
+                                                Err(_) => storage.build_public_url(vid),
+                                            }
                                         } else {
-                                            vid.clone()
+                                            storage.build_public_url(vid)
                                         }
                                     } else {
                                         vid.clone()
-                                    }
-                                })
-                                .collect();
+                                    };
+                                videos_cdn.push(url);
+                            }
 
                             // ✅ CORRIGÉ 2026-01-22: Fusionner avec les images/vidéos existantes dans product_data
                             if let Some(obj) = enriched_product.as_object_mut() {
@@ -1477,14 +1502,22 @@ pub async fn rechercher_besoin_direct(
                                         .unwrap_or_else(Vec::new);
                                     let mut merged = existing_images;
                                     for img in images_vec {
-                                        // ✅ OPTIMISÉ: Transformer le chemin en URL CDN si media_storage disponible
-                                        let img_url = if let Some(ref storage) = media_storage {
-                                            if !img.starts_with("http://")
-                                                && !img.starts_with("https://")
-                                            {
-                                                storage.build_public_url(&img)
+                                        // ✅ CORRIGÉ 2026-03-01: URLs pré-signées au lieu de build_public_url
+                                        let img_url = if img.starts_with("http://")
+                                            || img.starts_with("https://")
+                                        {
+                                            img.clone()
+                                        } else if let Some(ref storage) = media_storage {
+                                            if storage.is_remote() {
+                                                match storage
+                                                    .generate_presigned_url(&img, 7 * 24 * 3600)
+                                                    .await
+                                                {
+                                                    Ok(presigned) => presigned,
+                                                    Err(_) => storage.build_public_url(&img),
+                                                }
                                             } else {
-                                                img.clone()
+                                                storage.build_public_url(&img)
                                             }
                                         } else {
                                             img.clone()
@@ -1516,14 +1549,22 @@ pub async fn rechercher_besoin_direct(
                                         .unwrap_or_else(Vec::new);
                                     let mut merged = existing_videos;
                                     for vid in videos_vec {
-                                        // ✅ OPTIMISÉ: Transformer le chemin en URL CDN si media_storage disponible
-                                        let vid_url = if let Some(ref storage) = media_storage {
-                                            if !vid.starts_with("http://")
-                                                && !vid.starts_with("https://")
-                                            {
-                                                storage.build_public_url(&vid)
+                                        // ✅ CORRIGÉ 2026-03-01: URLs pré-signées au lieu de build_public_url
+                                        let vid_url = if vid.starts_with("http://")
+                                            || vid.starts_with("https://")
+                                        {
+                                            vid.clone()
+                                        } else if let Some(ref storage) = media_storage {
+                                            if storage.is_remote() {
+                                                match storage
+                                                    .generate_presigned_url(&vid, 7 * 24 * 3600)
+                                                    .await
+                                                {
+                                                    Ok(presigned) => presigned,
+                                                    Err(_) => storage.build_public_url(&vid),
+                                                }
                                             } else {
-                                                vid.clone()
+                                                storage.build_public_url(&vid)
                                             }
                                         } else {
                                             vid.clone()

@@ -1186,6 +1186,24 @@ export const deliveryApi = {
     }
     return apiCall(`/api/couriers/available${params}`);
   },
+  // ✅ NOUVEAU : Vérification d'identité du coursier
+  verifyCourier: async (deliveryId: string, verificationCode: string, verificationMethod?: string) => {
+    return apiCall(`/api/delivery/${deliveryId}/verify-courier`, {
+      method: 'POST',
+      body: JSON.stringify({
+        verification_code: verificationCode,
+        verification_method: verificationMethod || 'pin_code',
+      }),
+    });
+  },
+  // ✅ NOUVEAU : Le coursier récupère son propre code de vérification + liste produits
+  getMyVerificationCode: async (deliveryId: string) => {
+    return apiCall(`/api/delivery/${deliveryId}/my-verification-code`);
+  },
+  // ✅ NOUVEAU : Le prestataire récupère le code de vérification de la livraison
+  getVerificationCode: async (deliveryId: string) => {
+    return apiCall(`/api/delivery/${deliveryId}/verification-code`);
+  },
   // ✅ NOUVEAU : Récupérer la configuration de livraison d'un produit
   getProductDeliveryConfig: async (serviceId: number, productIndex: number) => {
     return apiCall(`/api/delivery/product-config/${serviceId}/${productIndex}`);
