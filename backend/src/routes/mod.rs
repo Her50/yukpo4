@@ -34,6 +34,7 @@ pub mod gpu_routes; // ✅ NOUVEAU 2026-02-14: Routes pour gestion GPU GCP
 pub mod health_routes;
 pub mod health_structure_routes;
 pub mod history_routes;
+pub mod hotel_room_management_routes; // ✅ 2026-01-27: Routes gestion chambres/unités hôtels et meublés
 pub mod ia_routes;
 pub mod image_search_routes;
 pub mod kyc_admin_routes;

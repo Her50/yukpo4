@@ -225,7 +225,7 @@ pub struct UpdateFormConfigRequest {
 #[derive(Debug, Deserialize, Clone)]
 pub struct CreateManualReservationRequest {
     pub property_id: i32,
-    pub unit_id: Option<i32>, // Si NULL, assignation automatique
+    pub unit_id: Option<i32>,        // Si NULL, assignation automatique
     pub unit_number: Option<String>, // Si unit_id NULL mais unit_number fourni
     pub date_arrivee: NaiveDate,
     pub date_depart: NaiveDate,
@@ -239,7 +239,7 @@ pub struct CreateManualReservationRequest {
     pub prix_total: rust_decimal::Decimal,
     pub montant_total: rust_decimal::Decimal,
     pub montant_avance: Option<rust_decimal::Decimal>, // Si paiement partiel reçu
-    pub payment_status: Option<String>, // "pending", "advance_paid", "fully_paid"
+    pub payment_status: Option<String>,                // "pending", "advance_paid", "fully_paid"
     pub payment_method: Option<String>, // "cash", "mobile_money", "card", "bank_transfer"
     pub manual_reservation_source: String, // "telephone", "en_personne", "autre_plateforme", "autre"
     pub notes: Option<String>,
@@ -265,4 +265,3 @@ pub struct SaveClientProfileRequest {
     pub pays: Option<String>,
     pub preferences: Option<serde_json::Value>,
 }
-

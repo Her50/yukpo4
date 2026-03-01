@@ -455,4 +455,110 @@ RÉPONSE ATTENDUE (JSON strict) :
 
         Ok(anomalies)
     }
+
+    /// Suggère un tarif IA pour une unité hôtelière (nuit/heure/week-end/semaine)
+    pub async fn suggest_unit_pricing(
+        &self,
+        unit_type: &str,
+        standing: &str,
+        capacite_max_total: i32,
+        ville: &str,
+        quartier: &str,
+        devise: &str,
+        contexte: Option<&str>,
+        historique: serde_json::Value,
+        prix_actuels: serde_json::Value,
+    ) -> AppResult<serde_json::Value> {
+        let contexte_str = contexte.unwrap_or("Pas de contexte spécifique");
+
+        let prompt = format!(
+            r#"Tu es l'expert IA tarification hôtelière de Yukpo, spécialisé Afrique francophone.
+
+UNITÉ :
+- Type : {unit_type}
+- Standing : {standing}
+- Capacité max : {capacite_max_total} personnes
+- Ville : {ville}, Quartier : {quartier}
+- Devise : {devise}
+
+PRIX ACTUELS : {prix_actuels}
+HISTORIQUE RÉSERVATIONS (180j) : {historique}
+CONTEXTE GÉRANT : {contexte_str}
+
+Propose des tarifs optimisés. Réponds UNIQUEMENT en JSON :
+{{
+  "prix_nuitee_suggere": <number>,
+  "prix_heure_suggere": <number|null>,
+  "prix_weekend_suggere": <number|null>,
+  "prix_semaine_suggere": <number|null>,
+  "justification": "<string>",
+  "conseil": "<string>"
+}}"#
+        );
+
+        let (model_name, response, tokens) = self.app_ia.predict(&prompt).await?;
+        log::info!(
+            "[RealEstateAIService] suggest_unit_pricing avec {} (tokens: {})",
+            model_name,
+            tokens
+        );
+
+        match serde_json::from_str::<serde_json::Value>(&response) {
+            Ok(v) => Ok(v),
+            Err(_) => Ok(serde_json::json!({
+                "prix_nuitee_suggere": null,
+                "justification": response,
+                "conseil": "Réponse IA non structurée, voir justification."
+            })),
+        }
+    }
+
+    /// Analyse IA des insights d'un bien hôtelier (remplissage, jours forts/faibles, promos)
+    pub async fn analyze_hotel_property_insights(
+        &self,
+        type_bien: &str,
+        ville: &str,
+        quartier: &str,
+        saison: Option<&str>,
+        historique: serde_json::Value,
+    ) -> AppResult<serde_json::Value> {
+        let saison_str = saison.unwrap_or("Non spécifiée");
+
+        let prompt = format!(
+            r#"Tu es l'expert IA hôtelier de Yukpo, spécialisé Afrique francophone.
+
+PROPRIÉTÉ :
+- Type : {type_bien}
+- Ville : {ville}, Quartier : {quartier}
+- Saison actuelle : {saison_str}
+
+HISTORIQUE RÉSERVATIONS (365j) : {historique}
+
+Analyse et fournis des insights pour optimiser la gestion. Réponds UNIQUEMENT en JSON :
+{{
+  "taux_remplissage_estime": "<string>",
+  "jours_forts": ["<string>"],
+  "jours_faibles": ["<string>"],
+  "periodes_creuses": ["<string>"],
+  "suggestions_promos": ["<string>"],
+  "tendance_generale": "<string>",
+  "conseil_principal": "<string>"
+}}"#
+        );
+
+        let (model_name, response, tokens) = self.app_ia.predict(&prompt).await?;
+        log::info!(
+            "[RealEstateAIService] analyze_hotel_property_insights avec {} (tokens: {})",
+            model_name,
+            tokens
+        );
+
+        match serde_json::from_str::<serde_json::Value>(&response) {
+            Ok(v) => Ok(v),
+            Err(_) => Ok(serde_json::json!({
+                "tendance_generale": response,
+                "conseil_principal": "Réponse IA non structurée, voir tendance_generale."
+            })),
+        }
+    }
 }

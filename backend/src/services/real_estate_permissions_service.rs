@@ -1,8 +1,8 @@
 //! ✅ Service de permissions pour tous les biens immobiliers
-//! 
+//!
 //! Ce service fournit une fonction générique pour vérifier les permissions
 //! de gestion d'un bien immobilier (propriétaire ou membre d'équipe)
-//! 
+//!
 //! Date: 2026-01-27
 
 use crate::core::types::AppError;
@@ -13,11 +13,11 @@ pub struct RealEstatePermissionsService;
 
 impl RealEstatePermissionsService {
     /// Vérifie qu'un utilisateur peut gérer une propriété immobilière
-    /// 
+    ///
     /// Cette fonction vérifie :
     /// 1. Si l'utilisateur est le propriétaire du service associé à la propriété
     /// 2. Si l'utilisateur est membre d'équipe avec permissions appropriées (admin, manager, editor)
-    /// 
+    ///
     /// Cette fonction est utilisée pour TOUS les types de biens immobiliers :
     /// - Hôtels et meublés
     /// - Appartements et maisons
@@ -29,26 +29,23 @@ impl RealEstatePermissionsService {
         property_id: i32,
     ) -> Result<(), AppError> {
         // Récupérer le service_id associé à la propriété
-        let service_id: Option<i32> = sqlx::query_scalar(
-            "SELECT service_id FROM real_estate_properties WHERE id = $1",
-        )
-        .bind(property_id)
-        .fetch_optional(pool)
-        .await
-        .map_err(|e| {
-            log::error!(
-                "[RealEstatePermissionsService] Erreur récupération service_id: {}",
-                e
-            );
-            AppError::Internal("Erreur vérification propriété".to_string())
-        })?;
+        let service_id: Option<i32> =
+            sqlx::query_scalar("SELECT service_id FROM real_estate_properties WHERE id = $1")
+                .bind(property_id)
+                .fetch_optional(pool)
+                .await
+                .map_err(|e| {
+                    log::error!(
+                        "[RealEstatePermissionsService] Erreur récupération service_id: {}",
+                        e
+                    );
+                    AppError::Internal("Erreur vérification propriété".to_string())
+                })?;
 
         let service_id = match service_id {
             Some(id) => id,
             None => {
-                return Err(AppError::NotFound(
-                    "Propriété non trouvée".to_string(),
-                ));
+                return Err(AppError::NotFound("Propriété non trouvée".to_string()));
             }
         };
 
@@ -106,11 +103,3 @@ impl RealEstatePermissionsService {
         ))
     }
 }
-
-
-
-
-
-
-
-

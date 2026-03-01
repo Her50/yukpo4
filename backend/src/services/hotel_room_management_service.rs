@@ -4,11 +4,11 @@
 
 use crate::core::types::AppError;
 use crate::models::hotel_room_management::{
-    CreateBlockageRequest, CreateManualReservationRequest, HotelMeubleUnit, HotelUnitBlockage,
-    QRCodeScanResponse,
+    CreateBlockageRequest, CreateManualReservationRequest, HotelUnitBlockage, QRCodeScanResponse,
 };
-use chrono::{NaiveDate, NaiveTime, Utc};
+use chrono::Utc;
 use rust_decimal::Decimal;
+use serde_json::json;
 use sqlx::{PgPool, Row};
 use uuid::Uuid;
 
@@ -17,7 +17,7 @@ pub struct HotelRoomManagementService;
 
 impl HotelRoomManagementService {
     /// Vérifie qu'un utilisateur peut gérer une propriété (propriétaire ou membre d'équipe)
-    /// 
+    ///
     /// ⚠️ DEPRECATED: Utiliser RealEstatePermissionsService::ensure_user_can_manage_property à la place
     /// Cette fonction est conservée pour compatibilité mais délègue au service générique.
     pub async fn ensure_user_can_manage_property(
@@ -384,74 +384,59 @@ impl HotelRoomManagementService {
         };
 
         // Extraire property_id pour vérifier les droits
-        let property_id: i32 = row
-            .try_get("property_id")
-            .map_err(|e| {
-                log::error!(
-                    "[HotelRoomManagementService] Erreur récupération property_id (scan QR): {}",
-                    e
-                );
-                AppError::Internal("Erreur récupération propriété".to_string())
-            })?;
+        let property_id: i32 = row.try_get("property_id").map_err(|e| {
+            log::error!(
+                "[HotelRoomManagementService] Erreur récupération property_id (scan QR): {}",
+                e
+            );
+            AppError::Internal("Erreur récupération propriété".to_string())
+        })?;
 
         // Vérifier que le gérant peut gérer cette propriété
         Self::ensure_user_can_manage_property(pool, acting_user_id, property_id).await?;
 
         // Construire la réponse métier
-        let property_name: String = row
-            .try_get("property_name")
-            .unwrap_or_else(|_| "Bien".to_string());
+        let property_name: String =
+            row.try_get("property_name").unwrap_or_else(|_| "Bien".to_string());
 
         let unit_number: Option<String> = row.try_get("unit_number").ok();
-        let client_name: String = row
-            .try_get("nom_client")
-            .unwrap_or_else(|_| "Client".to_string());
+        let client_name: String =
+            row.try_get("nom_client").unwrap_or_else(|_| "Client".to_string());
 
-        let date_arrivee: chrono::NaiveDate = row
-            .try_get("date_arrivee")
-            .map_err(|e| {
-                log::error!(
-                    "[HotelRoomManagementService] Erreur récupération date_arrivee: {}",
-                    e
-                );
-                AppError::Internal("Erreur récupération date_arrivee".to_string())
-            })?;
+        let date_arrivee: chrono::NaiveDate = row.try_get("date_arrivee").map_err(|e| {
+            log::error!(
+                "[HotelRoomManagementService] Erreur récupération date_arrivee: {}",
+                e
+            );
+            AppError::Internal("Erreur récupération date_arrivee".to_string())
+        })?;
 
-        let date_depart: chrono::NaiveDate = row
-            .try_get("date_depart")
-            .map_err(|e| {
-                log::error!(
-                    "[HotelRoomManagementService] Erreur récupération date_depart: {}",
-                    e
-                );
-                AppError::Internal("Erreur récupération date_depart".to_string())
-            })?;
+        let date_depart: chrono::NaiveDate = row.try_get("date_depart").map_err(|e| {
+            log::error!(
+                "[HotelRoomManagementService] Erreur récupération date_depart: {}",
+                e
+            );
+            AppError::Internal("Erreur récupération date_depart".to_string())
+        })?;
 
-        let payment_status: String = row
-            .try_get("payment_status")
-            .unwrap_or_else(|_| "pending".to_string());
+        let payment_status: String =
+            row.try_get("payment_status").unwrap_or_else(|_| "pending".to_string());
 
-        let montant_avance: Decimal = row
-            .try_get("montant_avance")
-            .unwrap_or_else(|_| Decimal::ZERO);
+        let montant_avance: Decimal =
+            row.try_get("montant_avance").unwrap_or_else(|_| Decimal::ZERO);
 
-        let montant_total: Decimal = row
-            .try_get("montant_total")
-            .map_err(|e| {
-                log::error!(
-                    "[HotelRoomManagementService] Erreur récupération montant_total: {}",
-                    e
-                );
-                AppError::Internal("Erreur récupération montant_total".to_string())
-            })?;
+        let montant_total: Decimal = row.try_get("montant_total").map_err(|e| {
+            log::error!(
+                "[HotelRoomManagementService] Erreur récupération montant_total: {}",
+                e
+            );
+            AppError::Internal("Erreur récupération montant_total".to_string())
+        })?;
 
-        let montant_restant = montant_total
-            .checked_sub(montant_avance)
-            .unwrap_or_else(|| Decimal::ZERO);
+        let montant_restant =
+            montant_total.checked_sub(montant_avance).unwrap_or_else(|| Decimal::ZERO);
 
-        let status: String = row
-            .try_get("status")
-            .unwrap_or_else(|_| "pending".to_string());
+        let status: String = row.try_get("status").unwrap_or_else(|_| "pending".to_string());
 
         // Logique simple pour check-in / check-out
         let today = chrono::Utc::now().date_naive();
@@ -487,26 +472,23 @@ impl HotelRoomManagementService {
         guest_label: Option<String>,
     ) -> Result<serde_json::Value, AppError> {
         // Récupérer la propriété associée à la réservation
-        let property_id: Option<i32> = sqlx::query_scalar(
-            "SELECT property_id FROM hotel_meuble_reservations WHERE id = $1",
-        )
-        .bind(reservation_id)
-        .fetch_optional(pool)
-        .await
-        .map_err(|e| {
-            log::error!(
+        let property_id: Option<i32> =
+            sqlx::query_scalar("SELECT property_id FROM hotel_meuble_reservations WHERE id = $1")
+                .bind(reservation_id)
+                .fetch_optional(pool)
+                .await
+                .map_err(|e| {
+                    log::error!(
                 "[HotelRoomManagementService] Erreur récupération réservation pour QR invité: {}",
                 e
             );
-            AppError::Internal("Erreur récupération réservation".to_string())
-        })?;
+                    AppError::Internal("Erreur récupération réservation".to_string())
+                })?;
 
         let property_id = match property_id {
             Some(id) => id,
             None => {
-                return Err(AppError::NotFound(
-                    "Réservation introuvable".to_string(),
-                ));
+                return Err(AppError::NotFound("Réservation introuvable".to_string()));
             }
         };
 
@@ -518,11 +500,7 @@ impl HotelRoomManagementService {
             "HOTELGUEST-{}-{}-{}",
             reservation_id,
             chrono::Utc::now().timestamp(),
-            Uuid::new_v4()
-                .to_string()
-                .chars()
-                .take(8)
-                .collect::<String>()
+            Uuid::new_v4().to_string().chars().take(8).collect::<String>()
         );
 
         // Expiration par défaut: 30 jours
@@ -791,12 +769,15 @@ impl HotelRoomManagementService {
 
         let mut result = Vec::new();
         for row in reservations {
-            let date_arrivee: chrono::NaiveDate = row.try_get("date_arrivee").unwrap_or_else(|_| chrono::Utc::now().date_naive());
-            let date_depart: chrono::NaiveDate = row.try_get("date_depart").unwrap_or_else(|_| chrono::Utc::now().date_naive());
+            let date_arrivee: chrono::NaiveDate =
+                row.try_get("date_arrivee").unwrap_or_else(|_| chrono::Utc::now().date_naive());
+            let date_depart: chrono::NaiveDate =
+                row.try_get("date_depart").unwrap_or_else(|_| chrono::Utc::now().date_naive());
             let today = chrono::Utc::now().date_naive();
             let status: String = row.try_get("status").unwrap_or_else(|_| "pending".to_string());
-            
-            let can_check_in = matches!(status.as_str(), "pending" | "confirmed") && today >= date_arrivee;
+
+            let can_check_in =
+                matches!(status.as_str(), "pending" | "confirmed") && today >= date_arrivee;
             let can_check_out = matches!(status.as_str(), "checked_in") && today >= date_arrivee;
 
             result.push(json!({
@@ -813,10 +794,10 @@ impl HotelRoomManagementService {
                 "nombre_adultes": row.try_get::<i32, _>("nombre_adultes").unwrap_or(1),
                 "nombre_enfants": row.try_get::<Option<i32>, _>("nombre_enfants").unwrap_or(None),
                 "nombre_chambres": row.try_get::<i32, _>("nombre_chambres").unwrap_or(1),
-                "prix_nuitee": row.try_get::<Option<rust_decimal::Decimal>, _>("prix_nuitee").ok().and_then(|d| d.to_string().parse::<f64>().ok()),
-                "prix_total": row.try_get::<Option<rust_decimal::Decimal>, _>("prix_total").ok().and_then(|d| d.to_string().parse::<f64>().ok()),
-                "montant_total": row.try_get::<Option<rust_decimal::Decimal>, _>("montant_total").ok().and_then(|d| d.to_string().parse::<f64>().ok()).unwrap_or(0.0),
-                "montant_avance": row.try_get::<Option<rust_decimal::Decimal>, _>("montant_avance").ok().and_then(|d| d.to_string().parse::<f64>().ok()).unwrap_or(0.0),
+                "prix_nuitee": row.try_get::<Option<rust_decimal::Decimal>, _>("prix_nuitee").ok().flatten().and_then(|d| d.to_string().parse::<f64>().ok()),
+                "prix_total": row.try_get::<Option<rust_decimal::Decimal>, _>("prix_total").ok().flatten().and_then(|d| d.to_string().parse::<f64>().ok()),
+                "montant_total": row.try_get::<Option<rust_decimal::Decimal>, _>("montant_total").ok().flatten().and_then(|d| d.to_string().parse::<f64>().ok()).unwrap_or(0.0),
+                "montant_avance": row.try_get::<Option<rust_decimal::Decimal>, _>("montant_avance").ok().flatten().and_then(|d| d.to_string().parse::<f64>().ok()).unwrap_or(0.0),
                 "payment_status": row.try_get::<Option<String>, _>("payment_status").unwrap_or(Some("pending".to_string())),
                 "payment_method": row.try_get::<Option<String>, _>("payment_method").unwrap_or(None),
                 "status": status,
@@ -858,9 +839,7 @@ impl HotelRoomManagementService {
         let (property_id, current_status) = match reservation_info {
             Some((pid, status)) => (pid, status),
             None => {
-                return Err(AppError::NotFound(
-                    "Réservation introuvable".to_string(),
-                ));
+                return Err(AppError::NotFound("Réservation introuvable".to_string()));
             }
         };
 
@@ -875,9 +854,10 @@ impl HotelRoomManagementService {
         };
 
         if !valid_transition {
-            return Err(AppError::BadRequest(
-                format!("Transition de statut invalide: {} -> {}", current_status, new_status),
-            ));
+            return Err(AppError::BadRequest(format!(
+                "Transition de statut invalide: {} -> {}",
+                current_status, new_status
+            )));
         }
 
         // Mettre à jour le statut
@@ -904,4 +884,3 @@ impl HotelRoomManagementService {
         Ok(())
     }
 }
-

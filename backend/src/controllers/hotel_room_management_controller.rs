@@ -17,9 +17,10 @@ use axum::{
     Json,
 };
 use log::info;
-use serde_json::json;
-use std::sync::Arc;
 use serde::Deserialize;
+use serde_json::json;
+use sqlx::Row;
+use std::sync::Arc;
 
 /// Corps optionnel pour affiner le contexte de tarification IA
 #[derive(Debug, Deserialize)]
@@ -77,12 +78,8 @@ pub async fn create_manual_reservation(
         request.property_id, user_id
     );
 
-    let reservation = HotelRoomManagementService::create_manual_reservation(
-        &state.pg,
-        user_id,
-        request,
-    )
-    .await?;
+    let reservation =
+        HotelRoomManagementService::create_manual_reservation(&state.pg, user_id, request).await?;
 
     Ok((
         StatusCode::CREATED,
@@ -102,8 +99,8 @@ pub async fn get_my_properties(
 ) -> AppResult<impl IntoResponse> {
     info!("[get_my_properties] user_id={}", user_id);
 
-    let properties = HotelRoomManagementService::get_user_managed_properties(&state.pg, user_id)
-        .await?;
+    let properties =
+        HotelRoomManagementService::get_user_managed_properties(&state.pg, user_id).await?;
 
     Ok((
         StatusCode::OK,
@@ -122,8 +119,8 @@ pub async fn get_my_reservations(
 ) -> AppResult<impl IntoResponse> {
     info!("[get_my_reservations] user_id={}", user_id);
 
-    let reservations = HotelRoomManagementService::get_user_reservations(&state.pg, user_id)
-        .await?;
+    let reservations =
+        HotelRoomManagementService::get_user_reservations(&state.pg, user_id).await?;
 
     Ok((
         StatusCode::OK,
@@ -231,16 +228,15 @@ pub async fn delete_blockage(
     );
 
     // Récupérer le property_id du blocage
-    let property_id: Option<i32> = sqlx::query_scalar(
-        "SELECT property_id FROM hotel_unit_blockages WHERE id = $1",
-    )
-    .bind(blockage_id)
-    .fetch_optional(&state.pg)
-    .await
-    .map_err(|e| {
-        log::error!("[delete_blockage] Erreur récupération property_id: {}", e);
-        AppError::Internal("Erreur récupération blocage".to_string())
-    })?;
+    let property_id: Option<i32> =
+        sqlx::query_scalar("SELECT property_id FROM hotel_unit_blockages WHERE id = $1")
+            .bind(blockage_id)
+            .fetch_optional(&state.pg)
+            .await
+            .map_err(|e| {
+                log::error!("[delete_blockage] Erreur récupération property_id: {}", e);
+                AppError::Internal("Erreur récupération blocage".to_string())
+            })?;
 
     let property_id = match property_id {
         Some(id) => id,
@@ -284,12 +280,9 @@ pub async fn scan_reservation_qr(
         user_id, request.qr_code
     );
 
-    let info = HotelRoomManagementService::scan_reservation_qr_code(
-        &state.pg,
-        user_id,
-        &request.qr_code,
-    )
-    .await?;
+    let info =
+        HotelRoomManagementService::scan_reservation_qr_code(&state.pg, user_id, &request.qr_code)
+            .await?;
 
     Ok((
         StatusCode::OK,
@@ -335,9 +328,7 @@ pub async fn get_reservation_qr_codes(
     let (property_id, reservation_user_id) = match reservation_check {
         Some((pid, uid)) => (pid, uid),
         None => {
-            return Err(AppError::NotFound(
-                "Réservation introuvable".to_string(),
-            ));
+            return Err(AppError::NotFound("Réservation introuvable".to_string()));
         }
     };
 
@@ -346,13 +337,9 @@ pub async fn get_reservation_qr_codes(
         true // Client de la réservation
     } else {
         // Vérifier si gérant de la propriété
-        HotelRoomManagementService::ensure_user_can_manage_property(
-            &state.pg,
-            user_id,
-            property_id,
-        )
-        .await
-        .is_ok()
+        HotelRoomManagementService::ensure_user_can_manage_property(&state.pg, user_id, property_id)
+            .await
+            .is_ok()
     };
 
     if !has_access {
@@ -361,11 +348,8 @@ pub async fn get_reservation_qr_codes(
         ));
     }
 
-    let qr_data = HotelRoomManagementService::get_reservation_qr_codes(
-        &state.pg,
-        reservation_id,
-    )
-    .await?;
+    let qr_data =
+        HotelRoomManagementService::get_reservation_qr_codes(&state.pg, reservation_id).await?;
 
     Ok((
         StatusCode::OK,
@@ -442,10 +426,7 @@ pub async fn generate_guest_qr(
     Path(reservation_id): Path<i32>,
     Json(body): Json<serde_json::Value>,
 ) -> AppResult<impl IntoResponse> {
-    let guest_label = body
-        .get("guest_label")
-        .and_then(|v| v.as_str())
-        .map(|s| s.to_string());
+    let guest_label = body.get("guest_label").and_then(|v| v.as_str()).map(|s| s.to_string());
 
     info!(
         "[generate_guest_qr] reservation_id={}, user_id={}, guest_label={:?}",
@@ -480,10 +461,7 @@ pub async fn ai_unit_pricing(
 ) -> AppResult<impl IntoResponse> {
     use sqlx::Row;
 
-    info!(
-        "[ai_unit_pricing] unit_id={}, user_id={}",
-        unit_id, user_id
-    );
+    info!("[ai_unit_pricing] unit_id={}, user_id={}", unit_id, user_id);
 
     // Récupérer informations de l'unité + propriété associée
     let row = sqlx::query(
@@ -523,9 +501,7 @@ pub async fn ai_unit_pricing(
         }
     };
 
-    let property_id: i32 = row
-        .try_get("property_id")
-        .unwrap_or(0);
+    let property_id: i32 = row.try_get("property_id").unwrap_or(0);
 
     // Vérifier que le gérant peut gérer cette propriété
     HotelRoomManagementService::ensure_user_can_manage_property(&state.pg, user_id, property_id)
@@ -545,12 +521,8 @@ pub async fn ai_unit_pricing(
         .flatten()
         .and_then(|d| d.to_string().parse::<f64>().ok());
     let ville: String = row.try_get("ville").unwrap_or_else(|_| "Ville".to_string());
-    let quartier: String = row
-        .try_get("quartier")
-        .unwrap_or_else(|_| "".to_string());
-    let devise: String = row
-        .try_get("devise")
-        .unwrap_or_else(|_| "FCFA".to_string());
+    let quartier: String = row.try_get("quartier").unwrap_or_else(|_| "".to_string());
+    let devise: String = row.try_get("devise").unwrap_or_else(|_| "FCFA".to_string());
 
     // Historique simple des réservations pour cette unité (180 derniers jours)
     let historique_rows = sqlx::query(
@@ -668,35 +640,22 @@ pub async fn ai_property_pricing(
     .fetch_optional(&state.pg)
     .await
     .map_err(|e| {
-        log::error!(
-            "[ai_property_pricing] Erreur récupération propriété: {}",
-            e
-        );
+        log::error!("[ai_property_pricing] Erreur récupération propriété: {}", e);
         AppError::Internal("Erreur récupération propriété".to_string())
     })?;
 
     let row = match row {
         Some(r) => r,
         None => {
-            return Err(AppError::NotFound(
-                "Propriété introuvable".to_string(),
-            ));
+            return Err(AppError::NotFound("Propriété introuvable".to_string()));
         }
     };
 
     let ville: String = row.try_get("ville").unwrap_or_else(|_| "Ville".to_string());
-    let quartier: String = row
-        .try_get("quartier")
-        .unwrap_or_else(|_| "".to_string());
-    let devise: String = row
-        .try_get("devise")
-        .unwrap_or_else(|_| "FCFA".to_string());
-    let type_bien: String = row
-        .try_get("type_bien")
-        .unwrap_or_else(|_| "hôtel".to_string());
-    let standing: String = row
-        .try_get("standing")
-        .unwrap_or_else(|_| "standard".to_string());
+    let quartier: String = row.try_get("quartier").unwrap_or_else(|_| "".to_string());
+    let devise: String = row.try_get("devise").unwrap_or_else(|_| "FCFA".to_string());
+    let _type_bien: String = row.try_get("type_bien").unwrap_or_else(|_| "hôtel".to_string());
+    let standing: String = row.try_get("standing").unwrap_or_else(|_| "standard".to_string());
 
     // Historique agrégé des réservations de la propriété (180 derniers jours)
     let historique_rows = sqlx::query(
@@ -717,7 +676,10 @@ pub async fn ai_property_pricing(
     .fetch_all(&state.pg)
     .await
     .map_err(|e| {
-        log::error!("[ai_property_pricing] Erreur récupération historique: {}", e);
+        log::error!(
+            "[ai_property_pricing] Erreur récupération historique: {}",
+            e
+        );
         AppError::Internal("Erreur récupération historique".to_string())
     })?;
 
@@ -853,15 +815,10 @@ pub async fn get_property_ai_insights(
         }
     };
 
-    let type_bien: String = property_row
-        .try_get("type_bien")
-        .unwrap_or_else(|_| "hotel".to_string());
-    let ville: String = property_row
-        .try_get("ville")
-        .unwrap_or_else(|_| "Ville".to_string());
-    let quartier: String = property_row
-        .try_get("quartier")
-        .unwrap_or_else(|_| "".to_string());
+    let type_bien: String =
+        property_row.try_get("type_bien").unwrap_or_else(|_| "hotel".to_string());
+    let ville: String = property_row.try_get("ville").unwrap_or_else(|_| "Ville".to_string());
+    let quartier: String = property_row.try_get("quartier").unwrap_or_else(|_| "".to_string());
 
     // Historique agrégé simple des réservations de la propriété (365 derniers jours)
     let historique_rows = sqlx::query(
@@ -936,4 +893,3 @@ pub async fn get_property_ai_insights(
         })),
     ))
 }
-

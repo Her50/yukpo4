@@ -46,6 +46,7 @@ pub mod gpu_controller; // ✅ NOUVEAU 2026-02-14: Contrôleur pour gestion GPU 
 pub mod hashtag_controller; // ✅ NOUVEAU: Contrôleur pour gestion hashtags
 pub mod health_structure_controller; // ✅ NOUVEAU: Contrôleur pour structures de santé (autocomplete)
 pub mod history_controller;
+pub mod hotel_room_management_controller; // ✅ NOUVEAU 2026-01-27: Contrôleur gestion chambres/unités hôtels et meublés
 pub mod image_search_controller; // ✅ NOUVEAU: Contrôleur pour recherche par image
 pub mod intelligent_service_controller;
 pub mod inventory_controller;

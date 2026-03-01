@@ -12,6 +12,7 @@ pub mod export_model; // ✅ NOUVEAU Phase 2.3: Modèle pour jobs d'export vidé
 pub mod generative_video_model; // ✅ NOUVEAU Phase 3.1: Modèle pour génération vidéo IA complète
 pub mod global_promo_model;
 pub mod history_model;
+pub mod hotel_room_management; // ✅ 2026-01-27: Modèles gestion chambres/unités hôtels et meublés
 pub mod ia_model;
 pub mod input_model;
 pub mod interaction_model;

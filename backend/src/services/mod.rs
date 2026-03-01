@@ -87,6 +87,7 @@ pub mod gpu_render_service; // ✅ NOUVEAU Phase 7: Service de rendu GPU optimis
 pub mod gpu_service; // ✅ NOUVEAU: Service de gestion GPU automatisé GCP avec scaling
 pub mod hls_dash_service; // ✅ NOUVEAU: Service HLS/DASH pour qualité adaptative serveur
 pub mod hospital_ai_service; // ✅ 2025-01-27: Service IA hôpitaux (recommandations, triage)
+pub mod hotel_room_management_service; // ✅ 2026-01-27: Service gestion chambres/unités hôtels et meublés
 pub mod hybrid_image_search_service; // ✅ NOUVEAU: Recherche hybride intelligente
 pub mod ia;
 pub mod ia_feedback_service;
@@ -169,6 +170,7 @@ pub mod publicite_versioning_service;
 pub mod push_notification_service; // ✅ Service de push notifications Expo
 pub mod query_monitor; // ✅ NOUVEAU 2025-11-28: Monitoring avancé des requêtes SQL
 pub mod real_estate_ai_service; // ✅ Service IA immobilier (estimation prix, recommandations, simulation prêt)
+pub mod real_estate_permissions_service; // ✅ 2026-01-27: Service permissions immobilier (propriétaire/équipe)
 pub mod rechercher_besoin;
 pub mod redis_scaling_service; // ✅ NOUVEAU: Service de gestion Redis Memorystore automatisé GCP avec scaling
 pub mod remotion_renderer_service;

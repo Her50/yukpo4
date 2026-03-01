@@ -59,6 +59,7 @@ use crate::routes::{
     health_routes::health_routes,
     // health_structure_routes::health_structure_routes, // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (mobile_routes)
     history_routes::history_routes,
+    hotel_room_management_routes::hotel_room_management_routes, // ✅ 2026-03-01: Routes gestion hôtels/meublés (chambres, réservations, QR)
     ia_routes::ia_routes,
     kyc_admin_routes::kyc_admin_routes, // ✅ NOUVEAU 2025-01-29: Routes admin KYC
     kyc_webhook_routes::kyc_webhook_routes, // ✅ NOUVEAU 2025-01-29: Routes webhook KYC
@@ -322,6 +323,7 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
     let studio = studio_routes(state.clone()); // ✅ NOUVEAU: Routes Studio pour création vidéo immersive
     let feature_flags = feature_flags_routes(state.clone()); // ✅ NOUVEAU: Routes pour feature flags (résout 404 mobile)
     let gpu = crate::routes::gpu_routes::gpu_routes(state.clone()); // ✅ NOUVEAU 2026-02-14: Routes pour gestion GPU GCP
+    let hotel_management = hotel_room_management_routes(state.clone()); // ✅ 2026-03-01: Routes gestion hôtels/meublés (chambres, réservations, QR)
 
     let app = Router::new()
         .route("/healthz", get(healthz))
@@ -407,6 +409,7 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .merge(studio) // ✅ NOUVEAU: Routes Studio pour création vidéo immersive
         .merge(feature_flags) // ✅ NOUVEAU: Routes pour feature flags (résout 404 mobile)
         .merge(gpu) // ✅ NOUVEAU 2026-02-14: Routes pour gestion GPU GCP
+        .merge(hotel_management) // ✅ 2026-03-01: Routes gestion hôtels/meublés (chambres, réservations, QR)
         .merge(mobile_logs)
         .merge(navigation) // ✅ NOUVEAU: Routes navigation intelligente
         .merge(phone_verification) // ✅ NOUVEAU 2026-02-25: Routes vérification OTP téléphone

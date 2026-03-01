@@ -395,5 +395,185 @@ export const immobilierService = {
         );
         return response;
     },
+
+    // ============================================================================
+    // HÔTELS & MEUBLÉS - Gestion des chambres et réservations
+    // ============================================================================
+
+    // ✅ Obtenir mes propriétés hôtelières gérées
+    getMyHotelProperties: async () => {
+        const response = await apiGet<{ success: boolean; data: any[] }>(
+            '/api/hotel/my-properties'
+        );
+        return response;
+    },
+
+    // ✅ Obtenir les réservations de mes propriétés
+    getMyHotelReservations: async () => {
+        const response = await apiGet<{ success: boolean; data: any[] }>(
+            '/api/hotel/reservations/my'
+        );
+        return response;
+    },
+
+    // ✅ Créer une réservation manuelle (gérant)
+    createManualReservation: async (data: {
+        property_id: number;
+        unit_id?: number;
+        unit_number?: string;
+        date_arrivee: string;
+        date_depart: string;
+        nombre_adultes: number;
+        nombre_enfants?: number;
+        nombre_chambres: number;
+        nom_client: string;
+        telephone_client: string;
+        email_client?: string;
+        prix_nuitee: number;
+        prix_total: number;
+        montant_total: number;
+        montant_avance?: number;
+        payment_status?: string;
+        payment_method?: string;
+        manual_reservation_source: string;
+        notes?: string;
+    }) => {
+        const response = await apiPost<{ success: boolean; data: any }>(
+            '/api/hotel/reservations/manual',
+            data
+        );
+        return response;
+    },
+
+    // ✅ Scanner QR code réservation (gérant à l'accueil)
+    scanReservationQR: async (qrCode: string) => {
+        const response = await apiPost<{ success: boolean; data: any }>(
+            '/api/hotel/reservations/scan-qr',
+            { qr_code: qrCode }
+        );
+        return response;
+    },
+
+    // ✅ Obtenir les QR codes d'une réservation (principal + invités)
+    getReservationQRCodes: async (reservationId: number) => {
+        const response = await apiGet<{ success: boolean; data: any }>(
+            `/api/hotel/reservations/${reservationId}/qr-codes`
+        );
+        return response;
+    },
+
+    // ✅ Check-in d'une réservation
+    checkInReservation: async (reservationId: number) => {
+        const response = await apiPost<{ success: boolean; message: string }>(
+            `/api/hotel/reservations/${reservationId}/check-in`,
+            {}
+        );
+        return response;
+    },
+
+    // ✅ Check-out d'une réservation
+    checkOutReservation: async (reservationId: number) => {
+        const response = await apiPost<{ success: boolean; message: string }>(
+            `/api/hotel/reservations/${reservationId}/check-out`,
+            {}
+        );
+        return response;
+    },
+
+    // ✅ Générer un QR invité / co-chambrier
+    generateGuestQR: async (reservationId: number, guestLabel?: string) => {
+        const response = await apiPost<{ success: boolean; data: any }>(
+            `/api/hotel/reservations/${reservationId}/guest-qr`,
+            { guest_label: guestLabel }
+        );
+        return response;
+    },
+
+    // ✅ Créer un blocage manuel d'unité (maintenance, occupation hors système)
+    createManualBlockage: async (data: {
+        unit_id: number;
+        property_id: number;
+        date_debut: string;
+        date_fin: string;
+        heure_debut?: string;
+        heure_fin?: string;
+        raison: string;
+        description?: string;
+        is_manual_occupation?: boolean;
+        client_name?: string;
+        client_phone?: string;
+        notes_occupation?: string;
+    }) => {
+        const response = await apiPost<{ success: boolean; data: any }>(
+            '/api/hotel/blockages/manual',
+            data
+        );
+        return response;
+    },
+
+    // ✅ Supprimer un blocage manuel
+    deleteBlockage: async (blockageId: number) => {
+        const response = await apiDelete<{ success: boolean; message: string }>(
+            `/api/hotel/blockages/${blockageId}`
+        );
+        return response;
+    },
+
+    // ✅ Lister les blocages manuels d'une propriété
+    listManualBlockages: async (propertyId: number) => {
+        const response = await apiGet<{ success: boolean; data: any[] }>(
+            `/api/hotel/properties/${propertyId}/blockages/manual`
+        );
+        return response;
+    },
+
+    // ✅ Suggestion tarif IA pour une unité
+    getAIUnitPricing: async (unitId: number, contexte?: string) => {
+        const response = await apiPost<{ success: boolean; data: any }>(
+            `/api/hotel/units/${unitId}/ai-pricing`,
+            { contexte }
+        );
+        return response;
+    },
+
+    // ✅ Suggestion tarif IA pour une propriété
+    getAIPropertyPricing: async (propertyId: number, contexte?: string) => {
+        const response = await apiPost<{ success: boolean; data: any }>(
+            `/api/hotel/properties/${propertyId}/ai-pricing`,
+            { contexte }
+        );
+        return response;
+    },
+
+    // ✅ Insights IA pour un bien hôtelier (remplissage, promos, etc.)
+    getPropertyAIInsights: async (propertyId: number, saison?: string) => {
+        const response = await apiGet<{ success: boolean; data: any }>(
+            `/api/hotel/properties/${propertyId}/ai-insights`,
+            saison ? { params: { saison } } : undefined
+        );
+        return response;
+    },
+
+    // ✅ Payer une réservation hôtel (avance ou complet)
+    payHotelBooking: async (
+        reservationId: number,
+        paymentType: 'advance' | 'full',
+        paymentMethod: string,
+        montantAvance?: number
+    ) => {
+        const response = await apiPost<{
+            success: boolean;
+            data: {
+                amount_paid: number;
+                new_payment_status: string;
+                remaining_amount: number;
+            };
+        }>(`/api/hotel/reservations/${reservationId}/pay`, {
+            payment_type: paymentType,
+            payment_method: paymentMethod,
+            montant_avance: montantAvance,
+        });
+        return response;
+    },
 };
 
