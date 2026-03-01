@@ -159,6 +159,7 @@ import TicketVoyageHomeScreen from '../screens/specialized/TicketVoyageHomeScree
 // ✅ NOUVEAU: Écrans retour bus (aller-retour)
 import BusReturnRequestFormScreen from '../screens/specialized/BusReturnRequestFormScreen';
 import BusReturnRequestsScreen from '../screens/specialized/BusReturnRequestsScreen';
+// ✅ NOUVEAU 2026-01-27: Écrans hôtels/meublés (paiement réservation + QR scanner)
 // ✅ NOUVEAU 2025-01-28: Écrans Bourse du livre scolaire
 import LivreScolaireDetailsScreen from '../screens/specialized/LivreScolaireDetailsScreen';
 import LivreScolaireFormScreen from '../screens/specialized/LivreScolaireFormScreen';
@@ -972,6 +973,10 @@ const SecondaryStack = () => {
       <Stack.Screen name="ImmobilierCompare" component={ImmobilierCompareScreenWithSafeArea} />
       <Stack.Screen name="MyFavorites" component={MyFavoritesScreenWithSafeArea} />
       <Stack.Screen name="ImmobilierPriceAlerts" component={ImmobilierPriceAlertsScreenWithSafeArea} />
+      {/* ✅ NOUVEAU 2026-01-27: Écrans hôtels/meublés */}
+      <Stack.Screen name="HotelBookingPayment" component={withNavigatorSafeArea(HotelBookingPaymentScreen)} options={{ title: 'Paiement réservation' }} />
+      <Stack.Screen name="HotelQRScanner" component={withNavigatorSafeArea(HotelQRScannerScreen)} options={{ title: 'Scanner QR réservation' }} />
+      <Stack.Screen name="HotelReservationQR" component={withNavigatorSafeArea(HotelQRScannerScreen)} options={{ title: 'Mon QR réservation' }} />
       <Stack.Screen name="HopitalList" component={HopitalListScreenWithSafeArea} />
       <Stack.Screen name="HopitalDetails" component={HopitalDetailsScreenWithSafeArea} />
       {/* ✅ Phase 3: Laboratoires */}

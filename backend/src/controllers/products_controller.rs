@@ -127,7 +127,7 @@ pub async fn get_products_by_service(
             // Au lieu de faire un fallback OR, on fusionne les deux sources
             let specific_media = product_media_map.get(&Some(p.product_index));
             let global_media = product_media_map.get(&None);
-            
+
             let (product_images, product_videos) = match (specific_media, global_media) {
                 (Some((si, sv)), Some((gi, gv))) => {
                     // Combiner spécifiques + globaux (spécifiques en premier)
