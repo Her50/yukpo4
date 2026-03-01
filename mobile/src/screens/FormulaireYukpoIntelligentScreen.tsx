@@ -4806,8 +4806,11 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 Object.keys(valeursFormulaire).forEach(key => {
                   const value = valeursFormulaire[key];
                   if (value !== undefined && value !== null && value !== '') {
-                    // Si la valeur existe déjà et est un objet avec 'valeur', on met à jour
-                    if (finalServiceData[key] && typeof finalServiceData[key] === 'object' && finalServiceData[key].valeur !== undefined) {
+                    // Si la valeur est déjà un objet structuré avec type_donnee (autocomplete, price_variant, etc.),
+                    // le passer tel quel pour préserver sous_caracteristiques, product_labels, separateur, etc.
+                    if (value && typeof value === 'object' && !Array.isArray(value) && value.type_donnee) {
+                      finalServiceData[key] = value;
+                    } else if (finalServiceData[key] && typeof finalServiceData[key] === 'object' && finalServiceData[key].valeur !== undefined) {
                       finalServiceData[key].valeur = value;
                     } else {
                       // Sinon, créer la structure complète
