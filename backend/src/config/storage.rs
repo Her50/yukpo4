@@ -18,7 +18,11 @@ fn env_bool(name: &str, default: bool) -> bool {
 fn env_string(name: &str) -> Option<String> {
     env::var(name)
         .ok()
-        .map(|value| value.trim().to_string())
+        .map(|value| {
+            // ✅ CORRIGÉ 2026-03-01: Supprimer le BOM UTF-8 (\xEF\xBB\xBF) en plus du trim
+            // Le BOM dans AWS_ACCESS_KEY_ID corrompait les signatures pré-signées S3 (403)
+            value.trim().trim_start_matches('\u{FEFF}').trim().to_string()
+        })
         .filter(|v| !v.is_empty())
 }
 

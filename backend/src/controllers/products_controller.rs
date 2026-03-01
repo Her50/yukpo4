@@ -123,11 +123,28 @@ pub async fn get_products_by_service(
             let mut product_data = p.product_data.clone();
 
             // Récupérer les médias pour ce product_index
-            let (product_images, product_videos) = product_media_map
-                .get(&Some(p.product_index))
-                .or_else(|| product_media_map.get(&None)) // Fallback vers médias globaux du service
-                .cloned()
-                .unwrap_or_else(|| (Vec::new(), Vec::new()));
+            // ✅ CORRIGÉ 2026-03-01: Combiner médias spécifiques au produit ET médias globaux du service
+            // Au lieu de faire un fallback OR, on fusionne les deux sources
+            let specific_media = product_media_map.get(&Some(p.product_index));
+            let global_media = product_media_map.get(&None);
+            
+            let (product_images, product_videos) = match (specific_media, global_media) {
+                (Some((si, sv)), Some((gi, gv))) => {
+                    // Combiner spécifiques + globaux (spécifiques en premier)
+                    let mut imgs = si.clone();
+                    for g in gi {
+                        if !imgs.contains(g) { imgs.push(g.clone()); }
+                    }
+                    let mut vids = sv.clone();
+                    for g in gv {
+                        if !vids.contains(g) { vids.push(g.clone()); }
+                    }
+                    (imgs, vids)
+                }
+                (Some(specific), None) => specific.clone(),
+                (None, Some(global)) => global.clone(),
+                (None, None) => (Vec::new(), Vec::new()),
+            };
 
             // ✅ Enrichir product_data avec les médias (fusionner avec existants)
             if let Some(obj) = product_data.as_object_mut() {

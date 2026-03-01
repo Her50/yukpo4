@@ -578,20 +578,21 @@ impl CourierVerificationService {
         &self,
         delivery_id: Uuid,
     ) -> AppResult<Vec<ProductToPickup>> {
-        // Récupérer les commandes liées à cette livraison
-        let rows = sqlx::query(
+        let rows: Vec<sqlx::postgres::PgRow> = sqlx::query(
             r#"
             SELECT 
                 po.product_index,
-                sp.product_name,
-                sp.product_price,
+                COALESCE(sp.name, po.metadata->>'product_name') as product_name,
+                sp.price as service_product_price,
+                po.product_price as order_product_price,
+                po.metadata->>'price' as metadata_price,
                 po.metadata,
-                sp.product_data
+                sp.data as product_data
             FROM product_orders po
-            LEFT JOIN service_products sp 
-                ON sp.service_id = po.service_id AND sp.product_index = po.product_index
+            LEFT JOIN service_products sp ON sp.service_id = po.service_id AND sp.product_index = po.product_index
             WHERE po.delivery_id = $1
-            "#,
+            ORDER BY po.product_index
+            "#
         )
         .bind(delivery_id)
         .fetch_all(&self.pool)
@@ -604,7 +605,16 @@ impl CourierVerificationService {
             let product_name: String = row
                 .get::<Option<String>, _>("product_name")
                 .unwrap_or_else(|| format!("Produit #{}", product_index));
-            let product_price: Option<rust_decimal::Decimal> = row.get("product_price");
+            // Récupérer le prix depuis plusieurs sources (par ordre de priorité)
+            let product_price = row
+                .get::<Option<rust_decimal::Decimal>, _>("order_product_price") // Prix au moment de la commande
+                .or_else(|| row.get::<Option<rust_decimal::Decimal>, _>("service_product_price")) // Prix du catalogue
+                .or_else(|| {
+                    // Prix depuis metadata (string -> decimal)
+                    row.get::<Option<String>, _>("metadata_price")
+                        .and_then(|s| s.parse::<rust_decimal::Decimal>().ok())
+                });
+
             let metadata: Option<serde_json::Value> = row.get("metadata");
             let product_data: Option<serde_json::Value> = row.get("product_data");
 

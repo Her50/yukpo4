@@ -1271,10 +1271,37 @@ pub async fn rechercher_besoin_direct(
                         .and_then(|v| v.as_i64().map(|i| i as i32));
 
                     // ✅ CORRIGÉ 2026-01-22: Ajouter les images/vidéos depuis product_media_map si disponibles
-                    // ✅ CORRIGÉ 2026-03-01: URLs pré-signées au lieu de build_public_url
-                    if let Some(prod_idx) = product_index {
-                        if let Some((product_images, product_videos)) =
-                            product_media_map.get(&(service_id, prod_idx))
+                    // ✅ CORRIGÉ 2026-03-01: URLs pré-signées + fallback vers médias globaux du service
+                    // Combiner médias spécifiques au produit ET médias globaux du service
+                    let specific_media =
+                        product_index.and_then(|idx| product_media_map.get(&(service_id, idx)));
+                    let global_media = media_map.get(&service_id);
+
+                    let (product_images_combined, product_videos_combined) =
+                        match (specific_media, global_media) {
+                            (Some((si, sv)), Some((gi, gv))) => {
+                                let mut imgs = si.clone();
+                                for g in gi {
+                                    if !imgs.contains(g) {
+                                        imgs.push(g.clone());
+                                    }
+                                }
+                                let mut vids = sv.clone();
+                                for g in gv {
+                                    if !vids.contains(g) {
+                                        vids.push(g.clone());
+                                    }
+                                }
+                                (imgs, vids)
+                            }
+                            (Some(s), None) => s.clone(),
+                            (None, Some(g)) => g.clone(),
+                            (None, None) => (Vec::new(), Vec::new()),
+                        };
+
+                    if !product_images_combined.is_empty() || !product_videos_combined.is_empty() {
+                        let (product_images, product_videos) =
+                            (&product_images_combined, &product_videos_combined);
                         {
                             // Transformer les chemins en URLs pré-signées
                             let mut images_cdn: Vec<String> =
