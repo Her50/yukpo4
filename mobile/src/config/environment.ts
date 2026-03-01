@@ -8,9 +8,20 @@ export const ENVIRONMENT = {
     // Clés API Google Maps (Places, Geocoding, etc.)
     // ✅ 2026-02-25: Clés séparées Android/iOS (restreintes par package/bundle ID)
     // Les clés Maps côté client sont publiques par nature — protégées par restrictions plateforme
-    GOOGLE_MAPS_API_KEY: Platform.OS === 'ios'
-        ? (process.env.EXPO_PUBLIC_GOOGLE_MAPS_IOS_API_KEY || 'AIzaSyBHGQavkIvn0pgj52WuTEapSkdKUmljqs8')
-        : (process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || 'AIzaSyDqlMAysWsGzv1jQtR6WJn8LZXpH75SwFo'),
+    // ✅ CORRIGÉ 2026-03-01: Détecter les placeholders 'SET_VIA_EAS_SECRET_OR_ENV' qui ne sont pas de vraies clés
+    GOOGLE_MAPS_API_KEY: (() => {
+        const ANDROID_KEY = 'AIzaSyDqlMAysWsGzv1jQtR6WJn8LZXpH75SwFo';
+        const IOS_KEY = 'AIzaSyBHGQavkIvn0pgj52WuTEapSkdKUmljqs8';
+        const fallbackKey = Platform.OS === 'ios' ? IOS_KEY : ANDROID_KEY;
+        const envKey = Platform.OS === 'ios'
+            ? process.env.EXPO_PUBLIC_GOOGLE_MAPS_IOS_API_KEY
+            : process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
+        // Si la clé env est absente, vide, ou un placeholder → utiliser le fallback
+        if (!envKey || envKey === 'SET_VIA_EAS_SECRET_OR_ENV' || !envKey.startsWith('AIza')) {
+            return fallbackKey;
+        }
+        return envKey;
+    })(),
 
     // URL de l'API backend - Configurable via .env
     // ✅ 2026-02-14: Migration vers GCP Cloud Run
