@@ -1,27 +1,25 @@
 // ✅ Écran de recherche de banques de sang (Mobile) - VERSION REFONDUE MODERNE
-import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
-import React, { useState, useEffect, useRef } from 'react';
+import { LinearGradient } from 'expo-linear-gradient';
+import * as Location from 'expo-location';
+import React, { useEffect, useRef, useState } from 'react';
 import {
+    ActivityIndicator,
     Alert,
     Animated,
     ScrollView,
     StyleSheet,
-    Switch,
     Text,
     TouchableOpacity,
-    View,
-    ActivityIndicator
+    View
 } from 'react-native';
-import * as Location from 'expo-location';
 import ModernGPSModal from '../../components/ModernGPSModal';
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
-import { useLocation } from '../../contexts/LocationContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { modernColors } from '../../theme/modernTheme';
-import { hapticPress } from '../../utils/hapticFeedback';
+import { useLocation } from '../../contexts/LocationContext';
 import { apiGet, apiPost } from '../../services/api';
+import { hapticPress } from '../../utils/hapticFeedback';
 
 interface BanqueSangSearchFilters {
     lat?: number;
@@ -219,7 +217,7 @@ const BanqueSangSearchScreen: React.FC = () => {
             // Si l'utilisateur est connecté, utiliser le matching intelligent
             if (user && userBloodGroup) {
                 // Navigation vers l'écran de matching avec les paramètres de recherche
-                navigation.navigate('BloodDonationMatching' as never, {
+                navigation.navigate('BloodDonation' as never, {
                     searchParams: {
                         lat: gpsData.lat,
                         lng: gpsData.lng,
@@ -337,7 +335,7 @@ const BanqueSangSearchScreen: React.FC = () => {
                     {!userBloodGroup && (
                         <BloodDonationButton
                             onPress={() => {
-                                navigation.navigate('BloodGroupManagement' as never);
+                                navigation.navigate('BloodDonation' as never);
                             }}
                         />
                     )}
@@ -389,7 +387,7 @@ const BanqueSangSearchScreen: React.FC = () => {
                 {/* Formulaire de recherche */}
                 <View style={styles.searchFormCard}>
                     <Text style={styles.sectionTitle}>📍 Localisation</Text>
-                    
+
                     {/* Localisation GPS */}
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>

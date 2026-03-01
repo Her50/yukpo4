@@ -9,7 +9,8 @@ use std::sync::Arc;
 
 use crate::controllers::products_controller::{
     delete_product, duplicate_product, get_product, get_products_by_service, get_products_by_user,
-    get_products_by_user_path, share_product_redirect, update_product,
+    get_products_by_user_path, share_product_redirect, share_service_redirect,
+    share_tracking_redirect, update_product,
 };
 use crate::middlewares::jwt::jwt_auth;
 use crate::state::AppState;
@@ -58,5 +59,9 @@ pub fn products_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         // GET /product/:product_id?serviceId=:service_id
         // Détecte le User-Agent et redirige vers l'app si mobile, ou affiche la page web si desktop
         .route("/product/{product_id}", get(share_product_redirect))
+        // ✅ NOUVEAU: Route publique pour partage intelligent de services
+        .route("/service/{service_id}", get(share_service_redirect))
+        // ✅ NOUVEAU: Route publique pour partage de suivi de livraison
+        .route("/track/{delivery_id}", get(share_tracking_redirect))
         .with_state(state)
 }

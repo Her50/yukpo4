@@ -198,7 +198,7 @@ async fn create_external_delivery(
     Ok(Json(json!({
         "success": true,
         "delivery_id": summary.id,
-        "tracking_url": format!("https://yukpo.com/track/{}", tracking_token),
+        "tracking_url": format!("https://yukpo-backend-376093909298.europe-west1.run.app/track/{}", tracking_token),
         "tracking_token": tracking_token,
         "estimated_pickup_time": summary.metadata.get("estimated_pickup_time"),
         "estimated_delivery_time": summary.metadata.get("estimated_delivery_time"),
@@ -317,7 +317,7 @@ async fn trigger_webhook(
         "delivery_id": summary.id,
         "status": summary.status,
         "tracking_token": tracking_token,
-        "tracking_url": format!("https://yukpo.com/track/{}", tracking_token),
+        "tracking_url": format!("https://yukpo-backend-376093909298.europe-west1.run.app/track/{}", tracking_token),
         "estimated_pickup_time": summary.metadata.get("estimated_pickup_time"),
         "estimated_delivery_time": summary.metadata.get("estimated_delivery_time"),
     });

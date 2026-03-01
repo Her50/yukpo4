@@ -316,83 +316,58 @@ impl CourierVerificationService {
                 insurance_cost: None,
             });
         }
-    }
 
-    // Vérifier si déjà vérifié
-    if verification.verified_at.is_some() {
-        return Ok(CourierVerificationResult {
-            is_valid: false,
-            courier_id: verification.courier_id,
-            courier_name: build_courier_name(
-                verification.nom_complet,
-                verification.nom,
-                verification.prenom,
-            ),
-            courier_avatar_url: None,
-            courier_vehicle_type: None,
-            delivery_id: Some(verification.delivery_id),
-            order_id: verification.order_id,
-            message: "Code déjà utilisé".to_string(),
-            products_to_pickup: vec![],
-            pickup_address: None,
-            dropoff_address: None,
-            client_name: None,
-            delivery_price: None,
-            insurance_cost: None,
-        });
-    }
+        // Vérifier que le prestataire est bien le propriétaire de la livraison/commande
+        let is_authorized = if let Some(order_id) = verification.order_id {
+            // Vérifier via product_orders
+            let order_provider_id: Option<i32> = sqlx::query_scalar::<_, i32>(
+                r#"
+                SELECT provider_user_id
+                FROM product_orders
+                WHERE id = $1
+                "#,
+            )
+            .bind(order_id)
+            .fetch_optional(&self.pool)
+            .await?;
 
-    // Vérifier que le prestataire est bien le propriétaire de la livraison/commande
-    let is_authorized = if let Some(order_id) = verification.order_id {
-        // Vérifier via product_orders
-        let order_provider_id: Option<i32> = sqlx::query_scalar::<_, i32>(
+            order_provider_id.map(|id| id == provider_user_id).unwrap_or(false)
+        } else {
+            // Vérifier via deliveries (si pas de product_order)
+            let delivery_creator_id: Option<i32> = sqlx::query_scalar::<_, i32>(
+                r#"
+                SELECT creator_id
+                FROM deliveries
+                WHERE id = $1
+                "#,
+            )
+            .bind(delivery_id)
+            .fetch_optional(&self.pool)
+            .await?;
+
+            delivery_creator_id.map(|id| id == provider_user_id).unwrap_or(false)
+        };
+
+        if !is_authorized {
+            return Err(AppError::Forbidden(
+                "Vous n'êtes pas autorisé à vérifier cette livraison".to_string(),
+            ));
+        }
+
+        // Marquer comme vérifié
+        let now = Utc::now();
+        sqlx::query(
             r#"
-            SELECT provider_user_id
-            FROM product_orders
-            WHERE id = $1
+            UPDATE courier_verification_codes
+            SET 
+                verified_at = $1,
+                verified_by = $2,
+                verification_method = $3
+            WHERE id = $4
             "#,
         )
-        .bind(order_id)
-        .fetch_optional(&self.pool)
-        .await?;
-
-        order_provider_id.map(|id| id == provider_user_id).unwrap_or(false)
-    } else {
-        // Vérifier via deliveries (si pas de product_order)
-        let delivery_creator_id: Option<i32> = sqlx::query_scalar::<_, i32>(
-            r#"
-            SELECT creator_id
-            FROM deliveries
-            WHERE id = $1
-            "#,
-        )
-        .bind(delivery_id)
-        .fetch_optional(&self.pool)
-        .await?;
-
-        delivery_creator_id.map(|id| id == provider_user_id).unwrap_or(false)
-    };
-
-    if !is_authorized {
-        return Err(AppError::Forbidden(
-            "Vous n'êtes pas autorisé à vérifier cette livraison".to_string(),
-        ));
-    }
-
-    // Marquer comme vérifié
-    let now = Utc::now();
-    sqlx::query(
-        r#"
-        UPDATE courier_verification_codes
-        SET 
-            verified_at = $1,
-            verified_by = $2,
-            verification_method = $3
-        WHERE id = $4
-        "#,
-    )
-    .bind(now)
-    .bind(provider_user_id)
+        .bind(now)
+        .bind(provider_user_id)
         .bind(request.verification_method.as_deref().unwrap_or("pin_code"))
         .bind(verification.id)
         .execute(&self.pool)
@@ -454,7 +429,7 @@ impl CourierVerificationService {
             FROM deliveries d
             LEFT JOIN users u ON u.id = d.creator_id
             WHERE d.id = $1
-            "#
+            "#,
         )
         .bind(delivery_id)
         .map(|row: sqlx::postgres::PgRow| {
@@ -476,24 +451,35 @@ impl CourierVerificationService {
         // Calculer les frais d'assurance
         let insurance_cost = if delivery_price.is_some() {
             // Récupérer le type d'engin depuis les métadonnées de la livraison
-            let engine_type_str: Option<String> = sqlx::query_scalar(
-                "SELECT metadata->>'engine_type' FROM deliveries WHERE id = $1"
-            )
-            .bind(delivery_id)
-            .fetch_optional(&self.pool)
-            .await
-            .ok()
-            .flatten();
+            let engine_type_str: Option<String> =
+                sqlx::query_scalar("SELECT metadata->>'engine_type' FROM deliveries WHERE id = $1")
+                    .bind(delivery_id)
+                    .fetch_optional(&self.pool)
+                    .await
+                    .ok()
+                    .flatten();
 
             let engine_type = match engine_type_str.as_deref() {
-                Some("bike") | Some("velo") => crate::models::delivery_model::DeliveryEngineType::VeloCargo,
-                Some("motorcycle") | Some("moto") => crate::models::delivery_model::DeliveryEngineType::Moto,
+                Some("bike") | Some("velo") => {
+                    crate::models::delivery_model::DeliveryEngineType::VeloCargo
+                }
+                Some("motorcycle") | Some("moto") => {
+                    crate::models::delivery_model::DeliveryEngineType::Moto
+                }
                 Some("scooter") => crate::models::delivery_model::DeliveryEngineType::Scooter,
                 Some("tricycle") => crate::models::delivery_model::DeliveryEngineType::Tricycle,
-                Some("car") | Some("voiture") => crate::models::delivery_model::DeliveryEngineType::Voiture,
-                Some("pickup") | Some("camionnette") => crate::models::delivery_model::DeliveryEngineType::Camionnette,
-                Some("truck") | Some("camion") => crate::models::delivery_model::DeliveryEngineType::CamionLeger,
-                Some("walking") | Some("pieton") => crate::models::delivery_model::DeliveryEngineType::Pieton,
+                Some("car") | Some("voiture") => {
+                    crate::models::delivery_model::DeliveryEngineType::Voiture
+                }
+                Some("pickup") | Some("camionnette") => {
+                    crate::models::delivery_model::DeliveryEngineType::Camionnette
+                }
+                Some("truck") | Some("camion") => {
+                    crate::models::delivery_model::DeliveryEngineType::CamionLeger
+                }
+                Some("walking") | Some("pieton") => {
+                    crate::models::delivery_model::DeliveryEngineType::Pieton
+                }
                 _ => crate::models::delivery_model::DeliveryEngineType::Moto, // Par défaut
             };
 
@@ -501,12 +487,9 @@ impl CourierVerificationService {
                 crate::services::delivery_insurance_service::DeliveryInsuranceService::new(
                     self.pool.clone(),
                 );
-            
+
             let product_value = delivery_price.unwrap_or(0.0);
-            insurance_service
-                .calculate_insurance_fee(engine_type, product_value)
-                .await
-                .ok()
+            insurance_service.calculate_insurance_fee(engine_type, product_value).await.ok()
         } else {
             None
         };

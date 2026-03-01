@@ -12,9 +12,9 @@ import {
     View
 } from 'react-native';
 import ChatModalMobile from '../../components/ChatModalMobile';
-import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import ProductCommentsSection from '../../components/ProductCommentsSection';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiGet } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
@@ -92,7 +92,7 @@ const BanqueSangDetailsScreen: React.FC = () => {
             navigation.navigate('Login' as never);
             return;
         }
-        navigation.navigate('BloodDonationRequest' as never);
+        navigation.navigate('BloodDonation' as never);
     };
 
     // ✅ 2025-01-27: Charger infos prestataire

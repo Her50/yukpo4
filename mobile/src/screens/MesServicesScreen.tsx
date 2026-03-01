@@ -10,10 +10,10 @@ import { BreadcrumbItem, Breadcrumbs } from '../components/Breadcrumbs';
 import { BulkActionsBar } from '../components/BulkActionsBar';
 import GlobalDeliveryConfigModal from '../components/delivery/GlobalDeliveryConfigModal';
 import { ErrorBoundaryWithRetry } from '../components/ErrorBoundaryWithRetry';
-import { NativeButton } from '../components/SafeNativeDesign';
 import ProductGalleryModal from '../components/ProductGalleryModal';
 import ProductVideoCreationModal from '../components/ProductVideoCreationModal';
 import SafeIcon from '../components/SafeIcon';
+import { NativeButton } from '../components/SafeNativeDesign';
 import { SafeNativeView } from '../components/SafeNativeView';
 import ServiceCardModern from '../components/ServiceCardModern';
 import ServiceProductSelector from '../components/ServiceProductSelector';
@@ -328,7 +328,7 @@ const MesServicesScreen: React.FC = () => {
             try {
               // ✅ PHASE 4: Récupérer les produits depuis l'API
               const products = await productsService.getProductsByService(serviceId);
-              
+
               return products.map((product, index) => {
                 // ✅ Parser chaque produit depuis l'API
                 const parsed = parseProduct(product.product_data, product.product_index, service, serviceId.toString(), serviceTitre);
@@ -626,8 +626,8 @@ const MesServicesScreen: React.FC = () => {
       const prix = service.data?.prix?.valeur || service.prix;
       const localisation = service.data?.localisation?.valeur || service.localisation;
 
-      // ✅ AMÉLIORATION : Créer un lien deep link vers le service
-      const serviceUrl = `https://yukpomnang.com/service/${service.id}`;
+      // ✅ CORRIGÉ: Utiliser l'URL du backend Cloud Run qui sert la route /service/:id
+      const serviceUrl = `https://yukpo-backend-376093909298.europe-west1.run.app/service/${service.id}`;
 
       let shareText = `🛍️ ${titre}\n\n${description}`;
 
@@ -1146,83 +1146,83 @@ const MesServicesScreen: React.FC = () => {
             </View>
             {/* ✅ AMÉLIORÉ: Boutons d'action sur une ligne séparée, en dessous du titre */}
             <View style={dynamicStyles.headerActions}>
-                {/* ✅ NOUVEAU: Bouton création vidéo */}
+              {/* ✅ NOUVEAU: Bouton création vidéo */}
+              <TouchableOpacity
+                style={[dynamicStyles.headerButton, { backgroundColor: 'rgba(255, 255, 255, 0.2)' }]}
+                onPress={() => {
+                  try {
+                    (navigation as any).navigate('VideoCreationIntro');
+                  } catch (error) {
+                    logger.error('[MesServicesScreen] Erreur navigation vers VideoCreationIntro:', error);
+                    toaster.error('Impossible d\'ouvrir la création de vidéo');
+                  }
+                }}
+                accessibilityLabel="Créer une vidéo"
+                accessibilityRole="button"
+              >
+                <SafeIcon name="plus" size={20} color="#fff" type="lucide" />
+              </TouchableOpacity>
+              {/* ✅ NOUVEAU: Configuration Flash Promo - Visible directement dans le header */}
+              <TouchableOpacity
+                style={[dynamicStyles.headerButton, { backgroundColor: 'rgba(245, 158, 11, 0.4)', borderWidth: 1, borderColor: 'rgba(245, 158, 11, 0.6)' }]}
+                onPress={() => {
+                  const productsList = prepareProductsForSelector();
+                  if (productsList.length === 0) {
+                    toaster.warning('Vous devez d\'abord créer des produits avant de créer un flash promo.');
+                    return;
+                  }
+                  setProductsForSelection(productsList);
+                  setProductSelectorMode('flash-promo');
+                  setShowProductSelector(true);
+                }}
+                accessibilityLabel="Configuration Flash Promo"
+                accessibilityRole="button"
+              >
+                <SafeIcon name="zap" size={20} color="#fff" type="lucide" />
+              </TouchableOpacity>
+              {/* ✅ NOUVEAU: Configuration de livraison dans l'en-tête */}
+              <TouchableOpacity
+                style={[dynamicStyles.headerButton, { backgroundColor: 'rgba(16, 185, 129, 0.2)' }]}
+                onPress={() => {
+                  const productsList = prepareProductsForSelector();
+                  if (productsList.length === 0) {
+                    toaster.warning('Vous devez d\'abord créer des produits avant de configurer la livraison.');
+                    return;
+                  }
+                  setProductsForSelection(productsList);
+                  setProductSelectorMode('delivery');
+                  setShowProductSelector(true);
+                }}
+                accessibilityLabel="Configuration livraison"
+                accessibilityRole="button"
+              >
+                <SafeIcon name="bike" size={18} color="#fff" />
+              </TouchableOpacity>
+              {filteredServices.length > 0 && (
                 <TouchableOpacity
-                  style={[dynamicStyles.headerButton, { backgroundColor: 'rgba(255, 255, 255, 0.2)' }]}
+                  style={[dynamicStyles.headerButton, bulkMode && { backgroundColor: 'rgba(255, 255, 255, 0.4)' }]}
                   onPress={() => {
-                    try {
-                      (navigation as any).navigate('VideoCreationIntro');
-                    } catch (error) {
-                      logger.error('[MesServicesScreen] Erreur navigation vers VideoCreationIntro:', error);
-                      toaster.error('Impossible d\'ouvrir la création de vidéo');
+                    setBulkMode(!bulkMode);
+                    if (bulkMode) {
+                      setSelectedItems(new Set());
                     }
                   }}
-                  accessibilityLabel="Créer une vidéo"
+                  accessibilityLabel={bulkMode ? "Désactiver sélection multiple" : "Activer sélection multiple"}
                   accessibilityRole="button"
                 >
-                  <SafeIcon name="plus" size={20} color="#fff" type="lucide" />
+                  <SafeIcon name={bulkMode ? "check-square" : "square"} size={18} color="#fff" />
                 </TouchableOpacity>
-                {/* ✅ NOUVEAU: Configuration Flash Promo - Visible directement dans le header */}
-                <TouchableOpacity
-                  style={[dynamicStyles.headerButton, { backgroundColor: 'rgba(245, 158, 11, 0.4)', borderWidth: 1, borderColor: 'rgba(245, 158, 11, 0.6)' }]}
-                  onPress={() => {
-                    const productsList = prepareProductsForSelector();
-                    if (productsList.length === 0) {
-                      toaster.warning('Vous devez d\'abord créer des produits avant de créer un flash promo.');
-                      return;
-                    }
-                    setProductsForSelection(productsList);
-                    setProductSelectorMode('flash-promo');
-                    setShowProductSelector(true);
-                  }}
-                  accessibilityLabel="Configuration Flash Promo"
-                  accessibilityRole="button"
-                >
-                  <SafeIcon name="zap" size={20} color="#fff" type="lucide" />
-                </TouchableOpacity>
-                {/* ✅ NOUVEAU: Configuration de livraison dans l'en-tête */}
-                <TouchableOpacity
-                  style={[dynamicStyles.headerButton, { backgroundColor: 'rgba(16, 185, 129, 0.2)' }]}
-                  onPress={() => {
-                    const productsList = prepareProductsForSelector();
-                    if (productsList.length === 0) {
-                      toaster.warning('Vous devez d\'abord créer des produits avant de configurer la livraison.');
-                      return;
-                    }
-                    setProductsForSelection(productsList);
-                    setProductSelectorMode('delivery');
-                    setShowProductSelector(true);
-                  }}
-                  accessibilityLabel="Configuration livraison"
-                  accessibilityRole="button"
-                >
-                  <SafeIcon name="bike" size={18} color="#fff" />
-                </TouchableOpacity>
-                {filteredServices.length > 0 && (
-                  <TouchableOpacity
-                    style={[dynamicStyles.headerButton, bulkMode && { backgroundColor: 'rgba(255, 255, 255, 0.4)' }]}
-                    onPress={() => {
-                      setBulkMode(!bulkMode);
-                      if (bulkMode) {
-                        setSelectedItems(new Set());
-                      }
-                    }}
-                    accessibilityLabel={bulkMode ? "Désactiver sélection multiple" : "Activer sélection multiple"}
-                    accessibilityRole="button"
-                  >
-                    <SafeIcon name={bulkMode ? "check-square" : "square"} size={18} color="#fff" />
-                  </TouchableOpacity>
-                )}
-                <TouchableOpacity
-                  style={[dynamicStyles.headerButton, dynamicStyles.menuButton]}
-                  onPress={() => setShowSidebar(true)}
-                  accessibilityLabel="Menu navigation"
-                  accessibilityRole="button"
-                >
-                  <SafeIcon name="menu" size={20} color="#fff" />
-                </TouchableOpacity>
-              </View>
+              )}
+              <TouchableOpacity
+                style={[dynamicStyles.headerButton, dynamicStyles.menuButton]}
+                onPress={() => setShowSidebar(true)}
+                accessibilityLabel="Menu navigation"
+                accessibilityRole="button"
+              >
+                <SafeIcon name="menu" size={20} color="#fff" />
+              </TouchableOpacity>
             </View>
+          </View>
 
           {/* ✅ Menu global déroulant */}
           {showGlobalMenu && (
@@ -1751,17 +1751,17 @@ const MesServicesScreen: React.FC = () => {
                 setProductSelectorMode(null);
                 return;
               }
-              
+
               // Normaliser les produits sélectionnés
               const validProducts = selectedProducts.filter(p => p && p.serviceId != null && p.serviceId > 0);
-              
+
               if (validProducts.length === 0) {
                 toaster.warning('Aucun produit valide sélectionné.');
                 setShowProductSelector(false);
                 setProductSelectorMode(null);
                 return;
               }
-              
+
               // Si un seul produit, naviguer directement
               if (validProducts.length === 1) {
                 const product = validProducts[0];
@@ -1792,7 +1792,7 @@ const MesServicesScreen: React.FC = () => {
                   toaster.error('Impossible d\'ouvrir la création de flash promo');
                 }
               }
-              
+
               setShowProductSelector(false);
               setProductsForSelection([]);
               setProductSelectorMode(null);

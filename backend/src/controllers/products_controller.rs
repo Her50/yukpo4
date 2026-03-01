@@ -1035,3 +1035,513 @@ pub async fn share_product_redirect(
 
     Ok(Html(html).into_response())
 }
+
+/// GET /service/:service_id
+/// Route publique pour le partage intelligent de services
+/// Détecte le User-Agent et redirige vers l'app si mobile, ou affiche la page web si desktop
+pub async fn share_service_redirect(
+    Path(service_id): Path<i32>,
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+) -> AppResult<axum::response::Response> {
+    let user_agent = headers.get("user-agent").and_then(|h| h.to_str().ok()).unwrap_or("");
+    let is_mobile = is_mobile_user_agent(user_agent);
+
+    log::info!(
+        "🔗 [share_service_redirect] service_id={}, mobile={}, UA={}",
+        service_id,
+        is_mobile,
+        &user_agent[..user_agent.len().min(80)]
+    );
+
+    // Récupérer les informations du service
+    let service_row = sqlx::query(
+        r#"SELECT id, titre, description, categorie, prix, devise, data, user_id
+           FROM services WHERE id = $1"#,
+    )
+    .bind(service_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur DB service: {}", e)))?
+    .ok_or_else(|| AppError::NotFound(format!("Service {} non trouvé", service_id)))?;
+
+    let service_titre: String = service_row
+        .try_get::<Option<String>, _>("titre")
+        .ok()
+        .flatten()
+        .or_else(|| {
+            service_row.try_get::<Option<Value>, _>("data").ok().flatten().and_then(|d| {
+                d.get("titre_service")
+                    .and_then(|v| v.get("valeur"))
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string())
+            })
+        })
+        .unwrap_or_else(|| "Service Yukpomnang".to_string());
+
+    let service_description: String = service_row
+        .try_get::<Option<String>, _>("description")
+        .ok()
+        .flatten()
+        .or_else(|| {
+            service_row.try_get::<Option<Value>, _>("data").ok().flatten().and_then(|d| {
+                d.get("description")
+                    .and_then(|v| v.get("valeur"))
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string())
+            })
+        })
+        .unwrap_or_else(|| "Découvrez ce service sur Yukpomnang".to_string())
+        .chars()
+        .take(200)
+        .collect::<String>();
+
+    let service_prix: Option<String> = service_row
+        .try_get::<Option<rust_decimal::Decimal>, _>("prix")
+        .ok()
+        .flatten()
+        .map(|p| p.to_string())
+        .or_else(|| {
+            service_row.try_get::<Option<Value>, _>("data").ok().flatten().and_then(|d| {
+                d.get("prix")
+                    .and_then(|v| v.get("valeur"))
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string())
+            })
+        });
+
+    let service_devise: String = service_row
+        .try_get::<Option<String>, _>("devise")
+        .ok()
+        .flatten()
+        .unwrap_or_else(|| "XAF".to_string());
+
+    // Récupérer la première image du service depuis la table media
+    let service_image: Option<String> = sqlx::query_scalar::<_, Option<String>>(
+        r#"SELECT path FROM media
+           WHERE service_id = $1 AND (type = 'image' OR media_type = 'image')
+           ORDER BY COALESCE(is_main_image, FALSE) DESC, COALESCE(display_order, 0) ASC, id ASC
+           LIMIT 1"#,
+    )
+    .bind(service_id)
+    .fetch_optional(&state.pg)
+    .await
+    .ok()
+    .flatten()
+    .flatten()
+    .map(|path| {
+        if path.starts_with("http://") || path.starts_with("https://") {
+            path
+        } else {
+            state.media_storage.build_public_url(&path)
+        }
+    });
+
+    let share_base_url = std::env::var("SHARE_BASE_URL")
+        .or_else(|_| std::env::var("BACKEND_URL"))
+        .unwrap_or_else(|_| "https://yukpo-backend-376093909298.europe-west1.run.app".to_string());
+
+    let image_url = service_image.unwrap_or_else(|| format!("{}/logo.png", &share_base_url));
+    let share_url = format!("{}/service/{}", &share_base_url, service_id);
+    let deep_link = format!("yukpomnang://service/{}", service_id);
+    let android_intent_url = format!(
+        "intent://service/{}#Intent;scheme=yukpomnang;package=com.yukpomnang.mobile;S.browser_fallback_url=https://play.google.com/store/apps/details?id=com.yukpomnang.mobile;end",
+        service_id
+    );
+
+    let price_html = service_prix
+        .as_ref()
+        .map(|p| format!(r#"<div class="price">{} {}</div>"#, p, service_devise))
+        .unwrap_or_default();
+
+    // Construire le HTML
+    let mut html = String::with_capacity(4000);
+    html.push_str(
+        r#"<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>"#,
+    );
+    html.push_str(&service_titre);
+    html.push_str(
+        r#" - Yukpomnang</title>
+    <meta name="description" content=""#,
+    );
+    html.push_str(&service_description);
+    html.push_str(
+        r#"" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content=""#,
+    );
+    html.push_str(&service_titre);
+    html.push_str(
+        r#"" />
+    <meta property="og:description" content=""#,
+    );
+    html.push_str(&service_description);
+    html.push_str(
+        r#"" />
+    <meta property="og:image" content=""#,
+    );
+    html.push_str(&image_url);
+    html.push_str(
+        r#"" />
+    <meta property="og:url" content=""#,
+    );
+    html.push_str(&share_url);
+    html.push_str(
+        r#"" />
+    <meta property="og:site_name" content="Yukpomnang" />
+    <meta property="og:locale" content="fr_FR" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content=""#,
+    );
+    html.push_str(&service_titre);
+    html.push_str(
+        r#"" />
+    <meta name="twitter:description" content=""#,
+    );
+    html.push_str(&service_description);
+    html.push_str(
+        r#"" />
+    <meta name="twitter:image" content=""#,
+    );
+    html.push_str(&image_url);
+    html.push_str(
+        r#"" />
+    <meta name="google-play-app" content="app-id=com.yukpomnang.mobile">
+    <meta property="al:android:url" content=""#,
+    );
+    html.push_str(&deep_link);
+    html.push_str(r#"" />
+    <meta property="al:android:package" content="com.yukpomnang.mobile" />
+    <meta property="al:android:app_name" content="Yukpomnang" />
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0; padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh; display: flex; align-items: center; justify-content: center;
+        }
+        .container {
+            background: white; border-radius: 16px; padding: 32px;
+            max-width: 600px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 { color: #1f2937; margin: 0 0 16px 0; font-size: 28px; }
+        .price { font-size: 24px; font-weight: bold; color: #10b981; margin: 16px 0; }
+        .description { color: #6b7280; line-height: 1.6; margin: 16px 0; }
+        .service-image { margin: 20px 0; text-align: center; }
+        .service-image img { max-width: 100%; height: auto; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white; border: none; padding: 16px 32px; border-radius: 8px;
+            font-size: 16px; font-weight: 600; cursor: pointer; width: 100%;
+            margin-top: 16px; transition: transform 0.2s; display: block; text-align: center;
+            text-decoration: none;
+        }
+        .button:hover { transform: translateY(-2px); }
+        .button-secondary { background: #10b981; margin-top: 8px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>"#);
+    html.push_str(&service_titre);
+    html.push_str("</h1>\n");
+    html.push_str(&price_html);
+    if !image_url.contains("logo.png") {
+        html.push_str(r#"        <div class="service-image"><img src=""#);
+        html.push_str(&image_url);
+        html.push_str(r#"" alt=""#);
+        html.push_str(&service_titre);
+        html.push_str(r#"" /></div>"#);
+        html.push_str("\n");
+    }
+    html.push_str(r#"        <div class="description">"#);
+    html.push_str(&service_description);
+    html.push_str("</div>\n");
+    html.push_str("        <a id=\"open-app-btn\" class=\"button\" href=\"#\">\u{1F4F1} Ouvrir dans l'app Yukpomnang</a>\n");
+    html.push_str("        <a class=\"button button-secondary\" href=\"https://play.google.com/store/apps/details?id=com.yukpomnang.mobile\" target=\"_blank\">\u{1F4E5} T\u{00E9}l\u{00E9}charger l'app</a>\n");
+    html.push_str("    </div>\n");
+    html.push_str("    <script>\n");
+    html.push_str("        var DEEP_LINK = '");
+    html.push_str(&deep_link);
+    html.push_str("';\n");
+    html.push_str("        var INTENT_URL = '");
+    html.push_str(&android_intent_url);
+    html.push_str("';\n");
+    html.push_str("        var PLAY_STORE = 'https://play.google.com/store/apps/details?id=com.yukpomnang.mobile';\n");
+    html.push_str("        var APP_STORE = 'https://apps.apple.com/app/yukpomnang';\n");
+    html.push_str(
+        r#"
+        var ua = navigator.userAgent || '';
+        var isAndroid = /Android/i.test(ua);
+        var isIOS = /iPhone|iPad|iPod/i.test(ua);
+        var isMobile = isAndroid || isIOS;
+
+        var openBtn = document.getElementById('open-app-btn');
+        if (openBtn) {
+            if (isAndroid) {
+                openBtn.href = INTENT_URL;
+            } else if (isIOS) {
+                openBtn.href = DEEP_LINK;
+                openBtn.onclick = function() {
+                    setTimeout(function() { window.location.href = APP_STORE; }, 1500);
+                };
+            } else {
+                openBtn.style.display = 'none';
+            }
+        }
+
+        if (isMobile) {
+            setTimeout(function() {
+                if (isAndroid) {
+                    window.location.href = INTENT_URL;
+                } else if (isIOS) {
+                    window.location.href = DEEP_LINK;
+                    setTimeout(function() { window.location.href = APP_STORE; }, 1500);
+                }
+            }, 800);
+        }
+    </script>
+</body>
+</html>"#,
+    );
+
+    log::info!(
+        "🌐 [share_service_redirect] Page HTML générée: service={}, mobile={}",
+        service_id,
+        is_mobile
+    );
+
+    Ok(Html(html).into_response())
+}
+
+/// GET /track/:delivery_id
+/// Route publique pour le partage de suivi de livraison
+/// Affiche une page avec le statut de la livraison et un bouton pour ouvrir l'app
+pub async fn share_tracking_redirect(
+    Path(delivery_id): Path<String>,
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+) -> AppResult<axum::response::Response> {
+    let user_agent = headers.get("user-agent").and_then(|h| h.to_str().ok()).unwrap_or("");
+    let is_mobile = is_mobile_user_agent(user_agent);
+
+    log::info!(
+        "🔗 [share_tracking_redirect] delivery_id={}, mobile={}, UA={}",
+        delivery_id,
+        is_mobile,
+        &user_agent[..user_agent.len().min(80)]
+    );
+
+    // Essayer de récupérer les infos de la livraison
+    let delivery_info = sqlx::query(
+        r#"SELECT id, status, pickup_address, dropoff_address, metadata
+           FROM deliveries WHERE id::text = $1 OR tracking_token = $1
+           LIMIT 1"#,
+    )
+    .bind(&delivery_id)
+    .fetch_optional(&state.pg)
+    .await
+    .ok()
+    .flatten();
+
+    let (title, description, status_text) = if let Some(row) = &delivery_info {
+        let status: String = row
+            .try_get::<Option<String>, _>("status")
+            .ok()
+            .flatten()
+            .unwrap_or_else(|| "en cours".to_string());
+        let pickup: String = row
+            .try_get::<Option<String>, _>("pickup_address")
+            .ok()
+            .flatten()
+            .unwrap_or_else(|| "Non spécifié".to_string());
+        let dropoff: String = row
+            .try_get::<Option<String>, _>("dropoff_address")
+            .ok()
+            .flatten()
+            .unwrap_or_else(|| "Non spécifié".to_string());
+        (
+            format!("Suivi livraison - {}", &status),
+            format!("De {} vers {}", pickup, dropoff),
+            status,
+        )
+    } else {
+        (
+            "Suivi de livraison Yukpomnang".to_string(),
+            "Suivez votre livraison en temps réel sur Yukpomnang".to_string(),
+            "inconnu".to_string(),
+        )
+    };
+
+    let share_base_url = std::env::var("SHARE_BASE_URL")
+        .or_else(|_| std::env::var("BACKEND_URL"))
+        .unwrap_or_else(|_| "https://yukpo-backend-376093909298.europe-west1.run.app".to_string());
+
+    let share_url = format!("{}/track/{}", &share_base_url, delivery_id);
+    let deep_link = format!("yukpomnang://track/{}", delivery_id);
+    let android_intent_url = format!(
+        "intent://track/{}#Intent;scheme=yukpomnang;package=com.yukpomnang.mobile;S.browser_fallback_url=https://play.google.com/store/apps/details?id=com.yukpomnang.mobile;end",
+        delivery_id
+    );
+
+    let status_color = match status_text.as_str() {
+        "delivered" | "completed" => "#10b981",
+        "cancelled" | "failed" => "#ef4444",
+        "in_transit" | "en_route_pickup" | "en_route_dropoff" => "#3b82f6",
+        _ => "#f59e0b",
+    };
+
+    let mut html = String::with_capacity(3000);
+    html.push_str(
+        r#"<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>"#,
+    );
+    html.push_str(&title);
+    html.push_str(
+        r#" - Yukpomnang</title>
+    <meta name="description" content=""#,
+    );
+    html.push_str(&description);
+    html.push_str(
+        r#"" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content=""#,
+    );
+    html.push_str(&title);
+    html.push_str(
+        r#"" />
+    <meta property="og:description" content=""#,
+    );
+    html.push_str(&description);
+    html.push_str(
+        r#"" />
+    <meta property="og:url" content=""#,
+    );
+    html.push_str(&share_url);
+    html.push_str(
+        r#"" />
+    <meta property="og:site_name" content="Yukpomnang" />
+    <meta name="google-play-app" content="app-id=com.yukpomnang.mobile">
+    <meta property="al:android:url" content=""#,
+    );
+    html.push_str(&deep_link);
+    html.push_str(
+        r#"" />
+    <meta property="al:android:package" content="com.yukpomnang.mobile" />
+    <meta property="al:android:app_name" content="Yukpomnang" />
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0; padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh; display: flex; align-items: center; justify-content: center;
+        }
+        .container {
+            background: white; border-radius: 16px; padding: 32px;
+            max-width: 600px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 { color: #1f2937; margin: 0 0 16px 0; font-size: 24px; }
+        .status-badge {
+            display: inline-block; padding: 8px 16px; border-radius: 20px;
+            font-weight: 600; font-size: 14px; color: white; margin: 12px 0;
+        }
+        .description { color: #6b7280; line-height: 1.6; margin: 16px 0; }
+        .tracking-icon { font-size: 48px; text-align: center; margin-bottom: 16px; }
+        .button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white; border: none; padding: 16px 32px; border-radius: 8px;
+            font-size: 16px; font-weight: 600; cursor: pointer; width: 100%;
+            margin-top: 16px; transition: transform 0.2s; display: block; text-align: center;
+            text-decoration: none;
+        }
+        .button:hover { transform: translateY(-2px); }
+        .button-secondary { background: #10b981; margin-top: 8px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="tracking-icon">"#,
+    );
+    html.push_str("\u{1F4E6}");
+    html.push_str(
+        r#"</div>
+        <h1>"#,
+    );
+    html.push_str(&title);
+    html.push_str("</h1>\n");
+    html.push_str("        <div class=\"status-badge\" style=\"background: ");
+    html.push_str(status_color);
+    html.push_str("\">");
+    html.push_str(&status_text);
+    html.push_str("</div>\n");
+    html.push_str(r#"        <div class="description">"#);
+    html.push_str(&description);
+    html.push_str("</div>\n");
+    html.push_str("        <a id=\"open-app-btn\" class=\"button\" href=\"#\">\u{1F4F1} Suivre dans l'app Yukpomnang</a>\n");
+    html.push_str("        <a class=\"button button-secondary\" href=\"https://play.google.com/store/apps/details?id=com.yukpomnang.mobile\" target=\"_blank\">\u{1F4E5} T\u{00E9}l\u{00E9}charger l'app</a>\n");
+    html.push_str("    </div>\n");
+    html.push_str("    <script>\n");
+    html.push_str("        var DEEP_LINK = '");
+    html.push_str(&deep_link);
+    html.push_str("';\n");
+    html.push_str("        var INTENT_URL = '");
+    html.push_str(&android_intent_url);
+    html.push_str("';\n");
+    html.push_str("        var PLAY_STORE = 'https://play.google.com/store/apps/details?id=com.yukpomnang.mobile';\n");
+    html.push_str("        var APP_STORE = 'https://apps.apple.com/app/yukpomnang';\n");
+    html.push_str(
+        r#"
+        var ua = navigator.userAgent || '';
+        var isAndroid = /Android/i.test(ua);
+        var isIOS = /iPhone|iPad|iPod/i.test(ua);
+        var isMobile = isAndroid || isIOS;
+
+        var openBtn = document.getElementById('open-app-btn');
+        if (openBtn) {
+            if (isAndroid) {
+                openBtn.href = INTENT_URL;
+            } else if (isIOS) {
+                openBtn.href = DEEP_LINK;
+                openBtn.onclick = function() {
+                    setTimeout(function() { window.location.href = APP_STORE; }, 1500);
+                };
+            } else {
+                openBtn.style.display = 'none';
+            }
+        }
+
+        if (isMobile) {
+            setTimeout(function() {
+                if (isAndroid) {
+                    window.location.href = INTENT_URL;
+                } else if (isIOS) {
+                    window.location.href = DEEP_LINK;
+                    setTimeout(function() { window.location.href = APP_STORE; }, 1500);
+                }
+            }, 800);
+        }
+    </script>
+</body>
+</html>"#,
+    );
+
+    log::info!(
+        "🌐 [share_tracking_redirect] Page HTML générée: delivery={}, status={}, mobile={}",
+        delivery_id,
+        status_text,
+        is_mobile
+    );
+
+    Ok(Html(html).into_response())
+}

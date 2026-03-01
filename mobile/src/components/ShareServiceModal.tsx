@@ -10,8 +10,9 @@ interface ShareServiceModalProps {
   titre?: string;
 }
 
-// En React Native, nous utilisons une URL de base fixe ou récupérons l'URL différemment
-const getServiceUrl = (serviceId: string) => `https://yukpomnang.com/service/${serviceId}`;
+// ✅ CORRIGÉ: Utiliser l'URL du backend Cloud Run qui sert la route /service/:id
+const SHARE_BASE_URL = process.env.EXPO_PUBLIC_SHARE_URL || 'https://yukpo-backend-376093909298.europe-west1.run.app';
+const getServiceUrl = (serviceId: string) => `${SHARE_BASE_URL}/service/${serviceId}`;
 
 const ShareServiceModal: React.FC<ShareServiceModalProps> = ({ open, onClose, serviceId, titre }) => {
   const url = getServiceUrl(serviceId);

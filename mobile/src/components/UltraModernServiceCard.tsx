@@ -279,8 +279,8 @@ const UltraModernServiceCard: React.FC<UltraModernServiceCardProps> = ({
 
     const handleShare = async () => {
         try {
-            // ✅ CORRIGÉ: Utilise variable d'environnement pour URL de partage
-            const SHARE_BASE_URL = process.env.EXPO_PUBLIC_SHARE_URL || 'https://yukpomnang.com';
+            // ✅ CORRIGÉ: Utiliser l'URL du backend Cloud Run qui sert la route /service/:id
+            const SHARE_BASE_URL = process.env.EXPO_PUBLIC_SHARE_URL || 'https://yukpo-backend-376093909298.europe-west1.run.app';
             const serviceUrl = `${SHARE_BASE_URL}/service/${service.id}`;
             const shareText = `🌟 Découvrez ce service sur Yukpo :\n\n${normalizedService.titre}\n\n${normalizedService.description}\n\n💰 Prix: ${normalizedService.prix} ${normalizedService.devise}\n📍 Localisation: ${locationData?.location || 'Non spécifiée'}\n\n🔗 ${serviceUrl}`;
 

@@ -72,10 +72,10 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
 
     // ✅ NOUVEAU: Détecter si on doit afficher le tableau (si on a des sous-caractéristiques préférées de l'IA)
     useEffect(() => {
-        const hasSubCharacteristics = sousCaracteristiques && 
+        const hasSubCharacteristics = sousCaracteristiques &&
             Object.keys(sousCaracteristiques).length > 0 &&
             Object.values(sousCaracteristiques).some(vals => Array.isArray(vals) && vals.length > 0);
-        
+
         // Afficher le tableau si on a des sous-caractéristiques
         // Le tableau s'affiche en priorité pour permettre l'édition des sous-caractéristiques préférées de l'IA
         if (hasSubCharacteristics) {
@@ -210,32 +210,44 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
     const decomposeModality = (modality: string): ModalityChip[] => {
         const parts = modality.split(separateur).map(p => p.trim());
         const orderedLabels = getOrderedLabels();
-        
+
+        // ✅ CORRECTION CRITIQUE: Matching intelligent valeur→dimension
+        // L'IA peut générer une chaîne incohérente (ex: 5 valeurs pour 7 labels, ou valeurs mal ordonnées).
+        // Au lieu de mapper bêtement par index, on cherche pour chaque valeur la dimension qui la contient.
+        const usedLabels = new Set<string>();
+
         return parts.map((value, index) => {
-            // ✅ CORRECTION: Utiliser le label à la même position que la valeur (alignement garanti)
-            let label = index < orderedLabels.length ? orderedLabels[index] : undefined;
-            
-            // ✅ Si pas de label disponible, essayer de trouver un label dans sousCaracteristiques
-            if (!label && index < orderedLabels.length) {
-                label = orderedLabels[index];
-            }
-            
-            // ✅ Si toujours pas de label, utiliser un label générique mais informatif
-            if (!label) {
-                // Essayer de trouver un label dans sousCaracteristiques qui correspond à cette valeur
-                const matchingLabel = Object.keys(sousCaracteristiques).find(key => {
-                    const values = sousCaracteristiques[key];
-                    return Array.isArray(values) && values.includes(value);
-                });
-                
-                if (matchingLabel) {
-                    label = matchingLabel;
-                } else {
-                    // Dernier recours: utiliser un label générique mais descriptif
-                    label = `caractéristique_${index + 1}`;
+            const valueLower = value.toLowerCase().trim();
+
+            // PRIORITÉ 1: Vérifier si la valeur existe dans la dimension à la même position
+            if (index < orderedLabels.length) {
+                const positionalLabel = orderedLabels[index];
+                const positionalValues = sousCaracteristiques[positionalLabel];
+                if (Array.isArray(positionalValues) && positionalValues.some(v => v.toLowerCase().trim() === valueLower) && !usedLabels.has(positionalLabel)) {
+                    usedLabels.add(positionalLabel);
+                    return { key: positionalLabel, value: value, index: index };
                 }
             }
-            
+
+            // PRIORITÉ 2: Chercher dans TOUTES les dimensions (non encore utilisées) laquelle contient cette valeur
+            const matchingLabel = orderedLabels.find(label => {
+                if (usedLabels.has(label)) return false;
+                const values = sousCaracteristiques[label];
+                return Array.isArray(values) && values.some(v => v.toLowerCase().trim() === valueLower);
+            }) || Object.keys(sousCaracteristiques).find(key => {
+                if (usedLabels.has(key)) return false;
+                const values = sousCaracteristiques[key];
+                return Array.isArray(values) && values.some(v => v.toLowerCase().trim() === valueLower);
+            });
+
+            if (matchingLabel) {
+                usedLabels.add(matchingLabel);
+                return { key: matchingLabel, value: value, index: index };
+            }
+
+            // PRIORITÉ 3: Fallback positionnel si aucun match trouvé
+            let label = index < orderedLabels.length ? orderedLabels[index] : `caractéristique_${index + 1}`;
+
             return {
                 key: label,
                 value: value,
@@ -338,9 +350,9 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
         try {
             // ✅ CORRECTION CRITIQUE: Construire la modalité en respectant l'ordre (productLabels → clés réelles, comme SubCharacteristicsTable)
             const orderedLabels = getOrderedLabels();
-            
+
             const modalityParts: string[] = [];
-            
+
             // Parcourir les labels dans l'ordre garanti
             orderedLabels.forEach(label => {
                 // Trouver la ligne correspondante dans le tableau
@@ -357,14 +369,14 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                     }
                 }
             });
-            
+
             // Construire la modalité concaténée dans l'ordre correct
             const modality = modalityParts.join(separateur);
-            
+
             // Mettre à jour les modalités sélectionnées
             const newModalities = [modality];
             setSelectedModalities(newModalities);
-            
+
             // Construire les sous-caractéristiques mises à jour
             const updatedSousCaracs: Record<string, string[]> = {};
             rows.forEach(row => {
@@ -375,14 +387,14 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                     updatedSousCaracs[row.label].push(row.value);
                 }
             });
-            
+
             // ✅ CRITIQUE : Appeler onChange AVANT la sauvegarde DB pour mettre à jour le formulaire
             // Cela garantit que les modifications sont dans le formulaire même si la sauvegarde DB échoue
             onChange(newModalities, updatedSousCaracs);
-            
+
             // Masquer le tableau et afficher les chips
             setShowTable(false);
-            
+
             // ✅ NOUVEAU : Sauvegarder dans la DB avec gestion d'erreur
             console.log('[LinearAutocompleteEditor] 💾 Sauvegarde sous-caractéristiques dans DB...');
             const savedIds = await autocompleteHistoryService.historizeField(
@@ -392,7 +404,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                 updatedSousCaracs,
                 'utilisateur'
             );
-            
+
             if (savedIds.length > 0) {
                 console.log('[LinearAutocompleteEditor] ✅ Sous-caractéristiques sauvegardées dans DB:', savedIds.length, 'caractéristique(s)');
             } else {
@@ -463,16 +475,16 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                         onRowsChange={(rows) => {
                             // ✅ NOUVEAU : Sauvegarder automatiquement les modifications dans le formulaire (sans DB)
                             // Cela garantit que les modifications sont sauvegardées même si l'utilisateur ne clique pas "validé"
-                            const validRows = rows.filter(row => 
+                            const validRows = rows.filter(row =>
                                 row.label.trim().length > 0 && row.value.trim().length > 0
                             );
-                            
+
                             if (validRows.length > 0) {
                                 // ✅ Même ordre que SubCharacteristicsTable (productLabels → clés réelles)
                                 const orderedLabels = getOrderedLabels();
-                                
+
                                 const modalityParts: string[] = [];
-                                
+
                                 // Parcourir les labels dans l'ordre garanti
                                 orderedLabels.forEach(label => {
                                     // Trouver la ligne correspondante dans le tableau
@@ -489,10 +501,10 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                                         }
                                     }
                                 });
-                                
+
                                 // Construire la modalité concaténée dans l'ordre correct
                                 const modality = modalityParts.join(separateur);
-                                
+
                                 const updatedSousCaracs: Record<string, string[]> = {};
                                 validRows.forEach(row => {
                                     if (!updatedSousCaracs[row.label]) {
@@ -502,7 +514,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                                         updatedSousCaracs[row.label].push(row.value);
                                     }
                                 });
-                                
+
                                 // ✅ Sauvegarder dans le formulaire (sans sauvegarde DB immédiate)
                                 onChange([modality], updatedSousCaracs);
                                 console.log('[LinearAutocompleteEditor] 💾 Modifications sauvegardées automatiquement dans le formulaire (ordre garanti par productLabels)');
@@ -514,29 +526,29 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
 
             {/* Barre de recherche (affichée seulement si le tableau n'est pas affiché) */}
             {!showTable && (
-            <View style={styles.searchContainer}>
-                <SafeIcon name="search" size={18} color={modernColors.textSecondary} />
-                <TextInput
-                    style={styles.searchInput}
-                    placeholder={placeholder || "Tapez pour rechercher..."}
-                    placeholderTextColor="#9CA3AF"
-                    value={searchQuery}
-                    onChangeText={setSearchQuery}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                />
-                {isLoadingSuggestions && (
-                    <ActivityIndicator size="small" color={modernColors.primary} />
-                )}
-                {allowCustomModality && (
-                    <TouchableOpacity
-                        style={styles.addButton}
-                        onPress={() => setShowAddModal(true)}
-                    >
-                        <SafeIcon name="plus-circle" size={20} color={modernColors.primary} />
-                    </TouchableOpacity>
-                )}
-            </View>
+                <View style={styles.searchContainer}>
+                    <SafeIcon name="search" size={18} color={modernColors.textSecondary} />
+                    <TextInput
+                        style={styles.searchInput}
+                        placeholder={placeholder || "Tapez pour rechercher..."}
+                        placeholderTextColor="#9CA3AF"
+                        value={searchQuery}
+                        onChangeText={setSearchQuery}
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                    />
+                    {isLoadingSuggestions && (
+                        <ActivityIndicator size="small" color={modernColors.primary} />
+                    )}
+                    {allowCustomModality && (
+                        <TouchableOpacity
+                            style={styles.addButton}
+                            onPress={() => setShowAddModal(true)}
+                        >
+                            <SafeIcon name="plus-circle" size={20} color={modernColors.primary} />
+                        </TouchableOpacity>
+                    )}
+                </View>
             )}
 
             {/* Suggestions linéaires (affichage horizontal) - seulement si le tableau n'est pas affiché */}
@@ -623,85 +635,85 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
 
             {/* Modal d'ajout personnalisé - seulement si le tableau n'est pas affiché */}
             {!showTable && (
-            <Modal
-                visible={showAddModal}
-                animationType="fade"
-                transparent={true}
-                onRequestClose={() => setShowAddModal(false)}
-            >
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalContent}>
-                        <View style={styles.modalHeader}>
-                            <SafeIcon name="plus-circle" size={24} color={modernColors.primary} />
-                            <Text style={styles.modalTitle}>Ajouter une caractéristique</Text>
-                            <TouchableOpacity
-                                style={styles.closeButton}
-                                onPress={() => {
-                                    setShowAddModal(false);
-                                    setCustomKey('');
-                                    setCustomValue('');
-                                }}
-                            >
-                                <SafeIcon name="x" size={20} color={modernColors.text} />
-                            </TouchableOpacity>
-                        </View>
-
-                        <View style={styles.modalBody}>
-                            <Text style={styles.modalDescription}>
-                                Ajoutez une nouvelle caractéristique personnalisée
-                            </Text>
-
-                            <View style={styles.inputContainer}>
-                                <Text style={styles.inputLabel}>Nom de la caractéristique</Text>
-                                <TextInput
-                                    style={styles.input}
-                                    placeholder="Ex: couleur, taille, matière..."
-                                    placeholderTextColor="#9CA3AF"
-                                    value={customKey}
-                                    onChangeText={setCustomKey}
-                                    autoCapitalize="none"
-                                />
+                <Modal
+                    visible={showAddModal}
+                    animationType="fade"
+                    transparent={true}
+                    onRequestClose={() => setShowAddModal(false)}
+                >
+                    <View style={styles.modalOverlay}>
+                        <View style={styles.modalContent}>
+                            <View style={styles.modalHeader}>
+                                <SafeIcon name="plus-circle" size={24} color={modernColors.primary} />
+                                <Text style={styles.modalTitle}>Ajouter une caractéristique</Text>
+                                <TouchableOpacity
+                                    style={styles.closeButton}
+                                    onPress={() => {
+                                        setShowAddModal(false);
+                                        setCustomKey('');
+                                        setCustomValue('');
+                                    }}
+                                >
+                                    <SafeIcon name="x" size={20} color={modernColors.text} />
+                                </TouchableOpacity>
                             </View>
 
-                            <View style={styles.inputContainer}>
-                                <Text style={styles.inputLabel}>Valeur</Text>
-                                <TextInput
-                                    style={styles.input}
-                                    placeholder="Ex: Noir, XL, Coton..."
-                                    placeholderTextColor="#9CA3AF"
-                                    value={customValue}
-                                    onChangeText={setCustomValue}
-                                    autoCapitalize="none"
-                                />
-                            </View>
-                        </View>
+                            <View style={styles.modalBody}>
+                                <Text style={styles.modalDescription}>
+                                    Ajoutez une nouvelle caractéristique personnalisée
+                                </Text>
 
-                        <View style={styles.modalFooter}>
-                            <TouchableOpacity
-                                style={styles.cancelButton}
-                                onPress={() => {
-                                    setShowAddModal(false);
-                                    setCustomKey('');
-                                    setCustomValue('');
-                                }}
-                            >
-                                <Text style={styles.cancelButtonText}>Annuler</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={[
-                                    styles.saveButton,
-                                    (!customKey || !customValue) && styles.saveButtonDisabled
-                                ]}
-                                onPress={addCustomModality}
-                                disabled={!customKey || !customValue}
-                            >
-                                <SafeIcon name="check" size={18} color="#FFFFFF" />
-                                <Text style={styles.saveButtonText}>Ajouter</Text>
-                            </TouchableOpacity>
+                                <View style={styles.inputContainer}>
+                                    <Text style={styles.inputLabel}>Nom de la caractéristique</Text>
+                                    <TextInput
+                                        style={styles.input}
+                                        placeholder="Ex: couleur, taille, matière..."
+                                        placeholderTextColor="#9CA3AF"
+                                        value={customKey}
+                                        onChangeText={setCustomKey}
+                                        autoCapitalize="none"
+                                    />
+                                </View>
+
+                                <View style={styles.inputContainer}>
+                                    <Text style={styles.inputLabel}>Valeur</Text>
+                                    <TextInput
+                                        style={styles.input}
+                                        placeholder="Ex: Noir, XL, Coton..."
+                                        placeholderTextColor="#9CA3AF"
+                                        value={customValue}
+                                        onChangeText={setCustomValue}
+                                        autoCapitalize="none"
+                                    />
+                                </View>
+                            </View>
+
+                            <View style={styles.modalFooter}>
+                                <TouchableOpacity
+                                    style={styles.cancelButton}
+                                    onPress={() => {
+                                        setShowAddModal(false);
+                                        setCustomKey('');
+                                        setCustomValue('');
+                                    }}
+                                >
+                                    <Text style={styles.cancelButtonText}>Annuler</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[
+                                        styles.saveButton,
+                                        (!customKey || !customValue) && styles.saveButtonDisabled
+                                    ]}
+                                    onPress={addCustomModality}
+                                    disabled={!customKey || !customValue}
+                                >
+                                    <SafeIcon name="check" size={18} color="#FFFFFF" />
+                                    <Text style={styles.saveButtonText}>Ajouter</Text>
+                                </TouchableOpacity>
+                            </View>
                         </View>
                     </View>
-                </View>
-            </Modal>
+                </Modal>
             )}
         </View>
     );

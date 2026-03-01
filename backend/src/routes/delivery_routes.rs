@@ -2743,8 +2743,8 @@ async fn estimate_delivery_costs(
         ("standard".to_string(), false)
     };
 
-    // 3. Calculer le coût de livraison si dropoff fourni
-    let delivery_cost_cents = if let Some(dropoff) = payload.dropoff {
+    // 3. Calculer le coût de livraison et d'assurance si dropoff fourni
+    let (delivery_cost_cents, insurance_cost_cents) = if let Some(dropoff) = payload.dropoff {
         // Récupérer la configuration de livraison pour obtenir le pickup
         let pickup = if let Some(product_index) = payload.product_index {
             let config: Option<ProductDeliveryConfigPickupRow> = sqlx::query_as(
@@ -2889,9 +2889,9 @@ async fn estimate_delivery_costs(
             }
         }
 
-        delivery_cost_cents
+        (delivery_cost_cents, insurance_cost_cents)
     } else {
-        0
+        (0, 0)
     };
 
     let total_cents = product_price_cents

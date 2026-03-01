@@ -12,14 +12,15 @@ import {
     View
 } from 'react-native';
 import ModernGPSModal from '../../components/ModernGPSModal';
-import { NativeButton, NativeCard, NativeInput } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeButton, NativeCard, NativeInput } from '../../components/SafeNativeDesign';
 import { InsuranceSelector } from '../../components/covoiturage/InsuranceSelector';
 import { QRCodeDisplay } from '../../components/covoiturage/QRCodeDisplay';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { apiGet, apiPost } from '../../services/api';
 import PushNotificationService from '../../services/pushNotificationService';
+import { taxiService } from '../../services/taxiService';
 import { modernColors } from '../../theme/modernTheme';
 
 interface TaxiDetails {
@@ -85,6 +86,19 @@ const TaxiBookingScreen: React.FC = () => {
     const [estimatedPrice, setEstimatedPrice] = useState<number | null>(null);
     const [estimatedDistance, setEstimatedDistance] = useState<number | null>(null);
 
+    // ✅ NOUVEAU: Prix dynamique IA
+    const [dynamicPrice, setDynamicPrice] = useState<{
+        final_price: number;
+        dynamic_multiplier: number;
+        surge_factor: number;
+        demand_factor: number;
+        supply_factor: number;
+        confidence: number;
+        reasoning: string;
+    } | null>(null);
+    const [loadingDynamicPrice, setLoadingDynamicPrice] = useState(false);
+    const [dynamicPriceError, setDynamicPriceError] = useState<string | null>(null);
+
     useEffect(() => {
         loadTaxiDetails();
 
@@ -144,10 +158,44 @@ const TaxiBookingScreen: React.FC = () => {
             setEstimatedDistance(distance);
 
             // Prix = tarif_base + (distance * tarif_par_km)
-            const price = taxi.tarif_base + (distance * taxi.tarif_par_km);
-            setEstimatedPrice(Math.round(price));
+            const basePrice = taxi.tarif_base + (distance * taxi.tarif_par_km);
+            setEstimatedPrice(Math.round(basePrice));
+
+            // ✅ NOUVEAU: Appeler le prix dynamique IA en parallèle
+            fetchDynamicPrice(basePrice, distance, depLat, depLng);
         } catch (error) {
             console.error('Erreur calcul prix:', error);
+        }
+    };
+
+    // ✅ NOUVEAU: Récupérer le prix dynamique IA
+    const fetchDynamicPrice = async (basePrice: number, distanceKm: number, lat: number, lng: number) => {
+        try {
+            setLoadingDynamicPrice(true);
+            setDynamicPriceError(null);
+
+            const response = await taxiService.calculateDynamicPrice({
+                base_price: basePrice,
+                distance_km: distanceKm,
+                zone_id: `zone_${lat.toFixed(2)}_${lng.toFixed(2)}`,
+                latitude: lat,
+                longitude: lng,
+                radius_km: 10,
+                vehicle_type: taxi?.type_vehicule || 'taxi',
+            });
+
+            if (response.success && response.data) {
+                const priceData = (response.data as any)?.data || response.data;
+                if (priceData?.final_price) {
+                    setDynamicPrice(priceData);
+                    setEstimatedPrice(Math.round(priceData.final_price));
+                }
+            }
+        } catch (error: any) {
+            console.warn('[TaxiBookingScreen] Prix dynamique IA non disponible:', error.message);
+            setDynamicPriceError('Prix IA non disponible');
+        } finally {
+            setLoadingDynamicPrice(false);
         }
     };
 
@@ -395,13 +443,62 @@ const TaxiBookingScreen: React.FC = () => {
 
                     {estimatedPrice && (
                         <View style={styles.priceEstimate}>
-                            <Text style={styles.priceEstimateLabel}>Estimation:</Text>
+                            <Text style={styles.priceEstimateLabel}>
+                                {dynamicPrice ? 'Prix IA:' : 'Estimation:'}
+                            </Text>
                             <Text style={styles.priceEstimateValue}>
                                 {estimatedPrice.toLocaleString('fr-FR')} FCFA
                             </Text>
                             {estimatedDistance && (
                                 <Text style={styles.priceEstimateDistance}>
                                     (~{estimatedDistance.toFixed(1)} km)
+                                </Text>
+                            )}
+                        </View>
+                    )}
+
+                    {/* ✅ NOUVEAU: Détails prix dynamique IA */}
+                    {loadingDynamicPrice && (
+                        <View style={styles.dynamicPriceLoading}>
+                            <ActivityIndicator size="small" color={modernColors.primary} />
+                            <Text style={styles.dynamicPriceLoadingText}>Calcul du prix intelligent IA...</Text>
+                        </View>
+                    )}
+
+                    {dynamicPrice && !loadingDynamicPrice && (
+                        <View style={styles.dynamicPriceContainer}>
+                            <View style={styles.dynamicPriceHeader}>
+                                <SafeIcon name="sparkles" size={16} color="#8B5CF6" />
+                                <Text style={styles.dynamicPriceTitle}>Prix intelligent IA</Text>
+                                <View style={styles.confidenceBadge}>
+                                    <Text style={styles.confidenceText}>
+                                        {Math.round(dynamicPrice.confidence * 100)}% confiance
+                                    </Text>
+                                </View>
+                            </View>
+
+                            {dynamicPrice.dynamic_multiplier !== 1.0 && (
+                                <View style={styles.surgeInfo}>
+                                    <SafeIcon
+                                        name={dynamicPrice.dynamic_multiplier > 1.0 ? 'trending-up' : 'trending-down'}
+                                        size={14}
+                                        color={dynamicPrice.dynamic_multiplier > 1.0 ? '#F59E0B' : '#10B981'}
+                                    />
+                                    <Text style={[
+                                        styles.surgeText,
+                                        { color: dynamicPrice.dynamic_multiplier > 1.0 ? '#F59E0B' : '#10B981' }
+                                    ]}>
+                                        {dynamicPrice.dynamic_multiplier > 1.0
+                                            ? `+${Math.round((dynamicPrice.dynamic_multiplier - 1) * 100)}% (forte demande)`
+                                            : `-${Math.round((1 - dynamicPrice.dynamic_multiplier) * 100)}% (faible demande)`
+                                        }
+                                    </Text>
+                                </View>
+                            )}
+
+                            {dynamicPrice.reasoning && (
+                                <Text style={styles.dynamicPriceReasoning}>
+                                    {dynamicPrice.reasoning}
                                 </Text>
                             )}
                         </View>
@@ -695,6 +792,65 @@ const styles = StyleSheet.create({
     },
     bookButton: {
         marginTop: 8,
+    },
+    dynamicPriceLoading: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginTop: 12,
+        padding: 12,
+        backgroundColor: '#F5F3FF',
+        borderRadius: 8,
+    },
+    dynamicPriceLoadingText: {
+        fontSize: 13,
+        color: '#8B5CF6',
+    },
+    dynamicPriceContainer: {
+        marginTop: 12,
+        padding: 14,
+        backgroundColor: '#F5F3FF',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#DDD6FE',
+    },
+    dynamicPriceHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    dynamicPriceTitle: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#8B5CF6',
+        flex: 1,
+    },
+    confidenceBadge: {
+        backgroundColor: '#8B5CF620',
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: 10,
+    },
+    confidenceText: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: '#8B5CF6',
+    },
+    surgeInfo: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        marginTop: 8,
+    },
+    surgeText: {
+        fontSize: 13,
+        fontWeight: '600',
+    },
+    dynamicPriceReasoning: {
+        fontSize: 12,
+        color: '#6B7280',
+        marginTop: 8,
+        lineHeight: 18,
     },
     centerContainer: {
         flex: 1,

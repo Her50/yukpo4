@@ -128,6 +128,7 @@ import PharmacieSearchScreen from '../screens/specialized/PharmacieSearchScreen'
 import BanqueSangDetailsScreen from '../screens/specialized/BanqueSangDetailsScreen';
 import BanqueSangListScreen from '../screens/specialized/BanqueSangListScreen';
 import BanqueSangSearchScreen from '../screens/specialized/BanqueSangSearchScreen';
+import BloodDonationScreen from '../screens/specialized/BloodDonationScreen';
 // ✅ NOUVEAU: Hub services de santé
 import HealthServicesHubScreen from '../screens/specialized/HealthServicesHubScreen';
 // ✅ NOUVEAU: Écrans Agence de voyage
@@ -276,6 +277,7 @@ const PharmacieListScreenWithSafeArea = withNavigatorSafeArea(PharmacieListScree
 const PharmacieDetailsScreenWithSafeArea = withNavigatorSafeArea(PharmacieDetailsScreen);
 // ✅ NOUVEAU: Banque de sang
 const BanqueSangSearchScreenWithSafeArea = withNavigatorSafeArea(BanqueSangSearchScreen);
+const BloodDonationScreenWithSafeArea = withNavigatorSafeArea(BloodDonationScreen);
 const HealthServicesHubScreenWithSafeArea = withNavigatorSafeArea(HealthServicesHubScreen);
 const BanqueSangListScreenWithSafeArea = withNavigatorSafeArea(BanqueSangListScreen);
 const BanqueSangDetailsScreenWithSafeArea = withNavigatorSafeArea(BanqueSangDetailsScreen);
@@ -988,6 +990,7 @@ const SecondaryStack = () => {
       <Stack.Screen name="BanqueSangSearch" component={BanqueSangSearchScreenWithSafeArea} />
       <Stack.Screen name="BanqueSangList" component={BanqueSangListScreenWithSafeArea} />
       <Stack.Screen name="BanqueSangDetails" component={BanqueSangDetailsScreenWithSafeArea} />
+      <Stack.Screen name="BloodDonation" component={BloodDonationScreenWithSafeArea} />
       {/* ✅ NOUVEAU: Agence de voyage */}
       <Stack.Screen name="AgenceVoyageSearch" component={AgenceVoyageSearchScreenWithSafeArea} />
       <Stack.Screen name="AgenceVoyageList" component={AgenceVoyageListScreenWithSafeArea} />

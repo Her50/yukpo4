@@ -152,15 +152,89 @@ export const taxiService = {
     },
 
     // ✅ Prix dynamique IA
-    calculateDynamicPrice: async (distanceKm: number, durationMinutes: number, zone: string, timeOfDay: string) => {
-        const response = await apiPost<{ success: boolean; price: number; factors: string[] }>(
+    calculateDynamicPrice: async (params: {
+        base_price: number;
+        distance_km: number;
+        zone_id: string;
+        latitude: number;
+        longitude: number;
+        radius_km?: number;
+        vehicle_type?: string;
+    }) => {
+        const response = await apiPost<{
+            success: boolean;
+            data: {
+                base_price: number;
+                dynamic_multiplier: number;
+                final_price: number;
+                surge_factor: number;
+                demand_factor: number;
+                supply_factor: number;
+                time_factor: number;
+                confidence: number;
+                reasoning: string;
+            };
+        }>(
             '/api/taxi/dynamic-price',
             {
-                distance_km: distanceKm,
-                duration_minutes: durationMinutes,
-                zone,
-                time_of_day: timeOfDay,
+                base_price: params.base_price,
+                distance_km: params.distance_km,
+                zone_id: params.zone_id,
+                latitude: params.latitude,
+                longitude: params.longitude,
+                radius_km: params.radius_km || 10,
+                vehicle_type: params.vehicle_type || 'taxi',
             }
+        );
+        return response;
+    },
+
+    // ✅ Prédiction demande multi-zones IA
+    predictDemandMultiZone: async (zones: Array<{ zone_id: string; latitude: number; longitude: number; radius_km: number }>) => {
+        const response = await apiPost<{ success: boolean; data: any }>(
+            '/api/taxi/demand-prediction/multi-zone',
+            { zones }
+        );
+        return response;
+    },
+
+    // ✅ Heatmap demande IA
+    getDemandHeatmap: async (lat: number, lng: number, radiusKm: number = 20) => {
+        const response = await apiGet<{ success: boolean; data: any }>(
+            '/api/taxi/demand-prediction/heatmap',
+            { params: { lat, lng, radius_km: radiusKm } }
+        );
+        return response;
+    },
+
+    // ✅ Analytics overview (chauffeur)
+    getAnalyticsOverview: async () => {
+        const response = await apiGet<{ success: boolean; data: any }>(
+            '/api/admin/taxi/analytics/overview'
+        );
+        return response;
+    },
+
+    // ✅ Tendances demande (chauffeur)
+    getDemandTrends: async () => {
+        const response = await apiGet<{ success: boolean; data: any }>(
+            '/api/admin/taxi/analytics/demand-trends'
+        );
+        return response;
+    },
+
+    // ✅ Analytics revenus (chauffeur)
+    getRevenueAnalytics: async () => {
+        const response = await apiGet<{ success: boolean; data: any }>(
+            '/api/admin/taxi/analytics/revenue'
+        );
+        return response;
+    },
+
+    // ✅ Performance chauffeur
+    getDriverPerformance: async () => {
+        const response = await apiGet<{ success: boolean; data: any }>(
+            '/api/admin/taxi/analytics/driver-performance'
         );
         return response;
     },

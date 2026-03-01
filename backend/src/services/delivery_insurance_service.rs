@@ -8,9 +8,9 @@ use sqlx::PgPool;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InsuranceFeeConfig {
     pub engine_type: DeliveryEngineType,
-    pub base_fee_fcfa: f64,        // Frais de base fixes
+    pub base_fee_fcfa: f64,       // Frais de base fixes
     pub percentage_rate: f64,     // Pourcentage sur la valeur des produits
-    pub max_fee_fcfa: f64,         // Frais maximum plafonnés
+    pub max_fee_fcfa: f64,        // Frais maximum plafonnés
     pub min_value_threshold: f64, // Seuil minimum de valeur des produits pour appliquer
     pub description: Option<String>,
 }
@@ -87,7 +87,7 @@ impl DeliveryInsuranceService {
         match engine_type {
             DeliveryEngineType::Pieton => InsuranceFeeConfig {
                 engine_type,
-                base_fee_fcfa: 0.0,        // Pas d'assurance pour livraison à pied
+                base_fee_fcfa: 0.0, // Pas d'assurance pour livraison à pied
                 percentage_rate: 0.0,
                 max_fee_fcfa: 0.0,
                 min_value_threshold: 999999.0, // Jamais appliqué
@@ -95,65 +95,65 @@ impl DeliveryInsuranceService {
             },
             DeliveryEngineType::VeloCargo => InsuranceFeeConfig {
                 engine_type,
-                base_fee_fcfa: 100.0,      // 100 FCFA de base
-                percentage_rate: 0.5,      // 0.5% de la valeur
-                max_fee_fcfa: 1000.0,      // Maximum 1000 FCFA
+                base_fee_fcfa: 100.0,        // 100 FCFA de base
+                percentage_rate: 0.5,        // 0.5% de la valeur
+                max_fee_fcfa: 1000.0,        // Maximum 1000 FCFA
                 min_value_threshold: 5000.0, // Appliqué si produits > 5000 FCFA
                 description: Some("Vélo cargo".to_string()),
             },
             DeliveryEngineType::Scooter => InsuranceFeeConfig {
                 engine_type,
-                base_fee_fcfa: 200.0,      // 200 FCFA de base
-                percentage_rate: 0.8,      // 0.8% de la valeur
-                max_fee_fcfa: 2500.0,      // Maximum 2500 FCFA
+                base_fee_fcfa: 200.0,        // 200 FCFA de base
+                percentage_rate: 0.8,        // 0.8% de la valeur
+                max_fee_fcfa: 2500.0,        // Maximum 2500 FCFA
                 min_value_threshold: 3000.0, // Appliqué si produits > 3000 FCFA
                 description: Some("Scooter".to_string()),
             },
             DeliveryEngineType::Moto => InsuranceFeeConfig {
                 engine_type,
-                base_fee_fcfa: 250.0,      // 250 FCFA de base
-                percentage_rate: 1.0,      // 1% de la valeur
-                max_fee_fcfa: 3000.0,      // Maximum 3000 FCFA
+                base_fee_fcfa: 250.0,        // 250 FCFA de base
+                percentage_rate: 1.0,        // 1% de la valeur
+                max_fee_fcfa: 3000.0,        // Maximum 3000 FCFA
                 min_value_threshold: 2000.0, // Appliqué si produits > 2000 FCFA
                 description: Some("Moto".to_string()),
             },
             DeliveryEngineType::Tricycle => InsuranceFeeConfig {
                 engine_type,
-                base_fee_fcfa: 300.0,      // 300 FCFA de base
-                percentage_rate: 1.2,      // 1.2% de la valeur
-                max_fee_fcfa: 4000.0,      // Maximum 4000 FCFA
+                base_fee_fcfa: 300.0,        // 300 FCFA de base
+                percentage_rate: 1.2,        // 1.2% de la valeur
+                max_fee_fcfa: 4000.0,        // Maximum 4000 FCFA
                 min_value_threshold: 2000.0, // Appliqué si produits > 2000 FCFA
                 description: Some("Tricycle".to_string()),
             },
             DeliveryEngineType::Voiture => InsuranceFeeConfig {
                 engine_type,
-                base_fee_fcfa: 500.0,      // 500 FCFA de base
-                percentage_rate: 1.5,      // 1.5% de la valeur
-                max_fee_fcfa: 5000.0,      // Maximum 5000 FCFA
+                base_fee_fcfa: 500.0,        // 500 FCFA de base
+                percentage_rate: 1.5,        // 1.5% de la valeur
+                max_fee_fcfa: 5000.0,        // Maximum 5000 FCFA
                 min_value_threshold: 1000.0, // Appliqué si produits > 1000 FCFA
                 description: Some("Voiture".to_string()),
             },
             DeliveryEngineType::Camionnette => InsuranceFeeConfig {
                 engine_type,
-                base_fee_fcfa: 800.0,      // 800 FCFA de base
-                percentage_rate: 2.0,      // 2% de la valeur
-                max_fee_fcfa: 8000.0,      // Maximum 8000 FCFA
+                base_fee_fcfa: 800.0,        // 800 FCFA de base
+                percentage_rate: 2.0,        // 2% de la valeur
+                max_fee_fcfa: 8000.0,        // Maximum 8000 FCFA
                 min_value_threshold: 1000.0, // Appliqué si produits > 1000 FCFA
                 description: Some("Camionnette/Pickup".to_string()),
             },
             DeliveryEngineType::CamionLeger => InsuranceFeeConfig {
                 engine_type,
-                base_fee_fcfa: 1200.0,     // 1200 FCFA de base
-                percentage_rate: 2.5,      // 2.5% de la valeur
-                max_fee_fcfa: 12000.0,     // Maximum 12000 FCFA
+                base_fee_fcfa: 1200.0,       // 1200 FCFA de base
+                percentage_rate: 2.5,        // 2.5% de la valeur
+                max_fee_fcfa: 12000.0,       // Maximum 12000 FCFA
                 min_value_threshold: 1000.0, // Appliqué si produits > 1000 FCFA
                 description: Some("Camion léger".to_string()),
             },
             DeliveryEngineType::Autre => InsuranceFeeConfig {
                 engine_type,
-                base_fee_fcfa: 300.0,      // 300 FCFA de base
-                percentage_rate: 1.0,      // 1% de la valeur
-                max_fee_fcfa: 3000.0,      // Maximum 3000 FCFA
+                base_fee_fcfa: 300.0,        // 300 FCFA de base
+                percentage_rate: 1.0,        // 1% de la valeur
+                max_fee_fcfa: 3000.0,        // Maximum 3000 FCFA
                 min_value_threshold: 2000.0, // Appliqué si produits > 2000 FCFA
                 description: Some("Autre type d'engin".to_string()),
             },

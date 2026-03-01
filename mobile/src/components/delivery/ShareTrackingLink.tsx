@@ -8,8 +8,8 @@ import * as Haptics from 'expo-haptics';
 import React, { useState } from 'react';
 import { Alert, Linking, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { modernColors } from '../../theme/modernTheme';
-import { NativeCard } from '../SafeNativeDesign';
 import { SafeIcon } from '../SafeIcon';
+import { NativeCard } from '../SafeNativeDesign';
 
 interface ShareTrackingLinkProps {
     deliveryId: string;
@@ -26,7 +26,7 @@ const ShareTrackingLink: React.FC<ShareTrackingLinkProps> = ({
 }) => {
     const [copied, setCopied] = useState(false);
 
-    const trackingUrl = `https://yukpomnang.com/track/${deliveryId}`;
+    const trackingUrl = `https://yukpo-backend-376093909298.europe-west1.run.app/track/${deliveryId}`;
     const shareMessage = `Suivez ma livraison en temps réel : ${trackingUrl}`;
 
     const handleCopyLink = async () => {
