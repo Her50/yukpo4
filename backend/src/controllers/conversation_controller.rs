@@ -359,6 +359,10 @@ pub async fn search_users_for_invitation(
 
     let rows = if let Some(query) = params.query {
         let search_pattern = format!("%{}%", query);
+        info!(
+            "[search_users] Recherche utilisateurs pour '{}' (user_id={})",
+            query, auth_user.id
+        );
         sqlx::query(
             r#"
             SELECT id, nom_complet, email, avatar_url, is_provider, role
@@ -375,7 +379,13 @@ pub async fn search_users_for_invitation(
         .bind(limit)
         .fetch_all(pool)
         .await
-        .map_err(|e| AppError::Internal(format!("Search error: {}", e)))?
+        .map_err(|e| {
+            error!(
+                "[search_users] ❌ Erreur SQL recherche par nom/email: {}",
+                e
+            );
+            AppError::Internal(format!("Search error: {}", e))
+        })?
     } else if let Some(category) = params.category {
         let category_pattern = format!("%{}%", category);
         sqlx::query(
@@ -397,7 +407,13 @@ pub async fn search_users_for_invitation(
         .bind(limit)
         .fetch_all(pool)
         .await
-        .map_err(|e| AppError::Internal(format!("Search error: {}", e)))?
+        .map_err(|e| {
+            error!(
+                "[search_users] ❌ Erreur SQL recherche par catégorie: {}",
+                e
+            );
+            AppError::Internal(format!("Search error: {}", e))
+        })?
     } else {
         Vec::new()
     };
@@ -454,7 +470,13 @@ pub async fn get_tag_history(
     .bind(limit)
     .fetch_all(pool)
     .await
-    .map_err(|e| AppError::Internal(format!("Failed to fetch tag history: {}", e)))?;
+    .map_err(|e| {
+        error!(
+            "[get_tag_history] ❌ Erreur SQL chargement historique tags (user_id={}): {}",
+            auth_user.id, e
+        );
+        AppError::Internal(format!("Failed to fetch tag history: {}", e))
+    })?;
 
     let results: Vec<TagHistoryItem> = rows
         .iter()

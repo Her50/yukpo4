@@ -693,6 +693,16 @@ pub async fn ensure_user_token_columns(pool: &PgPool) -> Result<(), sqlx::Error>
         .execute(pool)
         .await?;
 
+    // ✅ CORRIGÉ 2026-03-02: Ajouter is_active à users
+    // Cette colonne est requise par search_users_for_invitation et get_tag_history
+    // Sans elle, les requêtes SQL échouent → autocomplete @ ne fonctionne pas
+    sqlx::query(
+        r#"ALTER TABLE users
+           ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE"#,
+    )
+    .execute(pool)
+    .await?;
+
     Ok(())
 }
 
