@@ -135,6 +135,14 @@ const NegotiatedPriceModal: React.FC<NegotiatedPriceModalProps> = ({
                 expires_in_hours: 24,
             });
 
+            console.log('[NegotiatedPriceModal] 📤 Envoi proposition:', {
+                conversationId: conversationIdStr,
+                serviceId,
+                productIndex,
+                originalPrice: Math.round(originalPrice * 100),
+                negotiatedPrice: Math.round(price * 100),
+            });
+
             if (response.success) {
                 Alert.alert(
                     'Proposition envoyée',
@@ -149,11 +157,15 @@ const NegotiatedPriceModal: React.FC<NegotiatedPriceModalProps> = ({
                 );
                 // Ne pas fermer le modal pour que le client puisse voir sa proposition en attente
             } else {
-                Alert.alert('Erreur', response.message || 'Erreur lors de l\'envoi de la proposition');
+                // ✅ CORRIGÉ 2026-03-02: Afficher le message d'erreur du backend
+                const errorMsg = (response as any).error || (response as any).message || 'Erreur lors de l\'envoi de la proposition';
+                const status = (response as any).status;
+                console.error('[NegotiatedPriceModal] ❌ Erreur création:', { status, error: errorMsg, data: (response as any).data });
+                Alert.alert('Erreur', `${errorMsg}${status ? ` (code ${status})` : ''}`);
             }
-        } catch (error) {
-            console.error('Erreur création offre:', error);
-            Alert.alert('Erreur', 'Erreur lors de la création de l\'offre');
+        } catch (error: any) {
+            console.error('[NegotiatedPriceModal] ❌ Erreur création offre:', error?.message || error);
+            Alert.alert('Erreur', `Erreur lors de la création de l'offre.\n\nDétail : ${error?.message || 'Erreur inconnue'}`);
         } finally {
             setLoading(false);
         }
@@ -179,11 +191,13 @@ const NegotiatedPriceModal: React.FC<NegotiatedPriceModalProps> = ({
                     }]
                 );
             } else {
-                Alert.alert('Erreur', response.message || 'Erreur lors de l\'acceptation de l\'offre');
+                const errorMsg = (response as any).error || (response as any).message || 'Erreur lors de l\'acceptation de l\'offre';
+                console.error('[NegotiatedPriceModal] ❌ Erreur acceptation:', errorMsg);
+                Alert.alert('Erreur', errorMsg);
             }
-        } catch (error) {
-            console.error('Erreur acceptation offre:', error);
-            Alert.alert('Erreur', 'Erreur lors de l\'acceptation de l\'offre');
+        } catch (error: any) {
+            console.error('[NegotiatedPriceModal] ❌ Erreur acceptation offre:', error?.message || error);
+            Alert.alert('Erreur', `Erreur lors de l'acceptation de l'offre.\n\nDétail : ${error?.message || 'Erreur inconnue'}`);
         } finally {
             setLoading(false);
         }
@@ -201,11 +215,13 @@ const NegotiatedPriceModal: React.FC<NegotiatedPriceModalProps> = ({
                 setPendingOffer(null);
                 onClose();
             } else {
-                Alert.alert('Erreur', response.message || 'Erreur lors du rejet de l\'offre');
+                const errorMsg = (response as any).error || (response as any).message || 'Erreur lors du rejet de l\'offre';
+                console.error('[NegotiatedPriceModal] ❌ Erreur rejet:', errorMsg);
+                Alert.alert('Erreur', errorMsg);
             }
-        } catch (error) {
-            console.error('Erreur rejet offre:', error);
-            Alert.alert('Erreur', 'Erreur lors du rejet de l\'offre');
+        } catch (error: any) {
+            console.error('[NegotiatedPriceModal] ❌ Erreur rejet offre:', error?.message || error);
+            Alert.alert('Erreur', `Erreur lors du rejet de l'offre.\n\nDétail : ${error?.message || 'Erreur inconnue'}`);
         } finally {
             setLoading(false);
         }

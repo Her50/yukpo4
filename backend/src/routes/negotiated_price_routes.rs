@@ -198,11 +198,31 @@ async fn cancel_offer(
 }
 
 pub fn negotiated_price_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
+    // ✅ CORRIGÉ 2026-03-02: Ajout préfixe /api/ (le mobile appelle /api/negotiated-prices)
+    // ✅ CORRIGÉ 2026-03-02: Ajout middleware JWT (sans ça, Extension<AuthenticatedUser> est vide → erreur)
+    let jwt_layer =
+        axum::middleware::from_fn_with_state(state.clone(), crate::middlewares::jwt::jwt_auth);
+
     Router::new()
-        .route("/negotiated-prices", post(create_negotiated_price))
-        .route("/negotiated-prices/pending", get(get_pending_offer))
-        .route("/negotiated-prices/{id}/accept", post(accept_offer))
-        .route("/negotiated-prices/{id}/reject", post(reject_offer))
-        .route("/negotiated-prices/{id}/cancel", post(cancel_offer)) // ✅ NOUVEAU: Route pour annuler
+        .route(
+            "/api/negotiated-prices",
+            post(create_negotiated_price).layer(jwt_layer.clone()),
+        )
+        .route(
+            "/api/negotiated-prices/pending",
+            get(get_pending_offer).layer(jwt_layer.clone()),
+        )
+        .route(
+            "/api/negotiated-prices/{id}/accept",
+            post(accept_offer).layer(jwt_layer.clone()),
+        )
+        .route(
+            "/api/negotiated-prices/{id}/reject",
+            post(reject_offer).layer(jwt_layer.clone()),
+        )
+        .route(
+            "/api/negotiated-prices/{id}/cancel",
+            post(cancel_offer).layer(jwt_layer.clone()),
+        )
         .with_state(state)
 }
