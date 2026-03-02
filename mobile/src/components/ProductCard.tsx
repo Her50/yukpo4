@@ -2018,6 +2018,7 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
                 <View style={styles.commentsContainerCompact}>
                   <ProductCommentsSection
                     serviceId={typeof serviceId === 'string' ? parseInt(serviceId, 10) : serviceId}
+                    productIndex={productIndex}
                     serviceTitle={productData?.nom || service?.data?.titre_service?.valeur || 'Produit'}
                     onOpenChat={handleChatPress}
                     mode="inline"

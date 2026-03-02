@@ -71,6 +71,7 @@ interface CommentStats {
 
 interface ProductCommentsSectionProps {
     serviceId: number;
+    productIndex?: number; // ✅ NOUVEAU 2026-03-02: Filtrer les commentaires par produit spécifique
     serviceTitle?: string;
     onOpenChat?: (userId: number, userName: string, userAvatar?: string | null) => void;
     mode?: 'inline' | 'full';
@@ -104,17 +105,17 @@ const formatDate = (iso: string): string => {
 // ✅ CORRIGÉ 2026-01-24: Fonction pour nettoyer le contenu du commentaire et supprimer le nom d'utilisateur en doublon
 const cleanCommentContent = (content: string, userName: string): string => {
     if (!content || !userName) return content;
-    
+
     const trimmedContent = content.trim();
     const userNameLower = userName.toLowerCase().trim();
-    
+
     // Vérifier si le contenu commence par le nom de l'utilisateur suivi de ":" ou "@"
     const patterns = [
         new RegExp(`^${userNameLower}\\s*[:]\\s*`, 'i'), // "Nom Utilisateur: "
         new RegExp(`^@${userNameLower}\\s+`, 'i'), // "@Nom Utilisateur "
         new RegExp(`^${userNameLower}\\s+`, 'i'), // "Nom Utilisateur "
     ];
-    
+
     let cleaned = trimmedContent;
     for (const pattern of patterns) {
         if (pattern.test(cleaned)) {
@@ -122,7 +123,7 @@ const cleanCommentContent = (content: string, userName: string): string => {
             break;
         }
     }
-    
+
     return cleaned || trimmedContent; // Retourner le contenu original si le nettoyage le vide
 };
 
@@ -192,6 +193,7 @@ const normalizeComments = (items: any[]): ProductComment[] =>
 
 const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
     serviceId,
+    productIndex,
     serviceTitle,
     onOpenChat,
     mode = 'inline',
@@ -238,7 +240,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
         setError(null);
         if (!refreshing) setLoading(true);
         try {
-            const response = await commentsApi.getProductComments(serviceId);
+            const response = await commentsApi.getProductComments(serviceId, { product_index: productIndex });
             if (response.success && response.data) {
                 const payload: any = response.data;
                 setComments(normalizeComments(payload.comments));
@@ -257,7 +259,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
             setLoading(false);
             setRefreshing(false);
         }
-    }, [serviceId, refreshing]);
+    }, [serviceId, productIndex, refreshing]);
 
     useEffect(() => {
         loadComments();
@@ -450,7 +452,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                 if (composerAudio) {
                     payload.audio_base64 = composerAudio;
                 }
-                const response = await commentsApi.createProductComment(serviceId, payload);
+                const response = await commentsApi.createProductComment(serviceId, { ...payload, product_index: productIndex ?? null });
                 if (!response.success) {
                     Alert.alert('Erreur', response.error || 'Impossible de publier le commentaire');
                 } else {
@@ -473,6 +475,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
         resetComposer,
         selectedMentions,
         serviceId,
+        productIndex,
         user?.token,
         editingTarget,
     ]);

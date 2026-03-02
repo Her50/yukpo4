@@ -34,6 +34,8 @@ pub struct MentionUser {
 pub struct CommentResponse {
     pub id: i32,
     pub service_id: i32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub product_index: Option<i32>,
     pub user_id: i32,
     pub user_name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -93,6 +95,8 @@ pub struct CommentsQuery {
     pub cursor: Option<i32>, // ID du dernier commentaire chargé
     #[serde(default)]
     pub sort: Option<String>, // "recent", "oldest", "helpful"
+    #[serde(default)]
+    pub product_index: Option<i32>, // ✅ NOUVEAU 2026-03-02: Filtrer par produit spécifique
 }
 
 #[derive(Debug, Deserialize)]
@@ -104,6 +108,8 @@ pub struct CreateCommentRequest {
     pub content: String,
     #[serde(default)]
     pub mentions: Option<Vec<i32>>,
+    #[serde(default)]
+    pub product_index: Option<i32>, // ✅ NOUVEAU 2026-03-02: Associer le commentaire à un produit spécifique
 }
 
 #[derive(Debug, Deserialize)]
@@ -131,10 +137,13 @@ pub async fn get_product_comments(
     let limit = query.limit.unwrap_or(50).min(100).max(1); // Limite entre 1 et 100
     let sort_option = query.sort.as_deref().unwrap_or("recent");
 
+    let product_index = query.product_index;
+
     // ✅ FINALISÉ: Vérifier le cache Redis si disponible
     let cache_key = format!(
-        "comments:{}:{}:{}:{}",
+        "comments:{}:{}:{}:{}:{}",
         service_id,
+        product_index.map_or("all".to_string(), |pi| pi.to_string()),
         limit,
         query.cursor.unwrap_or(0),
         sort_option
@@ -151,6 +160,7 @@ pub async fn get_product_comments(
     match load_comments(
         &state,
         service_id,
+        product_index,
         current_user_id,
         limit,
         query.cursor,
@@ -251,13 +261,14 @@ pub async fn create_product_comment(
     let row = sqlx::query(
         r#"
         INSERT INTO product_comments (
-            service_id, user_id, parent_comment_id, rating, content, mentions, reaction_counts, is_deleted
+            service_id, product_index, user_id, parent_comment_id, rating, content, mentions, reaction_counts, is_deleted
         )
-        VALUES ($1, $2, $3, $4, $5, $6, '{}'::jsonb, FALSE)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, '{}'::jsonb, FALSE)
         RETURNING id
         "#,
     )
     .bind(service_id)
+    .bind(payload.product_index)
     .bind(auth_user.id)
     .bind(payload.parent_comment_id)
     .bind(effective_rating)
@@ -547,6 +558,7 @@ pub async fn toggle_product_comment_reaction(
 async fn load_comments(
     state: &Arc<AppState>,
     service_id: i32,
+    product_index: Option<i32>,
     current_user_id: Option<i32>,
     limit: i32,
     cursor: Option<i32>,
@@ -568,12 +580,22 @@ async fn load_comments(
         String::new()
     };
 
+    // ✅ CORRIGÉ 2026-03-02: Filtrer par product_index si fourni
+    // Si product_index est fourni, on ne montre que les commentaires de CE produit
+    // Si product_index est NULL, on montre tous les commentaires du service (rétrocompatibilité)
+    let product_index_clause = if product_index.is_some() {
+        "AND pc.product_index = $3".to_string()
+    } else {
+        String::new()
+    };
+
     let query_str = format!(
         r#"
         SELECT
             pc.id,
             pc.media_urls,
             pc.service_id,
+            pc.product_index,
             pc.user_id,
             pc.parent_comment_id,
             pc.rating,
@@ -588,18 +610,27 @@ async fn load_comments(
             u.avatar_url AS user_avatar
         FROM product_comments pc
         JOIN users u ON u.id = pc.user_id
-        WHERE pc.service_id = $1 AND pc.parent_comment_id IS NULL {}
+        WHERE pc.service_id = $1 AND pc.parent_comment_id IS NULL {} {}
         {}
         LIMIT $2
         "#,
-        cursor_clause, order_clause
+        product_index_clause, cursor_clause, order_clause
     );
 
-    let rows = sqlx::query(&query_str)
-        .bind(service_id)
-        .bind(limit + 1) // Charger un de plus pour détecter s'il y a une suite
-        .fetch_all(&state.pg)
-        .await?;
+    let rows = if let Some(pi) = product_index {
+        sqlx::query(&query_str)
+            .bind(service_id)
+            .bind(limit + 1)
+            .bind(pi)
+            .fetch_all(&state.pg)
+            .await?
+    } else {
+        sqlx::query(&query_str)
+            .bind(service_id)
+            .bind(limit + 1)
+            .fetch_all(&state.pg)
+            .await?
+    };
 
     // ✅ NOUVEAU: Détecter le cursor suivant
     let has_more = rows.len() > limit as usize;
@@ -616,7 +647,7 @@ async fn load_comments(
     };
 
     // ✅ NOUVEAU: Charger les stats depuis le cache ou la DB
-    let stats = load_comment_stats(state, service_id).await?;
+    let stats = load_comment_stats(state, service_id, product_index).await?;
 
     if rows_to_process.is_empty() {
         return Ok((Vec::new(), stats, None));
@@ -658,11 +689,14 @@ async fn load_comments(
             root_ids.push(id);
         }
 
+        let row_product_index: Option<i32> = row.get::<Option<i32>, _>("product_index");
+
         raw_comments.push((
             id,
             CommentResponse {
                 id,
                 service_id,
+                product_index: row_product_index,
                 user_id,
                 user_name,
                 user_avatar,
@@ -777,26 +811,42 @@ async fn load_comments(
     Ok((comments, stats, next_cursor))
 }
 
-// ✅ NOUVEAU: Fonction pour charger les stats (avec cache potentiel)
+// ✅ CORRIGÉ 2026-03-02: Fonction pour charger les stats (avec filtre product_index)
 async fn load_comment_stats(
     state: &Arc<AppState>,
     service_id: i32,
+    product_index: Option<i32>,
 ) -> Result<CommentStats, sqlx::Error> {
-    // TODO: Vérifier cache Redis ici
-
-    let row = sqlx::query(
-        r#"
-        SELECT 
-            COUNT(*) FILTER (WHERE NOT is_deleted) as total_comments,
-            COUNT(*) FILTER (WHERE rating IS NOT NULL AND NOT is_deleted) as rating_count,
-            COALESCE(AVG(rating) FILTER (WHERE rating IS NOT NULL AND NOT is_deleted), 0)::DOUBLE PRECISION as average_rating
-        FROM product_comments
-        WHERE service_id = $1 AND parent_comment_id IS NULL
-        "#,
-    )
-    .bind(service_id)
-    .fetch_one(&state.pg)
-    .await?;
+    let row = if let Some(pi) = product_index {
+        sqlx::query(
+            r#"
+            SELECT 
+                COUNT(*) FILTER (WHERE NOT is_deleted) as total_comments,
+                COUNT(*) FILTER (WHERE rating IS NOT NULL AND NOT is_deleted) as rating_count,
+                COALESCE(AVG(rating) FILTER (WHERE rating IS NOT NULL AND NOT is_deleted), 0)::DOUBLE PRECISION as average_rating
+            FROM product_comments
+            WHERE service_id = $1 AND product_index = $2 AND parent_comment_id IS NULL
+            "#,
+        )
+        .bind(service_id)
+        .bind(pi)
+        .fetch_one(&state.pg)
+        .await?
+    } else {
+        sqlx::query(
+            r#"
+            SELECT 
+                COUNT(*) FILTER (WHERE NOT is_deleted) as total_comments,
+                COUNT(*) FILTER (WHERE rating IS NOT NULL AND NOT is_deleted) as rating_count,
+                COALESCE(AVG(rating) FILTER (WHERE rating IS NOT NULL AND NOT is_deleted), 0)::DOUBLE PRECISION as average_rating
+            FROM product_comments
+            WHERE service_id = $1 AND parent_comment_id IS NULL
+            "#,
+        )
+        .bind(service_id)
+        .fetch_one(&state.pg)
+        .await?
+    };
 
     Ok(CommentStats {
         total_comments: row.get::<i64, _>("total_comments"),
@@ -817,6 +867,7 @@ async fn load_replies_for_comment(
         SELECT
             pc.id,
             pc.service_id,
+            pc.product_index,
             pc.user_id,
             pc.parent_comment_id,
             pc.rating,
@@ -870,6 +921,7 @@ async fn load_replies_for_comment(
         replies.push(CommentResponse {
             id,
             service_id: row.get::<i32, _>("service_id"),
+            product_index: row.get::<Option<i32>, _>("product_index"),
             user_id,
             user_name: row.get::<String, _>("user_name"),
             user_avatar: row.get::<Option<String>, _>("user_avatar"),

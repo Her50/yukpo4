@@ -2094,19 +2094,24 @@ export const analyticsApi = {
 
 // Gestion des commentaires produits (fil moderne)
 export const commentsApi = {
-  getProductComments: async (serviceId: number, params?: { limit?: number; cursor?: number | null; sort?: string }) => {
-    const queryParams = params ? new URLSearchParams() : undefined;
+  getProductComments: async (serviceId: number, params?: { limit?: number; cursor?: number | null; sort?: string; product_index?: number }) => {
+    const queryParams = new URLSearchParams();
     if (params) {
-      if (params.limit) queryParams!.append('limit', params.limit.toString());
-      if (params.cursor) queryParams!.append('cursor', params.cursor.toString());
-      if (params.sort) queryParams!.append('sort', params.sort);
+      if (params.limit) queryParams.append('limit', params.limit.toString());
+      if (params.cursor) queryParams.append('cursor', params.cursor.toString());
+      if (params.sort) queryParams.append('sort', params.sort);
+      // ✅ CORRIGÉ 2026-03-02: Filtrer les commentaires par produit spécifique
+      if (params.product_index !== undefined && params.product_index !== null) {
+        queryParams.append('product_index', params.product_index.toString());
+      }
     }
-    const url = params && queryParams ? `/api/services/${serviceId}/comments?${queryParams.toString()}` : `/api/services/${serviceId}/comments`;
+    const qs = queryParams.toString();
+    const url = qs ? `/api/services/${serviceId}/comments?${qs}` : `/api/services/${serviceId}/comments`;
     return apiCall(url);
   },
   createProductComment: async (
     serviceId: number,
-    payload: { content: string; rating?: number | null; mentions?: number[]; parent_comment_id?: number | null }
+    payload: { content: string; rating?: number | null; mentions?: number[]; parent_comment_id?: number | null; product_index?: number | null }
   ) => {
     return apiCall(`/api/services/${serviceId}/comments`, {
       method: 'POST',

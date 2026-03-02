@@ -4187,6 +4187,32 @@ pub async fn ensure_product_comments_tables(pool: &PgPool) -> Result<(), sqlx::E
         info!("✅ Colonne media_urls et index créés avec succès !");
     }
 
+    // ✅ CORRIGÉ 2026-03-02: Ajouter colonne product_index pour filtrer les commentaires par produit
+    // Sans cette colonne, tous les produits d'un même service affichent les mêmes commentaires
+    let has_product_index = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'product_comments' AND column_name = 'product_index')",
+    )
+    .fetch_one(pool)
+    .await?;
+
+    if !has_product_index {
+        info!("⚠️ Colonne 'product_index' manquante sur product_comments, ajout en cours...");
+        sqlx::query(
+            "ALTER TABLE product_comments ADD COLUMN IF NOT EXISTS product_index INTEGER DEFAULT NULL",
+        )
+        .execute(pool)
+        .await?;
+
+        // Index composite pour requêtes filtrées par service_id + product_index
+        sqlx::query(
+            "CREATE INDEX IF NOT EXISTS idx_product_comments_service_product ON product_comments(service_id, product_index)",
+        )
+        .execute(pool)
+        .await?;
+
+        info!("✅ Colonne product_index et index créés avec succès !");
+    }
+
     // Index
     sqlx::query(
         "CREATE INDEX IF NOT EXISTS idx_product_comments_service ON product_comments(service_id)",

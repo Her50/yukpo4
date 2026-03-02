@@ -906,12 +906,14 @@ const ResultatBesoinScreen: React.FC = () => {
                     // ❌ SUPPRIMÉ: Plus de fallback vers l'ancien système (service.data.produits) - utiliser uniquement service_products
 
                     if (serviceProduits.length > 0) {
-                        // ✅ CORRIGÉ 2026-02-25: Filtrer les produits par pertinence avec la recherche
+                        // ✅ CORRIGÉ 2026-03-02: Filtrer les produits par pertinence avec la recherche
                         // Ne garder QUE les produits qui correspondent à la requête (score > 0)
-                        // Si un seul produit → le garder (le service a matché grâce à lui)
-                        // Si aucun produit pertinent → garder le 1er (fallback)
+                        // Si un seul produit → scorer aussi pour vérifier la pertinence
+                        // Si aucun produit pertinent → NE RIEN GARDER (pas de fallback vers le 1er produit)
+                        // L'ancien code gardait serviceProduits[0] même quand il n'était pas pertinent
+                        // (ex: "jus de fruit" quand on cherche "beignets")
                         let filteredServiceProduits = serviceProduits;
-                        if (searchQuery && serviceProduits.length > 1) {
+                        if (searchQuery) {
                             const scoredProducts = serviceProduits.map((p: any) => ({
                                 product: p,
                                 relevanceScore: calculateProductRelevanceScore(p, searchQuery),
@@ -921,10 +923,10 @@ const ResultatBesoinScreen: React.FC = () => {
                                 filteredServiceProduits = relevant.map((sp: any) => sp.product);
                                 console.log(`🎯 [ResultatBesoinScreen] Service ${service.id}: ${filteredServiceProduits.length}/${serviceProduits.length} produits pertinents pour "${searchQuery}"`);
                             } else {
-                                // Aucun produit pertinent par score texte → garder uniquement le premier
-                                // (le moteur de recherche a matché ce service, donc au moins le 1er produit est pertinent)
-                                filteredServiceProduits = [serviceProduits[0]];
-                                console.log(`🎯 [ResultatBesoinScreen] Service ${service.id}: aucun produit avec score>0, garde le 1er produit`);
+                                // ✅ CORRIGÉ 2026-03-02: Aucun produit pertinent → ne rien afficher pour ce service
+                                // L'ancien code gardait le 1er produit par défaut, ce qui affichait des produits hors-sujet
+                                filteredServiceProduits = [];
+                                console.log(`🎯 [ResultatBesoinScreen] Service ${service.id}: aucun produit pertinent pour "${searchQuery}", service ignoré`);
                             }
                         }
 
