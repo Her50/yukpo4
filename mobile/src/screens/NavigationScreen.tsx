@@ -118,6 +118,10 @@ const NavigationScreen: React.FC = () => {
         health: true, food: false, fuel: false, leisure: false,
     });
 
+    // ✅ FIX 2026-03-03: Contrôle du scroll parent pour éviter le conflit avec les FlatList horizontaux
+    const [parentScrollEnabled, setParentScrollEnabled] = useState(true);
+    const routeCardWidth = width * 0.68 + 10; // card width + marginRight
+
     // ── POIs groupés par catégorie (mémorisé) ──
     const groupedPOIs = useMemo(() => {
         const groups: Record<string, PointOfInterest[]> = {};
@@ -385,6 +389,7 @@ const NavigationScreen: React.FC = () => {
                 enableAutomaticScroll={true}
                 extraScrollHeight={100}
                 keyboardShouldPersistTaps="handled"
+                scrollEnabled={parentScrollEnabled}
             >
                 {/* ━━ Header compact ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
                 <View style={styles.header}>
@@ -421,7 +426,16 @@ const NavigationScreen: React.FC = () => {
 
                 {/* ━━ Destinations favorites (chips) ━━━━━━━━━━━━━━━━━━━━━━ */}
                 {savedDestinations.length > 0 && !destination && (
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.favoritesScroll} contentContainerStyle={styles.favoritesContent}>
+                    <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        style={styles.favoritesScroll}
+                        contentContainerStyle={styles.favoritesContent}
+                        nestedScrollEnabled={true}
+                        onScrollBeginDrag={() => setParentScrollEnabled(false)}
+                        onScrollEndDrag={() => setParentScrollEnabled(true)}
+                        onMomentumScrollEnd={() => setParentScrollEnabled(true)}
+                    >
                         {savedDestinations.slice(0, 5).map((dest) => (
                             <TouchableOpacity
                                 key={dest.id}
@@ -551,7 +565,14 @@ const NavigationScreen: React.FC = () => {
                             keyExtractor={(item) => item.id}
                             horizontal
                             showsHorizontalScrollIndicator={false}
+                            nestedScrollEnabled={true}
                             contentContainerStyle={{ paddingRight: 16 }}
+                            snapToInterval={routeCardWidth}
+                            snapToAlignment="start"
+                            decelerationRate="fast"
+                            onScrollBeginDrag={() => setParentScrollEnabled(false)}
+                            onScrollEndDrag={() => setParentScrollEnabled(true)}
+                            onMomentumScrollEnd={() => setParentScrollEnabled(true)}
                             renderItem={({ item, index }) => {
                                 const isSelected = selectedRoute?.id === item.id;
                                 const trafficColor = getTrafficColor(item.traffic_level);

@@ -70,8 +70,10 @@ class HealthPlacesService {
             }
 
             const response = await apiGet<{ success: boolean; data?: string[] }>(url);
-            if (response.success && Array.isArray(response.data) && response.data.length > 0) {
-                results.push(...response.data);
+            // ✅ FIX 2026-03-03: apiGet retourne { success, data: <backend_json> }
+            const backendResp = response.data as any;
+            if (response.success && backendResp?.success && Array.isArray(backendResp.data) && backendResp.data.length > 0) {
+                results.push(...backendResp.data);
             }
         } catch (_err) {
             // Fallback ci-dessous

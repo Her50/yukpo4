@@ -604,8 +604,9 @@ pub async fn share_product_redirect(
     let product_name = &product.product_name;
     let product_price = product.product_price.as_ref().map(|p| p.to_string());
 
-    // ✅ Récupérer toutes les images du produit depuis la table media
-    let product_images_db: Vec<String> = sqlx::query_scalar::<_, Option<String>>(
+    // ✅ CORRIGÉ 2026-03-03: Récupérer toutes les images du produit depuis la table media
+    // Utiliser des URLs pré-signées car le bucket GCS n'est PAS public (build_public_url retourne des 404)
+    let product_image_paths: Vec<String> = sqlx::query_scalar::<_, Option<String>>(
         r#"
         SELECT path
         FROM media
@@ -627,14 +628,23 @@ pub async fn share_product_redirect(
     .unwrap_or_default()
     .into_iter()
     .flatten()
-    .map(|path| {
-        if path.starts_with("http://") || path.starts_with("https://") {
-            path
-        } else {
-            state.media_storage.build_public_url(&path)
-        }
-    })
     .collect();
+
+    let mut product_images_db: Vec<String> = Vec::with_capacity(product_image_paths.len());
+    for path in &product_image_paths {
+        let url = if path.starts_with("http://") || path.starts_with("https://") {
+            path.clone()
+        } else if state.media_storage.is_remote() {
+            // ✅ URL pré-signée (7 jours) — les crawlers sociaux mettent en cache l'image
+            match state.media_storage.generate_presigned_url(path, 7 * 24 * 3600).await {
+                Ok(presigned) => presigned,
+                Err(_) => state.media_storage.build_public_url(path),
+            }
+        } else {
+            state.media_storage.build_public_url(path)
+        };
+        product_images_db.push(url);
+    }
 
     // ✅ CORRIGÉ 2026-02-27: Extraire images depuis product_data (format tableau OU {valeur: [...]})
     let product_images_from_data: Vec<String> = {
@@ -680,11 +690,18 @@ pub async fn share_product_redirect(
         .or_else(|_| std::env::var("BACKEND_URL"))
         .unwrap_or_else(|_| "https://yukpo-backend-376093909298.europe-west1.run.app".to_string());
 
-    // Image principale (première de la liste ou logo par défaut)
-    let product_image_url = all_product_images
-        .first()
-        .cloned()
-        .unwrap_or_else(|| format!("{}/logo.png", &share_base_url));
+    // ✅ CORRIGÉ 2026-03-03: Séparer og:image (crawlers sociaux) et image HTML (affichage)
+    // Les crawlers sociaux (Facebook, WhatsApp, Twitter) ne supportent PAS le SVG pour og:image
+    // og_image_url: uniquement de vraies images (presigned URLs) — None si aucune image
+    // display_image_url: SVG placeholder si aucune image (pour l'affichage HTML uniquement)
+    let og_image_url: Option<String> = all_product_images.first().cloned();
+    let display_image_url = all_product_images.first().cloned().unwrap_or_else(|| {
+        format!(
+            "{}/api/og-placeholder?name={}",
+            &share_base_url,
+            urlencoding::encode(product_name)
+        )
+    });
 
     // Construire la galerie HTML d'images
     let images_gallery_html = if all_product_images.is_empty() {
@@ -806,20 +823,18 @@ pub async fn share_product_redirect(
     <meta property="og:description" content=""#,
     );
     html.push_str(&product_description);
+    html.push_str(r#"" />"#);
+    // ✅ CORRIGÉ 2026-03-03: og:image uniquement si une vraie image existe (pas SVG placeholder)
+    // Les crawlers sociaux (Facebook, WhatsApp, Twitter) ne supportent PAS SVG
+    if let Some(ref og_img) = og_image_url {
+        html.push_str("\n    <meta property=\"og:image\" content=\"");
+        html.push_str(og_img);
+        html.push_str("\" />\n    <meta property=\"og:image:width\" content=\"1200\" />\n    <meta property=\"og:image:height\" content=\"630\" />\n    <meta property=\"og:image:alt\" content=\"");
+        html.push_str(product_name);
+        html.push_str("\" />");
+    }
     html.push_str(
-        r#"" />
-    <meta property="og:image" content=""#,
-    );
-    html.push_str(&product_image_url);
-    html.push_str(
-        r#"" />
-    <meta property="og:image:width" content="1200" />
-    <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content=""#,
-    );
-    html.push_str(product_name);
-    html.push_str(
-        r#"" />
+        r#"
     <meta property="og:url" content=""#,
     );
     html.push_str(&share_url);
@@ -830,30 +845,21 @@ pub async fn share_product_redirect(
     "#,
     );
     html.push_str(&price_og_html);
+    html.push_str("\n    <meta name=\"twitter:card\" content=\"summary_large_image\" />\n    <meta name=\"twitter:title\" content=\"");
+    html.push_str(product_name);
+    html.push_str("\" />\n    <meta name=\"twitter:description\" content=\"");
+    html.push_str(&product_description);
+    html.push_str("\" />");
+    if let Some(ref og_img) = og_image_url {
+        html.push_str("\n    <meta name=\"twitter:image\" content=\"");
+        html.push_str(og_img);
+        html.push_str("\" />\n    <meta name=\"twitter:image:alt\" content=\"");
+        html.push_str(product_name);
+        html.push_str("\" />");
+    }
+    html.push_str("\n    <meta name=\"twitter:site\" content=\"@yukpomnang\" />");
     html.push_str(
         r#"
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content=""#,
-    );
-    html.push_str(product_name);
-    html.push_str(
-        r#"" />
-    <meta name="twitter:description" content=""#,
-    );
-    html.push_str(&product_description);
-    html.push_str(
-        r#"" />
-    <meta name="twitter:image" content=""#,
-    );
-    html.push_str(&product_image_url);
-    html.push_str(
-        r#"" />
-    <meta name="twitter:image:alt" content=""#,
-    );
-    html.push_str(product_name);
-    html.push_str(
-        r#"" />
-    <meta name="twitter:site" content="@yukpomnang" />
     <script type="application/ld+json">
     {
         "@context": "https://schema.org",
@@ -870,7 +876,7 @@ pub async fn share_product_redirect(
         r#"",
         "image": ""#,
     );
-    html.push_str(&product_image_url);
+    html.push_str(&display_image_url);
     html.push_str(
         r#"",
         "offers": {
@@ -1116,8 +1122,9 @@ pub async fn share_service_redirect(
         .flatten()
         .unwrap_or_else(|| "XAF".to_string());
 
-    // Récupérer la première image du service depuis la table media
-    let service_image: Option<String> = sqlx::query_scalar::<_, Option<String>>(
+    // ✅ CORRIGÉ 2026-03-03: Utiliser des URLs pré-signées pour l'image du service
+    // car le bucket GCS n'est PAS public (build_public_url retourne des 404)
+    let service_image_path: Option<String> = sqlx::query_scalar::<_, Option<String>>(
         r#"SELECT path FROM media
            WHERE service_id = $1 AND (type = 'image' OR media_type = 'image')
            ORDER BY COALESCE(is_main_image, FALSE) DESC, COALESCE(display_order, 0) ASC, id ASC
@@ -1128,20 +1135,36 @@ pub async fn share_service_redirect(
     .await
     .ok()
     .flatten()
-    .flatten()
-    .map(|path| {
+    .flatten();
+
+    let service_image: Option<String> = if let Some(path) = service_image_path {
         if path.starts_with("http://") || path.starts_with("https://") {
-            path
+            Some(path)
+        } else if state.media_storage.is_remote() {
+            match state.media_storage.generate_presigned_url(&path, 7 * 24 * 3600).await {
+                Ok(presigned) => Some(presigned),
+                Err(_) => Some(state.media_storage.build_public_url(&path)),
+            }
         } else {
-            state.media_storage.build_public_url(&path)
+            Some(state.media_storage.build_public_url(&path))
         }
-    });
+    } else {
+        None
+    };
 
     let share_base_url = std::env::var("SHARE_BASE_URL")
         .or_else(|_| std::env::var("BACKEND_URL"))
         .unwrap_or_else(|_| "https://yukpo-backend-376093909298.europe-west1.run.app".to_string());
 
-    let image_url = service_image.unwrap_or_else(|| format!("{}/logo.png", &share_base_url));
+    // ✅ CORRIGÉ 2026-03-03: og:image uniquement si une vraie image existe (pas SVG placeholder)
+    let og_image_url: Option<String> = service_image.clone();
+    let display_image_url = service_image.unwrap_or_else(|| {
+        format!(
+            "{}/api/og-placeholder?name={}",
+            &share_base_url,
+            urlencoding::encode(&service_titre)
+        )
+    });
     let share_url = format!("{}/service/{}", &share_base_url, service_id);
     let deep_link = format!("yukpomnang://service/{}", service_id);
     let android_intent_url = format!(
@@ -1181,39 +1204,32 @@ pub async fn share_service_redirect(
     <meta property="og:description" content=""#,
     );
     html.push_str(&service_description);
-    html.push_str(
-        r#"" />
-    <meta property="og:image" content=""#,
-    );
-    html.push_str(&image_url);
-    html.push_str(
-        r#"" />
-    <meta property="og:url" content=""#,
-    );
+    html.push_str("\" />");
+    // ✅ CORRIGÉ 2026-03-03: og:image uniquement si une vraie image existe (pas SVG placeholder)
+    if let Some(ref og_img) = og_image_url {
+        html.push_str("\n    <meta property=\"og:image\" content=\"");
+        html.push_str(og_img);
+        html.push_str("\" />\n    <meta property=\"og:image:width\" content=\"1200\" />\n    <meta property=\"og:image:height\" content=\"630\" />");
+    }
+    html.push_str("\n    <meta property=\"og:url\" content=\"");
     html.push_str(&share_url);
     html.push_str(
         r#"" />
     <meta property="og:site_name" content="Yukpomnang" />
-    <meta property="og:locale" content="fr_FR" />
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content=""#,
+    <meta property="og:locale" content="fr_FR" />"#,
     );
+    html.push_str("\n    <meta name=\"twitter:card\" content=\"summary_large_image\" />\n    <meta name=\"twitter:title\" content=\"");
     html.push_str(&service_titre);
-    html.push_str(
-        r#"" />
-    <meta name="twitter:description" content=""#,
-    );
+    html.push_str("\" />\n    <meta name=\"twitter:description\" content=\"");
     html.push_str(&service_description);
-    html.push_str(
-        r#"" />
-    <meta name="twitter:image" content=""#,
-    );
-    html.push_str(&image_url);
-    html.push_str(
-        r#"" />
-    <meta name="google-play-app" content="app-id=com.yukpomnang.mobile">
-    <meta property="al:android:url" content=""#,
-    );
+    html.push_str("\" />");
+    if let Some(ref og_img) = og_image_url {
+        html.push_str("\n    <meta name=\"twitter:image\" content=\"");
+        html.push_str(og_img);
+        html.push_str("\" />");
+    }
+    html.push_str("\n    <meta name=\"google-play-app\" content=\"app-id=com.yukpomnang.mobile\">");
+    html.push_str("\n    <meta property=\"al:android:url\" content=\"");
     html.push_str(&deep_link);
     html.push_str(r#"" />
     <meta property="al:android:package" content="com.yukpomnang.mobile" />
@@ -1252,9 +1268,9 @@ pub async fn share_service_redirect(
     html.push_str(&service_titre);
     html.push_str("</h1>\n");
     html.push_str(&price_html);
-    if !image_url.contains("logo.png") {
+    if og_image_url.is_some() {
         html.push_str(r#"        <div class="service-image"><img src=""#);
-        html.push_str(&image_url);
+        html.push_str(&display_image_url);
         html.push_str(r#"" alt=""#);
         html.push_str(&service_titre);
         html.push_str(r#"" /></div>"#);
@@ -1544,4 +1560,57 @@ pub async fn share_tracking_redirect(
     );
 
     Ok(Html(html).into_response())
+}
+
+/// Query params pour le placeholder OG
+#[derive(Debug, Deserialize)]
+pub struct OgPlaceholderParams {
+    pub name: Option<String>,
+}
+
+/// GET /api/og-placeholder?name=...
+/// Génère une image SVG dynamique comme placeholder pour og:image
+/// quand aucune image produit/service n'existe
+pub async fn og_placeholder_image(
+    Query(params): Query<OgPlaceholderParams>,
+) -> axum::response::Response {
+    let name = params.name.unwrap_or_else(|| "Yukpomnang".to_string());
+    let display_name: String = if name.chars().count() > 40 {
+        format!("{}...", name.chars().take(37).collect::<String>())
+    } else {
+        name
+    };
+    let safe_name = display_name
+        .replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;");
+
+    let svg = format!(
+        r#"<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea"/>
+      <stop offset="100%" style="stop-color:#764ba2"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <text x="600" y="240" font-family="Arial, Helvetica, sans-serif" font-size="120" font-weight="bold" fill="white" text-anchor="middle" opacity="0.9">Y</text>
+  <text x="600" y="340" font-family="Arial, Helvetica, sans-serif" font-size="36" fill="white" text-anchor="middle" opacity="0.8">{}</text>
+  <text x="600" y="520" font-family="Arial, Helvetica, sans-serif" font-size="28" fill="white" text-anchor="middle" opacity="0.6">yukpomnang.com</text>
+</svg>"#,
+        safe_name
+    );
+
+    axum::response::Response::builder()
+        .status(200)
+        .header("Content-Type", "image/svg+xml")
+        .header("Cache-Control", "public, max-age=86400")
+        .body(axum::body::Body::from(svg))
+        .unwrap_or_else(|_| {
+            axum::response::Response::builder()
+                .status(500)
+                .body(axum::body::Body::empty())
+                .unwrap()
+        })
 }

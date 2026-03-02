@@ -49,7 +49,22 @@ const linking: LinkingOptions<any> = {
           },
         },
       },  // ✅ AMÉLIORÉ: Deep link produit avec parsing des paramètres
-      ServiceDetailShared: 'service/:id',
+      ServiceDetailShared: {
+        path: 'service/:id',
+        parse: {
+          id: (id: string | number | undefined) => {
+            if (!id) return undefined;
+            const parsed = typeof id === 'number' ? id : parseInt(String(id), 10);
+            return isNaN(parsed) ? undefined : parsed;
+          },
+        },
+      },
+      TrackingDetail: {
+        path: 'track/:deliveryId',
+        parse: {
+          deliveryId: (deliveryId: string) => deliveryId,
+        },
+      },
       SoldeDetail: 'balance',
       CreatePublicite: 'create-ad',
       PubliciteDashboard: 'ads-dashboard',

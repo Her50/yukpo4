@@ -1509,16 +1509,11 @@ async fn serve_media_file(Path(file_path): Path<String>) -> Result<Response<Body
                         "application/octet-stream"
                     };
 
-                    let mut headers = HeaderMap::new();
-                    headers.insert("content-type", HeaderValue::from_str(content_type).unwrap());
-                    headers.insert(
-                        "cache-control",
-                        HeaderValue::from_str("public, max-age=3600").unwrap(),
-                    );
-
                     let file_size = contents.len();
                     let response = Response::builder()
                         .status(StatusCode::OK)
+                        .header("content-type", content_type)
+                        .header("cache-control", "public, max-age=3600")
                         .body(Body::from(contents))
                         .unwrap();
 

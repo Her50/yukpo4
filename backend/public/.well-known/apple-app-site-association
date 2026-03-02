@@ -3,12 +3,21 @@
     "apps": [],
     "details": [
       {
-        "appID": "TEAM_ID.com.yukpomnang.mobile",
-        "paths": [
-          "/product/*",
-          "/service/*"
+        "appIDs": [
+          "TEAM_ID.com.yukpomnang.mobile"
+        ],
+        "components": [
+          { "/": "/product/*" },
+          { "/": "/service/*" },
+          { "/": "/track/*" }
         ]
       }
+    ],
+    "substitutionVariables": {}
+  },
+  "webcredentials": {
+    "apps": [
+      "TEAM_ID.com.yukpomnang.mobile"
     ]
   }
 }

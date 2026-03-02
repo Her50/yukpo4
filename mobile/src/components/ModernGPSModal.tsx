@@ -16,6 +16,7 @@ import {
 import ENVIRONMENT from '../config/environment';
 import { useLocation } from '../contexts/LocationContext';
 import { useSavedAddresses } from '../hooks/useSavedAddresses';
+import { apiGet } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import ErrorBoundary from './ErrorBoundary';
 import InteractiveMapView from './InteractiveMapView';
@@ -220,10 +221,13 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                     error?: string;
                 }>(backendUrl);
 
-                // Construire les suggestions au format attendu par le composant
+                // ✅ FIX 2026-03-03: apiGet retourne { success, data: <backend_json> }
+                // Le backend retourne { success, data: string[], results: PlaceResult[] }
+                // Donc les résultats sont dans backendResp.results et backendResp.data
+                const backendResp = response.data as any;
                 let googlePredictions: any[] = [];
-                if (response.success && response.results && response.results.length > 0) {
-                    googlePredictions = response.results.map(r => ({
+                if (response.success && backendResp?.success && backendResp.results && backendResp.results.length > 0) {
+                    googlePredictions = backendResp.results.map((r: any) => ({
                         place_id: r.place_id || '',
                         description: r.description,
                         types: r.types || [],
@@ -232,8 +236,8 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                             secondary_text: r.description.split(',').slice(1).join(',').trim() || ''
                         }
                     }));
-                } else if (response.success && response.data && response.data.length > 0) {
-                    googlePredictions = response.data.map(desc => ({
+                } else if (response.success && backendResp?.success && Array.isArray(backendResp.data) && backendResp.data.length > 0) {
+                    googlePredictions = backendResp.data.map((desc: string) => ({
                         place_id: '',
                         description: desc,
                         structured_formatting: {
@@ -266,48 +270,47 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                     setPlaceSuggestions(allSuggestions);
                     setShowSuggestions(true);
                 } else {
-                    // Fallback: appel Google direct si le backend ne retourne rien
-                    const GOOGLE_MAPS_API_KEY = ENVIRONMENT.GOOGLE_MAPS_API_KEY;
-                    if (GOOGLE_MAPS_API_KEY) {
-                        let locBias = '4.05,9.7';
-                        if (userLocation?.coords?.latitude && userLocation?.coords?.longitude) {
-                            locBias = `${userLocation.coords.latitude},${userLocation.coords.longitude}`;
-                        } else if (selectedLocation) {
-                            locBias = `${selectedLocation.lat},${selectedLocation.lng}`;
-                        }
-                        const directUrl = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(query)}&location=${locBias}&radius=50000&key=${GOOGLE_MAPS_API_KEY}&language=fr`;
-                        const directResp = await fetch(directUrl);
-                        const directData = await directResp.json();
-                        if (directData.status === 'OK' && directData.predictions) {
-                            setPlaceSuggestions([...savedMatches, ...directData.predictions]);
-                            setShowSuggestions(true);
-                        } else {
-                            setPlaceSuggestions([]);
-                            setShowSuggestions(false);
-                        }
+                    // Backend a retourné vide — afficher les lieux sauvegardés s'il y en a
+                    if (savedMatches.length > 0) {
+                        setPlaceSuggestions(savedMatches);
+                        setShowSuggestions(true);
                     } else {
+                        console.warn('[ModernGPSModal] Backend proxy retourne 0 résultats pour:', query);
                         setPlaceSuggestions([]);
                         setShowSuggestions(false);
                     }
                 }
             } catch (error) {
                 console.error('[ModernGPSModal] Erreur autocomplete:', error);
-                // Fallback Google direct en cas d'erreur backend
+                // En cas d'erreur backend, réessayer une fois avec le backend proxy
                 try {
-                    const GOOGLE_MAPS_API_KEY = ENVIRONMENT.GOOGLE_MAPS_API_KEY;
-                    if (GOOGLE_MAPS_API_KEY) {
-                        let locBias = '4.05,9.7';
-                        if (userLocation?.coords?.latitude) locBias = `${userLocation.coords.latitude},${userLocation.coords.longitude}`;
-                        const directUrl = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(query)}&location=${locBias}&radius=50000&key=${GOOGLE_MAPS_API_KEY}&language=fr`;
-                        const directResp = await fetch(directUrl);
-                        const directData = await directResp.json();
-                        if (directData.status === 'OK' && directData.predictions) {
-                            setPlaceSuggestions(directData.predictions);
-                            setShowSuggestions(true);
-                        }
+                    let retryParams = '';
+                    if (userLocation?.coords?.latitude && userLocation?.coords?.longitude) {
+                        retryParams = `&lat=${userLocation.coords.latitude}&lng=${userLocation.coords.longitude}&radius=50000`;
                     }
-                } catch (fallbackErr) {
-                    console.error('[ModernGPSModal] Erreur fallback Google:', fallbackErr);
+                    const retryUrl = `/api/places/autocomplete?query=${encodeURIComponent(query)}${retryParams}`;
+                    console.log('[ModernGPSModal] Retry backend proxy:', retryUrl);
+                    const retryResponse = await apiGet<{
+                        success: boolean;
+                        data?: string[];
+                        results?: Array<{ description: string; place_id?: string; types?: string[] }>;
+                    }>(retryUrl);
+                    const retryBackend = retryResponse.data as any;
+                    if (retryResponse.success && retryBackend?.success && retryBackend.results && retryBackend.results.length > 0) {
+                        const retryPredictions = retryBackend.results.map((r: any) => ({
+                            place_id: r.place_id || '',
+                            description: r.description,
+                            types: r.types || [],
+                            structured_formatting: {
+                                main_text: r.description.split(',')[0]?.trim() || r.description,
+                                secondary_text: r.description.split(',').slice(1).join(',').trim() || ''
+                            }
+                        }));
+                        setPlaceSuggestions(retryPredictions);
+                        setShowSuggestions(true);
+                    }
+                } catch (retryErr) {
+                    console.error('[ModernGPSModal] Erreur retry backend:', retryErr);
                 }
             }
         }, 500); // ✅ DEBOUNCE 500ms - Réduit drastiquement les appels API
@@ -696,55 +699,6 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                     </View>
                 </View>
 
-                {/* ✅ NOUVEAU: Suggestions autocomplete au-dessus de tout (y compris la carte) */}
-                {showSuggestions && placeSuggestions.length > 0 && (
-                    <View style={styles.suggestionsOverlay}>
-                        <TouchableWithoutFeedback onPress={() => setShowSuggestions(false)}>
-                            <View style={styles.suggestionsBackdrop} />
-                        </TouchableWithoutFeedback>
-                        <View style={[styles.suggestionsContainer, { top: suggestionsTop }]}>
-                            <ScrollView
-                                style={styles.suggestionsScrollView}
-                                nestedScrollEnabled={true}
-                                keyboardShouldPersistTaps="handled"
-                            >
-                                {placeSuggestions.slice(0, 5).map((suggestion, index) => (
-                                    <TouchableOpacity
-                                        key={suggestion.place_id || index}
-                                        style={[
-                                            styles.suggestionItem,
-                                            index === placeSuggestions.slice(0, 5).length - 1 && styles.suggestionItemLast,
-                                            suggestion.is_saved && styles.suggestionItemSaved
-                                        ]}
-                                        onPress={() => handleSelectSuggestion(suggestion.place_id, suggestion.description, suggestion)}
-                                    >
-                                        <SafeIcon
-                                            name={suggestion.is_saved ? "bookmark" : "map-pin"}
-                                            size={14}
-                                            color={suggestion.is_saved ? modernColors.primary : modernColors.textSecondary}
-                                        />
-                                        <View style={styles.suggestionTextContainer}>
-                                            <Text style={styles.suggestionMainText} numberOfLines={1}>
-                                                {suggestion.structured_formatting?.main_text || suggestion.description}
-                                            </Text>
-                                            {suggestion.structured_formatting?.secondary_text && (
-                                                <Text style={styles.suggestionSecondaryText} numberOfLines={1}>
-                                                    {suggestion.structured_formatting.secondary_text}
-                                                </Text>
-                                            )}
-                                        </View>
-                                        {suggestion.is_saved && (
-                                            <View style={styles.savedBadge}>
-                                                <Text style={styles.savedBadgeText}>Sauvegardé</Text>
-                                            </View>
-                                        )}
-                                    </TouchableOpacity>
-                                ))}
-                            </ScrollView>
-                        </View>
-                    </View>
-                )}
-
                 <TouchableWithoutFeedback onPress={() => setShowSuggestions(false)}>
                     <View style={styles.content}>
                         {/* ✅ SUPPRIMÉ: Barre gauche pour maximiser l'espace carte */}
@@ -793,6 +747,58 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                         </View>
                     </View>
                 </TouchableWithoutFeedback>
+
+                {/* ✅ FIX 2026-03-03: Suggestions autocomplete rendues APRÈS la carte */}
+                {/* Sur Android, les MapView natives ont leur propre surface de rendu qui */}
+                {/* passe au-dessus des View React Native même avec zIndex élevé. */}
+                {/* La seule solution fiable: rendre les suggestions APRÈS la carte dans le JSX. */}
+                {showSuggestions && placeSuggestions.length > 0 && (
+                    <View style={styles.suggestionsOverlay}>
+                        <TouchableWithoutFeedback onPress={() => setShowSuggestions(false)}>
+                            <View style={styles.suggestionsBackdrop} />
+                        </TouchableWithoutFeedback>
+                        <View style={[styles.suggestionsContainer, { top: suggestionsTop }]}>
+                            <ScrollView
+                                style={styles.suggestionsScrollView}
+                                nestedScrollEnabled={true}
+                                keyboardShouldPersistTaps="handled"
+                            >
+                                {placeSuggestions.slice(0, 8).map((suggestion, index) => (
+                                    <TouchableOpacity
+                                        key={suggestion.place_id || index}
+                                        style={[
+                                            styles.suggestionItem,
+                                            index === placeSuggestions.slice(0, 8).length - 1 && styles.suggestionItemLast,
+                                            suggestion.is_saved && styles.suggestionItemSaved
+                                        ]}
+                                        onPress={() => handleSelectSuggestion(suggestion.place_id, suggestion.description, suggestion)}
+                                    >
+                                        <SafeIcon
+                                            name={suggestion.is_saved ? "bookmark" : "map-pin"}
+                                            size={14}
+                                            color={suggestion.is_saved ? modernColors.primary : modernColors.textSecondary}
+                                        />
+                                        <View style={styles.suggestionTextContainer}>
+                                            <Text style={styles.suggestionMainText} numberOfLines={1}>
+                                                {suggestion.structured_formatting?.main_text || suggestion.description}
+                                            </Text>
+                                            {suggestion.structured_formatting?.secondary_text && (
+                                                <Text style={styles.suggestionSecondaryText} numberOfLines={1}>
+                                                    {suggestion.structured_formatting.secondary_text}
+                                                </Text>
+                                            )}
+                                        </View>
+                                        {suggestion.is_saved && (
+                                            <View style={styles.savedBadge}>
+                                                <Text style={styles.savedBadgeText}>Sauvegardé</Text>
+                                            </View>
+                                        )}
+                                    </TouchableOpacity>
+                                ))}
+                            </ScrollView>
+                        </View>
+                    </View>
+                )}
 
                 {/* Actions en bas */}
                 <View style={styles.actionBar}>
@@ -1044,7 +1050,6 @@ const styles = StyleSheet.create({
         bottom: 0,
         zIndex: 9999,
         elevation: 9999,
-        pointerEvents: 'box-none', // Permet les clics à travers le backdrop
     },
     suggestionsBackdrop: {
         position: 'absolute',

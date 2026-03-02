@@ -9,8 +9,8 @@ use std::sync::Arc;
 
 use crate::controllers::products_controller::{
     delete_product, duplicate_product, get_product, get_products_by_service, get_products_by_user,
-    get_products_by_user_path, share_product_redirect, share_service_redirect,
-    share_tracking_redirect, update_product,
+    get_products_by_user_path, og_placeholder_image, share_product_redirect,
+    share_service_redirect, share_tracking_redirect, update_product,
 };
 use crate::middlewares::jwt::jwt_auth;
 use crate::state::AppState;
@@ -63,5 +63,7 @@ pub fn products_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/service/{service_id}", get(share_service_redirect))
         // ✅ NOUVEAU: Route publique pour partage de suivi de livraison
         .route("/track/{delivery_id}", get(share_tracking_redirect))
+        // ✅ NOUVEAU: Placeholder OG image dynamique (SVG) quand aucune image produit/service n'existe
+        .route("/api/og-placeholder", get(og_placeholder_image))
         .with_state(state)
 }

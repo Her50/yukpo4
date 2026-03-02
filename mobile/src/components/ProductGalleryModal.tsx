@@ -1,23 +1,48 @@
 // 🖼️ Modal de galerie produits - Affiche toutes les images et vidéos de tous les produits
-import React, { useEffect, useState } from 'react';
+import { ResizeMode, Video } from 'expo-av';
+import { LinearGradient } from 'expo-linear-gradient';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
     Dimensions,
+    FlatList,
     Image,
     Modal,
-    ScrollView,
+    Platform,
     StyleSheet,
     Text,
     TouchableOpacity,
     View,
 } from 'react-native';
+import { config } from '../config/environment';
 import { apiGet } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
 
-const { width } = Dimensions.get('window');
-const ITEM_SIZE = (width - 60) / 3; // 3 colonnes avec padding
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const GRID_GAP = 3;
+const NUM_COLUMNS = 3;
+const ITEM_SIZE = (SCREEN_WIDTH - GRID_GAP * (NUM_COLUMNS + 1)) / NUM_COLUMNS;
+
+// ✅ CORRIGÉ 2026-03-03: Convertir chemins relatifs en URLs complètes via /api/media/files/
+const buildMediaUrl = (path: string | undefined | null): string => {
+    if (!path) return '';
+    const p = typeof path === 'string' ? path.trim() : '';
+    if (!p) return '';
+    if (p.startsWith('http://') || p.startsWith('https://') || p.startsWith('data:')) return p;
+    const cleanPath = p.replace(/^\//, '');
+    const base = (config.API_BASE_URL || '').replace(/\/$/, '');
+    return base ? `${base}/api/media/files/${cleanPath}` : cleanPath;
+};
+
+// ✅ CORRIGÉ: Extraire tableau depuis {valeur: [...]} ou tableau simple
+const extractMediaArray = (field: any): any[] => {
+    if (Array.isArray(field) && field.length > 0) return field;
+    if (field && typeof field === 'object' && Array.isArray(field.valeur) && field.valeur.length > 0) return field.valeur;
+    if (field && typeof field === 'string' && field.trim()) return [field];
+    return [];
+};
 
 interface MediaItem {
     id: string;
@@ -49,6 +74,8 @@ const ProductGalleryModal: React.FC<ProductGalleryModalProps> = ({
     const [loading, setLoading] = useState(false);
     const [filter, setFilter] = useState<'all' | 'images' | 'videos'>('all');
     const [selectedMedia, setSelectedMedia] = useState<MediaItem | null>(null);
+    const [failedUrls, setFailedUrls] = useState<Set<string>>(new Set());
+    const videoRef = useRef<Video | null>(null);
 
     useEffect(() => {
         if (visible && services && services.length > 0) {
@@ -58,10 +85,16 @@ const ProductGalleryModal: React.FC<ProductGalleryModalProps> = ({
         }
     }, [visible, services]);
 
+    const handleImageError = useCallback((url: string) => {
+        setFailedUrls(prev => new Set(prev).add(url));
+    }, []);
+
     const loadAllMedia = async () => {
         setLoading(true);
+        setFailedUrls(new Set());
         try {
             const allMedia: MediaItem[] = [];
+            const seenUrls = new Set<string>();
 
             // ✅ 1. Charger les médias depuis les produits (création produit)
             if (Array.isArray(services)) {
@@ -83,13 +116,16 @@ const ProductGalleryModal: React.FC<ProductGalleryModalProps> = ({
                     try {
                         const imagesResp = await apiGet(`/api/media/product/${serviceId}/${productIndex}/images`);
                         if (imagesResp.success && imagesResp.data) {
-                            const images = imagesResp.data.images || imagesResp.data.Images || [];
+                            const respImgData = imagesResp.data as any;
+                            const images = respImgData?.images || respImgData?.Images || [];
                             if (Array.isArray(images)) {
                                 images.forEach((img: string, idx: number) => {
-                                    if (img && typeof img === 'string') {
+                                    const url = buildMediaUrl(img);
+                                    if (url && !seenUrls.has(url)) {
+                                        seenUrls.add(url);
                                         allMedia.push({
                                             id: `product-img-${serviceId}-${productIndex}-${idx}`,
-                                            url: img,
+                                            url,
                                             type: 'image',
                                             source: 'product_api',
                                             productName,
@@ -109,13 +145,16 @@ const ProductGalleryModal: React.FC<ProductGalleryModalProps> = ({
                     try {
                         const videosResp = await apiGet(`/api/media/product/${serviceId}/${productIndex}/videos`);
                         if (videosResp.success && videosResp.data) {
-                            const videos = videosResp.data.videos || videosResp.data.Videos || [];
+                            const respVidData = videosResp.data as any;
+                            const videos = respVidData?.videos || respVidData?.Videos || [];
                             if (Array.isArray(videos)) {
                                 videos.forEach((vid: string, idx: number) => {
-                                    if (vid && typeof vid === 'string') {
+                                    const url = buildMediaUrl(vid);
+                                    if (url && !seenUrls.has(url)) {
+                                        seenUrls.add(url);
                                         allMedia.push({
                                             id: `product-video-${serviceId}-${productIndex}-${idx}`,
-                                            url: vid,
+                                            url,
                                             type: 'video',
                                             source: 'product_creation',
                                             productName,
@@ -131,48 +170,47 @@ const ProductGalleryModal: React.FC<ProductGalleryModalProps> = ({
                         console.warn(`[ProductGalleryModal] Erreur chargement vidéos produit ${serviceId}/${productIndex}:`, error);
                     }
 
-                    // ✅ Extraire médias depuis service.data.produits (format JSON direct)
+                    // ✅ CORRIGÉ: Extraire médias depuis service.data.produits (format JSON direct)
                     if (service.data?.produits) {
-                        const produits = Array.isArray(service.data.produits)
-                            ? service.data.produits
-                            : (service.data.produits.valeur && Array.isArray(service.data.produits.valeur))
-                                ? service.data.produits.valeur
-                                : [];
+                        const produits = extractMediaArray(service.data.produits);
 
                         produits.forEach((prod: any, prodIdx: number) => {
-                            if (prod.images && Array.isArray(prod.images)) {
-                                prod.images.forEach((img: string, imgIdx: number) => {
-                                    if (img && typeof img === 'string') {
-                                        allMedia.push({
-                                            id: `prod-data-img-${serviceId}-${prodIdx}-${imgIdx}`,
-                                            url: img,
-                                            type: 'image',
-                                            source: 'product_creation',
-                                            productName: prod.nom || prod.title || productName,
-                                            serviceId,
-                                            productIndex: prodIdx,
-                                            serviceName,
-                                        });
-                                    }
-                                });
-                            }
+                            const pName = prod.nom || prod.title || productName;
+                            extractMediaArray(prod.images).forEach((img: any, imgIdx: number) => {
+                                const rawUrl = typeof img === 'string' ? img : (img?.url || img?.path || img?.valeur);
+                                const url = buildMediaUrl(rawUrl);
+                                if (url && !seenUrls.has(url)) {
+                                    seenUrls.add(url);
+                                    allMedia.push({
+                                        id: `prod-data-img-${serviceId}-${prodIdx}-${imgIdx}`,
+                                        url,
+                                        type: 'image',
+                                        source: 'product_creation',
+                                        productName: pName,
+                                        serviceId,
+                                        productIndex: prodIdx,
+                                        serviceName,
+                                    });
+                                }
+                            });
 
-                            if (prod.videos && Array.isArray(prod.videos)) {
-                                prod.videos.forEach((vid: string, vidIdx: number) => {
-                                    if (vid && typeof vid === 'string') {
-                                        allMedia.push({
-                                            id: `prod-data-video-${serviceId}-${prodIdx}-${vidIdx}`,
-                                            url: vid,
-                                            type: 'video',
-                                            source: 'product_creation',
-                                            productName: prod.nom || prod.title || productName,
-                                            serviceId,
-                                            productIndex: prodIdx,
-                                            serviceName,
-                                        });
-                                    }
-                                });
-                            }
+                            extractMediaArray(prod.videos).forEach((vid: any, vidIdx: number) => {
+                                const rawUrl = typeof vid === 'string' ? vid : (vid?.url || vid?.path || vid?.valeur);
+                                const url = buildMediaUrl(rawUrl);
+                                if (url && !seenUrls.has(url)) {
+                                    seenUrls.add(url);
+                                    allMedia.push({
+                                        id: `prod-data-video-${serviceId}-${prodIdx}-${vidIdx}`,
+                                        url,
+                                        type: 'video',
+                                        source: 'product_creation',
+                                        productName: pName,
+                                        serviceId,
+                                        productIndex: prodIdx,
+                                        serviceName,
+                                    });
+                                }
+                            });
                         });
                     }
                 }
@@ -229,14 +267,14 @@ const ProductGalleryModal: React.FC<ProductGalleryModalProps> = ({
         }
     };
 
-    const filteredMedia = media.filter((item) => {
+    const filteredMedia = useMemo(() => media.filter((item) => {
         if (filter === 'images') return item.type === 'image';
         if (filter === 'videos') return item.type === 'video';
         return true;
-    });
+    }), [media, filter]);
 
-    const images = filteredMedia.filter((m) => m.type === 'image');
-    const videos = filteredMedia.filter((m) => m.type === 'video');
+    const imageCount = useMemo(() => media.filter(m => m.type === 'image').length, [media]);
+    const videoCount = useMemo(() => media.filter(m => m.type === 'video').length, [media]);
 
     const getSourceLabel = (source: string) => {
         switch (source) {
@@ -248,101 +286,114 @@ const ProductGalleryModal: React.FC<ProductGalleryModalProps> = ({
         }
     };
 
-    const renderMediaItem = (item: MediaItem, index: number) => {
+    const renderGridItem = useCallback(({ item, index }: { item: MediaItem; index: number }) => {
         const isSelected = selectedMedia?.id === item.id;
+        const isFailed = failedUrls.has(item.url);
 
         return (
             <TouchableOpacity
-                key={`${item.id}-${index}`}
                 style={[styles.mediaItem, isSelected && styles.mediaItemSelected]}
                 onPress={() => setSelectedMedia(item)}
                 activeOpacity={0.8}
             >
-                {item.type === 'image' ? (
-                    <Image
-                        source={{ uri: item.url }}
-                        style={styles.mediaImage}
-                        resizeMode="cover"
-                    />
-                ) : (
-                    <View style={styles.videoThumbnail}>
-                        {item.thumbnail ? (
-                            <Image
-                                source={{ uri: item.thumbnail }}
-                                style={styles.mediaImage}
-                                resizeMode="cover"
-                            />
-                        ) : (
-                            <View style={styles.videoPlaceholder}>
-                                <SafeIcon name="play-circle" size={32} color="#fff" />
-                            </View>
-                        )}
-                        <View style={styles.videoOverlay}>
-                            <SafeIcon name="play" size={20} color="#fff" />
+                {!isFailed ? (
+                    item.type === 'video' ? (
+                        <View style={styles.videoThumbnail}>
+                            {item.thumbnail ? (
+                                <Image
+                                    source={{ uri: item.thumbnail }}
+                                    style={styles.mediaImage}
+                                    resizeMode="cover"
+                                    onError={() => handleImageError(item.url)}
+                                />
+                            ) : (
+                                <View style={styles.videoPlaceholder}>
+                                    <View style={styles.playCircle}>
+                                        <SafeIcon name="play" size={22} color="#FFFFFF" />
+                                    </View>
+                                </View>
+                            )}
                         </View>
+                    ) : (
+                        <Image
+                            source={{ uri: item.url }}
+                            style={styles.mediaImage}
+                            resizeMode="cover"
+                            onError={() => handleImageError(item.url)}
+                        />
+                    )
+                ) : (
+                    <View style={styles.failedPlaceholder}>
+                        <SafeIcon name={item.type === 'video' ? 'video-off' : 'image'} size={24} color="#9CA3AF" />
+                        <Text style={styles.failedText}>Indisponible</Text>
                     </View>
                 )}
-                <View style={styles.mediaBadge}>
-                    <Text style={styles.mediaBadgeText} numberOfLines={1}>
-                        {getSourceLabel(item.source)}
+
+                {/* Label avec gradient */}
+                <LinearGradient
+                    colors={['transparent', 'rgba(0,0,0,0.7)']}
+                    style={styles.itemGradient}
+                >
+                    <Text style={styles.itemLabel} numberOfLines={1}>
+                        {item.productName}
                     </Text>
-                </View>
+                </LinearGradient>
+
+                {/* Badge vidéo */}
+                {item.type === 'video' && (
+                    <View style={styles.videoBadge}>
+                        <SafeIcon name="video" size={10} color="#FFFFFF" />
+                    </View>
+                )}
             </TouchableOpacity>
         );
-    };
+    }, [selectedMedia, failedUrls, handleImageError]);
 
     return (
         <Modal
             visible={visible}
             animationType="slide"
-            transparent={false}
+            presentationStyle="pageSheet"
             onRequestClose={onClose}
         >
             <View style={styles.container}>
                 {/* Header */}
                 <View style={styles.header}>
-                    <View style={styles.headerLeft}>
-                        <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-                            <SafeIcon name="x" size={24} color={modernColors.text} />
-                        </TouchableOpacity>
-                        <View>
-                            <Text style={styles.headerTitle}>Galerie Produits</Text>
-                            <Text style={styles.headerSubtitle}>
-                                {media.length} média{media.length !== 1 ? 's' : ''}
-                            </Text>
-                        </View>
+                    <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+                        <SafeIcon name="arrow-left" size={22} color="#374151" />
+                    </TouchableOpacity>
+                    <View style={styles.headerCenter}>
+                        <Text style={styles.headerTitle}>Galerie Produits</Text>
+                        <Text style={styles.headerSubtitle}>
+                            {media.length} média{media.length !== 1 ? 's' : ''}
+                        </Text>
                     </View>
+                    <View style={{ width: 40 }} />
                 </View>
 
                 {/* Filtres */}
-                <View style={styles.filters}>
-                    <TouchableOpacity
-                        style={[styles.filterChip, filter === 'all' && styles.filterChipActive]}
-                        onPress={() => setFilter('all')}
-                    >
-                        <SafeIcon name="grid" size={16} color={filter === 'all' ? '#fff' : modernColors.textSecondary} />
-                        <Text style={[styles.filterText, filter === 'all' && styles.filterTextActive]}>
-                            Tout ({media.length})
-                        </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={[styles.filterChip, filter === 'images' && styles.filterChipActive]}
-                        onPress={() => setFilter('images')}
-                    >
-                        <SafeIcon name="image" size={16} color={filter === 'images' ? '#fff' : modernColors.textSecondary} />
-                        <Text style={[styles.filterText, filter === 'images' && styles.filterTextActive]}>
-                            Images ({images.length})
-                        </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={[styles.filterChip, filter === 'videos' && styles.filterChipActive]}
-                        onPress={() => setFilter('videos')}
-                    >
-                        <SafeIcon name="video" size={16} color={filter === 'videos' ? '#fff' : modernColors.textSecondary} />
-                        <Text style={[styles.filterText, filter === 'videos' && styles.filterTextActive]}>
-                            Vidéos ({videos.length})
-                        </Text>
-                    </TouchableOpacity>
+                <View style={styles.filtersContainer}>
+                    {[
+                        { key: 'all' as const, label: 'Tous', count: media.length, icon: 'grid' },
+                        { key: 'images' as const, label: 'Photos', count: imageCount, icon: 'image' },
+                        { key: 'videos' as const, label: 'Vidéos', count: videoCount, icon: 'video' },
+                    ].map(f => (
+                        <TouchableOpacity
+                            key={f.key}
+                            style={[styles.filterChip, filter === f.key && styles.filterChipActive]}
+                            onPress={() => setFilter(f.key)}
+                        >
+                            <SafeIcon name={f.icon} size={14} color={filter === f.key ? '#FFFFFF' : '#6B7280'} />
+                            <Text style={[styles.filterChipText, filter === f.key && styles.filterChipTextActive]}>
+                                {f.label}
+                            </Text>
+                            <View style={[styles.filterBadge, filter === f.key && styles.filterBadgeActive]}>
+                                <Text style={[styles.filterBadgeText, filter === f.key && styles.filterBadgeTextActive]}>
+                                    {f.count}
+                                </Text>
+                            </View>
+                        </TouchableOpacity>
+                    ))}
                 </View>
 
                 {/* Contenu */}
@@ -353,8 +404,12 @@ const ProductGalleryModal: React.FC<ProductGalleryModalProps> = ({
                     </View>
                 ) : filteredMedia.length === 0 ? (
                     <View style={styles.emptyContainer}>
-                        <SafeIcon name="image" size={64} color={modernColors.textSecondary} />
-                        <Text style={styles.emptyTitle}>Aucun média trouvé</Text>
+                        <View style={styles.emptyIconCircle}>
+                            <SafeIcon name={filter === 'videos' ? 'video-off' : 'image'} size={36} color="#9CA3AF" />
+                        </View>
+                        <Text style={styles.emptyTitle}>
+                            {media.length === 0 ? 'Aucun média' : 'Aucun résultat'}
+                        </Text>
                         <Text style={styles.emptyText}>
                             {filter === 'images'
                                 ? 'Aucune image dans vos produits'
@@ -362,86 +417,93 @@ const ProductGalleryModal: React.FC<ProductGalleryModalProps> = ({
                                     ? 'Aucune vidéo dans vos produits'
                                     : 'Aucun média dans vos produits'}
                         </Text>
+                        {filter !== 'all' && (
+                            <TouchableOpacity style={styles.emptyButton} onPress={() => setFilter('all')}>
+                                <Text style={styles.emptyButtonText}>Voir tous les médias</Text>
+                            </TouchableOpacity>
+                        )}
                     </View>
                 ) : (
-                    <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
-                        {/* Section Images */}
-                        {filter !== 'videos' && images.length > 0 && (
-                            <View style={styles.section}>
-                                <View style={styles.sectionHeader}>
-                                    <SafeIcon name="image" size={20} color={modernColors.primary} />
-                                    <Text style={styles.sectionTitle}>
-                                        Images ({images.length})
-                                    </Text>
-                                </View>
-                                <View style={styles.mediaGrid}>
-                                    {images.map((item, index) => renderMediaItem(item, index))}
-                                </View>
-                            </View>
-                        )}
-
-                        {/* Section Vidéos */}
-                        {filter !== 'images' && videos.length > 0 && (
-                            <View style={styles.section}>
-                                <View style={styles.sectionHeader}>
-                                    <SafeIcon name="video" size={20} color={modernColors.primary} />
-                                    <Text style={styles.sectionTitle}>
-                                        Vidéos ({videos.length})
-                                    </Text>
-                                </View>
-                                <View style={styles.mediaGrid}>
-                                    {videos.map((item, index) => renderMediaItem(item, index))}
-                                </View>
-                            </View>
-                        )}
-                    </ScrollView>
+                    <FlatList
+                        data={filteredMedia}
+                        renderItem={renderGridItem}
+                        keyExtractor={(item, i) => `${item.id}-${i}`}
+                        numColumns={NUM_COLUMNS}
+                        columnWrapperStyle={styles.gridRow}
+                        contentContainerStyle={styles.gridContainer}
+                        showsVerticalScrollIndicator={false}
+                    />
                 )}
 
-                {/* Modal détail média sélectionné */}
+                {/* Modal détail média plein écran */}
                 {selectedMedia && (
                     <Modal
                         visible={!!selectedMedia}
                         animationType="fade"
-                        transparent={true}
+                        transparent
                         onRequestClose={() => setSelectedMedia(null)}
                     >
-                        <View style={styles.detailModal}>
-                            <TouchableOpacity
-                                style={styles.detailCloseButton}
-                                onPress={() => setSelectedMedia(null)}
-                            >
-                                <SafeIcon name="x" size={24} color="#fff" />
-                            </TouchableOpacity>
-                            <ScrollView contentContainerStyle={styles.detailContent}>
-                                {selectedMedia.type === 'image' ? (
-                                    <Image
-                                        source={{ uri: selectedMedia.url }}
-                                        style={styles.detailImage}
-                                        resizeMode="contain"
-                                    />
-                                ) : (
-                                    <View style={styles.detailVideoContainer}>
-                                        {/* TODO: Implémenter lecteur vidéo */}
-                                        <Text style={styles.detailVideoText}>Lecteur vidéo à implémenter</Text>
-                                    </View>
-                                )}
-                                <View style={styles.detailInfo}>
-                                    <Text style={styles.detailTitle}>{selectedMedia.productName}</Text>
+                        <View style={styles.fullScreenContainer}>
+                            {/* Header plein écran */}
+                            <View style={styles.fullScreenHeader}>
+                                <TouchableOpacity onPress={() => setSelectedMedia(null)} style={styles.fullScreenCloseBtn}>
+                                    <SafeIcon name="x" size={24} color="#FFFFFF" />
+                                </TouchableOpacity>
+                                <View style={styles.fullScreenInfo}>
+                                    <Text style={styles.fullScreenTitle} numberOfLines={1}>{selectedMedia.productName}</Text>
                                     {selectedMedia.serviceName && (
-                                        <Text style={styles.detailSubtitle}>
-                                            Service: {selectedMedia.serviceName}
-                                        </Text>
-                                    )}
-                                    <Text style={styles.detailSource}>
-                                        {getSourceLabel(selectedMedia.source)}
-                                    </Text>
-                                    {selectedMedia.description && (
-                                        <Text style={styles.detailDescription}>
-                                            {selectedMedia.description}
-                                        </Text>
+                                        <Text style={styles.fullScreenSubtitle} numberOfLines={1}>{selectedMedia.serviceName}</Text>
                                     )}
                                 </View>
-                            </ScrollView>
+                                <View style={{ width: 40 }} />
+                            </View>
+
+                            {/* Contenu plein écran */}
+                            {selectedMedia.type === 'image' ? (
+                                <Image
+                                    source={{ uri: selectedMedia.url }}
+                                    style={styles.fullScreenImage}
+                                    resizeMode="contain"
+                                    onError={() => handleImageError(selectedMedia.url)}
+                                />
+                            ) : (
+                                <Video
+                                    ref={videoRef}
+                                    source={{ uri: selectedMedia.url }}
+                                    style={styles.fullScreenVideo}
+                                    resizeMode={ResizeMode.CONTAIN}
+                                    shouldPlay
+                                    useNativeControls
+                                    isLooping
+                                    onError={(error: any) => {
+                                        console.error('[ProductGalleryModal] Erreur vidéo:', error);
+                                    }}
+                                />
+                            )}
+
+                            {/* Navigation */}
+                            {filteredMedia.indexOf(selectedMedia) > 0 && (
+                                <TouchableOpacity
+                                    style={[styles.navButton, styles.navButtonLeft]}
+                                    onPress={() => {
+                                        const idx = filteredMedia.indexOf(selectedMedia);
+                                        if (idx > 0) setSelectedMedia(filteredMedia[idx - 1]);
+                                    }}
+                                >
+                                    <SafeIcon name="chevron-left" size={30} color="#FFFFFF" />
+                                </TouchableOpacity>
+                            )}
+                            {filteredMedia.indexOf(selectedMedia) < filteredMedia.length - 1 && (
+                                <TouchableOpacity
+                                    style={[styles.navButton, styles.navButtonRight]}
+                                    onPress={() => {
+                                        const idx = filteredMedia.indexOf(selectedMedia);
+                                        if (idx < filteredMedia.length - 1) setSelectedMedia(filteredMedia[idx + 1]);
+                                    }}
+                                >
+                                    <SafeIcon name="chevron-right" size={30} color="#FFFFFF" />
+                                </TouchableOpacity>
+                            )}
                         </View>
                     </Modal>
                 )}
@@ -453,134 +515,159 @@ const ProductGalleryModal: React.FC<ProductGalleryModalProps> = ({
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: modernColors.background,
+        backgroundColor: '#F8F9FA',
     },
     header: {
         flexDirection: 'row',
+        alignItems: 'center',
         justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: 16,
-        paddingTop: 50,
-        paddingBottom: 16,
-        backgroundColor: modernColors.surface,
+        paddingHorizontal: 12,
+        paddingTop: Platform.OS === 'ios' ? 56 : 16,
+        paddingBottom: 12,
+        backgroundColor: '#FFFFFF',
         borderBottomWidth: 1,
-        borderBottomColor: modernColors.border,
+        borderBottomColor: '#E5E7EB',
     },
-    headerLeft: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-    },
-    closeButton: {
+    closeBtn: {
         padding: 8,
+        borderRadius: 20,
+        backgroundColor: '#F3F4F6',
+    },
+    headerCenter: {
+        flex: 1,
+        alignItems: 'center',
+        paddingHorizontal: 8,
     },
     headerTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: modernColors.text,
+        fontSize: 17,
+        fontWeight: '700',
+        color: '#111827',
     },
     headerSubtitle: {
-        fontSize: 14,
-        color: modernColors.textSecondary,
+        fontSize: 12,
+        color: '#6B7280',
         marginTop: 2,
     },
-    filters: {
+    filtersContainer: {
         flexDirection: 'row',
-        paddingHorizontal: 16,
-        paddingVertical: 12,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
         gap: 8,
-        backgroundColor: modernColors.surface,
+        backgroundColor: '#FFFFFF',
         borderBottomWidth: 1,
-        borderBottomColor: modernColors.border,
+        borderBottomColor: '#E5E7EB',
     },
     filterChip: {
+        flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 6,
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 20,
-        backgroundColor: modernColors.background,
-        borderWidth: 1,
-        borderColor: modernColors.border,
+        justifyContent: 'center',
+        gap: 5,
+        paddingVertical: 8,
+        paddingHorizontal: 10,
+        borderRadius: 10,
+        backgroundColor: '#F3F4F6',
     },
     filterChipActive: {
-        backgroundColor: modernColors.primary,
-        borderColor: modernColors.primary,
+        backgroundColor: modernColors.primary || '#6366F1',
     },
-    filterText: {
-        fontSize: 14,
-        color: modernColors.textSecondary,
-        fontWeight: '500',
+    filterChipText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#6B7280',
     },
-    filterTextActive: {
-        color: '#fff',
+    filterChipTextActive: {
+        color: '#FFFFFF',
     },
-    content: {
-        flex: 1,
+    filterBadge: {
+        minWidth: 20,
+        height: 20,
+        borderRadius: 10,
+        backgroundColor: '#E5E7EB',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 5,
     },
-    contentContainer: {
-        padding: 16,
+    filterBadgeActive: {
+        backgroundColor: 'rgba(255,255,255,0.25)',
+    },
+    filterBadgeText: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: '#6B7280',
+    },
+    filterBadgeTextActive: {
+        color: '#FFFFFF',
+    },
+    gridContainer: {
+        paddingTop: GRID_GAP,
+        paddingHorizontal: GRID_GAP,
+        paddingBottom: 40,
+    },
+    gridRow: {
+        gap: GRID_GAP,
+        marginBottom: GRID_GAP,
     },
     loadingContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        gap: 12,
+        gap: 16,
     },
     loadingText: {
-        fontSize: 16,
-        color: modernColors.textSecondary,
+        fontSize: 15,
+        color: '#6B7280',
     },
     emptyContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        padding: 32,
+        paddingHorizontal: 40,
+    },
+    emptyIconCircle: {
+        width: 72,
+        height: 72,
+        borderRadius: 36,
+        backgroundColor: '#F3F4F6',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 16,
     },
     emptyTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: modernColors.text,
-        marginTop: 16,
+        fontSize: 17,
+        fontWeight: '700',
+        color: '#111827',
+        marginBottom: 6,
     },
     emptyText: {
         fontSize: 14,
-        color: modernColors.textSecondary,
+        color: '#6B7280',
         textAlign: 'center',
-        marginTop: 8,
+        lineHeight: 20,
     },
-    section: {
-        marginBottom: 24,
+    emptyButton: {
+        marginTop: 20,
+        paddingHorizontal: 18,
+        paddingVertical: 9,
+        borderRadius: 8,
+        backgroundColor: modernColors.primary || '#6366F1',
     },
-    sectionHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        marginBottom: 12,
-    },
-    sectionTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: modernColors.text,
-    },
-    mediaGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 8,
+    emptyButtonText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#FFFFFF',
     },
     mediaItem: {
         width: ITEM_SIZE,
         height: ITEM_SIZE,
-        borderRadius: 8,
+        borderRadius: 4,
         overflow: 'hidden',
-        backgroundColor: modernColors.surface,
-        borderWidth: 1,
-        borderColor: modernColors.border,
+        backgroundColor: '#E5E7EB',
     },
     mediaItemSelected: {
         borderWidth: 3,
         borderColor: modernColors.primary,
+        borderRadius: 6,
     },
     mediaImage: {
         width: '100%',
@@ -589,96 +676,126 @@ const styles = StyleSheet.create({
     videoThumbnail: {
         width: '100%',
         height: '100%',
-        position: 'relative',
+        backgroundColor: '#1F2937',
     },
     videoPlaceholder: {
         width: '100%',
         height: '100%',
-        backgroundColor: modernColors.textSecondary,
+        backgroundColor: '#1F2937',
         justifyContent: 'center',
         alignItems: 'center',
     },
-    videoOverlay: {
-        position: 'absolute',
-        bottom: 8,
-        right: 8,
-        backgroundColor: 'rgba(0,0,0,0.6)',
-        borderRadius: 12,
-        padding: 4,
+    playCircle: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: 'rgba(0,0,0,0.55)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingLeft: 3,
     },
-    mediaBadge: {
+    failedPlaceholder: {
+        width: '100%',
+        height: '100%',
+        backgroundColor: '#F3F4F6',
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: 4,
+    },
+    failedText: {
+        fontSize: 10,
+        color: '#9CA3AF',
+        fontWeight: '500',
+    },
+    itemGradient: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        height: 32,
+        justifyContent: 'flex-end',
+        paddingHorizontal: 6,
+        paddingBottom: 4,
+    },
+    itemLabel: {
+        fontSize: 10,
+        color: '#FFFFFF',
+        fontWeight: '600',
+    },
+    videoBadge: {
         position: 'absolute',
         top: 4,
-        left: 4,
-        backgroundColor: 'rgba(0,0,0,0.7)',
-        paddingHorizontal: 6,
-        paddingVertical: 2,
-        borderRadius: 4,
-    },
-    mediaBadgeText: {
-        fontSize: 10,
-        color: '#fff',
-    },
-    detailModal: {
-        flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.95)',
-    },
-    detailCloseButton: {
-        position: 'absolute',
-        top: 50,
-        right: 16,
-        zIndex: 10,
-        padding: 8,
-        backgroundColor: 'rgba(0,0,0,0.5)',
-        borderRadius: 20,
-    },
-    detailContent: {
-        flex: 1,
-        justifyContent: 'center',
-        padding: 16,
-    },
-    detailImage: {
-        width: '100%',
-        height: 400,
-        borderRadius: 8,
-    },
-    detailVideoContainer: {
-        width: '100%',
-        height: 400,
-        backgroundColor: '#000',
-        borderRadius: 8,
+        right: 4,
+        width: 22,
+        height: 22,
+        borderRadius: 11,
+        backgroundColor: 'rgba(239,68,68,0.85)',
         justifyContent: 'center',
         alignItems: 'center',
     },
-    detailVideoText: {
-        color: '#fff',
-        fontSize: 16,
+    fullScreenContainer: {
+        flex: 1,
+        backgroundColor: '#000000',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
-    detailInfo: {
-        marginTop: 24,
-        padding: 16,
-        backgroundColor: 'rgba(255,255,255,0.1)',
-        borderRadius: 8,
+    fullScreenHeader: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: 10,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingTop: Platform.OS === 'ios' ? 56 : 16,
+        paddingHorizontal: 16,
+        paddingBottom: 12,
+        backgroundColor: 'rgba(0,0,0,0.5)',
     },
-    detailTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: '#fff',
+    fullScreenCloseBtn: {
+        padding: 8,
+        borderRadius: 20,
+        backgroundColor: 'rgba(255,255,255,0.15)',
     },
-    detailSubtitle: {
-        fontSize: 16,
-        color: 'rgba(255,255,255,0.8)',
-        marginTop: 4,
+    fullScreenInfo: {
+        flex: 1,
+        alignItems: 'center',
+        paddingHorizontal: 8,
     },
-    detailSource: {
-        fontSize: 14,
+    fullScreenTitle: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: '#FFFFFF',
+    },
+    fullScreenSubtitle: {
+        fontSize: 12,
         color: 'rgba(255,255,255,0.7)',
-        marginTop: 8,
+        marginTop: 2,
     },
-    detailDescription: {
-        fontSize: 14,
-        color: 'rgba(255,255,255,0.8)',
-        marginTop: 8,
+    fullScreenImage: {
+        width: SCREEN_WIDTH,
+        height: SCREEN_HEIGHT * 0.75,
+    },
+    fullScreenVideo: {
+        width: SCREEN_WIDTH,
+        height: SCREEN_HEIGHT * 0.65,
+    },
+    navButton: {
+        position: 'absolute',
+        top: '45%',
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: 'rgba(0,0,0,0.4)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    navButtonLeft: {
+        left: 12,
+    },
+    navButtonRight: {
+        right: 12,
     },
 });
 

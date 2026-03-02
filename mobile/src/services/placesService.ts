@@ -1,4 +1,4 @@
-import { getToutesLesVilles, rechercherVilles, getTousLesPays, TOUS_LES_PAYS } from '../data/africanLocations';
+import { getToutesLesVilles, rechercherVilles, TOUS_LES_PAYS } from '../data/africanLocations';
 import { getFieldOptions } from '../data/productModalities';
 import { apiGet } from './api';
 
@@ -39,19 +39,22 @@ class PlacesService {
                 url = `/api/places/autocomplete?query=${params}&type=point${cityContext ? `&city=${encodeURIComponent(cityContext)}` : ''}`;
             }
 
-            const response = await apiGet<{ 
-                success: boolean; 
+            const response = await apiGet<{
+                success: boolean;
                 data?: string[];
                 results?: PlaceResult[];
             }>(url);
-            
-            if (response.success) {
+
+            // ✅ FIX 2026-03-03: apiGet retourne { success, data: <backend_json> }
+            // Le backend retourne { success, data: string[], results: PlaceResult[] }
+            const backendResp = response.data as any;
+            if (response.success && backendResp?.success) {
                 // ✅ PRIORITÉ: Utiliser les résultats enrichis avec types si disponibles
-                if (response.results && Array.isArray(response.results) && response.results.length > 0) {
-                    results.push(...response.results);
-                } else if (Array.isArray(response.data) && response.data.length > 0) {
+                if (backendResp.results && Array.isArray(backendResp.results) && backendResp.results.length > 0) {
+                    results.push(...backendResp.results);
+                } else if (Array.isArray(backendResp.data) && backendResp.data.length > 0) {
                     // Fallback: convertir les strings en PlaceResult sans types
-                    results.push(...response.data.map(desc => ({ description: desc })));
+                    results.push(...backendResp.data.map((desc: string) => ({ description: desc })));
                 }
             }
         } catch (_err) {
@@ -62,27 +65,27 @@ class PlacesService {
         if (!scope || scope === 'all') {
             if (q.length > 0) {
                 const qLower = q.toLowerCase();
-                
-                const paysMatches = TOUS_LES_PAYS.filter(p => 
-                    p.nom.toLowerCase().includes(qLower) || 
+
+                const paysMatches = TOUS_LES_PAYS.filter(p =>
+                    p.nom.toLowerCase().includes(qLower) ||
                     p.nomComplet.toLowerCase().includes(qLower) ||
                     p.code.toLowerCase().includes(qLower)
                 );
                 paysMatches.forEach(pays => {
-                    results.push({ 
+                    results.push({
                         description: pays.nom,
                         types: ['country', 'political'] // Types déduits pour pays
                     });
                 });
-                
+
                 const villesRecherchees = rechercherVilles(q);
                 villesRecherchees.forEach(v => {
-                    results.push({ 
+                    results.push({
                         description: `${v.pays} - ${v.nom}`,
                         types: ['locality', 'political'] // Types déduits pour villes
                     });
                 });
-                
+
                 TOUS_LES_PAYS.forEach(pays => {
                     pays.villes.forEach(ville => {
                         if (ville.quartiers) {
@@ -90,7 +93,7 @@ class PlacesService {
                                 quartier.toLowerCase().includes(qLower)
                             );
                             quartiersMatches.forEach(quartier => {
-                                results.push({ 
+                                results.push({
                                     description: `${quartier}, ${ville.nom}, ${pays.nom}`,
                                     types: ['sublocality', 'sublocality_level_1'] // Types déduits pour quartiers
                                 });
@@ -100,15 +103,15 @@ class PlacesService {
                 });
             } else {
                 TOUS_LES_PAYS.forEach(pays => {
-                    results.push({ 
+                    results.push({
                         description: pays.nom,
                         types: ['country', 'political']
                     });
                 });
-                
+
                 const toutesVilles = getToutesLesVilles();
                 toutesVilles.slice(0, 30).forEach(v => {
-                    results.push({ 
+                    results.push({
                         description: `${v.pays} - ${v.nom}`,
                         types: ['locality', 'political']
                     });
@@ -118,7 +121,7 @@ class PlacesService {
             if (q.length > 0) {
                 const villesRecherchees = rechercherVilles(q);
                 villesRecherchees.forEach(v => {
-                    results.push({ 
+                    results.push({
                         description: `${v.pays} - ${v.nom}`,
                         types: ['locality', 'political']
                     });
@@ -126,7 +129,7 @@ class PlacesService {
             } else {
                 const toutesVilles = getToutesLesVilles();
                 toutesVilles.slice(0, 50).forEach(v => {
-                    results.push({ 
+                    results.push({
                         description: `${v.pays} - ${v.nom}`,
                         types: ['locality', 'political']
                     });
@@ -144,7 +147,7 @@ class PlacesService {
                                 quartier.toLowerCase().includes(q.toLowerCase())
                             );
                             quartiersMatches.forEach(quartier => {
-                                results.push({ 
+                                results.push({
                                     description: `${quartier}, ${ville.nom}, ${pays.nom}`,
                                     types: ['sublocality', 'sublocality_level_1']
                                 });
@@ -154,12 +157,12 @@ class PlacesService {
                 });
             } else if (cityContext) {
                 TOUS_LES_PAYS.forEach(pays => {
-                    const ville = pays.villes.find(v => 
+                    const ville = pays.villes.find(v =>
                         v.nom.toLowerCase().includes(cityContext.toLowerCase())
                     );
                     if (ville && ville.quartiers) {
                         ville.quartiers.forEach(quartier => {
-                            results.push({ 
+                            results.push({
                                 description: `${quartier}, ${ville.nom}, ${pays.nom}`,
                                 types: ['sublocality', 'sublocality_level_1']
                             });
@@ -173,7 +176,7 @@ class PlacesService {
             const points = Array.from(new Set([...pointsDepart, ...pointsArrivee]));
             const filtered = q ? points.filter(p => p.toLowerCase().includes(q.toLowerCase())) : points;
             filtered.forEach(p => {
-                results.push({ 
+                results.push({
                     description: p,
                     types: ['establishment'] // Type déduit pour points
                 });
@@ -186,7 +189,7 @@ class PlacesService {
             const points = Array.from(new Set([...pointsDepart, ...pointsArrivee]));
             const filtered = q ? points.filter(p => p.toLowerCase().includes(q.toLowerCase())) : points;
             filtered.forEach(p => {
-                results.push({ 
+                results.push({
                     description: p,
                     types: ['establishment']
                 });

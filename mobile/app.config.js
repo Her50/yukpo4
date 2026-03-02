@@ -48,7 +48,8 @@ module.exports = {
             bundleIdentifier: "com.yukpomnang.mobile",
             associatedDomains: [
                 "applinks:yukpomnang.com",
-                "applinks:www.yukpomnang.com"
+                "applinks:www.yukpomnang.com",
+                "applinks:yukpo-backend-376093909298.europe-west1.run.app"
             ],
             infoPlist: {
                 CFBundleURLTypes: [
@@ -106,6 +107,16 @@ module.exports = {
                             scheme: "https",
                             host: "yukpo-backend-376093909298.europe-west1.run.app",
                             pathPrefix: "/product"
+                        },
+                        {
+                            scheme: "https",
+                            host: "yukpo-backend-376093909298.europe-west1.run.app",
+                            pathPrefix: "/service"
+                        },
+                        {
+                            scheme: "https",
+                            host: "yukpo-backend-376093909298.europe-west1.run.app",
+                            pathPrefix: "/track"
                         },
                         {
                             scheme: "yukpomnang"
@@ -194,7 +205,7 @@ module.exports = {
             // ⚠️ AWS (ancien backend, commenté pour utilisation future): 'https://api.yukpomnang.com'
             apiUrl: getEnvVar('EXPO_PUBLIC_API_URL', 'https://yukpo-backend-376093909298.europe-west1.run.app'),
             wsUrl: getEnvVar('EXPO_PUBLIC_WS_URL', 'wss://yukpo-backend-376093909298.europe-west1.run.app'),
-            shareUrl: getEnvVar('EXPO_PUBLIC_SHARE_URL', 'https://yukpomnang.com'),
+            shareUrl: getEnvVar('EXPO_PUBLIC_SHARE_URL', 'https://yukpo-backend-376093909298.europe-west1.run.app'),
             environment: getEnvVar('EXPO_PUBLIC_ENVIRONMENT', 'production'),
             googleMapsApiKey: getEnvVar('EXPO_PUBLIC_GOOGLE_MAPS_API_KEY', ''),
             googleMapsIosApiKey: getEnvVar('EXPO_PUBLIC_GOOGLE_MAPS_IOS_API_KEY', ''),

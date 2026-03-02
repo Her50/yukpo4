@@ -606,14 +606,18 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
                     error?: string;
                 }>(backendUrl);
 
-                if (!cancelled && response.success) {
-                    if (response.results && Array.isArray(response.results) && response.results.length > 0) {
-                        setOptionsEnriched(response.results);
-                        setOptions(response.results.map(r => r.description));
-                    } else if (Array.isArray(response.data) && response.data.length > 0) {
-                        const resultsFromData: PlaceResult[] = response.data.map(desc => ({ description: desc }));
+                // ✅ FIX 2026-03-03: apiGet retourne { success, data: <backend_json> }
+                // Le backend retourne { success, data: string[], results: PlaceResult[] }
+                // Donc les résultats sont dans response.data.results et response.data.data
+                const backendResponse = response.data as any;
+                if (!cancelled && response.success && backendResponse?.success) {
+                    if (backendResponse.results && Array.isArray(backendResponse.results) && backendResponse.results.length > 0) {
+                        setOptionsEnriched(backendResponse.results);
+                        setOptions(backendResponse.results.map((r: any) => r.description));
+                    } else if (Array.isArray(backendResponse.data) && backendResponse.data.length > 0) {
+                        const resultsFromData: PlaceResult[] = backendResponse.data.map((desc: string) => ({ description: desc }));
                         setOptionsEnriched(resultsFromData);
-                        setOptions(response.data);
+                        setOptions(backendResponse.data);
                     } else {
                         // Backend a retourné vide, fallback sur placesService local
                         const scopeForService = finalScope === 'all' ? undefined : finalScope as PlaceScope;

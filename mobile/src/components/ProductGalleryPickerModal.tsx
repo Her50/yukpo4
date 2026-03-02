@@ -1,20 +1,39 @@
 // 🖼️ Modal pour sélectionner des images/vidéos de la galerie produit et les envoyer dans le chat
-import React, { useEffect, useState } from 'react';
+import { LinearGradient } from 'expo-linear-gradient';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+    ActivityIndicator,
     Alert,
     Dimensions,
+    FlatList,
     Image,
     Modal,
-    ScrollView,
+    Platform,
     StyleSheet,
     Text,
     TouchableOpacity,
     View
 } from 'react-native';
+import { config } from '../config/environment';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
 
-const { width } = Dimensions.get('window');
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const GRID_GAP = 3;
+const NUM_COLUMNS = 3;
+const ITEM_SIZE = (SCREEN_WIDTH - GRID_GAP * (NUM_COLUMNS + 1)) / NUM_COLUMNS;
+
+// ✅ CORRIGÉ 2026-03-03: Utiliser /api/media/files/ pour convertir les chemins relatifs en URLs complètes
+// Sans cela, les images ne s'affichent pas car <Image> reçoit un chemin relatif "uploads/..."
+const buildMediaUrl = (path: string | undefined | null): string => {
+    if (!path) return '';
+    const p = typeof path === 'string' ? path.trim() : '';
+    if (!p) return '';
+    if (p.startsWith('http://') || p.startsWith('https://') || p.startsWith('data:')) return p;
+    const cleanPath = p.replace(/^\//, '');
+    const base = (config.API_BASE_URL || '').replace(/\/$/, '');
+    return base ? `${base}/api/media/files/${cleanPath}` : cleanPath;
+};
 
 interface ProductGalleryPickerModalProps {
     visible: boolean;
@@ -32,17 +51,20 @@ const ProductGalleryPickerModal: React.FC<ProductGalleryPickerModalProps> = ({
     const [media, setMedia] = useState<any[]>([]);
     const [selectedMedia, setSelectedMedia] = useState<Set<string>>(new Set());
     const [filter, setFilter] = useState<'all' | 'images' | 'videos' | 'products'>('all');
+    const [loading, setLoading] = useState(false);
+    const [failedUrls, setFailedUrls] = useState<Set<string>>(new Set());
 
     useEffect(() => {
         if (visible && service) {
             loadMedia();
         } else {
-            // Réinitialiser la sélection quand le modal se ferme
             setSelectedMedia(new Set());
         }
     }, [visible, service]);
 
     const loadMedia = async () => {
+        setLoading(true);
+        setFailedUrls(new Set());
         const mediaList: any[] = [];
 
         // ✅ CORRIGÉ 2026-02-27: Helper pour extraire tableau depuis {valeur: [...]} ou tableau simple
@@ -57,7 +79,7 @@ const ProductGalleryPickerModal: React.FC<ProductGalleryPickerModalProps> = ({
         if (service.data?.logo?.valeur) {
             mediaList.push({
                 type: 'image',
-                url: service.data.logo.valeur,
+                url: buildMediaUrl(service.data.logo.valeur),
                 category: 'branding',
                 description: 'Logo'
             });
@@ -67,7 +89,7 @@ const ProductGalleryPickerModal: React.FC<ProductGalleryPickerModalProps> = ({
         if (service.data?.banner?.valeur) {
             mediaList.push({
                 type: 'image',
-                url: service.data.banner.valeur,
+                url: buildMediaUrl(service.data.banner.valeur),
                 category: 'branding',
                 description: 'Bannière'
             });
@@ -86,9 +108,8 @@ const ProductGalleryPickerModal: React.FC<ProductGalleryPickerModalProps> = ({
 
                     apiMedia.forEach((m: any) => {
                         const path = m.path || m.url || m.file_path;
-                        const imgUrl = typeof path === 'string' ? path.trim() : null;
-                        if (imgUrl) {
-                            const fullUrl = imgUrl.startsWith('http') ? imgUrl : imgUrl;
+                        const fullUrl = buildMediaUrl(typeof path === 'string' ? path.trim() : null);
+                        if (fullUrl) {
                             mediaList.push({
                                 type: m.type === 'video' ? 'video' : 'image',
                                 url: fullUrl,
@@ -128,12 +149,13 @@ const ProductGalleryPickerModal: React.FC<ProductGalleryPickerModalProps> = ({
 
                 // Ajouter les images trouvées dans le JSON (avec déduplication)
                 productImages.forEach((img: any, imgIdx: number) => {
-                    const imgUrl = typeof img === 'string' ? img : (img?.url || img?.path || img?.valeur);
-                    if (imgUrl && typeof imgUrl === 'string' && imgUrl.trim() && !seenUrls.has(imgUrl.trim())) {
-                        seenUrls.add(imgUrl.trim());
+                    const rawImgUrl = typeof img === 'string' ? img : (img?.url || img?.path || img?.valeur);
+                    const imgUrl = buildMediaUrl(rawImgUrl);
+                    if (imgUrl && !seenUrls.has(imgUrl)) {
+                        seenUrls.add(imgUrl);
                         mediaList.push({
                             type: 'image',
-                            url: imgUrl.trim(),
+                            url: imgUrl,
                             category: 'products',
                             description: `${productName} - Image ${imgIdx + 1}`,
                             productName: productName,
@@ -144,12 +166,13 @@ const ProductGalleryPickerModal: React.FC<ProductGalleryPickerModalProps> = ({
 
                 // Ajouter les vidéos trouvées dans le JSON (avec déduplication)
                 productVideos.forEach((vid: any, vidIdx: number) => {
-                    const vidUrl = typeof vid === 'string' ? vid : (vid?.url || vid?.path || vid?.valeur);
-                    if (vidUrl && typeof vidUrl === 'string' && vidUrl.trim() && !seenUrls.has(vidUrl.trim())) {
-                        seenUrls.add(vidUrl.trim());
+                    const rawVidUrl = typeof vid === 'string' ? vid : (vid?.url || vid?.path || vid?.valeur);
+                    const vidUrl = buildMediaUrl(rawVidUrl);
+                    if (vidUrl && !seenUrls.has(vidUrl)) {
+                        seenUrls.add(vidUrl);
                         mediaList.push({
                             type: 'video',
-                            url: vidUrl.trim(),
+                            url: vidUrl,
                             category: 'products',
                             description: `${productName} - Vidéo ${vidIdx + 1}`,
                             productName: productName,
@@ -166,13 +189,14 @@ const ProductGalleryPickerModal: React.FC<ProductGalleryPickerModalProps> = ({
                         // Charger images depuis API
                         const imagesResp = await apiGet(`/api/media/product/${service.id}/${idx}/images`);
                         if (imagesResp.success && imagesResp.data) {
-                            const images = imagesResp.data.images || imagesResp.data.Images || imagesResp.images || [];
+                            const respImgData = imagesResp.data as any;
+                            const images = respImgData?.images || respImgData?.Images || [];
                             if (Array.isArray(images) && images.length > 0) {
                                 images.forEach((img: string, imgIdx: number) => {
                                     if (img && typeof img === 'string') {
                                         mediaList.push({
                                             type: 'image',
-                                            url: img,
+                                            url: buildMediaUrl(img),
                                             category: 'products',
                                             description: `${productName} - Image ${imgIdx + 1}`,
                                             productName: productName,
@@ -186,13 +210,14 @@ const ProductGalleryPickerModal: React.FC<ProductGalleryPickerModalProps> = ({
                         // Charger vidéos depuis API
                         const videosResp = await apiGet(`/api/media/product/${service.id}/${idx}/videos`);
                         if (videosResp.success && videosResp.data) {
-                            const videos = videosResp.data.videos || videosResp.data.Videos || videosResp.videos || [];
+                            const respVidData = videosResp.data as any;
+                            const videos = respVidData?.videos || respVidData?.Videos || [];
                             if (Array.isArray(videos) && videos.length > 0) {
                                 videos.forEach((vid: string, vidIdx: number) => {
                                     if (vid && typeof vid === 'string') {
                                         mediaList.push({
                                             type: 'video',
-                                            url: vid,
+                                            url: buildMediaUrl(vid),
                                             category: 'products',
                                             description: `${productName} - Vidéo ${vidIdx + 1}`,
                                             productName: productName,
@@ -211,8 +236,9 @@ const ProductGalleryPickerModal: React.FC<ProductGalleryPickerModalProps> = ({
                 const realisations = product.imagesRealisations || product.images_realisations || product.realisations || [];
                 if (Array.isArray(realisations) && realisations.length > 0) {
                     realisations.forEach((img: any, imgIdx: number) => {
-                        const imgUrl = typeof img === 'string' ? img : (img?.url || img?.path || img?.valeur);
-                        if (imgUrl && typeof imgUrl === 'string' && imgUrl.trim()) {
+                        const rawUrl = typeof img === 'string' ? img : (img?.url || img?.path || img?.valeur);
+                        const imgUrl = buildMediaUrl(rawUrl);
+                        if (imgUrl) {
                             mediaList.push({
                                 type: 'image',
                                 url: imgUrl,
@@ -235,7 +261,12 @@ const ProductGalleryPickerModal: React.FC<ProductGalleryPickerModalProps> = ({
             products: mediaList.filter(m => m.category === 'products').length,
         });
         setMedia(mediaList);
+        setLoading(false);
     };
+
+    const handleImageError = useCallback((url: string) => {
+        setFailedUrls(prev => new Set(prev).add(url));
+    }, []);
 
     const toggleMediaSelection = (url: string) => {
         const newSelection = new Set(selectedMedia);
@@ -259,13 +290,88 @@ const ProductGalleryPickerModal: React.FC<ProductGalleryPickerModalProps> = ({
         onClose();
     };
 
-    const filteredMedia = media.filter(item => {
+    const filteredMedia = useMemo(() => media.filter(item => {
         if (filter === 'all') return true;
         if (filter === 'images') return item.type === 'image';
         if (filter === 'videos') return item.type === 'video';
         if (filter === 'products') return item.category === 'products';
         return true;
-    });
+    }), [media, filter]);
+
+    const imageCount = useMemo(() => media.filter(m => m.type === 'image').length, [media]);
+    const videoCount = useMemo(() => media.filter(m => m.type === 'video').length, [media]);
+    const productCount = useMemo(() => media.filter(m => m.category === 'products').length, [media]);
+
+    const renderGridItem = useCallback(({ item, index }: { item: any; index: number }) => {
+        const isSelected = selectedMedia.has(item.url);
+        const isFailed = failedUrls.has(item.url);
+
+        return (
+            <TouchableOpacity
+                style={[styles.mediaItem, isSelected && styles.mediaItemSelected]}
+                onPress={() => toggleMediaSelection(item.url)}
+                activeOpacity={0.8}
+            >
+                {!isFailed ? (
+                    item.type === 'video' ? (
+                        <View style={styles.videoContainer}>
+                            <Image
+                                source={{ uri: item.url }}
+                                style={styles.mediaImage}
+                                resizeMode="cover"
+                                onError={() => handleImageError(item.url)}
+                            />
+                            <View style={styles.videoOverlay}>
+                                <View style={styles.playCircle}>
+                                    <SafeIcon name="play" size={20} color="#FFFFFF" />
+                                </View>
+                            </View>
+                        </View>
+                    ) : (
+                        <Image
+                            source={{ uri: item.url }}
+                            style={styles.mediaImage}
+                            resizeMode="cover"
+                            onError={() => handleImageError(item.url)}
+                        />
+                    )
+                ) : (
+                    <View style={styles.failedPlaceholder}>
+                        <SafeIcon name={item.type === 'video' ? 'video-off' : 'image'} size={24} color="#9CA3AF" />
+                        <Text style={styles.failedText}>Indisponible</Text>
+                    </View>
+                )}
+
+                {/* Indicateur de sélection */}
+                <View style={[styles.selectionIndicator, isSelected && styles.selectionIndicatorActive]}>
+                    {isSelected ? (
+                        <SafeIcon name="check" size={14} color="#FFFFFF" />
+                    ) : (
+                        <View style={styles.selectionIndicatorInner} />
+                    )}
+                </View>
+
+                {/* Label avec gradient */}
+                {item.description && (
+                    <LinearGradient
+                        colors={['transparent', 'rgba(0,0,0,0.7)']}
+                        style={styles.mediaDescription}
+                    >
+                        <Text style={styles.mediaDescriptionText} numberOfLines={1}>
+                            {item.description}
+                        </Text>
+                    </LinearGradient>
+                )}
+
+                {/* Badge vidéo */}
+                {item.type === 'video' && (
+                    <View style={styles.videoBadge}>
+                        <SafeIcon name="video" size={10} color="#FFFFFF" />
+                    </View>
+                )}
+            </TouchableOpacity>
+        );
+    }, [selectedMedia, failedUrls, handleImageError]);
 
     return (
         <Modal
@@ -277,13 +383,15 @@ const ProductGalleryPickerModal: React.FC<ProductGalleryPickerModalProps> = ({
             <View style={styles.container}>
                 {/* Header */}
                 <View style={styles.header}>
-                    <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-                        <SafeIcon name="x" size={24} color="#374151" />
+                    <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+                        <SafeIcon name="x" size={22} color="#374151" />
                     </TouchableOpacity>
 
-                    <View style={styles.headerTitle}>
-                        <SafeIcon name="image" size={24} color={modernColors.primary} />
+                    <View style={styles.headerCenter}>
                         <Text style={styles.title}>Galerie du service</Text>
+                        <Text style={styles.subtitle}>
+                            {selectedMedia.size > 0 ? `${selectedMedia.size} sélectionné(s)` : `${media.length} média${media.length > 1 ? 's' : ''}`}
+                        </Text>
                     </View>
 
                     <TouchableOpacity
@@ -291,123 +399,75 @@ const ProductGalleryPickerModal: React.FC<ProductGalleryPickerModalProps> = ({
                         disabled={selectedMedia.size === 0}
                         style={[styles.confirmButton, selectedMedia.size === 0 && styles.confirmButtonDisabled]}
                     >
+                        <SafeIcon name="send" size={16} color={selectedMedia.size > 0 ? '#FFFFFF' : '#9CA3AF'} />
                         <Text style={[styles.confirmText, selectedMedia.size === 0 && styles.confirmTextDisabled]}>
-                            Envoyer ({selectedMedia.size})
+                            {selectedMedia.size || ''}
                         </Text>
                     </TouchableOpacity>
                 </View>
 
                 {/* Filtres */}
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filtersContainer}>
-                    <TouchableOpacity
-                        style={[styles.filterButton, filter === 'all' && styles.filterButtonActive]}
-                        onPress={() => setFilter('all')}
-                    >
-                        <Text style={[styles.filterText, filter === 'all' && styles.filterTextActive]}>
-                            Tout ({media.length})
-                        </Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        style={[styles.filterButton, filter === 'images' && styles.filterButtonActive]}
-                        onPress={() => setFilter('images')}
-                    >
-                        <Text style={[styles.filterText, filter === 'images' && styles.filterTextActive]}>
-                            Images ({media.filter(m => m.type === 'image').length})
-                        </Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        style={[styles.filterButton, filter === 'videos' && styles.filterButtonActive]}
-                        onPress={() => setFilter('videos')}
-                    >
-                        <Text style={[styles.filterText, filter === 'videos' && styles.filterTextActive]}>
-                            Vidéos ({media.filter(m => m.type === 'video').length})
-                        </Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        style={[styles.filterButton, filter === 'products' && styles.filterButtonActive]}
-                        onPress={() => setFilter('products')}
-                    >
-                        <Text style={[styles.filterText, filter === 'products' && styles.filterTextActive]}>
-                            Produits ({media.filter(m => m.category === 'products').length})
-                        </Text>
-                    </TouchableOpacity>
-                </ScrollView>
+                <View style={styles.filtersContainer}>
+                    {[
+                        { key: 'all' as const, label: 'Tous', count: media.length, icon: 'grid' },
+                        { key: 'images' as const, label: 'Photos', count: imageCount, icon: 'image' },
+                        { key: 'videos' as const, label: 'Vidéos', count: videoCount, icon: 'video' },
+                        { key: 'products' as const, label: 'Produits', count: productCount, icon: 'package' },
+                    ].map(f => (
+                        <TouchableOpacity
+                            key={f.key}
+                            style={[styles.filterChip, filter === f.key && styles.filterChipActive]}
+                            onPress={() => setFilter(f.key)}
+                        >
+                            <SafeIcon name={f.icon} size={13} color={filter === f.key ? '#FFFFFF' : '#6B7280'} />
+                            <Text style={[styles.filterChipText, filter === f.key && styles.filterChipTextActive]}>
+                                {f.label}
+                            </Text>
+                            <View style={[styles.filterBadge, filter === f.key && styles.filterBadgeActive]}>
+                                <Text style={[styles.filterBadgeText, filter === f.key && styles.filterBadgeTextActive]}>
+                                    {f.count}
+                                </Text>
+                            </View>
+                        </TouchableOpacity>
+                    ))}
+                </View>
 
                 {/* Grille de médias */}
-                <ScrollView style={styles.content} contentContainerStyle={styles.gridContainer}>
-                    {filteredMedia.length === 0 ? (
-                        <View style={styles.emptyState}>
-                            <SafeIcon name="image" size={64} color="#D1D5DB" />
-                            <Text style={styles.emptyText}>Aucun média disponible</Text>
-                            <Text style={styles.emptySubtext}>
-                                {media.length === 0
-                                    ? 'Aucun média trouvé dans ce service'
-                                    : `Aucun média correspondant au filtre "${filter}"`}
-                            </Text>
-                            {/* ✅ DEBUG: Afficher les infos de débogage en développement */}
-                            {__DEV__ && (
-                                <Text style={styles.debugText}>
-                                    Total médias: {media.length} | Produits: {service.data?.produits?.valeur?.length || service.data?.produits?.length || 0}
-                                </Text>
-                            )}
+                {loading ? (
+                    <View style={styles.loadingContainer}>
+                        <ActivityIndicator size="large" color={modernColors.primary} />
+                        <Text style={styles.loadingText}>Chargement des médias...</Text>
+                    </View>
+                ) : filteredMedia.length === 0 ? (
+                    <View style={styles.emptyState}>
+                        <View style={styles.emptyIconCircle}>
+                            <SafeIcon name={filter === 'videos' ? 'video-off' : 'image'} size={36} color="#9CA3AF" />
                         </View>
-                    ) : (
-                        filteredMedia.map((item, index) => {
-                            const isSelected = selectedMedia.has(item.url);
-                            return (
-                                <TouchableOpacity
-                                    key={`${item.url}-${index}`}
-                                    style={[
-                                        styles.mediaItem,
-                                        isSelected && styles.mediaItemSelected
-                                    ]}
-                                    onPress={() => toggleMediaSelection(item.url)}
-                                    activeOpacity={0.8}
-                                >
-                                    {item.type === 'image' ? (
-                                        <Image
-                                            source={{ uri: item.url }}
-                                            style={styles.mediaImage}
-                                            resizeMode="cover"
-                                        />
-                                    ) : (
-                                        <View style={styles.videoContainer}>
-                                            <Image
-                                                source={{ uri: item.url }}
-                                                style={styles.mediaImage}
-                                                resizeMode="cover"
-                                            />
-                                            <View style={styles.videoOverlay}>
-                                                <SafeIcon name="play" size={24} color="#FFFFFF" />
-                                            </View>
-                                        </View>
-                                    )}
-
-                                    {/* ✅ CORRIGÉ : Indicateur de sélection avec meilleure visibilité */}
-                                    <View style={[styles.selectionIndicator, isSelected && styles.selectionIndicatorActive]}>
-                                        {isSelected ? (
-                                            <SafeIcon name="check" size={16} color="#FFFFFF" />
-                                        ) : (
-                                            <View style={styles.selectionIndicatorInner} />
-                                        )}
-                                    </View>
-
-                                    {/* ✅ CORRIGÉ : Description optimisée pour éviter l'allongement */}
-                                    {item.description && (
-                                        <View style={styles.mediaDescription}>
-                                            <Text style={styles.mediaDescriptionText} numberOfLines={2} ellipsizeMode="tail">
-                                                {item.description}
-                                            </Text>
-                                        </View>
-                                    )}
-                                </TouchableOpacity>
-                            );
-                        })
-                    )}
-                </ScrollView>
+                        <Text style={styles.emptyTitle}>
+                            {media.length === 0 ? 'Aucun média' : `Aucun résultat`}
+                        </Text>
+                        <Text style={styles.emptyText}>
+                            {media.length === 0
+                                ? 'Aucun média trouvé dans ce service'
+                                : `Aucun média de type "${filter}"`}
+                        </Text>
+                        {filter !== 'all' && (
+                            <TouchableOpacity style={styles.emptyButton} onPress={() => setFilter('all')}>
+                                <Text style={styles.emptyButtonText}>Voir tous les médias</Text>
+                            </TouchableOpacity>
+                        )}
+                    </View>
+                ) : (
+                    <FlatList
+                        data={filteredMedia}
+                        renderItem={renderGridItem}
+                        keyExtractor={(item, i) => `${item.url}-${i}`}
+                        numColumns={NUM_COLUMNS}
+                        columnWrapperStyle={styles.gridRow}
+                        contentContainerStyle={styles.gridContainer}
+                        showsVerticalScrollIndicator={false}
+                    />
+                )}
             </View>
         </Modal>
     );
@@ -416,134 +476,189 @@ const ProductGalleryPickerModal: React.FC<ProductGalleryPickerModalProps> = ({
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F9FAFB',
+        backgroundColor: '#F8F9FA',
     },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: 16,
-        paddingVertical: 12,
+        paddingHorizontal: 12,
+        paddingTop: Platform.OS === 'ios' ? 56 : 16,
+        paddingBottom: 12,
         backgroundColor: '#FFFFFF',
         borderBottomWidth: 1,
         borderBottomColor: '#E5E7EB',
     },
-    closeButton: {
+    closeBtn: {
         padding: 8,
+        borderRadius: 20,
+        backgroundColor: '#F3F4F6',
     },
-    headerTitle: {
+    headerCenter: {
         flex: 1,
-        flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
-        marginLeft: 8,
+        paddingHorizontal: 8,
     },
     title: {
-        fontSize: 18,
-        fontWeight: '600',
+        fontSize: 17,
+        fontWeight: '700',
         color: '#111827',
     },
+    subtitle: {
+        fontSize: 12,
+        color: '#6B7280',
+        marginTop: 2,
+    },
     confirmButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 5,
         backgroundColor: modernColors.primary,
-        paddingHorizontal: 16,
+        paddingHorizontal: 14,
         paddingVertical: 8,
-        borderRadius: 8,
+        borderRadius: 20,
     },
     confirmButtonDisabled: {
-        backgroundColor: '#D1D5DB',
+        backgroundColor: '#E5E7EB',
     },
     confirmText: {
         color: '#FFFFFF',
-        fontSize: 14,
-        fontWeight: '600',
+        fontSize: 13,
+        fontWeight: '700',
     },
     confirmTextDisabled: {
         color: '#9CA3AF',
     },
     filtersContainer: {
-        paddingHorizontal: 16,
-        paddingVertical: 12,
+        flexDirection: 'row',
+        paddingHorizontal: 8,
+        paddingVertical: 10,
+        gap: 6,
         backgroundColor: '#FFFFFF',
         borderBottomWidth: 1,
         borderBottomColor: '#E5E7EB',
     },
-    filterButton: {
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        borderRadius: 20,
+    filterChip: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 4,
+        paddingVertical: 7,
+        paddingHorizontal: 6,
+        borderRadius: 10,
         backgroundColor: '#F3F4F6',
-        marginRight: 8,
     },
-    filterButtonActive: {
-        backgroundColor: modernColors.primary,
+    filterChipActive: {
+        backgroundColor: modernColors.primary || '#6366F1',
     },
-    filterText: {
-        fontSize: 14,
-        fontWeight: '500',
+    filterChipText: {
+        fontSize: 11,
+        fontWeight: '600',
         color: '#6B7280',
     },
-    filterTextActive: {
+    filterChipTextActive: {
         color: '#FFFFFF',
     },
-    content: {
-        flex: 1,
+    filterBadge: {
+        minWidth: 18,
+        height: 18,
+        borderRadius: 9,
+        backgroundColor: '#E5E7EB',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 4,
+    },
+    filterBadgeActive: {
+        backgroundColor: 'rgba(255,255,255,0.25)',
+    },
+    filterBadgeText: {
+        fontSize: 10,
+        fontWeight: '700',
+        color: '#6B7280',
+    },
+    filterBadgeTextActive: {
+        color: '#FFFFFF',
     },
     gridContainer: {
-        padding: 12,
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 8, // ✅ CORRIGÉ : Espacement réduit pour un affichage plus compact
-        justifyContent: 'flex-start',
-        alignItems: 'flex-start', // ✅ CORRIGÉ : Alignement en haut pour éviter les barres verticales
+        paddingTop: GRID_GAP,
+        paddingHorizontal: GRID_GAP,
+        paddingBottom: 40,
+    },
+    gridRow: {
+        gap: GRID_GAP,
+        marginBottom: GRID_GAP,
+    },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: 16,
+    },
+    loadingText: {
+        fontSize: 15,
+        color: '#6B7280',
     },
     mediaItem: {
-        width: (width - 44) / 3, // ✅ CORRIGÉ : 3 colonnes avec gaps ajustés (44 = 12*2 + 8*2 + 4)
-        aspectRatio: 1, // ✅ CORRIGÉ : Ratio carré strict pour éviter les barres verticales
-        borderRadius: 12,
+        width: ITEM_SIZE,
+        height: ITEM_SIZE,
+        borderRadius: 4,
         overflow: 'hidden',
-        position: 'relative',
-        backgroundColor: '#F3F4F6',
+        backgroundColor: '#E5E7EB',
         borderWidth: 2,
         borderColor: 'transparent',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 2,
     },
     mediaItemSelected: {
         borderColor: modernColors.primary,
         borderWidth: 3,
+        borderRadius: 6,
     },
     mediaImage: {
         width: '100%',
         height: '100%',
-        resizeMode: 'cover', // ✅ CORRIGÉ : Cover pour remplir l'espace sans déformation
     },
     videoContainer: {
         width: '100%',
         height: '100%',
-        position: 'relative',
+        backgroundColor: '#1F2937',
     },
     videoOverlay: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
+        ...StyleSheet.absoluteFillObject,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: 'rgba(0, 0, 0, 0.3)',
+        backgroundColor: 'rgba(0,0,0,0.25)',
+    },
+    playCircle: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: 'rgba(0,0,0,0.55)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingLeft: 2,
+    },
+    failedPlaceholder: {
+        width: '100%',
+        height: '100%',
+        backgroundColor: '#F3F4F6',
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: 4,
+    },
+    failedText: {
+        fontSize: 10,
+        color: '#9CA3AF',
+        fontWeight: '500',
     },
     selectionIndicator: {
         position: 'absolute',
-        top: 6,
-        right: 6,
-        width: 28,
-        height: 28,
-        borderRadius: 14,
-        backgroundColor: 'rgba(0, 0, 0, 0.4)',
-        borderWidth: 2.5,
+        top: 5,
+        right: 5,
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        backgroundColor: 'rgba(0,0,0,0.35)',
+        borderWidth: 2,
         borderColor: '#FFFFFF',
         justifyContent: 'center',
         alignItems: 'center',
@@ -554,9 +669,9 @@ const styles = StyleSheet.create({
         borderColor: '#FFFFFF',
     },
     selectionIndicatorInner: {
-        width: 12,
-        height: 12,
-        borderRadius: 6,
+        width: 10,
+        height: 10,
+        borderRadius: 5,
         backgroundColor: 'transparent',
     },
     mediaDescription: {
@@ -564,44 +679,65 @@ const styles = StyleSheet.create({
         bottom: 0,
         left: 0,
         right: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.75)',
-        paddingVertical: 6,
-        paddingHorizontal: 8,
-        maxHeight: 32, // ✅ CORRIGÉ : Hauteur maximale pour éviter l'allongement
-        justifyContent: 'center',
+        height: 28,
+        justifyContent: 'flex-end',
+        paddingHorizontal: 5,
+        paddingBottom: 3,
     },
     mediaDescriptionText: {
-        fontSize: 10,
+        fontSize: 9,
         color: '#FFFFFF',
-        fontWeight: '500',
-        lineHeight: 12, // ✅ CORRIGÉ : Hauteur de ligne fixe pour éviter l'allongement
-        includeFontPadding: false, // ✅ CORRIGÉ : Éviter le padding supplémentaire du texte
+        fontWeight: '600',
+    },
+    videoBadge: {
+        position: 'absolute',
+        top: 5,
+        left: 5,
+        width: 20,
+        height: 20,
+        borderRadius: 10,
+        backgroundColor: 'rgba(239,68,68,0.85)',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     emptyState: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        paddingVertical: 60,
+        paddingHorizontal: 40,
+    },
+    emptyIconCircle: {
+        width: 72,
+        height: 72,
+        borderRadius: 36,
+        backgroundColor: '#F3F4F6',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 16,
+    },
+    emptyTitle: {
+        fontSize: 17,
+        fontWeight: '700',
+        color: '#111827',
+        marginBottom: 6,
     },
     emptyText: {
-        fontSize: 16,
-        color: '#9CA3AF',
-        marginTop: 12,
-        fontWeight: '600',
-    },
-    emptySubtext: {
-        fontSize: 13,
-        color: '#9CA3AF',
-        marginTop: 8,
-        textAlign: 'center',
-        paddingHorizontal: 20,
-    },
-    debugText: {
-        fontSize: 11,
+        fontSize: 14,
         color: '#6B7280',
-        marginTop: 12,
-        fontFamily: 'monospace',
         textAlign: 'center',
+        lineHeight: 20,
+    },
+    emptyButton: {
+        marginTop: 20,
+        paddingHorizontal: 18,
+        paddingVertical: 9,
+        borderRadius: 8,
+        backgroundColor: modernColors.primary || '#6366F1',
+    },
+    emptyButtonText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#FFFFFF',
     },
 });
 
