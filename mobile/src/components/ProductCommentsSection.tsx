@@ -443,26 +443,55 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                     resetComposer();
                 }
             } else {
+                // ✅ CORRIGÉ 2026-03-02: Envoyer content comme "" (string vide) au lieu de undefined
+                // pour éviter que le champ soit absent du JSON (ce qui causait 422 côté backend)
                 const payload: any = {
-                    content: trimmed || undefined,
+                    content: trimmed || '',
                     rating: replyTarget ? undefined : composerRating,
                     mentions: selectedMentions.map((mention) => mention.id),
                     parent_comment_id: replyTarget?.id,
+                    product_index: productIndex ?? null,
                 };
-                if (composerAudio) {
-                    payload.audio_base64 = composerAudio;
-                }
-                const response = await commentsApi.createProductComment(serviceId, { ...payload, product_index: productIndex ?? null });
+                console.log('[ProductCommentsSection] 📤 Envoi commentaire:', {
+                    serviceId,
+                    productIndex,
+                    contentLength: payload.content.length,
+                    hasRating: payload.rating !== undefined && payload.rating !== null,
+                    rating: payload.rating,
+                    hasMentions: payload.mentions?.length > 0,
+                    isReply: !!payload.parent_comment_id,
+                });
+                const response = await commentsApi.createProductComment(serviceId, payload);
                 if (!response.success) {
-                    Alert.alert('Erreur', response.error || 'Impossible de publier le commentaire');
+                    // ✅ CORRIGÉ 2026-03-02: Afficher plus de détails sur l'erreur
+                    const status = (response as any).status;
+                    const errorDetail = response.error || 'Erreur inconnue';
+                    console.error('[ProductCommentsSection] ❌ Erreur création commentaire:', {
+                        status,
+                        error: errorDetail,
+                        data: (response as any).data,
+                    });
+                    let userMessage = 'Impossible de publier le commentaire';
+                    if (status === 422) {
+                        userMessage = 'Le format du commentaire est invalide. Vérifiez que vous avez saisi un texte ou une note.';
+                    } else if (status === 401) {
+                        userMessage = 'Vous devez être connecté pour commenter.';
+                    } else if (status === 400) {
+                        userMessage = 'Veuillez saisir un commentaire ou sélectionner une note.';
+                    } else if (status >= 500) {
+                        userMessage = 'Erreur serveur. Réessayez dans quelques instants.';
+                    } else if (errorDetail && errorDetail !== 'Erreur inconnue') {
+                        userMessage = errorDetail;
+                    }
+                    Alert.alert('Erreur', userMessage);
                 } else {
                     await loadComments();
                     resetComposer();
                 }
             }
-        } catch (err) {
-            console.error('[ProductCommentsSection] handleSubmitComment error', err);
-            Alert.alert('Erreur', 'Une erreur est survenue lors de l\'envoi du commentaire');
+        } catch (err: any) {
+            console.error('[ProductCommentsSection] handleSubmitComment error:', err?.message || err);
+            Alert.alert('Erreur', `Une erreur est survenue lors de l'envoi du commentaire.\n\nDétail : ${err?.message || 'Erreur inconnue'}`);
         } finally {
             setSubmitting(false);
         }

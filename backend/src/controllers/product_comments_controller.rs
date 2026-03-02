@@ -99,13 +99,17 @@ pub struct CommentsQuery {
     pub product_index: Option<i32>, // ✅ NOUVEAU 2026-03-02: Filtrer par produit spécifique
 }
 
+// ✅ CORRIGÉ 2026-03-02: Utiliser deny_unknown_fields = false (par défaut) pour ignorer
+// les champs inconnus comme audio_base64 envoyé par le mobile.
+// Rendre content optionnel (default = "") pour permettre les avis avec uniquement une note.
 #[derive(Debug, Deserialize)]
 pub struct CreateCommentRequest {
     #[serde(default)]
     pub parent_comment_id: Option<i32>,
     #[serde(default)]
     pub rating: Option<i32>,
-    pub content: String,
+    #[serde(default)]
+    pub content: String, // ✅ CORRIGÉ: default = "" pour éviter 422 quand content est absent/undefined
     #[serde(default)]
     pub mentions: Option<Vec<i32>>,
     #[serde(default)]
@@ -214,7 +218,10 @@ pub async fn create_product_comment(
     };
 
     let trimmed_content = payload.content.trim();
-    if trimmed_content.is_empty() {
+
+    // ✅ CORRIGÉ 2026-03-02: Permettre un commentaire vide SI une note (rating) est fournie
+    // Avant: content vide = 400 toujours, même avec une note → l'utilisateur ne pouvait pas juste noter
+    if trimmed_content.is_empty() && payload.rating.is_none() {
         return Err(StatusCode::BAD_REQUEST);
     }
 
