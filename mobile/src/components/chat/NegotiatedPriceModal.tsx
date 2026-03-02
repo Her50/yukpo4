@@ -63,7 +63,7 @@ const NegotiatedPriceModal: React.FC<NegotiatedPriceModalProps> = ({
 
     // ✅ CORRIGÉ : Vérifier si l'utilisateur actuel est le prestataire (merchant) ou le client
     useEffect(() => {
-        const currentUserId = currentUser?.id || currentUser?.user_id || 0;
+        const currentUserId = currentUser?.id ? Number(currentUser.id) : 0;
         // L'utilisateur est le prestataire si son ID correspond au merchantUserId
         // Sinon, c'est le client qui peut proposer un prix
         const userIsMerchant = currentUserId === merchantUserId && merchantUserId > 0;
@@ -522,6 +522,9 @@ const styles = StyleSheet.create({
         color: '#6B7280',
     },
     clientSection: {
+        gap: 12,
+    },
+    clientProposalSection: {
         gap: 12,
     },
     offerCard: {

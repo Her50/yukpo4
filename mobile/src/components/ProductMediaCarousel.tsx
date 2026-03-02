@@ -241,7 +241,7 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
                     >
                         <OptimizedImage
                             uri={media.uri}
-                            style={styles.media}
+                            style={styles.media as any}
                             priority={index === currentIndex ? "high" : "low"}
                             cachePolicy="memory-disk"
                             webp={false}
@@ -269,8 +269,8 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
                             isLooping
                             isMuted={playingVideoIndex !== index}
                             useNativeControls={playingVideoIndex === index}
-                            onError={(error) => {
-                                const errorMessage = error?.message || String(error);
+                            onError={(error: any) => {
+                                const errorMessage = (error as any)?.message || String(error);
                                 if (!errorMessage.includes('404')) {
                                     console.error('[ProductMediaCarousel] ❌ Erreur vidéo:', error);
                                 }
@@ -391,7 +391,7 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
                         {fullscreenMedia.type === 'image' ? (
                             <OptimizedImage
                                 uri={fullscreenMedia.uri}
-                                style={styles.fullscreenImage}
+                                style={styles.fullscreenImage as any}
                                 priority="high"
                                 cachePolicy="memory-disk"
                             />

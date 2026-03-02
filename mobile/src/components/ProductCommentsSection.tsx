@@ -317,7 +317,11 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                     numberOfChannels: 2,
                     bitRate: 128000,
                 },
-            });
+                web: {
+                    mimeType: 'audio/webm',
+                    bitsPerSecond: 128000,
+                },
+            } as Audio.RecordingOptions);
 
             setRecording(newRecording);
             setIsRecording(true);
@@ -366,7 +370,10 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
         if (recording) {
             try {
                 await recording.stopAndUnloadAsync();
-                await recording.deleteAsync();
+                // Note: deleteAsync n'existe plus dans les versions récentes d'expo-av
+                if (typeof (recording as any).deleteAsync === 'function') {
+                    await (recording as any).deleteAsync();
+                }
             } catch (error) {
                 console.error('[ProductCommentsSection] Erreur annulation audio:', error);
             }

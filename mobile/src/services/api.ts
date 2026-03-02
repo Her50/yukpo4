@@ -610,7 +610,7 @@ const apiCallInternal = async <T>(
     const apiError = errorHandler.handleApiError(error, 'API Call');
     return {
       success: false,
-      error: apiError.userMessage, // Message utilisateur au lieu du message technique
+      error: apiError.message, // Message utilisateur au lieu du message technique
       data: null,
       status: apiError.status,
       code: apiError.code, // ✅ NOUVEAU: Code d'erreur pour gestion spécifique
@@ -1173,18 +1173,6 @@ export const deliveryApi = {
       method: 'POST',
       body: JSON.stringify({ courier_id: courierId }),
     });
-  },
-  // ✅ Phase 9 - Amélioration 28 : Lister les coursiers disponibles
-  // ✅ AMÉLIORÉ : Prend en compte pickup/delivery points, transport type, et preparation time
-  listAvailableCouriers: async (serviceId?: number, queryParams?: string) => {
-    let params = '';
-    if (serviceId) {
-      params = `?service_id=${serviceId}`;
-    }
-    if (queryParams) {
-      params += serviceId ? `&${queryParams}` : `?${queryParams}`;
-    }
-    return apiCall(`/api/couriers/available${params}`);
   },
   // ✅ NOUVEAU : Vérification d'identité du coursier
   verifyCourier: async (deliveryId: string, verificationCode: string, verificationMethod?: string) => {
