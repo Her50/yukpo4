@@ -48,6 +48,9 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
     const fullscreenVideoRef = useRef<Video | null>(null);
     // ✅ CORRIGÉ: Références pour chaque vidéo du carousel pour contrôler la lecture
     const videoRefs = useRef<Map<number, Video>>(new Map());
+    // ✅ NOUVEAU 2026-03-02: Tracking interaction utilisateur pour pause auto-scroll
+    const userInteractingRef = useRef(false);
+    const autoScrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // Combiner toutes les médias avec priorité variantImage
     const allMedia: Array<{ type: 'image' | 'video'; uri: string; index: number }> = [];
@@ -98,6 +101,16 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
             setPlayingVideoIndex(null);
         }
 
+        // ✅ NOUVEAU 2026-03-02: Autoplay vidéo quand le slide vidéo devient visible par scroll utilisateur
+        if (allMedia[index]?.type === 'video' && playingVideoIndex !== index) {
+            setTimeout(() => {
+                const videoRef = videoRefs.current.get(index);
+                if (videoRef) {
+                    videoRef.playAsync().catch(() => undefined);
+                    setPlayingVideoIndex(index);
+                }
+            }, 300);
+        }
     };
 
     const playVideo = async (index: number) => {
@@ -165,22 +178,44 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
         }
     }, [fullscreenMedia]);
 
-    // ✅ CORRIGÉ 2026-02-27: Auto-scroll léger (une seule fois) pour signaler qu'il y a d'autres médias
-    const hasAutoScrolled = useRef(false);
+    // ✅ CORRIGÉ 2026-03-02: Auto-scroll continu à travers tous les médias
+    // Scroll toutes les 4s pour les images, pause quand l'utilisateur interagit ou qu'une vidéo joue
     useEffect(() => {
-        if (allMedia.length > 1 && !hasAutoScrolled.current && scrollViewRef.current) {
-            hasAutoScrolled.current = true;
-            // Attendre que le composant soit monté, puis scroller brièvement vers le 2e média
-            const timer = setTimeout(() => {
-                scrollViewRef.current?.scrollTo({ x: CAROUSEL_WIDTH * 0.3, animated: true });
-                // Revenir au premier après 600ms
-                setTimeout(() => {
-                    scrollViewRef.current?.scrollTo({ x: 0, animated: true });
-                }, 600);
-            }, 1500);
-            return () => clearTimeout(timer);
-        }
-    }, [allMedia.length]);
+        if (allMedia.length <= 1) return;
+
+        const startAutoScroll = () => {
+            if (autoScrollTimerRef.current) clearInterval(autoScrollTimerRef.current);
+            autoScrollTimerRef.current = setInterval(() => {
+                // Ne pas auto-scroll si l'utilisateur interagit ou si une vidéo est en lecture
+                if (userInteractingRef.current || playingVideoIndex !== null) return;
+
+                setCurrentIndex((prev) => {
+                    const nextIndex = (prev + 1) % allMedia.length;
+                    scrollViewRef.current?.scrollTo({ x: CAROUSEL_WIDTH * nextIndex, animated: true });
+                    // ✅ NOUVEAU: Si le prochain slide est une vidéo, lancer l'autoplay
+                    if (allMedia[nextIndex]?.type === 'video') {
+                        // Petit délai pour laisser le scroll se terminer avant de lancer la vidéo
+                        setTimeout(() => {
+                            const videoRef = videoRefs.current.get(nextIndex);
+                            if (videoRef) {
+                                videoRef.playAsync().catch(() => undefined);
+                                setPlayingVideoIndex(nextIndex);
+                            }
+                        }, 400);
+                    }
+                    return nextIndex;
+                });
+            }, 4000);
+        };
+
+        // Démarrer après un court délai pour laisser le composant se monter
+        const initTimer = setTimeout(startAutoScroll, 2000);
+
+        return () => {
+            clearTimeout(initTimer);
+            if (autoScrollTimerRef.current) clearInterval(autoScrollTimerRef.current);
+        };
+    }, [allMedia.length, playingVideoIndex]);
 
     if (allMedia.length === 0) {
         return (
@@ -286,9 +321,11 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
                         snapToAlignment="start"
                         nestedScrollEnabled={true}
                         bounces={false}
+                        onScrollBeginDrag={() => { userInteractingRef.current = true; }}
+                        onScrollEndDrag={() => { setTimeout(() => { userInteractingRef.current = false; }, 3000); }}
                     >
                         {allMedia.map((media, index) => {
-                            const shouldRender = Math.abs(index - currentIndex) <= 1;
+                            const shouldRender = Math.abs(index - currentIndex) <= 2;
                             if (!shouldRender) {
                                 return <View key={index} style={styles.slide} />;
                             }

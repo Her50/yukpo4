@@ -1506,107 +1506,16 @@ pub async fn rechercher_besoin_direct(
                 // Mettre à jour enriched_result avec le data modifié
                 enriched_result["data"] = json!(data_obj);
 
-                // ✅ CORRIGÉ 2026-01-07: Extraire les images/vidéos et variations depuis les produits service_products
-                // Le ProductCard cherche dans product.images, product.videos, product.variants, product.has_variant
-                // Prendre le premier produit pour les images/vidéos/variations
+                // ✅ CORRIGÉ 2026-03-02: NE PLUS extraire images/vidéos du premier produit au niveau service
+                // Chaque produit a déjà ses propres images/vidéos enrichies (lignes 1262-1479)
+                // L'ancien code utilisait service_products_list.first() ce qui causait:
+                //   1. Médias du PREMIER produit affichés pour TOUS les produits
+                //   2. Médias bloqués à 2 (ceux du premier produit seulement)
+                // Le mobile (ResultatBesoinScreen) extrait correctement les médias depuis product_data.images/videos
+
+                // ✅ AMÉLIORÉ 2025-11-29: Extraire les variations de prix du produit depuis multiple sources
                 if let Some(first_product) = service_products_list.first() {
                     if let Some(product_obj) = first_product.as_object() {
-                        // Extraire images du produit
-                        if let Some(product_images) = product_obj.get("images") {
-                            if product_images.is_array() {
-                                let images_vec: Vec<String> = product_images
-                                    .as_array()
-                                    .unwrap()
-                                    .iter()
-                                    .filter_map(|v| v.as_str().map(|s| s.to_string()))
-                                    .collect();
-                                if !images_vec.is_empty() {
-                                    // Fusionner avec les images existantes
-                                    let existing_images: Vec<serde_json::Value> = enriched_result
-                                        ["images"]
-                                        .as_array()
-                                        .map(|arr| arr.iter().cloned().collect())
-                                        .unwrap_or_else(Vec::new);
-                                    let mut merged = existing_images;
-                                    for img in images_vec {
-                                        // ✅ CORRIGÉ 2026-03-01: URLs pré-signées au lieu de build_public_url
-                                        let img_url = if img.starts_with("http://")
-                                            || img.starts_with("https://")
-                                        {
-                                            img.clone()
-                                        } else if let Some(ref storage) = media_storage {
-                                            if storage.is_remote() {
-                                                match storage
-                                                    .generate_presigned_url(&img, 7 * 24 * 3600)
-                                                    .await
-                                                {
-                                                    Ok(presigned) => presigned,
-                                                    Err(_) => storage.build_public_url(&img),
-                                                }
-                                            } else {
-                                                storage.build_public_url(&img)
-                                            }
-                                        } else {
-                                            img.clone()
-                                        };
-                                        let img_json = json!(img_url);
-                                        if !merged.contains(&img_json) {
-                                            merged.push(img_json);
-                                        }
-                                    }
-                                    enriched_result["images"] = json!(merged);
-                                }
-                            }
-                        }
-                        // Extraire vidéos du produit
-                        if let Some(product_videos) = product_obj.get("videos") {
-                            if product_videos.is_array() {
-                                let videos_vec: Vec<String> = product_videos
-                                    .as_array()
-                                    .unwrap()
-                                    .iter()
-                                    .filter_map(|v| v.as_str().map(|s| s.to_string()))
-                                    .collect();
-                                if !videos_vec.is_empty() {
-                                    // Fusionner avec les vidéos existantes
-                                    let existing_videos: Vec<serde_json::Value> = enriched_result
-                                        ["videos"]
-                                        .as_array()
-                                        .map(|arr| arr.iter().cloned().collect())
-                                        .unwrap_or_else(Vec::new);
-                                    let mut merged = existing_videos;
-                                    for vid in videos_vec {
-                                        // ✅ CORRIGÉ 2026-03-01: URLs pré-signées au lieu de build_public_url
-                                        let vid_url = if vid.starts_with("http://")
-                                            || vid.starts_with("https://")
-                                        {
-                                            vid.clone()
-                                        } else if let Some(ref storage) = media_storage {
-                                            if storage.is_remote() {
-                                                match storage
-                                                    .generate_presigned_url(&vid, 7 * 24 * 3600)
-                                                    .await
-                                                {
-                                                    Ok(presigned) => presigned,
-                                                    Err(_) => storage.build_public_url(&vid),
-                                                }
-                                            } else {
-                                                storage.build_public_url(&vid)
-                                            }
-                                        } else {
-                                            vid.clone()
-                                        };
-                                        let vid_json = json!(vid_url);
-                                        if !merged.contains(&vid_json) {
-                                            merged.push(vid_json);
-                                        }
-                                    }
-                                    enriched_result["videos"] = json!(merged);
-                                }
-                            }
-                        }
-
-                        // ✅ AMÉLIORÉ 2025-11-29: Extraire les variations de prix du produit depuis multiple sources
                         let mut has_variants = false;
 
                         // 1. Chercher dans variants (format standard)

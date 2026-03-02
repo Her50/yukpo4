@@ -1030,28 +1030,10 @@ const ResultatBesoinScreen: React.FC = () => {
                                 }
                             }
 
-                            // ✅ FALLBACK FINAL: Si toujours vides, essayer les médias du service (normalisés)
-                            if (productImages.length === 0) {
-                                const serviceImages = Array.isArray(service?.images) ? service.images
-                                    : Array.isArray(service?.data?.images?.valeur) ? service.data.images.valeur
-                                        : Array.isArray(service?.data?.images) ? service.data.images
-                                            : [];
-                                if (serviceImages.length > 0) {
-                                    productImages = normalizeMediaArray(serviceImages);
-                                    console.log(`[ResultatBesoinScreen] ✅ Images récupérées depuis service (fallback final):`, productImages.length);
-                                }
-                            }
-
-                            if (productVideos.length === 0) {
-                                const serviceVideos = Array.isArray(service?.videos) ? service.videos
-                                    : Array.isArray(service?.data?.videos?.valeur) ? service.data.videos.valeur
-                                        : Array.isArray(service?.data?.videos) ? service.data.videos
-                                            : [];
-                                if (serviceVideos.length > 0) {
-                                    productVideos = normalizeMediaArray(serviceVideos);
-                                    console.log(`[ResultatBesoinScreen] ✅ Vidéos récupérées depuis service (fallback final):`, productVideos.length);
-                                }
-                            }
+                            // ✅ CORRIGÉ 2026-03-02: SUPPRIMÉ le fallback vers les médias du service
+                            // L'ancien fallback récupérait service.images/videos qui provenaient du PREMIER produit
+                            // du service (pas du produit recherché). Chaque produit a maintenant ses propres médias
+                            // correctement enrichis dans product_data par le backend (table media + presigned URLs).
 
                             // ✅ DEBUG 2026-01-22: Log pour diagnostiquer les images depuis la table media
                             if (__DEV__ && (productImages.length > 0 || productVideos.length > 0)) {

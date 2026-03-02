@@ -160,6 +160,8 @@ import TicketVoyageHomeScreen from '../screens/specialized/TicketVoyageHomeScree
 import BusReturnRequestFormScreen from '../screens/specialized/BusReturnRequestFormScreen';
 import BusReturnRequestsScreen from '../screens/specialized/BusReturnRequestsScreen';
 // ✅ NOUVEAU 2026-01-27: Écrans hôtels/meublés (paiement réservation + QR scanner)
+import HotelBookingPaymentScreen from '../screens/specialized/HotelBookingPaymentScreen';
+import HotelQRScannerScreen from '../screens/specialized/HotelQRScannerScreen';
 // ✅ NOUVEAU 2025-01-28: Écrans Bourse du livre scolaire
 import LivreScolaireDetailsScreen from '../screens/specialized/LivreScolaireDetailsScreen';
 import LivreScolaireFormScreen from '../screens/specialized/LivreScolaireFormScreen';
@@ -395,6 +397,9 @@ const RecipeSearchScreenWithSafeArea = withNavigatorSafeArea(RecipeSearchScreen)
 const MenuWeekCalendarScreenWithSafeArea = withNavigatorSafeArea(MenuWeekCalendarScreen);
 const ShoppingListScreenWithSafeArea = withNavigatorSafeArea(ShoppingListScreen);
 const RecipeDetailsScreenWithSafeArea = withNavigatorSafeArea(RecipeDetailsScreen);
+// ✅ NOUVEAU 2026-01-27: Écrans hôtels/meublés avec SafeArea
+const HotelBookingPaymentScreenWithSafeArea = withNavigatorSafeArea(HotelBookingPaymentScreen);
+const HotelQRScannerScreenWithSafeArea = withNavigatorSafeArea(HotelQRScannerScreen);
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -974,9 +979,9 @@ const SecondaryStack = () => {
       <Stack.Screen name="MyFavorites" component={MyFavoritesScreenWithSafeArea} />
       <Stack.Screen name="ImmobilierPriceAlerts" component={ImmobilierPriceAlertsScreenWithSafeArea} />
       {/* ✅ NOUVEAU 2026-01-27: Écrans hôtels/meublés */}
-      <Stack.Screen name="HotelBookingPayment" component={withNavigatorSafeArea(HotelBookingPaymentScreen)} options={{ title: 'Paiement réservation' }} />
-      <Stack.Screen name="HotelQRScanner" component={withNavigatorSafeArea(HotelQRScannerScreen)} options={{ title: 'Scanner QR réservation' }} />
-      <Stack.Screen name="HotelReservationQR" component={withNavigatorSafeArea(HotelQRScannerScreen)} options={{ title: 'Mon QR réservation' }} />
+      <Stack.Screen name="HotelBookingPayment" component={HotelBookingPaymentScreenWithSafeArea} options={{ title: 'Paiement réservation' }} />
+      <Stack.Screen name="HotelQRScanner" component={HotelQRScannerScreenWithSafeArea} options={{ title: 'Scanner QR réservation' }} />
+      <Stack.Screen name="HotelReservationQR" component={HotelQRScannerScreenWithSafeArea} options={{ title: 'Mon QR réservation' }} />
       <Stack.Screen name="HopitalList" component={HopitalListScreenWithSafeArea} />
       <Stack.Screen name="HopitalDetails" component={HopitalDetailsScreenWithSafeArea} />
       {/* ✅ Phase 3: Laboratoires */}
@@ -1462,8 +1467,8 @@ const SecondaryStack = () => {
       <Stack.Screen
         name="SupermarketHome"
         component={SupermarketHomeScreenWithSafeArea}
-        options={{ title: 'Supermarché', headerShown: false }}
         options={{
+          title: 'Supermarché',
           headerShown: false,
         }}
       />

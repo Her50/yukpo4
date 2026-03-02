@@ -1,13 +1,12 @@
-import React, { useCallback, useState } from 'react';
-import { StyleSheet, Text, View, ScrollView } from 'react-native';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
+import React, { useCallback, useState } from 'react';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import QRCodeScanner from '../../components/QRCodeScanner';
-import { SafeNativeView } from '../../components/SafeNativeView';
 import SafeIcon from '../../components/SafeIcon';
 import { NativeButton } from '../../components/SafeNativeDesign';
+import { SafeNativeView } from '../../components/SafeNativeView';
 import { apiPost } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
-import { notify } from '../../utils/notify';
 
 type HotelQRScannerRouteParams = {
   propertyId?: number;
@@ -61,17 +60,19 @@ const HotelQRScannerScreen: React.FC = () => {
         if (response?.success && response.data) {
           const d = response.data;
           setScanData(d as ScanResponse);
-          notify.success("Réservation trouvée et chargée");
+          Alert.alert("Succès", "Réservation trouvée et chargée");
           setScannerVisible(false);
         } else {
-          notify.error(
+          Alert.alert(
+            "Erreur",
             response?.error ||
-              "Impossible de trouver une réservation pour ce QR code"
+            "Impossible de trouver une réservation pour ce QR code"
           );
         }
       } catch (error: any) {
         console.error('[HotelQRScannerScreen] Erreur scan:', error);
-        notify.error(
+        Alert.alert(
+          "Erreur",
           error?.message || "Erreur lors de la validation du QR code"
         );
       } finally {
@@ -99,8 +100,8 @@ const HotelQRScannerScreen: React.FC = () => {
       typeof value === 'string'
         ? Number(value)
         : typeof value === 'number'
-        ? value
-        : 0;
+          ? value
+          : 0;
     if (isNaN(n)) return value;
     return `${n.toLocaleString('fr-FR')} FCFA`;
   };
@@ -321,7 +322,8 @@ const HotelQRScannerScreen: React.FC = () => {
                   variant={scanData.can_check_in ? 'primary' : 'secondary'}
                   disabled={!scanData.can_check_in}
                   onPress={() =>
-                    notify.info(
+                    Alert.alert(
+                      "Info",
                       "Le flux complet de check-in sera implémenté dans une prochaine étape"
                     )
                   }
@@ -332,7 +334,8 @@ const HotelQRScannerScreen: React.FC = () => {
                   variant={scanData.can_check_out ? 'primary' : 'secondary'}
                   disabled={!scanData.can_check_out}
                   onPress={() =>
-                    notify.info(
+                    Alert.alert(
+                      "Info",
                       "Le flux complet de check-out sera implémenté dans une prochaine étape"
                     )
                   }
@@ -372,7 +375,7 @@ const HotelQRScannerScreen: React.FC = () => {
         visible={scannerVisible}
         onClose={handleCloseScanner}
         onScan={handleScan}
-        onError={(msg) => notify.error(msg)}
+        onError={(msg) => Alert.alert("Erreur", msg)}
       />
     </SafeNativeView>
   );

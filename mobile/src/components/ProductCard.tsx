@@ -690,34 +690,27 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
     return [];
   };
 
-  // ✅ PRIORITÉ 1: product.images/videos (passés directement par ResultatBesoinScreen) - PRIORITÉ ABSOLUE
+  // ✅ CORRIGÉ 2026-03-02: Extraire les images/vidéos UNIQUEMENT depuis le produit (jamais depuis le service)
+  // L'ancien code tombait en fallback sur service.data.images / service.images qui contenaient
+  // les médias du PREMIER produit du service (pas du produit recherché).
+  // Chaque produit est maintenant enrichi par le backend avec ses propres médias (table media + presigned URLs).
   const rawImages =
     asMediaArray(product.images).length > 0 ? asMediaArray(product.images)
       : asMediaArray(product.product_data?.images).length > 0 ? asMediaArray(product.product_data?.images)
         : asMediaArray(productData.images).length > 0 && productData !== product ? asMediaArray(productData.images)
-          : asMediaArray(productData.data?.images).length > 0 ? asMediaArray(productData.data?.images)
-            : (Array.isArray(service?.data?.produits) && productIndex !== undefined && service.data.produits[productIndex])
-              ? asMediaArray(service.data.produits[productIndex].images)
-              : asMediaArray(service?.data?.images?.valeur).length > 0 ? asMediaArray(service?.data?.images?.valeur)
-                : asMediaArray(service?.data?.images).length > 0 ? asMediaArray(service?.data?.images)
-                  : asMediaArray(service?.images);
+          : asMediaArray(productData.data?.images);
 
   // Filtrer et normaliser les images avec la fonction globale
   const images = rawImages
     .map((img: any) => normalizeMediaUrl(img, 'image'))
     .filter((img): img is string => img !== null && img !== '');
 
-  // ✅ PRIORITÉ 1: product.videos (passés directement par ResultatBesoinScreen) - PRIORITÉ ABSOLUE
+  // ✅ CORRIGÉ 2026-03-02: Même correction pour les vidéos - pas de fallback service
   const rawVideos =
     asMediaArray(product.videos).length > 0 ? asMediaArray(product.videos)
       : asMediaArray(product.product_data?.videos).length > 0 ? asMediaArray(product.product_data?.videos)
         : asMediaArray(productData.videos).length > 0 && productData !== product ? asMediaArray(productData.videos)
-          : asMediaArray(productData.data?.videos).length > 0 ? asMediaArray(productData.data?.videos)
-            : (Array.isArray(service?.data?.produits) && productIndex !== undefined && service.data.produits[productIndex])
-              ? asMediaArray(service.data.produits[productIndex].videos)
-              : asMediaArray(service?.data?.videos?.valeur).length > 0 ? asMediaArray(service?.data?.videos?.valeur)
-                : asMediaArray(service?.data?.videos).length > 0 ? asMediaArray(service?.data?.videos)
-                  : asMediaArray(service?.videos);
+          : asMediaArray(productData.data?.videos);
 
   // Filtrer et normaliser les vidéos avec la fonction globale
   const videos = rawVideos
