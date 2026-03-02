@@ -14,9 +14,9 @@ import {
 } from 'react-native';
 import ChatHistoryModal from '../components/ChatHistoryModal';
 import ChatInputMobile from '../components/ChatInputMobile';
-import { NativeGradient } from '../components/SafeNativeDesign';
 import NotificationHistoryModal from '../components/NotificationHistoryModal';
 import { SafeIcon } from '../components/SafeIcon';
+import { NativeGradient } from '../components/SafeNativeDesign';
 import { SafeNativeView } from '../components/SafeNativeView';
 import { useAuth } from '../contexts/AuthContext';
 import { genererSuggestionsService } from '../lib/yukpoaclient';
@@ -298,7 +298,8 @@ const HomeScreenNew: React.FC = () => {
                     <View style={styles.mainSection}>
                         <View style={styles.titleContainer}>
                             <Text style={styles.mainTitle}>
-                                Yukpo
+                                <Text style={{ color: '#3B82F6' }}>Yuk</Text>
+                                <Text style={{ color: '#7C3AED' }}>po</Text>
                             </Text>
                             <Text style={styles.subtitle}>
                                 Créez ou trouvez un service en un instant.

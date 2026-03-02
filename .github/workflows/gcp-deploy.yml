@@ -1,18 +1,15 @@
 name: Deploy to Google Cloud Platform
 
 on:
-  # ✅ CORRIGÉ 2026-02-27: Désactivé push trigger pour éviter déploiements concurrents
-  # avec docker-build-optimized.yml qui fait le même déploiement Cloud Run
-  # Utiliser workflow_dispatch pour déclencher manuellement si besoin
-  #push:
-  #  branches:
-  #    - main
-  #    - master
-  #  paths:
-  #    - 'backend/**'
-  #    - '.github/workflows/gcp-deploy.yml'
-  #    - 'scripts/**'
-  #    - '*.md'
+  # ✅ CORRIGÉ 2026-03-03: Réactivé push trigger - ce workflow est le seul qui deploy vers GCP
+  # docker-build-optimized.yml est désormais workflow_dispatch uniquement (AWS)
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - 'backend/**'
+      - '.github/workflows/gcp-deploy.yml'
   workflow_dispatch:
 
 env:

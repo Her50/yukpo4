@@ -1001,10 +1001,10 @@ const styles = StyleSheet.create({
         letterSpacing: -0.3,
     },
     brandYuk: {
-        color: '#EAB308', // Jaune (branding Yuk)
+        color: '#3B82F6', // Bleu (cohérent avec le logo officiel)
     },
     brandPo: {
-        color: '#DC2626', // Rouge (branding po)
+        color: '#7C3AED', // Violet (cohérent avec le logo officiel)
     },
     headerRight: {
         flexDirection: 'row',

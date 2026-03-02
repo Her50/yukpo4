@@ -1,22 +1,25 @@
 name: Docker Build Optimized
 
 on:
-  push:
-    branches:
-      - main
-      - master
-      - develop
-    paths:
-      - 'backend/**'
-      - '.github/workflows/docker-build-optimized.yml'
-      - 'infra/aws/**'
-  pull_request:
-    branches:
-      - main
-      - master
-      - develop
-    paths:
-      - 'backend/**'
+  # ✅ CORRIGÉ 2026-03-03: Désactivé push trigger automatique
+  # Ce workflow push vers AWS ET GCP - utiliser workflow_dispatch uniquement
+  # Pour le déploiement GCP automatique, utiliser gcp-deploy.yml
+  #push:
+  #  branches:
+  #    - main
+  #    - master
+  #    - develop
+  #  paths:
+  #    - 'backend/**'
+  #    - '.github/workflows/docker-build-optimized.yml'
+  #    - 'infra/aws/**'
+  #pull_request:
+  #  branches:
+  #    - main
+  #    - master
+  #    - develop
+  #  paths:
+  #    - 'backend/**'
   workflow_dispatch:
     inputs:
       push_to_registry:
