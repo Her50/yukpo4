@@ -290,11 +290,295 @@ pub async fn register_user(
         }
     };
     if exists {
+        // ✅ CORRIGÉ 2026-03-03: Récupération pour les partenaires dont l'inscription a échoué partiellement
+        // Scénario: l'utilisateur a été créé dans `users` mais l'insertion dans `delivery_partners` a échoué
+        // (ex: enum delivery_partner_type manquait 'hotel'/'meuble'). Sur retry → 409.
+        // Solution: détecter ce cas et compléter l'inscription au lieu de rejeter.
+        if user_role == "partenaire" {
+            #[derive(FromRow)]
+            struct ExistingPartnerCheck {
+                id: i32,
+                role: String,
+                tokens_balance: i64,
+            }
+
+            let existing_user = sqlx::query_as::<_, ExistingPartnerCheck>(
+                "SELECT id, role, tokens_balance FROM users WHERE email = $1",
+            )
+            .bind(&payload.email)
+            .fetch_optional(db)
+            .await;
+
+            if let Ok(Some(eu)) = existing_user {
+                // Vérifier si le delivery_partners record existe
+                let has_partner: bool = sqlx::query_scalar(
+                    "SELECT EXISTS(SELECT 1 FROM delivery_partners WHERE created_by = $1)",
+                )
+                .bind(eu.id)
+                .fetch_one(db)
+                .await
+                .unwrap_or(false);
+
+                if !has_partner && (eu.role == "partenaire" || eu.role == "user") {
+                    // ✅ Cas de récupération: l'utilisateur existe mais pas le partenaire
+                    // Mettre à jour le mot de passe et le rôle, puis continuer avec la création du partenaire
+                    info!(
+                        "[register_user] ♻️ Récupération inscription partenaire partielle pour user_id={}, email={}",
+                        eu.id, log_safe_email(&payload.email)
+                    );
+
+                    const BCRYPT_COST_RECOVERY: u32 = 12;
+                    let password_hash_recovery = hash(&payload.password, BCRYPT_COST_RECOVERY)?;
+                    let nom_complet_recovery = build_full_name(
+                        payload.nom.as_deref(),
+                        payload.prenom.as_deref(),
+                        payload.name.as_deref(),
+                    );
+
+                    let _ = sqlx::query(
+                        r#"
+                        UPDATE users SET 
+                            password_hash = $1, role = 'partenaire', 
+                            partner_type = $2, partner_status = 'pending',
+                            nom = COALESCE($3, nom), prenom = COALESCE($4, prenom),
+                            nom_complet = COALESCE($5, nom_complet),
+                            updated_at = NOW()
+                        WHERE id = $6
+                        "#,
+                    )
+                    .bind(&password_hash_recovery)
+                    .bind(payload.partner_type.as_deref())
+                    .bind(payload.nom.as_deref())
+                    .bind(payload.prenom.as_deref())
+                    .bind(nom_complet_recovery.as_deref())
+                    .bind(eu.id)
+                    .execute(db)
+                    .await;
+
+                    // ✅ IMPORTANT: On ne retourne PAS d'erreur, on saute directement à la création du partenaire
+                    // en simulant un "new user" avec les données existantes
+                    // On utilise un goto-like en Rust: on définit new_id et on continue
+                    let recovery_user_id = eu.id;
+                    let recovery_tokens = eu.tokens_balance;
+
+                    // -- Début bloc récupération partenaire (même logique que plus bas) --
+                    let mut recovery_logo_url: Option<String> = None;
+                    if let Some(ref logo_base64) = payload.partner_logo {
+                        if !logo_base64.trim().is_empty() {
+                            use base64::{engine::general_purpose::STANDARD, Engine};
+                            use uuid::Uuid;
+
+                            let base64_data = if logo_base64.starts_with("data:image") {
+                                logo_base64.split(',').nth(1).unwrap_or(logo_base64)
+                            } else {
+                                logo_base64
+                            };
+
+                            if let Ok(decoded) = STANDARD.decode(base64_data) {
+                                let mime_type = if logo_base64.contains("image/png") {
+                                    ("image/png", "png")
+                                } else if logo_base64.contains("image/jpeg")
+                                    || logo_base64.contains("image/jpg")
+                                {
+                                    ("image/jpeg", "jpg")
+                                } else {
+                                    ("image/jpeg", "jpg")
+                                };
+
+                                let storage_key = format!(
+                                    "partners/{}/logo_{}.{}",
+                                    recovery_user_id,
+                                    Uuid::new_v4(),
+                                    mime_type.1
+                                );
+
+                                if let Ok(location) = state
+                                    .media_storage
+                                    .store_bytes(&decoded, &storage_key, Some(mime_type.0))
+                                    .await
+                                {
+                                    recovery_logo_url = Some(location.storage_path);
+                                }
+                            }
+                        }
+                    }
+
+                    // Créer la table/enum si nécessaire (même bloc que plus bas)
+                    let _ = sqlx::query(
+                        r#"
+                        DO $$
+                        BEGIN
+                            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'delivery_partner_type') THEN
+                                CREATE TYPE delivery_partner_type AS ENUM (
+                                    'livraison', 'livraison_courses_marche', 'pharmacie', 'hopital', 
+                                    'laboratoire', 'agence de voyage', 'demenagement', 'transport', 
+                                    'assureur', 'supermarche', 'telecom', 'chauffeur',
+                                    'hotel', 'meuble', 'etablissementscolaire', 'banquesang'
+                                );
+                            END IF;
+                            IF NOT EXISTS (
+                                SELECT 1 FROM information_schema.tables 
+                                WHERE table_schema = 'public' AND table_name = 'delivery_partners'
+                            ) THEN
+                                CREATE TABLE delivery_partners (
+                                    id SERIAL PRIMARY KEY,
+                                    name VARCHAR(255) NOT NULL,
+                                    description TEXT,
+                                    partner_type delivery_partner_type NOT NULL DEFAULT 'livraison',
+                                    contact_email VARCHAR(255),
+                                    contact_phone VARCHAR(50),
+                                    address TEXT,
+                                    city VARCHAR(100),
+                                    country VARCHAR(100) NOT NULL DEFAULT 'Non spécifié',
+                                    continent VARCHAR(50),
+                                    website VARCHAR(255),
+                                    logo_url TEXT,
+                                    location_latitude DOUBLE PRECISION,
+                                    location_longitude DOUBLE PRECISION,
+                                    location_address TEXT,
+                                    is_active BOOLEAN DEFAULT TRUE,
+                                    created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                                    created_at TIMESTAMPTZ DEFAULT NOW(),
+                                    updated_at TIMESTAMPTZ DEFAULT NOW(),
+                                    UNIQUE(name, country)
+                                );
+                            END IF;
+                        END
+                        $$;
+                        "#
+                    )
+                    .execute(db)
+                    .await;
+
+                    // Ajouter les valeurs manquantes à l'enum si elles existent déjà
+                    let _ = sqlx::query(
+                        r#"
+                        DO $$
+                        BEGIN
+                            IF NOT EXISTS (SELECT 1 FROM pg_enum WHERE enumlabel = 'hotel' AND enumtypid = 'delivery_partner_type'::regtype) THEN
+                                ALTER TYPE delivery_partner_type ADD VALUE 'hotel';
+                            END IF;
+                            IF NOT EXISTS (SELECT 1 FROM pg_enum WHERE enumlabel = 'meuble' AND enumtypid = 'delivery_partner_type'::regtype) THEN
+                                ALTER TYPE delivery_partner_type ADD VALUE 'meuble';
+                            END IF;
+                            IF NOT EXISTS (SELECT 1 FROM pg_enum WHERE enumlabel = 'etablissementscolaire' AND enumtypid = 'delivery_partner_type'::regtype) THEN
+                                ALTER TYPE delivery_partner_type ADD VALUE 'etablissementscolaire';
+                            END IF;
+                            IF NOT EXISTS (SELECT 1 FROM pg_enum WHERE enumlabel = 'banquesang' AND enumtypid = 'delivery_partner_type'::regtype) THEN
+                                ALTER TYPE delivery_partner_type ADD VALUE 'banquesang';
+                            END IF;
+                        END
+                        $$;
+                        "#
+                    )
+                    .execute(db)
+                    .await;
+
+                    let partner_name = payload
+                        .partner_name
+                        .as_ref()
+                        .map(|s| s.trim())
+                        .filter(|s| !s.is_empty())
+                        .ok_or_else(|| {
+                            AppError::BadRequest(
+                                "partner_name est requis pour un partenaire".into(),
+                            )
+                        })?;
+
+                    let partner_country = payload
+                        .partner_country
+                        .as_deref()
+                        .map(|s| s.trim())
+                        .filter(|s| !s.is_empty())
+                        .unwrap_or("Non spécifié");
+
+                    let partner_result = sqlx::query(
+                        r#"
+                        INSERT INTO delivery_partners (
+                            name, description, partner_type, contact_email, contact_phone, address,
+                            city, country, continent, website, logo_url, location_latitude, location_longitude,
+                            location_address, is_active, created_by
+                        )
+                        VALUES ($1, $2, $3::delivery_partner_type, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+                        ON CONFLICT (name, country) DO UPDATE SET
+                            created_by = EXCLUDED.created_by,
+                            partner_type = EXCLUDED.partner_type,
+                            contact_email = EXCLUDED.contact_email,
+                            updated_at = NOW()
+                        "#
+                    )
+                    .bind(partner_name)
+                    .bind(None::<String>)
+                    .bind(payload.partner_type.as_deref().unwrap_or("livraison"))
+                    .bind(Some(payload.email.as_str()))
+                    .bind(payload.partner_phone.as_deref())
+                    .bind(payload.partner_address.as_deref())
+                    .bind(payload.partner_city.as_deref())
+                    .bind(partner_country)
+                    .bind(None::<String>)
+                    .bind(None::<String>)
+                    .bind(recovery_logo_url.as_deref())
+                    .bind(payload.partner_lat)
+                    .bind(payload.partner_lng)
+                    .bind(payload.partner_address.as_deref())
+                    .bind(false)
+                    .bind(recovery_user_id)
+                    .execute(db)
+                    .await;
+
+                    match partner_result {
+                        Ok(_) => {
+                            info!(
+                                "[register_user] ✅ Récupération réussie: partenaire créé pour user_id={}",
+                                recovery_user_id
+                            );
+                        }
+                        Err(e) => {
+                            error!(
+                                "[register_user] ❌ Échec récupération partenaire pour user_id={}: {}",
+                                recovery_user_id, e
+                            );
+                            return Err(AppError::Internal(format!(
+                                "Erreur lors de la création du partenaire: {}. Veuillez contacter le support.",
+                                e
+                            )));
+                        }
+                    }
+
+                    // Générer JWT et retourner succès
+                    let secret = std::env::var("JWT_SECRET")
+                        .map_err(|_| AppError::Internal("JWT_SECRET manquant".into()))?;
+                    let jwt = generate_jwt(
+                        recovery_user_id,
+                        user_role,
+                        &payload.email,
+                        nom_complet_recovery.clone(),
+                        recovery_tokens,
+                        &secret,
+                        payload.partner_type.clone(),
+                    )?;
+
+                    return Ok((
+                        axum::http::StatusCode::CREATED,
+                        Json(serde_json::json!({
+                            "id": recovery_user_id,
+                            "user_id": recovery_user_id,
+                            "tokens_balance": recovery_tokens,
+                            "token": jwt,
+                            "phone_verified": false,
+                            "recovered": true,
+                            "message": "Compte partenaire récupéré et complété avec succès."
+                        })),
+                    )
+                        .into_response());
+                }
+            }
+        }
+
         error!(
             "[register_user] Email déjà utilisé: {}",
             log_safe_email(&payload.email)
         );
-        // ✅ AMÉLIORÉ: Message d'erreur plus informatif pour les partenaires
         let error_message = if user_role == "partenaire" {
             "Cet email est déjà utilisé. Veuillez vous connecter avec cet email ou contacter le support pour obtenir le statut partenaire.".to_string()
         } else {
@@ -461,7 +745,8 @@ pub async fn register_user(
                     CREATE TYPE delivery_partner_type AS ENUM (
                         'livraison', 'livraison_courses_marche', 'pharmacie', 'hopital', 
                         'laboratoire', 'agence de voyage', 'demenagement', 'transport', 
-                        'assureur', 'supermarche', 'telecom', 'chauffeur'
+                        'assureur', 'supermarche', 'telecom', 'chauffeur',
+                        'hotel', 'meuble', 'etablissementscolaire', 'banquesang'
                     );
                 END IF;
                 
@@ -497,6 +782,30 @@ pub async fn register_user(
                     CREATE INDEX IF NOT EXISTS idx_delivery_partners_active ON delivery_partners(is_active);
                     CREATE INDEX IF NOT EXISTS idx_delivery_partners_created_by ON delivery_partners(created_by);
                     CREATE INDEX IF NOT EXISTS idx_delivery_partners_type ON delivery_partners(partner_type);
+                END IF;
+            END
+            $$;
+            "#
+        )
+        .execute(db)
+        .await;
+
+        // ✅ CORRIGÉ 2026-03-03: Ajouter les valeurs manquantes à l'enum existant
+        let _ = sqlx::query(
+            r#"
+            DO $$
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_enum WHERE enumlabel = 'hotel' AND enumtypid = 'delivery_partner_type'::regtype) THEN
+                    ALTER TYPE delivery_partner_type ADD VALUE 'hotel';
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM pg_enum WHERE enumlabel = 'meuble' AND enumtypid = 'delivery_partner_type'::regtype) THEN
+                    ALTER TYPE delivery_partner_type ADD VALUE 'meuble';
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM pg_enum WHERE enumlabel = 'etablissementscolaire' AND enumtypid = 'delivery_partner_type'::regtype) THEN
+                    ALTER TYPE delivery_partner_type ADD VALUE 'etablissementscolaire';
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM pg_enum WHERE enumlabel = 'banquesang' AND enumtypid = 'delivery_partner_type'::regtype) THEN
+                    ALTER TYPE delivery_partner_type ADD VALUE 'banquesang';
                 END IF;
             END
             $$;

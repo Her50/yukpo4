@@ -5666,6 +5666,8 @@ async fn create_delivery_partner(
         "chauffeur",
         "hotel",
         "meuble",
+        "etablissementscolaire",
+        "banquesang",
     ];
     if !valid_types.contains(&partner_type_str) {
         return Err(AppError::BadRequest(format!(
@@ -5773,6 +5775,8 @@ async fn update_delivery_partner(
         "chauffeur",
         "hotel",
         "meuble",
+        "etablissementscolaire",
+        "banquesang",
     ];
     if !valid_types.contains(&partner_type_str) {
         return Err(AppError::BadRequest(format!(

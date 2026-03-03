@@ -1064,7 +1064,7 @@ pub async fn update_product(
             match processor
                 .process_media_batch(
                     service_id_i32,
-                    Some(payload.product_index as u32),
+                    Some(payload.product_index as usize),
                     media_items,
                 )
                 .await

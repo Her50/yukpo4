@@ -804,6 +804,8 @@ pub struct UserSavedAddressListResponse {
 pub enum DeliveryPartnerType {
     #[sqlx(rename = "livraison")]
     Livraison,
+    #[sqlx(rename = "livraison_courses_marche")]
+    LivraisonCoursesMarche,
     Pharmacie,
     Hopital,
     Laboratoire,
@@ -814,6 +816,11 @@ pub enum DeliveryPartnerType {
     Assureur,    // ✅ NOUVEAU 2026-01-04: Type partenaire assureur
     Supermarche, // ✅ NOUVEAU 2026-01-04: Type partenaire supermarché
     Telecom,     // ✅ NOUVEAU 2026-01-04: Type partenaire télécom
+    Chauffeur,
+    Hotel,
+    Meuble,
+    Etablissementscolaire,
+    Banquesang,
 }
 
 /// ✅ NOUVEAU 2026-01-04: Modèle pour les partenaires de livraison

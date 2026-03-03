@@ -1003,11 +1003,21 @@ const MesProduitsScreen: React.FC = () => {
 
             const prefill = buildProductPrefill(product);
 
-            // ✅ CORRECTION: Utiliser les médias chargés depuis l'API en priorité, sinon ceux du prefill
-            const finalImages = loadedImages.length > 0 ? loadedImages : (Array.isArray(prefill.images) ? prefill.images : []);
-            const finalVideos = loadedVideos.length > 0 ? loadedVideos : (Array.isArray(prefill.videos) ? prefill.videos : []);
-            const finalAudios = loadedAudios.length > 0 ? loadedAudios : (Array.isArray(prefill.audios) ? prefill.audios : []);
-            const finalDocuments = loadedDocuments.length > 0 ? loadedDocuments : (Array.isArray(prefill.documents) ? prefill.documents : []);
+            // ✅ CORRECTION: Convertir les chemins relatifs (uploads/...) en URLs complètes via buildMediaUrl
+            // Les médias chargés depuis l'API sont déjà des URLs complètes, mais ceux du prefill (product_data)
+            // peuvent être des chemins relatifs qui ne s'afficheront pas dans MediaUploadManager
+            const normalizeMediaUrls = (items: any[]): string[] => {
+                if (!Array.isArray(items)) return [];
+                return items
+                    .map((item: any) => typeof item === 'string' ? buildMediaUrl(item) : null)
+                    .filter((url): url is string => url !== null && url.length > 0);
+            };
+
+            // ✅ CORRECTION: Utiliser les médias chargés depuis l'API en priorité, sinon ceux du prefill (convertis)
+            const finalImages = loadedImages.length > 0 ? loadedImages : normalizeMediaUrls(prefill.images);
+            const finalVideos = loadedVideos.length > 0 ? loadedVideos : normalizeMediaUrls(prefill.videos);
+            const finalAudios = loadedAudios.length > 0 ? loadedAudios : normalizeMediaUrls(prefill.audios);
+            const finalDocuments = loadedDocuments.length > 0 ? loadedDocuments : normalizeMediaUrls(prefill.documents);
 
             // Mettre à jour le prefill avec les médias chargés
             prefill.images = finalImages;
@@ -1169,11 +1179,18 @@ const MesProduitsScreen: React.FC = () => {
             const originalName = prefill.nom_produit || product.nom || 'Produit';
             prefill.nom_produit = `${originalName} (Copie)`;
 
-            // ✅ CORRECTION: Utiliser les médias chargés depuis l'API en priorité, sinon ceux du prefill
-            const finalImages = loadedImages.length > 0 ? loadedImages : (Array.isArray(prefill.images) ? prefill.images : []);
-            const finalVideos = loadedVideos.length > 0 ? loadedVideos : (Array.isArray(prefill.videos) ? prefill.videos : []);
-            const finalAudios = loadedAudios.length > 0 ? loadedAudios : (Array.isArray(prefill.audios) ? prefill.audios : []);
-            const finalDocuments = loadedDocuments.length > 0 ? loadedDocuments : (Array.isArray(prefill.documents) ? prefill.documents : []);
+            // ✅ CORRECTION: Convertir les chemins relatifs en URLs complètes (même fix que handleEditProduct)
+            const normalizeDupMediaUrls = (items: any[]): string[] => {
+                if (!Array.isArray(items)) return [];
+                return items
+                    .map((item: any) => typeof item === 'string' ? buildMediaUrl(item) : null)
+                    .filter((url): url is string => url !== null && url.length > 0);
+            };
+
+            const finalImages = loadedImages.length > 0 ? loadedImages : normalizeDupMediaUrls(prefill.images);
+            const finalVideos = loadedVideos.length > 0 ? loadedVideos : normalizeDupMediaUrls(prefill.videos);
+            const finalAudios = loadedAudios.length > 0 ? loadedAudios : normalizeDupMediaUrls(prefill.audios);
+            const finalDocuments = loadedDocuments.length > 0 ? loadedDocuments : normalizeDupMediaUrls(prefill.documents);
 
             // Mettre à jour le prefill avec les médias chargés
             prefill.images = finalImages;

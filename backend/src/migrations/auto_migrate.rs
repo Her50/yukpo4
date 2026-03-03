@@ -5620,6 +5620,22 @@ pub async fn ensure_delivery_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
             ) THEN
                 ALTER TYPE delivery_partner_type ADD VALUE 'meuble';
             END IF;
+            
+            -- ✅ NOUVEAU 2026-03-03: Ajouter 'etablissementscolaire' si n'existe pas
+            IF NOT EXISTS (
+                SELECT 1 FROM pg_enum 
+                WHERE enumlabel = 'etablissementscolaire' AND enumtypid = 'delivery_partner_type'::regtype
+            ) THEN
+                ALTER TYPE delivery_partner_type ADD VALUE 'etablissementscolaire';
+            END IF;
+            
+            -- ✅ NOUVEAU 2026-03-03: Ajouter 'banquesang' si n'existe pas
+            IF NOT EXISTS (
+                SELECT 1 FROM pg_enum 
+                WHERE enumlabel = 'banquesang' AND enumtypid = 'delivery_partner_type'::regtype
+            ) THEN
+                ALTER TYPE delivery_partner_type ADD VALUE 'banquesang';
+            END IF;
         END
         $$;
         "#,
