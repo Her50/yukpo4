@@ -72,7 +72,7 @@ const buildMediaUrl = (path?: string | null): string | null => {
     // ✅ CORRIGÉ: Utiliser /api/media/files pour les chemins uploads/
     if (trimmed.startsWith('uploads/') || trimmed.startsWith('/uploads/')) {
         const cleanPath = trimmed.startsWith('/') ? trimmed.slice(1) : trimmed;
-        const base = (config.API_BASE_URL || config.UPLOAD_BASE_URL || '').replace(/\/$/, '');
+        const base = (config.API_URL || config.UPLOAD_BASE_URL || '').replace(/\/$/, '');
         if (!base) {
             return null;
         }
@@ -80,7 +80,7 @@ const buildMediaUrl = (path?: string | null): string | null => {
     }
     // Pour les autres chemins, utiliser aussi /api/media/files
     const cleanPath = trimmed.startsWith('/') ? trimmed.slice(1) : trimmed;
-    const base = (config.API_BASE_URL || config.UPLOAD_BASE_URL || '').replace(/\/$/, '');
+    const base = (config.API_URL || config.UPLOAD_BASE_URL || '').replace(/\/$/, '');
     if (!base) {
         return null;
     }
@@ -412,8 +412,68 @@ const MesProduitsScreen: React.FC = () => {
                 return dateB - dateA;
             });
 
-            setProducts(allProducts);
-            console.log('[MesProduitsScreen] ✅ Produits chargés depuis service_products:', allProducts.length);
+            // ✅ CORRECTION 2026-03-03: Charger les médias depuis la table media pour chaque produit
+            // Le product_data JSONB a souvent ses base64 nettoyés → images vides ou chemins relatifs
+            // Les vrais médias sont dans la table media, accessibles via l'API
+            const productsWithMedia = await Promise.all(
+                allProducts.map(async (product) => {
+                    // Si le produit a déjà des images valides (URLs complètes), ne pas recharger
+                    const existingImages = Array.isArray(product.images) ? product.images : [];
+                    const hasValidImages = existingImages.some((img: any) =>
+                        typeof img === 'string' && (img.startsWith('http://') || img.startsWith('https://'))
+                    );
+                    if (hasValidImages) return product;
+
+                    try {
+                        const mediaResponse = await mediaApi.getProductMedia(product.serviceId, product.product_index);
+                        if (mediaResponse.success && mediaResponse.data) {
+                            const entries = mediaResponse.data.data || mediaResponse.data;
+                            if (Array.isArray(entries) && entries.length > 0) {
+                                const mediaImages: string[] = [];
+                                const mediaVideos: string[] = [];
+                                entries.forEach((entry: any) => {
+                                    const mediaType = entry.media_type || entry.type || 'image';
+                                    const path = entry.path || entry.url || entry.file_path;
+                                    const fullUrl = buildMediaUrl(path);
+                                    if (fullUrl) {
+                                        if (mediaType === 'video') {
+                                            mediaVideos.push(fullUrl);
+                                        } else {
+                                            mediaImages.push(fullUrl);
+                                        }
+                                    }
+                                });
+                                if (mediaImages.length > 0 || mediaVideos.length > 0) {
+                                    return {
+                                        ...product,
+                                        images: mediaImages.length > 0 ? mediaImages : product.images,
+                                        videos: mediaVideos.length > 0 ? mediaVideos : product.videos,
+                                    };
+                                }
+                            }
+                        }
+                    } catch (e) {
+                        // Non bloquant: si le chargement média échoue, on garde les images du JSONB
+                    }
+
+                    // Fallback: normaliser les chemins relatifs existants en URLs complètes
+                    const normalizedImages = (Array.isArray(product.images) ? product.images : [])
+                        .map((img: any) => typeof img === 'string' ? buildMediaUrl(img) : null)
+                        .filter((url: any): url is string => url !== null);
+                    const normalizedVideos = (Array.isArray(product.videos) ? product.videos : [])
+                        .map((vid: any) => typeof vid === 'string' ? buildMediaUrl(vid) : null)
+                        .filter((url: any): url is string => url !== null);
+
+                    return {
+                        ...product,
+                        images: normalizedImages.length > 0 ? normalizedImages : product.images,
+                        videos: normalizedVideos.length > 0 ? normalizedVideos : product.videos,
+                    };
+                })
+            );
+
+            setProducts(productsWithMedia);
+            console.log('[MesProduitsScreen] ✅ Produits chargés avec médias:', productsWithMedia.length);
 
             // ✅ CORRIGÉ 2026-02-27: Charger les services pour que l'icône galerie médias fonctionne
             // Sans cela, services reste [] et le bouton affiche "Aucun service"
@@ -1952,18 +2012,54 @@ const MesProduitsScreen: React.FC = () => {
                 key={`${product.serviceId}_${product.id}_${product.product_index}`}
                 style={styles.productCard}
             >
-                {/* ✅ NOUVEAU 2026-02-27: Thumbnail produit */}
+                {/* ✅ CORRIGÉ 2026-03-03: Thumbnail produit robuste */}
                 {(() => {
-                    const allMedia = [...(Array.isArray(product.images) ? product.images : []), ...(Array.isArray(product.videos) ? product.videos : [])];
-                    const firstImage = allMedia.find((m: any) => typeof m === 'string' && !m.includes('.mp4') && !m.includes('.webm'));
+                    // Extraire les URLs de média de manière robuste (gère string, {valeur:...}, objets)
+                    const extractUrls = (field: any): string[] => {
+                        if (!field) return [];
+                        if (Array.isArray(field)) {
+                            return field.flatMap((item: any) => {
+                                if (typeof item === 'string' && item.trim()) return [item.trim()];
+                                if (item && typeof item === 'object') {
+                                    if (typeof item.valeur === 'string' && item.valeur.trim()) return [item.valeur.trim()];
+                                    if (typeof item.url === 'string' && item.url.trim()) return [item.url.trim()];
+                                    if (typeof item.path === 'string' && item.path.trim()) return [item.path.trim()];
+                                    if (Array.isArray(item.valeur)) return item.valeur.filter((v: any) => typeof v === 'string' && v.trim());
+                                }
+                                return [];
+                            });
+                        }
+                        if (typeof field === 'object' && Array.isArray(field.valeur)) {
+                            return field.valeur.filter((v: any) => typeof v === 'string' && v.trim());
+                        }
+                        if (typeof field === 'string' && field.trim()) return [field.trim()];
+                        return [];
+                    };
+
+                    const imageUrls = extractUrls(product.images);
+                    const videoUrls = extractUrls(product.videos);
+                    const allUrls = [...imageUrls, ...videoUrls];
+
+                    // Trouver la première image (pas vidéo) pour le thumbnail
+                    const firstImage = allUrls.find((url) => !url.includes('.mp4') && !url.includes('.webm') && !url.includes('.mov'));
                     const thumbUrl = firstImage ? buildMediaUrl(firstImage) : null;
+
                     if (thumbUrl) {
                         return (
-                            <Image
-                                source={{ uri: thumbUrl }}
-                                style={{ width: '100%', height: 160, borderTopLeftRadius: 12, borderTopRightRadius: 12 }}
-                                resizeMode="cover"
-                            />
+                            <View>
+                                <Image
+                                    source={{ uri: thumbUrl }}
+                                    style={{ width: '100%', height: 180, borderTopLeftRadius: 12, borderTopRightRadius: 12 }}
+                                    resizeMode="cover"
+                                />
+                                {allUrls.length > 1 && (
+                                    <View style={{ position: 'absolute', bottom: 8, right: 8, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 }}>
+                                        <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '600' }}>
+                                            {imageUrls.length > 0 ? `📷 ${imageUrls.length}` : ''}{imageUrls.length > 0 && videoUrls.length > 0 ? '  ' : ''}{videoUrls.length > 0 ? `🎬 ${videoUrls.length}` : ''}
+                                        </Text>
+                                    </View>
+                                )}
+                            </View>
                         );
                     }
                     return (

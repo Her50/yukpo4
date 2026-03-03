@@ -6,7 +6,6 @@ use crate::core::types::AppError;
 use crate::models::hotel_room_management::{
     CreateBlockageRequest, CreateManualReservationRequest, HotelUnitBlockage, QRCodeScanResponse,
 };
-use chrono::Utc;
 use rust_decimal::Decimal;
 use serde_json::json;
 use sqlx::{PgPool, Row};

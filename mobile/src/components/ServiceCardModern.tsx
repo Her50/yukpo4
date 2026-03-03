@@ -1,8 +1,44 @@
 import React from 'react';
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { config } from '../config/environment';
 import { modernColors } from '../theme/modernTheme';
 import { theme } from '../theme/theme';
 import SafeIcon from './SafeIcon';
+
+// ✅ Helper pour construire l'URL complète d'un média (même logique que MesProduitsScreen)
+const buildServiceMediaUrl = (path?: string | null): string | null => {
+    if (!path || typeof path !== 'string') return null;
+    const trimmed = path.trim();
+    if (!trimmed) return null;
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:')) return trimmed;
+    const cleanPath = trimmed.startsWith('/') ? trimmed.slice(1) : trimmed;
+    const base = (config.API_BASE_URL || config.UPLOAD_BASE_URL || '').replace(/\/$/, '');
+    if (!base) return null;
+    return `${base}/api/media/files/${cleanPath}`;
+};
+
+// ✅ Extraire les URLs de média de manière robuste (string, {valeur:...}, array)
+const extractServiceMediaUrls = (field: any): string[] => {
+    if (!field) return [];
+    if (Array.isArray(field)) {
+        return field.flatMap((item: any) => {
+            if (typeof item === 'string' && item.trim()) return [item.trim()];
+            if (item && typeof item === 'object') {
+                if (typeof item.valeur === 'string' && item.valeur.trim()) return [item.valeur.trim()];
+                if (typeof item.url === 'string' && item.url.trim()) return [item.url.trim()];
+                if (typeof item.path === 'string' && item.path.trim()) return [item.path.trim()];
+                if (Array.isArray(item.valeur)) return item.valeur.filter((v: any) => typeof v === 'string' && v.trim());
+            }
+            return [];
+        });
+    }
+    if (typeof field === 'object' && field !== null) {
+        if (Array.isArray(field.valeur)) return field.valeur.filter((v: any) => typeof v === 'string' && v.trim());
+        if (typeof field.valeur === 'string' && field.valeur.trim()) return [field.valeur.trim()];
+    }
+    if (typeof field === 'string' && field.trim()) return [field.trim()];
+    return [];
+};
 
 interface ServiceCardModernProps {
     service: {
@@ -110,6 +146,52 @@ const ServiceCardModern: React.FC<ServiceCardModernProps> = ({
                     </View>
                 </View>
             )}
+
+            {/* ✅ NOUVEAU 2026-03-03: Thumbnail du service */}
+            {(() => {
+                // Chercher la première image disponible: logo → banner → images → premier produit
+                const data = service.data || {};
+                const candidates: string[] = [];
+
+                // Logo
+                const logo = data.logo?.valeur || data.logo;
+                if (typeof logo === 'string' && logo.trim()) candidates.push(logo.trim());
+
+                // Bannière
+                const banner = data.banner?.valeur || data.banner;
+                if (typeof banner === 'string' && banner.trim()) candidates.push(banner.trim());
+
+                // Images du service
+                candidates.push(...extractServiceMediaUrls(data.images));
+
+                // Images du premier produit
+                const produits = data.produits?.valeur || data.produits;
+                if (Array.isArray(produits) && produits.length > 0) {
+                    candidates.push(...extractServiceMediaUrls(produits[0]?.images));
+                }
+
+                // Trouver la première image (pas vidéo)
+                const firstImg = candidates.find(c => !c.includes('.mp4') && !c.includes('.webm') && !c.includes('.mov'));
+                const thumbUrl = firstImg ? buildServiceMediaUrl(firstImg) : null;
+
+                if (thumbUrl) {
+                    return (
+                        <View style={styles.thumbnailContainer}>
+                            <Image
+                                source={{ uri: thumbUrl }}
+                                style={styles.thumbnailImage}
+                                resizeMode="cover"
+                            />
+                            <View style={[styles.statusOverlay, { backgroundColor: getStatusColor(service?.status) }]}>
+                                <Text style={styles.statusOverlayText}>
+                                    {getStatusText(service?.status)}
+                                </Text>
+                            </View>
+                        </View>
+                    );
+                }
+                return null;
+            })()}
 
             {/* Header avec titre et statut */}
             <View style={styles.header}>
@@ -485,6 +567,31 @@ const styles = StyleSheet.create({
     actionVideo: {
         backgroundColor: '#FDF2F8',
         borderColor: '#FBCFE8',
+    },
+    thumbnailContainer: {
+        width: '100%',
+        height: 180,
+        marginBottom: 12,
+        borderRadius: 10,
+        overflow: 'hidden',
+        backgroundColor: '#F3F4F6',
+    },
+    thumbnailImage: {
+        width: '100%',
+        height: '100%',
+    },
+    statusOverlay: {
+        position: 'absolute',
+        top: 10,
+        right: 10,
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 12,
+    },
+    statusOverlayText: {
+        color: '#FFFFFF',
+        fontSize: 11,
+        fontWeight: '700',
     },
     actionLabel: {
         fontSize: 11,

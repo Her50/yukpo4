@@ -2,7 +2,7 @@ use crate::utils::log::{log_error, log_warn};
 use axum::{
     body::Body,
     extract::{Extension, Path, State},
-    http::{HeaderMap, HeaderValue, StatusCode},
+    http::StatusCode,
     response::Response,
     routing::{delete, get, patch, post, put},
     Json, Router,
