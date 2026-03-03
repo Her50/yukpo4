@@ -22,13 +22,14 @@ import {
 import { useWebSocketChat } from '../hooks/useWebSocketChat';
 import { apiGet, apiPost } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
+import NegotiatedPriceModal from './chat/NegotiatedPriceModal';
+import OrderDeliveryModal from './delivery/OrderDeliveryModal';
 import InAppCallModal from './InAppCallModal';
 import LinkableText from './LinkableText';
+import ProductCommentsSection from './ProductCommentsSection';
 import ProductGalleryPickerModal from './ProductGalleryPickerModal';
 import SafeIcon from './SafeIcon';
 import UserMentionPicker from './UserMentionPicker';
-import NegotiatedPriceModal from './chat/NegotiatedPriceModal';
-import OrderDeliveryModal from './delivery/OrderDeliveryModal';
 
 interface ChatModalMobileProps {
     visible: boolean;
@@ -94,6 +95,10 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
     // ✅ NOUVEAU 2026-01-23: État pour vérifier si la livraison est disponible
     const [hasDeliveryConfig, setHasDeliveryConfig] = useState<boolean>(false);
     const [deliveryEnabled, setDeliveryEnabled] = useState<boolean>(false);
+
+    // ✅ FIX 2026-03-03: État pour ouvrir les commentaires produit en modal inline
+    const [showCommentsModal, setShowCommentsModal] = useState(false);
+    const [commentsServiceId, setCommentsServiceId] = useState<number | null>(null);
 
     // ✅ NOUVEAU: États pour le système de réponse/citation
     const [replyingTo, setReplyingTo] = useState<any | null>(null);
@@ -1016,11 +1021,10 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                                     });
                                                 }}
                                                 onReviewLinkPress={(serviceId) => {
-                                                    // Navigation vers les avis du produit
-                                                    (navigation as any).navigate('ServiceDetail', {
-                                                        serviceId,
-                                                        showReviews: true
-                                                    });
+                                                    // ✅ FIX 2026-03-03: Ouvrir les commentaires en modal inline au lieu de naviguer vers ServiceDetail
+                                                    // ServiceDetail utilise /api/specialized-services/user qui ne retourne que les services de l'utilisateur connecté
+                                                    setCommentsServiceId(serviceId);
+                                                    setShowCommentsModal(true);
                                                 }}
                                             />
                                         )}
@@ -1593,6 +1597,41 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                         // Optionnel: recharger les messages ou afficher une notification
                     }}
                 />
+            )}
+
+            {/* ✅ FIX 2026-03-03: Modal commentaires/avis produit inline */}
+            {showCommentsModal && commentsServiceId && (
+                <Modal
+                    visible={showCommentsModal}
+                    animationType="slide"
+                    transparent={false}
+                    onRequestClose={() => setShowCommentsModal(false)}
+                >
+                    <View style={styles.commentsModalContainer}>
+                        <View style={styles.commentsModalHeader}>
+                            <TouchableOpacity
+                                onPress={() => setShowCommentsModal(false)}
+                                style={styles.commentsModalClose}
+                            >
+                                <SafeIcon name="arrow-left" size={24} color={modernColors.text} />
+                            </TouchableOpacity>
+                            <Text style={styles.commentsModalTitle}>Avis et commentaires</Text>
+                            <View style={{ width: 40 }} />
+                        </View>
+                        <ProductCommentsSection
+                            serviceId={commentsServiceId}
+                            serviceTitle={
+                                service?.data?.titre_service?.valeur ||
+                                service?.data?.titre_service ||
+                                service?.data?.nom_produit?.valeur ||
+                                service?.data?.nom_produit ||
+                                'Produit'
+                            }
+                            mode="full"
+                            displayLimit={15}
+                        />
+                    </View>
+                </Modal>
             )}
 
             {/* ✅ NOUVEAU: Modal liste des participants */}
@@ -2202,6 +2241,29 @@ const styles = StyleSheet.create({
     fileText: {
         fontSize: 14,
         fontWeight: '500',
+    },
+    // ✅ FIX 2026-03-03: Styles pour le modal de commentaires inline
+    commentsModalContainer: {
+        flex: 1,
+        backgroundColor: modernColors.background,
+        paddingTop: Platform.OS === 'ios' ? 50 : 30,
+    },
+    commentsModalHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 16,
+        paddingBottom: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: modernColors.border,
+    },
+    commentsModalClose: {
+        padding: 8,
+    },
+    commentsModalTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: modernColors.text,
     },
     // ✅ NOUVEAU: Styles pour la liste des participants
     participantsOverlay: {

@@ -8,13 +8,16 @@ interface ShareServiceModalProps {
   onClose: () => void;
   serviceId: string;
   titre?: string;
+  description?: string;
+  prix?: string | number;
+  devise?: string;
 }
 
 // ✅ CORRIGÉ: Utiliser l'URL du backend Cloud Run qui sert la route /service/:id
 const SHARE_BASE_URL = process.env.EXPO_PUBLIC_SHARE_URL || 'https://yukpo-backend-376093909298.europe-west1.run.app';
 const getServiceUrl = (serviceId: string) => `${SHARE_BASE_URL}/service/${serviceId}`;
 
-const ShareServiceModal: React.FC<ShareServiceModalProps> = ({ open, onClose, serviceId, titre }) => {
+const ShareServiceModal: React.FC<ShareServiceModalProps> = ({ open, onClose, serviceId, titre, description, prix, devise }) => {
   const url = getServiceUrl(serviceId);
 
   const handleCopy = async () => {
@@ -30,8 +33,12 @@ const ShareServiceModal: React.FC<ShareServiceModalProps> = ({ open, onClose, se
   const handleShare = async (platform: 'whatsapp' | 'facebook' | 'twitter' | 'email' | 'linkedin' | 'telegram') => {
     let shareUrl = '';
     const serviceTitle = titre || 'Service Yukpo';
-    const serviceDescription = `Découvrez ce service exceptionnel sur Yukpo : ${serviceTitle}`;
-    const fullText = `${serviceDescription}\n\n${url}`;
+    const deviseStr = devise || 'XAF';
+    let serviceDescription = `🛍️ ${serviceTitle}`;
+    if (description) serviceDescription += `\n\n${description}`;
+    if (prix) serviceDescription += `\n💰 Prix: ${prix} ${deviseStr}`;
+    serviceDescription += `\n\n🔗 Voir sur Yukpo:`;
+    const fullText = `${serviceDescription}\n${url}`;
 
     switch (platform) {
       case 'whatsapp':
@@ -52,7 +59,7 @@ const ShareServiceModal: React.FC<ShareServiceModalProps> = ({ open, onClose, se
         break;
       case 'email':
         const emailSubject = `Service Yukpo : ${serviceTitle}`;
-        const emailBody = `Bonjour,\n\nJe vous partage ce service intéressant sur Yukpo :\n\n${serviceTitle}\n\n${url}\n\nCordialement`;
+        const emailBody = `Bonjour,\n\nJe vous partage ce service intéressant sur Yukpo :\n\n${serviceTitle}${description ? '\n' + description : ''}${prix ? '\n\nPrix: ' + prix + ' ' + (devise || 'XAF') : ''}\n\n${url}\n\nCordialement`;
         shareUrl = `mailto:?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
         break;
     }
@@ -73,8 +80,13 @@ const ShareServiceModal: React.FC<ShareServiceModalProps> = ({ open, onClose, se
   const handleNativeShare = async () => {
     try {
       const serviceTitle = titre || 'Service Yukpo';
+      const deviseStr = devise || 'XAF';
+      let shareText = `🛍️ ${serviceTitle}`;
+      if (description) shareText += `\n\n${description}`;
+      if (prix) shareText += `\n💰 Prix: ${prix} ${deviseStr}`;
+      shareText += `\n\n🔗 Voir sur Yukpo:\n${url}`;
       const result = await Share.share({
-        message: `Découvrez ce service exceptionnel sur Yukpo : ${serviceTitle}\n\n${url}`,
+        message: shareText,
         title: serviceTitle,
         url: url,
       });

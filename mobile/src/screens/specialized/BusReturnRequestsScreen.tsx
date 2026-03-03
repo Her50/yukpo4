@@ -11,8 +11,8 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import { NativeButton } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeButton } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiGet } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
@@ -40,8 +40,9 @@ const BusReturnRequestsScreen: React.FC = () => {
     const loadRequests = async () => {
         try {
             const response = await apiGet('/api/bus-tickets/return-requests');
-            if (response.success && response.requests) {
-                setRequests(response.requests);
+            const resData = (response?.data || response) as any;
+            if (resData.success && resData.requests) {
+                setRequests(resData.requests);
             }
         } catch (error: any) {
             console.error('[BusReturnRequestsScreen] Erreur:', error);

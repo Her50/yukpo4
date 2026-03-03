@@ -55,9 +55,9 @@ const ConferencesLivesScreen: React.FC = () => {
             });
 
             const response = await apiGet(`/api/orientation-scolaire/conferences/programmees?${params}`);
-            const data = await response.json();
+            const data = (response?.data || response) as any;
 
-            if (data.success) {
+            if (data?.success) {
                 setConferences(data.data || []);
                 setTotal(data.pagination?.total || 0);
             }
@@ -77,9 +77,9 @@ const ConferencesLivesScreen: React.FC = () => {
             });
 
             const response = await apiGet(`/api/orientation-scolaire/conferences/search?${params}`);
-            const data = await response.json();
+            const data = (response?.data || response) as any;
 
-            if (data.success) {
+            if (data?.success) {
                 setConferences(data.data || []);
                 setTotal(data.pagination?.total || 0);
             }
@@ -98,9 +98,9 @@ const ConferencesLivesScreen: React.FC = () => {
 
         try {
             const response = await apiGet(`/api/orientation-scolaire/conferences/${conferenceId}/join`);
-            const data = await response.json();
+            const data = (response?.data || response) as any;
 
-            if (data.success && data.data?.token) {
+            if (data?.success && data.data?.token) {
                 // Note: L'implémentation complète nécessiterait l'intégration LiveKit mobile
                 Alert.alert(
                     'Conférence',

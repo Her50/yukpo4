@@ -58,11 +58,12 @@ const MyBusTicketsScreen: React.FC = () => {
         try {
             setLoading(true);
             const response = await apiGet('/api/bus-tickets/my-tickets');
+            const resData = (response?.data || response) as any;
 
-            if (response.success && response.tickets) {
-                setTickets(response.tickets);
+            if (resData.success && resData.tickets) {
+                setTickets(resData.tickets);
             } else {
-                Alert.alert('Erreur', response.error || 'Impossible de charger les tickets');
+                Alert.alert('Erreur', resData.error || 'Impossible de charger les tickets');
             }
         } catch (error: any) {
             console.error('Erreur chargement tickets:', error);

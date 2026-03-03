@@ -34,8 +34,9 @@ export const CovoiturageIntelligentSearchScreen: React.FC = () => {
                 ...filters,
             });
 
-            if (response && response.matches) {
-                setMatches(response.matches);
+            const resData = (response?.data || response) as any;
+            if (resData?.matches) {
+                setMatches(resData.matches);
             }
         } catch (error: any) {
             alert('Erreur: ' + error.message);

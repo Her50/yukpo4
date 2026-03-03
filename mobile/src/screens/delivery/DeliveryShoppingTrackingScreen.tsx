@@ -1,6 +1,6 @@
 import { useNavigation, useRoute } from '@react-navigation/native';
 import * as Location from 'expo-location';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
     Alert,
     BackHandler,
@@ -12,6 +12,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import { notificationSoundService } from '../../services/notificationSoundService';
 
 import CourierDifficultyModal from '../../components/delivery/CourierDifficultyModal';
 import CourierSelectionModal from '../../components/delivery/CourierSelectionModal';
@@ -59,9 +60,37 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
     const { refreshDelivery, updateRecipientLocation, setActiveDeliveryId } = useDeliveryContext();
     const { user } = useAuth();
     const { toast, showSuccess, showError, showWarning, hideToast } = useToast();
+    const prevStatusRef = useRef<string | null>(null);
+
+    // ✅ FIX 2026-03-03: Notification sonore quand un coursier est trouvé/assigné
+    useEffect(() => {
+        const currentStatus = delivery?.status;
+        const prevStatus = prevStatusRef.current;
+
+        if (currentStatus && prevStatus && currentStatus !== prevStatus) {
+            // Coursier trouvé ! (statut passe à assigned ou en_route_pickup)
+            if (
+                (currentStatus === 'assigned' || currentStatus === 'en_route_pickup') &&
+                (prevStatus === 'pending' || prevStatus === 'awaiting_courier' || prevStatus === 'awaiting_courier_confirmation')
+            ) {
+                notificationSoundService.playSoundWithVibration('courier').catch(console.error);
+                showSuccess('Coursier trouvé ! Votre livraison est en cours de prise en charge.');
+            }
+            // Livraison terminée
+            if (currentStatus === 'delivered' && prevStatus !== 'delivered') {
+                notificationSoundService.playSoundWithVibration('ready').catch(console.error);
+                showSuccess('Livraison terminée ! Votre colis a été livré.');
+            }
+        }
+
+        if (currentStatus) {
+            prevStatusRef.current = currentStatus;
+        }
+    }, [delivery?.status]);
 
     useEffect(() => {
         if (!deliveryId) return;
+        notificationSoundService.initialize().catch(console.error);
         refreshDelivery(deliveryId, { force: true }).catch(console.error);
         setActiveDeliveryId(deliveryId);
         return () => setActiveDeliveryId(null);

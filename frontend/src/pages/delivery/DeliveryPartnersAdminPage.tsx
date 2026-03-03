@@ -3,14 +3,14 @@
 import AppLayout from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/buttons";
 import { useUser } from "@/hooks/useUser";
+import { ROUTES } from "@/routes/AppRoutesRegistry";
+import { isAdminUser } from "@/utils/roleHelpers"; // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
 import axios from "axios";
-import { Edit2, Plus, Trash2, Truck, X, CheckCircle, Clock, User, Mail, AlertCircle } from "lucide-react";
+import { CheckCircle, Clock, Edit2, Mail, Plus, Trash2, Truck, User, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import { API_ENDPOINTS, buildUrl } from "../../config/api.config";
-import { ROUTES } from "@/routes/AppRoutesRegistry";
-import { isAdminUser } from "@/utils/roleHelpers"; // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
 
 interface DeliveryPartner {
     id: number;
@@ -119,7 +119,7 @@ const DeliveryPartnersAdminPage = () => {
             const response = await axios.get('/api/admin/partners/pending', {
                 headers: { Authorization: `Bearer ${token}` },
             });
-            
+
             // ✅ Gérer la structure de réponse comme le mobile
             let partnersList: PendingPartner[] = [];
             if (response.data && typeof response.data === 'object') {
@@ -131,7 +131,7 @@ const DeliveryPartnersAdminPage = () => {
                     partnersList = response.data;
                 }
             }
-            
+
             setPendingPartners(partnersList);
         } catch (error: any) {
             console.error('[DeliveryPartnersAdminPage] Erreur chargement candidatures:', error);
@@ -151,14 +151,14 @@ const DeliveryPartnersAdminPage = () => {
                 { action: 'approve' },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
-            
-            if (response.data.success !== false) {
+
+            if (response.data?.success) {
                 toast.success('Le partenaire a été approuvé avec succès');
                 setShowDetailModal(false);
                 loadPendingPartners();
                 loadPartners();
             } else {
-                throw new Error(response.data.message || 'Erreur lors de l\'approbation');
+                throw new Error(response.data?.message || response.data?.error || 'Erreur lors de l\'approbation');
             }
         } catch (error: any) {
             console.error('[DeliveryPartnersAdminPage] Erreur approbation:', error);
@@ -182,15 +182,15 @@ const DeliveryPartnersAdminPage = () => {
                 { action: 'reject', reason: rejectionReason },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
-            
-            if (response.data.success !== false) {
+
+            if (response.data?.success) {
                 toast.success('Le partenaire a été rejeté');
                 setShowRejectModal(false);
                 setShowDetailModal(false);
                 setRejectionReason('');
                 loadPendingPartners();
             } else {
-                throw new Error(response.data.message || 'Erreur lors du rejet');
+                throw new Error(response.data?.message || response.data?.error || 'Erreur lors du rejet');
             }
         } catch (error: any) {
             console.error('[DeliveryPartnersAdminPage] Erreur rejet:', error);
@@ -240,14 +240,14 @@ const DeliveryPartnersAdminPage = () => {
                 editForm,
                 { headers: { Authorization: `Bearer ${token}` } }
             );
-            
-            if (response.data.success !== false) {
+
+            if (response.data?.success) {
                 toast.success('Le partenaire a été modifié avec succès');
                 setShowEditModal(false);
                 setEditingPartner(null);
                 loadPartners();
             } else {
-                throw new Error(response.data.message || 'Erreur lors de la modification');
+                throw new Error(response.data?.message || response.data?.error || 'Erreur lors de la modification');
             }
         } catch (error: any) {
             console.error('[DeliveryPartnersAdminPage] Erreur modification:', error);
@@ -326,21 +326,19 @@ const DeliveryPartnersAdminPage = () => {
                 <div className="flex gap-2 mb-6 border-b">
                     <button
                         onClick={() => setActiveTab('pending')}
-                        className={`px-4 py-2 font-medium transition-colors ${
-                            activeTab === 'pending'
+                        className={`px-4 py-2 font-medium transition-colors ${activeTab === 'pending'
                                 ? 'border-b-2 border-blue-600 text-blue-600'
                                 : 'text-gray-600 hover:text-gray-900'
-                        }`}
+                            }`}
                     >
                         Candidatures ({pendingPartners.length})
                     </button>
                     <button
                         onClick={() => setActiveTab('approved')}
-                        className={`px-4 py-2 font-medium transition-colors ${
-                            activeTab === 'approved'
+                        className={`px-4 py-2 font-medium transition-colors ${activeTab === 'approved'
                                 ? 'border-b-2 border-blue-600 text-blue-600'
                                 : 'text-gray-600 hover:text-gray-900'
-                        }`}
+                            }`}
                     >
                         Partenaires validés ({partners.length})
                     </button>

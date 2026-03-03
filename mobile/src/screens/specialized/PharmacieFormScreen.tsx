@@ -3,24 +3,30 @@ import React, { useEffect, useState } from 'react';
 import {
     Alert,
     Modal,
+    ScrollView,
     StyleSheet,
     Switch,
     Text,
     TouchableOpacity,
     View
 } from 'react-native';
+import { ConfirmationSection } from '../../components/FormConfirmationModal';
 import GuardDaysSelector from '../../components/GuardDaysSelector';
 import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 import ModernGPSModal from '../../components/ModernGPSModal';
-// ✅ SUPPRIMÉ: PartnerSelector - Les données partenaire sont chargées automatiquement depuis /api/partners/me
 import SafeIcon from '../../components/SafeIcon';
 import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import SimplePrestationSelector from '../../components/SimplePrestationSelector';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLocation } from '../../contexts/LocationContext';
+import { clearSavedFormData, useFormAutoSave } from '../../hooks/useFormAutoSave';
+import { useFormValidation } from '../../hooks/useFormValidation';
+import { usePartnerData } from '../../hooks/usePartnerData';
 import { apiDelete, apiGet, apiPatch, apiPost, servicesApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
+
+const STORAGE_KEY = '@pharmacie_form';
 
 // ✅ NOUVEAU: Interface pour les produits de pharmacie
 interface PharmacyProduct {
@@ -66,8 +72,19 @@ const PharmacieFormScreen: React.FC = () => {
     const [showGPSModal, setShowGPSModal] = useState(false);
     const [selectedGPS, setSelectedGPS] = useState<string | null>(null);
     const [showGuardDaysModal, setShowGuardDaysModal] = useState(false);
-    // ✅ NOUVEAU: Données du partenaire pour affichage dans l'en-tête
-    const [partnerData, setPartnerData] = useState<any>(null);
+    const [showConfirmation, setShowConfirmation] = useState(false);
+
+    const { partnerData } = usePartnerData(user?.role, 'pharmacie');
+    const { errors, validateField, validateForm, setError } = useFormValidation({
+        nom: { required: true, minLength: 3 },
+        telephone: {
+            required: true,
+            pattern: /^\+?[0-9]{9,15}$/,
+        },
+        email: { pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/ },
+    });
+
+    useFormAutoSave(STORAGE_KEY, formData, mode !== 'edit', 1000);
 
     // ✅ NOUVEAU: États pour la gestion des médicaments
     const [products, setProducts] = useState<PharmacyProduct[]>([]);
@@ -255,6 +272,54 @@ const PharmacieFormScreen: React.FC = () => {
         setFormData({ ...formData, jours_garde: days });
         setShowGuardDaysModal(false);
     };
+
+    const handleFieldChange = (field: string, value: any) => {
+        setFormData({ ...formData, [field]: value });
+        const error = validateField(field, value);
+        if (error) {
+            setError(field, error);
+        }
+    };
+
+    const confirmationSections: ConfirmationSection[] = [
+        {
+            title: 'Pharmacie',
+            icon: 'activity',
+            fields: [
+                { label: 'Nom', value: formData.nom },
+                { label: 'Adresse', value: formData.adresse },
+                { label: 'Quartier', value: typeof formData.quartier === 'string' ? formData.quartier : formData.quartier?.place_name },
+            ],
+        },
+        {
+            title: 'Horaires',
+            icon: 'clock',
+            fields: [
+                { label: 'Ouverture', value: formData.heures_ouverture },
+                { label: 'Fermeture', value: formData.heures_fermeture },
+                { label: '24h/24', value: formData.permanent_24h, type: 'boolean' as const },
+            ],
+        },
+        {
+            title: 'Contact',
+            icon: 'phone',
+            fields: [
+                { label: 'Téléphone', value: formData.telephone },
+                { label: 'Téléphone urgence', value: formData.telephone_urgence },
+                { label: 'WhatsApp', value: formData.whatsapp },
+                { label: 'Email', value: formData.email },
+            ],
+        },
+        {
+            title: 'Services & Produits',
+            icon: 'package',
+            fields: [
+                { label: 'Services', value: `${selectedServices.length} service(s)` },
+                { label: 'Produits', value: `${products.length} produit(s)` },
+                { label: 'Stock total', value: `${stats.totalStock} unité(s)`, type: 'number' as const },
+            ],
+        },
+    ];
 
     // ✅ NOUVEAU: Gestion des produits
     const openProductModal = (product?: PharmacyProduct) => {
@@ -573,7 +638,15 @@ const PharmacieFormScreen: React.FC = () => {
         );
     };
 
-    const handleSubmit = async () => {
+    const handleSubmit = () => {
+        if (!validateForm(formData)) {
+            Alert.alert('Erreur', 'Veuillez corriger les erreurs du formulaire');
+            return;
+        }
+        setShowConfirmation(true);
+    };
+
+    const handleFinalSubmit = async () => {
         // ✅ Créer le service si nécessaire
         let finalServiceId = serviceId;
         if (!finalServiceId && user?.id) {
@@ -666,6 +739,7 @@ const PharmacieFormScreen: React.FC = () => {
             const response = await apiPost('/api/pharmacies', payload);
 
             if (response.success) {
+                await clearSavedFormData(STORAGE_KEY);
                 Alert.alert(
                     'Succès',
                     'Pharmacie enregistrée avec succès !',
@@ -684,6 +758,7 @@ const PharmacieFormScreen: React.FC = () => {
             Alert.alert('Erreur', error.message || 'Une erreur est survenue');
         } finally {
             setLoading(false);
+            setShowConfirmation(false);
         }
     };
 

@@ -5,7 +5,7 @@
 
 import { Audio } from 'expo-av';
 
-export type NotificationSoundType = 'order' | 'courier' | 'ready';
+export type NotificationSoundType = 'order' | 'courier' | 'ready' | 'delivery_request';
 
 class NotificationSoundService {
     private sounds: Map<NotificationSoundType, Audio.Sound | null> = new Map();
@@ -47,47 +47,26 @@ class NotificationSoundService {
             await this.initialize();
 
             // Déterminer la source du son
+            // ✅ FIX 2026-03-03: Utiliser delivery_alert.mp3 (seul fichier existant) comme source principale
+            // pour tous les types de notifications, avec fallback en ligne
             let soundSource: any;
 
-            // Essayer d'abord de charger un fichier local, puis fallback en ligne
-            switch (type) {
-                case 'order':
-                    // Essayer fichier local d'abord
-                    try {
-                        soundSource = require('../assets/sounds/order_notification.mp3');
-                    } catch {
-                        try {
-                            soundSource = require('../assets/sounds/order_notification.wav');
-                        } catch {
-                            // Fallback : son en ligne
-                            soundSource = { uri: 'https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg' };
-                        }
-                    }
-                    break;
-                case 'courier':
-                    try {
-                        soundSource = require('../assets/sounds/courier_assigned.mp3');
-                    } catch {
-                        try {
-                            soundSource = require('../assets/sounds/courier_assigned.wav');
-                        } catch {
-                            soundSource = { uri: 'https://actions.google.com/sounds/v1/alarms/beep_short.ogg' };
-                        }
-                    }
-                    break;
-                case 'ready':
-                    try {
-                        soundSource = require('../assets/sounds/order_ready.mp3');
-                    } catch {
-                        try {
-                            soundSource = require('../assets/sounds/order_ready.wav');
-                        } catch {
-                            soundSource = { uri: 'https://actions.google.com/sounds/v1/alarms/beep_short.ogg' };
-                        }
-                    }
-                    break;
-                default:
-                    soundSource = { uri: 'https://actions.google.com/sounds/v1/alarms/beep_short.ogg' };
+            try {
+                // Fichier local existant : delivery_alert.mp3
+                soundSource = require('../../assets/sounds/delivery_alert.mp3');
+            } catch {
+                // Fallback en ligne si le fichier local n'est pas trouvé
+                switch (type) {
+                    case 'order':
+                    case 'delivery_request':
+                        soundSource = { uri: 'https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg' };
+                        break;
+                    case 'courier':
+                    case 'ready':
+                    default:
+                        soundSource = { uri: 'https://actions.google.com/sounds/v1/alarms/beep_short.ogg' };
+                        break;
+                }
             }
 
             // Créer le son
@@ -187,11 +166,28 @@ class NotificationSoundService {
                 this.loadSound('order'),
                 this.loadSound('courier'),
                 this.loadSound('ready'),
+                this.loadSound('delivery_request'),
             ]);
             console.log('[NotificationSoundService] ✅ Tous les sons préchargés');
         } catch (error) {
             console.error('[NotificationSoundService] ❌ Erreur préchargement:', error);
         }
+    }
+
+    /**
+     * ✅ FIX 2026-03-03: Joue un son de notification avec vibration
+     * Utile pour les alertes critiques (nouvelle livraison, coursier trouvé)
+     */
+    async playSoundWithVibration(type: NotificationSoundType): Promise<void> {
+        try {
+            // Vibrer d'abord pour attirer l'attention
+            const { Vibration } = require('react-native');
+            Vibration.vibrate([0, 300, 100, 300]); // pattern: pause, vibrate, pause, vibrate
+        } catch (vibError) {
+            console.warn('[NotificationSoundService] Vibration non disponible:', vibError);
+        }
+        // Puis jouer le son
+        await this.playSound(type);
     }
 }
 

@@ -17,6 +17,40 @@ use crate::{
 };
 use log::warn;
 
+/// Mapper les specialized_type vers des valeurs valides de l'enum delivery_partner_type
+fn map_to_delivery_partner_type(specialized_type: &str) -> &str {
+    match specialized_type {
+        // Types qui matchent directement l'enum
+        "livraison"
+        | "pharmacie"
+        | "hopital"
+        | "laboratoire"
+        | "demenagement"
+        | "transport"
+        | "assureur"
+        | "supermarche"
+        | "telecom"
+        | "chauffeur"
+        | "hotel"
+        | "meuble"
+        | "etablissementscolaire"
+        | "banquesang"
+        | "livraison_courses_marche" => specialized_type,
+        // Mappings spécialisés vers l'enum
+        "hopital_clinique" => "hopital",
+        "laboratoire_imagerie" => "laboratoire",
+        "agence_voyage" | "agence_de_voyage" => "agence de voyage",
+        "taxi" | "taxi_ville" => "taxi",
+        "covoiturage" => "covoiturage",
+        "banque_sang" => "banquesang",
+        "etablissement_scolaire" => "etablissementscolaire",
+        "immobilier" => "immobilier",
+        "restaurant" | "boulangerie" | "traiteur" => "restaurant",
+        // Fallback par défaut
+        _ => "livraison",
+    }
+}
+
 #[derive(Debug, Serialize, FromRow)]
 pub struct PendingPartner {
     pub id: i32,
@@ -188,7 +222,18 @@ pub async fn validate_partner(
 
             // Note: Les autres infos (phone, address, etc.) ne sont pas stockées dans users
             // Elles seront complétées lors de la configuration du service spécialisé
-            let partner_id_result = sqlx::query_scalar::<_, i32>(
+            // ✅ CORRIGÉ 2026-03-03: Mapper le specialized_type vers une valeur valide de l'enum
+            let mapped_type = map_to_delivery_partner_type(partner_type);
+            log::info!(
+                "[validate_partner] Mapping partner_type: '{}' -> '{}' pour user_id={}",
+                partner_type,
+                mapped_type,
+                user_id
+            );
+
+            // ✅ CORRIGÉ 2026-03-03: Rendre l'INSERT non-fatal pour ne pas bloquer l'approbation
+            // L'UPDATE users SET partner_status='approved' est l'action principale
+            match sqlx::query_scalar::<_, i32>(
                 r#"
                 INSERT INTO delivery_partners 
                 (name, partner_type, contact_email, user_id, is_active, created_by, country)
@@ -199,17 +244,22 @@ pub async fn validate_partner(
                 "#,
             )
             .bind(partner_name)
-            .bind(partner_type)
+            .bind(mapped_type)
             .bind(&partner_info.email)
             .bind(user_id)
             .bind(&country)
             .fetch_optional(&state.pg)
-            .await?;
-
-            if let Some(partner_id) = partner_id_result {
-                log::info!("[validate_partner] ✅ Partenaire créé/mis à jour dans delivery_partners: id={}, country={}", partner_id, country);
-            } else {
-                warn!("[validate_partner] ⚠️ Échec création partenaire dans delivery_partners pour user_id={}", user_id);
+            .await
+            {
+                Ok(Some(partner_id)) => {
+                    log::info!("[validate_partner] ✅ Partenaire créé/mis à jour dans delivery_partners: id={}, type='{}', country={}", partner_id, mapped_type, country);
+                }
+                Ok(None) => {
+                    warn!("[validate_partner] ⚠️ INSERT delivery_partners retourné None pour user_id={}", user_id);
+                }
+                Err(e) => {
+                    warn!("[validate_partner] ⚠️ Erreur non-fatale INSERT delivery_partners pour user_id={}: {}. L'approbation continue.", user_id, e);
+                }
             }
         }
 

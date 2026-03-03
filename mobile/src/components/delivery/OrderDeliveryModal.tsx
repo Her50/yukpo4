@@ -1,9 +1,10 @@
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
     Alert,
+    Animated,
     Modal,
     ScrollView,
     StyleSheet,
@@ -14,6 +15,7 @@ import {
 } from 'react-native';
 import { UserSavedAddress } from '../../hooks/useSavedAddresses';
 import { apiGet, apiPost, userApi } from '../../services/api';
+import { notificationSoundService } from '../../services/notificationSoundService';
 import { modernColors } from '../../theme/modernTheme';
 import { LocationObject } from '../LocationSelector';
 import ModernGPSModal from '../ModernGPSModal';
@@ -49,6 +51,8 @@ interface OrderDeliveryModalProps {
     // ✅ NOUVEAU 2026-01-23: Variations de prix du produit
     productVariants?: ProductVariant[];
     selectedVariantIndex?: number;
+    // ✅ FIX 2026-03-03: Prix du produit passé directement depuis ProductCard
+    initialProductPrice?: number;
 }
 
 interface Location {
@@ -111,6 +115,7 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
     clientUserId, // ✅ NOUVEAU
     productVariants, // ✅ NOUVEAU 2026-01-23: Variations de prix
     selectedVariantIndex, // ✅ NOUVEAU 2026-01-23: Index de variation présélectionné
+    initialProductPrice, // ✅ FIX 2026-03-03: Prix initial du produit
 }) => {
     const navigation = useNavigation();
     const [loading, setLoading] = useState(false);
@@ -119,6 +124,19 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
     const [notes, setNotes] = useState('');
     const [userGPS, setUserGPS] = useState<Location | null>(null);
     const [showGPSModal, setShowGPSModal] = useState(false); // ✅ NOUVEAU : Pour ouvrir le modal GPS
+
+    // ✅ FIX 2026-03-03: Toast de confirmation animé
+    const [toastMessage, setToastMessage] = useState<string | null>(null);
+    const toastOpacity = useRef(new Animated.Value(0)).current;
+
+    const showToast = useCallback((message: string, duration: number = 3000) => {
+        setToastMessage(message);
+        Animated.sequence([
+            Animated.timing(toastOpacity, { toValue: 1, duration: 300, useNativeDriver: true }),
+            Animated.delay(duration),
+            Animated.timing(toastOpacity, { toValue: 0, duration: 300, useNativeDriver: true }),
+        ]).start(() => setToastMessage(null));
+    }, [toastOpacity]);
 
     // ✅ NOUVEAU 2026-01-23: État pour la sélection de variation et quantité
     const [selectedVariantIdx, setSelectedVariantIdx] = useState<number>(
@@ -136,7 +154,8 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
     const [urgencyLevel, setUrgencyLevel] = useState<'standard' | 'urgent' | 'scheduled'>('standard');
 
     // ✅ Phase 7 - Amélioration 23 : Coûts de livraison
-    const [productPrice, setProductPrice] = useState<number | null>(null);
+    // ✅ FIX 2026-03-03: Initialiser avec initialProductPrice si fourni
+    const [productPrice, setProductPrice] = useState<number | null>(initialProductPrice && initialProductPrice > 0 ? initialProductPrice : null);
     const [deliveryCost, setDeliveryCost] = useState<number | null>(null);
     const [isDeliveryFree, setIsDeliveryFree] = useState<boolean>(false);
     const [loadingCosts, setLoadingCosts] = useState(false);
@@ -544,16 +563,24 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
         setLoadingCosts(true);
         try {
             // ✅ CORRIGÉ 2026-01-23: Calculer le prix total en tenant compte de la variation et de la quantité
+            // ✅ FIX 2026-03-03: Ordre de priorité corrigé :
+            //   1. Variante sélectionnée (vient de ProductCard, prix fiable)
+            //   2. initialProductPrice (prix réel affiché dans ProductCard, prioritaire)
+            //   3. availableProducts (ancien JSONB — dernier recours uniquement)
             let totalProductPrice = 0;
 
-            // Si on a des variations de prix pour le produit principal
+            // 1. Si on a des variations de prix pour le produit principal
             if (productVariants && productVariants.length > 0 && selectedVariantIdx >= 0 && selectedVariantIdx < productVariants.length) {
                 const selectedVariant = productVariants[selectedVariantIdx];
                 const variantPrice = selectedVariant.prix || selectedVariant.price || 0;
-                // ✅ Multiplier par la quantité
                 totalProductPrice = variantPrice * quantity;
-            } else {
-                // Sinon, utiliser le prix des produits sélectionnés (multi-produits)
+            }
+            // 2. Sinon, utiliser initialProductPrice (prix réel du ProductCard — nouveau système)
+            else if (initialProductPrice && initialProductPrice > 0) {
+                totalProductPrice = initialProductPrice * quantity;
+            }
+            // 3. Dernier recours : ancien JSONB (multi-produits uniquement)
+            else {
                 selectedProducts.forEach((idx) => {
                     const product = availableProducts.find(p => p.index === idx);
                     if (product) {
@@ -828,13 +855,15 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                     }
                 }
 
-                Alert.alert(
-                    'Commandes créées',
-                    `${selectedProducts.length} commande(s) créée(s) avec succès. Le matching des coursiers est en cours.`
-                );
+                // ✅ FIX 2026-03-03: Toast + son au lieu de Alert bloquant
+                showToast(`✅ ${selectedProducts.length} commande(s) créée(s) ! Recherche de coursier en cours...`);
+                notificationSoundService.playSound('order').catch(console.error);
 
                 if (firstResponseTyped.success && firstResponseTyped.data?.delivery?.id && onSuccess) {
-                    onSuccess(firstResponseTyped.data.delivery.id);
+                    // Laisser le toast s'afficher 1.5s avant de naviguer
+                    setTimeout(() => {
+                        onSuccess(firstResponseTyped.data!.delivery!.id);
+                    }, 1500);
                 }
             } else {
                 // Un seul produit : utiliser le flux normal
@@ -874,21 +903,17 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                 }
 
                 if (response.success) {
-                    Alert.alert(
-                        'Commande créée',
-                        'Votre commande a été créée avec succès. Le matching des coursiers est en cours.',
-                        [
-                            {
-                                text: 'OK',
-                                onPress: () => {
-                                    if (onSuccess && response.data?.delivery?.id) {
-                                        onSuccess(response.data.delivery.id);
-                                    }
-                                    onClose();
-                                },
-                            },
-                        ]
-                    );
+                    // ✅ FIX 2026-03-03: Toast + son au lieu de Alert bloquant
+                    showToast('✅ Commande créée ! Recherche de coursier en cours...');
+                    notificationSoundService.playSound('order').catch(console.error);
+
+                    // Laisser le toast s'afficher 1.5s avant de naviguer vers le suivi
+                    setTimeout(() => {
+                        if (onSuccess && response.data?.delivery?.id) {
+                            onSuccess(response.data.delivery.id);
+                        }
+                        onClose();
+                    }, 1500);
                 } else {
                     Alert.alert('Erreur', response.error || 'Impossible de créer la commande');
                 }
@@ -1291,29 +1316,39 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                                 />
                             </View>
 
-                            {/* Niveau d'urgence */}
+                            {/* Niveau d'urgence - Sélecteur visuel */}
                             <View style={styles.preferenceItem}>
-                                <Text style={styles.preferenceLabel}>Niveau d'urgence</Text>
-                                <View style={styles.pickerContainer}>
-                                    <TouchableOpacity
-                                        style={styles.pickerButton}
-                                        onPress={() => {
-                                            Alert.alert(
-                                                'Niveau d\'urgence',
-                                                'Choisissez le niveau d\'urgence',
-                                                [
-                                                    { text: 'Standard', onPress: () => setUrgencyLevel('standard') },
-                                                    { text: 'Urgent', onPress: () => setUrgencyLevel('urgent') },
-                                                    { text: 'Programmé', onPress: () => setUrgencyLevel('scheduled') },
-                                                ]
-                                            );
-                                        }}
-                                    >
-                                        <Text style={styles.pickerText}>
-                                            {urgencyLevel === 'standard' ? 'Standard' : urgencyLevel === 'urgent' ? 'Urgent' : 'Programmé'}
-                                        </Text>
-                                        <SafeIcon name="chevron-down" size={16} color={modernColors.textSecondary} />
-                                    </TouchableOpacity>
+                                <Text style={styles.preferenceLabel}>Mode de livraison</Text>
+                                <View style={styles.deliveryModeContainer}>
+                                    {[
+                                        { key: 'standard' as const, label: 'Standard', icon: 'truck' as const, desc: '2-4h', color: '#3B82F6' },
+                                        { key: 'urgent' as const, label: 'Express', icon: 'zap' as const, desc: '30-60min', color: '#F59E0B' },
+                                        { key: 'scheduled' as const, label: 'Programmé', icon: 'calendar' as const, desc: 'Date fixe', color: '#8B5CF6' },
+                                    ].map((mode) => (
+                                        <TouchableOpacity
+                                            key={mode.key}
+                                            style={[
+                                                styles.deliveryModeCard,
+                                                urgencyLevel === mode.key && { borderColor: mode.color, backgroundColor: mode.color + '10' }
+                                            ]}
+                                            onPress={() => setUrgencyLevel(mode.key)}
+                                        >
+                                            <SafeIcon name={mode.icon} size={18} color={urgencyLevel === mode.key ? mode.color : modernColors.textSecondary} />
+                                            <Text style={[
+                                                styles.deliveryModeLabel,
+                                                urgencyLevel === mode.key && { color: mode.color, fontWeight: '700' }
+                                            ]}>{mode.label}</Text>
+                                            <Text style={[
+                                                styles.deliveryModeDesc,
+                                                urgencyLevel === mode.key && { color: mode.color }
+                                            ]}>{mode.desc}</Text>
+                                            {urgencyLevel === mode.key && (
+                                                <View style={[styles.deliveryModeCheck, { backgroundColor: mode.color }]}>
+                                                    <SafeIcon name="check" size={10} color="#FFFFFF" />
+                                                </View>
+                                            )}
+                                        </TouchableOpacity>
+                                    ))}
                                 </View>
                             </View>
                         </View>
@@ -1507,6 +1542,31 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                                 </Text>
                             )}
                         </View>
+
+                        {/* ✅ FIX 2026-03-03: Message de garantie remboursement */}
+                        <View style={styles.guaranteeCard}>
+                            <View style={styles.guaranteeHeader}>
+                                <SafeIcon name="shield" size={20} color="#059669" />
+                                <Text style={styles.guaranteeTitle}>Garantie satisfaction Yukpo</Text>
+                            </View>
+                            <Text style={styles.guaranteeText}>
+                                Le paiement de la marchandise est intégralement remboursable si vous n'êtes pas satisfait à la livraison. Seuls les frais de livraison seront retenus.
+                            </Text>
+                            <View style={styles.guaranteeBullets}>
+                                <View style={styles.guaranteeBulletRow}>
+                                    <SafeIcon name="check-circle" size={14} color="#059669" />
+                                    <Text style={styles.guaranteeBulletText}>Remboursement intégral du produit si insatisfaction</Text>
+                                </View>
+                                <View style={styles.guaranteeBulletRow}>
+                                    <SafeIcon name="check-circle" size={14} color="#059669" />
+                                    <Text style={styles.guaranteeBulletText}>Frais de livraison ({isDeliveryFree ? 'Gratuits' : deliveryCost !== null ? `${deliveryCost.toLocaleString('fr-FR')} FCFA` : '...'}) non remboursables</Text>
+                                </View>
+                                <View style={styles.guaranteeBulletRow}>
+                                    <SafeIcon name="check-circle" size={14} color="#059669" />
+                                    <Text style={styles.guaranteeBulletText}>Assurance colis incluse pour votre protection</Text>
+                                </View>
+                            </View>
+                        </View>
                     </View>
                 </ScrollView>
 
@@ -1568,6 +1628,21 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                     </TouchableOpacity>
                 </View>
             </View>
+
+            {/* ✅ FIX 2026-03-03: Toast de confirmation animé */}
+            {toastMessage && (
+                <Animated.View style={[styles.toastContainer, { opacity: toastOpacity }]}>
+                    <LinearGradient
+                        colors={['#059669', '#047857']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={styles.toastGradient}
+                    >
+                        <SafeIcon name="check-circle" size={20} color="#FFFFFF" />
+                        <Text style={styles.toastText}>{toastMessage}</Text>
+                    </LinearGradient>
+                </Animated.View>
+            )}
 
             {/* ✅ NOUVEAU : Modal GPS pour sélectionner une adresse sur la carte */}
             <ModernGPSModal
@@ -2256,6 +2331,114 @@ const styles = StyleSheet.create({
         borderWidth: 2,
         borderColor: modernColors.primary,
         borderRadius: 12,
+    },
+    // ✅ FIX 2026-03-03: Styles pour toast de confirmation
+    toastContainer: {
+        position: 'absolute',
+        top: 60,
+        left: 20,
+        right: 20,
+        zIndex: 9999,
+        elevation: 10,
+    },
+    toastGradient: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        paddingVertical: 14,
+        paddingHorizontal: 18,
+        borderRadius: 12,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+    },
+    toastText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#FFFFFF',
+        flex: 1,
+    },
+    // ✅ FIX 2026-03-03: Styles pour sélecteur de mode de livraison
+    deliveryModeContainer: {
+        flexDirection: 'row',
+        gap: 8,
+        marginTop: 8,
+    },
+    deliveryModeCard: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 12,
+        paddingHorizontal: 6,
+        borderRadius: 12,
+        borderWidth: 2,
+        borderColor: '#E5E7EB',
+        backgroundColor: '#FFFFFF',
+        position: 'relative',
+    },
+    deliveryModeLabel: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: modernColors.text,
+        marginTop: 4,
+        textAlign: 'center',
+    },
+    deliveryModeDesc: {
+        fontSize: 10,
+        color: modernColors.textSecondary,
+        marginTop: 2,
+        textAlign: 'center',
+    },
+    deliveryModeCheck: {
+        position: 'absolute',
+        top: 4,
+        right: 4,
+        width: 16,
+        height: 16,
+        borderRadius: 8,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    // ✅ FIX 2026-03-03: Styles pour la garantie remboursement
+    guaranteeCard: {
+        backgroundColor: '#F0FDF4',
+        borderRadius: 12,
+        padding: 16,
+        borderWidth: 1,
+        borderColor: '#BBF7D0',
+        marginTop: 12,
+    },
+    guaranteeHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 8,
+    },
+    guaranteeTitle: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: '#059669',
+    },
+    guaranteeText: {
+        fontSize: 13,
+        color: '#065F46',
+        lineHeight: 20,
+        marginBottom: 10,
+    },
+    guaranteeBullets: {
+        gap: 6,
+    },
+    guaranteeBulletRow: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: 6,
+    },
+    guaranteeBulletText: {
+        fontSize: 12,
+        color: '#065F46',
+        flex: 1,
+        lineHeight: 18,
     },
 });
 

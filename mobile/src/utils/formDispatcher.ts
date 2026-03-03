@@ -206,7 +206,7 @@ function createFieldComponent(fieldName: string, fieldData: any): DynamicField |
 
   // Mapping des noms de champs vers des labels français
   const fieldLabels: { [key: string]: string } = {
-    titre_service: 'Titre du service',
+    titre_service: 'Nom de votre structure',
     category: 'Catégorie',
     description: 'Description',
     is_tarissable: 'Service tarissable',
@@ -322,13 +322,20 @@ function createFieldComponent(fieldName: string, fieldData: any): DynamicField |
       } else {
         // ✅ CORRECTION : Traiter category comme un simple champ texte
         // On récupère juste la valeur du backend sans liste de sélection
+        // ✅ CORRIGÉ 2026-03-03: titre_service ne doit JAMAIS être pré-rempli par l'IA
+        // L'utilisateur DOIT saisir lui-même le vrai nom de sa structure
+        const isTitreService = fieldName === 'titre_service';
         return {
           type: 'text',
           label,
           name: fieldName,
-          placeholder: `Entrez votre ${label.toLowerCase()}`,
-          required: fieldName === 'category' || fieldName === 'titre_service', // Champs obligatoires
-          value: valeur || ''
+          placeholder: isTitreService ? 'Ex: Restaurant Le Gourmet, Boutique XYZ...' : `Entrez votre ${label.toLowerCase()}`,
+          required: fieldName === 'category' || isTitreService,
+          value: isTitreService ? '' : (valeur || ''), // ✅ FORCÉ vide pour titre_service
+          ...(isTitreService && {
+            isStructureName: true,
+            hint: 'Indiquez le nom officiel de votre structure (boutique, entreprise, prestation). Ce nom sera visible par tous les clients.'
+          })
         };
       }
 
@@ -410,10 +417,12 @@ function generateDefaultComponents(): DynamicField[] {
   return [
     {
       type: 'text',
-      label: 'Titre du service',
+      label: 'Nom de votre structure',
       name: 'titre_service',
-      placeholder: 'Entrez le titre de votre service',
+      placeholder: 'Ex: Restaurant Le Gourmet, Boutique XYZ...',
       required: true,
+      isStructureName: true,
+      hint: 'Indiquez le nom officiel de votre structure (boutique, entreprise, prestation). Ce nom sera visible par tous les clients.',
       value: ''
     },
     {

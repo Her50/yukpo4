@@ -10,8 +10,8 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
 import { ExaminationResults, LabAnalysisResult, labService } from '../../services/labService';
 import { modernColors } from '../../theme/modernTheme';
@@ -70,7 +70,7 @@ const LabAIAnalysisScreen: React.FC = () => {
 
         setAnalyzing(true);
         try {
-            const response = await labService.analyzeExaminationResults(
+            const response = await labService.analyzeExamination(
                 params.examinationId,
                 params.patientAge,
                 params.patientSex

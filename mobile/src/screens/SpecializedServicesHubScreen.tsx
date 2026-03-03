@@ -13,8 +13,8 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { NativeButton, NativeCard } from '../components/SafeNativeDesign';
 import SafeIcon from '../components/SafeIcon';
+import { NativeCard } from '../components/SafeNativeDesign';
 import ServicesStatistics from '../components/ServicesStatistics';
 import { useAuth } from '../contexts/AuthContext';
 import { apiGet } from '../services/api';
@@ -160,6 +160,15 @@ const SpecializedServicesHubScreen: React.FC = () => {
             category: 'transport',
         },
         {
+            id: 'automobile',
+            name: 'Automobile',
+            icon: 'Car',
+            color: '#DC2626',
+            count: statistics?.by_type?.automobile || 0,
+            route: 'GestionServicesSpecialises',
+            category: 'transport',
+        },
+        {
             id: 'bourse_livre',
             name: 'Bourse du Livre',
             icon: 'BookOpen',
@@ -193,15 +202,24 @@ const SpecializedServicesHubScreen: React.FC = () => {
             color: '#F59E0B',
             count: 0, // menus actifs
             route: 'MenuPlanningHub',
-            category: 'vie_quotidienne',
+            category: 'vie_pratique',
+        },
+        {
+            id: 'assurance',
+            name: 'Assurance',
+            icon: 'Shield',
+            color: '#0EA5E9',
+            count: statistics?.by_type?.assurance || 0,
+            route: 'GestionServicesSpecialises',
+            category: 'assurance',
         },
     ];
 
     const santeTypes = serviceTypes.filter((t) => t.category === 'sante');
     const transportTypes = serviceTypes.filter((t) => t.category === 'transport');
-    const educationTypes = serviceTypes.filter((t) => t.category === 'education');
+    const viePratiqueTypes = serviceTypes.filter((t) => t.category === 'vie_pratique' || t.category === 'education');
     const emploiTypes = serviceTypes.filter((t) => t.category === 'emploi');
-    const vieQuotidienneTypes = serviceTypes.filter((t) => t.category === 'vie_quotidienne');
+    const assuranceTypes = serviceTypes.filter((t) => t.category === 'assurance');
 
     if (loading) {
         return (
@@ -341,23 +359,22 @@ const SpecializedServicesHubScreen: React.FC = () => {
                 </View>
             </View>
 
-            {/* Accès rapide par type - Éducation */}
-            {educationTypes.length > 0 && (
+            {/* Accès rapide par type - Vie pratique */}
+            {viePratiqueTypes.length > 0 && (
                 <View style={styles.section}>
                     <View style={styles.sectionHeader}>
                         <View style={styles.sectionHeaderLeft}>
-                            <SafeIcon name="BookOpen" size={20} color="#8B5CF6" type="lucide" />
-                            <Text style={styles.sectionTitle}>Éducation</Text>
+                            <SafeIcon name="BookOpen" size={20} color="#3B82F6" type="lucide" />
+                            <Text style={styles.sectionTitle}>Vie pratique</Text>
                         </View>
                     </View>
                     <View style={styles.quickAccessGrid}>
-                        {educationTypes.map((type) => {
+                        {viePratiqueTypes.map((type) => {
                             return (
                                 <View key={type.id} style={[styles.quickAccessCard, { borderLeftColor: type.color }]}>
                                     <TouchableOpacity
                                         style={styles.quickAccessCardContent}
                                         onPress={() => {
-                                            // Navigation vers la configuration
                                             (navigation as any).navigate(type.route, { mode: 'create' });
                                         }}
                                     >
@@ -375,31 +392,12 @@ const SpecializedServicesHubScreen: React.FC = () => {
                                             />
                                         </View>
                                         <Text style={styles.quickAccessName}>{type.name}</Text>
+                                        {type.count > 0 && (
+                                            <Text style={styles.quickAccessCount}>
+                                                {String(type.count)} service{type.count > 1 ? 's' : ''}
+                                            </Text>
+                                        )}
                                     </TouchableOpacity>
-                                    <View style={styles.actionButtonsRow}>
-                                        <TouchableOpacity
-                                            style={styles.searchButton}
-                                            onPress={() => {
-                                                (navigation as any).navigate('MesLivres');
-                                            }}
-                                        >
-                                            <SafeIcon name="book" size={16} color={type.color} />
-                                            <Text style={[styles.searchButtonText, { color: type.color }]}>
-                                                Mes Livres
-                                            </Text>
-                                        </TouchableOpacity>
-                                        <TouchableOpacity
-                                            style={[styles.searchButton, { marginLeft: 8 }]}
-                                            onPress={() => {
-                                                (navigation as any).navigate('MesTrocs');
-                                            }}
-                                        >
-                                            <SafeIcon name="repeat" size={16} color={type.color} />
-                                            <Text style={[styles.searchButtonText, { color: type.color }]}>
-                                                Mes Trocs
-                                            </Text>
-                                        </TouchableOpacity>
-                                    </View>
                                 </View>
                             );
                         })}
@@ -448,23 +446,23 @@ const SpecializedServicesHubScreen: React.FC = () => {
                 </View>
             )}
 
-            {/* Accès rapide par type - Vie Quotidienne */}
-            {vieQuotidienneTypes.length > 0 && (
+            {/* Accès rapide par type - Assurance */}
+            {assuranceTypes.length > 0 && (
                 <View style={styles.section}>
                     <View style={styles.sectionHeader}>
                         <View style={styles.sectionHeaderLeft}>
-                            <SafeIcon name="Home" size={20} color="#F59E0B" type="lucide" />
-                            <Text style={styles.sectionTitle}>Vie Quotidienne</Text>
+                            <SafeIcon name="Shield" size={20} color="#0EA5E9" type="lucide" />
+                            <Text style={styles.sectionTitle}>Assurance</Text>
                         </View>
                     </View>
                     <View style={styles.quickAccessGrid}>
-                        {vieQuotidienneTypes.map((type) => {
+                        {assuranceTypes.map((type) => {
                             return (
                                 <View key={type.id} style={[styles.quickAccessCard, { borderLeftColor: type.color }]}>
                                     <TouchableOpacity
                                         style={styles.quickAccessCardContent}
                                         onPress={() => {
-                                            (navigation as any).navigate(type.route);
+                                            (navigation as any).navigate(type.route, { mode: 'create' });
                                         }}
                                     >
                                         <View
@@ -483,7 +481,7 @@ const SpecializedServicesHubScreen: React.FC = () => {
                                         <Text style={styles.quickAccessName}>{type.name}</Text>
                                         {type.count > 0 && (
                                             <Text style={styles.quickAccessCount}>
-                                                {String(type.count)} menu{type.count > 1 ? 's' : ''}
+                                                {String(type.count)} service{type.count > 1 ? 's' : ''}
                                             </Text>
                                         )}
                                     </TouchableOpacity>

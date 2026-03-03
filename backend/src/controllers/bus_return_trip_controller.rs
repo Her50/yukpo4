@@ -510,30 +510,77 @@ pub async fn confirm_return_trip_request(
         AppError::Internal(format!("Erreur début transaction: {}", e))
     })?;
 
-    for (idx, seat_id) in payload.seat_ids.iter().enumerate() {
-        // Vérifier que le siège est disponible
-        let seat_available: Option<bool> = sqlx::query_scalar::<_, bool>(
-            "SELECT is_available FROM bus_seats WHERE id::text = $1 AND product_id = $2",
-        )
-        .bind(seat_id)
-        .bind(&product_id)
-        .fetch_optional(&mut *tx)
-        .await
-        .map_err(|e| {
-            error!(
-                "[confirm_return_trip_request] Erreur vérification siège: {}",
-                e
-            );
-            AppError::Internal(format!("Erreur vérification siège: {}", e))
-        })?;
+    // Récupérer le seat_map du produit pour vérifier la disponibilité
+    let seat_map_json: Option<serde_json::Value> =
+        sqlx::query_scalar("SELECT seat_map FROM products WHERE id::text = $1")
+            .bind(&product_id)
+            .fetch_optional(&mut *tx)
+            .await
+            .map_err(|e| {
+                error!(
+                    "[confirm_return_trip_request] Erreur récupération seat_map: {}",
+                    e
+                );
+                AppError::Internal(format!("Erreur récupération seat_map: {}", e))
+            })?;
 
-        if seat_available != Some(true) {
+    let mut seats: Vec<serde_json::Value> = if let Some(map) = seat_map_json {
+        serde_json::from_value(map).unwrap_or_default()
+    } else {
+        Vec::new()
+    };
+
+    for (idx, seat_id) in payload.seat_ids.iter().enumerate() {
+        // Vérifier que le siège est disponible dans le seat_map
+        let seat_status = seats
+            .iter()
+            .find(|s| s.get("id").and_then(|v| v.as_str()) == Some(seat_id.as_str()))
+            .and_then(|s| s.get("status").and_then(|v| v.as_str()));
+
+        if seat_status != Some("available") {
             tx.rollback().await.ok();
             return Err(AppError::Conflict(format!(
                 "Le siège {} n'est plus disponible",
                 seat_id
             )));
         }
+
+        // Vérifier qu'il n'y a pas déjà une réservation active
+        let existing: Option<String> = sqlx::query_scalar(
+            r#"
+            SELECT id FROM bus_reservations
+            WHERE product_id = $1 AND seat_id = $2
+                AND status IN ('pending', 'confirmed')
+                AND (expires_at IS NULL OR expires_at > NOW())
+            FOR UPDATE
+            "#,
+        )
+        .bind(&product_id)
+        .bind(seat_id)
+        .fetch_optional(&mut *tx)
+        .await
+        .map_err(|e| {
+            error!(
+                "[confirm_return_trip_request] Erreur vérification réservation: {}",
+                e
+            );
+            AppError::Internal(format!("Erreur vérification réservation: {}", e))
+        })?;
+
+        if existing.is_some() {
+            tx.rollback().await.ok();
+            return Err(AppError::Conflict(format!(
+                "Le siège {} est déjà réservé",
+                seat_id
+            )));
+        }
+
+        // Extraire le seat_number depuis le seat_map
+        let seat_number = seats
+            .iter()
+            .find(|s| s.get("id").and_then(|v| v.as_str()) == Some(seat_id.as_str()))
+            .and_then(|s| s.get("number").and_then(|v| v.as_i64()))
+            .unwrap_or((idx + 1) as i64) as i32;
 
         // Créer la réservation
         let reservation_id: String = sqlx::query_scalar(
@@ -549,7 +596,7 @@ pub async fn confirm_return_trip_request(
         .bind(&product_id)
         .bind(user_id)
         .bind(seat_id)
-        .bind((idx + 1) as i32) // seat_number temporaire
+        .bind(seat_number)
         .bind(
             payload
                 .passenger_names
@@ -569,19 +616,29 @@ pub async fn confirm_return_trip_request(
 
         reservation_ids.push(reservation_id);
 
-        // Bloquer le siège
-        sqlx::query(
-            "UPDATE bus_seats SET is_available = FALSE, reserved_by_user_id = $1 WHERE id::text = $2"
-        )
-        .bind(user_id)
-        .bind(seat_id)
+        // Marquer le siège comme réservé dans le seat_map
+        if let Some(seat_val) = seats
+            .iter_mut()
+            .find(|s| s.get("id").and_then(|v| v.as_str()) == Some(seat_id.as_str()))
+        {
+            seat_val["status"] = json!("reserved");
+        }
+    }
+
+    // Mettre à jour le seat_map dans products
+    let updated_map = serde_json::to_value(&seats).unwrap_or_default();
+    sqlx::query("UPDATE products SET seat_map = $1::jsonb WHERE id::text = $2")
+        .bind(&updated_map)
+        .bind(&product_id)
         .execute(&mut *tx)
         .await
         .map_err(|e| {
-            error!("[confirm_return_trip_request] Erreur blocage siège: {}", e);
-            AppError::Internal(format!("Erreur blocage siège: {}", e))
+            error!(
+                "[confirm_return_trip_request] Erreur mise à jour seat_map: {}",
+                e
+            );
+            AppError::Internal(format!("Erreur mise à jour seat_map: {}", e))
         })?;
-    }
 
     // 3. Mettre à jour la demande de retour
     sqlx::query(

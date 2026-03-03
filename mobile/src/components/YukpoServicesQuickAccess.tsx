@@ -18,66 +18,65 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import SafeIcon from './SafeIcon';
-import { hapticPress } from '../utils/hapticFeedback';
 import { modernColors } from '../theme/modernTheme';
+import SafeIcon from './SafeIcon';
 
 // ✅ NOUVEAU: Fonction pour rendre une couleur plus vive (augmenter la saturation)
 const brightenColor = (hex: string, percent: number = 20): string => {
     // Retirer le # si présent
     hex = hex.replace('#', '');
-    
+
     // Convertir en RGB
     const r = parseInt(hex.substring(0, 2), 16);
     const g = parseInt(hex.substring(2, 4), 16);
     const b = parseInt(hex.substring(4, 6), 16);
-    
+
     // Convertir RGB en HSL pour augmenter la saturation
     const rNorm = r / 255;
     const gNorm = g / 255;
     const bNorm = b / 255;
-    
+
     const max = Math.max(rNorm, gNorm, bNorm);
     const min = Math.min(rNorm, gNorm, bNorm);
     let h = 0, s = 0, l = (max + min) / 2;
-    
+
     if (max !== min) {
         const d = max - min;
         s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-        
+
         switch (max) {
             case rNorm: h = ((gNorm - bNorm) / d + (gNorm < bNorm ? 6 : 0)) / 6; break;
             case gNorm: h = ((bNorm - rNorm) / d + 2) / 6; break;
             case bNorm: h = ((rNorm - gNorm) / d + 4) / 6; break;
         }
     }
-    
+
     // Augmenter la saturation
     s = Math.min(1, s * (1 + percent / 100));
-    
+
     // Convertir HSL en RGB
     const hue2rgb = (p: number, q: number, t: number) => {
         if (t < 0) t += 1;
         if (t > 1) t -= 1;
-        if (t < 1/6) return p + (q - p) * 6 * t;
-        if (t < 1/2) return q;
-        if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+        if (t < 1 / 6) return p + (q - p) * 6 * t;
+        if (t < 1 / 2) return q;
+        if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
         return p;
     };
-    
+
     let q = l < 0.5 ? l * (1 + s) : l + s - l * s;
     let p = 2 * l - q;
-    
-    const brightenedR = Math.round(hue2rgb(p, q, h + 1/3) * 255);
+
+    const brightenedR = Math.round(hue2rgb(p, q, h + 1 / 3) * 255);
     const brightenedG = Math.round(hue2rgb(p, q, h) * 255);
-    const brightenedB = Math.round(hue2rgb(p, q, h - 1/3) * 255);
-    
+    const brightenedB = Math.round(hue2rgb(p, q, h - 1 / 3) * 255);
+
     // Convertir en hex
     const toHex = (n: number) => {
         const hex = Math.max(0, Math.min(255, n)).toString(16);
         return hex.length === 1 ? '0' + hex : hex;
     };
-    
+
     return `#${toHex(brightenedR)}${toHex(brightenedG)}${toHex(brightenedB)}`;
 };
 
@@ -103,7 +102,7 @@ interface YukpoServicesQuickAccessProps {
     onServicePress?: (serviceId: string) => void;
 }
 
-// Données des services (13 services)
+// Données des services (17 services)
 const SERVICES_DATA: Service[] = [
     // Santé
     { id: 'pharmacie', title: 'Pharmacie', icon: 'pill', gradient: ['#10B981', '#34D399'], description: 'Pharmacies de garde', comingSoon: false },
@@ -114,14 +113,16 @@ const SERVICES_DATA: Service[] = [
     { id: 'agence_voyage', title: 'Ticket voyage', icon: 'bus', gradient: ['#F59E0B', '#FBBF24'], description: 'Billets, réservations', comingSoon: false },
     { id: 'covoiturage', title: 'Covoiturage', icon: 'users', gradient: ['#8B5CF6', '#A78BFA'], description: 'Partage de trajet', comingSoon: false },
     { id: 'taxi', title: 'Taxi', icon: 'car', gradient: ['#F97316', '#FB923C'], description: 'Transport rapide', comingSoon: false },
-    // Éducation
+    { id: 'automobile', title: 'Automobile', icon: 'car', gradient: ['#DC2626', '#F87171'], description: 'Véhicules, occasions', comingSoon: false },
+    // Vie pratique (Éducation + Quotidien)
     { id: 'orientation_scolaire', title: 'Orientation', icon: 'book-open', gradient: ['#10B981', '#34D399'], description: 'Orientation scolaire', comingSoon: false },
     { id: 'bourse_livre', title: 'Troc livre', icon: 'book-open', gradient: ['#8B5CF6', '#A78BFA'], description: 'Livres scolaires', comingSoon: false },
-    // Emploi
-    { id: 'offres_emploi', title: 'Offres d\'Emploi', icon: 'briefcase', gradient: ['#6366F1', '#818CF8'], description: 'Recrutement', comingSoon: false },
-    // Vie quotidienne
     { id: 'menu_planning', title: 'Mon menu', icon: 'utensils-crossed', gradient: ['#F59E0B', '#FBBF24'], description: 'Menus, repas', comingSoon: false },
     { id: 'bayamselam', title: 'BayamSelam', icon: 'trending-down', gradient: ['#10B981', '#34D399'], description: 'Comparatif prix', comingSoon: false },
+    // Emploi
+    { id: 'offres_emploi', title: 'Offres d\'Emploi', icon: 'briefcase', gradient: ['#6366F1', '#818CF8'], description: 'Recrutement', comingSoon: false },
+    // Assurance
+    { id: 'assurance', title: 'Assurance', icon: 'shield', gradient: ['#0EA5E9', '#38BDF8'], description: 'Assurances, mutuelles', comingSoon: false },
     // Immobilier
     { id: 'immo', title: 'Immobilier', icon: 'home', gradient: ['#8B5CF6', '#A78BFA'], description: 'Biens immobiliers', comingSoon: false },
     { id: 'hotel', title: 'Hôtel', icon: 'building', gradient: ['#F59E0B', '#FBBF24'], description: 'Hôtels et hébergements', comingSoon: false },
@@ -131,10 +132,10 @@ const SERVICES_DATA: Service[] = [
 // Données des catégories (6 catégories)
 const CATEGORIES_DATA: Category[] = [
     { id: 'sante', title: 'Santé', icon: 'heart', gradient: ['#EC4899', '#F472B6'], serviceIds: ['pharmacie', 'hopital', 'laboratoire', 'banque_sang'] },
-    { id: 'transport', title: 'Transport', icon: 'car', gradient: ['#F59E0B', '#FBBF24'], serviceIds: ['agence_voyage', 'covoiturage', 'taxi'] },
-    { id: 'education', title: 'Éducation', icon: 'book-open', gradient: ['#3B82F6', '#60A5FA'], serviceIds: ['orientation_scolaire', 'bourse_livre'] },
+    { id: 'transport', title: 'Transport', icon: 'car', gradient: ['#F59E0B', '#FBBF24'], serviceIds: ['agence_voyage', 'covoiturage', 'taxi', 'automobile'] },
+    { id: 'vie_pratique', title: 'Vie pratique', icon: 'book-open', gradient: ['#3B82F6', '#60A5FA'], serviceIds: ['orientation_scolaire', 'bourse_livre', 'menu_planning', 'bayamselam'] },
     { id: 'emploi', title: 'Emploi', icon: 'briefcase', gradient: ['#6366F1', '#818CF8'], serviceIds: ['offres_emploi'] },
-    { id: 'vie_quotidienne', title: 'Ma cuisine', icon: 'utensils-crossed', gradient: ['#F59E0B', '#FBBF24'], serviceIds: ['menu_planning', 'bayamselam'] },
+    { id: 'assurance', title: 'Assurance', icon: 'shield', gradient: ['#0EA5E9', '#38BDF8'], serviceIds: ['assurance'] },
     { id: 'immobilier', title: 'Immobilier', icon: 'home', gradient: ['#8B5CF6', '#A78BFA'], serviceIds: ['immo', 'hotel', 'meuble'] },
 ];
 
@@ -150,7 +151,7 @@ const YukpoServicesQuickAccess: React.FC<YukpoServicesQuickAccessProps> = ({
             const services = cat.serviceIds
                 .map(id => SERVICES_DATA.find(s => s.id === id))
                 .filter((s): s is Service => s !== undefined);
-            
+
             return {
                 ...cat,
                 services
@@ -189,12 +190,12 @@ const YukpoServicesQuickAccess: React.FC<YukpoServicesQuickAccessProps> = ({
     // Gérer le clic sur un service
     const handleServicePress = (serviceId: string) => {
         if (!serviceId || typeof serviceId !== 'string') return;
-        
+
         // ✅ DÉSACTIVÉ: Haptic feedback désactivé pour navigation fluide
         // hapticPress();
         setExpandedCategoryId(null);
         setModalCategoryId(null);
-        
+
         if (onServicePress) {
             onServicePress(serviceId);
         }
@@ -277,7 +278,7 @@ const YukpoServicesQuickAccess: React.FC<YukpoServicesQuickAccessProps> = ({
                                         {category.title}
                                     </Text>
                                     <Text style={styles.categoryDescription} numberOfLines={1}>
-                                        {category.id === 'immobilier' 
+                                        {category.id === 'immobilier'
                                             ? 'Immobilier, Hôtel, Meublé'
                                             : serviceCountText}
                                     </Text>

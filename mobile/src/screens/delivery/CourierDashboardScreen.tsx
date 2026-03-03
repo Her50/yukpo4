@@ -18,6 +18,7 @@ import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useAuth } from '../../contexts/AuthContext';
 import { deliveryApi } from '../../services/api';
+import { notificationSoundService } from '../../services/notificationSoundService';
 import { modernColors } from '../../theme/modernTheme';
 import { DeliverySummary } from '../../types/delivery';
 import { useScreenEnter } from '../../utils/animations';
@@ -28,6 +29,7 @@ const CourierDashboardScreen: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [activeDeliveries, setActiveDeliveries] = useState<DeliverySummary[]>([]);
+    const [lastDeliveryCount, setLastDeliveryCount] = useState(0);
     const [stats, setStats] = useState({
         totalDeliveries: 0,
         completedDeliveries: 0,
@@ -52,7 +54,18 @@ const CourierDashboardScreen: React.FC = () => {
 
     useFocusEffect(
         useCallback(() => {
+            // ✅ FIX 2026-03-03: Initialiser le service audio + polling pour nouvelles livraisons
+            notificationSoundService.initialize().catch(console.error);
             loadData();
+
+            // Polling toutes les 15 secondes pour détecter les nouvelles livraisons
+            const interval = setInterval(() => {
+                loadData();
+            }, 15000);
+
+            return () => {
+                clearInterval(interval);
+            };
         }, [])
     );
 
@@ -62,7 +75,14 @@ const CourierDashboardScreen: React.FC = () => {
             // Charger les livraisons actives
             const deliveriesResponse = await deliveryApi.listActiveDeliveries();
             const deliveries = deliveriesResponse.data?.deliveries || deliveriesResponse.data || [];
-            setActiveDeliveries(Array.isArray(deliveries) ? deliveries : []);
+            const deliveriesList = Array.isArray(deliveries) ? deliveries : [];
+            setActiveDeliveries(deliveriesList);
+
+            // ✅ FIX 2026-03-03: Notification sonore si nouvelle livraison détectée
+            if (deliveriesList.length > lastDeliveryCount && lastDeliveryCount > 0) {
+                notificationSoundService.playSoundWithVibration('delivery_request').catch(console.error);
+            }
+            setLastDeliveryCount(deliveriesList.length);
 
             // TODO: Charger les statistiques du coursier
             // const statsResponse = await deliveryApi.getCourierStats(user?.id);

@@ -17,8 +17,8 @@ import {
   View
 } from 'react-native';
 
-import { NativeButton, NativeCard } from '../components/SafeNativeDesign';
 import SafeIcon from '../components/SafeIcon';
+import { NativeButton, NativeCard } from '../components/SafeNativeDesign';
 import ServiceCardModern from '../components/ServiceCardModern';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguageSafe } from '../contexts/LanguageContext';
@@ -274,11 +274,21 @@ const ServicesScreen: React.FC = () => {
 
   const handleShareService = async (service: Service) => {
     try {
-      const shareUrl = `https://yukpomnang.com/service/${service.id}`;
+      const SHARE_BASE_URL = process.env.EXPO_PUBLIC_SHARE_URL || 'https://yukpo-backend-376093909298.europe-west1.run.app';
+      const shareUrl = `${SHARE_BASE_URL}/service/${service.id}`;
+      const titre = service.title || service.titre || 'Service Yukpo';
+      const description = service.description || '';
+      const prix = service.prix || service.price;
+
+      let shareText = ` ${titre}`;
+      if (description) shareText += `\n\n${description}`;
+      if (prix) shareText += `\n Prix: ${prix} ${service.devise || 'XAF'}`;
+      shareText += `\n\n Voir sur Yukpo:\n${shareUrl}`;
+
       await Share.share({
-        message: `Découvrez ce service sur Yukpo: ${service.title}\n${shareUrl}`,
+        message: shareText,
         url: shareUrl,
-        title: service.title
+        title: titre
       });
     } catch (error) {
       console.error('Erreur partage:', error);

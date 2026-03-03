@@ -76,6 +76,7 @@ interface ProductCommentsSectionProps {
     onOpenChat?: (userId: number, userName: string, userAvatar?: string | null) => void;
     mode?: 'inline' | 'full';
     compact?: boolean; // ✅ NOUVEAU 2026-01-13: Mode compact pour réduire la taille
+    displayLimit?: number; // ✅ FIX 2026-03-03: Limite d'affichage initiale des commentaires
 }
 
 const REACTION_OPTIONS = [
@@ -198,6 +199,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
     onOpenChat,
     mode = 'inline',
     compact = false,
+    displayLimit = 10, // ✅ FIX 2026-03-03: Limite d'affichage par défaut
 }) => {
     const { user } = useAuth();
     const currentUserId = useMemo(() => {
@@ -234,13 +236,16 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
 
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
+    // ✅ FIX 2026-03-03: Gestion de la limite d'affichage avec "Voir plus"
+    const [displayedCount, setDisplayedCount] = useState(displayLimit);
+
     const isFullMode = mode === 'full' || modalVisible;
 
     const loadComments = useCallback(async () => {
         setError(null);
         if (!refreshing) setLoading(true);
         try {
-            const response = await commentsApi.getProductComments(serviceId, { product_index: productIndex });
+            const response = await commentsApi.getProductComments(serviceId, { product_index: productIndex, limit: 50 });
             if (response.success && response.data) {
                 const payload: any = response.data;
                 setComments(normalizeComments(payload.comments));
@@ -986,7 +991,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                 </LinearGradient>
 
                 <FlatList
-                    data={comments}
+                    data={comments.slice(0, displayedCount)}
                     keyExtractor={(item) => `comment-${item.id}`}
                     renderItem={({ item }) => renderCommentItem({ item, depth: 0 })}
                     contentContainerStyle={styles.commentsList}
@@ -1010,6 +1015,19 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                                 </Text>
                             </View>
                         )
+                    }
+                    ListFooterComponent={
+                        comments.length > displayedCount ? (
+                            <TouchableOpacity
+                                style={styles.loadMoreButton}
+                                onPress={() => setDisplayedCount(prev => prev + displayLimit)}
+                            >
+                                <SafeIcon name="chevron-down" size={16} color={modernColors.primary} />
+                                <Text style={styles.loadMoreText}>
+                                    Voir plus ({comments.length - displayedCount} restant{comments.length - displayedCount > 1 ? 's' : ''})
+                                </Text>
+                            </TouchableOpacity>
+                        ) : null
                     }
                 />
 
@@ -1660,6 +1678,25 @@ const styles = StyleSheet.create({
     },
     emojiText: {
         fontSize: 24,
+    },
+    // ✅ FIX 2026-03-03: Style pour le bouton "Voir plus"
+    loadMoreButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        paddingVertical: 14,
+        marginHorizontal: 16,
+        marginBottom: 12,
+        borderRadius: 10,
+        backgroundColor: modernColors.surface,
+        borderWidth: 1,
+        borderColor: modernColors.border,
+    },
+    loadMoreText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: modernColors.primary,
     },
 });
 

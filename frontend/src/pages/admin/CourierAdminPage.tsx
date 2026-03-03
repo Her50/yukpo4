@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from 'react';
 import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
 import RequireAdminPage from '@/components/security/RequireAdminPage';
-import { useUser } from '@/hooks/useUser';
 import { useToast } from '@/components/ui/use-toast';
+import { useUser } from '@/hooks/useUser';
 import axios from 'axios';
-import { CheckCircle, Clock, FileText, MapPin, Truck, X, User, Mail, Calendar, AlertCircle } from 'lucide-react';
+import { AlertCircle, Calendar, CheckCircle, Clock, FileText, Mail, Truck, User, X } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
 
 interface CourierApplication {
     id: string;
@@ -50,11 +50,11 @@ const CourierAdminPage: React.FC = () => {
             const statusParam = filter !== 'all' ? `?status=${filter}` : '';
             const response = await axios.get(`/api/courier/applications${statusParam}`);
             const data = response.data;
-            
+
             // ✅ CORRIGÉ: Gérer la structure de réponse comme le mobile
             // Le backend peut retourner { applications: [...], total: ... } ou directement un tableau
             let applicationsList: CourierApplication[] = [];
-            
+
             if (data && typeof data === 'object') {
                 // Cas 1: response.data.applications (structure normale)
                 if (data.applications && Array.isArray(data.applications)) {
@@ -69,7 +69,7 @@ const CourierAdminPage: React.FC = () => {
                     applicationsList = data;
                 }
             }
-            
+
             setApplications(applicationsList);
         } catch (error: any) {
             console.error('[CourierAdminPage] Erreur chargement candidatures:', error);
@@ -88,8 +88,8 @@ const CourierAdminPage: React.FC = () => {
         try {
             setProcessing(applicationId);
             const response = await axios.post(`/api/courier/applications/${applicationId}/approve`, {});
-            
-            if (response.data.success !== false) {
+
+            if (response.data?.success) {
                 toast({
                     title: '✅ Succès',
                     description: 'La candidature a été approuvée avec succès',
@@ -97,7 +97,7 @@ const CourierAdminPage: React.FC = () => {
                 setShowDetailModal(false);
                 loadApplications();
             } else {
-                throw new Error(response.data.message || 'Erreur lors de l\'approbation');
+                throw new Error(response.data?.message || response.data?.error || 'Erreur lors de l\'approbation');
             }
         } catch (error: any) {
             console.error('[CourierAdminPage] Erreur approbation:', error);
@@ -126,8 +126,8 @@ const CourierAdminPage: React.FC = () => {
             const response = await axios.post(`/api/courier/applications/${applicationId}/reject`, {
                 rejection_reason: rejectionReason,
             });
-            
-            if (response.data.success !== false) {
+
+            if (response.data?.success) {
                 toast({
                     title: '✅ Succès',
                     description: 'La candidature a été rejetée',
@@ -137,7 +137,7 @@ const CourierAdminPage: React.FC = () => {
                 setRejectionReason('');
                 loadApplications();
             } else {
-                throw new Error(response.data.message || 'Erreur lors du rejet');
+                throw new Error(response.data?.message || response.data?.error || 'Erreur lors du rejet');
             }
         } catch (error: any) {
             console.error('[CourierAdminPage] Erreur rejet:', error);
@@ -242,11 +242,10 @@ const CourierAdminPage: React.FC = () => {
                         <button
                             key={filterOption.value}
                             onClick={() => setFilter(filterOption.value)}
-                            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                                filter === filterOption.value
+                            className={`px-4 py-2 rounded-lg font-medium transition-colors ${filter === filterOption.value
                                     ? 'bg-blue-600 text-white'
                                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                            }`}
+                                }`}
                         >
                             {filterOption.label}
                         </button>
@@ -439,24 +438,24 @@ const CourierAdminPage: React.FC = () => {
                                             </p>
                                             {selectedApplication.profile_data.transport
                                                 .vehicleBrand && (
-                                                <p>
-                                                    <span className="font-medium">Marque:</span>{' '}
-                                                    {
-                                                        selectedApplication.profile_data.transport
-                                                            .vehicleBrand
-                                                    }
-                                                </p>
-                                            )}
+                                                    <p>
+                                                        <span className="font-medium">Marque:</span>{' '}
+                                                        {
+                                                            selectedApplication.profile_data.transport
+                                                                .vehicleBrand
+                                                        }
+                                                    </p>
+                                                )}
                                             {selectedApplication.profile_data.transport
                                                 .vehicleModel && (
-                                                <p>
-                                                    <span className="font-medium">Modèle:</span>{' '}
-                                                    {
-                                                        selectedApplication.profile_data.transport
-                                                            .vehicleModel
-                                                    }
-                                                </p>
-                                            )}
+                                                    <p>
+                                                        <span className="font-medium">Modèle:</span>{' '}
+                                                        {
+                                                            selectedApplication.profile_data.transport
+                                                                .vehicleModel
+                                                        }
+                                                    </p>
+                                                )}
                                         </div>
                                     </div>
                                 )}
@@ -480,7 +479,7 @@ const CourierAdminPage: React.FC = () => {
                                                 };
                                                 const label = docLabels[key] || key;
                                                 const hasData = doc?.data || doc?.url;
-                                                
+
                                                 return (
                                                     <div key={key} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                                                         <div className="flex-1">
@@ -534,35 +533,35 @@ const CourierAdminPage: React.FC = () => {
                                 {/* Actions */}
                                 {(selectedApplication.status === 'submitted' ||
                                     selectedApplication.status === 'under_review') && (
-                                    <div className="flex gap-3 pt-4 border-t">
-                                        <button
-                                            onClick={() => {
-                                                if (
-                                                    confirm(
-                                                        'Êtes-vous sûr de vouloir approuver cette candidature ?',
-                                                    )
-                                                ) {
-                                                    handleApprove(selectedApplication.id);
-                                                }
-                                            }}
-                                            disabled={processing === selectedApplication.id}
-                                            className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                                        >
-                                            <CheckCircle className="w-5 h-5" />
-                                            Approuver
-                                        </button>
-                                        <button
-                                            onClick={() => {
-                                                setShowRejectModal(true);
-                                            }}
-                                            disabled={processing === selectedApplication.id}
-                                            className="flex-1 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                                        >
-                                            <X className="w-5 h-5" />
-                                            Rejeter
-                                        </button>
-                                    </div>
-                                )}
+                                        <div className="flex gap-3 pt-4 border-t">
+                                            <button
+                                                onClick={() => {
+                                                    if (
+                                                        confirm(
+                                                            'Êtes-vous sûr de vouloir approuver cette candidature ?',
+                                                        )
+                                                    ) {
+                                                        handleApprove(selectedApplication.id);
+                                                    }
+                                                }}
+                                                disabled={processing === selectedApplication.id}
+                                                className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                            >
+                                                <CheckCircle className="w-5 h-5" />
+                                                Approuver
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    setShowRejectModal(true);
+                                                }}
+                                                disabled={processing === selectedApplication.id}
+                                                className="flex-1 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                            >
+                                                <X className="w-5 h-5" />
+                                                Rejeter
+                                            </button>
+                                        </div>
+                                    )}
                             </div>
                         </div>
                     </div>

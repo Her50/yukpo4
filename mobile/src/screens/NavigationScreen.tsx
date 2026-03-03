@@ -1,10 +1,9 @@
 import * as Location from 'expo-location';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
     Dimensions,
-    FlatList,
     Linking,
     Platform,
     ScrollView,
@@ -121,6 +120,9 @@ const NavigationScreen: React.FC = () => {
     // ✅ FIX 2026-03-03: Contrôle du scroll parent pour éviter le conflit avec les FlatList horizontaux
     const [parentScrollEnabled, setParentScrollEnabled] = useState(true);
     const routeCardWidth = width * 0.68 + 10; // card width + marginRight
+
+    // ✅ FIX 2026-03-03: Ref pour éviter les closures obsolètes dans les callbacks asynchrones
+    const searchRoutesRef = useRef<() => void>(() => { });
 
     // ── POIs groupés par catégorie (mémorisé) ──
     const groupedPOIs = useMemo(() => {
@@ -271,6 +273,9 @@ const NavigationScreen: React.FC = () => {
             setLoading(false);
         }
     }, [destination, destinationCoords, selectedLocation, getCurrentPosition, geocodeDestination, avoidTolls, avoidHighways, avoidFerries, waypoints]);
+
+    // ✅ FIX 2026-03-03: Garder la ref à jour pour éviter les closures obsolètes
+    useEffect(() => { searchRoutesRef.current = searchRoutes; }, [searchRoutes]);
 
     // ── Points d'intérêt ────────────────────────────────────────────────
     const loadPointsOfInterest = useCallback(async (route: RouteOption) => {
@@ -443,7 +448,8 @@ const NavigationScreen: React.FC = () => {
                                 onPress={() => {
                                     setDestination(dest.custom_label || dest.label);
                                     setDestinationCoords({ lat: dest.latitude, lng: dest.longitude });
-                                    setTimeout(() => searchRoutes(), 100);
+                                    // ✅ FIX 2026-03-03: Utiliser la ref pour avoir la version la plus récente
+                                    setTimeout(() => searchRoutesRef.current(), 200);
                                 }}
                             >
                                 <SafeIcon
@@ -476,10 +482,11 @@ const NavigationScreen: React.FC = () => {
                                     setDestination(locationText);
                                     if (location.latitude && location.longitude) {
                                         setDestinationCoords({ lat: location.latitude, lng: location.longitude });
-                                        setTimeout(() => searchRoutes(), 150);
+                                        // ✅ FIX 2026-03-03: Utiliser la ref pour la version la plus récente
+                                        setTimeout(() => searchRoutesRef.current(), 200);
                                     } else {
                                         geocodeDestination(locationText).then((coords) => {
-                                            if (coords) { setDestinationCoords(coords); setTimeout(() => searchRoutes(), 150); }
+                                            if (coords) { setDestinationCoords(coords); setTimeout(() => searchRoutesRef.current(), 200); }
                                         });
                                     }
                                 }}
@@ -560,9 +567,8 @@ const NavigationScreen: React.FC = () => {
                 {routes.length > 0 && (
                     <View style={styles.routesSection}>
                         <Text style={styles.sectionTitle}>{routes.length} itinéraire{routes.length > 1 ? 's' : ''} trouvé{routes.length > 1 ? 's' : ''}</Text>
-                        <FlatList
-                            data={routes}
-                            keyExtractor={(item) => item.id}
+                        {/* ✅ FIX 2026-03-03: ScrollView horizontal au lieu de FlatList pour éviter le conflit de scroll */}
+                        <ScrollView
                             horizontal
                             showsHorizontalScrollIndicator={false}
                             nestedScrollEnabled={true}
@@ -573,7 +579,8 @@ const NavigationScreen: React.FC = () => {
                             onScrollBeginDrag={() => setParentScrollEnabled(false)}
                             onScrollEndDrag={() => setParentScrollEnabled(true)}
                             onMomentumScrollEnd={() => setParentScrollEnabled(true)}
-                            renderItem={({ item, index }) => {
+                        >
+                            {routes.map((item, index) => {
                                 const isSelected = selectedRoute?.id === item.id;
                                 const trafficColor = getTrafficColor(item.traffic_level);
                                 const duration = item.duration_in_traffic_seconds || item.duration_seconds;
@@ -582,6 +589,7 @@ const NavigationScreen: React.FC = () => {
 
                                 return (
                                     <TouchableOpacity
+                                        key={item.id}
                                         style={[styles.routeCard, isSelected && styles.routeCardSelected]}
                                         onPress={() => { setSelectedRoute(item); loadPointsOfInterest(item); }}
                                         activeOpacity={0.7}
@@ -613,8 +621,8 @@ const NavigationScreen: React.FC = () => {
                                         )}
                                     </TouchableOpacity>
                                 );
-                            }}
-                        />
+                            })}
+                        </ScrollView>
                     </View>
                 )}
 
@@ -661,7 +669,7 @@ const NavigationScreen: React.FC = () => {
                                                         <View style={styles.poiItemInfo}>
                                                             <Text style={styles.poiName} numberOfLines={1}>{poi.name}</Text>
                                                             <View style={styles.poiMeta}>
-                                                                <Text style={styles.poiDistance}>{formatDistance(poi.distance_from_route_meters)}</Text>
+                                                                <Text style={styles.poiDistance}>📍 {formatDistance(poi.distance_from_route_meters)}</Text>
                                                                 {poi.rating != null && poi.rating > 0 && (
                                                                     <View style={styles.poiRating}>
                                                                         <SafeIcon name="Star" size={11} color="#FBBF24" />

@@ -10,8 +10,8 @@ import {
     Text,
     View
 } from 'react-native';
-import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import LivreScolaireValidationVideoRecorder from '../../components/troc/LivreScolaireValidationVideoRecorder';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiGet, apiPost } from '../../services/api';
@@ -43,10 +43,10 @@ const TrocLiveValidationScreen: React.FC = () => {
         try {
             setLoading(true);
             const response = await apiGet(`/api/troc-livres/${params.trocId}`);
-            const data = await response.json();
+            const resData = (response?.data || response) as any;
 
-            if (data.success && data.data) {
-                setTrocData(data.data);
+            if (resData?.success && resData?.data) {
+                setTrocData(resData.data);
             }
         } catch (error: any) {
             console.error('[TrocLiveValidationScreen] Erreur:', error);
@@ -104,9 +104,9 @@ const TrocLiveValidationScreen: React.FC = () => {
             const response = await apiPost(`/api/troc-livres/${params.trocId}/validate-video`, {
                 video_url: videoUri, // En production, utiliser l'URL du serveur
             });
-            const data = await response.json();
+            const valData = (response?.data || response) as any;
 
-            if (data.success) {
+            if (valData?.success) {
                 Alert.alert(
                     'Succès',
                     'Vidéo de validation enregistrée avec succès !',
@@ -120,7 +120,7 @@ const TrocLiveValidationScreen: React.FC = () => {
                     ]
                 );
             } else {
-                throw new Error(data.error || 'Erreur lors de l\'upload');
+                throw new Error(valData?.error || 'Erreur lors de l\'upload');
             }
         } catch (error: any) {
             console.error('[TrocLiveValidationScreen] Erreur upload:', error);

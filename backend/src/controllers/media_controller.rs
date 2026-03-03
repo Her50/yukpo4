@@ -39,7 +39,15 @@ use crate::{
     middlewares::jwt::AuthenticatedUser,
     state::AppState,
 };
+use axum::extract::Query;
 use log::{error, info, warn};
+
+/// Query params optionnels pour upload_media
+#[derive(Debug, serde::Deserialize, Default)]
+pub struct UploadMediaQuery {
+    /// Si fourni, associe le média à un produit spécifique (au lieu d'être global au service)
+    pub product_index: Option<i32>,
+}
 
 /// ? Repr?sente un m?dia dans la base
 #[derive(Debug, FromRow, serde::Serialize)]
@@ -82,14 +90,15 @@ fn absolute_media_path(relative: &str) -> PathBuf {
 /// Utilise MediaStorageService pour stocker dans le cloud (comme les autres uploads)
 pub async fn upload_media(
     AxumPath(service_id): AxumPath<i32>,
+    Query(query): Query<UploadMediaQuery>,
     State(state): State<Arc<AppState>>,
     Extension(pool): Extension<PgPool>,
     Extension(user): Extension<AuthenticatedUser>,
     mut multipart: Multipart,
 ) -> AppResult<Json<Vec<UploadedMediaResponse>>> {
     info!(
-        "[upload_media] Called for user_id={}, service_id={}",
-        user.id, service_id
+        "[upload_media] Called for user_id={}, service_id={}, product_index={:?}",
+        user.id, service_id, query.product_index
     );
     let owner = match sqlx::query_scalar!("SELECT user_id FROM services WHERE id = $1", service_id)
         .fetch_optional(&pool)
@@ -179,10 +188,12 @@ pub async fn upload_media(
             }
         };
 
+        // ✅ CORRIGÉ: Inclure product_index dans l'INSERT pour associer le média au bon produit
         let record: MediaIdTypeRow = sqlx::query_as(
-            "INSERT INTO media (service_id, type, path) VALUES ($1, $2, $3) RETURNING id, type",
+            "INSERT INTO media (service_id, product_index, type, path) VALUES ($1, $2, $3, $4) RETURNING id, type",
         )
         .bind(service_id)
+        .bind(query.product_index) // Option<i32> → NULL si non fourni (média global service)
         .bind(&media_type)
         .bind(&relative_path)
         .fetch_one(&pool)
@@ -517,7 +528,6 @@ pub async fn serve_example_video() -> Result<Response<Body>, AppError> {
 // ✅ NOUVEAU 2025-01-27: Fonctions pour bibliothèque d'effets étendue
 
 use crate::services::effect_library_service::EffectLibraryService;
-use axum::extract::Query;
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]

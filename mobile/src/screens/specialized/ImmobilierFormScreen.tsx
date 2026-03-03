@@ -10,6 +10,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import { ConfirmationSection } from '../../components/FormConfirmationModal';
 import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 import ModernGPSModal from '../../components/ModernGPSModal';
@@ -19,12 +20,17 @@ import MediaUploader, { MediaItem } from '../../components/specialized/MediaUplo
 import { useAuth } from '../../contexts/AuthContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { getCurrencyFromGPS, useCurrencyDetection } from '../../hooks/useCurrencyDetection';
+import { useFormAutoSave } from '../../hooks/useFormAutoSave';
+import { useFormValidation } from '../../hooks/useFormValidation';
+import { usePartnerData } from '../../hooks/usePartnerData';
 import { apiPost, servicesApi } from '../../services/api';
 import { googlePlacesMediaService } from '../../services/googlePlacesMediaService';
 import { immobilierService } from '../../services/immobilierService';
 import { uploadFiles } from '../../services/uploadApi';
 import { modernColors } from '../../theme/modernTheme';
 import { getCurrencyIntelligently } from '../../utils/currencyUtils';
+
+const STORAGE_KEY = '@immobilier_form';
 
 const ImmobilierFormScreen: React.FC = () => {
     const navigation = useNavigation();
@@ -55,15 +61,31 @@ const ImmobilierFormScreen: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [showGPSModal, setShowGPSModal] = useState(false);
     const [selectedGPS, setSelectedGPS] = useState<string | null>(null);
+    const [showConfirmation, setShowConfirmation] = useState(false);
 
-    // ✅ NOUVEAU: Détection automatique de devise depuis GPS/localisation
     const defaultCurrency = useCurrencyDetection(formData.ville || formData.quartier);
     const [devise, setDevise] = useState(defaultCurrency);
 
-    // ✅ NOUVEAU: Gestion des médias (images et vidéos)
     const [media, setMedia] = useState<MediaItem[]>([]);
     const [importingGoogleMedia, setImportingGoogleMedia] = useState(false);
     const [lastImportedPlaceId, setLastImportedPlaceId] = useState<string | null>(null);
+
+    const { partnerData } = usePartnerData(user?.role);
+    const { errors, validateField, validateForm, setError } = useFormValidation({
+        titre: { required: true, minLength: 5 },
+        description: { required: true, minLength: 20 },
+        superficie_m2: {
+            custom: (value) => {
+                const num = parseFloat(value);
+                if (value && (isNaN(num) || num <= 0)) {
+                    return 'Superficie invalide';
+                }
+                return null;
+            }
+        },
+    });
+
+    useFormAutoSave(STORAGE_KEY, formData, true, 1000);
 
     const typesBien = ['maison', 'appartement', 'terrain', 'bureau', 'local_commercial', 'hotel', 'meuble'];
     const statuts = ['vente', 'location', 'les_deux'];
@@ -177,6 +199,53 @@ const ImmobilierFormScreen: React.FC = () => {
         setShowGPSModal(false);
     };
 
+    const handleFieldChange = (field: string, value: any) => {
+        setFormData({ ...formData, [field]: value });
+        const error = validateField(field, value);
+        if (error) {
+            setError(field, error);
+        }
+    };
+
+    const confirmationSections: ConfirmationSection[] = [
+        {
+            title: 'Bien immobilier',
+            icon: 'home',
+            fields: [
+                { label: 'Titre', value: formData.titre },
+                { label: 'Type', value: formData.type_bien },
+                { label: 'Statut', value: formData.statut },
+                { label: 'Adresse', value: formData.adresse },
+            ],
+        },
+        {
+            title: 'Caractéristiques',
+            icon: 'info',
+            fields: [
+                { label: 'Superficie', value: formData.superficie_m2 ? `${formData.superficie_m2} m²` : '' },
+                { label: 'Chambres', value: formData.nb_chambres, type: 'number' as const },
+                { label: 'Salles de bain', value: formData.nb_salles_bain, type: 'number' as const },
+                { label: 'Standing', value: formData.standing },
+                { label: 'État', value: formData.etat_general },
+            ],
+        },
+        {
+            title: 'Prix',
+            icon: 'dollar-sign',
+            fields: [
+                { label: 'Prix vente', value: formData.prix_vente ? `${formData.prix_vente} ${devise}` : 'Non spécifié' },
+                { label: 'Prix location/mois', value: formData.prix_location_mensuel ? `${formData.prix_location_mensuel} ${devise}` : 'Non spécifié' },
+            ],
+        },
+        {
+            title: 'Médias',
+            icon: 'image',
+            fields: [
+                { label: 'Photos/Vidéos', value: `${media.length} média(s)` },
+            ],
+        },
+    ];
+
     const importGooglePlacePhotos = async (placeId: string) => {
         if (!placeId) return;
         if (placeId === lastImportedPlaceId) return;
@@ -237,7 +306,15 @@ const ImmobilierFormScreen: React.FC = () => {
         }
     };
 
-    const handleSubmit = async () => {
+    const handleSubmit = () => {
+        if (!validateForm(formData)) {
+            Alert.alert('Erreur', 'Veuillez corriger les erreurs du formulaire');
+            return;
+        }
+        setShowConfirmation(true);
+    };
+
+    const handleFinalSubmit = async () => {
         if (!formData.titre.trim()) {
             Alert.alert('Erreur', 'Le titre est obligatoire');
             return;
@@ -319,6 +396,7 @@ const ImmobilierFormScreen: React.FC = () => {
             Alert.alert('Erreur', error.message || 'Une erreur est survenue');
         } finally {
             setLoading(false);
+            setShowConfirmation(false);
         }
     };
 

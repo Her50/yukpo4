@@ -58,9 +58,9 @@ const ProgrammesScolairesScreen: React.FC = () => {
             if (filiere) params.append('filiere', filiere);
 
             const response = await apiGet(`/api/orientation-scolaire/programmes/search?${params}`);
-            const data = await response.json();
+            const data = (response?.data || response) as any;
 
-            if (data.success) {
+            if (data?.success) {
                 setProgrammes(data.data || []);
                 setTotal(data.pagination?.total || 0);
             }

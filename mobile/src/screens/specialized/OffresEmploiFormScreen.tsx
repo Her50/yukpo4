@@ -11,17 +11,24 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import FormConfirmationModal, { ConfirmationSection } from '../../components/FormConfirmationModal';
 import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 import ModernGPSModal from '../../components/ModernGPSModal';
+import PartnerHeader from '../../components/PartnerHeader';
 import SafeIcon from '../../components/SafeIcon';
 import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import SimplePrestationSelector from '../../components/SimplePrestationSelector';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLocation } from '../../contexts/LocationContext';
+import { clearSavedFormData, loadSavedFormData, useFormAutoSave } from '../../hooks/useFormAutoSave';
+import { useFormValidation } from '../../hooks/useFormValidation';
+import { usePartnerData } from '../../hooks/usePartnerData';
 import { apiGet, apiPost } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 import { getCurrencyIntelligently } from '../../utils/currencyUtils';
+
+const STORAGE_KEY = '@offres_emploi_form';
 
 const OffresEmploiFormScreen: React.FC = () => {
     const navigation = useNavigation();
@@ -66,6 +73,43 @@ const OffresEmploiFormScreen: React.FC = () => {
     const [selectedGPS, setSelectedGPS] = useState<string | null>(null);
     const [showDateLimitePicker, setShowDateLimitePicker] = useState(false);
     const [showDateDebutPicker, setShowDateDebutPicker] = useState(false);
+    const [showConfirmation, setShowConfirmation] = useState(false);
+
+    const { partnerData } = usePartnerData(user?.role);
+    const { errors, validateField, validateForm, setError } = useFormValidation({
+        titre_poste: { required: true, minLength: 3 },
+        description: { required: true, minLength: 10 },
+        secteur: { required: true },
+        salaire_min: {
+            custom: (value) => {
+                if (value && formData.salaire_max) {
+                    const min = parseFloat(value);
+                    const max = parseFloat(formData.salaire_max);
+                    if (!isNaN(min) && !isNaN(max) && min > max) {
+                        return 'Le salaire min ne peut pas être > au salaire max';
+                    }
+                }
+                return null;
+            }
+        },
+    });
+
+    useEffect(() => {
+        const loadSaved = async () => {
+            const saved = await loadSavedFormData<typeof formData>(STORAGE_KEY);
+            if (saved) {
+                setFormData(saved);
+                setSelectedCompetences(saved.competences_requises || []);
+                setSelectedLangues(saved.langues_requises || []);
+                setSelectedPermis(saved.permis_requis || []);
+                setSelectedTags(saved.tags || []);
+                Alert.alert('Données restaurées', 'Vos données non envoyées ont été restaurées');
+            }
+        };
+        loadSaved();
+    }, []);
+
+    useFormAutoSave(STORAGE_KEY, formData, true, 1000);
 
     const typesContrat = ['CDI', 'CDD', 'Stage', 'Freelance', 'Temps partiel', 'Alternance'];
     const niveauxEtude = ['Bac', 'Bac+2', 'Bac+3', 'Bac+5', 'Master', 'Doctorat'];
@@ -159,14 +203,58 @@ const OffresEmploiFormScreen: React.FC = () => {
         setShowGPSModal(false);
     };
 
-    const handleSubmit = async () => {
-        if (!formData.titre_poste.trim()) {
-            Alert.alert('Erreur', 'Le titre du poste est obligatoire');
-            return;
+    const handleFieldChange = (field: string, value: any) => {
+        setFormData({ ...formData, [field]: value });
+        const error = validateField(field, value);
+        if (error) {
+            setError(field, error);
         }
+    };
 
-        if (!formData.description.trim()) {
-            Alert.alert('Erreur', 'La description est obligatoire');
+    const confirmationSections: ConfirmationSection[] = [
+        {
+            title: 'Informations générales',
+            icon: 'briefcase',
+            fields: [
+                { label: 'Titre du poste', value: formData.titre_poste },
+                { label: 'Type de contrat', value: formData.type_contrat },
+                { label: 'Secteur', value: formData.secteur },
+                { label: 'Domaine', value: formData.domaine },
+            ],
+        },
+        {
+            title: 'Localisation',
+            icon: 'map-pin',
+            fields: [
+                { label: 'Lieu de travail', value: formData.lieu_travail?.place_name || 'Télétravail' },
+                { label: 'Télétravail', value: formData.remote, type: 'boolean' as const },
+                { label: 'Télétravail partiel', value: formData.remote_partiel, type: 'boolean' as const },
+            ],
+        },
+        {
+            title: 'Rémunération',
+            icon: 'dollar-sign',
+            fields: [
+                { label: 'Salaire min', value: formData.salaire_min ? `${formData.salaire_min} ${formData.devise}` : 'Non renseigné' },
+                { label: 'Salaire max', value: formData.salaire_max ? `${formData.salaire_max} ${formData.devise}` : 'Non renseigné' },
+                { label: 'Négociable', value: formData.salaire_negociable, type: 'boolean' as const },
+            ],
+        },
+        {
+            title: 'Profil recherché',
+            icon: 'user',
+            fields: [
+                { label: 'Niveau d\'études', value: formData.niveau_etude },
+                { label: 'Expérience min', value: formData.experience_min ? `${formData.experience_min} ans` : 'Non renseigné' },
+                { label: 'Compétences', value: selectedCompetences.join(', ') },
+                { label: 'Langues', value: selectedLangues.join(', ') },
+            ],
+        },
+    ];
+
+    const handleSubmit = () => {
+        if (!validateForm(formData)) {
+            Alert.alert('Erreur', 'Veuillez corriger les erreurs du formulaire');
             return;
         }
 
@@ -175,22 +263,6 @@ const OffresEmploiFormScreen: React.FC = () => {
             return;
         }
 
-        if (!formData.secteur.trim()) {
-            Alert.alert('Erreur', 'Le secteur est obligatoire');
-            return;
-        }
-
-        // ✅ NOUVEAU: Validation cohérence salaire min/max
-        if (formData.salaire_min && formData.salaire_max) {
-            const salMin = parseFloat(formData.salaire_min);
-            const salMax = parseFloat(formData.salaire_max);
-            if (!isNaN(salMin) && !isNaN(salMax) && salMin > salMax) {
-                Alert.alert('Validation', 'Le salaire minimum ne peut pas être supérieur au salaire maximum');
-                return;
-            }
-        }
-
-        // ✅ NOUVEAU: Validation date limite candidature (pas dans le passé)
         if (formData.date_limite_candidature) {
             const now = new Date();
             now.setHours(0, 0, 0, 0);
@@ -201,6 +273,11 @@ const OffresEmploiFormScreen: React.FC = () => {
                 return;
             }
         }
+
+        setShowConfirmation(true);
+    };
+
+    const handleFinalSubmit = async () => {
 
         try {
             setLoading(true);
@@ -246,6 +323,7 @@ const OffresEmploiFormScreen: React.FC = () => {
             }
 
             if (response.success) {
+                await clearSavedFormData(STORAGE_KEY);
                 Alert.alert(
                     'Succès',
                     mode === 'edit' ? 'Offre d\'emploi modifiée avec succès !' : 'Offre d\'emploi créée avec succès !',
@@ -259,6 +337,7 @@ const OffresEmploiFormScreen: React.FC = () => {
             Alert.alert('Erreur', error.message || 'Une erreur est survenue');
         } finally {
             setLoading(false);
+            setShowConfirmation(false);
         }
     };
 
@@ -275,12 +354,21 @@ const OffresEmploiFormScreen: React.FC = () => {
                 </View>
 
                 <View style={styles.form}>
+                    {user?.role === 'partenaire' && (
+                        <PartnerHeader
+                            partnerName={partnerData?.name}
+                            logoUrl={partnerData?.logo_url}
+                            subtitle="Espace recruteur"
+                        />
+                    )}
+
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>Titre du poste *</Text>
                         <NativeInput
                             value={formData.titre_poste}
-                            onChangeText={(text) => setFormData({ ...formData, titre_poste: text })}
+                            onChangeText={(text) => handleFieldChange('titre_poste', text)}
                             placeholder="Ex: Développeur Full Stack"
+                            error={errors.titre_poste}
                         />
                     </View>
 
@@ -288,10 +376,11 @@ const OffresEmploiFormScreen: React.FC = () => {
                         <Text style={styles.label}>Description *</Text>
                         <NativeInput
                             value={formData.description}
-                            onChangeText={(text) => setFormData({ ...formData, description: text })}
+                            onChangeText={(text) => handleFieldChange('description', text)}
                             placeholder="Description détaillée du poste..."
                             multiline
                             style={styles.textArea}
+                            error={errors.description}
                         />
                     </View>
 
@@ -466,7 +555,7 @@ const OffresEmploiFormScreen: React.FC = () => {
                                         styles.chip,
                                         formData.secteur === secteur && styles.chipSelected,
                                     ]}
-                                    onPress={() => setFormData({ ...formData, secteur })}
+                                    onPress={() => handleFieldChange('secteur', secteur)}
                                 >
                                     <Text
                                         style={[
@@ -479,6 +568,7 @@ const OffresEmploiFormScreen: React.FC = () => {
                                 </TouchableOpacity>
                             ))}
                         </View>
+                        {errors.secteur && <Text style={styles.errorText}>{errors.secteur}</Text>}
                     </View>
 
                     <View style={styles.inputGroup}>
@@ -615,6 +705,15 @@ const OffresEmploiFormScreen: React.FC = () => {
                     }}
                 />
             )}
+
+            <FormConfirmationModal
+                visible={showConfirmation}
+                title="Confirmer la création de l'offre"
+                sections={confirmationSections}
+                onConfirm={handleFinalSubmit}
+                onCancel={() => setShowConfirmation(false)}
+                loading={loading}
+            />
         </>
     );
 };
@@ -728,6 +827,11 @@ const styles = StyleSheet.create({
     },
     submitButton: {
         marginTop: 24,
+    },
+    errorText: {
+        fontSize: 12,
+        color: '#EF4444',
+        marginTop: 4,
     },
 });
 

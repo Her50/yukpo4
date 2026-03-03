@@ -242,14 +242,21 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
   // ✅ CORRECTION: S'assurer que les images de mediaData sont en première position
   // Priorité 1: mediaData.base64_image (image utilisée pour la création)
-  // Priorité 2: Autres sources (suggestion, etc.)
+  // Priorité 2: Autres sources (suggestion, etc.) — UNIQUEMENT si pas de photos utilisateur
   const mediaDataImages = normalizeMediaList(mediaData?.base64_image || mediaData?.image_base64 || []);
-  const otherImageSources = mergeImageSources(
-    MAX_PRODUCT_IMAGES,
-    suggestion?.data?.base64_image,
-    suggestion?.service_data?.base64_image,
-    suggestion?.base64_image
-  );
+
+  // ✅ CORRIGÉ 2026-03-03: Ne PAS inclure suggestion.data.base64_image quand l'utilisateur a déjà fourni des photos.
+  // L'IA renvoie (echo) la même image qu'elle a reçue, mais ré-encodée/compressée → version floue.
+  // Résultat : 2 images apparaissaient (l'originale + la copie floue de l'IA).
+  // On n'utilise otherImageSources que si mediaDataImages est VIDE (ex: mode édition, Google Business, etc.)
+  const otherImageSources = mediaDataImages.length > 0
+    ? []
+    : mergeImageSources(
+      MAX_PRODUCT_IMAGES,
+      suggestion?.data?.base64_image,
+      suggestion?.service_data?.base64_image,
+      suggestion?.base64_image
+    );
 
   // Combiner en mettant mediaDataImages en premier
   const initialProductImages: string[] = [];
@@ -263,7 +270,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     }
   });
 
-  // Puis ajouter les autres images
+  // Puis ajouter les autres images (vide si l'utilisateur a déjà fourni des photos)
   otherImageSources.forEach((img: string) => {
     if (img && !seenImages.has(img) && initialProductImages.length < MAX_PRODUCT_IMAGES) {
       initialProductImages.push(img);
@@ -1372,26 +1379,21 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
   // ✅ REFONTE COMPLÈTE: Fonctions de navigation utilisant currentDisplayIndex comme source de vérité
   const goToNextBlock = () => {
-    // ✅ NOUVEAU 2026-02-10: Validation obligatoire du champ "Nom de votre structure" avant de passer au bloc suivant
+    // ✅ CORRIGÉ 2026-03-03: Validation OBLIGATOIRE du champ "Nom de votre structure"
+    // Ce champ n'est JAMAIS pré-rempli par l'IA — l'utilisateur DOIT le saisir lui-même
     const titreServiceValue = valeursFormulaire.titre_service;
-    const titreServiceField = composants.find(f => f.name === 'titre_service');
-    const isStructureNameField = titreServiceField?.isStructureName || titreServiceField?.label?.includes('structure');
-
-    if (isStructureNameField && titreServiceField?.required) {
-      const isEmpty = !titreServiceValue || (typeof titreServiceValue === 'string' && titreServiceValue.trim() === '');
-      if (isEmpty) {
-        Alert.alert(
-          '⚠️ Champ obligatoire',
-          'Le "Nom de votre structure" est obligatoire. Veuillez le renseigner avant de continuer.',
-          [{ text: 'OK' }]
-        );
-        // ✅ Mettre en évidence le champ vide
-        setFieldErrors(prev => ({
-          ...prev,
-          titre_service: 'Ce champ est obligatoire'
-        }));
-        return; // ✅ Empêcher de passer au bloc suivant
-      }
+    const titreServiceEmpty = !titreServiceValue || (typeof titreServiceValue === 'string' && titreServiceValue.trim() === '');
+    if (titreServiceEmpty) {
+      Alert.alert(
+        '⚠️ Champ obligatoire',
+        'Le "Nom de votre structure" est obligatoire. Veuillez saisir le vrai nom de votre structure avant de continuer.',
+        [{ text: 'OK' }]
+      );
+      setFieldErrors(prev => ({
+        ...prev,
+        titre_service: 'Ce champ est obligatoire'
+      }));
+      return;
     }
     try {
       // ✅ Vérifier que displayedBlocks existe et n'est pas vide
@@ -2228,6 +2230,10 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         // Mettre à jour les states
         setComposants(components);
         setBlocks(organizedBlocks);  // ✅ Utilise les valeurs IA !
+        // ✅ CORRIGÉ 2026-03-03: Supprimer titre_service des valeurs IA pour forcer la saisie manuelle
+        delete initialValues.titre_service;
+        delete componentValues.titre_service;
+
         setValeursFormulaire(prev => ({
           ...prev, // Garder les contacts précédents
           ...initialValues, // Les données IA depuis suggestion.data
@@ -2419,11 +2425,21 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               console.log(`[FormulaireYukpoIntelligentScreen] ✅ Price variant structure pré-remplie pour ${fieldName}:`, initialValues[fieldName]);
             }
           } else if (fieldData && typeof fieldData === 'object' && 'valeur' in fieldData) {
-            initialValues[fieldName] = fieldData.valeur;
-            console.log(`[FormulaireYukpoIntelligentScreen] Valeur pré-remplie pour ${fieldName}:`, fieldData.valeur);
+            // ✅ CORRIGÉ 2026-03-03: Ne JAMAIS pré-remplir titre_service depuis l'IA
+            // L'utilisateur DOIT saisir lui-même le vrai nom de sa structure
+            if (fieldName === 'titre_service') {
+              console.log(`[FormulaireYukpoIntelligentScreen] ⛔ titre_service ignoré (l'utilisateur doit le saisir lui-même)`);
+            } else {
+              initialValues[fieldName] = fieldData.valeur;
+              console.log(`[FormulaireYukpoIntelligentScreen] Valeur pré-remplie pour ${fieldName}:`, fieldData.valeur);
+            }
           } else if (typeof fieldData === 'string' || typeof fieldData === 'number' || typeof fieldData === 'boolean') {
-            initialValues[fieldName] = fieldData;
-            console.log(`[FormulaireYukpoIntelligentScreen] Valeur directe pour ${fieldName}:`, fieldData);
+            if (fieldName === 'titre_service') {
+              console.log(`[FormulaireYukpoIntelligentScreen] ⛔ titre_service ignoré (l'utilisateur doit le saisir lui-même)`);
+            } else {
+              initialValues[fieldName] = fieldData;
+              console.log(`[FormulaireYukpoIntelligentScreen] Valeur directe pour ${fieldName}:`, fieldData);
+            }
           }
         });
 
@@ -3493,6 +3509,17 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           }
         }
 
+        // ✅ CORRIGÉ 2026-03-03: Normaliser les retours à la ligne
+        // L'IA renvoie souvent des descriptions avec des \n littéraux (2 caractères: backslash + n)
+        // au lieu de vrais caractères de retour à la ligne. On les convertit ici.
+        if (textareaValue) {
+          textareaValue = textareaValue
+            .replace(/\\n/g, '\n')   // Convertir \n littéral en vrai retour à la ligne
+            .replace(/\\r/g, '')     // Supprimer \r littéral
+            .replace(/\r\n/g, '\n') // Normaliser CRLF en LF
+            .replace(/\r/g, '\n');  // Normaliser CR en LF
+        }
+
         // ✅ REFONTE: Utiliser les mêmes paramètres pour tous les textarea (comme description)
         // ✅ CORRECTION CRITIQUE: Utiliser minimum 6 lignes pour description_produit pour permettre un meilleur affichage
         const linesMinimum = field.name === 'description_produit'
@@ -3953,12 +3980,16 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               produitsArray.push(buildBaseProduct());
             } else {
               const firstProduct: any = { ...produitsArray[0] };
-              const existingImages = Array.isArray(firstProduct.images)
-                ? firstProduct.images.filter(Boolean)
-                : [];
               const newImages = Array.isArray(media.images)
                 ? media.images.filter(Boolean)
                 : [];
+              // ✅ CORRIGÉ 2026-03-03: Si l'utilisateur a fourni des images (newImages), ne PAS fusionner
+              // avec les images existantes du produit IA (firstProduct.images) car elles sont des copies
+              // floues/ré-encodées des mêmes photos envoyées à l'IA.
+              // On utilise existingImages UNIQUEMENT si l'utilisateur n'a PAS fourni de nouvelles images.
+              const existingImages = newImages.length > 0
+                ? []
+                : (Array.isArray(firstProduct.images) ? firstProduct.images.filter(Boolean) : []);
               const mergedImages = [...newImages, ...existingImages].filter((value, index, self) => self.indexOf(value) === index);
               // ✅ CORRECTION: Limiter à 10 images maximum (limite backend)
               const limitedImages = mergedImages.slice(0, 10);

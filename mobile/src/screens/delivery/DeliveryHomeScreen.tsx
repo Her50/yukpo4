@@ -1,16 +1,17 @@
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Animated, BackHandler, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import AnimatedDeliveryCard from '../../components/delivery/AnimatedDeliveryCard';
 import DeliveryAvatarBubble from '../../components/delivery/DeliveryAvatarBubble';
 import HapticTouchable from '../../components/delivery/HapticTouchable';
 import SkeletonDeliveryCard from '../../components/delivery/SkeletonDeliveryCard';
-import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useDeliveryContext } from '../../contexts/DeliveryContext';
 import { useFeatureFlags } from '../../contexts/FeatureFlagContext';
+import { notificationSoundService } from '../../services/notificationSoundService';
 import { modernColors } from '../../theme/modernTheme';
 import { useScreenEnter } from '../../utils/animations';
 
@@ -29,6 +30,7 @@ const DeliveryHomeScreen: React.FC = () => {
     const { isEnabled } = useFeatureFlags();
     const [refreshing, setRefreshing] = useState(false);
     const [navigating, setNavigating] = useState(false);
+    const prevDeliveryCountRef = useRef(0);
 
     // ✅ CORRIGÉ: Utiliser useScreenEnter directement comme hook React (pas dans try/catch)
     // Les hooks React doivent être appelés de manière inconditionnelle
@@ -48,6 +50,9 @@ const DeliveryHomeScreen: React.FC = () => {
 
     useFocusEffect(
         useCallback(() => {
+            // ✅ FIX 2026-03-03: Initialiser le service audio pour les notifications coursier
+            notificationSoundService.initialize().catch(console.error);
+
             // ✅ CORRIGÉ: Vérifier que refreshActiveDeliveries existe avant de l'appeler
             if (typeof refreshActiveDeliveries === 'function') {
                 refreshActiveDeliveries();
@@ -56,8 +61,26 @@ const DeliveryHomeScreen: React.FC = () => {
             }
             // ✅ CORRIGÉ : Réinitialiser l'état navigating quand l'écran devient actif
             setNavigating(false);
+
+            // ✅ FIX 2026-03-03: Polling pour détecter de nouvelles livraisons (coursier)
+            const interval = setInterval(() => {
+                if (typeof refreshActiveDeliveries === 'function') {
+                    refreshActiveDeliveries();
+                }
+            }, 15000);
+
+            return () => clearInterval(interval);
         }, [refreshActiveDeliveries])
     );
+
+    // ✅ FIX 2026-03-03: Détecter nouvelles livraisons et jouer le son
+    useEffect(() => {
+        const currentCount = Object.keys(deliveries).length;
+        if (currentCount > prevDeliveryCountRef.current && prevDeliveryCountRef.current > 0) {
+            notificationSoundService.playSoundWithVibration('delivery_request').catch(console.error);
+        }
+        prevDeliveryCountRef.current = currentCount;
+    }, [deliveries]);
 
     // ✅ CORRIGÉ: Gestion du bouton retour Android
     useEffect(() => {

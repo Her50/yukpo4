@@ -745,7 +745,7 @@ pub async fn share_product_redirect(
     );
 
     // Description enrichie
-    let product_description = product_data
+    let raw_description = product_data
         .as_object()
         .and_then(|obj| {
             obj.get("description")
@@ -760,12 +760,22 @@ pub async fn share_product_redirect(
         })
         .unwrap_or_else(|| "Découvrez ce produit exceptionnel sur Yukpomnang".to_string())
         .chars()
-        .take(200)
+        .take(180)
         .collect::<String>();
 
     let price_amount =
         product.product_price.as_ref().and_then(|p| p.to_string().parse::<f64>().ok());
     let price_currency = "XAF";
+
+    // ✅ CORRIGÉ: og:description inclut le prix pour que les previews sociales l'affichent
+    let product_description = if let Some(price) = price_amount {
+        format!(
+            "{} — Prix: {} {}",
+            raw_description, price as i64, price_currency
+        )
+    } else {
+        raw_description
+    };
 
     let deep_link = generate_deep_link(&product_id, service_id);
 
@@ -1085,7 +1095,7 @@ pub async fn share_service_redirect(
         })
         .unwrap_or_else(|| "Service Yukpomnang".to_string());
 
-    let service_description: String = service_row
+    let raw_service_description: String = service_row
         .try_get::<Option<String>, _>("description")
         .ok()
         .flatten()
@@ -1099,7 +1109,7 @@ pub async fn share_service_redirect(
         })
         .unwrap_or_else(|| "Découvrez ce service sur Yukpomnang".to_string())
         .chars()
-        .take(200)
+        .take(180)
         .collect::<String>();
 
     let service_prix: Option<String> = service_row
@@ -1122,43 +1132,59 @@ pub async fn share_service_redirect(
         .flatten()
         .unwrap_or_else(|| "XAF".to_string());
 
-    // ✅ CORRIGÉ 2026-03-03: Utiliser des URLs pré-signées pour l'image du service
-    // car le bucket GCS n'est PAS public (build_public_url retourne des 404)
-    let service_image_path: Option<String> = sqlx::query_scalar::<_, Option<String>>(
+    // ✅ CORRIGÉ: og:description inclut le prix pour que les previews sociales l'affichent
+    let service_description = if let Some(ref prix) = service_prix {
+        format!(
+            "{} — Prix: {} {}",
+            raw_service_description, prix, service_devise
+        )
+    } else {
+        raw_service_description
+    };
+
+    // ✅ CORRIGÉ: Récupérer TOUTES les images du service (pas LIMIT 1)
+    let service_image_paths: Vec<String> = sqlx::query_scalar::<_, Option<String>>(
         r#"SELECT path FROM media
            WHERE service_id = $1 AND (type = 'image' OR media_type = 'image')
-           ORDER BY COALESCE(is_main_image, FALSE) DESC, COALESCE(display_order, 0) ASC, id ASC
-           LIMIT 1"#,
+           ORDER BY COALESCE(is_main_image, FALSE) DESC, COALESCE(display_order, 0) ASC, id ASC"#,
     )
     .bind(service_id)
-    .fetch_optional(&state.pg)
+    .fetch_all(&state.pg)
     .await
     .ok()
+    .unwrap_or_default()
+    .into_iter()
     .flatten()
-    .flatten();
+    .collect();
 
-    let service_image: Option<String> = if let Some(path) = service_image_path {
-        if path.starts_with("http://") || path.starts_with("https://") {
-            Some(path)
+    let mut all_service_images: Vec<String> = Vec::with_capacity(service_image_paths.len());
+    for path in &service_image_paths {
+        let url = if path.starts_with("http://") || path.starts_with("https://") {
+            path.clone()
         } else if state.media_storage.is_remote() {
-            match state.media_storage.generate_presigned_url(&path, 7 * 24 * 3600).await {
-                Ok(presigned) => Some(presigned),
-                Err(_) => Some(state.media_storage.build_public_url(&path)),
+            match state.media_storage.generate_presigned_url(path, 7 * 24 * 3600).await {
+                Ok(presigned) => presigned,
+                Err(_) => state.media_storage.build_public_url(path),
             }
         } else {
-            Some(state.media_storage.build_public_url(&path))
-        }
-    } else {
-        None
-    };
+            state.media_storage.build_public_url(path)
+        };
+        all_service_images.push(url);
+    }
+
+    log::info!(
+        "🖼️ [share_service_redirect] {} images trouvées pour service {}",
+        all_service_images.len(),
+        service_id
+    );
 
     let share_base_url = std::env::var("SHARE_BASE_URL")
         .or_else(|_| std::env::var("BACKEND_URL"))
         .unwrap_or_else(|_| "https://yukpo-backend-376093909298.europe-west1.run.app".to_string());
 
-    // ✅ CORRIGÉ 2026-03-03: og:image uniquement si une vraie image existe (pas SVG placeholder)
-    let og_image_url: Option<String> = service_image.clone();
-    let display_image_url = service_image.unwrap_or_else(|| {
+    // ✅ CORRIGÉ: og:image uniquement si une vraie image existe (pas SVG placeholder)
+    let og_image_url: Option<String> = all_service_images.first().cloned();
+    let _display_image_url = all_service_images.first().cloned().unwrap_or_else(|| {
         format!(
             "{}/api/og-placeholder?name={}",
             &share_base_url,
@@ -1177,8 +1203,56 @@ pub async fn share_service_redirect(
         .map(|p| format!(r#"<div class="price">{} {}</div>"#, p, service_devise))
         .unwrap_or_default();
 
+    // ✅ Construire la galerie HTML d'images (comme pour les produits)
+    let images_gallery_html = if all_service_images.is_empty() {
+        String::new()
+    } else if all_service_images.len() == 1 {
+        format!(
+            r#"<div class="product-image"><img src="{}" alt="{}" /></div>"#,
+            all_service_images[0], service_titre
+        )
+    } else {
+        let thumbs: String = all_service_images.iter().enumerate().map(|(idx, url)| {
+            let active = if idx == 0 { " active" } else { "" };
+            format!(
+                r#"<img src="{}" alt="{} - Image {}" class="gallery-thumb{}" onclick="showImage({})" />"#,
+                url, service_titre, idx + 1, active, idx
+            )
+        }).collect::<Vec<_>>().join("\n            ");
+        format!(
+            r#"<div class="gallery-container">
+            <div class="gallery-main"><img id="main-image" src="{}" alt="{}" /></div>
+            <div class="gallery-thumbs">{}</div>
+        </div>"#,
+            all_service_images[0], service_titre, thumbs
+        )
+    };
+
+    // Construire le tableau JS des images
+    let images_js_array = format!(
+        "[{}]",
+        all_service_images
+            .iter()
+            .map(|url| format!("\"{}\"", url.replace('"', "\\\"")))
+            .collect::<Vec<_>>()
+            .join(", ")
+    );
+
+    // Prix OG meta tags
+    let price_og_html = service_prix
+        .as_ref()
+        .and_then(|p| p.parse::<f64>().ok())
+        .map(|p| {
+            format!(
+                r#"<meta property="product:price:amount" content="{}" />
+    <meta property="product:price:currency" content="{}" />"#,
+                p, service_devise
+            )
+        })
+        .unwrap_or_default();
+
     // Construire le HTML
-    let mut html = String::with_capacity(4000);
+    let mut html = String::with_capacity(8000);
     html.push_str(
         r#"<!DOCTYPE html>
 <html lang="fr">
@@ -1195,7 +1269,7 @@ pub async fn share_service_redirect(
     html.push_str(&service_description);
     html.push_str(
         r#"" />
-    <meta property="og:type" content="website" />
+    <meta property="og:type" content="product" />
     <meta property="og:title" content=""#,
     );
     html.push_str(&service_titre);
@@ -1205,19 +1279,22 @@ pub async fn share_service_redirect(
     );
     html.push_str(&service_description);
     html.push_str("\" />");
-    // ✅ CORRIGÉ 2026-03-03: og:image uniquement si une vraie image existe (pas SVG placeholder)
     if let Some(ref og_img) = og_image_url {
         html.push_str("\n    <meta property=\"og:image\" content=\"");
         html.push_str(og_img);
-        html.push_str("\" />\n    <meta property=\"og:image:width\" content=\"1200\" />\n    <meta property=\"og:image:height\" content=\"630\" />");
+        html.push_str("\" />\n    <meta property=\"og:image:width\" content=\"1200\" />\n    <meta property=\"og:image:height\" content=\"630\" />\n    <meta property=\"og:image:alt\" content=\"");
+        html.push_str(&service_titre);
+        html.push_str("\" />");
     }
     html.push_str("\n    <meta property=\"og:url\" content=\"");
     html.push_str(&share_url);
     html.push_str(
         r#"" />
     <meta property="og:site_name" content="Yukpomnang" />
-    <meta property="og:locale" content="fr_FR" />"#,
+    <meta property="og:locale" content="fr_FR" />
+    "#,
     );
+    html.push_str(&price_og_html);
     html.push_str("\n    <meta name=\"twitter:card\" content=\"summary_large_image\" />\n    <meta name=\"twitter:title\" content=\"");
     html.push_str(&service_titre);
     html.push_str("\" />\n    <meta name=\"twitter:description\" content=\"");
@@ -1226,8 +1303,11 @@ pub async fn share_service_redirect(
     if let Some(ref og_img) = og_image_url {
         html.push_str("\n    <meta name=\"twitter:image\" content=\"");
         html.push_str(og_img);
+        html.push_str("\" />\n    <meta name=\"twitter:image:alt\" content=\"");
+        html.push_str(&service_titre);
         html.push_str("\" />");
     }
+    html.push_str("\n    <meta name=\"twitter:site\" content=\"@yukpomnang\" />");
     html.push_str("\n    <meta name=\"google-play-app\" content=\"app-id=com.yukpomnang.mobile\">");
     html.push_str("\n    <meta property=\"al:android:url\" content=\"");
     html.push_str(&deep_link);
@@ -1249,8 +1329,15 @@ pub async fn share_service_redirect(
         h1 { color: #1f2937; margin: 0 0 16px 0; font-size: 28px; }
         .price { font-size: 24px; font-weight: bold; color: #10b981; margin: 16px 0; }
         .description { color: #6b7280; line-height: 1.6; margin: 16px 0; }
-        .service-image { margin: 20px 0; text-align: center; }
-        .service-image img { max-width: 100%; height: auto; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .product-image { margin: 20px 0; text-align: center; }
+        .product-image img { max-width: 100%; height: auto; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .gallery-container { margin: 20px 0; }
+        .gallery-main { margin-bottom: 16px; text-align: center; }
+        .gallery-main img { max-width: 100%; height: auto; max-height: 500px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); object-fit: contain; }
+        .gallery-thumbs { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 12px; }
+        .gallery-thumb { width: 80px; height: 80px; object-fit: cover; border-radius: 8px; cursor: pointer; border: 2px solid transparent; transition: all 0.2s; opacity: 0.7; }
+        .gallery-thumb:hover { opacity: 1; border-color: #667eea; transform: scale(1.05); }
+        .gallery-thumb.active { opacity: 1; border-color: #667eea; }
         .button {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white; border: none; padding: 16px 32px; border-radius: 8px;
@@ -1260,6 +1347,7 @@ pub async fn share_service_redirect(
         }
         .button:hover { transform: translateY(-2px); }
         .button-secondary { background: #10b981; margin-top: 8px; }
+        .store-badges { display: flex; gap: 12px; justify-content: center; margin-top: 16px; flex-wrap: wrap; }
     </style>
 </head>
 <body>
@@ -1268,15 +1356,11 @@ pub async fn share_service_redirect(
     html.push_str(&service_titre);
     html.push_str("</h1>\n");
     html.push_str(&price_html);
-    if og_image_url.is_some() {
-        html.push_str(r#"        <div class="service-image"><img src=""#);
-        html.push_str(&display_image_url);
-        html.push_str(r#"" alt=""#);
-        html.push_str(&service_titre);
-        html.push_str(r#"" /></div>"#);
-        html.push_str("\n");
-    }
-    html.push_str(r#"        <div class="description">"#);
+    html.push_str(&images_gallery_html);
+    html.push_str(
+        r#"
+        <div class="description">"#,
+    );
     html.push_str(&service_description);
     html.push_str("</div>\n");
     html.push_str("        <a id=\"open-app-btn\" class=\"button\" href=\"#\">\u{1F4F1} Ouvrir dans l'app Yukpomnang</a>\n");
@@ -1291,8 +1375,24 @@ pub async fn share_service_redirect(
     html.push_str("';\n");
     html.push_str("        var PLAY_STORE = 'https://play.google.com/store/apps/details?id=com.yukpomnang.mobile';\n");
     html.push_str("        var APP_STORE = 'https://apps.apple.com/app/yukpomnang';\n");
+    html.push_str("        var serviceImages = ");
+    html.push_str(&images_js_array);
     html.push_str(
-        r#"
+        r#";
+
+        // Galerie d'images
+        function showImage(index) {
+            var mainImg = document.getElementById('main-image');
+            if (mainImg && serviceImages[index]) {
+                mainImg.src = serviceImages[index];
+                var thumbs = document.querySelectorAll('.gallery-thumb');
+                for (var i = 0; i < thumbs.length; i++) {
+                    thumbs[i].className = thumbs[i].className.replace(' active', '');
+                    if (i === index) thumbs[i].className += ' active';
+                }
+            }
+        }
+
         var ua = navigator.userAgent || '';
         var isAndroid = /Android/i.test(ua);
         var isIOS = /iPhone|iPad|iPod/i.test(ua);
@@ -1328,8 +1428,9 @@ pub async fn share_service_redirect(
     );
 
     log::info!(
-        "🌐 [share_service_redirect] Page HTML générée: service={}, mobile={}",
+        "🌐 [share_service_redirect] Page HTML générée: service={}, images={}, mobile={}",
         service_id,
+        all_service_images.len(),
         is_mobile
     );
 

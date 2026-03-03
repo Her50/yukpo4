@@ -1,7 +1,6 @@
 // ✅ Écran de création/édition de trajets de covoiturage (accessible à tous les utilisateurs)
 // Permet à n'importe quel utilisateur d'intégrer son véhicule pour le covoiturage
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
@@ -15,6 +14,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import { ConfirmationSection } from '../../components/FormConfirmationModal';
 import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 import ModernGPSModal from '../../components/ModernGPSModal';
@@ -23,6 +23,9 @@ import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { useCurrencyDetection } from '../../hooks/useCurrencyDetection';
+import { useFormAutoSave } from '../../hooks/useFormAutoSave';
+import { useFormValidation } from '../../hooks/useFormValidation';
+import { usePartnerData } from '../../hooks/usePartnerData';
 import { apiPost, servicesApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 
@@ -66,6 +69,26 @@ const CovoiturageFormScreen: React.FC = () => {
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [showTimePicker, setShowTimePicker] = useState(false);
     const [showRecurrenceEndDatePicker, setShowRecurrenceEndDatePicker] = useState(false);
+    const [showConfirmation, setShowConfirmation] = useState(false);
+
+    const { partnerData } = usePartnerData(user?.role);
+    const { errors, validateField, validateForm, setError } = useFormValidation({
+        depart: { required: true },
+        destination: { required: true },
+        places_disponibles: {
+            required: true,
+            custom: (value) => {
+                const num = parseInt(value);
+                if (isNaN(num) || num < 1 || num > 50) {
+                    return 'Entre 1 et 50 places';
+                }
+                return null;
+            }
+        },
+        prix_par_place: { required: true },
+    });
+
+    useFormAutoSave(COVOITURAGE_FORM_STORAGE_KEY, formData, mode !== 'edit', 1000);
 
     // ✅ AMÉLIORÉ: Fonction pour sélectionner une image du véhicule (galerie ou caméra)
     const pickVehicleImage = async (source: 'gallery' | 'camera') => {
@@ -287,7 +310,63 @@ const CovoiturageFormScreen: React.FC = () => {
         setShowGPSModalDestination(false);
     };
 
-    const handleSubmit = async () => {
+    const handleFieldChange = (field: string, value: any) => {
+        setFormData({ ...formData, [field]: value });
+        const error = validateField(field, value);
+        if (error) {
+            setError(field, error);
+        }
+    };
+
+    const confirmationSections: ConfirmationSection[] = [
+        {
+            title: 'Trajet',
+            icon: 'map-pin',
+            fields: [
+                { label: 'Départ', value: formData.depart?.place_name || '' },
+                { label: 'Destination', value: formData.destination?.place_name || '' },
+                { label: 'Date', value: formData.date_depart.toLocaleDateString('fr-FR') },
+                { label: 'Heure', value: formData.heure_depart },
+            ],
+        },
+        {
+            title: 'Véhicule',
+            icon: 'car',
+            fields: [
+                { label: 'Type', value: formData.type_vehicule },
+                { label: 'Marque/Modèle', value: formData.marque_modele },
+                { label: 'Places disponibles', value: formData.places_disponibles, type: 'number' as const },
+            ],
+        },
+        {
+            title: 'Tarif',
+            icon: 'dollar-sign',
+            fields: [
+                { label: 'Prix par place', value: `${formData.prix_par_place} ${formData.devise}` },
+            ],
+        },
+        {
+            title: 'Options',
+            icon: 'check-circle',
+            fields: [
+                { label: 'Bagages autorisés', value: formData.bagages_autorises, type: 'boolean' as const },
+                { label: 'Animaux autorisés', value: formData.animaux_autorises, type: 'boolean' as const },
+                { label: 'Fumeur autorisé', value: formData.fumeur_autorise, type: 'boolean' as const },
+                { label: 'Climatisation', value: formData.climatisation, type: 'boolean' as const },
+                { label: 'Trajet récurrent', value: formData.is_recurring, type: 'boolean' as const },
+            ],
+        },
+    ];
+
+    const handleSubmit = () => {
+        if (!validateForm(formData)) {
+            Alert.alert('Erreur', 'Veuillez corriger les erreurs du formulaire');
+            return;
+        }
+        setShowConfirmation(true);
+    };
+
+    const handleFinalSubmit = async () => {
         // ✅ Créer le service si nécessaire
         let finalServiceId = serviceId;
         if (!finalServiceId && user?.id) {
@@ -414,6 +493,7 @@ const CovoiturageFormScreen: React.FC = () => {
             Alert.alert('Erreur', error.message || 'Une erreur est survenue');
         } finally {
             setLoading(false);
+            setShowConfirmation(false);
         }
     };
 

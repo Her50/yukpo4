@@ -233,32 +233,48 @@ const LinkableText: React.FC<LinkableTextProps> = ({
 
       // Le lien
       const linkText = linkMatch.url;
-      // ✅ CORRIGÉ 2026-03-03: Labels lisibles pour tous les types de liens
+      // ✅ FIX 2026-03-03: Labels lisibles, design épuré
       const isReview = linkMatch.type === 'review';
       const isProduct = linkMatch.type === 'product';
-      const linkLabel = isProduct && !linkText.startsWith('http')
-        ? '📦 Voir le produit'
-        : isProduct && linkText.startsWith('http')
-          ? '📦 Voir le produit'
-          : isReview
-            ? '⭐ Laisser un avis'
-            : linkText;
 
-      // ✅ CORRIGÉ 2026-03-03: Affichage en carte pour les liens spéciaux (produit, avis)
-      if (isReview || isProduct) {
+      if (isReview) {
         parts.push(
           <TouchableOpacity
             key={`link-${key++}`}
             onPress={() => handleLinkPress(linkMatch.url)}
             activeOpacity={0.7}
-            style={styles.specialLinkCard}
+            style={styles.reviewLinkCard}
           >
-            <Text style={styles.specialLinkText}>
-              {linkLabel}
-            </Text>
-            <Text style={styles.specialLinkHint}>
-              Appuyez pour ouvrir
-            </Text>
+            <View style={styles.linkCardRow}>
+              <View style={styles.reviewIconCircle}>
+                <Text style={{ fontSize: 14 }}>⭐</Text>
+              </View>
+              <View style={styles.linkCardContent}>
+                <Text style={styles.reviewLinkTitle}>Laisser un avis</Text>
+                <Text style={styles.linkCardHint}>Partagez votre expérience</Text>
+              </View>
+              <Text style={styles.linkCardArrow}>›</Text>
+            </View>
+          </TouchableOpacity>
+        );
+      } else if (isProduct) {
+        parts.push(
+          <TouchableOpacity
+            key={`link-${key++}`}
+            onPress={() => handleLinkPress(linkMatch.url)}
+            activeOpacity={0.7}
+            style={styles.productLinkCard}
+          >
+            <View style={styles.linkCardRow}>
+              <View style={styles.productIconCircle}>
+                <Text style={{ fontSize: 14 }}>📦</Text>
+              </View>
+              <View style={styles.linkCardContent}>
+                <Text style={styles.productLinkTitle}>Voir le produit</Text>
+                <Text style={styles.linkCardHint}>Appuyez pour ouvrir</Text>
+              </View>
+              <Text style={styles.linkCardArrow}>›</Text>
+            </View>
           </TouchableOpacity>
         );
       } else {
@@ -270,7 +286,7 @@ const LinkableText: React.FC<LinkableTextProps> = ({
             activeOpacity={0.7}
           >
             <Text style={[style, styles.linkText]} numberOfLines={2}>
-              {linkLabel}
+              {linkText}
             </Text>
           </TouchableOpacity>
         );
@@ -290,7 +306,7 @@ const LinkableText: React.FC<LinkableTextProps> = ({
 
     // Si aucun lien trouvé, retourner le texte tel quel
     if (parts.length === 0) {
-      return <Text style={style} {...textProps}>{text}</Text>;
+      return [<Text key="plain" style={style} {...textProps}>{text}</Text>];
     }
 
     return parts;
@@ -332,25 +348,68 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     fontSize: 14,
   },
-  specialLinkCard: {
-    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+  // ✅ FIX 2026-03-03: Design épuré, lisible, fond neutre avec accent subtil
+  reviewLinkCard: {
+    backgroundColor: '#FFFBEB',
     borderWidth: 1,
-    borderColor: 'rgba(99, 102, 241, 0.3)',
-    borderRadius: 10,
+    borderColor: '#F3E8C0',
+    borderRadius: 12,
     paddingVertical: 10,
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
     marginVertical: 6,
+  },
+  productLinkCard: {
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    marginVertical: 6,
+  },
+  linkCardRow: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 10,
   },
-  specialLinkText: {
-    color: modernColors.primary,
-    fontWeight: '700',
-    fontSize: 15,
+  reviewIconCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#FEF3C7',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  specialLinkHint: {
-    color: modernColors.textSecondary,
+  productIconCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#DBEAFE',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  linkCardContent: {
+    flex: 1,
+  },
+  reviewLinkTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#92400E',
+  },
+  productLinkTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1E40AF',
+  },
+  linkCardHint: {
     fontSize: 11,
-    marginTop: 2,
+    color: '#6B7280',
+    marginTop: 1,
+  },
+  linkCardArrow: {
+    fontSize: 22,
+    fontWeight: '300',
+    color: '#9CA3AF',
   },
   linkableContainer: {
     flexDirection: 'column',

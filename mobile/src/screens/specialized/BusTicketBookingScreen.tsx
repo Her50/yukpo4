@@ -9,8 +9,8 @@ import {
     View
 } from 'react-native';
 import BusSeatSelector, { SelectedSeat } from '../../components/bus/BusSeatSelector';
-import { NativeButton } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeButton } from '../../components/SafeNativeDesign';
 import SkeletonCard from '../../components/SkeletonCard';
 import TripMap from '../../components/TripMap';
 import { useAuth } from '../../contexts/AuthContext';
@@ -75,8 +75,9 @@ const BusTicketBookingScreen: React.FC = () => {
                 seats: seatsPayload,
             });
 
-            if (response.success) {
-                const reservationsData = (response.data as any)?.reservations || [];
+            const resData = (response?.data || response) as any;
+            if (resData.success) {
+                const reservationsData = resData.reservations || [];
                 setReservations(reservationsData);
 
                 // Track booking

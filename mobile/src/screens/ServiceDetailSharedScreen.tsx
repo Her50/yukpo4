@@ -15,9 +15,9 @@ import {
   Text,
   View
 } from 'react-native';
-import { NativeButton } from '../components/SafeNativeDesign';
 import NavigatorToolbar from '../components/NavigatorToolbar';
 import SafeIcon from '../components/SafeIcon';
+import { NativeButton } from '../components/SafeNativeDesign';
 import { useAuth } from '../contexts/AuthContext';
 import { apiGet } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
@@ -57,18 +57,17 @@ const ServiceDetailSharedScreen: React.FC = () => {
 
       // ✅ CORRIGÉ: Charger les détails du service avec apiGet
       const response = await apiGet(`/api/services/${serviceId}`);
+      const data = (response?.data || response) as any;
 
-      if (!response.ok) {
-        throw new Error(`Service non trouvé (${response.status})`);
+      if (!response.success) {
+        throw new Error(response.error || 'Service non trouvé');
       }
 
-      const data = await response.json();
-      
       // ✅ CORRIGÉ: Vérifier que les données sont valides
       if (!data || !data.id) {
         throw new Error('Service non trouvé (données invalides)');
       }
-      
+
       setService(data);
       setError(null);
     } catch (err: any) {

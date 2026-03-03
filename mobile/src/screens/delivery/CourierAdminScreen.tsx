@@ -12,9 +12,8 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
-import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiGet, apiPost } from '../../services/api';
@@ -69,20 +68,20 @@ const CourierAdminScreen: React.FC = () => {
             setLoading(true);
             const statusParam = filter !== 'all' ? `?status=${filter}` : '';
             const endpoint = `/api/courier/applications${statusParam}`;
-            
+
             console.log('[CourierAdminScreen] 🔍 Chargement candidatures:', {
                 filter,
                 statusParam,
                 endpoint,
                 userRole: user?.role
             });
-            
+
             const response = await apiGet(endpoint);
-            
+
             // ✅ CORRECTION CRITIQUE: apiGet retourne ApiResponse<T> avec structure { success?, data?, error? }
             // Le backend retourne { applications: [...], total: ... }
             // Donc response.data devrait contenir { applications: [...], total: ... }
-            
+
             console.log('[CourierAdminScreen] 🔍 Réponse API complète:', JSON.stringify(response, null, 2));
             console.log('[CourierAdminScreen] 🔍 Structure réponse:', {
                 success: response.success,
@@ -91,20 +90,21 @@ const CourierAdminScreen: React.FC = () => {
                 dataKeys: response.data ? Object.keys(response.data) : [],
                 error: response.error
             });
-            
+
             let applicationsList: CourierApplication[] = [];
-            
+
             // Vérifier la structure de la réponse
             if (response && typeof response === 'object') {
                 // Cas 1: response.data.applications (structure normale)
-                if (response.data && typeof response.data === 'object' && Array.isArray(response.data.applications)) {
-                    applicationsList = response.data.applications;
-                    console.log('[CourierAdminScreen] ✅ Applications trouvées dans response.data.applications:', applicationsList.length);
+                const resData = (response.data || response) as any;
+                if (resData && typeof resData === 'object' && Array.isArray(resData.applications)) {
+                    applicationsList = resData.applications;
+                    console.log('[CourierAdminScreen] ✅ Applications trouvées dans resData.applications:', applicationsList.length);
                 }
-                // Cas 2: response.applications (si data n'existe pas)
-                else if (Array.isArray(response.applications)) {
-                    applicationsList = response.applications;
-                    console.log('[CourierAdminScreen] ✅ Applications trouvées dans response.applications:', applicationsList.length);
+                // Cas 2: resData est directement un tableau
+                else if (Array.isArray(resData)) {
+                    applicationsList = resData;
+                    console.log('[CourierAdminScreen] ✅ Applications trouvées dans resData (tableau):', applicationsList.length);
                 }
                 // Cas 3: response.data est directement un tableau
                 else if (Array.isArray(response.data)) {
@@ -130,7 +130,7 @@ const CourierAdminScreen: React.FC = () => {
                 console.warn('[CourierAdminScreen] ⚠️ Réponse n\'est pas un objet:', typeof response);
                 applicationsList = [];
             }
-            
+
             console.log('[CourierAdminScreen] ✅ Applications finales à afficher:', applicationsList.length);
             setApplications(applicationsList);
         } catch (error: any) {
@@ -147,16 +147,18 @@ const CourierAdminScreen: React.FC = () => {
         try {
             setProcessing(applicationId);
             const response = await apiPost(`/api/courier/applications/${applicationId}/approve`, {});
-            
-            if (response.success !== false) {
+
+            if (response.success) {
                 Alert.alert('✅ Succès', 'La candidature a été approuvée avec succès', [
-                    { text: 'OK', onPress: () => {
-                        setShowDetailModal(false);
-                        loadApplications();
-                    }},
+                    {
+                        text: 'OK', onPress: () => {
+                            setShowDetailModal(false);
+                            loadApplications();
+                        }
+                    },
                 ]);
             } else {
-                throw new Error(response.message || 'Erreur lors de l\'approbation');
+                throw new Error(response.error || 'Erreur lors de l\'approbation');
             }
         } catch (error: any) {
             console.error('[CourierAdminScreen] Erreur approbation:', error);
@@ -177,18 +179,20 @@ const CourierAdminScreen: React.FC = () => {
             const response = await apiPost(`/api/courier/applications/${applicationId}/reject`, {
                 rejection_reason: rejectionReason,
             });
-            
-            if (response.success !== false) {
+
+            if (response.success) {
                 Alert.alert('✅ Succès', 'La candidature a été rejetée', [
-                    { text: 'OK', onPress: () => {
-                        setShowRejectModal(false);
-                        setShowDetailModal(false);
-                        setRejectionReason('');
-                        loadApplications();
-                    }},
+                    {
+                        text: 'OK', onPress: () => {
+                            setShowRejectModal(false);
+                            setShowDetailModal(false);
+                            setRejectionReason('');
+                            loadApplications();
+                        }
+                    },
                 ]);
             } else {
-                throw new Error(response.message || 'Erreur lors du rejet');
+                throw new Error(response.error || 'Erreur lors du rejet');
             }
         } catch (error: any) {
             console.error('[CourierAdminScreen] Erreur rejet:', error);
@@ -508,7 +512,7 @@ const CourierAdminScreen: React.FC = () => {
                                             };
                                             const label = docLabels[key] || key;
                                             const hasData = doc?.data || doc?.url;
-                                            
+
                                             return (
                                                 <View key={key} style={styles.documentItem}>
                                                     <View style={styles.documentInfo}>
@@ -549,7 +553,7 @@ const CourierAdminScreen: React.FC = () => {
                                 )}
 
                                 {selectedApplication.status === 'submitted' ||
-                                selectedApplication.status === 'under_review' ? (
+                                    selectedApplication.status === 'under_review' ? (
                                     <View style={styles.modalActions}>
                                         <NativeButton
                                             title="Approuver"

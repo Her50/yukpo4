@@ -496,80 +496,125 @@ async fn get_points_of_interest(
 
     let mut all_pois = Vec::new();
 
-    // ✅ Calculer le point médian de la route pour la recherche
-    // Utilise le centre géographique entre origine et destination
-    let mid_lat = (params.origin_lat + params.dest_lat) / 2.0;
-    let mid_lng = (params.origin_lng + params.dest_lng) / 2.0;
+    // ✅ FIX 2026-03-03: Fonction Haversine pour calcul de distance précis (en mètres)
+    let haversine_distance = |lat1: f64, lng1: f64, lat2: f64, lng2: f64| -> f64 {
+        let r = 6_371_000.0; // Rayon de la Terre en mètres
+        let d_lat = (lat2 - lat1).to_radians();
+        let d_lng = (lng2 - lng1).to_radians();
+        let a = (d_lat / 2.0).sin().powi(2)
+            + lat1.to_radians().cos() * lat2.to_radians().cos() * (d_lng / 2.0).sin().powi(2);
+        let c = 2.0 * a.sqrt().atan2((1.0 - a).sqrt());
+        r * c
+    };
 
-    // ✅ Rayon de recherche intelligent basé sur la distance du trajet
-    // Utilise la formule de Haversine pour une meilleure précision
-    let lat_diff = params.origin_lat - params.dest_lat;
-    let lng_diff = params.origin_lng - params.dest_lng;
-    let distance_degrees = (lat_diff.powi(2) + lng_diff.powi(2)).sqrt();
-    let distance_meters = distance_degrees * 111000.0; // Approximation: 1 degré ≈ 111 km
+    // ✅ FIX 2026-03-03: Distance totale du trajet pour adapter le rayon
+    let route_distance = haversine_distance(
+        params.origin_lat,
+        params.origin_lng,
+        params.dest_lat,
+        params.dest_lng,
+    );
 
-    // ✅ Rayon adaptatif : 30% de la distance totale, max 5km, min 1km
-    let radius = ((distance_meters * 0.3).max(1000.0).min(5000.0)) as u32;
+    // ✅ FIX 2026-03-03: Rechercher les POI à 3 points le long du trajet
+    // (zone départ, milieu, zone arrivée) pour couvrir tout le parcours
+    let search_points = vec![
+        // Point 1: Proche de l'origine (25% du trajet)
+        (
+            params.origin_lat + (params.dest_lat - params.origin_lat) * 0.25,
+            params.origin_lng + (params.dest_lng - params.origin_lng) * 0.25,
+        ),
+        // Point 2: Milieu du trajet
+        (
+            (params.origin_lat + params.dest_lat) / 2.0,
+            (params.origin_lng + params.dest_lng) / 2.0,
+        ),
+        // Point 3: Proche de la destination (75% du trajet)
+        (
+            params.origin_lat + (params.dest_lat - params.origin_lat) * 0.75,
+            params.origin_lng + (params.dest_lng - params.origin_lng) * 0.75,
+        ),
+    ];
 
-    for poi_type in poi_types {
-        let url = format!(
-            "https://maps.googleapis.com/maps/api/place/nearbysearch/json?location={},{}&radius={}&type={}&key={}&language=fr",
-            mid_lat, mid_lng, radius, poi_type, api_key
-        );
+    // ✅ FIX 2026-03-03: Rayon adaptatif par point de recherche
+    // Pour chaque point: ~20% de la distance totale, min 500m, max 3km
+    let radius_per_point = ((route_distance * 0.20).max(500.0).min(3000.0)) as u32;
 
-        let client = reqwest::Client::new();
-        if let Ok(response) =
-            client.get(&url).timeout(std::time::Duration::from_secs(10)).send().await
-        {
-            if let Ok(data) = response.json::<serde_json::Value>().await {
-                if let Some(results) = data.get("results").and_then(|r| r.as_array()) {
-                    for result in results {
-                        if let Some(geometry) = result.get("geometry") {
-                            if let Some(location) = geometry.get("location") {
-                                let lat =
-                                    location.get("lat").and_then(|l| l.as_f64()).unwrap_or(0.0);
-                                let lng =
-                                    location.get("lng").and_then(|l| l.as_f64()).unwrap_or(0.0);
+    let client = reqwest::Client::new();
+    let mut seen_place_ids = std::collections::HashSet::new();
 
-                                // Calculer la distance depuis la route (approximation simple)
-                                let distance_from_route =
-                                    ((lat - mid_lat).powi(2) + (lng - mid_lng).powi(2)).sqrt()
-                                        * 111000.0;
+    for (search_lat, search_lng) in &search_points {
+        for poi_type in &poi_types {
+            let url = format!(
+                "https://maps.googleapis.com/maps/api/place/nearbysearch/json?location={},{}&radius={}&type={}&key={}&language=fr",
+                search_lat, search_lng, radius_per_point, poi_type, api_key
+            );
 
-                                let name = result
-                                    .get("name")
-                                    .and_then(|n| n.as_str())
-                                    .unwrap_or("")
-                                    .to_string();
+            if let Ok(response) =
+                client.get(&url).timeout(std::time::Duration::from_secs(10)).send().await
+            {
+                if let Ok(data) = response.json::<serde_json::Value>().await {
+                    if let Some(results) = data.get("results").and_then(|r| r.as_array()) {
+                        for result in results {
+                            // ✅ Dédoublonner par place_id
+                            let place_id = result
+                                .get("place_id")
+                                .and_then(|p| p.as_str())
+                                .unwrap_or("")
+                                .to_string();
+                            if place_id.is_empty() || !seen_place_ids.insert(place_id) {
+                                continue;
+                            }
 
-                                let rating = result.get("rating").and_then(|r| r.as_f64());
+                            if let Some(geometry) = result.get("geometry") {
+                                if let Some(location) = geometry.get("location") {
+                                    let lat =
+                                        location.get("lat").and_then(|l| l.as_f64()).unwrap_or(0.0);
+                                    let lng =
+                                        location.get("lng").and_then(|l| l.as_f64()).unwrap_or(0.0);
 
-                                let opening_hours = result.get("opening_hours");
-                                let is_open = opening_hours
-                                    .and_then(|oh| oh.get("open_now"))
-                                    .and_then(|on| on.as_bool());
+                                    // ✅ FIX 2026-03-03: Distance depuis l'ORIGINE de l'utilisateur (Haversine)
+                                    let distance_from_origin = haversine_distance(
+                                        params.origin_lat,
+                                        params.origin_lng,
+                                        lat,
+                                        lng,
+                                    );
 
-                                // Mapper le type Google vers notre type
-                                let mapped_type = match poi_type {
-                                    "pharmacy" => "pharmacy",
-                                    "bakery" => "bakery",
-                                    "gas_station" => "gas_station",
-                                    "supermarket" => "supermarket",
-                                    "restaurant" => "restaurant",
-                                    "liquor_store" => "wine_shop",
-                                    "amusement_center" => "entertainment",
-                                    _ => poi_type,
-                                };
+                                    let name = result
+                                        .get("name")
+                                        .and_then(|n| n.as_str())
+                                        .unwrap_or("")
+                                        .to_string();
 
-                                all_pois.push(PointOfInterest {
-                                    id: format!("poi_{}", Uuid::new_v4()),
-                                    name,
-                                    poi_type: mapped_type.to_string(),
-                                    location: LocationCoords { lat, lng },
-                                    distance_from_route_meters: distance_from_route,
-                                    rating,
-                                    is_open,
-                                });
+                                    let rating = result.get("rating").and_then(|r| r.as_f64());
+
+                                    let opening_hours = result.get("opening_hours");
+                                    let is_open = opening_hours
+                                        .and_then(|oh| oh.get("open_now"))
+                                        .and_then(|on| on.as_bool());
+
+                                    // Mapper le type Google vers notre type
+                                    let mapped_type = match *poi_type {
+                                        "pharmacy" => "pharmacy",
+                                        "bakery" => "bakery",
+                                        "gas_station" => "gas_station",
+                                        "supermarket" => "supermarket",
+                                        "restaurant" => "restaurant",
+                                        "liquor_store" => "wine_shop",
+                                        "amusement_center" => "entertainment",
+                                        _ => poi_type,
+                                    };
+
+                                    all_pois.push(PointOfInterest {
+                                        id: format!("poi_{}", Uuid::new_v4()),
+                                        name,
+                                        poi_type: mapped_type.to_string(),
+                                        location: LocationCoords { lat, lng },
+                                        distance_from_route_meters: distance_from_origin,
+                                        rating,
+                                        is_open,
+                                    });
+                                }
                             }
                         }
                     }
@@ -578,15 +623,15 @@ async fn get_points_of_interest(
         }
     }
 
-    // Trier par distance depuis la route
+    // Trier par distance depuis l'origine de l'utilisateur
     all_pois.sort_by(|a, b| {
         a.distance_from_route_meters
             .partial_cmp(&b.distance_from_route_meters)
             .unwrap_or(std::cmp::Ordering::Equal)
     });
 
-    // Limiter à 20 POI les plus proches
-    all_pois.truncate(20);
+    // Limiter à 25 POI les plus proches
+    all_pois.truncate(25);
 
     Ok(Json(PointsOfInterestResponse { pois: all_pois }))
 }

@@ -10,8 +10,8 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiGet, apiPatch } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
@@ -47,8 +47,9 @@ const MesReservationsScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
             const params = statusFilter ? `?status=${statusFilter}` : '';
             const response = await apiGet(`/api/specialized-services/reservations${params}`);
 
-            if (response.success) {
-                setReservations((response.data as any).reservations || []);
+            const resData = (response?.data || response) as any;
+            if (resData.success) {
+                setReservations(resData.reservations || []);
             }
         } catch (error: any) {
             console.error('[MesReservationsScreen] Erreur chargement:', error);
@@ -74,7 +75,8 @@ const MesReservationsScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
                                 { reason: 'Annulé par le client' }
                             );
 
-                            if (response.success) {
+                            const cancelData = (response?.data || response) as any;
+                            if (cancelData.success) {
                                 Alert.alert('Succès', 'Réservation annulée');
                                 loadReservations();
                             } else {

@@ -801,6 +801,22 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             "/api/hopitaux/{id}/slots",
             post(specialized_services_controller::manage_hospital_slots),
         )
+        .route(
+            "/api/hopitaux/{id}/available-slots",
+            get(specialized_services_controller::get_available_slots),
+        )
+        .route(
+            "/api/laboratoires/{id}/slots",
+            post(specialized_services_controller::manage_hospital_slots),
+        )
+        .route(
+            "/api/laboratoires/{id}/available-slots",
+            get(specialized_services_controller::get_available_slots),
+        )
+        .route(
+            "/api/appointments/book",
+            post(specialized_services_controller::book_slot),
+        )
         // ✅ 2025-01-27: Nouvelles routes Pharmacies
         .route(
             "/api/pharmacies/{id}/check-availability",

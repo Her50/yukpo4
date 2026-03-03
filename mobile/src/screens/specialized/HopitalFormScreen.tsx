@@ -8,18 +8,22 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import { ConfirmationSection } from '../../components/FormConfirmationModal';
 import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 import ModernGPSModal from '../../components/ModernGPSModal';
-// ✅ SUPPRIMÉ: PartnerSelector - Les données partenaire sont chargées automatiquement depuis /api/partners/me
 import PrestationSelectorWithSchedule, { PrestationWithSchedule } from '../../components/PrestationSelectorWithSchedule';
 import SafeIcon from '../../components/SafeIcon';
 import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
-// ✅ SUPPRIMÉ : WeekScheduleSelector (planning hebdomadaire supprimé)
 import { useAuth } from '../../contexts/AuthContext';
 import { useLocation } from '../../contexts/LocationContext';
+import { useFormAutoSave } from '../../hooks/useFormAutoSave';
+import { useFormValidation } from '../../hooks/useFormValidation';
+import { usePartnerData } from '../../hooks/usePartnerData';
 import { apiPost, servicesApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
+
+const STORAGE_KEY = '@hopital_form';
 
 // ✅ SUPPRIMÉ : ScheduleDay interface (planning hebdomadaire supprimé)
 
@@ -54,12 +58,25 @@ const HopitalFormScreen: React.FC = () => {
     const [prestationsWithSchedule, setPrestationsWithSchedule] = useState<PrestationWithSchedule[]>([]);
     const [showGPSModal, setShowGPSModal] = useState(false);
     const [selectedGPS, setSelectedGPS] = useState<string | null>(null);
-    // ✅ SUPPRIMÉ : showScheduleModal et schedule (planning hebdomadaire supprimé)
-
-    // ✅ NOUVEAU: États pour statistiques et gestion des créneaux
     const [loadingSlots, setLoadingSlots] = useState(false);
-    // ✅ NOUVEAU: Données du partenaire pour affichage dans l'en-tête
-    const [partnerData, setPartnerData] = useState<any>(null);
+    const [showConfirmation, setShowConfirmation] = useState(false);
+
+    const { partnerData } = usePartnerData(user?.role, 'hopital');
+    const { errors, validateField, validateForm, setError } = useFormValidation({
+        nom: { required: true, minLength: 3 },
+        telephone: {
+            pattern: /^\+?[0-9]{9,15}$/,
+            custom: (value) => {
+                if (value && !value.startsWith('+237') && !value.startsWith('237')) {
+                    return 'Numéro camerounais requis (+237...)';
+                }
+                return null;
+            }
+        },
+        email: { pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/ },
+    });
+
+    useFormAutoSave(STORAGE_KEY, formData, true, 1000);
 
     const typesEtablissement = ['Hôpital', 'Clinique', 'Centre de santé', 'Dispensaire'];
 
@@ -232,9 +249,58 @@ const HopitalFormScreen: React.FC = () => {
         setShowGPSModal(false);
     };
 
+    const handleFieldChange = (field: string, value: any) => {
+        setFormData({ ...formData, [field]: value });
+        const error = validateField(field, value);
+        if (error) {
+            setError(field, error);
+        }
+    };
+
+    const confirmationSections: ConfirmationSection[] = [
+        {
+            title: 'Établissement',
+            icon: 'building',
+            fields: [
+                { label: 'Nom', value: formData.nom },
+                { label: 'Type', value: formData.type_etablissement },
+                { label: 'Adresse', value: formData.adresse },
+                { label: 'Quartier', value: typeof formData.quartier === 'string' ? formData.quartier : formData.quartier?.place_name },
+            ],
+        },
+        {
+            title: 'Contact',
+            icon: 'phone',
+            fields: [
+                { label: 'Téléphone', value: formData.telephone },
+                { label: 'Téléphone urgence', value: formData.telephone_urgence },
+                { label: 'WhatsApp', value: formData.whatsapp },
+                { label: 'Email', value: formData.email },
+                { label: 'Site web', value: formData.site_web },
+            ],
+        },
+        {
+            title: 'Services',
+            icon: 'heart',
+            fields: [
+                { label: 'Prestations', value: `${prestationsWithSchedule.length} prestation(s)` },
+                { label: 'Urgences disponibles', value: formData.urgences_disponible, type: 'boolean' as const },
+                { label: 'RDV en ligne', value: formData.rdv_en_ligne, type: 'boolean' as const },
+            ],
+        },
+    ];
+
     // ✅ SUPPRIMÉ : handleScheduleSave (planning hebdomadaire supprimé)
 
-    const handleSubmit = async () => {
+    const handleSubmit = () => {
+        if (!validateForm(formData)) {
+            Alert.alert('Erreur', 'Veuillez corriger les erreurs du formulaire');
+            return;
+        }
+        setShowConfirmation(true);
+    };
+
+    const handleFinalSubmit = async () => {
         // ✅ Créer le service si nécessaire
         let finalServiceId = serviceId;
         if (!finalServiceId && user?.id) {
@@ -363,6 +429,7 @@ const HopitalFormScreen: React.FC = () => {
             Alert.alert('Erreur', error.message || 'Une erreur est survenue');
         } finally {
             setLoading(false);
+            setShowConfirmation(false);
         }
     };
 
@@ -684,6 +751,24 @@ const HopitalFormScreen: React.FC = () => {
                         size="large"
                         style={styles.submitButton}
                     />
+
+                    {serviceId && (
+                        <TouchableOpacity
+                            style={styles.manageSlotsBanner}
+                            onPress={() => (navigation as any).navigate('SlotManagement', {
+                                serviceId,
+                                serviceType: 'hopital',
+                                serviceName: formData.nom,
+                            })}
+                        >
+                            <SafeIcon name="calendar" size={20} color={modernColors.primary} />
+                            <View style={{ flex: 1, marginLeft: 10 }}>
+                                <Text style={styles.manageSlotsTitle}>Gérer les créneaux</Text>
+                                <Text style={styles.manageSlotsSubtitle}>Définir vos disponibilités de consultation</Text>
+                            </View>
+                            <SafeIcon name="chevron-right" size={20} color="#9CA3AF" />
+                        </TouchableOpacity>
+                    )}
                 </View>
             </KeyboardAwareScreen>
 

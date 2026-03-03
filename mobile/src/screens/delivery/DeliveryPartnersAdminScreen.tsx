@@ -3,21 +3,20 @@ import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
-    FlatList,
     Modal,
     ScrollView,
     StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
-    View,
+    View
 } from 'react-native';
 import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
-import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useAuth } from '../../contexts/AuthContext';
-import { apiDelete, apiGet, apiPost, apiPut } from '../../services/api';
+import { apiGet, apiPost, apiPut } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 import { isAdminUser } from '../../utils/roleHelpers'; // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
 
@@ -119,15 +118,15 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
         try {
             setLoadingPending(true);
             const response = await apiGet('/api/admin/partners/pending');
-            
+
             // ✅ CORRECTION CRITIQUE: apiGet retourne ApiResponse<T> avec structure { success?, data?, error? }
             // Le backend retourne probablement { partners: [...] } ou directement un tableau
             // Donc response.data devrait contenir { partners: [...] } ou directement un tableau
-            
+
             console.log('[DeliveryPartnersAdminScreen] 🔍 Réponse API complète:', JSON.stringify(response, null, 2));
-            
+
             let partnersList: PendingPartner[] = [];
-            
+
             // Vérifier la structure de la réponse
             if (response && typeof response === 'object') {
                 // Cas 1: response.data.partners (structure normale)
@@ -164,7 +163,7 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
                 console.warn('[DeliveryPartnersAdminScreen] ⚠️ Réponse n\'est pas un objet:', typeof response);
                 partnersList = [];
             }
-            
+
             console.log('[DeliveryPartnersAdminScreen] ✅ Partenaires finaux à afficher:', partnersList.length);
             setPendingPartners(partnersList);
         } catch (error: any) {
@@ -183,17 +182,19 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
             const response = await apiPost(`/api/admin/partners/${userId}/validate`, {
                 action: 'approve',
             });
-            
-            if (response.success !== false) {
+
+            if (response.success) {
                 Alert.alert('✅ Succès', 'Le partenaire a été approuvé avec succès', [
-                    { text: 'OK', onPress: () => {
-                        setShowDetailModal(false);
-                        loadPendingPartners();
-                        loadPartners(); // Recharger aussi les partenaires validés
-                    }},
+                    {
+                        text: 'OK', onPress: () => {
+                            setShowDetailModal(false);
+                            loadPendingPartners();
+                            loadPartners(); // Recharger aussi les partenaires validés
+                        }
+                    },
                 ]);
             } else {
-                throw new Error(response.message || 'Erreur lors de l\'approbation');
+                throw new Error(response.error || 'Erreur lors de l\'approbation');
             }
         } catch (error: any) {
             console.error('[DeliveryPartnersAdminScreen] Erreur approbation:', error);
@@ -215,18 +216,20 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
                 action: 'reject',
                 reason: rejectionReason,
             });
-            
-            if (response.success !== false) {
+
+            if (response.success) {
                 Alert.alert('✅ Succès', 'Le partenaire a été rejeté', [
-                    { text: 'OK', onPress: () => {
-                        setShowRejectModal(false);
-                        setShowDetailModal(false);
-                        setRejectionReason('');
-                        loadPendingPartners();
-                    }},
+                    {
+                        text: 'OK', onPress: () => {
+                            setShowRejectModal(false);
+                            setShowDetailModal(false);
+                            setRejectionReason('');
+                            loadPendingPartners();
+                        }
+                    },
                 ]);
             } else {
-                throw new Error(response.message || 'Erreur lors du rejet');
+                throw new Error(response.error || 'Erreur lors du rejet');
             }
         } catch (error: any) {
             console.error('[DeliveryPartnersAdminScreen] Erreur rejet:', error);
@@ -290,14 +293,16 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
         try {
             setProcessing(editingPartner.id);
             const response = await apiPut(`/api/delivery/partners/${editingPartner.id}`, editForm);
-            
+
             if (response.success !== false) {
                 Alert.alert('✅ Succès', 'Le partenaire a été modifié avec succès', [
-                    { text: 'OK', onPress: () => {
-                        setShowEditModal(false);
-                        setEditingPartner(null);
-                        loadPartners();
-                    }},
+                    {
+                        text: 'OK', onPress: () => {
+                            setShowEditModal(false);
+                            setEditingPartner(null);
+                            loadPartners();
+                        }
+                    },
                 ]);
             } else {
                 throw new Error(response.message || 'Erreur lors de la modification');
@@ -437,76 +442,76 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
             ) : (
                 <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
 
-                {partners.length === 0 ? (
-                    <NativeCard style={styles.emptyCard}>
-                        <SafeIcon name="truck" size={48} color={modernColors.textSecondary} />
-                        <Text style={styles.emptyText}>Aucun partenaire enregistré</Text>
-                        <Text style={styles.emptySubtext}>
-                            Cliquez sur le bouton + pour créer un nouveau partenaire
-                        </Text>
-                    </NativeCard>
-                ) : (
-                    partners.map((partner) => (
-                        <NativeCard key={partner.id} style={styles.partnerCard}>
-                            <View style={styles.partnerHeader}>
-                                <View style={styles.partnerInfo}>
-                                    <Text style={styles.partnerName}>{partner.name}</Text>
-                                    {partner.description && (
-                                        <Text style={styles.partnerDescription} numberOfLines={2}>
-                                            {partner.description}
-                                        </Text>
-                                    )}
-                                    <View style={styles.partnerMeta}>
-                                        {partner.partner_type && (
-                                            <Text style={styles.partnerMetaText}>
-                                                🏷️ Type: {partner.partner_type}
+                    {partners.length === 0 ? (
+                        <NativeCard style={styles.emptyCard}>
+                            <SafeIcon name="truck" size={48} color={modernColors.textSecondary} />
+                            <Text style={styles.emptyText}>Aucun partenaire enregistré</Text>
+                            <Text style={styles.emptySubtext}>
+                                Cliquez sur le bouton + pour créer un nouveau partenaire
+                            </Text>
+                        </NativeCard>
+                    ) : (
+                        partners.map((partner) => (
+                            <NativeCard key={partner.id} style={styles.partnerCard}>
+                                <View style={styles.partnerHeader}>
+                                    <View style={styles.partnerInfo}>
+                                        <Text style={styles.partnerName}>{partner.name}</Text>
+                                        {partner.description && (
+                                            <Text style={styles.partnerDescription} numberOfLines={2}>
+                                                {partner.description}
                                             </Text>
                                         )}
-                                        {partner.city && partner.country && (
-                                            <Text style={styles.partnerMetaText}>
-                                                📍 {partner.city}, {partner.country}
-                                            </Text>
-                                        )}
-                                        {partner.contact_phone && (
-                                            <Text style={styles.partnerMetaText}>
-                                                📞 {partner.contact_phone}
-                                            </Text>
+                                        <View style={styles.partnerMeta}>
+                                            {partner.partner_type && (
+                                                <Text style={styles.partnerMetaText}>
+                                                    🏷️ Type: {partner.partner_type}
+                                                </Text>
+                                            )}
+                                            {partner.city && partner.country && (
+                                                <Text style={styles.partnerMetaText}>
+                                                    📍 {partner.city}, {partner.country}
+                                                </Text>
+                                            )}
+                                            {partner.contact_phone && (
+                                                <Text style={styles.partnerMetaText}>
+                                                    📞 {partner.contact_phone}
+                                                </Text>
+                                            )}
+                                        </View>
+                                    </View>
+                                    <View style={styles.partnerStatus}>
+                                        {partner.is_active ? (
+                                            <View style={styles.activeBadge}>
+                                                <Text style={styles.activeBadgeText}>Actif</Text>
+                                            </View>
+                                        ) : (
+                                            <View style={styles.inactiveBadge}>
+                                                <Text style={styles.inactiveBadgeText}>Inactif</Text>
+                                            </View>
                                         )}
                                     </View>
                                 </View>
-                                <View style={styles.partnerStatus}>
-                                    {partner.is_active ? (
-                                        <View style={styles.activeBadge}>
-                                            <Text style={styles.activeBadgeText}>Actif</Text>
-                                        </View>
-                                    ) : (
-                                        <View style={styles.inactiveBadge}>
-                                            <Text style={styles.inactiveBadgeText}>Inactif</Text>
-                                        </View>
-                                    )}
+                                <View style={styles.partnerActions}>
+                                    <TouchableOpacity
+                                        style={styles.actionButton}
+                                        onPress={() => handleEdit(partner)}
+                                    >
+                                        <SafeIcon name="edit" size={18} color={modernColors.primary} />
+                                        <Text style={styles.actionButtonText}>Modifier</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={[styles.actionButton, styles.deleteButton]}
+                                        onPress={() => handleDelete(partner.id)}
+                                    >
+                                        <SafeIcon name="trash" size={18} color={modernColors.error || '#EF4444'} />
+                                        <Text style={[styles.actionButtonText, styles.deleteButtonText]}>
+                                            Supprimer
+                                        </Text>
+                                    </TouchableOpacity>
                                 </View>
-                            </View>
-                            <View style={styles.partnerActions}>
-                                <TouchableOpacity
-                                    style={styles.actionButton}
-                                    onPress={() => handleEdit(partner)}
-                                >
-                                    <SafeIcon name="edit" size={18} color={modernColors.primary} />
-                                    <Text style={styles.actionButtonText}>Modifier</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    style={[styles.actionButton, styles.deleteButton]}
-                                    onPress={() => handleDelete(partner.id)}
-                                >
-                                    <SafeIcon name="trash" size={18} color={modernColors.error || '#EF4444'} />
-                                    <Text style={[styles.actionButtonText, styles.deleteButtonText]}>
-                                        Supprimer
-                                    </Text>
-                                </TouchableOpacity>
-                            </View>
-                        </NativeCard>
-                    ))
-                )}
+                            </NativeCard>
+                        ))
+                    )}
                 </ScrollView>
             )}
 
@@ -820,9 +825,9 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
                                         style={styles.textInput}
                                         placeholder="4.0511"
                                         value={editForm.location_latitude?.toString() || ''}
-                                        onChangeText={(text) => setEditForm({ 
-                                            ...editForm, 
-                                            location_latitude: text ? parseFloat(text) : undefined 
+                                        onChangeText={(text) => setEditForm({
+                                            ...editForm,
+                                            location_latitude: text ? parseFloat(text) : undefined
                                         })}
                                         keyboardType="numeric"
                                     />
@@ -834,9 +839,9 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
                                         style={styles.textInput}
                                         placeholder="9.7679"
                                         value={editForm.location_longitude?.toString() || ''}
-                                        onChangeText={(text) => setEditForm({ 
-                                            ...editForm, 
-                                            location_longitude: text ? parseFloat(text) : undefined 
+                                        onChangeText={(text) => setEditForm({
+                                            ...editForm,
+                                            location_longitude: text ? parseFloat(text) : undefined
                                         })}
                                         keyboardType="numeric"
                                     />
@@ -850,10 +855,10 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
                                         ]}
                                         onPress={() => setEditForm({ ...editForm, is_active: !editForm.is_active })}
                                     >
-                                        <SafeIcon 
-                                            name={editForm.is_active ? "check-square" : "square"} 
-                                            size={20} 
-                                            color={editForm.is_active ? modernColors.primary : modernColors.textSecondary} 
+                                        <SafeIcon
+                                            name={editForm.is_active ? "check-square" : "square"}
+                                            size={20}
+                                            color={editForm.is_active ? modernColors.primary : modernColors.textSecondary}
                                         />
                                         <Text style={styles.checkboxLabel}>Partenaire actif</Text>
                                     </TouchableOpacity>

@@ -241,6 +241,17 @@ const filterBooleanValue = (value: any, defaultValue: string = ''): string => {
   return String(value);
 };
 
+// ✅ CORRIGÉ 2026-03-03: Normaliser les retours à la ligne dans les descriptions
+// L'IA renvoie souvent des textes avec des \n littéraux (2 caractères) au lieu de vrais retours à la ligne
+const normalizeNewlines = (text: string): string => {
+  return text
+    .replace(/\\n/g, '\n')    // Convertir \n littéral en vrai retour à la ligne
+    .replace(/\\r/g, '')      // Supprimer \r littéral
+    .replace(/<br\s*\/?>/gi, '\n') // Convertir <br> HTML en retour à la ligne
+    .replace(/\r\n/g, '\n')  // Normaliser CRLF en LF
+    .replace(/\r/g, '\n');   // Normaliser CR en LF
+};
+
 const ProductCard: React.FC<ProductCardProps> = React.memo(({
   product,
   service,
@@ -1074,8 +1085,8 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
     return calculatedDistance;
   }, [product.distance_km, product.distanceKm, product.distance, product._gps, product.gps, productData.distance_km, productData.distanceKm, productData.distance, productData.distance_client, productData._gps, productData.gps, productData.gps_coords, productData.gps_fixe, service?.data?.gps_fixe?.valeur, service?.data?.gps?.valeur, effectiveUserLocation, locationCalculateDistance]);
 
-  // ✅ CORRIGÉ: Vérifier aussi si distanceKm est 0 (valide) et améliorer la logique
-  const hasDistance = typeof distanceKm === 'number' && Number.isFinite(distanceKm) && distanceKm >= 0;
+  // ✅ CORRIGÉ: Vérifier aussi si distanceKm est 0 (valide) et filtrer les distances aberrantes (>1000km = erreur GPS probable)
+  const hasDistance = typeof distanceKm === 'number' && Number.isFinite(distanceKm) && distanceKm >= 0 && distanceKm <= 1000;
 
   // ✅ DEBUG: Logger pour diagnostiquer les problèmes de distance
   useEffect(() => {
@@ -1215,12 +1226,13 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
     }
   }, [viewsCount, sharesCount, reviewsCount, favoritesCount, usageCount, service?.id, service?.reviews_count, productData.reviews_count]);
 
+  // ✅ CORRIGÉ: Filtrer les stats à 0 pour réduire le bruit visuel et rendre les cartes plus compactes
   const topStatsData = [
     { key: 'views', icon: 'eye', value: viewsCount, tint: '#4f46e5' },
     { key: 'shares', icon: 'share-2', value: sharesCount, tint: '#a855f7' },
     { key: 'reviews', icon: 'message-circle', value: reviewsCount, tint: '#f59e0b' },
     { key: 'favorites', icon: 'heart', value: favoritesCount, tint: '#ef4444' },
-  ];
+  ].filter(stat => stat.value > 0);
 
   // ✅ CORRIGÉ 2026-01-XX: Toujours utiliser onChatPress (méthode du parent, comme pour les services)
   // Cette méthode est plus complète car elle gère les notifications et le contexte au niveau parent
@@ -1251,10 +1263,10 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
       const price = displayPrice > 0 ? displayPrice : undefined;
       const location = chosenLocation || undefined;
 
-      // ✅ NOUVEAU 2026-01-XX: Utiliser la fonction utilitaire pour générer le message de partage uniforme
-      // Extraire productId et serviceId
-      const productId = product?.id || product?.product_id || product?.product_index || 'unknown';
-      const serviceId = product?.service_id || service?.id || 'unknown';
+      // ✅ CORRIGÉ: Utiliser les valeurs pré-calculées du composant (productIndex, serviceId)
+      // au lieu d'une chaîne de fallback fragile qui peut résulter en 'unknown'
+      const shareProductId = productIndex !== undefined && productIndex !== null ? productIndex : (product?.id || product?.product_id || 0);
+      const shareServiceId = serviceId || product?.service_id || service?.id || 0;
 
       const shareMessage = generateProductShareMessage({
         productName,
@@ -1262,14 +1274,14 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
         price,
         devise,
         location,
-        productId,
-        serviceId,
+        productId: shareProductId,
+        serviceId: shareServiceId,
       });
 
       // ✅ CORRIGÉ: Utiliser le lien intelligent (HTTPS) dans l'URL du Share
       // Le lien HTTPS sera intercepté par l'app si installée (via intentFilters)
       // Sinon, il ouvrira la page web. C'est un seul lien intelligent qui fonctionne partout.
-      const smartLink = generateSmartShareLink(productId, serviceId);
+      const smartLink = generateSmartShareLink(shareProductId, shareServiceId);
 
       const result = await Share.share({
         message: shareMessage,
@@ -1677,6 +1689,10 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
                         ? `${Math.round(distanceKm * 1000)}m`
                         : `${distanceKm.toFixed(1)}km`}
                     </Text>
+                    {/* ✅ NOUVEAU: Badge "≈" pour GPS temps réel (position approximative du prestataire) */}
+                    {product._gpsSource === 'service_realtime' && (
+                      <Text style={styles.approximateBadge}>≈</Text>
+                    )}
                   </TouchableOpacity>
                 )}
 
@@ -1727,10 +1743,9 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
                 {(productData.description || productData.description_produit || product.description || product.description_produit) && (
                   <Text
                     style={styles.productDescription}
-                  // ✅ CORRIGÉ 2026-02-25: Supprimer numberOfLines pour afficher toute la description
-                  // Les retours à la ligne (\n) seront respectés et le texte ne sera plus tronqué
+                    numberOfLines={4}
                   >
-                    {filterBooleanValue(
+                    {normalizeNewlines(filterBooleanValue(
                       // ✅ CORRIGÉ 2026-01-23: PRIORITÉ ABSOLUE à la description du produit depuis productData
                       // Ne JAMAIS utiliser la description du service comme fallback
                       productData.description ||
@@ -1739,7 +1754,7 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
                       product.description_produit ||
                       '',
                       ''
-                    )}
+                    ))}
                   </Text>
                 )}
                 {/* ✅ DEBUG 2026-01-23: Log pour vérifier le nom et la description affichés */}
@@ -2046,11 +2061,18 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
           // ✅ NOUVEAU 2026-01-23: Passer les variations de prix au modal
           productVariants={hasVariant && variants.length > 0 ? variants : undefined}
           selectedVariantIndex={selectedVariantIndex !== null ? selectedVariantIndex : undefined}
+          // ✅ FIX 2026-03-03: Passer le prix du produit directement pour éviter "Calcul en cours..."
+          initialProductPrice={displayPrice}
           onSuccess={(deliveryId) => {
             console.log('[ProductCard] Livraison créée:', deliveryId);
             setShowOrderModal(false);
-            Alert.alert('Succès', 'Votre commande de livraison a été créée avec succès');
-          }}
+            // ✅ FIX 2026-03-03: Navigation vers l'écran de suivi de livraison
+            try {
+              (navigation as any).navigate('DeliveryShoppingTracking', { deliveryId });
+            } catch (navError) {
+              console.warn('[ProductCard] Erreur navigation suivi:', navError);
+            }
+          }
         />
       )}
 
@@ -2224,6 +2246,12 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
     color: '#6366F1',
+  },
+  approximateBadge: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#f59e0b',
+    marginLeft: 1,
   },
   topStatsRowCentered: {
     flexDirection: 'row',

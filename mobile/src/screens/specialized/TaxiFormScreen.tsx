@@ -1,7 +1,6 @@
 // ✅ Écran de création/édition de services taxi (accessible à tous les utilisateurs)
 // Permet à n'importe quel utilisateur d'intégrer son véhicule pour le taxi
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import React, { useEffect, useState } from 'react';
@@ -14,13 +13,18 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import { ConfirmationSection } from '../../components/FormConfirmationModal';
 import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 import ModernGPSModal from '../../components/ModernGPSModal';
+import PartnerHeader from '../../components/PartnerHeader';
 import SafeIcon from '../../components/SafeIcon';
 import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLocation } from '../../contexts/LocationContext';
+import { clearSavedFormData, useFormAutoSave } from '../../hooks/useFormAutoSave';
+import { useFormValidation } from '../../hooks/useFormValidation';
+import { usePartnerData } from '../../hooks/usePartnerData';
 import { apiPost, servicesApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 import { getCurrencyIntelligently } from '../../utils/currencyUtils';
@@ -61,6 +65,23 @@ const TaxiFormScreen: React.FC = () => {
     const [selectedZones, setSelectedZones] = useState<LocationObject[]>([]);
     const [showGPSModal, setShowGPSModal] = useState(false);
     const [selectedGPS, setSelectedGPS] = useState<string | null>(null);
+    const [showConfirmation, setShowConfirmation] = useState(false);
+
+    const { partnerData } = usePartnerData(user?.role);
+    const { errors, validateField, validateForm, setError } = useFormValidation({
+        telephone: {
+            required: true,
+            pattern: /^\+?[0-9]{9,15}$/,
+            custom: (value) => {
+                if (value && !value.startsWith('+237') && !value.startsWith('237')) {
+                    return 'Numéro camerounais requis (+237...)';
+                }
+                return null;
+            }
+        },
+        type_vehicule: { required: true, minLength: 2 },
+        immatriculation: { required: true, minLength: 3 },
+    });
 
     // ✅ AMÉLIORÉ: Fonction pour sélectionner une image du véhicule (galerie ou caméra)
     const pickVehicleImage = async (source: 'gallery' | 'camera') => {
@@ -107,7 +128,6 @@ const TaxiFormScreen: React.FC = () => {
         }
     };
 
-    // ✅ NOUVEAU : Récupération automatique de la devise depuis la première zone
     useEffect(() => {
         if (selectedZones.length > 0) {
             const currency = getCurrencyIntelligently(selectedZones[0]);
@@ -117,73 +137,7 @@ const TaxiFormScreen: React.FC = () => {
         }
     }, [selectedZones]);
 
-    // ✅ NOUVEAU : Charger les données sauvegardées au montage
-    useEffect(() => {
-        const loadSavedFormData = async () => {
-            try {
-                const savedData = await AsyncStorage.getItem(TAXI_FORM_STORAGE_KEY);
-                if (savedData) {
-                    const parsed = JSON.parse(savedData);
-                    // Restaurer les données sauf si on est en mode edit
-                    if (mode !== 'edit') {
-                        setFormData(prev => ({
-                            ...prev,
-                            nom_chauffeur: parsed.nom_chauffeur || prev.nom_chauffeur,
-                            telephone: parsed.telephone || prev.telephone,
-                            whatsapp: parsed.whatsapp || prev.whatsapp,
-                            type_vehicule: parsed.type_vehicule || prev.type_vehicule,
-                            marque_modele: parsed.marque_modele || prev.marque_modele,
-                            immatriculation: parsed.immatriculation || prev.immatriculation,
-                            couleur: parsed.couleur || prev.couleur,
-                            annee: parsed.annee || prev.annee,
-                            tarif_base: parsed.tarif_base || prev.tarif_base,
-                            tarif_par_km: parsed.tarif_par_km || prev.tarif_par_km,
-                            paiement_cash: parsed.paiement_cash !== undefined ? parsed.paiement_cash : prev.paiement_cash,
-                            paiement_mobile_money: parsed.paiement_mobile_money !== undefined ? parsed.paiement_mobile_money : prev.paiement_mobile_money,
-                            paiement_carte: parsed.paiement_carte !== undefined ? parsed.paiement_carte : prev.paiement_carte,
-                            climatisation: parsed.climatisation !== undefined ? parsed.climatisation : prev.climatisation,
-                            wifi: parsed.wifi !== undefined ? parsed.wifi : prev.wifi,
-                        }));
-                    }
-                }
-            } catch (error) {
-                console.error('[TaxiFormScreen] Erreur chargement données sauvegardées:', error);
-            }
-        };
-        loadSavedFormData();
-    }, [mode]);
-
-    // ✅ NOUVEAU : Sauvegarder les données du formulaire à chaque modification
-    useEffect(() => {
-        const saveFormData = async () => {
-            try {
-                const dataToSave = {
-                    nom_chauffeur: formData.nom_chauffeur,
-                    telephone: formData.telephone,
-                    whatsapp: formData.whatsapp,
-                    type_vehicule: formData.type_vehicule,
-                    marque_modele: formData.marque_modele,
-                    immatriculation: formData.immatriculation,
-                    couleur: formData.couleur,
-                    annee: formData.annee,
-                    tarif_base: formData.tarif_base,
-                    tarif_par_km: formData.tarif_par_km,
-                    paiement_cash: formData.paiement_cash,
-                    paiement_mobile_money: formData.paiement_mobile_money,
-                    paiement_carte: formData.paiement_carte,
-                    climatisation: formData.climatisation,
-                    wifi: formData.wifi,
-                };
-                await AsyncStorage.setItem(TAXI_FORM_STORAGE_KEY, JSON.stringify(dataToSave));
-            } catch (error) {
-                console.error('[TaxiFormScreen] Erreur sauvegarde données:', error);
-            }
-        };
-        // Sauvegarder seulement si on n'est pas en mode edit
-        if (mode !== 'edit') {
-            saveFormData();
-        }
-    }, [formData.nom_chauffeur, formData.telephone, formData.whatsapp, formData.type_vehicule, formData.marque_modele, formData.immatriculation, formData.couleur, formData.annee, formData.tarif_base, formData.tarif_par_km, formData.paiement_cash, formData.paiement_mobile_money, formData.paiement_carte, formData.climatisation, formData.wifi, mode]);
+    useFormAutoSave(TAXI_FORM_STORAGE_KEY, formData, mode !== 'edit', 1000);
 
     // ✅ Créer automatiquement un service si serviceId manquant
     useEffect(() => {
@@ -281,7 +235,64 @@ const TaxiFormScreen: React.FC = () => {
         setShowGPSModal(false);
     };
 
-    const handleSubmit = async () => {
+    const handleFieldChange = (field: string, value: any) => {
+        setFormData({ ...formData, [field]: value });
+        const error = validateField(field, value);
+        if (error) {
+            setError(field, error);
+        }
+    };
+
+    const confirmationSections: ConfirmationSection[] = [
+        {
+            title: 'Chauffeur',
+            icon: 'user',
+            fields: [
+                { label: 'Nom', value: formData.nom_chauffeur },
+                { label: 'Téléphone', value: formData.telephone },
+                { label: 'WhatsApp', value: formData.whatsapp },
+            ],
+        },
+        {
+            title: 'Véhicule',
+            icon: 'car',
+            fields: [
+                { label: 'Type', value: formData.type_vehicule },
+                { label: 'Marque/Modèle', value: formData.marque_modele },
+                { label: 'Immatriculation', value: formData.immatriculation },
+                { label: 'Couleur', value: formData.couleur },
+                { label: 'Année', value: formData.annee },
+            ],
+        },
+        {
+            title: 'Tarifs',
+            icon: 'dollar-sign',
+            fields: [
+                { label: 'Tarif base', value: `${formData.tarif_base} ${formData.devise}` },
+                { label: 'Tarif par km', value: `${formData.tarif_par_km} ${formData.devise}` },
+            ],
+        },
+        {
+            title: 'Services',
+            icon: 'check-circle',
+            fields: [
+                { label: 'Zones', value: `${selectedZones.length} zone(s)` },
+                { label: 'Paiement cash', value: formData.paiement_cash, type: 'boolean' as const },
+                { label: 'Mobile Money', value: formData.paiement_mobile_money, type: 'boolean' as const },
+                { label: 'Climatisation', value: formData.climatisation, type: 'boolean' as const },
+            ],
+        },
+    ];
+
+    const handleSubmit = () => {
+        if (!validateForm(formData)) {
+            Alert.alert('Erreur', 'Veuillez corriger les erreurs du formulaire');
+            return;
+        }
+        setShowConfirmation(true);
+    };
+
+    const handleFinalSubmit = async () => {
         // ✅ Créer le service si nécessaire
         let finalServiceId = serviceId;
         if (!finalServiceId && user?.id) {
@@ -375,6 +386,7 @@ const TaxiFormScreen: React.FC = () => {
             const response = await apiPost('/api/taxis', payload);
 
             if (response.success) {
+                await clearSavedFormData(TAXI_FORM_STORAGE_KEY);
                 Alert.alert(
                     'Succès',
                     'Service de taxi enregistré avec succès !',
@@ -388,6 +400,7 @@ const TaxiFormScreen: React.FC = () => {
             Alert.alert('Erreur', error.message || 'Une erreur est survenue');
         } finally {
             setLoading(false);
+            setShowConfirmation(false);
         }
     };
 
@@ -402,11 +415,19 @@ const TaxiFormScreen: React.FC = () => {
                 </View>
 
                 <View style={styles.form}>
+                    {user?.role === 'partenaire' && (
+                        <PartnerHeader
+                            partnerName={partnerData?.name}
+                            logoUrl={partnerData?.logo_url}
+                            subtitle="Espace taxi"
+                        />
+                    )}
+
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>Nom du chauffeur</Text>
                         <NativeInput
                             value={formData.nom_chauffeur}
-                            onChangeText={(text) => setFormData({ ...formData, nom_chauffeur: text })}
+                            onChangeText={(text) => handleFieldChange('nom_chauffeur', text)}
                             placeholder="Ex: Jean Dupont"
                         />
                     </View>
@@ -415,9 +436,10 @@ const TaxiFormScreen: React.FC = () => {
                         <Text style={styles.label}>Téléphone *</Text>
                         <NativeInput
                             value={formData.telephone}
-                            onChangeText={(text) => setFormData({ ...formData, telephone: text })}
+                            onChangeText={(text) => handleFieldChange('telephone', text)}
                             placeholder="+237 6XX XX XX XX"
                             keyboardType="phone-pad"
+                            error={errors.telephone}
                         />
                     </View>
 
@@ -433,11 +455,12 @@ const TaxiFormScreen: React.FC = () => {
 
                     <View style={styles.row}>
                         <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
-                            <Text style={styles.label}>Type de véhicule</Text>
+                            <Text style={styles.label}>Type de véhicule *</Text>
                             <NativeInput
                                 value={formData.type_vehicule}
-                                onChangeText={(text) => setFormData({ ...formData, type_vehicule: text })}
+                                onChangeText={(text) => handleFieldChange('type_vehicule', text)}
                                 placeholder="Ex: Berline"
+                                error={errors.type_vehicule}
                             />
                         </View>
                         <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
@@ -452,11 +475,12 @@ const TaxiFormScreen: React.FC = () => {
 
                     <View style={styles.row}>
                         <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
-                            <Text style={styles.label}>Immatriculation</Text>
+                            <Text style={styles.label}>Immatriculation *</Text>
                             <NativeInput
                                 value={formData.immatriculation}
-                                onChangeText={(text) => setFormData({ ...formData, immatriculation: text })}
+                                onChangeText={(text) => handleFieldChange('immatriculation', text)}
                                 placeholder="Ex: LT-1234-AB"
+                                error={errors.immatriculation}
                             />
                         </View>
                         <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>

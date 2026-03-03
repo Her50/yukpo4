@@ -3753,29 +3753,345 @@ pub async fn get_travel_agency_details(
 // ✅ FONCTIONS HÔPITAUX
 // ============================================================================
 
-/// Gérer les créneaux d'un hôpital
+/// Gérer les créneaux d'un hôpital/laboratoire
 #[derive(Debug, Deserialize)]
 pub struct ManageHospitalSlotsRequest {
     pub date: String,
-    pub slots: Vec<serde_json::Value>,
+    pub slots: Vec<SlotInput>,
+    pub service_type: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SlotInput {
+    pub start_time: String,
+    pub end_time: String,
+    pub max_bookings: Option<i32>,
+    pub consultation_type: Option<String>,
+    pub price: Option<f64>,
+    pub currency: Option<String>,
+    pub notes: Option<String>,
 }
 
 pub async fn manage_hospital_slots(
-    State(_state): State<Arc<AppState>>,
+    State(state): State<Arc<AppState>>,
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Path(hospital_id): Path<i32>,
-    Json(_request): Json<ManageHospitalSlotsRequest>,
+    Json(request): Json<ManageHospitalSlotsRequest>,
 ) -> AppResult<impl IntoResponse> {
     info!(
-        "[manage_hospital_slots] hospital_id={}, user_id={}",
-        hospital_id, user_id
+        "[manage_hospital_slots] hospital_id={}, user_id={}, date={}, slots={}",
+        hospital_id,
+        user_id,
+        request.date,
+        request.slots.len()
     );
+
+    let service_type = request.service_type.unwrap_or_else(|| "hopital".to_string());
+
+    // Vérifier que l'utilisateur est bien le propriétaire du service
+    let owner_check: Option<i32> = sqlx::query_scalar("SELECT user_id FROM services WHERE id = $1")
+        .bind(hospital_id)
+        .fetch_optional(&state.pg)
+        .await?;
+
+    if owner_check != Some(user_id) {
+        return Err(AppError::Forbidden(
+            "Vous n'êtes pas le propriétaire de ce service".to_string(),
+        ));
+    }
+
+    // Supprimer les anciens créneaux non réservés pour cette date
+    sqlx::query(
+        r#"
+        DELETE FROM appointment_slots
+        WHERE service_id = $1 AND slot_date = $2::date AND current_bookings = 0
+        "#,
+    )
+    .bind(hospital_id)
+    .bind(&request.date)
+    .execute(&state.pg)
+    .await?;
+
+    // Insérer les nouveaux créneaux
+    let mut created = 0;
+    for slot in &request.slots {
+        let result = sqlx::query(
+            r#"
+            INSERT INTO appointment_slots
+                (service_id, service_type, prestataire_id, slot_date, start_time, end_time,
+                 max_bookings, consultation_type, price, currency, notes)
+            VALUES ($1, $2, $3, $4::date, $5::time, $6::time, $7, $8, $9, $10, $11)
+            ON CONFLICT (service_id, slot_date, start_time, consultation_type)
+            DO UPDATE SET end_time = EXCLUDED.end_time,
+                         max_bookings = EXCLUDED.max_bookings,
+                         price = EXCLUDED.price,
+                         currency = EXCLUDED.currency,
+                         notes = EXCLUDED.notes,
+                         is_active = true,
+                         updated_at = NOW()
+            "#,
+        )
+        .bind(hospital_id)
+        .bind(&service_type)
+        .bind(user_id)
+        .bind(&request.date)
+        .bind(&slot.start_time)
+        .bind(&slot.end_time)
+        .bind(slot.max_bookings.unwrap_or(1))
+        .bind(&slot.consultation_type)
+        .bind(slot.price)
+        .bind(slot.currency.as_deref().unwrap_or("XAF"))
+        .bind(&slot.notes)
+        .execute(&state.pg)
+        .await;
+
+        if result.is_ok() {
+            created += 1;
+        }
+    }
+
+    // Récupérer tous les créneaux du jour
+    let slots_today: Vec<serde_json::Value> = sqlx::query_as::<
+        _,
+        (
+            i32,
+            String,
+            String,
+            i32,
+            i32,
+            Option<String>,
+            Option<rust_decimal::Decimal>,
+            Option<String>,
+            bool,
+        ),
+    >(
+        r#"
+        SELECT id, start_time::text, end_time::text, max_bookings, current_bookings,
+               consultation_type, price, currency, is_active
+        FROM appointment_slots
+        WHERE service_id = $1 AND slot_date = $2::date
+        ORDER BY start_time ASC
+        "#,
+    )
+    .bind(hospital_id)
+    .bind(&request.date)
+    .fetch_all(&state.pg)
+    .await
+    .unwrap_or_default()
+    .into_iter()
+    .map(|row| {
+        json!({
+            "id": row.0,
+            "start_time": row.1,
+            "end_time": row.2,
+            "max_bookings": row.3,
+            "current_bookings": row.4,
+            "consultation_type": row.5,
+            "price": row.6,
+            "currency": row.7,
+            "is_active": row.8,
+            "available": row.3 > row.4,
+        })
+    })
+    .collect();
 
     Ok((
         StatusCode::OK,
         Json(json!({
             "success": true,
-            "message": "Créneaux gérés avec succès"
+            "message": format!("{} créneaux gérés avec succès", created),
+            "slots": slots_today,
+            "date": request.date,
+        })),
+    ))
+}
+
+/// GET /api/hopitaux/:id/available-slots?date=YYYY-MM-DD
+/// Obtenir les créneaux disponibles d'un service (public)
+pub async fn get_available_slots(
+    State(state): State<Arc<AppState>>,
+    Path(service_id): Path<i32>,
+    Query(params): Query<std::collections::HashMap<String, String>>,
+) -> AppResult<impl IntoResponse> {
+    let date = params
+        .get("date")
+        .cloned()
+        .unwrap_or_else(|| chrono::Utc::now().format("%Y-%m-%d").to_string());
+    let _service_type = params.get("service_type").cloned();
+
+    let slots: Vec<serde_json::Value> = sqlx::query_as::<
+        _,
+        (
+            i32,
+            String,
+            String,
+            i32,
+            i32,
+            Option<String>,
+            Option<rust_decimal::Decimal>,
+            Option<String>,
+        ),
+    >(
+        r#"
+        SELECT id, start_time::text, end_time::text, max_bookings, current_bookings,
+               consultation_type, price, currency
+        FROM appointment_slots
+        WHERE service_id = $1 AND slot_date = $2::date AND is_active = true
+        ORDER BY start_time ASC
+        "#,
+    )
+    .bind(service_id)
+    .bind(&date)
+    .fetch_all(&state.pg)
+    .await
+    .unwrap_or_default()
+    .into_iter()
+    .map(|row| {
+        json!({
+            "id": row.0,
+            "start_time": row.1,
+            "end_time": row.2,
+            "max_bookings": row.3,
+            "current_bookings": row.4,
+            "consultation_type": row.5,
+            "price": row.6,
+            "currency": row.7,
+            "available": row.3 > row.4,
+            "remaining": row.3 - row.4,
+        })
+    })
+    .collect();
+
+    // Obtenir aussi les dates qui ont des créneaux dans les 30 jours
+    let dates_with_slots: Vec<String> = sqlx::query_scalar(
+        r#"
+        SELECT DISTINCT slot_date::text
+        FROM appointment_slots
+        WHERE service_id = $1 AND slot_date >= CURRENT_DATE AND slot_date <= CURRENT_DATE + 30
+              AND is_active = true AND current_bookings < max_bookings
+        ORDER BY slot_date::text ASC
+        "#,
+    )
+    .bind(service_id)
+    .fetch_all(&state.pg)
+    .await
+    .unwrap_or_default();
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "date": date,
+            "service_id": service_id,
+            "slots": slots,
+            "dates_with_availability": dates_with_slots,
+        })),
+    ))
+}
+
+/// POST /api/appointments/book - Réserver un créneau spécifique
+pub async fn book_slot(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Json(payload): Json<serde_json::Value>,
+) -> AppResult<impl IntoResponse> {
+    let slot_id = payload["slot_id"]
+        .as_i64()
+        .ok_or_else(|| AppError::BadRequest("slot_id requis".to_string()))?
+        as i32;
+    let notes = payload["notes"].as_str().map(|s| s.to_string());
+    let patient_name = payload["patient_name"].as_str().map(|s| s.to_string());
+    let reason = payload["reason"].as_str().map(|s| s.to_string());
+
+    // Vérifier disponibilité du créneau et le verrouiller
+    let slot = sqlx::query_as::<
+        _,
+        (
+            i32,
+            i32,
+            String,
+            String,
+            String,
+            String,
+            i32,
+            i32,
+            Option<rust_decimal::Decimal>,
+            Option<String>,
+        ),
+    >(
+        r#"
+        UPDATE appointment_slots
+        SET current_bookings = current_bookings + 1, updated_at = NOW()
+        WHERE id = $1 AND is_active = true AND current_bookings < max_bookings
+        RETURNING id, service_id, service_type, slot_date::text, start_time::text, end_time::text,
+                  max_bookings, current_bookings, price, currency
+        "#,
+    )
+    .bind(slot_id)
+    .fetch_optional(&state.pg)
+    .await?
+    .ok_or_else(|| AppError::BadRequest("Créneau non disponible ou complet".to_string()))?;
+
+    let prestataire_id: i32 =
+        sqlx::query_scalar("SELECT prestataire_id FROM appointment_slots WHERE id = $1")
+            .bind(slot_id)
+            .fetch_one(&state.pg)
+            .await?;
+
+    // Construire les détails
+    let details = json!({
+        "slot_id": slot.0,
+        "slot_date": slot.3,
+        "start_time": slot.4,
+        "end_time": slot.5,
+        "patient_name": patient_name,
+        "reason": reason,
+    });
+
+    // Créer la réservation
+    let reservation_id: i32 = sqlx::query_scalar(
+        r#"
+        INSERT INTO specialized_reservations
+            (service_id, service_type, user_id, prestataire_id,
+             reservation_type, status, requested_date, details,
+             amount, currency, payment_status, slot_id,
+             reservation_date, reservation_time,
+             notes, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, 'rdv', 'pending',
+                ($5::date)::timestamptz, $6, $7, $8, 'pending', $9,
+                $5::date, $10, $11, NOW(), NOW())
+        RETURNING id
+        "#,
+    )
+    .bind(slot.1) // service_id
+    .bind(&slot.2) // service_type
+    .bind(user_id)
+    .bind(prestataire_id)
+    .bind(&slot.3) // slot_date
+    .bind(&details)
+    .bind(slot.8) // price
+    .bind(slot.9.as_deref().unwrap_or("XAF")) // currency
+    .bind(slot_id)
+    .bind(&slot.4) // start_time
+    .bind(&notes)
+    .fetch_one(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[book_slot] Erreur création réservation: {}", e);
+        AppError::Internal("Erreur création réservation".to_string())
+    })?;
+
+    Ok((
+        StatusCode::CREATED,
+        Json(json!({
+            "success": true,
+            "reservation_id": reservation_id,
+            "slot": {
+                "date": slot.3,
+                "start_time": slot.4,
+                "end_time": slot.5,
+            },
+            "message": "Rendez-vous réservé avec succès. En attente de confirmation du prestataire."
         })),
     ))
 }
@@ -3988,7 +4304,7 @@ pub struct BookLaboratoryExaminationRequest {
 }
 
 pub async fn book_laboratory_examination(
-    State(_state): State<Arc<AppState>>,
+    State(state): State<Arc<AppState>>,
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Path(lab_id): Path<i32>,
     Json(request): Json<BookLaboratoryExaminationRequest>,
@@ -3998,11 +4314,62 @@ pub async fn book_laboratory_examination(
         lab_id, user_id, request.examination_type
     );
 
+    // Vérifier que le laboratoire existe
+    let lab_exists = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(SELECT 1 FROM services WHERE id = $1 AND is_active = true)",
+    )
+    .bind(lab_id)
+    .fetch_one(&state.pg)
+    .await
+    .unwrap_or(false);
+
+    if !lab_exists {
+        return Err(AppError::NotFound("Laboratoire non trouvé".to_string()));
+    }
+
+    // Récupérer le prestataire_id
+    let prestataire_id: i32 = sqlx::query_scalar("SELECT user_id FROM services WHERE id = $1")
+        .bind(lab_id)
+        .fetch_one(&state.pg)
+        .await
+        .map_err(|_| AppError::NotFound("Service non trouvé".to_string()))?;
+
+    let details = json!({
+        "examination_type": request.examination_type,
+        "preferred_date": request.date,
+        "preferred_time": request.heure,
+    });
+
+    let reservation_id: i32 = sqlx::query_scalar(
+        r#"
+        INSERT INTO specialized_reservations
+            (service_id, service_type, user_id, prestataire_id,
+             reservation_type, status, reservation_date, reservation_time,
+             details, created_at, updated_at)
+        VALUES ($1, 'laboratoire', $2, $3, 'examen', 'pending',
+                $4::date, $5, $6, NOW(), NOW())
+        RETURNING id
+        "#,
+    )
+    .bind(lab_id)
+    .bind(user_id)
+    .bind(prestataire_id)
+    .bind(&request.date)
+    .bind(&request.heure)
+    .bind(&details)
+    .fetch_one(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[book_laboratory_examination] Erreur création: {}", e);
+        AppError::Internal("Erreur création réservation examen".to_string())
+    })?;
+
     Ok((
         StatusCode::CREATED,
         Json(json!({
             "success": true,
-            "booking_id": 1
+            "reservation_id": reservation_id,
+            "message": "Examen réservé avec succès. En attente de confirmation."
         })),
     ))
 }

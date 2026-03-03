@@ -6,6 +6,7 @@ import {
     Alert,
     Linking,
     ScrollView,
+    Share,
     StyleSheet,
     Text,
     TouchableOpacity,
@@ -27,6 +28,7 @@ import { useLocation } from '../contexts/LocationContext';
 import { useServicesBatchData } from '../hooks/useServicesBatchData';
 import { apiGet, apiPost } from '../services/api';
 import { theme } from '../theme/theme';
+import { generateProductShareMessage, generateSmartShareLink } from '../utils/productShareHelper';
 
 // Types
 interface SearchResult {
@@ -1649,9 +1651,44 @@ const ResultatBesoinScreen: React.FC = () => {
         setShowGalleryModal(true);
     }, []);
 
-    const handleShare = useCallback((service: Service) => {
-        Alert.alert('Partage', `Partager le service: ${service.titre || service.title || 'Service'}`);
-    }, []);
+    const handleShare = useCallback(async (service: Service) => {
+        try {
+            const titre = service.titre || service.title || service.data?.titre_service?.valeur || 'Service Yukpo';
+            const description = service.description || service.data?.description?.valeur || '';
+            const prix = service.prix || service.data?.prix?.valeur;
+            const devise = service.devise || 'XAF';
+            const location = service.localisation || service.data?.localisation?.valeur || '';
+
+            // Essayer de trouver le premier produit du service pour un lien produit précis
+            const serviceProducts = services.find(s => s.id === service.id);
+            const firstProductIndex = 0;
+            const serviceId = service.id;
+
+            const shareMessage = generateProductShareMessage({
+                productName: titre,
+                productDescription: description,
+                price: prix ? (typeof prix === 'string' ? parseFloat(prix) || undefined : prix) : undefined,
+                devise,
+                location,
+                productId: firstProductIndex,
+                serviceId,
+            });
+
+            const smartLink = generateSmartShareLink(firstProductIndex, serviceId);
+
+            const result = await Share.share({
+                message: shareMessage,
+                title: titre,
+                url: smartLink,
+            });
+
+            if (result.action === Share.sharedAction) {
+                console.log('[ResultatBesoinScreen] Service partagé avec succès');
+            }
+        } catch (error) {
+            console.error('[ResultatBesoinScreen] Erreur partage:', error);
+        }
+    }, [services]);
 
     const handleFavorite = useCallback((service: Service) => {
         Alert.alert('Favoris', `Service ${service.titre || service.title || 'Service'} ajouté aux favoris`);

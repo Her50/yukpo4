@@ -10,9 +10,11 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
+import { ConfirmationSection } from '../../components/FormConfirmationModal';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
+import { useFormValidation } from '../../hooks/useFormValidation';
 import { apiPost } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 
@@ -31,6 +33,18 @@ const BusReturnRequestFormScreen: React.FC = () => {
     const [numberOfSeats, setNumberOfSeats] = useState(1);
     const [passengerNames, setPassengerNames] = useState<string[]>(['']);
     const [loading, setLoading] = useState(false);
+    const [showConfirmation, setShowConfirmation] = useState(false);
+
+    const { errors, validateForm } = useFormValidation({
+        passengerNames: {
+            custom: (value) => {
+                if (!value || (Array.isArray(value) && value.every((n: string) => !n.trim()))) {
+                    return 'Au moins un nom de passager requis';
+                }
+                return null;
+            }
+        },
+    });
 
     const formatDate = (date: Date) => {
         const day = date.getDate().toString().padStart(2, '0');
@@ -39,7 +53,39 @@ const BusReturnRequestFormScreen: React.FC = () => {
         return `${day}/${month}/${year}`;
     };
 
-    const handleSubmit = async () => {
+    const confirmationSections: ConfirmationSection[] = [
+        {
+            title: 'Retour',
+            icon: 'calendar',
+            fields: [
+                { label: 'Date retour', value: formatDate(returnDate) },
+                { label: 'Heure', value: returnTime || 'Non spécifiée' },
+                { label: 'Flexibilité', value: `± ${flexibilityDays} jour(s)` },
+            ],
+        },
+        {
+            title: 'Passagers',
+            icon: 'users',
+            fields: [
+                { label: 'Nombre de places', value: String(numberOfSeats), type: 'number' as const },
+                { label: 'Passagers', value: passengerNames.filter(n => n.trim()).join(', ') },
+            ],
+        },
+    ];
+
+    const handleSubmit = () => {
+        if (!outboundPaymentId) {
+            Alert.alert('Erreur', 'Informations de ticket aller manquantes');
+            return;
+        }
+        if (passengerNames.length === 0 || passengerNames.every((name) => !name.trim())) {
+            Alert.alert('Erreur', 'Veuillez renseigner au moins un nom de passager');
+            return;
+        }
+        setShowConfirmation(true);
+    };
+
+    const handleFinalSubmit = async () => {
         if (!outboundPaymentId) {
             Alert.alert('Erreur', 'Informations de ticket aller manquantes');
             return;
@@ -64,8 +110,9 @@ const BusReturnRequestFormScreen: React.FC = () => {
             };
 
             const response = await apiPost('/api/bus-tickets/return-request', payload);
+            const resData = (response?.data || response) as any;
 
-            if (response.success) {
+            if (resData.success) {
                 Alert.alert(
                     'Demande créée',
                     'Votre demande de retour a été créée. Vous serez notifié quand un bus correspondant sera disponible.',
@@ -84,6 +131,7 @@ const BusReturnRequestFormScreen: React.FC = () => {
             Alert.alert('Erreur', error.message || 'Impossible de créer la demande');
         } finally {
             setLoading(false);
+            setShowConfirmation(false);
         }
     };
 

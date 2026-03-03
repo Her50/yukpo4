@@ -9,20 +9,23 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import FormConfirmationModal, { ConfirmationSection } from '../../components/FormConfirmationModal';
 import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 import ModernGPSModal from '../../components/ModernGPSModal';
+import PartnerHeader from '../../components/PartnerHeader';
 import SafeIcon from '../../components/SafeIcon';
 import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
-// ✅ SUPPRIMÉ : WeekScheduleSelector (planning hebdomadaire supprimé)
 import { useAuth } from '../../contexts/AuthContext';
 import { useLocation } from '../../contexts/LocationContext';
+import { clearSavedFormData, loadSavedFormData, useFormAutoSave } from '../../hooks/useFormAutoSave';
+import { useFormValidation } from '../../hooks/useFormValidation';
+import { usePartnerData } from '../../hooks/usePartnerData';
 import { apiGet, apiPost, servicesApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 
-// ✅ SUPPRIMÉ : ScheduleDay interface (planning hebdomadaire supprimé)
-
 const GROUPES_SANGUINS = ['O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'];
+const STORAGE_KEY = '@banque_sang_form';
 
 const BanqueSangFormScreen: React.FC = () => {
     const navigation = useNavigation();
@@ -38,7 +41,8 @@ const BanqueSangFormScreen: React.FC = () => {
         nom: '',
         adresse: '',
         quartier: null as LocationObject | string | null,
-        // ✅ SUPPRIMÉ : ville (quartier contient déjà ville et pays)
+        ville: '',
+        pays: '',
         accepte_dons: true,
         accepte_demandes: true,
         urgence_24h: false,
@@ -50,68 +54,59 @@ const BanqueSangFormScreen: React.FC = () => {
 
     const [loading, setLoading] = useState(false);
     const [loadingData, setLoadingData] = useState(false);
-    const banqueId = (route.params as any)?.banqueId; // Si on édite
+    const banqueId = (route.params as any)?.banqueId;
     const [stocks, setStocks] = useState<Record<string, { quantite: string; unite: string }>>({});
     const [showGPSModal, setShowGPSModal] = useState(false);
     const [selectedGPS, setSelectedGPS] = useState<string | null>(null);
-    // ✅ SUPPRIMÉ : showScheduleModal et schedule (planning hebdomadaire supprimé)
+    const [showConfirmation, setShowConfirmation] = useState(false);
 
-    // ✅ NOUVEAU: Charger automatiquement les données du partenaire si user.partner_type === 'banquesang'
-    useEffect(() => {
-        const loadPartnerData = async () => {
-            if (user?.role === 'partenaire' && user?.partner_type === 'banquesang') {
-                try {
-                    // Récupérer les données du partenaire depuis /api/partners/me
-                    const response = await apiGet('/api/partners/me');
-
-                    if (response.success && response.data) {
-                        const partnerData = response.data;
-
-                        // Si le partenaire a déjà une banque de sang, charger ses données
-                        if (partnerData.banque_sang_id) {
-                            const banqueResponse = await apiGet(`/api/banques-sang/${partnerData.banque_sang_id}`);
-                            if (banqueResponse.success && banqueResponse.data) {
-                                const banqueData = banqueResponse.data;
-                                setFormData({
-                                    nom: banqueData.nom || '',
-                                    adresse: banqueData.adresse || '',
-                                    quartier: banqueData.quartier ? { raw: banqueData.quartier, place_name: banqueData.quartier } : null,
-                                    accepte_dons: banqueData.accepte_dons ?? true,
-                                    accepte_demandes: banqueData.accepte_demandes ?? true,
-                                    urgence_24h: banqueData.urgence_24h ?? false,
-                                    telephone: banqueData.telephone || '',
-                                    telephone_urgence: banqueData.telephone_urgence || '',
-                                    whatsapp: banqueData.whatsapp || '',
-                                    email: banqueData.email || '',
-                                });
-                                if (banqueData.service_id) {
-                                    setServiceId(banqueData.service_id);
-                                }
-                                if (banqueData.id) {
-                                    // Mode édition
-                                    (route.params as any).specializedServiceId = banqueData.id;
-                                }
-                            }
-                        } else if (partnerData.service_id) {
-                            // Si le partenaire a un service mais pas encore de banque de sang, pré-remplir avec les infos du service
-                            setServiceId(partnerData.service_id);
-                            setFormData(prev => ({
-                                ...prev,
-                                nom: partnerData.nom || partnerData.titre_service || '',
-                                adresse: partnerData.adresse || '',
-                                telephone: partnerData.telephone || '',
-                                email: partnerData.email || '',
-                            }));
-                        }
-                    }
-                } catch (error: any) {
-                    console.error('[BanqueSangFormScreen] Erreur chargement données partenaire:', error);
+    const { partnerData, loading: loadingPartner } = usePartnerData(user?.role, 'banquesang');
+    const { errors, validateField, validateForm, setError } = useFormValidation({
+        nom: { required: true, minLength: 3 },
+        telephone: {
+            pattern: /^\+?[0-9]{9,15}$/,
+            custom: (value) => {
+                if (value && !value.startsWith('+237') && !value.startsWith('237')) {
+                    return 'Le numéro doit être un numéro camerounais (+237...)';
                 }
+                return null;
+            }
+        },
+        email: {
+            pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+        },
+    });
+
+    useEffect(() => {
+        const loadSaved = async () => {
+            const saved = await loadSavedFormData<typeof formData>(STORAGE_KEY);
+            if (saved) {
+                setFormData(saved);
+                Alert.alert(
+                    'Données restaurées',
+                    'Vos données non envoyées ont été restaurées',
+                    [{ text: 'OK' }]
+                );
             }
         };
+        loadSaved();
+    }, []);
 
-        loadPartnerData();
-    }, [user?.role, user?.partner_type]);
+    useEffect(() => {
+        if (partnerData && user?.role === 'partenaire') {
+            setFormData(prev => ({
+                ...prev,
+                nom: partnerData.name || prev.nom,
+                adresse: partnerData.address || partnerData.location_address || prev.adresse,
+                telephone: partnerData.contact_phone || prev.telephone,
+                email: partnerData.contact_email || prev.email,
+                ville: partnerData.city || prev.ville,
+                pays: partnerData.country || prev.pays,
+            }));
+        }
+    }, [partnerData, user?.role]);
+
+    useFormAutoSave(STORAGE_KEY, formData, true, 1000);
 
     // ✅ NOUVEAU : Charger les données existantes si mode='edit' et specializedServiceId fourni
     // (compatible avec l'ancien système banqueId)
@@ -161,7 +156,8 @@ const BanqueSangFormScreen: React.FC = () => {
                     nom: data.nom || '',
                     adresse: data.adresse || '',
                     quartier: data.quartier || null,
-                    // ✅ SUPPRIMÉ : ville (quartier contient déjà ville et pays)
+                    ville: data.ville || '',
+                    pays: data.pays || '',
                     accepte_dons: data.accepte_dons ?? true,
                     accepte_demandes: data.accepte_demandes ?? true,
                     urgence_24h: data.urgence_24h ?? false,
@@ -239,7 +235,62 @@ const BanqueSangFormScreen: React.FC = () => {
 
     // ✅ SUPPRIMÉ : handleScheduleSave (planning hebdomadaire supprimé)
 
-    const handleSubmit = async () => {
+    const handleFieldChange = (field: string, value: any) => {
+        setFormData({ ...formData, [field]: value });
+        const error = validateField(field, value);
+        if (error) {
+            setError(field, error);
+        }
+    };
+
+    const confirmationSections: ConfirmationSection[] = [
+        {
+            title: 'Informations générales',
+            icon: 'info',
+            fields: [
+                { label: 'Nom', value: formData.nom, icon: 'building' },
+                { label: 'Adresse', value: formData.adresse, icon: 'map-pin' },
+                { label: 'Quartier', value: typeof formData.quartier === 'string' ? formData.quartier : formData.quartier?.place_name },
+            ],
+        },
+        {
+            title: 'Contact',
+            icon: 'phone',
+            fields: [
+                { label: 'Téléphone', value: formData.telephone },
+                { label: 'Téléphone urgence', value: formData.telephone_urgence },
+                { label: 'WhatsApp', value: formData.whatsapp },
+                { label: 'Email', value: formData.email },
+            ],
+        },
+        {
+            title: 'Services',
+            icon: 'heart',
+            fields: [
+                { label: 'Accepte les dons', value: formData.accepte_dons, type: 'boolean' as const },
+                { label: 'Accepte les demandes', value: formData.accepte_demandes, type: 'boolean' as const },
+                { label: 'Urgence 24h/24', value: formData.urgence_24h, type: 'boolean' as const },
+            ],
+        },
+        {
+            title: 'Stocks',
+            icon: 'droplet',
+            fields: [
+                { label: 'Total poches', value: totalStocks, type: 'number' as const },
+                { label: 'Groupes renseignés', value: Object.values(stocks).filter((s) => parseInt(s.quantite) > 0).length, type: 'number' as const },
+            ],
+        },
+    ];
+
+    const handleSubmit = () => {
+        if (!validateForm(formData)) {
+            Alert.alert('Erreur', 'Veuillez corriger les erreurs du formulaire');
+            return;
+        }
+        setShowConfirmation(true);
+    };
+
+    const handleFinalSubmit = async () => {
         // ✅ Créer le service si nécessaire
         let finalServiceId = serviceId;
         if (!finalServiceId && user?.id) {
@@ -324,6 +375,7 @@ const BanqueSangFormScreen: React.FC = () => {
             const response = await apiPost('/api/banques-sang', payload);
 
             if (response.success) {
+                await clearSavedFormData(STORAGE_KEY);
                 Alert.alert(
                     'Succès',
                     'Banque de sang enregistrée avec succès !',
@@ -337,6 +389,7 @@ const BanqueSangFormScreen: React.FC = () => {
             Alert.alert('Erreur', error.message || 'Une erreur est survenue');
         } finally {
             setLoading(false);
+            setShowConfirmation(false);
         }
     };
 
@@ -351,14 +404,25 @@ const BanqueSangFormScreen: React.FC = () => {
                 </View>
 
                 <View style={styles.form}>
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Nom de la banque de sang *</Text>
-                        <NativeInput
-                            value={formData.nom}
-                            onChangeText={(text) => setFormData({ ...formData, nom: text })}
-                            placeholder="Ex: Banque de Sang Centrale"
+                    {user?.role === 'partenaire' && (
+                        <PartnerHeader
+                            partnerName={partnerData?.name}
+                            logoUrl={partnerData?.logo_url}
+                            subtitle="Espace prestataire"
                         />
-                    </View>
+                    )}
+
+                    {user?.role !== 'partenaire' && (
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.label}>Nom de la banque de sang *</Text>
+                            <NativeInput
+                                value={formData.nom}
+                                onChangeText={(text) => handleFieldChange('nom', text)}
+                                placeholder="Ex: Banque de Sang Centrale"
+                                error={errors.nom}
+                            />
+                        </View>
+                    )}
 
                     {/* ✅ Localisation avec Google Maps */}
                     <View style={styles.inputGroup}>
@@ -378,15 +442,17 @@ const BanqueSangFormScreen: React.FC = () => {
                         )}
                     </View>
 
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Adresse</Text>
-                        <NativeInput
-                            value={formData.adresse}
-                            onChangeText={(text) => setFormData({ ...formData, adresse: text })}
-                            placeholder="Adresse complète"
-                            multiline
-                        />
-                    </View>
+                    {user?.role !== 'partenaire' && (
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.label}>Adresse</Text>
+                            <NativeInput
+                                value={formData.adresse}
+                                onChangeText={(text) => handleFieldChange('adresse', text)}
+                                placeholder="Adresse complète"
+                                multiline
+                            />
+                        </View>
+                    )}
 
                     <View style={styles.inputGroup}>
                         <LocationSelector
@@ -536,48 +602,52 @@ const BanqueSangFormScreen: React.FC = () => {
                         />
                     </View>
 
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Téléphone</Text>
-                        <NativeInput
-                            value={formData.telephone}
-                            onChangeText={(text) => setFormData({ ...formData, telephone: text })}
-                            placeholder="+237 6XX XX XX XX"
-                            keyboardType="phone-pad"
-                        />
-                    </View>
+                    {user?.role !== 'partenaire' && (
+                        <>
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.label}>Téléphone</Text>
+                                <NativeInput
+                                    value={formData.telephone}
+                                    onChangeText={(text) => handleFieldChange('telephone', text)}
+                                    placeholder="+237 6XX XX XX XX"
+                                    keyboardType="phone-pad"
+                                    error={errors.telephone}
+                                />
+                            </View>
 
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Téléphone Urgence</Text>
-                        <NativeInput
-                            value={formData.telephone_urgence}
-                            onChangeText={(text) =>
-                                setFormData({ ...formData, telephone_urgence: text })
-                            }
-                            placeholder="+237 6XX XX XX XX"
-                            keyboardType="phone-pad"
-                        />
-                    </View>
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.label}>Téléphone Urgence</Text>
+                                <NativeInput
+                                    value={formData.telephone_urgence}
+                                    onChangeText={(text) => handleFieldChange('telephone_urgence', text)}
+                                    placeholder="+237 6XX XX XX XX"
+                                    keyboardType="phone-pad"
+                                />
+                            </View>
 
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>WhatsApp</Text>
-                        <NativeInput
-                            value={formData.whatsapp}
-                            onChangeText={(text) => setFormData({ ...formData, whatsapp: text })}
-                            placeholder="+237 6XX XX XX XX"
-                            keyboardType="phone-pad"
-                        />
-                    </View>
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.label}>WhatsApp</Text>
+                                <NativeInput
+                                    value={formData.whatsapp}
+                                    onChangeText={(text) => handleFieldChange('whatsapp', text)}
+                                    placeholder="+237 6XX XX XX XX"
+                                    keyboardType="phone-pad"
+                                />
+                            </View>
 
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Email</Text>
-                        <NativeInput
-                            value={formData.email}
-                            onChangeText={(text) => setFormData({ ...formData, email: text })}
-                            placeholder="banque@example.com"
-                            keyboardType="email-address"
-                            autoCapitalize="none"
-                        />
-                    </View>
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.label}>Email</Text>
+                                <NativeInput
+                                    value={formData.email}
+                                    onChangeText={(text) => handleFieldChange('email', text)}
+                                    placeholder="banque@example.com"
+                                    keyboardType="email-address"
+                                    autoCapitalize="none"
+                                    error={errors.email}
+                                />
+                            </View>
+                        </>
+                    )}
 
                     {/* ✅ CORRIGÉ: Utiliser title au lieu de children */}
                     <NativeButton
@@ -603,7 +673,14 @@ const BanqueSangFormScreen: React.FC = () => {
                 title="Sélectionner la localisation"
             />
 
-            {/* ✅ SUPPRIMÉ : WeekScheduleSelector (planning hebdomadaire supprimé) */}
+            <FormConfirmationModal
+                visible={showConfirmation}
+                title="Confirmer l'enregistrement"
+                sections={confirmationSections}
+                onConfirm={handleFinalSubmit}
+                onCancel={() => setShowConfirmation(false)}
+                loading={loading}
+            />
         </>
     );
 };

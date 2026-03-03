@@ -406,14 +406,21 @@ const AjouterProduitSimpleScreen: React.FC = () => {
 
     // ✅ CORRECTION: S'assurer que les images de mediaData sont en première position
     // Priorité 1: mediaData.base64_image (image utilisée pour la création)
-    // Priorité 2: Autres sources (suggestionData, etc.)
+    // Priorité 2: Autres sources (suggestionData, etc.) — UNIQUEMENT si pas de photos utilisateur
     const mediaDataImages = normalizeMediaList(mediaData?.base64_image || mediaData?.image_base64 || []);
-    const otherImageSources = mergeImageSources(
-        MAX_PRODUCT_IMAGES,
-        suggestionData?.base64_image,
-        suggestionData?.images,
-        suggestionIA?.service_data?.base64_image
-    );
+
+    // ✅ CORRIGÉ 2026-03-03: Ne PAS inclure suggestionData.base64_image quand l'utilisateur a déjà fourni des photos.
+    // L'IA renvoie (echo) la même image qu'elle a reçue, mais ré-encodée/compressée → version floue.
+    // Résultat : 2 images apparaissaient (l'originale + la copie floue de l'IA).
+    // On n'utilise otherImageSources que si mediaDataImages est VIDE (ex: mode édition, etc.)
+    const otherImageSources = mediaDataImages.length > 0
+        ? []
+        : mergeImageSources(
+            MAX_PRODUCT_IMAGES,
+            suggestionData?.base64_image,
+            suggestionData?.images,
+            suggestionIA?.service_data?.base64_image
+        );
 
     // Combiner en mettant mediaDataImages en premier
     const mergedImageSources: string[] = [];
@@ -427,7 +434,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
         }
     });
 
-    // Puis ajouter les autres images
+    // Puis ajouter les autres images (vide si l'utilisateur a déjà fourni des photos)
     otherImageSources.forEach(img => {
         if (img && !seenImages.has(img) && mergedImageSources.length < MAX_PRODUCT_IMAGES) {
             mergedImageSources.push(img);

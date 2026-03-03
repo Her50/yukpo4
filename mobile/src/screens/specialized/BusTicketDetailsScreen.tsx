@@ -10,11 +10,11 @@ import {
     View
 } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
-import { NativeButton } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeButton } from '../../components/SafeNativeDesign';
 import SkeletonCard from '../../components/SkeletonCard';
 import TripMap from '../../components/TripMap';
-import { apiGet, apiPost } from '../../services/api';
+import { apiGet, apiPatch } from '../../services/api';
 import ticketNotifications from '../../services/ticketNotifications';
 import { modernColors } from '../../theme/modernTheme';
 
@@ -64,10 +64,11 @@ const BusTicketDetailsScreen: React.FC = () => {
     const loadTicketDetails = async () => {
         try {
             setLoading(true);
-            const response = await apiGet(`/api/bus-tickets/tickets/${paymentId}`);
+            const response = await apiGet(`/api/bus-tickets/ticket/${paymentId}`);
+            const resData = (response?.data || response) as any;
 
-            if (response.success && response.ticket) {
-                const ticketData = response.ticket as TicketDetails;
+            if (resData.success && resData.ticket) {
+                const ticketData = resData.ticket as TicketDetails;
                 setTicket(ticketData);
 
                 // Planifier les notifications si le ticket est payé
@@ -110,9 +111,9 @@ const BusTicketDetailsScreen: React.FC = () => {
                         try {
                             setCancelling(true);
 
-                            // Annuler chaque réservation
+                            // Annuler chaque réservation (PATCH)
                             for (const reservationId of ticket.reservation_ids) {
-                                await apiPost(`/api/bus-tickets/reservations/${reservationId}/cancel`, {});
+                                await apiPatch(`/api/bus-tickets/reservations/${reservationId}/cancel`, {});
                             }
 
                             Alert.alert('Succès', 'Réservation annulée avec succès');

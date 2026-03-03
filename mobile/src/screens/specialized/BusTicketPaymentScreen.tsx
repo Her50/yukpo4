@@ -44,7 +44,12 @@ const BusTicketPaymentScreen: React.FC = () => {
         isRoundTrip = false,
     } = params;
 
-    const totalPrice = isRoundTrip ? ticketPrice * 2 : ticketPrice;
+    const returnDate = (params as any).returnDate;
+    const returnTime = (params as any).returnTime;
+    const numberOfTickets = reservationIds.length || 1;
+    const bookingFee = 500;
+    const subtotal = ticketPrice * numberOfTickets;
+    const totalPrice = subtotal + bookingFee;
 
     useEffect(() => {
         // Vérifier si l'utilisateur a assez de tokens
@@ -71,17 +76,24 @@ const BusTicketPaymentScreen: React.FC = () => {
 
         setLoading(true);
         try {
-            const response = await apiPost('/api/bus-tickets/pay', {
+            const response = await apiPost('/api/bus-tickets/payment', {
+                product_id: productId,
                 reservation_ids: reservationIds,
-                payment_method: 'tokens',
-                amount: totalPrice,
+                ticket_price: ticketPrice,
+                number_of_tickets: numberOfTickets,
+                booking_fee: bookingFee,
+                currency: 'XAF',
+                is_round_trip: isRoundTrip,
+                return_date: returnDate || null,
+                return_time: returnTime || null,
             });
 
-            if (response.success) {
+            const resData = response.data || response;
+            if (resData.success || resData.payment_id) {
                 await refreshUser?.();
                 Alert.alert(
                     'Paiement réussi',
-                    'Votre ticket a été payé avec succès !',
+                    `Votre ticket a été payé avec succès !\nMontant: ${(resData.total_amount || totalPrice).toLocaleString()} FCFA`,
                     [
                         {
                             text: 'Voir mon ticket',
@@ -92,7 +104,7 @@ const BusTicketPaymentScreen: React.FC = () => {
                     ]
                 );
             } else {
-                Alert.alert('Erreur', response.error || 'Le paiement a échoué');
+                Alert.alert('Erreur', resData.error || 'Le paiement a échoué');
             }
         } catch (error: any) {
             console.error('[BusTicketPayment] Erreur:', error);
@@ -128,12 +140,24 @@ const BusTicketPaymentScreen: React.FC = () => {
                     <Text style={styles.summaryTitle}>Résumé de la réservation</Text>
                     <View style={styles.summaryRow}>
                         <Text style={styles.summaryLabel}>Places réservées:</Text>
-                        <Text style={styles.summaryValue}>{reservationIds.length}</Text>
+                        <Text style={styles.summaryValue}>{numberOfTickets}</Text>
                     </View>
                     <View style={styles.summaryRow}>
                         <Text style={styles.summaryLabel}>Prix unitaire:</Text>
                         <Text style={styles.summaryValue}>
                             {ticketPrice.toLocaleString()} FCFA
+                        </Text>
+                    </View>
+                    <View style={styles.summaryRow}>
+                        <Text style={styles.summaryLabel}>Sous-total:</Text>
+                        <Text style={styles.summaryValue}>
+                            {subtotal.toLocaleString()} FCFA
+                        </Text>
+                    </View>
+                    <View style={styles.summaryRow}>
+                        <Text style={styles.summaryLabel}>Frais de réservation:</Text>
+                        <Text style={styles.summaryValue}>
+                            {bookingFee.toLocaleString()} FCFA
                         </Text>
                     </View>
                     {isRoundTrip && (

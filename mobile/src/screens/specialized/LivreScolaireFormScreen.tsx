@@ -13,6 +13,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { ConfirmationSection } from '../../components/FormConfirmationModal';
 import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 import ModernGPSModal from '../../components/ModernGPSModal';
@@ -22,10 +23,15 @@ import { useToaster } from '../../components/ToasterProvider';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { useAIWithFallback } from '../../hooks/useAIWithFallback';
+import { useFormAutoSave } from '../../hooks/useFormAutoSave';
+import { useFormValidation } from '../../hooks/useFormValidation';
+import { usePartnerData } from '../../hooks/usePartnerData';
 import { apiGet, apiPost, apiPut } from '../../services/api';
 import { BookImageAnalysis, livreScolaireService } from '../../services/livreScolaireService';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
+
+const STORAGE_KEY = '@livre_scolaire_form';
 
 const niveaux = ['Primaire', 'Collège', 'Lycée'];
 const etats = ['Neuf', 'Très bon', 'Bon', 'Acceptable'];
@@ -59,14 +65,22 @@ const LivreScolaireFormScreen: React.FC = () => {
 
     const [selectedGPS, setSelectedGPS] = useState<string | null>(null);
     const [showGPSModal, setShowGPSModal] = useState(false);
-
-    // ✅ NOUVEAU: États pour upload d'images et analyse IA
     const [selectedImages, setSelectedImages] = useState<string[]>([]);
     const [imageBase64List, setImageBase64List] = useState<string[]>([]);
     const [analyzingImage, setAnalyzingImage] = useState(false);
     const [showImagePickerModal, setShowImagePickerModal] = useState(false);
     const [showIAAnalysisModal, setShowIAAnalysisModal] = useState(false);
     const [iaAnalysisResult, setIAAnalysisResult] = useState<BookImageAnalysis | null>(null);
+    const [showConfirmation, setShowConfirmation] = useState(false);
+
+    const { partnerData } = usePartnerData(user?.role);
+    const { errors, validateField, validateForm, setError } = useFormValidation({
+        titre: { required: true, minLength: 3 },
+        classe_actuelle: { required: true },
+        matiere: { required: true },
+    });
+
+    useFormAutoSave(STORAGE_KEY, formData, mode !== 'edit', 1000);
 
     useEffect(() => {
         if (mode === 'edit' && livreId) {
@@ -116,6 +130,53 @@ const LivreScolaireFormScreen: React.FC = () => {
         setSelectedGPS(coordinates);
         setShowGPSModal(false);
     };
+
+    const handleFieldChange = (field: string, value: any) => {
+        setFormData({ ...formData, [field]: value });
+        const error = validateField(field, value);
+        if (error) {
+            setError(field, error);
+        }
+    };
+
+    const confirmationSections: ConfirmationSection[] = [
+        {
+            title: 'Livre',
+            icon: 'book',
+            fields: [
+                { label: 'Titre', value: formData.titre },
+                { label: 'Auteur', value: formData.auteur },
+                { label: 'Éditeur', value: formData.editeur },
+                { label: 'ISBN', value: formData.isbn },
+            ],
+        },
+        {
+            title: 'Classe',
+            icon: 'book-open',
+            fields: [
+                { label: 'Classe actuelle', value: formData.classe_actuelle },
+                { label: 'Classe souhaitée', value: formData.classe_souhaitee },
+                { label: 'Matière', value: formData.matiere },
+                { label: 'Niveau', value: formData.niveau },
+            ],
+        },
+        {
+            title: 'État',
+            icon: 'info',
+            fields: [
+                { label: 'État', value: formData.etat_livre },
+                { label: 'Description', value: formData.description_etat },
+            ],
+        },
+        {
+            title: 'Localisation',
+            icon: 'map-pin',
+            fields: [
+                { label: 'Ville', value: formData.ville },
+                { label: 'Quartier', value: typeof formData.quartier === 'string' ? formData.quartier : formData.quartier?.place_name },
+            ],
+        },
+    ];
 
     // ✅ NOUVEAU: Demander permission caméra
     useEffect(() => {
@@ -307,7 +368,15 @@ const LivreScolaireFormScreen: React.FC = () => {
         setImageBase64List(newBase64);
     };
 
-    const handleSubmit = async () => {
+    const handleSubmit = () => {
+        if (!validateForm(formData)) {
+            Alert.alert('Erreur', 'Veuillez corriger les erreurs du formulaire');
+            return;
+        }
+        setShowConfirmation(true);
+    };
+
+    const handleFinalSubmit = async () => {
         // Validation
         if (!formData.titre.trim()) {
             Alert.alert('Erreur', 'Le titre est obligatoire');

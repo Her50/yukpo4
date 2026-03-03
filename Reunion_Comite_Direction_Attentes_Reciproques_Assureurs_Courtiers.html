@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attentes Réciproques Assureurs-Courtiers - Réunion Comité de Direction</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', 'Calibri', Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 210mm;
+            margin: 0 auto;
+            padding: 15mm;
+            color: #2c3e50;
+            background: #fff;
+        }
+
+        .header {
+            text-align: center;
+            border-bottom: 4px solid #2980b9;
+            padding-bottom: 15px;
+            margin-bottom: 25px;
+        }
+
+        h1 {
+            color: #2c3e50;
+            font-size: 24px;
+            margin: 0 0 8px 0;
+            font-weight: 700;
+        }
+
+        .subtitle {
+            color: #7f8c8d;
+            font-size: 14px;
+            font-style: italic;
+        }
+
+        .context-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .context-box h2 {
+            color: white;
+            margin-top: 0;
+            font-size: 18px;
+        }
+
+        .context-box p {
+            margin: 8px 0;
+            font-size: 14px;
+        }
+
+        h2 {
+            color: #2980b9;
+            font-size: 20px;
+            margin-top: 25px;
+            margin-bottom: 12px;
+            border-left: 5px solid #3498db;
+            padding-left: 12px;
+            font-weight: 600;
+        }
+
+        h3 {
+            color: #34495e;
+            font-size: 16px;
+            margin-top: 15px;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        p {
+            margin-bottom: 10px;
+        }
+
+        ul,
+        ol {
+            margin: 10px 0 15px 25px;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        .discussion-topic {
+            background: #fff3cd;
+            border-left: 5px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .discussion-topic h3 {
+            margin-top: 0;
+            color: #856404;
+            font-size: 16px;
+        }
+
+        .key-question {
+            background: #e7f3ff;
+            border-left: 5px solid #2196F3;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+
+        .key-question h4 {
+            margin: 0 0 10px 0;
+            color: #1565C0;
+            font-size: 15px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+            font-size: 14px;
+        }
+
+        th,
+        td {
+            border: 1px solid #bdc3c7;
+            padding: 12px;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        th {
+            background-color: #34495e;
+            color: white;
+            font-weight: 600;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+
+        .two-column {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 15px 0;
+        }
+
+        .column-box {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            border: 2px solid #dee2e6;
+        }
+
+        .column-box h3 {
+            margin-top: 0;
+            font-size: 15px;
+            color: #2980b9;
+        }
+
+        .tension-point {
+            background: #ffe5e5;
+            border-left: 5px solid #e74c3c;
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .opportunity {
+            background: #e8f5e9;
+            border-left: 5px solid #4caf50;
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .decision-box {
+            background: #fff9e6;
+            border: 3px solid #ff9800;
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 8px;
+        }
+
+        .decision-box h3 {
+            margin-top: 0;
+            color: #e65100;
+            font-size: 18px;
+        }
+
+        .footer {
+            margin-top: 30px;
+            padding-top: 15px;
+            border-top: 2px solid #bdc3c7;
+            font-size: 11px;
+            color: #7f8c8d;
+            text-align: center;
+        }
+
+        strong {
+            color: #2c3e50;
+        }
+
+        .agenda-item {
+            background: #f0f4f8;
+            padding: 12px 15px;
+            margin: 8px 0;
+            border-radius: 5px;
+            border-left: 4px solid #3498db;
+        }
+
+        .agenda-item strong {
+            color: #2980b9;
+        }
+
+        .amount-to-fill {
+            background: #ffeb3b;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-weight: bold;
+            color: #000;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <h1>Attentes Réciproques entre Assureurs et Courtiers d'Assurances</h1>
+        <div class="subtitle">Réunion Comité de Direction | Mars 2026</div>
+    </div>
+
+    <div class="context-box">
+        <h2>Contexte de la Réunion</h2>
+        <p><strong>Sujet :</strong> Définir et aligner les attentes réciproques entre notre compagnie et nos courtiers
+            partenaires</p>
+        <p><strong>Enjeu :</strong> Clarifier ce que nous attendons d'eux et ce qu'ils sont en droit d'attendre de nous
+            pour construire une relation durable et profitable</p>
+        <p><strong>Objectif :</strong> Prendre des décisions stratégiques sur notre positionnement et nos engagements
+            vis-à-vis du réseau courtiers</p>
+    </div>
+
+    <h2>Orientations de Réflexion</h2>
+
+    <div class="agenda-item">
+        <strong>1. Cadrage :</strong> Pourquoi cette réflexion maintenant ? (5 min)
+    </div>
+    <div class="agenda-item">
+        <strong>2. Ce que nous attendons des courtiers</strong> - Discussion et validation (15 min)
+    </div>
+    <div class="agenda-item">
+        <strong>3. Ce que les courtiers attendent de nous</strong> - Réalité terrain vs perception (15 min)
+    </div>
+    <div class="agenda-item">
+        <strong>4. Points de tension identifiés</strong> - Où sont les frictions ? (10 min)
+    </div>
+    <div class="agenda-item">
+        <strong>5. Décisions stratégiques</strong> - Où mettons-nous le curseur ? (15 min)
+    </div>
+
+    <h2>1. Pourquoi Cette Réflexion Maintenant ?</h2>
+
+    <p>Trois constats nous poussent à clarifier nos attentes réciproques avec les courtiers :</p>
+
+    <div class="tension-point">
+        <strong>⚠️ Tension croissante sur les commissions</strong><br />
+        Les courtiers demandent des augmentations régulières. Nos concurrents surenchérissent. Jusqu'où pouvons-nous
+        aller sans compromettre notre rentabilité ?
+    </div>
+
+    <div class="tension-point">
+        <strong>⚠️ Qualité inégale des risques apportés</strong><br />
+        Certains courtiers nous apportent des risques de mauvaise qualité (sinistralité élevée). Comment exiger mieux
+        sans les braquer ?
+    </div>
+
+    <div class="tension-point">
+        <strong>⚠️ Transformation digitale à deux vitesses</strong><br />
+        Nous investissons massivement dans les outils digitaux, mais 35% des courtiers ne les utilisent pas. Comment
+        justifier ces investissements ?
+    </div>
+
+    <p><strong>Question centrale :</strong> Sommes-nous clairs sur ce que nous voulons de cette relation ? Avons-nous le
+        courage de poser nos exigences ?</p>
+
+    <h2>2. Ce Que Nous Attendons des Courtiers</h2>
+
+    <p>Avant de discuter de ce que nous devons leur offrir, clarifions ce que nous sommes en droit d'attendre d'eux :
+    </p>
+
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 30%;">Domaine</th>
+                <th>Nos Attentes</th>
+                <th style="width: 20%;">Négociable ?</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>Volume d'affaires</strong></td>
+                <td>
+                    • Production minimale annuelle (seuil à définir par segment)<br />
+                    • Croissance régulière du portefeuille<br />
+                    • Diversification des types de risques
+                </td>
+                <td style="text-align: center; color: #e67e22;">PARTIELLEMENT</td>
+            </tr>
+            <tr>
+                <td><strong>Qualité des risques</strong></td>
+                <td>
+                    • Sélection rigoureuse des prospects<br />
+                    • Informations complètes et exactes<br />
+                    • Transparence sur les antécédents<br />
+                    • Respect de nos critères de souscription
+                </td>
+                <td style="text-align: center; color: #e74c3c;">NON</td>
+            </tr>
+            <tr>
+                <td><strong>Professionnalisme</strong></td>
+                <td>
+                    • Conformité réglementaire stricte<br />
+                    • Formation continue<br />
+                    • Gestion appropriée des conflits d'intérêts<br />
+                    • Tenue rigoureuse des dossiers
+                </td>
+                <td style="text-align: center; color: #e74c3c;">NON</td>
+            </tr>
+            <tr>
+                <td><strong>Représentation de notre marque</strong></td>
+                <td>
+                    • Promotion active de nos produits<br />
+                    • Respect de notre image<br />
+                    • Communication cohérente avec nos valeurs<br />
+                    • Pas de dénigrement face aux clients
+                </td>
+                <td style="text-align: center; color: #e67e22;">PARTIELLEMENT</td>
+            </tr>
+            <tr>
+                <td><strong>Utilisation des outils digitaux</strong></td>
+                <td>
+                    • Adoption de notre plateforme de devis<br />
+                    • Saisie directe des contrats<br />
+                    • Consultation des dossiers en ligne<br />
+                    • Réduction du papier et des emails
+                </td>
+                <td style="text-align: center; color: #27ae60;">OUI</td>
+            </tr>
+            <tr>
+                <td><strong>Loyauté commerciale</strong></td>
+                <td>
+                    • Nous présenter en priorité les bons risques<br />
+                    • Ne pas nous utiliser uniquement pour les risques refusés ailleurs<br />
+                    • Engagement de durée (pas de zapping permanent)
+                </td>
+                <td style="text-align: center; color: #e67e22;">PARTIELLEMENT</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="key-question">
+        <h4>🎯 Question pour le Comité</h4>
+        <p><strong>Sommes-nous prêts à refuser de travailler avec des courtiers qui ne respectent pas ces attentes
+                ?</strong> Ou acceptons-nous tout le monde par peur de perdre du volume ?</p>
+    </div>
+
+    <h2>3. Ce Que Les Courtiers Attendent de Nous</h2>
+
+    <p>Les courtiers sont nos clients. Voici ce qu'ils nous demandent (retours terrain des 6 derniers mois) :</p>
+
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 30%;">Domaine</th>
+                <th>Leurs Attentes</th>
+                <th style="width: 20%;">Notre Position Actuelle</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>Commissions</strong></td>
+                <td>
+                    • Augmentation de 2-3 points<br />
+                    • Alignement avec les concurrents<br />
+                    • Bonus de performance<br />
+                    • Versement plus rapide
+                </td>
+                <td style="color: #e74c3c;">❌ EN RETARD<br />(concurrence +15% vs nous)</td>
+            </tr>
+            <tr>
+                <td><strong>Tarifs compétitifs</strong></td>
+                <td>
+                    • Prix alignés avec le marché<br />
+                    • Flexibilité sur les cas limites<br />
+                    • Capacité à s'adapter aux situations<br />
+                    • Moins de refus automatiques
+                </td>
+                <td style="color: #f39c12;">⚠️ MOYEN<br />(rigidité perçue)</td>
+            </tr>
+            <tr>
+                <td><strong>Réactivité</strong></td>
+                <td>
+                    • Devis sous 24h maximum<br />
+                    • Réponse immédiate sur questions simples<br />
+                    • Interlocuteur dédié joignable<br />
+                    • Pas de "trous noirs" dans les dossiers
+                </td>
+                <td style="color: #27ae60;">✅ BON<br />(délai moyen 2.3j)</td>
+            </tr>
+            <tr>
+                <td><strong>Outils digitaux</strong></td>
+                <td>
+                    • Plateforme simple et intuitive<br />
+                    • Accessible mobile<br />
+                    • Pas de bugs<br />
+                    • Formation et support
+                </td>
+                <td style="color: #f39c12;">⚠️ MOYEN<br />(35% non-utilisateurs)</td>
+            </tr>
+            <tr>
+                <td><strong>Gestion des sinistres</strong></td>
+                <td>
+                    • Traitement rapide<br />
+                    • Pas de chicane sur les garanties<br />
+                    • Tenir le courtier informé<br />
+                    • Pas de surprise pour le client
+                </td>
+                <td style="color: #27ae60;">✅ BON<br />(NPS sinistres +38)</td>
+            </tr>
+            <tr>
+                <td><strong>Reconnaissance</strong></td>
+                <td>
+                    • Être considérés comme partenaires, pas fournisseurs<br />
+                    • Écoute de leurs feedbacks<br />
+                    • Implication dans les décisions produits<br />
+                    • Événements, formation, valorisation
+                </td>
+                <td style="color: #f39c12;">⚠️ MOYEN<br />(relation transactionnelle)</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="key-question">
+        <h4>🎯 Question pour le Comité</h4>
+        <p><strong>Quelles attentes des courtiers sommes-nous prêts à satisfaire ?</strong> Où mettons-nous la limite
+            entre service client et surenchère non rentable ?</p>
+    </div>
+
+    <h2>4. Points de Tension Identifiés</h2>
+
+    <p>Voici les 5 principaux points de friction dans la relation :</p>
+
+    <div class="discussion-topic">
+        <h3>Tension #1 : La Guerre des Commissions</h3>
+        <p><strong>Situation :</strong> Les courtiers nous comparent en permanence avec la concurrence et demandent des
+            augmentations.</p>
+        <div class="two-column" style="margin-top: 10px;">
+            <div>
+                <strong>Leur argument :</strong><br />
+                "Vos concurrents paient 15% de plus. Si vous ne vous alignez pas, on va ailleurs."
+            </div>
+            <div>
+                <strong>Notre dilemme :</strong><br />
+                Augmenter = réduire notre marge. Ne pas augmenter = perdre des courtiers.
+            </div>
+        </div>
+        <div class="key-question" style="margin-top: 15px;">
+            <h4>Décision requise</h4>
+            <p>Acceptons-nous de réduire notre marge pour garder les courtiers ? Ou assumons-nous de perdre ceux qui ne
+                voient que le prix ?</p>
+        </div>
+    </div>
+
+    <div class="discussion-topic">
+        <h3>Tension #2 : Qualité vs Volume</h3>
+        <p><strong>Situation :</strong> Nous voulons de la qualité (bons risques, faible sinistralité). Les courtiers
+            veulent du volume (placer tous leurs clients).</p>
+        <div class="two-column" style="margin-top: 10px;">
+            <div>
+                <strong>Leur argument :</strong><br />
+                "Vous êtes trop sélectifs. Vous refusez trop de dossiers. On ne peut pas travailler comme ça."
+            </div>
+            <div>
+                <strong>Notre position :</strong><br />
+                "On ne veut pas de la mauvaise qualité. Notre ratio combiné doit rester sous 95%."
+            </div>
+        </div>
+        <div class="key-question" style="margin-top: 15px;">
+            <h4>Décision requise</h4>
+            <p>Assouplissons-nous nos critères pour faire plaisir aux courtiers ? Ou assumons-nous d'être "difficiles" ?
+            </p>
+        </div>
+    </div>
+
+    <div class="discussion-topic">
+        <h3>Tension #3 : Le Digital Imposé</h3>
+        <p><strong>Situation :</strong> Nous investissons des millions dans les outils digitaux. 35% des courtiers ne
+            les utilisent pas (préfèrent email/téléphone).</p>
+        <div class="two-column" style="margin-top: 10px;">
+            <div>
+                <strong>Leur argument :</strong><br />
+                "Votre plateforme est compliquée. On n'a pas le temps de se former. L'ancien système marchait bien."
+            </div>
+            <div>
+                <strong>Notre frustration :</strong><br />
+                "On investit pour eux et ils ne jouent pas le jeu. Ça nous coûte cher en double saisie."
+            </div>
+        </div>
+        <div class="key-question" style="margin-top: 15px;">
+            <h4>Décision requise</h4>
+            <p>Rendons-nous l'utilisation des outils digitaux obligatoire (quitte à perdre des courtiers) ? Ou
+                continuons-nous à accepter le double canal ?</p>
+        </div>
+    </div>
+
+    <div class="discussion-topic">
+        <h3>Tension #4 : Loyauté vs Multi-Partenariat</h3>
+        <p><strong>Situation :</strong> Les courtiers travaillent avec 5-10 assureurs. Nous voudrions être leur
+            partenaire privilégié.</p>
+        <div class="two-column" style="margin-top: 10px;">
+            <div>
+                <strong>Leur logique :</strong><br />
+                "On doit avoir le choix pour servir nos clients. On ne peut pas dépendre d'un seul assureur."
+            </div>
+            <div>
+                <strong>Notre frustration :</strong><br />
+                "Ils nous utilisent uniquement pour les risques refusés ailleurs. On a les restes."
+            </div>
+        </div>
+        <div class="key-question" style="margin-top: 15px;">
+            <h4>Décision requise</h4>
+            <p>Acceptons-nous d'être un partenaire parmi d'autres ? Ou créons-nous des incitations à l'exclusivité ?</p>
+        </div>
+    </div>
+
+    <div class="discussion-topic">
+        <h3>Tension #5 : Support vs Autonomie</h3>
+        <p><strong>Situation :</strong> Les courtiers veulent un support réactif ET de l'autonomie. Difficile de faire
+            les deux.</p>
+        <div class="two-column" style="margin-top: 10px;">
+            <div>
+                <strong>Leur demande :</strong><br />
+                "On veut pouvoir tout faire seuls sur la plateforme, mais avoir quelqu'un au téléphone immédiatement si
+                besoin."
+            </div>
+            <div>
+                <strong>Notre contrainte :</strong><br />
+                "Plus on leur donne d'autonomie, plus on prend de risques (erreurs, non-conformité). Le support coûte
+                cher."
+            </div>
+        </div>
+        <div class="key-question" style="margin-top: 15px;">
+            <h4>Décision requise</h4>
+            <p>Quel niveau d'autonomie sommes-nous prêts à leur donner ? Quel niveau de support pouvons-nous assurer ?
+            </p>
+        </div>
+    </div>
+
+    <h2>5. Décisions Stratégiques à Prendre</h2>
+
+    <p>Le Comité de Direction doit trancher sur 6 questions stratégiques :</p>
+
+    <div class="decision-box">
+        <h3>Décision #1 : Notre Positionnement sur les Commissions</h3>
+        <p><strong>Options :</strong></p>
+        <table style="margin-top: 10px;">
+            <tr>
+                <td style="width: 25%;"><strong>Option A</strong></td>
+                <td>S'aligner sur la concurrence (+2-3 points) pour ne perdre personne</td>
+                <td style="width: 20%; text-align: center;">Impact : <span class="amount-to-fill">-...............
+                        FCFA</span> marge</td>
+            </tr>
+            <tr>
+                <td><strong>Option B</strong></td>
+                <td>Augmentation sélective (Top 20 seulement) pour garder les meilleurs</td>
+                <td style="text-align: center;">Impact : <span class="amount-to-fill">-............... FCFA</span> marge
+                </td>
+            </tr>
+            <tr>
+                <td><strong>Option C</strong></td>
+                <td>Maintenir nos taux, compenser par le service et les outils</td>
+                <td style="text-align: center;">Impact : Perte 10-15% courtiers</td>
+            </tr>
+        </table>
+        <p style="margin-top: 15px;"><strong>🔴 Décision requise :</strong> Quelle option choisissons-nous ?</p>
+    </div>
+
+    <div class="decision-box">
+        <h3>Décision #2 : Notre Niveau d'Exigence sur la Qualité</h3>
+        <p><strong>Options :</strong></p>
+        <table style="margin-top: 10px;">
+            <tr>
+                <td style="width: 25%;"><strong>Option A</strong></td>
+                <td>Maintenir nos critères stricts (ratio combiné < 95%)</td>
+                <td style="width: 20%; text-align: center;">Risque : Frustration courtiers</td>
+            </tr>
+            <tr>
+                <td><strong>Option B</strong></td>
+                <td>Assouplir légèrement pour accepter plus de dossiers</td>
+                <td style="text-align: center;">Risque : Ratio combiné > 98%</td>
+            </tr>
+            <tr>
+                <td><strong>Option C</strong></td>
+                <td>Segmenter : stricts sur certains produits, souples sur d'autres</td>
+                <td style="text-align: center;">Risque : Complexité gestion</td>
+            </tr>
+        </table>
+        <p style="margin-top: 15px;"><strong>🔴 Décision requise :</strong> Quelle option choisissons-nous ?</p>
+    </div>
+
+    <div class="decision-box">
+        <h3>Décision #3 : Obligation ou Non du Digital</h3>
+        <p><strong>Options :</strong></p>
+        <table style="margin-top: 10px;">
+            <tr>
+                <td style="width: 25%;"><strong>Option A</strong></td>
+                <td>Rendre obligatoire d'ici 12 mois (accompagnement renforcé)</td>
+                <td style="width: 20%; text-align: center;">Risque : Perte courtiers +55 ans</td>
+            </tr>
+            <tr>
+                <td><strong>Option B</strong></td>
+                <td>Inciter fortement (bonus commissions pour utilisateurs actifs)</td>
+                <td style="text-align: center;">Coût : <span class="amount-to-fill">............... FCFA/an</span>
+                    incentives</td>
+            </tr>
+            <tr>
+                <td><strong>Option C</strong></td>
+                <td>Accepter le double canal indéfiniment</td>
+                <td style="text-align: center;">Coût : <span class="amount-to-fill">............... FCFA/an</span>
+                    surcoûts admin</td>
+            </tr>
+        </table>
+        <p style="margin-top: 15px;"><strong>🔴 Décision requise :</strong> Quelle option choisissons-nous ?</p>
+    </div>
+
+    <div class="decision-box">
+        <h3>Décision #4 : Stratégie de Fidélisation</h3>
+        <p><strong>Options :</strong></p>
+        <table style="margin-top: 10px;">
+            <tr>
+                <td style="width: 25%;"><strong>Option A</strong></td>
+                <td>Contrats d'exclusivité avec bonus significatifs (Top 20)</td>
+                <td style="width: 20%; text-align: center;">Coût : <span class="amount-to-fill">...............
+                        FCFA/an</span></td>
+            </tr>
+            <tr>
+                <td><strong>Option B</strong></td>
+                <td>Programme de fidélité progressif (bonus selon ancienneté/volume)</td>
+                <td style="text-align: center;">Coût : <span class="amount-to-fill">............... FCFA/an</span></td>
+            </tr>
+            <tr>
+                <td><strong>Option C</strong></td>
+                <td>Accepter le multi-partenariat, se différencier par le service</td>
+                <td style="text-align: center;">Investissement : Équipe support</td>
+            </tr>
+        </table>
+        <p style="margin-top: 15px;"><strong>🔴 Décision requise :</strong> Quelle option choisissons-nous ?</p>
+    </div>
+
+    <div class="decision-box">
+        <h3>Décision #5 : Niveau de Support à Assurer</h3>
+        <p><strong>Options :</strong></p>
+        <table style="margin-top: 10px;">
+            <tr>
+                <td style="width: 25%;"><strong>Option A</strong></td>
+                <td>Support premium (ligne dédiée, réponse < 2h, chargé de clientèle par courtier)</td>
+                <td style="width: 20%; text-align: center;">Coût : +4 ETP (<span class="amount-to-fill">...............
+                        FCFA/an</span>)</td>
+            </tr>
+            <tr>
+                <td><strong>Option B</strong></td>
+                <td>Support standard renforcé (hotline, réponse < 24h, FAQ enrichie)</td>
+                <td style="text-align: center;">Coût : +2 ETP (<span class="amount-to-fill">...............
+                        FCFA/an</span>)</td>
+            </tr>
+            <tr>
+                <td><strong>Option C</strong></td>
+                <td>Support minimum (email, chatbot, self-service maximum)</td>
+                <td style="text-align: center;">Risque : Insatisfaction courtiers</td>
+            </tr>
+        </table>
+        <p style="margin-top: 15px;"><strong>🔴 Décision requise :</strong> Quelle option choisissons-nous ?</p>
+    </div>
+
+    <div class="decision-box">
+        <h3>Décision #6 : Notre Posture Relationnelle</h3>
+        <p><strong>Options :</strong></p>
+        <table style="margin-top: 10px;">
+            <tr>
+                <td style="width: 25%;"><strong>Option A</strong></td>
+                <td><strong>Partenariat stratégique</strong> - Co-construction, écoute, implication dans les décisions
+                </td>
+                <td style="width: 20%; text-align: center;">Engagement : Temps direction</td>
+            </tr>
+            <tr>
+                <td><strong>Option B</strong></td>
+                <td><strong>Relation commerciale équilibrée</strong> - Respect mutuel, transparence, mais distance
+                    professionnelle</td>
+                <td style="text-align: center;">Posture : Pragmatique</td>
+            </tr>
+            <tr>
+                <td><strong>Option C</strong></td>
+                <td><strong>Relation transactionnelle</strong> - Chacun son rôle, pas de sentiments, performance avant
+                    tout</td>
+                <td style="text-align: center;">Risque : Désengagement courtiers</td>
+            </tr>
+        </table>
+        <p style="margin-top: 15px;"><strong>🔴 Décision requise :</strong> Quelle option choisissons-nous ?</p>
+    </div>
+
+    <h2>6. Synthèse : Matrice de Décision</h2>
+
+    <p>Pour faciliter la discussion, voici une grille de lecture :</p>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Sujet</th>
+                <th>Position "Dure"<br />(Exigeante)</th>
+                <th>Position "Équilibrée"<br />(Pragmatique)</th>
+                <th>Position "Souple"<br />(Accommodante)</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>Commissions</strong></td>
+                <td>On maintient nos taux</td>
+                <td>Augmentation sélective Top 20</td>
+                <td>Alignement concurrence</td>
+            </tr>
+            <tr>
+                <td><strong>Qualité risques</strong></td>
+                <td>Critères stricts maintenus</td>
+                <td>Segmentation par produit</td>
+                <td>Assouplissement général</td>
+            </tr>
+            <tr>
+                <td><strong>Digital</strong></td>
+                <td>Obligatoire sous 12 mois</td>
+                <td>Incentives + accompagnement</td>
+                <td>Double canal accepté</td>
+            </tr>
+            <tr>
+                <td><strong>Fidélisation</strong></td>
+                <td>Exclusivité exigée (Top 20)</td>
+                <td>Programme fidélité progressif</td>
+                <td>Multi-partenariat accepté</td>
+            </tr>
+            <tr>
+                <td><strong>Support</strong></td>
+                <td>Self-service maximum</td>
+                <td>Support standard renforcé</td>
+                <td>Support premium dédié</td>
+            </tr>
+            <tr>
+                <td><strong>Posture</strong></td>
+                <td>Relation transactionnelle</td>
+                <td>Relation commerciale équilibrée</td>
+                <td>Partenariat stratégique</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="key-question" style="margin-top: 20px;">
+        <h4>🎯 Question Finale pour le Comité</h4>
+        <p><strong>Quelle cohérence voulons-nous entre ces 6 dimensions ?</strong></p>
+        <p>Exemple : Si nous choisissons "Position Dure" sur les commissions et la qualité, nous devons compenser par
+            "Position Souple" sur le support et la posture relationnelle. On ne peut pas être durs partout.</p>
+    </div>
+
+    <h2>7. Prochaines Étapes</h2>
+
+    <p>À l'issue de cette réunion, nous devons :</p>
+
+    <ol>
+        <li><strong>Valider notre positionnement</strong> sur chacune des 6 dimensions</li>
+        <li><strong>Formaliser nos attentes</strong> dans un document de référence (charte de partenariat)</li>
+        <li><strong>Communiquer clairement</strong> aux courtiers nos engagements et nos exigences</li>
+        <li><strong>Mettre en œuvre</strong> les décisions prises (budget, recrutement, outils, process)</li>
+        <li><strong>Mesurer</strong> l'impact sur la satisfaction courtiers et la performance commerciale</li>
+    </ol>
+
+    <div class="opportunity" style="margin-top: 20px;">
+        <strong>💡 Opportunité</strong><br />
+        Cette clarification des attentes réciproques est une opportunité de <strong>différenciation
+            concurrentielle</strong>. Peu d'assureurs ont le courage de poser clairement leurs exigences ET leurs
+        engagements. Si nous le faisons bien, nous attirerons les courtiers qui cherchent une relation claire et
+        professionnelle, pas ceux qui veulent juste la commission la plus élevée.
+    </div>
+
+    <div class="footer">
+        <p><strong>Document préparé pour la réunion du Comité de Direction | Mars 2026</strong></p>
+        <p>Support de discussion - Les décisions prises seront formalisées dans un compte-rendu séparé</p>
+    </div>
+</body>
+
+</html>

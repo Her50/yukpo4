@@ -679,10 +679,10 @@ const MesServicesScreen: React.FC = () => {
       if (!currentStatus) {
         // ✅ CORRIGÉ: Vérifier le solde avec apiGet
         const balanceResponse = await apiGet('/api/users/balance');
+        const balanceData = (balanceResponse?.data || balanceResponse) as any;
 
-        if (balanceResponse.ok) {
-          const balanceData = await balanceResponse.json();
-          const currentBalance = balanceData.tokens_balance;
+        if (balanceResponse.success) {
+          const currentBalance = balanceData?.tokens_balance || 0;
           const activationCost = 1000; // 1000 FCFA pour réactivation
 
           if (currentBalance < activationCost) {
@@ -796,8 +796,9 @@ const MesServicesScreen: React.FC = () => {
 
               // ✅ CORRIGÉ: Supprimer avec apiDelete
               const response = await apiDelete(`/api/services/${service.id}/delete`);
+              const deleteData = (response?.data || response) as any;
 
-              if (response.ok) {
+              if (response.success) {
                 toaster.success('Service supprimé avec succès');
                 // Déclencher un rafraîchissement pour mettre à jour l'interface
                 loadServices(true);
@@ -806,14 +807,14 @@ const MesServicesScreen: React.FC = () => {
                 setServices(previousState);
 
                 // ✅ NOUVEAU 2025-11-01: Objectif #4 - Blocage suppression si >= 2 produits
-                const errorData = await response.json().catch(() => ({}));
+                const errorMsg = deleteData?.message || response.error || '';
 
-                if (response.status === 400 && errorData.message?.includes('2 or more products')) {
+                if (errorMsg.includes('2 or more products')) {
                   toaster.warning(
                     'Ce service contient 2 produits ou plus. Supprimez-les individuellement d\'abord.'
                   );
                 } else {
-                  throw new Error(errorData.message || 'Erreur lors de la suppression');
+                  throw new Error(errorMsg || 'Erreur lors de la suppression');
                 }
               }
             } catch (error: any) {

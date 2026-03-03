@@ -861,6 +861,9 @@ const HomeScreen: React.FC = () => {
                                     'agence_voyage': 'BusTicketSearch',    // ✅ Utilisateur: TicketVoyageHomeScreen
                                     'covoiturage': 'CovoiturageSearch',    // ✅ Utilisateur: CovoiturageHomeScreen
                                     'taxi': 'TaxiSearch',                  // ✅ Utilisateur: TaxiHomeScreen
+                                    'automobile': 'AutoServicesSearch',    // ✅ Utilisateur: AutoServicesSearchScreen
+                                    // Services Assurance (UTILISATEURS)
+                                    'assurance': 'InsuranceServicesSearch', // ✅ Utilisateur: InsuranceServicesSearchScreen
                                     // Services Éducation (UTILISATEURS)
                                     'orientation_scolaire': 'OrientationScolaireHub', // ✅ Utilisateur: OrientationScolaireHomeScreen
                                     'bourse_livre': 'LivreScolaireSearch',           // ✅ Utilisateur: LivreScolaireHomeScreen

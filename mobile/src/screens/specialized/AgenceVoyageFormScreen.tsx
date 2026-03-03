@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import {
     Alert,
     Modal,
+    ScrollView,
     StyleSheet,
     Switch,
     Text,
@@ -15,16 +16,16 @@ import CompanySelector, { Company } from '../../components/CompanySelector';
 import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 import ModernGPSModal from '../../components/ModernGPSModal';
-// ✅ SUPPRIMÉ: PartnerSelector - Les données partenaire sont chargées automatiquement depuis /api/partners/me
 import SafeIcon from '../../components/SafeIcon';
 import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import WeekDaysSelector from '../../components/WeekDaysSelector';
-import { getCurrencyIntelligently } from '../../utils/currencyUtils';
-// ✅ SUPPRIMÉ : WeekScheduleSelector (planning hebdomadaire supprimé)
 import { useAuth } from '../../contexts/AuthContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { apiDelete, apiGet, apiPost, apiPut, servicesApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
+import { getCurrencyIntelligently } from '../../utils/currencyUtils';
+
+const STORAGE_KEY = '@agence_voyage_form';
 
 // ✅ SUPPRIMÉ : ScheduleDay interface (planning hebdomadaire supprimé)
 
@@ -73,22 +74,26 @@ const AgenceVoyageFormScreen: React.FC = () => {
     const [selectedDestinations, setSelectedDestinations] = useState<LocationObject[]>([]);
     const [selectedAffiliees, setSelectedAffiliees] = useState<Company[]>([]);
     const [showWeekDaysModal, setShowWeekDaysModal] = useState(false);
-
-    // Gestion des modèles de bus
     const [busModels, setBusModels] = useState<BusModel[]>([]);
     const [showBusModelForm, setShowBusModelForm] = useState(false);
     const [editingModelIndex, setEditingModelIndex] = useState<number | null>(null);
     const [showGPSModal, setShowGPSModal] = useState(false);
     const [selectedGPS, setSelectedGPS] = useState<string | null>(null);
-    // ✅ SUPPRIMÉ : showScheduleModal et schedule (planning hebdomadaire supprimé)
-
-    // ✅ NOUVEAU: États pour la gestion des horaires de départ
     const [schedules, setSchedules] = useState<any[]>([]);
     const [loadingSchedules, setLoadingSchedules] = useState(false);
     const [showScheduleModal, setShowScheduleModal] = useState(false);
     const [editingSchedule, setEditingSchedule] = useState<any | null>(null);
-    // ✅ NOUVEAU: Données du partenaire pour affichage dans l'en-tête
-    const [partnerData, setPartnerData] = useState<any>(null);
+    const [showConfirmation, setShowConfirmation] = useState(false);
+
+    const { partnerData } = usePartnerData(user?.role, 'agencevoyage');
+    const { errors, validateField, validateForm, setError } = useFormValidation({
+        nom_agence: { required: true, minLength: 3 },
+        telephone: { required: true, pattern: /^\+?[0-9]{9,15}$/ },
+        email: { pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/ },
+    });
+
+    useFormAutoSave(STORAGE_KEY, formData, mode !== 'edit', 1000);
+
     const [showPartnerProfileModal, setShowPartnerProfileModal] = useState(false);
     const [partnerProfileForm, setPartnerProfileForm] = useState({
         name: '',

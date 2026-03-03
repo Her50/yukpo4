@@ -4082,15 +4082,32 @@ pub async fn creer_service(
                         serde_json::Value::Null,
                     );
 
-                    // ✅ MÉDIA GLOBAL DU SERVICE : Logo/Bannière lié au service (pas à un produit spécifique)
-                    // product_id = NULL, product_index = NULL (normal pour médias globaux)
+                    // ✅ CORRIGÉ: Si le service a des produits, associer les images au premier produit (product_index=0)
+                    // au lieu de les laisser orphelines (product_index=NULL) ce qui causait la duplication
+                    // des mêmes images sur TOUS les produits du service
+                    let fallback_product_index: Option<i32> = {
+                        let has_products = data_obj
+                            .get("produits")
+                            .and_then(|v| v.as_object())
+                            .and_then(|obj| obj.get("valeur"))
+                            .and_then(|v| v.as_array())
+                            .map(|arr| !arr.is_empty())
+                            .unwrap_or(false);
+                        if has_products {
+                            Some(0)
+                        } else {
+                            None
+                        }
+                    };
+
                     if let Err(e) = sqlx::query(
                         r#"
-                        INSERT INTO media (service_id, type, path, uploaded_at, image_signature, image_hash, image_metadata) 
-                        VALUES ($1, $2, $3, $4, $5, $6, $7)
+                        INSERT INTO media (service_id, product_index, type, path, uploaded_at, image_signature, image_hash, image_metadata) 
+                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
                         "#
                     )
                     .bind(service_id)
+                    .bind(fallback_product_index) // ✅ CORRIGÉ: product_index=0 si produits existent, NULL sinon
                     .bind("image")
                     .bind(&file_path)
                     .bind(Utc::now().naive_utc())

@@ -117,7 +117,8 @@ const ReservationScreen: React.FC<ReservationScreenProps> = ({ route, navigation
                 currency: null,
             });
 
-            if (response.success) {
+            const resData = (response?.data || response) as any;
+            if (resData.success) {
                 Alert.alert(
                     'Succès',
                     'Votre réservation a été créée avec succès. Le prestataire vous confirmera bientôt.',

@@ -10,8 +10,8 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiGet, apiPatch } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
@@ -49,8 +49,9 @@ const PrestataireReservationsScreen: React.FC<{ navigation: any }> = ({ navigati
             const params = statusFilter ? `?status=${statusFilter}` : '';
             const response = await apiGet(`/api/specialized-services/reservations/prestataire${params}`);
 
-            if (response.success) {
-                setReservations((response.data as any).reservations || []);
+            const resData = (response?.data || response) as any;
+            if (resData.success) {
+                setReservations(resData.reservations || []);
             }
         } catch (error: any) {
             console.error('[PrestataireReservationsScreen] Erreur chargement:', error);
@@ -67,11 +68,12 @@ const PrestataireReservationsScreen: React.FC<{ navigation: any }> = ({ navigati
                 {}
             );
 
-            if (response.success) {
+            const confirmData = (response?.data || response) as any;
+            if (confirmData.success) {
                 Alert.alert('Succès', 'Réservation confirmée');
                 loadReservations();
             } else {
-                Alert.alert('Erreur', response.error || 'Impossible de confirmer');
+                Alert.alert('Erreur', confirmData.error || 'Impossible de confirmer');
             }
         } catch (error: any) {
             console.error('[PrestataireReservationsScreen] Erreur confirmation:', error);

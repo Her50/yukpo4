@@ -86,6 +86,7 @@ import ServiceDetailSharedScreen from '../screens/ServiceDetailSharedScreen';
 import SoldeDetailScreen from '../screens/SoldeDetailScreen';
 import AgenceVoyageFormScreen from '../screens/specialized/AgenceVoyageFormScreen';
 import BanqueSangFormScreen from '../screens/specialized/BanqueSangFormScreen';
+import BookAppointmentScreen from '../screens/specialized/BookAppointmentScreen';
 import CovoiturageBookingScreen from '../screens/specialized/CovoiturageBookingScreen';
 import CovoiturageDetailsScreen from '../screens/specialized/CovoiturageDetailsScreen';
 import CovoiturageFormScreen from '../screens/specialized/CovoiturageFormScreen';
@@ -101,6 +102,7 @@ import PharmacieFormScreen from '../screens/specialized/PharmacieFormScreen';
 import PrestataireReservationsScreen from '../screens/specialized/PrestataireReservationsScreen';
 import ReservationScreen from '../screens/specialized/ReservationScreen';
 import ServiceDetailScreen from '../screens/specialized/ServiceDetailScreen';
+import SlotManagementScreen from '../screens/specialized/SlotManagementScreen';
 import TaxiAvailabilityScreen from '../screens/specialized/TaxiAvailabilityScreen';
 import TaxiBookingScreen from '../screens/specialized/TaxiBookingScreen';
 import TaxiDetailsScreen from '../screens/specialized/TaxiDetailsScreen';
@@ -110,6 +112,17 @@ import { TaxiIntelligentSearchScreen } from '../screens/specialized/TaxiIntellig
 import TaxiListScreen from '../screens/specialized/TaxiListScreen';
 import TaxiSearchScreen from '../screens/specialized/TaxiSearchScreen';
 import TaxiTrackingScreen from '../screens/specialized/TaxiTrackingScreen';
+// ✅ Phase 3: Hôpitaux et Laboratoires - IA & Analytics
+import { CovoiturageIntelligentSearchScreen } from '../screens/specialized/CovoiturageIntelligentSearchScreen';
+import HospitalAIRecommendationsScreen from '../screens/specialized/HospitalAIRecommendationsScreen';
+import HospitalAnalyticsScreen from '../screens/specialized/HospitalAnalyticsScreen';
+import LabAIAnalysisScreen from '../screens/specialized/LabAIAnalysisScreen';
+import LabAnalyticsScreen from '../screens/specialized/LabAnalyticsScreen';
+import MyConsultationsScreen from '../screens/specialized/MyConsultationsScreen';
+import MyLabExaminationsScreen from '../screens/specialized/MyLabExaminationsScreen';
+import MyPharmacyOrdersScreen from '../screens/specialized/MyPharmacyOrdersScreen';
+import PharmacyAIInteractionsScreen from '../screens/specialized/PharmacyAIInteractionsScreen';
+import PharmacyAnalyticsScreen from '../screens/specialized/PharmacyAnalyticsScreen';
 // ✅ Phase 3: Hôpitaux et Laboratoires
 import HopitalDetailsScreen from '../screens/specialized/HopitalDetailsScreen';
 import HopitalHomeScreen from '../screens/specialized/HopitalHomeScreen';
@@ -199,9 +212,11 @@ import MenuPlanningHubScreen from '../screens/specialized/MenuPlanningHubScreen'
 import RecipeSearchScreen from '../screens/specialized/RecipeSearchScreen';
 // ✅ NOUVEAU: BayamSelam = SupermarketHome (même écran professionnel)
 import ErrorBoundary from '../components/ErrorBoundary';
+import AutoServicesResultsScreen from '../screens/specialized/AutoServicesResultsScreen';
 import AutoServicesSearchScreen from '../screens/specialized/AutoServicesSearchScreen';
 import BayamSelamResultsScreen from '../screens/specialized/BayamSelamResultsScreen';
 import BayamSelamSearchScreen from '../screens/specialized/BayamSelamSearchScreen';
+import InsuranceServicesResultsScreen from '../screens/specialized/InsuranceServicesResultsScreen';
 import InsuranceServicesSearchScreen from '../screens/specialized/InsuranceServicesSearchScreen';
 import MenuWeekCalendarScreen from '../screens/specialized/MenuWeekCalendarScreen';
 import RecipeDetailsScreen from '../screens/specialized/RecipeDetailsScreen';
@@ -273,6 +288,17 @@ const LaboratoireSearchScreenWithSafeArea = withNavigatorSafeArea(LaboratoireSea
 const LaboratoireHomeScreenWithSafeArea = withNavigatorSafeArea(LaboratoireHomeScreen);
 const LaboratoireListScreenWithSafeArea = withNavigatorSafeArea(LaboratoireListScreen);
 const LaboratoireDetailsScreenWithSafeArea = withNavigatorSafeArea(LaboratoireDetailsScreen);
+// ✅ Phase 3: IA & Analytics
+const HospitalAIRecommendationsScreenWithSafeArea = withNavigatorSafeArea(HospitalAIRecommendationsScreen);
+const HospitalAnalyticsScreenWithSafeArea = withNavigatorSafeArea(HospitalAnalyticsScreen);
+const LabAIAnalysisScreenWithSafeArea = withNavigatorSafeArea(LabAIAnalysisScreen);
+const LabAnalyticsScreenWithSafeArea = withNavigatorSafeArea(LabAnalyticsScreen);
+const PharmacyAIInteractionsScreenWithSafeArea = withNavigatorSafeArea(PharmacyAIInteractionsScreen);
+const PharmacyAnalyticsScreenWithSafeArea = withNavigatorSafeArea(PharmacyAnalyticsScreen);
+const CovoiturageIntelligentSearchScreenWithSafeArea = withNavigatorSafeArea(CovoiturageIntelligentSearchScreen);
+const MyLabExaminationsScreenWithSafeArea = withNavigatorSafeArea(MyLabExaminationsScreen);
+const MyConsultationsScreenWithSafeArea = withNavigatorSafeArea(MyConsultationsScreen);
+const MyPharmacyOrdersScreenWithSafeArea = withNavigatorSafeArea(MyPharmacyOrdersScreen);
 // ✅ NOUVEAU: Pharmacie
 const PharmacieSearchScreenWithSafeArea = withNavigatorSafeArea(PharmacieSearchScreen);
 const PharmacieHomeScreenWithSafeArea = withNavigatorSafeArea(PharmacieHomeScreen);
@@ -343,9 +369,13 @@ const BayamSelamSearchScreenWithSafeArea = withNavigatorSafeArea(BayamSelamSearc
 const BayamSelamResultsScreenWithSafeArea = withNavigatorSafeArea(BayamSelamResultsScreen);
 const AutoServicesSearchScreenWithSafeArea = withNavigatorSafeArea(AutoServicesSearchScreen);
 const InsuranceServicesSearchScreenWithSafeArea = withNavigatorSafeArea(InsuranceServicesSearchScreen);
+const InsuranceServicesResultsScreenWithSafeArea = withNavigatorSafeArea(InsuranceServicesResultsScreen);
+const AutoServicesResultsScreenWithSafeArea = withNavigatorSafeArea(AutoServicesResultsScreen);
 const ReservationScreenWithSafeArea = withNavigatorSafeArea(ReservationScreen);
 const MesReservationsScreenWithSafeArea = withNavigatorSafeArea(MesReservationsScreen);
 const PrestataireReservationsScreenWithSafeArea = withNavigatorSafeArea(PrestataireReservationsScreen);
+const SlotManagementScreenWithSafeArea = withNavigatorSafeArea(SlotManagementScreen);
+const BookAppointmentScreenWithSafeArea = withNavigatorSafeArea(BookAppointmentScreen);
 const ServiceDetailScreenWithSafeArea = withNavigatorSafeArea(ServiceDetailScreen);
 // ✅ SÉCURITÉ: Wrapper VideoFeedScreen avec ErrorBoundary pour éviter les crashes
 const VideoFeedScreenWithErrorBoundary = (props: any) => (
@@ -987,16 +1017,25 @@ const SecondaryStack = () => {
       <Stack.Screen name="HotelReservationQR" component={HotelQRScannerScreenWithSafeArea} options={{ title: 'Mon QR réservation' }} />
       <Stack.Screen name="HopitalList" component={HopitalListScreenWithSafeArea} />
       <Stack.Screen name="HopitalDetails" component={HopitalDetailsScreenWithSafeArea} />
+      <Stack.Screen name="HospitalAIRecommendations" component={HospitalAIRecommendationsScreenWithSafeArea} options={{ title: 'Recommandations IA' }} />
+      <Stack.Screen name="HospitalAnalytics" component={HospitalAnalyticsScreenWithSafeArea} options={{ title: 'Analytics Hôpital' }} />
+      <Stack.Screen name="MyConsultations" component={MyConsultationsScreenWithSafeArea} options={{ title: 'Mes Consultations' }} />
       {/* ✅ Phase 3: Laboratoires */}
       <Stack.Screen name="LaboratoireSearch" component={LaboratoireHomeScreenWithSafeArea} />
       <Stack.Screen name="LaboratoireSearchAdvanced" component={LaboratoireSearchScreenWithSafeArea} />
       <Stack.Screen name="LaboratoireList" component={LaboratoireListScreenWithSafeArea} />
       <Stack.Screen name="LaboratoireDetails" component={LaboratoireDetailsScreenWithSafeArea} />
+      <Stack.Screen name="LabAIAnalysis" component={LabAIAnalysisScreenWithSafeArea} options={{ title: 'Analyse IA Labo' }} />
+      <Stack.Screen name="LabAnalytics" component={LabAnalyticsScreenWithSafeArea} options={{ title: 'Analytics Laboratoire' }} />
+      <Stack.Screen name="MyLabExaminations" component={MyLabExaminationsScreenWithSafeArea} options={{ title: 'Mes Examens' }} />
       {/* ✅ NOUVEAU: Pharmacie */}
       <Stack.Screen name="PharmacieSearch" component={PharmacieHomeScreenWithSafeArea} />
       <Stack.Screen name="PharmacieSearchAdvanced" component={PharmacieSearchScreenWithSafeArea} />
       <Stack.Screen name="PharmacieList" component={PharmacieListScreenWithSafeArea} />
       <Stack.Screen name="PharmacieDetails" component={PharmacieDetailsScreenWithSafeArea} />
+      <Stack.Screen name="PharmacyAIInteractions" component={PharmacyAIInteractionsScreenWithSafeArea} options={{ title: 'Interactions IA' }} />
+      <Stack.Screen name="PharmacyAnalytics" component={PharmacyAnalyticsScreenWithSafeArea} options={{ title: 'Analytics Pharmacie' }} />
+      <Stack.Screen name="MyPharmacyOrders" component={MyPharmacyOrdersScreenWithSafeArea} options={{ title: 'Mes Commandes Pharmacie' }} />
       {/* ✅ NOUVEAU: Hub services de santé */}
       <Stack.Screen name="HealthServicesHub" component={HealthServicesHubScreenWithSafeArea} />
       {/* ✅ NOUVEAU: Banque de sang */}
@@ -1026,6 +1065,7 @@ const SecondaryStack = () => {
       <Stack.Screen name="CovoiturageList" component={CovoiturageListScreenWithSafeArea} />
       <Stack.Screen name="CovoiturageDetails" component={CovoiturageDetailsScreenWithSafeArea} />
       <Stack.Screen name="CovoiturageBooking" component={CovoiturageBookingScreenWithSafeArea} />
+      <Stack.Screen name="CovoiturageIntelligentSearch" component={CovoiturageIntelligentSearchScreenWithSafeArea} options={{ title: 'Recherche Intelligente' }} />
       <Stack.Screen name="MyTrips" component={MyTripsScreenWithSafeArea} />
       {/* ✅ NOUVEAU 2025-01-28: Routes Bourse du livre scolaire */}
       <Stack.Screen
@@ -1405,6 +1445,22 @@ const SecondaryStack = () => {
         }}
       />
       <Stack.Screen
+        name="SlotManagement"
+        component={SlotManagementScreenWithSafeArea}
+        options={{
+          ...defaultScreenOptions,
+          title: 'Gestion des créneaux',
+        }}
+      />
+      <Stack.Screen
+        name="BookAppointment"
+        component={BookAppointmentScreenWithSafeArea}
+        options={{
+          ...defaultScreenOptions,
+          title: 'Prendre rendez-vous',
+        }}
+      />
+      <Stack.Screen
         name="ServiceDetailSpecialized"
         component={ServiceDetailScreenWithSafeArea}
         options={{
@@ -1484,6 +1540,16 @@ const SecondaryStack = () => {
         name="InsuranceServicesSearch"
         component={InsuranceServicesSearchScreenWithSafeArea}
         options={{ title: 'Rechercher une assurance' }}
+      />
+      <Stack.Screen
+        name="InsuranceServicesResults"
+        component={InsuranceServicesResultsScreenWithSafeArea}
+        options={{ title: 'Résultats Assurance' }}
+      />
+      <Stack.Screen
+        name="AutoServicesResults"
+        component={AutoServicesResultsScreenWithSafeArea}
+        options={{ title: 'Résultats Automobile' }}
       />
       <Stack.Screen
         name="BusTicketBooking"

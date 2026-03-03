@@ -68,9 +68,9 @@ const EtablissementSearchScreen: React.FC = () => {
             const response = await apiGet(
                 `/api/orientation-scolaire/etablissements/search?${params}`
             );
-            const data = await response.json();
+            const data = (response?.data || response) as any;
 
-            if (data.success) {
+            if (data?.success) {
                 setEtablissements(data.data || []);
                 setTotal(data.pagination?.total || 0);
             }

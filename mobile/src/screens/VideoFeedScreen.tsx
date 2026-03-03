@@ -280,7 +280,17 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
 
     const handleShare = useCallback(async (item: FeedItem) => {
         try {
-            await Share.share({ message: item.videoUrl, url: item.videoUrl, title: item.titre });
+            const SHARE_BASE_URL = process.env.EXPO_PUBLIC_SHARE_URL || 'https://yukpo-backend-376093909298.europe-west1.run.app';
+            const shareUrl = item.serviceId
+                ? `${SHARE_BASE_URL}/service/${item.serviceId}`
+                : item.videoUrl;
+
+            let shareText = `🎬 ${item.titre}`;
+            if (item.description) shareText += `\n\n${item.description}`;
+            if (item.sellerName) shareText += `\n🏪 ${item.sellerName}`;
+            shareText += `\n\n🔗 Voir sur Yukpo:\n${shareUrl}`;
+
+            await Share.share({ message: shareText, url: shareUrl, title: item.titre });
         } catch (error) {
             console.warn('[VideoFeedScreen] Share error', error);
         }

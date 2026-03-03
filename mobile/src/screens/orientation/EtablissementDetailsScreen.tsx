@@ -48,9 +48,9 @@ const EtablissementDetailsScreen: React.FC = () => {
         try {
             setLoading(true);
             const response = await apiGet(`/api/orientation-scolaire/etablissements/${id}`);
-            const data = await response.json();
+            const data = (response?.data || response) as any;
 
-            if (data.success) {
+            if (data?.success) {
                 setEtablissement(data.data);
             }
         } catch (error) {

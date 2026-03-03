@@ -84,12 +84,14 @@ const BusBoardingManagementScreen: React.FC = () => {
                 apiGet(`/api/bus-tickets/boarding/${productId}/passengers`),
             ]);
 
-            if (summaryRes.success && (summaryRes as any).summary) {
-                setSummary((summaryRes as any).summary);
+            const sumData = (summaryRes?.data || summaryRes) as any;
+            if (sumData.success && sumData.summary) {
+                setSummary(sumData.summary);
             }
 
-            if (passengersRes.success && (passengersRes as any).passengers) {
-                setPassengers((passengersRes as any).passengers);
+            const pasData = (passengersRes?.data || passengersRes) as any;
+            if (pasData.success && pasData.passengers) {
+                setPassengers(pasData.passengers);
             }
         } catch (error: any) {
             console.error('Erreur chargement données embarquement:', error);
@@ -139,9 +141,9 @@ const BusBoardingManagementScreen: React.FC = () => {
                 product_id: productId,
             });
 
-            const responseData = response as any;
+            const responseData = (response?.data || response) as any;
 
-            if (response.success) {
+            if (responseData.success) {
                 // Track successful scan
                 trackQRScan(true);
 

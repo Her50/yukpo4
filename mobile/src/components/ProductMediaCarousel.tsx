@@ -268,7 +268,7 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
                             shouldPlay={playingVideoIndex === index}
                             isLooping
                             isMuted={playingVideoIndex !== index}
-                            useNativeControls={playingVideoIndex === index}
+                            useNativeControls={false}
                             onError={(error: any) => {
                                 const errorMessage = (error as any)?.message || String(error);
                                 if (!errorMessage.includes('404')) {
@@ -279,7 +279,7 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
                         />
                         {/* Overlay sombre + icône quand la vidéo n'est pas en lecture */}
                         {playingVideoIndex !== index && (
-                            <View style={styles.videoOverlay} />
+                            <View style={styles.videoOverlay} pointerEvents="none" />
                         )}
                         <TouchableOpacity
                             style={styles.fullscreenButton}
@@ -288,13 +288,25 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
                         >
                             <SafeIcon name="maximize" size={18} color="#FFF" />
                         </TouchableOpacity>
-                        {playingVideoIndex !== index && (
+                        {playingVideoIndex !== index ? (
                             <TouchableOpacity
                                 style={styles.playButton}
                                 onPress={() => playVideo(index)}
                                 activeOpacity={0.8}
                             >
                                 <SafeIcon name="play" size={48} color="#FFF" />
+                            </TouchableOpacity>
+                        ) : (
+                            <TouchableOpacity
+                                style={styles.pauseButton}
+                                onPress={() => {
+                                    const videoRef = videoRefs.current.get(index);
+                                    if (videoRef) { videoRef.pauseAsync().catch(() => undefined); }
+                                    setPlayingVideoIndex(null);
+                                }}
+                                activeOpacity={0.8}
+                            >
+                                <SafeIcon name="pause" size={28} color="#FFF" />
                             </TouchableOpacity>
                         )}
                     </View>
@@ -315,7 +327,7 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
                         horizontal
                         showsHorizontalScrollIndicator={false}
                         onScroll={handleScroll}
-                        scrollEventThrottle={100}
+                        scrollEventThrottle={16}
                         decelerationRate="fast"
                         snapToInterval={CAROUSEL_WIDTH}
                         snapToAlignment="start"
@@ -459,6 +471,18 @@ const styles = StyleSheet.create({
         height: 60,
         alignItems: 'center',
         justifyContent: 'center',
+    },
+    pauseButton: {
+        position: 'absolute',
+        bottom: 12,
+        left: 12,
+        backgroundColor: 'rgba(0, 0, 0, 0.55)',
+        borderRadius: 16,
+        width: 36,
+        height: 36,
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 6,
     },
     fullscreenButton: {
         position: 'absolute',

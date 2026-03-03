@@ -5636,6 +5636,35 @@ pub async fn ensure_delivery_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
             ) THEN
                 ALTER TYPE delivery_partner_type ADD VALUE 'banquesang';
             END IF;
+            
+            -- ✅ NOUVEAU 2026-03-03: Ajouter les types spécialisés manquants
+            IF NOT EXISTS (
+                SELECT 1 FROM pg_enum 
+                WHERE enumlabel = 'immobilier' AND enumtypid = 'delivery_partner_type'::regtype
+            ) THEN
+                ALTER TYPE delivery_partner_type ADD VALUE 'immobilier';
+            END IF;
+            
+            IF NOT EXISTS (
+                SELECT 1 FROM pg_enum 
+                WHERE enumlabel = 'restaurant' AND enumtypid = 'delivery_partner_type'::regtype
+            ) THEN
+                ALTER TYPE delivery_partner_type ADD VALUE 'restaurant';
+            END IF;
+            
+            IF NOT EXISTS (
+                SELECT 1 FROM pg_enum 
+                WHERE enumlabel = 'taxi' AND enumtypid = 'delivery_partner_type'::regtype
+            ) THEN
+                ALTER TYPE delivery_partner_type ADD VALUE 'taxi';
+            END IF;
+            
+            IF NOT EXISTS (
+                SELECT 1 FROM pg_enum 
+                WHERE enumlabel = 'covoiturage' AND enumtypid = 'delivery_partner_type'::regtype
+            ) THEN
+                ALTER TYPE delivery_partner_type ADD VALUE 'covoiturage';
+            END IF;
         END
         $$;
         "#,
@@ -7601,6 +7630,15 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Ok(_) => info!("✅ Correction critique: specialized_reservations vérifiée"),
         Err(e) => warn!(
             "⚠️ Erreur correction specialized_reservations: {} (non bloquant)",
+            e
+        ),
+    }
+
+    // Correction 2b: Créer appointment_slots + colonnes compat specialized_reservations
+    match ensure_appointment_slots_table(pool).await {
+        Ok(_) => info!("✅ Correction: appointment_slots vérifiée"),
+        Err(e) => warn!(
+            "⚠️ Erreur correction appointment_slots: {} (non bloquant)",
             e
         ),
     }
@@ -16929,6 +16967,47 @@ async fn fix_hybrid_image_search_duplicates(pool: &PgPool) -> Result<(), sqlx::E
 
     sqlx::query(sql).execute(pool).await?;
     info!("✅ Toutes les versions dupliquées de hybrid_image_search ont été supprimées");
+    Ok(())
+}
+
+/// Crée la table appointment_slots pour gérer les créneaux horaires des prestataires santé
+async fn ensure_appointment_slots_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔧 Correction: Vérification/création de appointment_slots...");
+
+    let sql = r#"
+        CREATE TABLE IF NOT EXISTS appointment_slots (
+            id SERIAL PRIMARY KEY,
+            service_id INTEGER NOT NULL,
+            service_type VARCHAR(50) NOT NULL,
+            prestataire_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            slot_date DATE NOT NULL,
+            start_time TIME NOT NULL,
+            end_time TIME NOT NULL,
+            max_bookings INTEGER NOT NULL DEFAULT 1,
+            current_bookings INTEGER NOT NULL DEFAULT 0,
+            consultation_type VARCHAR(100),
+            price NUMERIC(10, 2),
+            currency VARCHAR(10) DEFAULT 'XAF',
+            notes TEXT,
+            is_active BOOLEAN NOT NULL DEFAULT true,
+            created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+            UNIQUE(service_id, slot_date, start_time, consultation_type)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_appointment_slots_service ON appointment_slots(service_id, service_type);
+        CREATE INDEX IF NOT EXISTS idx_appointment_slots_date ON appointment_slots(slot_date);
+        CREATE INDEX IF NOT EXISTS idx_appointment_slots_prestataire ON appointment_slots(prestataire_id);
+        CREATE INDEX IF NOT EXISTS idx_appointment_slots_available ON appointment_slots(service_id, slot_date, is_active) WHERE current_bookings < max_bookings;
+
+        -- Ajouter colonnes de compatibilité à specialized_reservations pour book_hospital
+        ALTER TABLE specialized_reservations ADD COLUMN IF NOT EXISTS reservation_date DATE;
+        ALTER TABLE specialized_reservations ADD COLUMN IF NOT EXISTS reservation_time TEXT;
+        ALTER TABLE specialized_reservations ADD COLUMN IF NOT EXISTS slot_id INTEGER REFERENCES appointment_slots(id);
+    "#;
+
+    execute_migration_sql_safe(pool, sql).await?;
+    info!("✅ Table appointment_slots créée / colonnes compat ajoutées");
     Ok(())
 }
 

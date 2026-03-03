@@ -56,9 +56,9 @@ const FournituresScolairesScreen: React.FC = () => {
             if (annee) params.append('annee_scolaire', annee);
 
             const response = await apiGet(`/api/orientation-scolaire/fournitures/search?${params}`);
-            const data = await response.json();
+            const data = (response?.data || response) as any;
 
-            if (data.success) {
+            if (data?.success) {
                 setFournitures(data.data || []);
                 setTotal(data.pagination?.total || 0);
             }

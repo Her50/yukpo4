@@ -1,7 +1,7 @@
 // ✅ Écran de recherche de tickets bus (Mobile) - VERSION REFONDUE
-import { LinearGradient } from 'expo-linear-gradient';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useNavigation } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState } from 'react';
 import {
     Alert,
@@ -14,8 +14,8 @@ import {
     View
 } from 'react-native';
 import CityAutocomplete from '../../components/CityAutocomplete';
-import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import SearchFiltersComponent, { SearchFilters } from '../../components/SearchFilters';
 import SkeletonCard from '../../components/SkeletonCard';
@@ -23,8 +23,8 @@ import { useLocation } from '../../contexts/LocationContext';
 import { trackSearch } from '../../services/analytics';
 import { apiGet } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
-import { measureScreenLoad } from '../../utils/metrics';
 import { hapticPress } from '../../utils/hapticFeedback';
+import { measureScreenLoad } from '../../utils/metrics';
 
 interface BusTicketResult {
     product_id: string;
@@ -112,10 +112,11 @@ const BusTicketSearchScreen: React.FC = () => {
             });
 
             const response = await apiGet(`/api/bus-tickets/search?${params.toString()}`);
+            const backendData = (response?.data || response) as any;
 
-            if (response.results) {
+            if (backendData?.results) {
                 // ✅ NOUVEAU: Appliquer tri côté client si nécessaire
-                let sortedResults = [...response.results];
+                let sortedResults = [...backendData.results];
                 if (filters.sortBy === 'price') {
                     sortedResults.sort((a, b) => {
                         const priceA = a.ticket_price || 0;

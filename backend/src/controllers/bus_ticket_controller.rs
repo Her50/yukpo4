@@ -769,6 +769,41 @@ pub async fn create_reservations(
             AppError::Internal(format!("Erreur débit solde: {}", e))
         })?;
 
+    // ✅ BUG FIX: Mettre à jour le seat_map dans products pour marquer les places comme réservées
+    let seat_map_row: Option<serde_json::Value> =
+        sqlx::query_scalar("SELECT seat_map FROM products WHERE id::text = $1")
+            .bind(&payload.product_id)
+            .fetch_optional(&mut *tx)
+            .await
+            .map_err(|e| {
+                error!("[create_reservations] Erreur récupération seat_map: {}", e);
+                AppError::Internal(format!("Erreur récupération seat_map: {}", e))
+            })?;
+
+    if let Some(seat_map_json) = seat_map_row {
+        if let Ok(mut seats) = serde_json::from_value::<Vec<serde_json::Value>>(seat_map_json) {
+            let reserved_seat_ids: Vec<&str> =
+                payload.seats.iter().map(|s| s.seat_id.as_str()).collect();
+            for seat_val in seats.iter_mut() {
+                if let Some(sid) = seat_val.get("id").and_then(|v| v.as_str()) {
+                    if reserved_seat_ids.contains(&sid) {
+                        seat_val["status"] = serde_json::json!("reserved");
+                    }
+                }
+            }
+            let updated_map = serde_json::to_value(&seats).unwrap_or_default();
+            sqlx::query("UPDATE products SET seat_map = $1::jsonb WHERE id::text = $2")
+                .bind(&updated_map)
+                .bind(&payload.product_id)
+                .execute(&mut *tx)
+                .await
+                .map_err(|e| {
+                    error!("[create_reservations] Erreur mise à jour seat_map: {}", e);
+                    AppError::Internal(format!("Erreur mise à jour seat_map: {}", e))
+                })?;
+        }
+    }
+
     // ✅ Validation de la transaction (libère tous les verrous)
     tx.commit().await.map_err(|e| {
         error!(

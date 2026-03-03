@@ -26,11 +26,11 @@ import * as FileSystem from 'expo-file-system';
 // Code corrigé (remplace @ts-ignore)
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 // Code corrigé (remplace @ts-ignore)
-import { modernColors } from '../theme/modernTheme';
 import { googlePlacesMediaService } from '../services/googlePlacesMediaService';
+import { modernColors } from '../theme/modernTheme';
 import BusSeatSelector from './BusSeatSelector';
-import { NativeButton, NativeInput } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
+import { NativeButton, NativeInput } from './SafeNativeDesign';
 import SmartApplianceInput from './SmartApplianceInput';
 import SmartPhoneModelInput from './SmartPhoneModelInput';
 // Code corrigé (remplace @ts-ignore)
@@ -4897,8 +4897,8 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 value={newProduct.quartier ? (typeof newProduct.quartier === 'string' ? { raw: newProduct.quartier, place_name: newProduct.quartier } : newProduct.quartier) : ''}
                                 onSelect={(location: LocationObject) => {
                                     const quartierValue = location.raw || location.place_name || '';
-                                    setNewProduct({ 
-                                        ...newProduct, 
+                                    setNewProduct({
+                                        ...newProduct,
                                         quartier: quartierValue,
                                         // ✅ NOUVEAU: Extraire ville et pays si disponibles
                                         ville: location.components?.ville || newProduct.ville,
@@ -21156,38 +21156,34 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                         />
                                     )}
                                     <View style={styles.productInfo}>
-                                        <View style={styles.productHeader}>
-                                            <View style={{ flex: 1 }}>
-                                                <Text style={styles.productBadge} numberOfLines={1}>
-                                                    {typeInfo.icon} {typeInfo.label}
-                                                </Text>
-                                                <Text style={styles.productName} numberOfLines={2} ellipsizeMode="tail">
-                                                    {product.nom}
-                                                </Text>
+                                        <Text style={styles.productBadge} numberOfLines={1}>
+                                            {typeInfo.icon} {typeInfo.label}
+                                        </Text>
+                                        <Text style={styles.productName} numberOfLines={2} ellipsizeMode="tail">
+                                            {product.nom}
+                                        </Text>
+                                        {!readonly && (
+                                            <View style={styles.productActions}>
+                                                <TouchableOpacity
+                                                    style={styles.actionButton}
+                                                    onPress={() => handleEditProduct(product)}
+                                                >
+                                                    <SafeIcon name="edit-2" size={13} color={modernColors.primary} />
+                                                </TouchableOpacity>
+                                                <TouchableOpacity
+                                                    style={styles.actionButton}
+                                                    onPress={() => handleDuplicateProduct(product)}
+                                                >
+                                                    <SafeIcon name="copy" size={13} color={modernColors.success} />
+                                                </TouchableOpacity>
+                                                <TouchableOpacity
+                                                    style={styles.actionButton}
+                                                    onPress={() => handleDeleteProduct(product.id)}
+                                                >
+                                                    <SafeIcon name="trash-2" size={13} color={modernColors.error} />
+                                                </TouchableOpacity>
                                             </View>
-                                            {!readonly && (
-                                                <View style={styles.productActions}>
-                                                    <TouchableOpacity
-                                                        style={styles.actionButton}
-                                                        onPress={() => handleEditProduct(product)}
-                                                    >
-                                                        <SafeIcon name="edit-2" size={16} color={modernColors.primary} />
-                                                    </TouchableOpacity>
-                                                    <TouchableOpacity
-                                                        style={styles.actionButton}
-                                                        onPress={() => handleDuplicateProduct(product)}
-                                                    >
-                                                        <SafeIcon name="copy" size={16} color={modernColors.success} />
-                                                    </TouchableOpacity>
-                                                    <TouchableOpacity
-                                                        style={styles.actionButton}
-                                                        onPress={() => handleDeleteProduct(product.id)}
-                                                    >
-                                                        <SafeIcon name="trash-2" size={16} color={modernColors.error} />
-                                                    </TouchableOpacity>
-                                                </View>
-                                            )}
-                                        </View>
+                                        )}
                                         <Text style={styles.productPrice}>
                                             {product.prix} {product.devise}
                                         </Text>
@@ -22160,7 +22156,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                             <SafeIcon name="warehouse" size={20} color={modernColors.primary} />
                                             <Text style={styles.sectionTitle}>📍 Lieu de stockage GPS</Text>
                                         </View>
-                                        
+
                                         <View style={styles.hintBox}>
                                             <SafeIcon name="info" size={14} color={modernColors.primary} />
                                             <Text style={styles.hintText}>
@@ -22306,12 +22302,6 @@ const styles = StyleSheet.create({
     productInfo: {
         flex: 1,
     },
-    productHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-        marginBottom: 8,
-    },
     productBadge: {
         fontSize: 11,
         color: modernColors.textSecondary,
@@ -22319,20 +22309,20 @@ const styles = StyleSheet.create({
         flexShrink: 1, // ✅ Permet au badge de rétrécir
     },
     productName: {
-        fontSize: 16,
+        fontSize: 15,
         fontWeight: '600',
         color: modernColors.text,
-        flexShrink: 1, // ✅ Permet au texte de rétrécir si nécessaire
-        flexWrap: 'nowrap', // ✅ Empêche le wrap non contrôlé
+        marginBottom: 6,
     },
     productActions: {
         flexDirection: 'row',
-        gap: 8,
+        gap: 4,
+        marginBottom: 6,
     },
     actionButton: {
-        padding: 8,
+        padding: 5,
         backgroundColor: modernColors.background,
-        borderRadius: 8,
+        borderRadius: 6,
     },
     productPrice: {
         fontSize: 14,

@@ -186,8 +186,17 @@ const ServiceManagementCard: React.FC<ServiceManagementCardProps> = ({
     // Fonction pour partager un service
     const shareService = async () => {
         try {
-            const serviceUrl = `${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001'}/service/${service.id}`;
-            const shareText = `Découvrez ce service exceptionnel sur Yukpo : ${serviceTitle}\n\n${serviceUrl}`;
+            const SHARE_BASE_URL = process.env.EXPO_PUBLIC_SHARE_URL || 'https://yukpo-backend-376093909298.europe-west1.run.app';
+            const serviceUrl = `${SHARE_BASE_URL}/service/${service.id}`;
+
+            const description = service.description || service.data?.description?.valeur || '';
+            const prix = service.prix || service.data?.prix?.valeur;
+            const devise = service.devise || service.data?.devise?.valeur || 'XAF';
+
+            let shareText = `🛍️ ${serviceTitle}`;
+            if (description) shareText += `\n\n${description}`;
+            if (prix) shareText += `\n💰 Prix: ${prix} ${devise}`;
+            shareText += `\n\n🔗 Voir sur Yukpo:\n${serviceUrl}`;
 
             const result = await Share.share({
                 message: shareText,
@@ -196,7 +205,7 @@ const ServiceManagementCard: React.FC<ServiceManagementCardProps> = ({
             });
 
             if (result.action === Share.sharedAction) {
-                Alert.alert('Succès', 'Service partagé avec succès');
+                console.log('[ServiceManagementCard] Service partagé avec succès');
             }
         } catch (error) {
             console.error('Erreur lors du partage:', error);

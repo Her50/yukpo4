@@ -6,8 +6,8 @@ import React, { useState } from 'react';
 import { FlatList, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 import { CompatibilityScoreBadge } from '../../components/covoiturage/CompatibilityScoreBadge';
 import ModernGPSModal from '../../components/ModernGPSModal';
-import { NativeButton, NativeCard, NativeInput } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeButton, NativeCard, NativeInput } from '../../components/SafeNativeDesign';
 import { useLocation } from '../../contexts/LocationContext';
 import { apiPost } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
@@ -47,8 +47,9 @@ export const TaxiIntelligentSearchScreen: React.FC = () => {
                 prix_max: prixMax ? parseInt(prixMax) : null,
             });
 
-            if (response && response.matches) {
-                setMatches(response.matches);
+            const resData = (response?.data || response) as any;
+            if (resData?.matches) {
+                setMatches(resData.matches);
             }
         } catch (error: any) {
             alert('Erreur: ' + error.message);

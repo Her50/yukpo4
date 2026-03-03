@@ -51,6 +51,21 @@ export interface WaitTime {
     last_updated?: string;
 }
 
+export interface HospitalRecommendation {
+    urgency_level?: number;
+    recommended_specialty?: string;
+    recommended_hospitals?: Array<{
+        hospital_id: number;
+        hospital_name: string;
+        distance_km?: number;
+        speciality?: string;
+        wait_time_minutes?: number;
+    }>;
+    preliminary_analysis?: string;
+    advice?: string[];
+    warning?: string;
+}
+
 export interface EmergencyStatus {
     is_open?: boolean;
     status?: string;
@@ -77,7 +92,8 @@ export const hospitalService = {
             '/api/hopitaux/services/autocomplete',
             { params: { query, limit } }
         );
-        return response;
+        const resData = (response?.data || response) as any;
+        return { success: response.success, services: resData?.services || [], data: resData };
     },
 
     // ✅ Recherche IA de pathologie (pour hôpitaux)
@@ -94,17 +110,18 @@ export const hospitalService = {
             );
 
             // Normaliser la réponse pour gérer différents formats
+            const resData = (response?.data || response) as any;
             if (response.success) {
                 return {
                     success: true,
-                    results: response.results || response.data || [],
-                    data: response.data || { results: response.results || [] }
+                    results: resData?.results || resData?.data || [],
+                    data: resData || { results: [] }
                 };
             } else {
                 return {
                     success: false,
                     results: [],
-                    message: response.message || response.error || 'L\'IA de recherche pathologique n\'est pas encore opérationnelle.'
+                    message: resData?.message || response.error || 'L\'IA de recherche pathologique n\'est pas encore opérationnelle.'
                 };
             }
         } catch (error: any) {
@@ -159,6 +176,26 @@ export const hospitalService = {
             message: string;
         }>(`/api/hopitaux/${hospitalId}/book`, bookingData);
         return response;
+    },
+
+    // ✅ Recherche de services médicaux disponibles (avec système de disponibilité)
+    // ✅ Recommandations IA basées sur symptômes
+    getAIRecommendations: async (
+        symptoms: string,
+        location?: string,
+        userLocation?: { lat: number; lng: number }
+    ) => {
+        const response = await apiPost<{ success: boolean; recommendation: HospitalRecommendation }>(
+            '/api/hopitaux/ai/recommendations',
+            {
+                symptoms,
+                location,
+                lat: userLocation?.lat,
+                lng: userLocation?.lng,
+            }
+        );
+        const resData = (response?.data || response) as any;
+        return { success: response.success, data: resData, error: response.error };
     },
 
     // ✅ Recherche de services médicaux disponibles (avec système de disponibilité)

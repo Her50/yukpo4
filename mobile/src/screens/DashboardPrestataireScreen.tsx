@@ -4,7 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import * as React from 'react';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Card, Chip, Title } from 'react-native-paper';
+// react-native-paper retiré pour éviter le crash useNavigation
 import { useAuth } from '../contexts/AuthContext';
 import { userApi } from '../services/api';
 import { theme } from '../theme/theme';
@@ -188,7 +188,7 @@ const DashboardPrestataireScreen: React.FC = () => {
     <ScrollView style={styles.container}>
       {/* En-t�te avec s�lecteur de p�riode */}
       <View style={styles.header}>
-        <Title style={styles.title}>?? Dashboard Prestataire</Title>
+        <Text style={styles.title}>Dashboard Prestataire</Text>
         <Text style={styles.subtitle}>Statistiques et performances de vos services</Text>
 
         <View style={styles.periodSelector}>
@@ -214,156 +214,124 @@ const DashboardPrestataireScreen: React.FC = () => {
 
       {/* Statistiques principales */}
       <View style={styles.statsGrid}>
-        <Card style={styles.statCard}>
-          <Card.Content style={styles.statContent}>
-            <View style={styles.statIcon}>
-              <Text style={styles.statIconText}>??</Text>
-            </View>
+        <View style={styles.statCard}>
+          <View style={styles.statContent}>
             <Text style={styles.statNumber}>{dashboardData.totalServices}</Text>
             <Text style={styles.statLabel}>Services totaux</Text>
-          </Card.Content>
-        </Card>
+          </View>
+        </View>
 
-        <Card style={styles.statCard}>
-          <Card.Content style={styles.statContent}>
-            <View style={styles.statIcon}>
-              <Text style={styles.statIconText}>?</Text>
-            </View>
+        <View style={styles.statCard}>
+          <View style={styles.statContent}>
             <Text style={styles.statNumber}>{dashboardData.activeServices}</Text>
             <Text style={styles.statLabel}>Services actifs</Text>
-          </Card.Content>
-        </Card>
+          </View>
+        </View>
 
-        <Card style={styles.statCard}>
-          <Card.Content style={styles.statContent}>
-            <View style={styles.statIcon}>
-              <Text style={styles.statIconText}>???</Text>
-            </View>
+        <View style={styles.statCard}>
+          <View style={styles.statContent}>
             <Text style={styles.statNumber}>{formatNumber(dashboardData.totalViews)}</Text>
             <Text style={styles.statLabel}>Vues totales</Text>
-          </Card.Content>
-        </Card>
+          </View>
+        </View>
 
-        <Card style={styles.statCard}>
-          <Card.Content style={styles.statContent}>
-            <View style={styles.statIcon}>
-              <Text style={styles.statIconText}>??</Text>
-            </View>
+        <View style={styles.statCard}>
+          <View style={styles.statContent}>
             <Text style={styles.statNumber}>{formatNumber(dashboardData.totalInteractions)}</Text>
             <Text style={styles.statLabel}>Interactions</Text>
-          </Card.Content>
-        </Card>
+          </View>
+        </View>
 
-        <Card style={styles.statCard}>
-          <Card.Content style={styles.statContent}>
-            <View style={styles.statIcon}>
-              <Text style={styles.statIconText}>?</Text>
-            </View>
+        <View style={styles.statCard}>
+          <View style={styles.statContent}>
             <Text style={styles.statNumber}>{dashboardData.averageRating.toFixed(1)}</Text>
             <Text style={styles.statLabel}>Note moyenne</Text>
-          </Card.Content>
-        </Card>
+          </View>
+        </View>
 
-        <Card style={styles.statCard}>
-          <Card.Content style={styles.statContent}>
-            <View style={styles.statIcon}>
-              <Text style={styles.statIconText}>??</Text>
-            </View>
+        <View style={styles.statCard}>
+          <View style={styles.statContent}>
             <Text style={styles.statNumber}>{formatCurrency(dashboardData.budgetConsumed)}</Text>
-            <Text style={styles.statLabel}>Budget utilis�</Text>
-          </Card.Content>
-        </Card>
+            <Text style={styles.statLabel}>Budget utilisé</Text>
+          </View>
+        </View>
       </View>
 
       {/* Services les mieux performants */}
-      <Card style={styles.sectionCard}>
-        <Card.Content>
-          <Title style={styles.sectionTitle}>?? Services les mieux performants</Title>
+      <View style={styles.sectionCard}>
+        <Text style={styles.sectionTitle}>Services les mieux performants</Text>
 
-          {dashboardData.topPerformingServices.map((service, index) => (
-            <View key={service.id} style={styles.serviceItem}>
-              <View style={styles.serviceHeader}>
-                <Text style={styles.serviceTitle}>{service.title}</Text>
-                <Chip
-                  style={[styles.statusChip, { backgroundColor: getStatusColor(service.status) + '20' }]}
-                  textStyle={{ color: getStatusColor(service.status) }}
-                >
+        {dashboardData.topPerformingServices.map((service, index) => (
+          <View key={service.id} style={styles.serviceItem}>
+            <View style={styles.serviceHeader}>
+              <Text style={styles.serviceTitle}>{service.title}</Text>
+              <View style={[styles.statusChip, { backgroundColor: getStatusColor(service.status) + '20' }]}>
+                <Text style={{ color: getStatusColor(service.status), fontSize: 11, fontWeight: '600' }}>
                   {getStatusText(service.status)}
-                </Chip>
-              </View>
-
-              <View style={styles.serviceStats}>
-                <View style={styles.serviceStat}>
-                  <Text style={styles.serviceStatIcon}>???</Text>
-                  <Text style={styles.serviceStatText}>{formatNumber(service.views)}</Text>
-                </View>
-                <View style={styles.serviceStat}>
-                  <Text style={styles.serviceStatIcon}>??</Text>
-                  <Text style={styles.serviceStatText}>{service.messages}</Text>
-                </View>
-                <View style={styles.serviceStat}>
-                  <Text style={styles.serviceStatIcon}>??</Text>
-                  <Text style={styles.serviceStatText}>{service.calls}</Text>
-                </View>
-                <View style={styles.serviceStat}>
-                  <Text style={[styles.serviceStatIcon, { color: theme.colors.warning }]}>?</Text>
-                  <Text style={styles.serviceStatText}>{service.rating}</Text>
-                </View>
+                </Text>
               </View>
             </View>
-          ))}
-        </Card.Content>
-      </Card>
+
+            <View style={styles.serviceStats}>
+              <View style={styles.serviceStat}>
+                <Text style={styles.serviceStatText}>{formatNumber(service.views)} vues</Text>
+              </View>
+              <View style={styles.serviceStat}>
+                <Text style={styles.serviceStatText}>{service.messages} msg</Text>
+              </View>
+              <View style={styles.serviceStat}>
+                <Text style={styles.serviceStatText}>{service.calls} appels</Text>
+              </View>
+              <View style={styles.serviceStat}>
+                <Text style={styles.serviceStatText}>{service.rating} / 5</Text>
+              </View>
+            </View>
+          </View>
+        ))}
+      </View>
 
       {/* Activit� r�cente */}
-      <Card style={styles.sectionCard}>
-        <Card.Content>
-          <Title style={styles.sectionTitle}>?? Activit� r�cente</Title>
+      <View style={styles.sectionCard}>
+        <Text style={styles.sectionTitle}>Activit&#233; r&#233;cente</Text>
 
-          {dashboardData.recentActivity.map((activity, index) => (
-            <View key={index} style={styles.activityItem}>
-              <View style={styles.activityIcon}>
-                <Text style={styles.activityIconText}>
-                  {activity.type === 'view' ? '???' :
-                    activity.type === 'message' ? '??' :
-                      activity.type === 'call' ? '??' :
-                        '??'}
-                </Text>
-              </View>
-              <View style={styles.activityContent}>
-                <Text style={styles.activityText}>
-                  {activity.type === 'view' ? 'Vue' :
-                    activity.type === 'message' ? 'Message' :
-                      activity.type === 'call' ? 'Appel' : 'Activit�'} sur {activity.service}
-                </Text>
-                <Text style={styles.activityTime}>Il y a {activity.time}</Text>
-              </View>
+        {dashboardData.recentActivity.map((activity, index) => (
+          <View key={index} style={styles.activityItem}>
+            <View style={styles.activityIcon}>
+              <Text style={styles.activityIconText}>
+                {activity.type === 'view' ? 'V' :
+                  activity.type === 'message' ? 'M' :
+                    activity.type === 'call' ? 'A' :
+                      '?'}
+              </Text>
             </View>
-          ))}
-        </Card.Content>
-      </Card>
+            <View style={styles.activityContent}>
+              <Text style={styles.activityText}>
+                {activity.type === 'view' ? 'Vue' :
+                  activity.type === 'message' ? 'Message' :
+                    activity.type === 'call' ? 'Appel' : 'Activit\u00e9'} sur {activity.service}
+              </Text>
+              <Text style={styles.activityTime}>Il y a {activity.time}</Text>
+            </View>
+          </View>
+        ))}
+      </View>
 
       {/* Actions rapides */}
-      <Card style={styles.sectionCard}>
-        <Card.Content>
-          <Title style={styles.sectionTitle}>? Actions rapides</Title>
+      <View style={styles.sectionCard}>
+        <Text style={styles.sectionTitle}>Actions rapides</Text>
 
-          <TouchableOpacity style={styles.actionButton}>
-            <Text style={styles.actionIcon}>??</Text>
-            <Text style={styles.actionButtonText}>Actualiser les donn�es</Text>
-          </TouchableOpacity>
+        <TouchableOpacity style={styles.actionButton} onPress={loadDashboardData}>
+          <Text style={styles.actionButtonText}>Actualiser les donn\u00e9es</Text>
+        </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionButton}>
-            <Text style={styles.actionIcon}>?</Text>
-            <Text style={styles.actionButtonText}>Cr�er un nouveau service</Text>
-          </TouchableOpacity>
+        <TouchableOpacity style={styles.actionButton}>
+          <Text style={styles.actionButtonText}>Cr\u00e9er un nouveau service</Text>
+        </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionButton}>
-            <Text style={styles.actionIcon}>??</Text>
-            <Text style={styles.actionButtonText}>Voir les statistiques d�taill�es</Text>
-          </TouchableOpacity>
-        </Card.Content>
-      </Card>
+        <TouchableOpacity style={styles.actionButton}>
+          <Text style={styles.actionButtonText}>Voir les statistiques d\u00e9taill\u00e9es</Text>
+        </TouchableOpacity>
+      </View>
     </ScrollView>
   );
 };
@@ -474,7 +442,10 @@ const styles = StyleSheet.create({
   },
   statCard: {
     width: '47%',
-    elevation: 2,
+    backgroundColor: theme.colors.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
   },
   statContent: {
     alignItems: 'center',
@@ -497,7 +468,11 @@ const styles = StyleSheet.create({
   sectionCard: {
     margin: 20,
     marginTop: 10,
-    elevation: 2,
+    backgroundColor: theme.colors.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    padding: 16,
   },
   sectionTitle: {
     fontSize: 18,
@@ -525,6 +500,10 @@ const styles = StyleSheet.create({
   },
   statusChip: {
     height: 24,
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   serviceStats: {
     flexDirection: 'row',
