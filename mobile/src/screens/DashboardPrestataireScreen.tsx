@@ -1,5 +1,6 @@
 // @ts-nocheck
 // Remplacement des Ionicons par des emojis pour �viter les crashes
+import { useNavigation } from '@react-navigation/native';
 import * as React from 'react';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
