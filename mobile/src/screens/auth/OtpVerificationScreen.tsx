@@ -12,9 +12,10 @@ import {
 } from 'react-native';
 import { Card, Paragraph, Title } from 'react-native-paper';
 import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
+import { useToaster } from '../../components/ToasterProvider';
+import { API_BASE_URL } from '../../config/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { theme } from '../../theme/theme';
-import { API_BASE_URL } from '../../config/api';
 
 interface OtpRouteParams {
   userId: number;
@@ -32,6 +33,7 @@ const OtpVerificationScreen: React.FC = () => {
   const route = useRoute();
   const params = route.params as OtpRouteParams;
   const { updateUser } = useAuth();
+  const toaster = useToaster();
 
   const [code, setCode] = useState<string[]>(Array(OTP_LENGTH).fill(''));
   const [loading, setLoading] = useState(false);
@@ -174,6 +176,7 @@ const OtpVerificationScreen: React.FC = () => {
 
       // Rediriger après un court délai
       setTimeout(() => {
+        toaster.success('Bienvenue sur Yukpo ! Votre compte est prêt.');
         (navigation as any).reset({
           index: 0,
           routes: [{ name: 'Main' }],
@@ -197,6 +200,7 @@ const OtpVerificationScreen: React.FC = () => {
         {
           text: 'Passer',
           onPress: () => {
+            toaster.success('Bienvenue sur Yukpo ! Votre compte est prêt.');
             (navigation as any).reset({
               index: 0,
               routes: [{ name: 'Main' }],

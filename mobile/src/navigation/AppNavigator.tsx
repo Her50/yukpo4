@@ -805,16 +805,19 @@ const MainStack = () => {
         />
       )}
       {/* ✅ REMPLACÉ: Onglet Services Spécialisés par bouton création vidéo */}
-      <Tab.Screen
-        name="VideoCreationIntro"
-        component={VideoCreationIntroScreenWithSafeArea}
-        options={{
-          tabBarLabel: 'Créer',
-          tabBarIcon: ({ focused, color, size }) => (
-            <SafeIcon name="plus" size={size} color={focused ? modernColors.primary : color} type="lucide" />
-          ),
-        }}
-      />
+      {/* ✅ NOUVEAU: Masquer le bouton création vidéo pour les coursiers (ils ont leur propre onglet) */}
+      {!isCourier && (
+        <Tab.Screen
+          name="VideoCreationIntro"
+          component={VideoCreationIntroScreenWithSafeArea}
+          options={{
+            tabBarLabel: 'Créer',
+            tabBarIcon: ({ focused, color, size }) => (
+              <SafeIcon name="plus" size={size} color={focused ? modernColors.primary : color} type="lucide" />
+            ),
+          }}
+        />
+      )}
       {/* ✅ NOUVEAU: Onglet feed vidéos (lecture/visualisation) */}
       <Tab.Screen
         name="Videos"

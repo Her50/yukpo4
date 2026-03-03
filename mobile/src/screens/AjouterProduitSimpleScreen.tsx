@@ -197,6 +197,42 @@ const AjouterProduitSimpleScreen: React.FC = () => {
     } | null>(null);
     // ✅ NOUVEAU: État pour le modal de confirmation de livraison automatique
     const [showDeliveryAutoPrompt, setShowDeliveryAutoPrompt] = useState(false);
+    // ✅ NOUVEAU: État pour la réutilisation intelligente de config livraison existante
+    const [existingDeliveryConfig, setExistingDeliveryConfig] = useState<{
+        hasConfig: boolean;
+        productName: string;
+        productIndex: number;
+    } | null>(null);
+
+    // ✅ NOUVEAU: Charger les configs existantes quand un produit est créé avec succès
+    useEffect(() => {
+        const checkExistingConfigs = async () => {
+            if (!successModalData || successModalData.isPrestation || successModalData.productIndex < 0) return;
+            try {
+                const response = await deliveryApi.listProductDeliveryConfigs(successModalData.serviceId);
+                if (response.success && response.data) {
+                    const data = response.data as any;
+                    const products = Array.isArray(data.products) ? data.products : [];
+                    const configuredProducts = products.filter(
+                        (p: any) => p.index !== successModalData.productIndex && p.is_configured
+                    );
+                    if (configuredProducts.length > 0) {
+                        setExistingDeliveryConfig({
+                            hasConfig: true,
+                            productName: configuredProducts[0].name || 'Produit existant',
+                            productIndex: configuredProducts[0].index,
+                        });
+                    } else {
+                        setExistingDeliveryConfig(null);
+                    }
+                }
+            } catch (error) {
+                console.warn('[AjouterProduitSimple] Erreur vérification configs existantes:', error);
+                setExistingDeliveryConfig(null);
+            }
+        };
+        checkExistingConfigs();
+    }, [successModalData]);
 
     // ✅ NOUVEAU: États pour la modal de confirmation de création de produit
     const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -1355,6 +1391,18 @@ const AjouterProduitSimpleScreen: React.FC = () => {
         if (!isEditing && !formValues.lieu_produit) {
             Alert.alert('Erreur', 'Le lieu de commercialisation est obligatoire');
             return;
+        }
+
+        // ✅ NOUVEAU: Validation du prix obligatoire (sauf si variantes de prix définies)
+        const hasPriceVariant = formValues.variabilite_prix || formValues.price_variant || formValues.variation_prix;
+        const hasModalites = hasPriceVariant && typeof hasPriceVariant === 'object' && Array.isArray(hasPriceVariant.modalites) && hasPriceVariant.modalites.length > 0;
+        if (!hasModalites) {
+            const prixValue = formValues.prix_produit || formValues.prix;
+            const prixNum = typeof prixValue === 'number' ? prixValue : parseFloat(String(prixValue || ''));
+            if (!prixValue || isNaN(prixNum) || prixNum <= 0) {
+                Alert.alert('Erreur', 'Le prix du produit est obligatoire. Veuillez indiquer un prix supérieur à 0.');
+                return;
+            }
         }
 
         // ✅ CORRECTION CRITIQUE: Afficher la confirmation IMMÉDIATEMENT (avant toute opération lourde)
@@ -2886,6 +2934,8 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                 <DeliveryAutoConfigPromptModal
                     visible={showDeliveryAutoPrompt}
                     productName={successModalData.productName}
+                    hasExistingConfig={!!existingDeliveryConfig?.hasConfig}
+                    existingConfigProductName={existingDeliveryConfig?.productName}
                     onYes={async () => {
                         setShowDeliveryAutoPrompt(false);
                         // ✅ Attendre un délai pour permettre la synchronisation du produit
@@ -2901,11 +2951,75 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                     }}
                     onNo={() => {
                         setShowDeliveryAutoPrompt(false);
+                        setExistingDeliveryConfig(null);
                         setSuccessModalData(null);
                         // Rediriger vers Mes Services
                         setTimeout(() => {
                             (navigation as any).navigate('Main', { screen: 'Services' });
                         }, 300);
+                    }}
+                    onReuseExisting={async () => {
+                        if (!existingDeliveryConfig || !successModalData) return;
+                        setShowDeliveryAutoPrompt(false);
+                        try {
+                            // Charger la config du produit source
+                            const response = await apiGet(`/api/delivery/product-config/${successModalData.serviceId}/${existingDeliveryConfig.productIndex}`);
+                            if (response.success && response.data && typeof response.data === 'object' && 'config' in response.data) {
+                                const data = response.data as any;
+                                const c = data.config;
+                                // Sauvegarder cette config pour le nouveau produit
+                                const saveResponse = await apiPost('/api/delivery/product-config', {
+                                    service_id: successModalData.serviceId,
+                                    product_index: successModalData.productIndex,
+                                    pickup_address: c.pickup_address || '',
+                                    pickup_latitude: c.pickup_latitude || 0,
+                                    pickup_longitude: c.pickup_longitude || 0,
+                                    required_vehicle_type_id: c.required_vehicle_type_id || 1,
+                                    preparation_time_minutes: c.preparation_time_minutes || 0,
+                                    weight_kg: c.weight_kg || null,
+                                    volume_cm3: c.volume_cm3 || null,
+                                    requires_isothermal: c.requires_isothermal || false,
+                                    requires_fragile_handling: c.requires_fragile_handling || false,
+                                    pickup_availability_schedule: c.pickup_availability_schedule || {},
+                                    pickup_instructions: c.pickup_instructions || '',
+                                    billing_mode: c.billing_mode || 'standard',
+                                    billing_partner_label: c.billing_partner_label || '',
+                                    storage_location_id: c.storage_location_id || null,
+                                });
+                                if (saveResponse.success) {
+                                    Alert.alert(
+                                        '✅ Configuration copiée',
+                                        `La configuration de livraison de "${existingDeliveryConfig.productName}" a été appliquée à "${successModalData.productName}".`,
+                                        [{
+                                            text: 'OK', onPress: () => {
+                                                setExistingDeliveryConfig(null);
+                                                setSuccessModalData(null);
+                                                (navigation as any).navigate('Main', { screen: 'Services' });
+                                            }
+                                        }]
+                                    );
+                                } else {
+                                    Alert.alert('Erreur', 'Impossible de copier la configuration. Veuillez configurer manuellement.');
+                                    setProductDeliveryConfigData({
+                                        serviceId: successModalData.serviceId,
+                                        productIndex: successModalData.productIndex,
+                                        productName: successModalData.productName,
+                                    });
+                                    setShowProductDeliveryConfig(true);
+                                    setSuccessModalData(null);
+                                }
+                            }
+                        } catch (error) {
+                            console.error('[AjouterProduitSimple] Erreur copie config:', error);
+                            Alert.alert('Erreur', 'Impossible de copier la configuration. Ouverture de la configuration manuelle...');
+                            setProductDeliveryConfigData({
+                                serviceId: successModalData.serviceId,
+                                productIndex: successModalData.productIndex,
+                                productName: successModalData.productName,
+                            });
+                            setShowProductDeliveryConfig(true);
+                            setSuccessModalData(null);
+                        }
                     }}
                 />
             )}

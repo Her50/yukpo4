@@ -2210,6 +2210,13 @@ const MesProduitsScreen: React.FC = () => {
                     >
                         <SafeIcon name="trending-up" size={20} color="#F59E0B" />
                     </TouchableOpacity>
+                    {/* ✅ NOUVEAU: Bouton configuration livraison par produit */}
+                    <TouchableOpacity
+                        style={styles.iconButton}
+                        onPress={() => handleOpenDeliveryConfig(product)}
+                    >
+                        <SafeIcon name="truck" size={20} color="#6366F1" />
+                    </TouchableOpacity>
                     {/* ✅ CORRECTION: Bouton suppression toujours visible */}
                     <TouchableOpacity
                         style={styles.iconButton}

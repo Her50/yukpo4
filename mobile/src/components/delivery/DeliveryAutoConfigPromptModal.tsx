@@ -7,16 +7,19 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { NativeButton } from '../SafeNativeDesign';
-import SafeIcon from '../SafeIcon';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
+import SafeIcon from '../SafeIcon';
 
 interface DeliveryAutoConfigPromptModalProps {
     visible: boolean;
     productName: string;
     onYes: () => void;
     onNo: () => void;
+    // ✅ NOUVEAU: Option intelligente pour réutiliser une config existante
+    hasExistingConfig?: boolean;
+    existingConfigProductName?: string;
+    onReuseExisting?: () => void;
 }
 
 const DeliveryAutoConfigPromptModal: React.FC<DeliveryAutoConfigPromptModalProps> = ({
@@ -24,6 +27,9 @@ const DeliveryAutoConfigPromptModal: React.FC<DeliveryAutoConfigPromptModalProps
     productName,
     onYes,
     onNo,
+    hasExistingConfig = false,
+    existingConfigProductName,
+    onReuseExisting,
 }) => {
     const handleYes = () => {
         hapticPress();
@@ -33,6 +39,11 @@ const DeliveryAutoConfigPromptModal: React.FC<DeliveryAutoConfigPromptModalProps
     const handleNo = () => {
         hapticPress();
         onNo();
+    };
+
+    const handleReuseExisting = () => {
+        hapticPress();
+        onReuseExisting?.();
     };
 
     return (
@@ -85,10 +96,29 @@ const DeliveryAutoConfigPromptModal: React.FC<DeliveryAutoConfigPromptModalProps
                         </View>
 
                         <Text style={styles.note}>
-                            💡 Si votre produit n'est pas livrable (ex: vente de voiture, service sur place), 
+                            💡 Si votre produit n'est pas livrable (ex: vente de voiture, service sur place),
                             vous pouvez cliquer sur "Non, pas applicable".
                         </Text>
                     </View>
+
+                    {/* ✅ NOUVEAU: Option intelligente de réutilisation */}
+                    {hasExistingConfig && onReuseExisting && (
+                        <View style={styles.reuseContainer}>
+                            <TouchableOpacity
+                                style={[styles.button, styles.buttonReuse]}
+                                onPress={handleReuseExisting}
+                                activeOpacity={0.7}
+                            >
+                                <SafeIcon name="copy" size={16} color="#FFFFFF" type="lucide" />
+                                <Text style={styles.buttonReuseText}>
+                                    Utiliser la même config{existingConfigProductName ? ` que "${existingConfigProductName}"` : ' existante'}
+                                </Text>
+                            </TouchableOpacity>
+                            <Text style={styles.reuseHint}>
+                                La configuration sera copiée et appliquée directement. Vous pourrez la modifier plus tard.
+                            </Text>
+                        </View>
+                    )}
 
                     <View style={styles.actions}>
                         <TouchableOpacity
@@ -103,7 +133,7 @@ const DeliveryAutoConfigPromptModal: React.FC<DeliveryAutoConfigPromptModalProps
                             onPress={handleYes}
                             activeOpacity={0.7}
                         >
-                            <Text style={styles.buttonYesText}>Oui, configurer</Text>
+                            <Text style={styles.buttonYesText}>{hasExistingConfig ? 'Nouvelle config' : 'Oui, configurer'}</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -141,7 +171,7 @@ const styles = StyleSheet.create({
         width: 64,
         height: 64,
         borderRadius: 32,
-        backgroundColor: modernColors.primaryLight,
+        backgroundColor: '#EEF2FF',
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: 12,
@@ -164,7 +194,7 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
     advantagesContainer: {
-        backgroundColor: modernColors.successLight,
+        backgroundColor: '#F0FDF4',
         borderRadius: 12,
         padding: 16,
         marginBottom: 16,
@@ -224,6 +254,31 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '600',
         color: '#FFFFFF',
+    },
+    buttonReuse: {
+        backgroundColor: '#10B981',
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        flex: undefined,
+        width: '100%',
+    },
+    buttonReuseText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#FFFFFF',
+    },
+    reuseContainer: {
+        paddingHorizontal: 20,
+        paddingBottom: 12,
+    },
+    reuseHint: {
+        fontSize: 11,
+        color: modernColors.textSecondary,
+        textAlign: 'center',
+        marginTop: 6,
+        fontStyle: 'italic',
     },
 });
 

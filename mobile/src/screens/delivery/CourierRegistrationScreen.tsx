@@ -19,6 +19,7 @@ import PaymentMethodSelector from '../../components/PaymentMethodSelector';
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useToaster } from '../../components/ToasterProvider';
+import TimeSlotPicker from '../../components/delivery/TimeSlotPicker';
 import { VEHICLE_TRANSPORT_OPTIONS, type VehicleType } from '../../config/deliveryConfig';
 import { useAuth } from '../../contexts/AuthContext';
 import { deliveryApi } from '../../services/api';
@@ -92,10 +93,8 @@ const CourierRegistrationScreen: React.FC = () => {
     const [insuranceDocument, setInsuranceDocument] = useState<DocumentFile | null>(null);
     const [locationPlan, setLocationPlan] = useState<DocumentFile | null>(null); // ✅ NOUVEAU: Plan de localisation (obligatoire)
 
-    // Disponibilités
-    const [availabilityDays, setAvailabilityDays] = useState<string[]>([]);
-    const [availabilityStart, setAvailabilityStart] = useState('08:00');
-    const [availabilityEnd, setAvailabilityEnd] = useState('18:00');
+    // Disponibilités - ✅ REFONTE: Utiliser TimeSlotPicker avec schedule JSON
+    const [availabilitySchedule, setAvailabilitySchedule] = useState<string>('{}');
 
     // Autres
     const [bio, setBio] = useState('');
@@ -459,12 +458,27 @@ const CourierRegistrationScreen: React.FC = () => {
                     setCourierType(profile.courier_type);
                 }
 
-                // Charger les disponibilités
+                // Charger les disponibilités - ✅ REFONTE: Convertir ancien format vers nouveau schedule JSON
                 if (profile.availability) {
-                    if (profile.availability.days) setAvailabilityDays(profile.availability.days);
-                    if (profile.availability.hours) {
-                        if (profile.availability.hours.start) setAvailabilityStart(profile.availability.hours.start);
-                        if (profile.availability.hours.end) setAvailabilityEnd(profile.availability.hours.end);
+                    if (profile.availability.schedule) {
+                        // Nouveau format: schedule JSON direct
+                        setAvailabilitySchedule(typeof profile.availability.schedule === 'string'
+                            ? profile.availability.schedule
+                            : JSON.stringify(profile.availability.schedule, null, 2));
+                    } else if (profile.availability.days && Array.isArray(profile.availability.days)) {
+                        // Ancien format: days[] + hours.start/end -> convertir en schedule JSON
+                        const dayMapping: Record<string, string> = {
+                            'monday': 'lundi', 'tuesday': 'mardi', 'wednesday': 'mercredi',
+                            'thursday': 'jeudi', 'friday': 'vendredi', 'saturday': 'samedi', 'sunday': 'dimanche'
+                        };
+                        const start = profile.availability.hours?.start || '08:00';
+                        const end = profile.availability.hours?.end || '18:00';
+                        const schedule: Record<string, Array<{ start: string; end: string }>> = {};
+                        profile.availability.days.forEach((day: string) => {
+                            const frenchDay = dayMapping[day] || day;
+                            schedule[frenchDay] = [{ start, end }];
+                        });
+                        setAvailabilitySchedule(JSON.stringify(schedule, null, 2));
                     }
                 }
 
@@ -588,11 +602,6 @@ const CourierRegistrationScreen: React.FC = () => {
         }
     };
 
-    const toggleAvailabilityDay = (day: string) => {
-        setAvailabilityDays(prev =>
-            prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]
-        );
-    };
 
     const convertFileToBase64 = async (file: DocumentFile): Promise<string> => {
         try {
@@ -650,8 +659,15 @@ const CourierRegistrationScreen: React.FC = () => {
             Alert.alert('Erreur', 'Le plan de localisation est obligatoire');
             return false;
         }
-        if (availabilityDays.length === 0) {
-            Alert.alert('Erreur', 'Sélectionnez au moins un jour de disponibilité');
+        // ✅ REFONTE: Vérifier le schedule JSON au lieu de availabilityDays
+        try {
+            const parsedSchedule = JSON.parse(availabilitySchedule || '{}');
+            if (Object.keys(parsedSchedule).length === 0) {
+                Alert.alert('Erreur', 'Sélectionnez au moins un jour de disponibilité avec des plages horaires');
+                return false;
+            }
+        } catch {
+            Alert.alert('Erreur', 'Sélectionnez au moins un jour de disponibilité avec des plages horaires');
             return false;
         }
         // ✅ NOUVEAU 2026-01-04: Vérifier que le partenaire est sélectionné
@@ -730,10 +746,29 @@ const CourierRegistrationScreen: React.FC = () => {
                     vehicleModel,
                     licensePlate,
                 },
-                availability: {
-                    days: availabilityDays,
-                    hours: { start: availabilityStart, end: availabilityEnd },
-                },
+                availability: (() => {
+                    // ✅ REFONTE: Convertir schedule JSON vers le format API (days[] + hours + schedule)
+                    const dayMapping: Record<string, string> = {
+                        'lundi': 'monday', 'mardi': 'tuesday', 'mercredi': 'wednesday',
+                        'jeudi': 'thursday', 'vendredi': 'friday', 'samedi': 'saturday', 'dimanche': 'sunday'
+                    };
+                    try {
+                        const parsed = JSON.parse(availabilitySchedule || '{}');
+                        const days = Object.keys(parsed)
+                            .filter(k => parsed[k] && parsed[k].length > 0)
+                            .map(k => dayMapping[k] || k);
+                        // Utiliser la première plage horaire comme hours général (compatibilité)
+                        const allSlots = Object.values(parsed).flat() as Array<{ start: string; end: string }>;
+                        const firstSlot = allSlots[0] || { start: '08:00', end: '18:00' };
+                        return {
+                            days,
+                            hours: { start: firstSlot.start, end: firstSlot.end },
+                            schedule: parsed, // ✅ NOUVEAU: Envoyer aussi le schedule détaillé
+                        };
+                    } catch {
+                        return { days: [], hours: { start: '08:00', end: '18:00' } };
+                    }
+                })(),
                 bio,
                 experience,
                 courier_type: courierType, // ✅ NOUVEAU: Type de coursier (obligatoire)
@@ -867,16 +902,6 @@ const CourierRegistrationScreen: React.FC = () => {
             setLoading(false);
         }
     };
-
-    const daysOfWeek = [
-        { value: 'monday', label: 'Lun' },
-        { value: 'tuesday', label: 'Mar' },
-        { value: 'wednesday', label: 'Mer' },
-        { value: 'thursday', label: 'Jeu' },
-        { value: 'friday', label: 'Ven' },
-        { value: 'saturday', label: 'Sam' },
-        { value: 'sunday', label: 'Dim' },
-    ];
 
     // ✅ CRITIQUE 2025-12-24: Déplacer TOUS les hooks AVANT les early returns
     // pour éviter l'erreur "Rendered more hooks than during the previous render"
@@ -1449,42 +1474,13 @@ const CourierRegistrationScreen: React.FC = () => {
                 {/* Disponibilités */}
                 <NativeCard style={styles.card}>
                     <Text style={styles.sectionTitle}>Disponibilités</Text>
-                    <View style={styles.daysContainer}>
-                        {daysOfWeek.map((day) => (
-                            <TouchableOpacity
-                                key={day.value}
-                                style={[
-                                    styles.dayButton,
-                                    availabilityDays.includes(day.value) && styles.dayButtonSelected,
-                                ]}
-                                onPress={() => toggleAvailabilityDay(day.value)}
-                            >
-                                <Text
-                                    style={[
-                                        styles.dayButtonText,
-                                        availabilityDays.includes(day.value) && styles.dayButtonTextSelected,
-                                    ]}
-                                >
-                                    {day.label}
-                                </Text>
-                            </TouchableOpacity>
-                        ))}
-                    </View>
-                    <View style={styles.timeRow}>
-                        <TextInput
-                            style={[styles.input, styles.timeInput]}
-                            placeholder="08:00"
-                            value={availabilityStart}
-                            onChangeText={setAvailabilityStart}
-                        />
-                        <Text style={styles.timeSeparator}>-</Text>
-                        <TextInput
-                            style={[styles.input, styles.timeInput]}
-                            placeholder="18:00"
-                            value={availabilityEnd}
-                            onChangeText={setAvailabilityEnd}
-                        />
-                    </View>
+                    <Text style={styles.helperText}>
+                        Sélectionnez vos jours et plages horaires de travail. Vous pouvez configurer des horaires différents pour chaque jour.
+                    </Text>
+                    <TimeSlotPicker
+                        value={availabilitySchedule}
+                        onChange={setAvailabilitySchedule}
+                    />
                 </NativeCard>
 
                 {/* Bio et expérience */}

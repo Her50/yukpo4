@@ -191,6 +191,12 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   } | null>(null);
   // ✅ NOUVEAU: État pour le modal de confirmation de livraison automatique
   const [showDeliveryAutoPrompt, setShowDeliveryAutoPrompt] = useState(false);
+  // ✅ NOUVEAU: État pour la réutilisation intelligente de config livraison existante
+  const [existingDeliveryConfig, setExistingDeliveryConfig] = useState<{
+    hasConfig: boolean;
+    productName: string;
+    productIndex: number;
+  } | null>(null);
   // ✅ NOUVEAU 2026-02-10: États pour Google Business
   const [showGoogleBusinessModal, setShowGoogleBusinessModal] = useState(false);
   const [isFirstServiceCreation, setIsFirstServiceCreation] = useState(false);
@@ -315,6 +321,37 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     isPrestation: boolean;
     cout?: number;
   } | null>(null);
+
+  // ✅ NOUVEAU: Charger les configs existantes quand un produit est créé avec succès
+  useEffect(() => {
+    const checkExistingConfigs = async () => {
+      if (!successModalData || successModalData.isPrestation || successModalData.productIndex < 0) return;
+      try {
+        const response = await deliveryApi.listProductDeliveryConfigs(successModalData.serviceId);
+        if (response.success && response.data) {
+          const data = response.data as any;
+          const products = Array.isArray(data.products) ? data.products : [];
+          const configuredProducts = products.filter(
+            (p: any) => p.index !== successModalData.productIndex && p.is_configured
+          );
+          if (configuredProducts.length > 0) {
+            setExistingDeliveryConfig({
+              hasConfig: true,
+              productName: configuredProducts[0].name || 'Produit existant',
+              productIndex: configuredProducts[0].index,
+            });
+          } else {
+            setExistingDeliveryConfig(null);
+          }
+        }
+      } catch (error) {
+        console.warn('[FormulaireYukpoIntelligent] Erreur vérification configs existantes:', error);
+        setExistingDeliveryConfig(null);
+      }
+    };
+    checkExistingConfigs();
+  }, [successModalData]);
+
   // ✅ SUPPRIMÉ: products et setProducts - Les produits sont maintenant gérés via les champs dynamiques (autocomplete, price_variant)
   const [paymentMethod, setPaymentMethod] = useState<any>(null); // ✅ NOUVEAU: Mode de paiement
 
@@ -3726,6 +3763,29 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       return;
     }
 
+    // ✅ NOUVEAU: Validation du prix obligatoire pour les produits (sauf si variantes de prix définies)
+    const hasPriceVariant = valeursFormulaire.variabilite_prix || valeursFormulaire.price_variant || valeursFormulaire.variation_prix;
+    const hasModalites = hasPriceVariant && typeof hasPriceVariant === 'object' && Array.isArray((hasPriceVariant as any).modalites) && (hasPriceVariant as any).modalites.length > 0;
+    if (!hasModalites) {
+      const prixValue = valeursFormulaire.prix_produit || valeursFormulaire.prix;
+      if (prixValue !== undefined && prixValue !== null) {
+        // Le champ prix existe dans le formulaire, vérifier qu'il est rempli
+        const prixNum = typeof prixValue === 'number' ? prixValue : parseFloat(String(prixValue || ''));
+        if (isNaN(prixNum) || prixNum <= 0) {
+          Alert.alert('Erreur', 'Le prix du produit est obligatoire. Veuillez indiquer un prix supérieur à 0.');
+          return;
+        }
+      } else {
+        // Le champ n'existe pas encore - vérifier si le formulaire est censé avoir un prix
+        // (les services/prestations n'ont pas forcément de prix unitaire)
+        const isProductForm = composants.some(c => c.name === 'prix_produit' || c.name === 'prix');
+        if (isProductForm) {
+          Alert.alert('Erreur', 'Le prix du produit est obligatoire. Veuillez indiquer un prix supérieur à 0.');
+          return;
+        }
+      }
+    }
+
     try {
       setLoading(true);
       setIsSubmitting(true);
@@ -5913,6 +5973,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         <DeliveryAutoConfigPromptModal
           visible={showDeliveryAutoPrompt}
           productName={successModalData.productName}
+          hasExistingConfig={!!existingDeliveryConfig?.hasConfig}
+          existingConfigProductName={existingDeliveryConfig?.productName}
           onYes={async () => {
             setShowDeliveryAutoPrompt(false);
             // ✅ Attendre un délai pour permettre la synchronisation du produit
@@ -5928,12 +5990,80 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           }}
           onNo={() => {
             setShowDeliveryAutoPrompt(false);
+            setExistingDeliveryConfig(null);
             setSuccessModalData(null);
             // Rediriger vers Home ou MesServices
             if (fromMesServices) {
               (navigation as any).navigate('MesServices');
             } else {
               (navigation as any).navigate('Home');
+            }
+          }}
+          onReuseExisting={async () => {
+            if (!existingDeliveryConfig || !successModalData) return;
+            setShowDeliveryAutoPrompt(false);
+            try {
+              // Charger la config du produit source
+              const response = await apiGet(`/api/delivery/product-config/${successModalData.serviceId}/${existingDeliveryConfig.productIndex}`);
+              if (response.success && response.data && typeof response.data === 'object' && 'config' in response.data) {
+                const data = response.data as any;
+                const c = data.config;
+                // Sauvegarder cette config pour le nouveau produit
+                const saveResponse = await apiPost('/api/delivery/product-config', {
+                  service_id: successModalData.serviceId,
+                  product_index: successModalData.productIndex,
+                  pickup_address: c.pickup_address || '',
+                  pickup_latitude: c.pickup_latitude || 0,
+                  pickup_longitude: c.pickup_longitude || 0,
+                  required_vehicle_type_id: c.required_vehicle_type_id || 1,
+                  preparation_time_minutes: c.preparation_time_minutes || 0,
+                  weight_kg: c.weight_kg || null,
+                  volume_cm3: c.volume_cm3 || null,
+                  requires_isothermal: c.requires_isothermal || false,
+                  requires_fragile_handling: c.requires_fragile_handling || false,
+                  pickup_availability_schedule: c.pickup_availability_schedule || {},
+                  pickup_instructions: c.pickup_instructions || '',
+                  billing_mode: c.billing_mode || 'standard',
+                  billing_partner_label: c.billing_partner_label || '',
+                  storage_location_id: c.storage_location_id || null,
+                });
+                if (saveResponse.success) {
+                  Alert.alert(
+                    '✅ Configuration copiée',
+                    `La configuration de livraison de "${existingDeliveryConfig.productName}" a été appliquée à "${successModalData.productName}".`,
+                    [{
+                      text: 'OK', onPress: () => {
+                        setExistingDeliveryConfig(null);
+                        setSuccessModalData(null);
+                        if (fromMesServices) {
+                          (navigation as any).navigate('MesServices');
+                        } else {
+                          (navigation as any).navigate('Home');
+                        }
+                      }
+                    }]
+                  );
+                } else {
+                  Alert.alert('Erreur', 'Impossible de copier la configuration. Veuillez configurer manuellement.');
+                  setProductDeliveryConfigData({
+                    serviceId: successModalData.serviceId,
+                    productIndex: successModalData.productIndex,
+                    productName: successModalData.productName,
+                  });
+                  setShowProductDeliveryConfig(true);
+                  setSuccessModalData(null);
+                }
+              }
+            } catch (error) {
+              console.error('[FormulaireYukpoIntelligent] Erreur copie config:', error);
+              Alert.alert('Erreur', 'Impossible de copier la configuration. Ouverture de la configuration manuelle...');
+              setProductDeliveryConfigData({
+                serviceId: successModalData.serviceId,
+                productIndex: successModalData.productIndex,
+                productName: successModalData.productName,
+              });
+              setShowProductDeliveryConfig(true);
+              setSuccessModalData(null);
             }
           }}
         />

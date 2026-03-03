@@ -18,6 +18,7 @@ import {
 } from 'react-native';
 import { Card, Paragraph, TextInput, Title } from 'react-native-paper';
 import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
+import { useToaster } from '../../components/ToasterProvider';
 import { API_BASE_URL } from '../../config/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { theme } from '../../theme/theme';
@@ -54,6 +55,7 @@ const COUNTRY_CODES = [
 const RegisterScreen: React.FC = () => {
   const navigation = useNavigation();
   const { register, loading, updateUser } = useAuth();
+  const toaster = useToaster();
 
   // États du formulaire
   const [form, setForm] = useState<RegisterForm>({
@@ -162,7 +164,7 @@ const RegisterScreen: React.FC = () => {
           });
 
           setRegistrationSuccess(true);
-          Alert.alert('Succès', `Bienvenue ! Votre compte a été créé avec Google.`);
+          toaster.success('Bienvenue ! Votre compte a été créé avec Google.');
         } else {
           throw new Error('Token non reçu du serveur');
         }
@@ -269,6 +271,9 @@ const RegisterScreen: React.FC = () => {
 
       if (response.success) {
         console.log('[RegisterScreen] Inscription réussie, redirection vers OTP');
+
+        // ✅ Toast de confirmation de création du compte
+        toaster.success('Compte créé avec succès ! Vérifiez votre téléphone.');
 
         // Naviguer vers l'écran de vérification OTP
         const userId = response.data?.id || response.data?.user_id;

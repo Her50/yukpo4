@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-    View,
-    Text,
-    TouchableOpacity,
-    StyleSheet,
     Modal,
     ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { modernColors } from '../../theme/modernTheme';
 import SafeIcon from '../SafeIcon';
@@ -54,12 +54,12 @@ const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({ value, onChange }) => {
             DAYS.forEach(day => {
                 const englishKey = day.key === 'lundi' ? 'monday' :
                     day.key === 'mardi' ? 'tuesday' :
-                    day.key === 'mercredi' ? 'wednesday' :
-                    day.key === 'jeudi' ? 'thursday' :
-                    day.key === 'vendredi' ? 'friday' :
-                    day.key === 'samedi' ? 'saturday' :
-                    day.key === 'dimanche' ? 'sunday' : day.key;
-                
+                        day.key === 'mercredi' ? 'wednesday' :
+                            day.key === 'jeudi' ? 'thursday' :
+                                day.key === 'vendredi' ? 'friday' :
+                                    day.key === 'samedi' ? 'saturday' :
+                                        day.key === 'dimanche' ? 'sunday' : day.key;
+
                 if (parsed[day.key] || parsed[englishKey]) {
                     normalized[day.key] = parsed[day.key] || parsed[englishKey] || [];
                 }
@@ -119,17 +119,33 @@ const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({ value, onChange }) => {
         return slots.map(s => `${s.start}-${s.end}`).join(', ');
     };
 
+    const configuredDays = DAYS.filter(d => schedule[d.key] && schedule[d.key].length > 0);
+    const totalSlots = Object.values(schedule).reduce((sum, slots) => sum + slots.length, 0);
+
     return (
         <View>
             <TouchableOpacity
                 style={styles.trigger}
                 onPress={() => setModalVisible(true)}
             >
-                <Text style={styles.triggerText}>
-                    {Object.keys(schedule).length === 0
-                        ? 'Configurer les horaires...'
-                        : `${Object.keys(schedule).length} jour(s) configuré(s)`}
-                </Text>
+                <View style={styles.triggerContent}>
+                    {configuredDays.length === 0 ? (
+                        <Text style={styles.triggerPlaceholder}>Configurer les horaires...</Text>
+                    ) : (
+                        <View style={styles.triggerSummary}>
+                            <View style={styles.triggerChips}>
+                                {configuredDays.map(d => (
+                                    <View key={d.key} style={styles.dayChip}>
+                                        <Text style={styles.dayChipText}>{d.label.substring(0, 3)}</Text>
+                                    </View>
+                                ))}
+                            </View>
+                            <Text style={styles.triggerSubtext}>
+                                {configuredDays.length} jour(s) • {totalSlots} plage(s)
+                            </Text>
+                        </View>
+                    )}
+                </View>
                 <SafeIcon name="chevron-right" size={20} color={modernColors.textSecondary} />
             </TouchableOpacity>
 
@@ -204,8 +220,16 @@ const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({ value, onChange }) => {
                     </ScrollView>
 
                     <View style={styles.modalFooter}>
+                        <View style={styles.footerSummary}>
+                            <SafeIcon name="check-circle" size={16} color={configuredDays.length > 0 ? '#10B981' : '#9CA3AF'} />
+                            <Text style={[styles.footerSummaryText, configuredDays.length > 0 && styles.footerSummaryTextActive]}>
+                                {configuredDays.length === 0
+                                    ? 'Aucun jour configuré'
+                                    : `${configuredDays.length} jour(s), ${totalSlots} plage(s) horaire(s)`}
+                            </Text>
+                        </View>
                         <NativeButton
-                            title="Fermer"
+                            title="✅ Valider les horaires"
                             variant="primary"
                             onPress={() => setModalVisible(false)}
                         />
@@ -267,10 +291,37 @@ const styles = StyleSheet.create({
         padding: 12,
         backgroundColor: '#FFFFFF',
     },
-    triggerText: {
-        fontSize: 14,
-        color: modernColors.text,
+    triggerContent: {
         flex: 1,
+        marginRight: 8,
+    },
+    triggerPlaceholder: {
+        fontSize: 14,
+        color: modernColors.textSecondary,
+    },
+    triggerSummary: {
+        gap: 6,
+    },
+    triggerChips: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 6,
+    },
+    dayChip: {
+        backgroundColor: modernColors.primary,
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 12,
+    },
+    dayChipText: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#FFFFFF',
+    },
+    triggerSubtext: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
+        marginTop: 2,
     },
     modalContainer: {
         flex: 1,
@@ -363,6 +414,22 @@ const styles = StyleSheet.create({
         padding: 16,
         borderTopWidth: 1,
         borderTopColor: '#E5E7EB',
+        gap: 10,
+    },
+    footerSummary: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        paddingBottom: 4,
+    },
+    footerSummaryText: {
+        fontSize: 13,
+        color: '#9CA3AF',
+        fontWeight: '500',
+    },
+    footerSummaryTextActive: {
+        color: '#10B981',
     },
     timeModalOverlay: {
         flex: 1,

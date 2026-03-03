@@ -348,55 +348,46 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
 
     const handleTableValidate = useCallback(async (rows: SubCharacteristicRow[]) => {
         try {
-            // ✅ CORRECTION CRITIQUE: Construire la modalité en respectant l'ordre (productLabels → clés réelles, comme SubCharacteristicsTable)
-            const orderedLabels = getOrderedLabels();
+            // ✅ CORRECTION CRITIQUE: Utiliser les lignes du tableau DIRECTEMENT (dans leur ordre actuel)
+            // au lieu de chercher par label dans orderedLabels, car l'utilisateur peut avoir modifié les labels
+            const validRows = rows.filter(row => row.label.trim().length > 0 && row.value.trim().length > 0);
 
-            const modalityParts: string[] = [];
-
-            // Parcourir les labels dans l'ordre garanti
-            orderedLabels.forEach(label => {
-                // Trouver la ligne correspondante dans le tableau
-                const matchingRow = rows.find(row => row.label === label);
-                if (matchingRow && matchingRow.value) {
-                    modalityParts.push(matchingRow.value);
-                } else {
-                    // Si pas de ligne correspondante, utiliser la première valeur de sousCaracteristiques
-                    const defaultValue = Array.isArray(sousCaracteristiques[label]) && sousCaracteristiques[label].length > 0
-                        ? sousCaracteristiques[label][0]
-                        : '';
-                    if (defaultValue) {
-                        modalityParts.push(defaultValue);
-                    }
-                }
-            });
-
-            // Construire la modalité concaténée dans l'ordre correct
+            // Construire la modalité directement depuis les lignes du tableau (ordre = ordre des lignes)
+            const modalityParts = validRows.map(row => row.value.trim());
             const modality = modalityParts.join(separateur);
 
             // Mettre à jour les modalités sélectionnées
             const newModalities = [modality];
             setSelectedModalities(newModalities);
 
-            // Construire les sous-caractéristiques mises à jour
+            // Construire les sous-caractéristiques mises à jour depuis les lignes du tableau
             const updatedSousCaracs: Record<string, string[]> = {};
-            rows.forEach(row => {
-                if (!updatedSousCaracs[row.label]) {
-                    updatedSousCaracs[row.label] = [];
+            validRows.forEach(row => {
+                const label = row.label.trim();
+                if (!updatedSousCaracs[label]) {
+                    // Préserver les valeurs existantes de sousCaracteristiques si le label existe déjà
+                    updatedSousCaracs[label] = sousCaracteristiques[label] ? [...sousCaracteristiques[label]] : [];
                 }
-                if (!updatedSousCaracs[row.label].includes(row.value)) {
-                    updatedSousCaracs[row.label].push(row.value);
+                if (!updatedSousCaracs[label].includes(row.value.trim())) {
+                    updatedSousCaracs[label].push(row.value.trim());
                 }
             });
 
+            // ✅ Mettre à jour productLabels avec les labels actuels du tableau (pour préserver l'ordre)
+            const updatedProductLabels = validRows.map(row => row.label.trim());
+
             // ✅ CRITIQUE : Appeler onChange AVANT la sauvegarde DB pour mettre à jour le formulaire
-            // Cela garantit que les modifications sont dans le formulaire même si la sauvegarde DB échoue
             onChange(newModalities, updatedSousCaracs);
 
             // Masquer le tableau et afficher les chips
             setShowTable(false);
 
             // ✅ NOUVEAU : Sauvegarder dans la DB avec gestion d'erreur
-            console.log('[LinearAutocompleteEditor] 💾 Sauvegarde sous-caractéristiques dans DB...');
+            console.log('[LinearAutocompleteEditor] 💾 Sauvegarde sous-caractéristiques dans DB...', {
+                modality,
+                updatedProductLabels,
+                nbSousCaracs: Object.keys(updatedSousCaracs).length
+            });
             const savedIds = await autocompleteHistoryService.historizeField(
                 identifiantBase,
                 newModalities,
@@ -470,54 +461,34 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                         separateur={separateur}
                         onValidate={handleTableValidate}
                         initialRows={tableRows.length > 0 ? tableRows : undefined}
-                        valeur={value && value.length > 0 ? value[0] : undefined} // ✅ NOUVEAU : Passer la valeur parsée
-                        productLabels={productLabels} // ✅ NOUVEAU : Passer l'ordre garanti des labels
+                        valeur={value && value.length > 0 ? value[0] : undefined}
+                        productLabels={productLabels}
                         onRowsChange={(rows) => {
-                            // ✅ NOUVEAU : Sauvegarder automatiquement les modifications dans le formulaire (sans DB)
-                            // Cela garantit que les modifications sont sauvegardées même si l'utilisateur ne clique pas "validé"
+                            // ✅ CORRECTION CRITIQUE: Utiliser les lignes du tableau directement
+                            // au lieu de chercher par label dans orderedLabels (les labels peuvent avoir été modifiés)
                             const validRows = rows.filter(row =>
                                 row.label.trim().length > 0 && row.value.trim().length > 0
                             );
 
                             if (validRows.length > 0) {
-                                // ✅ Même ordre que SubCharacteristicsTable (productLabels → clés réelles)
-                                const orderedLabels = getOrderedLabels();
-
-                                const modalityParts: string[] = [];
-
-                                // Parcourir les labels dans l'ordre garanti
-                                orderedLabels.forEach(label => {
-                                    // Trouver la ligne correspondante dans le tableau
-                                    const matchingRow = validRows.find(row => row.label === label);
-                                    if (matchingRow && matchingRow.value) {
-                                        modalityParts.push(matchingRow.value);
-                                    } else {
-                                        // Si pas de ligne correspondante, utiliser la première valeur de sousCaracteristiques
-                                        const defaultValue = Array.isArray(sousCaracteristiques[label]) && sousCaracteristiques[label].length > 0
-                                            ? sousCaracteristiques[label][0]
-                                            : '';
-                                        if (defaultValue) {
-                                            modalityParts.push(defaultValue);
-                                        }
-                                    }
-                                });
-
-                                // Construire la modalité concaténée dans l'ordre correct
+                                // Construire la modalité directement depuis les lignes (ordre = ordre du tableau)
+                                const modalityParts = validRows.map(row => row.value.trim());
                                 const modality = modalityParts.join(separateur);
 
+                                // Construire les sous-caractéristiques depuis les lignes du tableau
                                 const updatedSousCaracs: Record<string, string[]> = {};
                                 validRows.forEach(row => {
-                                    if (!updatedSousCaracs[row.label]) {
-                                        updatedSousCaracs[row.label] = [];
+                                    const label = row.label.trim();
+                                    if (!updatedSousCaracs[label]) {
+                                        updatedSousCaracs[label] = sousCaracteristiques[label] ? [...sousCaracteristiques[label]] : [];
                                     }
-                                    if (!updatedSousCaracs[row.label].includes(row.value)) {
-                                        updatedSousCaracs[row.label].push(row.value);
+                                    if (!updatedSousCaracs[label].includes(row.value.trim())) {
+                                        updatedSousCaracs[label].push(row.value.trim());
                                     }
                                 });
 
-                                // ✅ Sauvegarder dans le formulaire (sans sauvegarde DB immédiate)
                                 onChange([modality], updatedSousCaracs);
-                                console.log('[LinearAutocompleteEditor] 💾 Modifications sauvegardées automatiquement dans le formulaire (ordre garanti par productLabels)');
+                                console.log('[LinearAutocompleteEditor] 💾 Modifications sauvegardées automatiquement (lignes directes du tableau)');
                             }
                         }}
                     />
