@@ -2,12 +2,17 @@
 // @ts-check
 import React from "react";
 import { Link } from "react-router-dom";
-import { ROUTES } from "@/routes/AppRoutesRegistry";
 
-// Utilitaire React pour branding Yukpo
-export const YukpoBrand: React.FC<{className?: string}> = ({className = ""}) => (
-  <span className={"font-bold " + className}>
-    <span className="text-yellow-500">Yuk</span><span className="text-red-600">po</span>
+// Utilitaire React pour branding Yukpo — couleurs du logo officiel (bleu→violet)
+export const YukpoBrand: React.FC<{ className?: string; variant?: 'default' | 'onDark' | 'solid' }> = ({ className = "", variant = "default" }) => (
+  <span className={"font-black tracking-tight " + className}>
+    {variant === 'onDark' ? (
+      <><span className="text-white">Yuk</span><span className="text-white/85">po</span></>
+    ) : variant === 'solid' ? (
+      <span style={{ color: '#4A1D96' }}>Yukpo</span>
+    ) : (
+      <><span style={{ color: '#3B82F6' }}>Yuk</span><span style={{ color: '#7C3AED' }}>po</span></>
+    )}
   </span>
 );
 
@@ -25,7 +30,7 @@ const uniqueLinks = legalLinks.filter(
 const Footer: React.FC = () => (
   <footer className="w-full border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 text-sm py-10 px-6">
     <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
-      
+
       {/* Bloc 1 : Brand + Signature */}
       <div className="flex flex-col gap-2">
         <div className="text-lg font-bold text-gray-800 dark:text-white">

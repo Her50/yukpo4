@@ -1,12 +1,14 @@
-import React from "react";
 import ModeToggle from "@/components/ui/ModeToggle";
 import { motion } from "framer-motion";
+import React from "react";
 
 const HomeMinimalLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-white to-slate-100 dark:from-black dark:to-gray-900">
       <div className="flex justify-between items-center p-4 max-w-6xl mx-auto">
-        <h1 className="text-xl font-bold text-primary dark:text-white">Yukpo</h1>
+        <h1 className="text-xl font-black tracking-tight">
+          <span style={{ color: '#3B82F6' }}>Yuk</span><span style={{ color: '#7C3AED' }}>po</span>
+        </h1>
         <ModeToggle />
       </div>
 

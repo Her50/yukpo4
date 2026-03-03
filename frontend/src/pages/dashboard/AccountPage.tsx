@@ -1,7 +1,7 @@
 ﻿// @ts-check
-import React, { useState } from "react";
-import ResponsiveContainer from "@/components/layout/ResponsiveContainer";
 import { RecentViewed } from "@/components/history/RecentViewed";
+import ResponsiveContainer from "@/components/layout/ResponsiveContainer";
+import { useState } from "react";
 // import { MessageInbox } from '@/components/messaging/MessageInbox'; // à activer si disponible
 import { ROUTES } from "@/routes/AppRoutesRegistry";
 
@@ -27,7 +27,7 @@ function AccountPage() {
       <div className="space-y-6">
         <h1 className="text-2xl font-bold">
           👤 Mon compte{" "}
-          <span className="bg-gradient-to-r from-yellow-500 via-orange-500 to-red-500 bg-clip-text text-transparent">
+          <span className="bg-gradient-to-r from-blue-500 via-indigo-500 to-violet-600 bg-clip-text text-transparent">
             Yukpo
           </span>
         </h1>

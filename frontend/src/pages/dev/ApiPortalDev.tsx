@@ -1,5 +1,5 @@
-import React from "react";
 import ResponsiveContainer from "@/components/layout/ResponsiveContainer";
+import React from "react";
 
 const ApiPortalDev: React.FC = () => (
   <main className="p-10 text-center">
@@ -7,7 +7,7 @@ const ApiPortalDev: React.FC = () => (
       <h1 className="text-2xl font-bold mb-4">🛠️ Portail API – Développement</h1>
       <p className="text-gray-600">
         Cette page de{" "}
-        <span className="bg-gradient-to-r from-yellow-500 via-orange-500 to-red-500 bg-clip-text text-transparent font-semibold">
+        <span className="bg-gradient-to-r from-blue-500 via-indigo-500 to-violet-600 bg-clip-text text-transparent font-semibold">
           Yukpo
         </span>{" "}
         est en construction intelligente.

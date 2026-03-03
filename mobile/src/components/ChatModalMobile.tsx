@@ -1,3 +1,5 @@
+import { FontAwesome } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { Audio } from 'expo-av';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
@@ -17,8 +19,6 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { FontAwesome } from '@expo/vector-icons';
 import { useWebSocketChat } from '../hooks/useWebSocketChat';
 import { apiGet, apiPost } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
@@ -715,7 +715,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                     const configResponse = await apiGet(
                         `/api/delivery/product-config/${service.id}/${productIndex}`
                     );
-                    
+
                     if (configResponse.success && configResponse.data?.is_configured === true) {
                         setHasDeliveryConfig(true);
                         setDeliveryEnabled(true);
@@ -801,20 +801,20 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                             // ✅ CORRIGÉ : Éviter le doublon du nom du prestataire dans le message
                                             // Si le titre du service contient déjà le nom du prestataire, on ne le répète pas
                                             const serviceName = titreService || 'votre service';
-                                            
+
                                             // ✅ AMÉLIORÉ: Vérifier si le nom du prestataire est déjà dans le titre du service
                                             // Normaliser les noms pour la comparaison (enlever les accents, mettre en minuscule)
                                             const normalizeName = (name: string) => name.toLowerCase()
                                                 .normalize('NFD')
                                                 .replace(/[\u0300-\u036f]/g, '')
                                                 .trim();
-                                            
+
                                             const normalizedPrestataireName = normalizeName(nomPrestataire);
                                             const normalizedServiceName = normalizeName(serviceName);
-                                            
+
                                             // Vérifier si le nom du prestataire est déjà dans le titre du service
                                             const nameInService = normalizedServiceName.includes(normalizedPrestataireName);
-                                            
+
                                             // ✅ CORRIGÉ: Construire le message sans doublon
                                             let messageText: string;
                                             if (nameInService) {
@@ -824,7 +824,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                                 // Le nom n'est pas dans le service, l'inclure
                                                 messageText = `Bonjour ${nomPrestataire}, je souhaite discuter de ${serviceName}.`;
                                             }
-                                            
+
                                             // ✅ DEBUG: Logger pour diagnostiquer
                                             if (__DEV__) {
                                                 console.log('[ChatModalMobile] 📱 WhatsApp message debug:', {
@@ -834,7 +834,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                                     messageText,
                                                 });
                                             }
-                                            
+
                                             const message = encodeURIComponent(messageText);
                                             const whatsappUrl = `whatsapp://send?phone=${phoneNumber}&text=${message}`;
 
@@ -1010,16 +1010,16 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                                 ]}
                                                 onProductLinkPress={(serviceId, productIndex) => {
                                                     // Navigation vers le produit
-                                                    (navigation as any).navigate('ServiceDetail', { 
-                                                        serviceId, 
-                                                        productIndex 
+                                                    (navigation as any).navigate('ServiceDetail', {
+                                                        serviceId,
+                                                        productIndex
                                                     });
                                                 }}
                                                 onReviewLinkPress={(serviceId) => {
                                                     // Navigation vers les avis du produit
-                                                    (navigation as any).navigate('ServiceDetail', { 
-                                                        serviceId, 
-                                                        showReviews: true 
+                                                    (navigation as any).navigate('ServiceDetail', {
+                                                        serviceId,
+                                                        showReviews: true
                                                     });
                                                 }}
                                             />
@@ -1295,11 +1295,11 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                         {(() => {
                             // ✅ CORRECTION: Vérifier si l'utilisateur est propriétaire du service
                             const isOwner = user?.id && service?.user_id && Number(user.id) === Number(service.user_id);
-                            
+
                             if (!isOwner) {
                                 return null; // Ne pas afficher le bouton si l'utilisateur n'est pas propriétaire
                             }
-                            
+
                             return (
                                 <TouchableOpacity
                                     style={styles.mediaButton}
@@ -1309,18 +1309,18 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                             return;
                                         }
 
-                                        // ✅ CORRECTION: Générer un lien HTTP/HTTPS cliquable au lieu d'un deep link
-                                        // Le deep link yukpo:// n'est pas cliquable dans le chat
-                                        const reviewLink = `https://yukpomnang.com/reviews/${service.id}`;
-                                        const productName = getServiceFieldValue(service?.data?.titre_service) || 
-                                                           getServiceFieldValue(service?.data?.nom_produit) || 
-                                                           'ce produit';
-                                        
-                                        // ✅ CORRECTION: Pré-remplir le message avec le lien HTTP cliquable
-                                        const messageWithLink = `Bonjour, j'aimerais avoir votre avis sur ${productName}.\n\nLien pour laisser un avis : ${reviewLink}`;
-                                        
+                                        // ✅ CORRIGÉ 2026-03-03: Utiliser deep link yukpo://reviews/ au lieu de https://yukpomnang.com/reviews/
+                                        // yukpomnang.com est down (Cloudflare 522) et LinkableText détecte yukpo://reviews/ comme lien d'avis
+                                        const reviewLink = `yukpo://reviews/${service.id}`;
+                                        const productName = getServiceFieldValue(service?.data?.titre_service) ||
+                                            getServiceFieldValue(service?.data?.nom_produit) ||
+                                            'ce produit';
+
+                                        // ✅ CORRIGÉ: Message plus clair avec le lien sur sa propre ligne
+                                        const messageWithLink = `Bonjour, j'aimerais avoir votre avis sur ${productName}.\n\n${reviewLink}`;
+
                                         setNewMessage(messageWithLink);
-                                        
+
                                         // Scroll vers le bas pour montrer le message
                                         setTimeout(() => {
                                             scrollViewRef.current?.scrollToEnd({ animated: true });
@@ -1346,9 +1346,9 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                     const response = await apiGet(`/api/services/${service.id}`);
                                     if (response.success && response.data) {
                                         const serviceData = response.data;
-                                        const products = serviceData.data?.produits?.valeur || 
-                                                       serviceData.produits || 
-                                                       [];
+                                        const products = serviceData.data?.produits?.valeur ||
+                                            serviceData.produits ||
+                                            [];
 
                                         if (products.length === 0) {
                                             Alert.alert('Aucun produit', 'Ce service n\'a pas de produits disponibles');
@@ -1359,12 +1359,12 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                         const productsWithPrice = products.filter((product: any) => {
                                             const price = product.price || product.prix || product.prix_unitaire;
                                             if (!price) return false;
-                                            
+
                                             // Vérifier que le prix est un nombre valide et > 0
-                                            const numericPrice = typeof price === 'number' 
-                                                ? price 
+                                            const numericPrice = typeof price === 'number'
+                                                ? price
                                                 : parseFloat(price);
-                                            
+
                                             return !isNaN(numericPrice) && numericPrice > 0;
                                         });
 
@@ -1376,14 +1376,14 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                         // Si un seul produit avec prix, ouvrir directement le modal
                                         if (productsWithPrice.length === 1) {
                                             const product = productsWithPrice[0];
-                                            const originalPrice = typeof product.price === 'number' 
-                                                ? product.price 
+                                            const originalPrice = typeof product.price === 'number'
+                                                ? product.price
                                                 : typeof product.prix === 'number'
                                                     ? product.prix
                                                     : typeof product.prix_unitaire === 'number'
                                                         ? product.prix_unitaire
                                                         : parseFloat(product.price || product.prix || product.prix_unitaire) || 0;
-                                            
+
                                             if (originalPrice <= 0) {
                                                 Alert.alert('Erreur', 'Le prix de ce produit n\'est pas valide');
                                                 return;
@@ -1401,19 +1401,19 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                                 'Négocier le prix',
                                                 'Choisissez le produit pour lequel vous voulez négocier le prix',
                                                 productsWithPrice.map((product: any, index: number) => {
-                                                    const originalPrice = typeof product.price === 'number' 
-                                                        ? product.price 
+                                                    const originalPrice = typeof product.price === 'number'
+                                                        ? product.price
                                                         : typeof product.prix === 'number'
                                                             ? product.prix
                                                             : typeof product.prix_unitaire === 'number'
                                                                 ? product.prix_unitaire
                                                                 : parseFloat(product.price || product.prix || product.prix_unitaire) || 0;
-                                                    
+
                                                     // ✅ CORRIGÉ : Vérifier que le prix est valide avant de l'afficher
                                                     if (originalPrice <= 0) {
                                                         return null; // Ignorer les produits sans prix valide
                                                     }
-                                                    
+
                                                     return {
                                                         text: `${product.name || product.titre || `Produit ${index + 1}`} - ${originalPrice.toLocaleString('fr-FR')} FCFA`,
                                                         onPress: () => {
@@ -1422,7 +1422,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                                                 Alert.alert('Erreur', 'Le prix de ce produit n\'est pas valide');
                                                                 return;
                                                             }
-                                                            
+
                                                             setSelectedProductForNegotiation({
                                                                 product,
                                                                 productIndex: products.indexOf(product),
@@ -1560,11 +1560,11 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                 serviceId={service?.id}
                 productIndex={selectedProductForDelivery?.productIndex}
                 // ✅ CORRIGÉ: Utiliser product_name depuis le backend
-                productName={selectedProductForDelivery?.product?.product_name || 
-                            selectedProductForDelivery?.product?.nom || 
-                            selectedProductForDelivery?.product?.name || 
-                            selectedProductForDelivery?.product?.titre || 
-                            'Produit'}
+                productName={selectedProductForDelivery?.product?.product_name ||
+                    selectedProductForDelivery?.product?.nom ||
+                    selectedProductForDelivery?.product?.name ||
+                    selectedProductForDelivery?.product?.titre ||
+                    'Produit'}
                 conversationId={effectiveServiceId}
                 clientUserId={user?.id}
                 onSuccess={(deliveryId) => {
@@ -1841,10 +1841,12 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     messagesContent: {
-        padding: 16,
+        paddingHorizontal: 16,
+        paddingTop: 12,
+        paddingBottom: 20,
     },
     messageContainer: {
-        marginBottom: 12,
+        marginBottom: 16,
     },
     messageContainerLeft: {
         alignItems: 'flex-start',
@@ -1853,9 +1855,10 @@ const styles = StyleSheet.create({
         alignItems: 'flex-end',
     },
     messageBubble: {
-        maxWidth: '80%',
-        padding: 12,
-        borderRadius: 16,
+        maxWidth: '85%',
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+        borderRadius: 18,
     },
     messageBubbleLeft: {
         backgroundColor: modernColors.surface,
@@ -1866,8 +1869,8 @@ const styles = StyleSheet.create({
         borderBottomRightRadius: 4,
     },
     messageText: {
-        fontSize: 16,
-        lineHeight: 20,
+        fontSize: 15,
+        lineHeight: 22,
     },
     messageTextLeft: {
         color: modernColors.text,
@@ -1879,7 +1882,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginTop: 4,
+        marginTop: 8,
     },
     messageTime: {
         fontSize: 11,
@@ -2175,9 +2178,9 @@ const styles = StyleSheet.create({
     },
     // ✅ NOUVEAU: Styles pour les médias dans les messages
     messageImage: {
-        width: 200,
-        height: 150,
-        borderRadius: 12,
+        width: 220,
+        height: 165,
+        borderRadius: 14,
         marginBottom: 8,
     },
     audioContainer: {

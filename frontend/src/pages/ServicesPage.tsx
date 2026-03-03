@@ -1,13 +1,13 @@
 // ✅ src/pages/ServicesPage.tsx (version publique, branding Yukpo appliqué, IA supprimée)
-import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import AppLayout from "@/components/layout/AppLayout";
-import { ROUTES } from "@/routes/AppRoutesRegistry";
 import { useUser } from "@/hooks/useUser";
 import { useUserPlan } from "@/hooks/useUserPlan";
+import { ROUTES } from "@/routes/AppRoutesRegistry";
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 const YukpoBrand = () => (
-  <span className="bg-gradient-to-r from-yellow-500 via-orange-500 to-red-500 bg-clip-text text-transparent font-bold">
+  <span className="bg-gradient-to-r from-blue-500 via-indigo-500 to-violet-600 bg-clip-text text-transparent font-bold">
     Yukpo
   </span>
 );
@@ -57,7 +57,7 @@ const ServicesPage: React.FC = () => {
 
   return (
     <AppLayout>
-      <section className="py-16 px-4 font-sans text-center bg-gradient-to-br from-yellow-50 via-white to-red-50">
+      <section className="py-16 px-4 font-sans text-center bg-gradient-to-br from-blue-50 via-white to-violet-50">
         <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-12">
           Comment <YukpoBrand /> peut vous aider ?
         </h1>

@@ -117,7 +117,7 @@ const MonProfil: React.FC = () => {
           </a>
           <a href={ROUTES.CONTACT} className="text-blue-600 hover:underline">
             Contacter l’équipe{" "}
-            <span className="bg-gradient-to-r from-yellow-500 via-orange-500 to-red-500 bg-clip-text text-transparent font-semibold">
+            <span className="bg-gradient-to-r from-blue-500 via-indigo-500 to-violet-600 bg-clip-text text-transparent font-semibold">
               Yukpo
             </span>
           </a>

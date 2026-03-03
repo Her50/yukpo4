@@ -1,7 +1,7 @@
 // @ts-check
-import React from "react";
 import ResponsiveContainer from "@/components/layout/ResponsiveContainer";
 import { ROUTES } from "@/routes/AppRoutesRegistry";
+import React from "react";
 
 const MonitoringDashboard: React.FC = () => {
   return (
@@ -12,7 +12,7 @@ const MonitoringDashboard: React.FC = () => {
 
       <p className="text-gray-700 mb-6">
         Visualisez ici les données de surveillance, alertes et performances du système{" "}
-        <span className="bg-gradient-to-r from-yellow-500 via-orange-500 to-red-500 bg-clip-text text-transparent font-bold">Yukpo</span>.
+        <span className="bg-gradient-to-r from-blue-500 via-indigo-500 to-violet-600 bg-clip-text text-transparent font-bold">Yukpo</span>.
       </p>
 
       {/* 🚀 CONTEXTUAL BUTTONS */}

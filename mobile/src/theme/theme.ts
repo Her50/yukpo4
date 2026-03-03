@@ -2,8 +2,8 @@ export const theme = {
   colors: {
     // Couleurs principales Yukpo
     primary: '#0F52BA', // Bleu principal
-    secondary: '#F59E0B', // Jaune Yukpo
-    accent: '#DC2626', // Rouge Yukpo
+    secondary: '#3B82F6', // Bleu Yukpo (logo officiel)
+    accent: '#7C3AED', // Violet Yukpo (logo officiel)
 
     // Couleurs de fond
     background: '#F8FAFC',
@@ -25,9 +25,9 @@ export const theme = {
     borderLight: '#F3F4F6',
 
     // Couleurs de gradient
-    gradientStart: '#FEF3C7',
-    gradientMiddle: '#FFFFFF',
-    gradientEnd: '#FCE7F3',
+    gradientStart: '#3B82F6', // Bleu logo
+    gradientMiddle: '#6366F1', // Indigo milieu
+    gradientEnd: '#7C3AED', // Violet logo
   },
 
   spacing: {

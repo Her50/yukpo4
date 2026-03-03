@@ -79,7 +79,7 @@ const LoginPage: React.FC = () => {
           }
 
           login(data.token);
-          
+
           // Redirection intelligente selon la source
           if (isSharedService && redirectUrl) {
             // Rediriger vers le service partagé
@@ -117,7 +117,7 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    <main className="min-h-screen pt-28 bg-gradient-to-br from-yellow-50 via-white to-red-50 dark:from-gray-900 dark:via-gray-950 dark:to-gray-900">
+    <main className="min-h-screen pt-28 bg-gradient-to-br from-blue-50 via-white to-violet-50 dark:from-gray-900 dark:via-gray-950 dark:to-gray-900">
       <div className="max-w-md mx-auto bg-white dark:bg-gray-900 shadow-xl rounded-xl p-8">
         {showLogoutMessage && (
           <div className="mb-4 bg-green-100 text-green-800 px-4 py-2 rounded shadow text-center">
@@ -131,7 +131,7 @@ const LoginPage: React.FC = () => {
         )}
         <h1 className="text-3xl font-bold text-center mb-4">
           Connexion {" "}
-          <span className="bg-gradient-to-r from-yellow-500 via-orange-500 to-red-500 bg-clip-text text-transparent">
+          <span className="bg-gradient-to-r from-blue-500 via-indigo-500 to-violet-600 bg-clip-text text-transparent">
             Yukpo
           </span>
         </h1>
@@ -182,7 +182,7 @@ const LoginPage: React.FC = () => {
             Crer un compte
           </Link>
         </p>
-        
+
         {/* ✅ NOUVEAU: Bouton Devenir partenaire */}
         <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
           <Link

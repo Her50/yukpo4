@@ -6,7 +6,7 @@ import { useUserPlan } from "@/hooks/useUserPlan";
 import React, { useEffect, useState } from "react";
 
 const YukpoBrand = () => (
-  <span className="bg-gradient-to-r from-yellow-500 via-orange-500 to-red-500 bg-clip-text text-transparent font-bold">
+  <span className="bg-gradient-to-r from-blue-500 via-indigo-500 to-violet-600 bg-clip-text text-transparent font-bold">
     Yukpo
   </span>
 );

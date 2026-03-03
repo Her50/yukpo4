@@ -1,6 +1,6 @@
 // ✅ NOUVEAU: Écran de détails de service générique et adaptatif
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     ScrollView,
@@ -9,9 +9,9 @@ import {
     View
 } from 'react-native';
 import ChatModalMobile from '../../components/ChatModalMobile';
-import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import ProductCommentsSection from '../../components/ProductCommentsSection';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiGet } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
@@ -21,6 +21,7 @@ interface ServiceDetailScreenProps {
         params: {
             serviceId: number;
             serviceType?: string;
+            showReviews?: boolean;
         };
     };
     navigation: any;
@@ -28,7 +29,9 @@ interface ServiceDetailScreenProps {
 
 const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({ route, navigation }) => {
     const { user } = useAuth();
-    const { serviceId, serviceType } = route.params;
+    const { serviceId, serviceType, showReviews } = route.params;
+    const scrollViewRef = useRef<ScrollView>(null);
+    const commentsSectionY = useRef<number>(0);
 
     const [loading, setLoading] = useState(true);
     const [service, setService] = useState<any>(null);
@@ -42,6 +45,15 @@ const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({ route, naviga
         loadServiceDetails();
         loadRatingStats();
     }, [serviceId]);
+
+    // ✅ NOUVEAU 2026-03-03: Auto-scroll vers les commentaires si showReviews est true
+    useEffect(() => {
+        if (showReviews && !loading && service && commentsSectionY.current > 0) {
+            setTimeout(() => {
+                scrollViewRef.current?.scrollTo({ y: commentsSectionY.current, animated: true });
+            }, 400);
+        }
+    }, [showReviews, loading, service]);
 
     const loadServiceDetails = async () => {
         try {
@@ -344,7 +356,7 @@ const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({ route, naviga
     }
 
     return (
-        <ScrollView style={styles.container}>
+        <ScrollView ref={scrollViewRef} style={styles.container}>
             <NativeCard style={styles.headerCard}>
                 <Text style={styles.title}>{service.nom}</Text>
                 {ratingStats && ratingStats.total_ratings > 0 && (
@@ -363,7 +375,12 @@ const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({ route, naviga
             {renderContextualActions()}
 
             {/* Section Avis */}
-            <View style={styles.commentsSection}>
+            <View
+                style={styles.commentsSection}
+                onLayout={(e) => {
+                    commentsSectionY.current = e.nativeEvent.layout.y;
+                }}
+            >
                 <ProductCommentsSection
                     serviceId={serviceId}
                     serviceTitle={service.nom}

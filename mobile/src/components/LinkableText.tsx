@@ -3,9 +3,9 @@
  * Détecte les URLs et les liens vers produits/avis et les rend cliquables
  */
 
-import React from 'react';
-import { Linking, StyleSheet, Text, TextProps, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import React from 'react';
+import { Linking, StyleSheet, Text, TextProps, TouchableOpacity, View } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
 
 interface LinkableTextProps extends TextProps {
@@ -20,6 +20,8 @@ const URL_PATTERN = /(https?:\/\/[^\s]+)/g;
 const PRODUCT_LINK_PATTERN = /(?:yukpomnang|yukpo):\/\/product\/([^?\s]+)(?:\?serviceId=(\d+))?(?:\/(\d+))?/g;
 // Pattern pour détecter les liens vers avis (yukpo://reviews/serviceId ou yukpomnang://reviews/serviceId)
 const REVIEW_LINK_PATTERN = /(?:yukpomnang|yukpo):\/\/reviews\/(\d+)/g;
+// ✅ NOUVEAU 2026-03-03: Pattern pour les liens HTTPS vers reviews sur yukpomnang.com
+const HTTPS_REVIEW_PATTERN = /https?:\/\/(?:www\.)?yukpomnang\.com\/reviews\/(\d+)/g;
 
 const LinkableText: React.FC<LinkableTextProps> = ({
   text,
@@ -40,7 +42,7 @@ const LinkableText: React.FC<LinkableTextProps> = ({
           const productId = productMatch[1];
           const serviceId = productMatch[2] ? parseInt(productMatch[2], 10) : (productMatch[3] ? parseInt(productMatch[3], 10) : undefined);
           const productIndex = productMatch[3] ? parseInt(productMatch[3], 10) : undefined;
-          
+
           if (onProductLinkPress && serviceId) {
             onProductLinkPress(serviceId, productIndex);
           } else {
@@ -59,14 +61,14 @@ const LinkableText: React.FC<LinkableTextProps> = ({
         const reviewMatch = url.match(/(?:yukpomnang|yukpo):\/\/reviews\/(\d+)/);
         if (reviewMatch) {
           const serviceId = parseInt(reviewMatch[1], 10);
-          
+
           if (onReviewLinkPress) {
             onReviewLinkPress(serviceId);
           } else {
             // Navigation par défaut vers les avis
-            (navigation as any).navigate('ServiceDetail', { 
-              serviceId, 
-              showReviews: true 
+            (navigation as any).navigate('ServiceDetail', {
+              serviceId,
+              showReviews: true
             });
           }
           return;
@@ -81,12 +83,12 @@ const LinkableText: React.FC<LinkableTextProps> = ({
         if (httpsMatch) {
           const productId = httpsMatch[1];
           const serviceId = httpsMatch[2];
-          
+
           // Essayer d'abord d'ouvrir le deep link (si l'app est installée)
-          const deepLink = serviceId 
+          const deepLink = serviceId
             ? `yukpomnang://product/${productId}?serviceId=${serviceId}`
             : `yukpomnang://product/${productId}`;
-          
+
           try {
             const canOpenDeepLink = await Linking.canOpenURL(deepLink);
             if (canOpenDeepLink) {
@@ -136,7 +138,7 @@ const LinkableText: React.FC<LinkableTextProps> = ({
       const productId = match[1];
       const serviceId = match[2] ? parseInt(match[2], 10) : (match[3] ? parseInt(match[3], 10) : undefined);
       const productIndex = match[3] ? parseInt(match[3], 10) : undefined;
-      
+
       allMatches.push({
         index: match.index,
         length: match[0].length,
@@ -159,6 +161,22 @@ const LinkableText: React.FC<LinkableTextProps> = ({
       });
     }
 
+    // ✅ NOUVEAU 2026-03-03: Chercher les liens HTTPS vers reviews (yukpomnang.com/reviews/...)
+    const httpsReviewRegex = /https?:\/\/(?:www\.)?yukpomnang\.com\/reviews\/(\d+)/g;
+    while ((match = httpsReviewRegex.exec(text)) !== null) {
+      // Éviter les doublons si déjà capturé par un autre pattern
+      const alreadyMatched = allMatches.some(m => m.index === match!.index);
+      if (!alreadyMatched) {
+        allMatches.push({
+          index: match.index,
+          length: match[0].length,
+          url: `yukpo://reviews/${match[1]}`,
+          type: 'review',
+          serviceId: parseInt(match[1], 10),
+        });
+      }
+    }
+
     // Chercher les URLs HTTP/HTTPS (yukpomnang.com/product/... sera traité comme un lien produit intelligent)
     while ((match = URL_PATTERN.exec(text)) !== null) {
       const url = match[0];
@@ -168,7 +186,7 @@ const LinkableText: React.FC<LinkableTextProps> = ({
         if (httpsProductMatch) {
           const productId = httpsProductMatch[1];
           const serviceId = httpsProductMatch[2] ? parseInt(httpsProductMatch[2], 10) : undefined;
-          
+
           allMatches.push({
             index: match.index,
             length: match[0].length,
@@ -180,7 +198,16 @@ const LinkableText: React.FC<LinkableTextProps> = ({
           continue;
         }
       }
-      
+
+      // ✅ CORRIGÉ 2026-03-03: Ignorer les URLs déjà capturées comme review HTTPS
+      if (url.includes('yukpomnang.com/reviews/')) {
+        continue;
+      }
+
+      // Éviter les doublons (URL déjà capturée par un autre pattern)
+      const alreadyCaptured = allMatches.some(m => m.index === match!.index);
+      if (alreadyCaptured) continue;
+
       // Autres URLs HTTP/HTTPS standard
       allMatches.push({
         index: match.index,
@@ -206,35 +233,48 @@ const LinkableText: React.FC<LinkableTextProps> = ({
 
       // Le lien
       const linkText = linkMatch.url;
-      // ✅ CORRECTION: Pour les liens produits HTTPS, afficher l'URL complète pour qu'elle soit visible et cliquable
-      // Pour les deep links, afficher un label plus court
-      const linkLabel = linkMatch.type === 'product' && !linkText.startsWith('http')
-        ? 'Voir le produit'
-        : linkMatch.type === 'product' && linkText.startsWith('http')
-        ? linkText // ✅ Afficher l'URL complète pour les liens HTTPS produits (lien intelligent)
-        : linkMatch.type === 'review'
-        ? 'Voir les avis'
-        : linkText; // ✅ Afficher l'URL complète pour les autres liens HTTP/HTTPS
+      // ✅ CORRIGÉ 2026-03-03: Labels lisibles pour tous les types de liens
+      const isReview = linkMatch.type === 'review';
+      const isProduct = linkMatch.type === 'product';
+      const linkLabel = isProduct && !linkText.startsWith('http')
+        ? '📦 Voir le produit'
+        : isProduct && linkText.startsWith('http')
+          ? '📦 Voir le produit'
+          : isReview
+            ? '⭐ Laisser un avis'
+            : linkText;
 
-      parts.push(
-        <TouchableOpacity
-          key={`link-${key++}`}
-          onPress={() => {
-            if (linkMatch.type === 'product') {
-              handleLinkPress(linkMatch.url);
-            } else if (linkMatch.type === 'review' && linkMatch.serviceId) {
-              handleLinkPress(linkMatch.url);
-            } else {
-              handleLinkPress(linkMatch.url);
-            }
-          }}
-          activeOpacity={0.7}
-        >
-          <Text style={[style, styles.linkText]}>
-            {linkLabel}
-          </Text>
-        </TouchableOpacity>
-      );
+      // ✅ CORRIGÉ 2026-03-03: Affichage en carte pour les liens spéciaux (produit, avis)
+      if (isReview || isProduct) {
+        parts.push(
+          <TouchableOpacity
+            key={`link-${key++}`}
+            onPress={() => handleLinkPress(linkMatch.url)}
+            activeOpacity={0.7}
+            style={styles.specialLinkCard}
+          >
+            <Text style={styles.specialLinkText}>
+              {linkLabel}
+            </Text>
+            <Text style={styles.specialLinkHint}>
+              Appuyez pour ouvrir
+            </Text>
+          </TouchableOpacity>
+        );
+      } else {
+        // Liens HTTP/HTTPS standard
+        parts.push(
+          <TouchableOpacity
+            key={`link-${key++}`}
+            onPress={() => handleLinkPress(linkMatch.url)}
+            activeOpacity={0.7}
+          >
+            <Text style={[style, styles.linkText]} numberOfLines={2}>
+              {linkLabel}
+            </Text>
+          </TouchableOpacity>
+        );
+      }
 
       lastIndex = linkMatch.index + linkMatch.length;
     });
@@ -263,6 +303,20 @@ const LinkableText: React.FC<LinkableTextProps> = ({
     return parsedContent;
   }
 
+  // ✅ CORRIGÉ 2026-03-03: Vérifier si le contenu contient des liens spéciaux (carte)
+  // Si oui, utiliser View au lieu de Text comme wrapper pour éviter les conflits de layout
+  const hasSpecialLinks = Array.isArray(parsedContent) && parsedContent.some(
+    (el: any) => React.isValidElement(el) && el.type === TouchableOpacity
+  );
+
+  if (hasSpecialLinks) {
+    return (
+      <View style={styles.linkableContainer}>
+        {parsedContent}
+      </View>
+    );
+  }
+
   // Sinon, wrapper dans un Text
   return (
     <Text style={style} {...textProps}>
@@ -275,7 +329,31 @@ const styles = StyleSheet.create({
   linkText: {
     color: modernColors.primary,
     textDecorationLine: 'underline',
-    fontWeight: '600',
+    fontWeight: '500',
+    fontSize: 14,
+  },
+  specialLinkCard: {
+    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(99, 102, 241, 0.3)',
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    marginVertical: 6,
+    alignItems: 'center',
+  },
+  specialLinkText: {
+    color: modernColors.primary,
+    fontWeight: '700',
+    fontSize: 15,
+  },
+  specialLinkHint: {
+    color: modernColors.textSecondary,
+    fontSize: 11,
+    marginTop: 2,
+  },
+  linkableContainer: {
+    flexDirection: 'column',
   },
 });
 

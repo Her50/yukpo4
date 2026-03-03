@@ -1,6 +1,6 @@
-﻿import React, { useState } from "react";
-import ResponsiveContainer from "@/components/layout/ResponsiveContainer";
+﻿import ResponsiveContainer from "@/components/layout/ResponsiveContainer";
 import axios from "axios";
+import React, { useState } from "react";
 
 type CertificationResult = {
   status: string;
@@ -24,7 +24,7 @@ const CertificationPanel: React.FC = () => {
   return (
     <ResponsiveContainer className="py-8">
       <h2 className="text-2xl font-bold mb-6 text-gray-800">
-        🎖️ Certification <span className="bg-gradient-to-r from-yellow-500 via-orange-500 to-red-500 bg-clip-text text-transparent">Yukpo</span> Pro
+        🎖️ Certification <span className="bg-gradient-to-r from-blue-500 via-indigo-500 to-violet-600 bg-clip-text text-transparent">Yukpo</span> Pro
       </h2>
 
       <input

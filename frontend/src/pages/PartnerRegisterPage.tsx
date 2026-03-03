@@ -1,12 +1,12 @@
 // ✅ AMÉLIORATION UX: Écran de création partenaire modernisé avec design similaire à RegisterPage
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { ROUTES } from '@/routes/AppRoutesRegistry';
-import { useUser } from '@/hooks/useUser';
-import toast from 'react-hot-toast';
-import { API_BASE_URL } from '@/config/api';
-import { CheckCircle, XCircle, AlertCircle, Building, Envelope, Lock, LockKey, Phone, MapPin, Image as ImageIcon, X } from 'lucide-react';
 import LocationSelector, { LocationObject } from '@/components/ui/LocationSelector';
+import { API_BASE_URL } from '@/config/api';
+import { useUser } from '@/hooks/useUser';
+import { ROUTES } from '@/routes/AppRoutesRegistry';
+import { AlertCircle, Building, CheckCircle, Envelope, Image as ImageIcon, Lock, LockKey, Phone, X, XCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import toast from 'react-hot-toast';
+import { Link, useNavigate } from 'react-router-dom';
 
 const PartnerRegisterPage: React.FC = () => {
   const navigate = useNavigate();
@@ -81,7 +81,7 @@ const PartnerRegisterPage: React.FC = () => {
     } else {
       setPasswordErrors({ length: false, uppercase: false, number: false });
     }
-    
+
     // ✅ Vérifier la correspondance avec le mot de passe de confirmation
     if (form.confirmPassword.length > 0) {
       setConfirmPasswordMatch(text === form.confirmPassword);
@@ -195,10 +195,10 @@ const PartnerRegisterPage: React.FC = () => {
         });
       } else {
         const err = await res.json();
-        
+
         // Détection des erreurs spécifiques
         let errorMessage = err.message || "Erreur d'inscription";
-        
+
         if (err.message?.includes('409') || err.message?.includes('deja utilise') || err.message?.includes('already exists')) {
           errorMessage = '❌ Cet email est déjà utilisé. Essayez de vous connecter ou utilisez un autre email.';
         } else if (err.message?.includes('400') || err.message?.includes('validation')) {
@@ -206,7 +206,7 @@ const PartnerRegisterPage: React.FC = () => {
         } else if (err.message?.includes('network') || err.message?.includes('fetch')) {
           errorMessage = '❌ Problème de connexion. Vérifiez votre internet.';
         }
-        
+
         setError(errorMessage);
         toast.error(errorMessage);
       }
@@ -229,7 +229,7 @@ const PartnerRegisterPage: React.FC = () => {
         <div className="text-center mb-8">
           <h1 className="text-3xl md:text-4xl font-bold mb-4 text-gray-900">
             Devenir partenaire{' '}
-            <span className="bg-gradient-to-r from-yellow-500 via-orange-500 to-red-500 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-blue-500 via-indigo-500 to-violet-600 bg-clip-text text-transparent">
               Yukpo
             </span>
           </h1>
@@ -267,9 +267,8 @@ const PartnerRegisterPage: React.FC = () => {
                   name="partner_type"
                   value={form.partner_type}
                   onChange={handleChange}
-                  className={`w-full p-3 rounded-lg border focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${
-                    !form.partner_type ? 'border-red-400 bg-red-50 ring-2 ring-red-200' : 'border-gray-300'
-                  }`}
+                  className={`w-full p-3 rounded-lg border focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${!form.partner_type ? 'border-red-400 bg-red-50 ring-2 ring-red-200' : 'border-gray-300'
+                    }`}
                   required
                   disabled={loading}
                 >
@@ -379,7 +378,7 @@ const PartnerRegisterPage: React.FC = () => {
               {/* Informations de connexion du partenaire */}
               <div className="border-t border-gray-200 pt-6 mt-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Informations de connexion</h3>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="relative">
                     <Envelope className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -455,13 +454,12 @@ const PartnerRegisterPage: React.FC = () => {
                       placeholder="Confirmer le mot de passe *"
                       value={form.confirmPassword}
                       onChange={handleConfirmPasswordChange}
-                      className={`w-full pl-10 pr-4 py-3 rounded-lg border focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${
-                        confirmPasswordMatch === false
+                      className={`w-full pl-10 pr-4 py-3 rounded-lg border focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${confirmPasswordMatch === false
                           ? 'border-red-300 bg-red-50'
                           : confirmPasswordMatch === true
-                          ? 'border-green-300 bg-green-50'
-                          : 'border-gray-300'
-                      }`}
+                            ? 'border-green-300 bg-green-50'
+                            : 'border-gray-300'
+                        }`}
                       required
                       disabled={loading}
                     />

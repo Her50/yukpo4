@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
-import { useNavigate, Link, useSearchParams } from "react-router-dom";
-import { ROUTES } from "@/routes/AppRoutesRegistry";
 import OAuthButton from "@/components/auth/OAuthButton";
 import { useUser } from '@/hooks/useUser';
+import { ROUTES } from "@/routes/AppRoutesRegistry";
+import React, { useState } from 'react';
 import toast from 'react-hot-toast';
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
@@ -20,7 +19,7 @@ const RegisterPage: React.FC = () => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
-  
+
   // Gestion de la redirection après inscription
   const redirectUrl = searchParams.get('redirect');
   const source = searchParams.get('source');
@@ -58,20 +57,20 @@ const RegisterPage: React.FC = () => {
           lang: 'fr',
         }),
       });
-      
+
       if (res.ok) {
         const data = await res.json();
         // Inscription réussie
         setRegistrationSuccess(true);
         toast.success('Compte créé avec succès ! 🎉');
-        
+
         // Si un token est retourné, connecter automatiquement l'utilisateur
         if (data.token) {
           localStorage.setItem('token', data.token);
           localStorage.setItem('tokens_balance', data.tokens_balance.toString());
           window.dispatchEvent(new CustomEvent('tokens_updated'));
           login(data.token);
-          
+
           // Redirection intelligente selon la source
           if (isSharedService && redirectUrl) {
             // Rediriger vers le service partagé
@@ -83,7 +82,7 @@ const RegisterPage: React.FC = () => {
           }
           window.location.reload();
         }
-        
+
       } else {
         const err = await res.json();
         setError(err.message || "Erreur d'inscription");
@@ -99,12 +98,12 @@ const RegisterPage: React.FC = () => {
 
   // Fonction pour naviguer vers la page de connexion avec les données pré-remplies
   const goToLoginWithCredentials = () => {
-    navigate(ROUTES.LOGIN, { 
-      state: { 
-        fromRegistration: true, 
+    navigate(ROUTES.LOGIN, {
+      state: {
+        fromRegistration: true,
         email: form.email,
         message: 'Veuillez vous connecter avec vos identifiants.'
-      } 
+      }
     });
   };
 
@@ -126,13 +125,13 @@ const RegisterPage: React.FC = () => {
               Votre compte <span className="font-semibold">{form.email}</span> a été créé avec succès.
             </p>
             <p className="text-sm text-gray-500 mb-8">
-              {isSharedService 
+              {isSharedService
                 ? "Vous allez être redirigé vers le service partagé dans quelques instants..."
                 : "Vous pouvez maintenant vous connecter pour accéder à toutes les fonctionnalités de Yukpo."
               }
             </p>
           </div>
-          
+
           <div className="space-y-3">
             <button
               onClick={goToLoginWithCredentials}
@@ -147,7 +146,7 @@ const RegisterPage: React.FC = () => {
               Retour à l'accueil
             </Link>
           </div>
-          
+
           <p className="text-xs text-gray-500 mt-6">
             En cas de problème, contactez notre support à support@yukpo.com
           </p>
@@ -161,11 +160,11 @@ const RegisterPage: React.FC = () => {
       <div className="bg-white rounded-xl shadow-lg p-8 max-w-lg mx-auto">
         <h1 className="text-3xl font-bold mb-6 text-center text-gray-900">
           Créer un compte{" "}
-          <span className="bg-gradient-to-r from-yellow-500 via-orange-500 to-red-500 bg-clip-text text-transparent">
+          <span className="bg-gradient-to-r from-blue-500 via-indigo-500 to-violet-600 bg-clip-text text-transparent">
             Yukpo
           </span>
         </h1>
-        
+
         {isSharedService && (
           <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
             <div className="flex items-center text-blue-800 mb-2">
@@ -175,7 +174,7 @@ const RegisterPage: React.FC = () => {
               <span className="font-medium">Service partagé</span>
             </div>
             <p className="text-blue-700 text-sm">
-              Créez votre compte pour accéder au service complet. 
+              Créez votre compte pour accéder au service complet.
               Vous serez automatiquement redirigé vers le service après votre inscription.
             </p>
           </div>
@@ -269,7 +268,7 @@ const RegisterPage: React.FC = () => {
             )}
           </button>
         </form>
-        
+
         <div className="mt-6 text-center">
           <p className="text-sm text-gray-600">
             Vous avez déjà un compte ?{' '}

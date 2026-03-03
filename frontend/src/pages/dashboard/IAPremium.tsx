@@ -1,8 +1,8 @@
 // @ts-check
-import React from "react";
-import ResponsiveContainer from "@/components/layout/ResponsiveContainer";
 import RequireAccess from "@/components/auth/RequireAccess";
+import ResponsiveContainer from "@/components/layout/ResponsiveContainer";
 import { ROUTES } from "@/routes/AppRoutesRegistry";
+import React from "react";
 
 const IAPremium: React.FC = () => {
   return (
@@ -10,7 +10,7 @@ const IAPremium: React.FC = () => {
       <ResponsiveContainer className="py-10">
         <h1 className="text-3xl font-bold mb-8 text-center">
           🧠{" "}
-          <span className="bg-gradient-to-r from-yellow-500 via-orange-500 to-red-500 bg-clip-text text-transparent">
+          <span className="bg-gradient-to-r from-blue-500 via-indigo-500 to-violet-600 bg-clip-text text-transparent">
             Yukpo Premium
           </span>
         </h1>

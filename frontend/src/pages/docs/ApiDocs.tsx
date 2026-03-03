@@ -1,6 +1,6 @@
-import React from "react";
 import ResponsiveContainer from "@/components/layout/ResponsiveContainer";
 import { ROUTES } from "@/routes/AppRoutesRegistry";
+import React from "react";
 
 const ApiDocs: React.FC = () => {
   return (
@@ -8,7 +8,7 @@ const ApiDocs: React.FC = () => {
       <h2 className="text-2xl font-bold mb-4">📚 Documentation API</h2>
       <p className="text-gray-700">
         Retrouvez ici toutes les informations nécessaires pour utiliser les API de{" "}
-        <span className="bg-gradient-to-r from-yellow-500 via-orange-500 to-red-500 bg-clip-text text-transparent font-semibold">
+        <span className="bg-gradient-to-r from-blue-500 via-indigo-500 to-violet-600 bg-clip-text text-transparent font-semibold">
           Yukpo
         </span>{" "}
         : endpoints, authentification, formats de réponses, etc.

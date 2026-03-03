@@ -1,9 +1,9 @@
 // src/pages/AboutPage.tsx
-import React from "react";
 import AppLayout from "@/components/layout/AppLayout";
+import React from "react";
 
 const YukpoBrand = ({ children = "Yukpo" }) => (
-  <span className="bg-gradient-to-r from-yellow-500 via-orange-500 to-red-600 text-transparent bg-clip-text font-bold">
+  <span className="bg-gradient-to-r from-blue-500 via-indigo-500 to-violet-600 text-transparent bg-clip-text font-black tracking-tight">
     {children}
   </span>
 );
@@ -33,7 +33,7 @@ const AboutPage: React.FC = () => {
 
           <p className="leading-relaxed text-gray-800 dark:text-gray-200 text-justify">
             Fidèle à cette racine linguistique et humaine, <YukpoBrand>Yukpo</YukpoBrand> est une plateforme de connexion directe
-            entre <span className="text-yellow-600 font-medium">les besoins exprimés</span> et <span className="text-orange-600 font-medium">les solutions concrètes</span> : services, opportunités, accompagnement.
+            entre <span className="text-blue-600 font-medium">les besoins exprimés</span> et <span className="text-violet-600 font-medium">les solutions concrètes</span> : services, opportunités, accompagnement.
           </p>
 
           <p className="leading-relaxed text-gray-800 dark:text-gray-200 text-justify">

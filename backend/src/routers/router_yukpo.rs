@@ -214,7 +214,10 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
             patch(toggle_service_status),
         )
         // Route pour modifier un service
-        .route("/api/services/{service_id}/update", put(modifier_service))
+        .route(
+            "/api/services/{service_id}/update",
+            put(modifier_service).post(modifier_service),
+        )
         // Route pour supprimer un service
         .route(
             "/api/services/{service_id}/delete",

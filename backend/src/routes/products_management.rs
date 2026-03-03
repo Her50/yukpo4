@@ -10,6 +10,7 @@ use std::sync::Arc;
 
 use crate::middlewares::jwt::jwt_auth;
 use crate::state::AppState;
+use chrono;
 use serde_json::Value;
 use sqlx::FromRow;
 
@@ -21,7 +22,10 @@ pub fn products_management_routes(state: Arc<AppState>) -> Router<Arc<AppState>>
             "/api/products/{id}/toggle-status",
             patch(toggle_product_status),
         )
-        .route("/api/products/{id}/update", put(update_product))
+        .route(
+            "/api/products/{id}/update",
+            put(update_product).patch(update_product),
+        )
         .layer(axum::middleware::from_fn(jwt_auth))
         .with_state(state)
 }
@@ -631,6 +635,112 @@ pub struct UpdateProductRequest {
     pub updated_product: serde_json::Value,
 }
 
+/// Helper: extraire les médias base64 et URLs depuis le JSON produit
+fn extract_media_from_product(
+    product_data: &serde_json::Value,
+) -> (Vec<String>, Vec<String>, Vec<String>, Vec<String>) {
+    let mut base64_images: Vec<String> = Vec::new();
+    let mut base64_videos: Vec<String> = Vec::new();
+    let mut url_images: Vec<String> = Vec::new();
+    let mut url_videos: Vec<String> = Vec::new();
+
+    let extract_array = |val: &serde_json::Value| -> Vec<String> {
+        if let Some(arr) = val.as_array() {
+            arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect()
+        } else if let Some(s) = val.as_str() {
+            vec![s.to_string()]
+        } else if let Some(obj) = val.as_object() {
+            if let Some(valeur) = obj.get("valeur") {
+                if let Some(arr) = valeur.as_array() {
+                    return arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect();
+                }
+            }
+            Vec::new()
+        } else {
+            Vec::new()
+        }
+    };
+
+    if let Some(obj) = product_data.as_object() {
+        // Extraire images (base64 et URLs)
+        let image_fields = ["base64_image", "images_base64", "image_base64"];
+        for field in &image_fields {
+            if let Some(val) = obj.get(*field) {
+                for item in extract_array(val) {
+                    if !item.is_empty() {
+                        if item.starts_with("http://") || item.starts_with("https://") {
+                            if !url_images.contains(&item) {
+                                url_images.push(item);
+                            }
+                        } else {
+                            base64_images.push(item);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Images URL (champ images)
+        if let Some(val) = obj.get("images") {
+            for item in extract_array(val) {
+                if !item.is_empty() {
+                    if item.starts_with("http://") || item.starts_with("https://") {
+                        if !url_images.contains(&item) {
+                            url_images.push(item);
+                        }
+                    } else if item.starts_with("data:") || item.len() > 500 {
+                        base64_images.push(item);
+                    } else {
+                        // Probablement un path relatif
+                        if !url_images.contains(&item) {
+                            url_images.push(item);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Extraire vidéos (base64 et URLs)
+        let video_fields = ["video_base64", "videos_base64"];
+        for field in &video_fields {
+            if let Some(val) = obj.get(*field) {
+                for item in extract_array(val) {
+                    if !item.is_empty() {
+                        if item.starts_with("http://") || item.starts_with("https://") {
+                            if !url_videos.contains(&item) {
+                                url_videos.push(item);
+                            }
+                        } else {
+                            base64_videos.push(item);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Vidéos URL (champ videos)
+        if let Some(val) = obj.get("videos") {
+            for item in extract_array(val) {
+                if !item.is_empty() {
+                    if item.starts_with("http://") || item.starts_with("https://") {
+                        if !url_videos.contains(&item) {
+                            url_videos.push(item);
+                        }
+                    } else if item.starts_with("data:") || item.len() > 500 {
+                        base64_videos.push(item);
+                    } else {
+                        if !url_videos.contains(&item) {
+                            url_videos.push(item);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    (base64_images, base64_videos, url_images, url_videos)
+}
+
 #[axum::debug_handler]
 pub async fn update_product(
     State(state): State<Arc<AppState>>,
@@ -690,7 +800,40 @@ pub async fn update_product(
         }));
     }
 
-    // Parser le JSON data
+    // ✅ Extraire les médias AVANT de nettoyer le JSON
+    let (base64_images, base64_videos, url_images, url_videos) =
+        extract_media_from_product(&payload.updated_product);
+
+    log::info!(
+        "✏️ [update_product] Médias extraits: {} base64 images, {} base64 vidéos, {} URL images, {} URL vidéos",
+        base64_images.len(), base64_videos.len(), url_images.len(), url_videos.len()
+    );
+
+    // ✅ Nettoyer les médias base64 du JSON pour éviter de les stocker dans le JSONB
+    let mut product_data_cleaned = payload.updated_product.clone();
+    let mut removed_count: usize = 0;
+    crate::services::creer_service::clean_media_recursive_final(
+        &mut product_data_cleaned,
+        &mut removed_count,
+    );
+    if removed_count > 0 {
+        log::info!(
+            "✏️ [update_product] {} média(s) base64 nettoyés du JSON produit",
+            removed_count
+        );
+    }
+
+    // ✅ Remettre les URLs existantes dans le JSON nettoyé (pas les base64)
+    if let Some(obj) = product_data_cleaned.as_object_mut() {
+        if !url_images.is_empty() {
+            obj.insert("images".to_string(), serde_json::json!(url_images));
+        }
+        if !url_videos.is_empty() {
+            obj.insert("videos".to_string(), serde_json::json!(url_videos));
+        }
+    }
+
+    // Parser le JSON data du service
     let mut service_data: serde_json::Value = service_row.data;
 
     // ✅ Sauvegarder l'ancienne version du produit pour historique
@@ -713,13 +856,16 @@ pub async fn update_product(
             None
         };
 
-    // Mettre à jour le produit dans produits.valeur[index]
+    // Mettre à jour le produit dans produits.valeur[index] (JSONB legacy)
     if let Some(produits) = service_data.get_mut("produits") {
         if let Some(valeur) = produits.get_mut("valeur") {
             if let Some(arr) = valeur.as_array_mut() {
                 if payload.product_index >= 0 && (payload.product_index as usize) < arr.len() {
-                    arr[payload.product_index as usize] = payload.updated_product.clone();
-                    log::info!("✅ Produit modifié à l'index {}", payload.product_index);
+                    arr[payload.product_index as usize] = product_data_cleaned.clone();
+                    log::info!(
+                        "✅ Produit modifié à l'index {} (JSONB)",
+                        payload.product_index
+                    );
                 } else {
                     log::error!(
                         "❌ Index {} invalide (total: {})",
@@ -736,8 +882,7 @@ pub async fn update_product(
         }
     }
 
-    // Mettre à jour le service (GRATUIT - pas de déduction de tokens)
-    let service_id_update = payload.service_id.parse::<i32>().unwrap_or(0);
+    // Mettre à jour le service JSONB (GRATUIT - pas de déduction de tokens)
     sqlx::query(
         r#"
         UPDATE services
@@ -747,19 +892,246 @@ pub async fn update_product(
         "#,
     )
     .bind(&service_data)
-    .bind(service_id_update)
+    .bind(service_id_i32)
     .execute(pool)
     .await
     .map_err(|e| {
-        log::error!("❌ Erreur mise à jour service: {:?}", e);
+        log::error!("❌ Erreur mise à jour service JSONB: {:?}", e);
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 
-    // ✅ NOUVEAU: Enregistrer l'historique dans service_logs
+    // ✅ FIX BUG 3: Synchroniser aussi la table service_products
+    // Note: product_price et product_name sont des colonnes GENERATED ALWAYS (calculées depuis product_data)
+    // Il suffit de mettre à jour product_data pour que les colonnes générées se mettent à jour automatiquement
+    let sp_update_result = sqlx::query(
+        r#"
+        UPDATE service_products
+        SET product_data = $1,
+            updated_at = NOW()
+        WHERE service_id = $2 AND product_index = $3
+        "#,
+    )
+    .bind(&product_data_cleaned)
+    .bind(service_id_i32)
+    .bind(payload.product_index)
+    .execute(pool)
+    .await;
+
+    match sp_update_result {
+        Ok(result) => {
+            if result.rows_affected() > 0 {
+                log::info!(
+                    "✅ [update_product] service_products mis à jour (service_id={}, product_index={})",
+                    service_id_i32, payload.product_index
+                );
+            } else {
+                log::warn!(
+                    "⚠️ [update_product] Aucune ligne mise à jour dans service_products (service_id={}, product_index={}). Le produit n'existe peut-être pas encore dans cette table.",
+                    service_id_i32, payload.product_index
+                );
+            }
+        }
+        Err(e) => {
+            log::warn!(
+                "⚠️ [update_product] Erreur mise à jour service_products (non bloquant): {:?}",
+                e
+            );
+        }
+    }
+
+    // ✅ FIX BUG 5: Gérer la suppression/mise à jour des médias dans la table media
+    // Récupérer les médias existants en DB pour ce produit
+    let existing_media: Vec<(i32, String)> = sqlx::query_as(
+        r#"
+        SELECT id, COALESCE(path, '') as path
+        FROM media
+        WHERE service_id = $1 AND product_index = $2
+        ORDER BY display_order ASC
+        "#,
+    )
+    .bind(service_id_i32)
+    .bind(payload.product_index)
+    .fetch_all(pool)
+    .await
+    .unwrap_or_default();
+
+    log::info!(
+        "✏️ [update_product] {} médias existants en DB pour service_id={}, product_index={}",
+        existing_media.len(),
+        service_id_i32,
+        payload.product_index
+    );
+
+    // Combiner toutes les URLs que l'utilisateur a conservées
+    let kept_urls: Vec<String> = url_images.iter().chain(url_videos.iter()).cloned().collect();
+
+    // Supprimer les médias qui ne sont plus dans la liste de l'utilisateur
+    if !existing_media.is_empty() {
+        let mut deleted_count = 0;
+        for (media_id, media_path) in &existing_media {
+            // Vérifier si ce média est toujours dans les URLs conservées
+            let is_kept = kept_urls
+                .iter()
+                .any(|url| url.contains(media_path.as_str()) || media_path.contains(url.as_str()));
+
+            if !is_kept && !media_path.is_empty() {
+                // Supprimer ce média de la table
+                if let Err(e) = sqlx::query("DELETE FROM media WHERE id = $1")
+                    .bind(media_id)
+                    .execute(pool)
+                    .await
+                {
+                    log::warn!(
+                        "⚠️ [update_product] Erreur suppression media id={}: {:?}",
+                        media_id,
+                        e
+                    );
+                } else {
+                    deleted_count += 1;
+                }
+            }
+        }
+        if deleted_count > 0 {
+            log::info!(
+                "✅ [update_product] {} média(s) supprimé(s) (retirés par l'utilisateur)",
+                deleted_count
+            );
+        }
+    }
+
+    // ✅ FIX BUG 4: Traiter les nouveaux médias base64 (images et vidéos ajoutés lors de l'édition)
+    let all_base64: Vec<String> =
+        base64_images.into_iter().chain(base64_videos.into_iter()).collect();
+
+    if !all_base64.is_empty() {
+        log::info!(
+            "✏️ [update_product] Traitement de {} nouveau(x) média(s) base64...",
+            all_base64.len()
+        );
+
+        // Valider les médias
+        let mut valid_media: Vec<String> = Vec::new();
+        for media_data in &all_base64 {
+            if media_data.is_empty() {
+                continue;
+            }
+            let is_url = media_data.starts_with("http://") || media_data.starts_with("https://");
+            let is_base64 = !is_url && (media_data.starts_with("data:") || media_data.len() > 100);
+            if is_url || is_base64 {
+                valid_media.push(media_data.clone());
+            }
+        }
+
+        if !valid_media.is_empty() {
+            use crate::services::media_storage_service::MediaStorageService;
+            use crate::services::optimized_media_processor::{
+                MediaItem, OptimizedMediaProcessor, OptimizedMediaProcessorConfig,
+            };
+            use std::path::PathBuf;
+
+            let config = OptimizedMediaProcessorConfig {
+                max_concurrent: 10,
+                db_batch_size: 20,
+                generate_thumbnails: true,
+                adaptive_compression: true,
+                use_signature_cache: true,
+            };
+
+            let storage_root = PathBuf::from(
+                std::env::var("UPLOAD_STORAGE_ROOT").unwrap_or_else(|_| "uploads".to_string()),
+            );
+            use crate::config::storage::MediaStorageConfig;
+            let storage_config = MediaStorageConfig::from_env();
+            let media_storage = std::sync::Arc::new(MediaStorageService::new(storage_config));
+
+            let processor = OptimizedMediaProcessor::new(
+                std::sync::Arc::new(pool.clone()),
+                storage_root,
+                media_storage,
+                config,
+            );
+
+            let mut media_items: Vec<MediaItem> = Vec::new();
+            for media_data in &valid_media {
+                let is_base64 =
+                    !media_data.starts_with("http://") && !media_data.starts_with("https://");
+                media_items.push(MediaItem::new_image(media_data.clone(), is_base64));
+            }
+
+            // Calculer le display_order de départ (après les médias existants conservés)
+            let existing_kept_count = kept_urls.len() as i32;
+
+            match processor
+                .process_media_batch(
+                    service_id_i32,
+                    Some(payload.product_index as u32),
+                    media_items,
+                )
+                .await
+            {
+                Ok(processed) => {
+                    let mut insertion_count = 0;
+
+                    for (idx, media) in processed.iter().enumerate() {
+                        let display_order = existing_kept_count + idx as i32;
+                        let is_main = display_order == 0;
+
+                        match sqlx::query(
+                            r#"
+                            INSERT INTO media (
+                                service_id, product_index, type, path,
+                                is_main_image, display_order, uploaded_at,
+                                image_signature, image_hash, image_metadata
+                            )
+                            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                            "#,
+                        )
+                        .bind(service_id_i32)
+                        .bind(payload.product_index)
+                        .bind("image")
+                        .bind(&media.file_path)
+                        .bind(is_main)
+                        .bind(display_order)
+                        .bind(chrono::Utc::now().naive_utc())
+                        .bind(&media.image_signature)
+                        .bind(&media.image_hash)
+                        .bind(&media.image_metadata)
+                        .execute(pool)
+                        .await
+                        {
+                            Ok(_) => {
+                                insertion_count += 1;
+                            }
+                            Err(e) => {
+                                log::error!(
+                                    "❌ [update_product] Erreur insertion media {}: {:?}",
+                                    idx,
+                                    e
+                                );
+                            }
+                        }
+                    }
+
+                    log::info!(
+                        "✅ [update_product] {} nouveau(x) média(s) sauvegardé(s)",
+                        insertion_count
+                    );
+                }
+                Err(e) => {
+                    log::error!(
+                        "❌ [update_product] Erreur traitement batch médias: {:?}",
+                        e
+                    );
+                }
+            }
+        }
+    }
+
+    // ✅ Enregistrer l'historique dans service_logs
     if let Some(old_prod) = old_product {
-        let product_name = payload
-            .updated_product
-            .get("nom")
+        let product_name = product_data_cleaned
+            .get("nom_produit")
+            .or_else(|| product_data_cleaned.get("nom"))
             .and_then(|v| v.as_str())
             .unwrap_or("Produit sans nom");
 
@@ -769,7 +1141,7 @@ pub async fn update_product(
             "product_index": payload.product_index,
             "product_name": product_name,
             "old_version": old_prod,
-            "new_version": payload.updated_product
+            "new_version": product_data_cleaned
         });
 
         sqlx::query(
@@ -778,7 +1150,7 @@ pub async fn update_product(
             VALUES ($1, $2, $3, $4::jsonb)
             "#,
         )
-        .bind(service_id_update)
+        .bind(service_id_i32)
         .bind(user_id)
         .bind("product_modified")
         .bind(&modification_details)

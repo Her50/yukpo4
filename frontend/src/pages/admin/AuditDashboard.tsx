@@ -1,9 +1,9 @@
 ﻿// @ts-check
-import React, { useEffect, useState } from "react";
 import ResponsiveContainer from "@/components/layout/ResponsiveContainer";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/buttons";
+import { Card, CardContent } from "@/components/ui/card";
 import { ROUTES } from "@/routes/AppRoutesRegistry";
+import React, { useEffect, useState } from "react";
 
 const AuditDashboard: React.FC = () => {
   const [logs, setLogs] = useState<string[]>([]);
@@ -36,7 +36,7 @@ const AuditDashboard: React.FC = () => {
     <ResponsiveContainer className="py-8">
       <h1 className="text-2xl font-bold mb-4">
         🧠 Anomalies détectées par{" "}
-        <span className="bg-gradient-to-r from-yellow-500 via-orange-500 to-red-500 bg-clip-text text-transparent">
+        <span className="bg-gradient-to-r from-blue-500 via-indigo-500 to-violet-600 bg-clip-text text-transparent">
           Yukpo
         </span>
       </h1>

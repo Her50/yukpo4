@@ -1,7 +1,7 @@
+import { useUser } from "@/hooks/useUser";
+import { ROUTES } from "@/routes/AppRoutesRegistry";
 import React from "react";
 import { Link } from "react-router-dom";
-import { ROUTES } from "@/routes/AppRoutesRegistry";
-import { useUser } from "@/hooks/useUser";
 
 interface Feature {
   icon: string;
@@ -11,7 +11,7 @@ interface Feature {
 }
 
 const YukpoBrand = () => (
-  <span className="bg-gradient-to-r from-yellow-500 via-orange-500 to-red-500 bg-clip-text text-transparent font-bold">
+  <span className="bg-gradient-to-r from-blue-500 via-indigo-500 to-violet-600 bg-clip-text text-transparent font-bold">
     Yukpo
   </span>
 );
