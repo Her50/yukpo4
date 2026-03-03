@@ -76,6 +76,7 @@ pub mod product_addition_controller; // ✅ NOUVEAU 2025-11-01: Contrôleur pour
 pub mod product_comments_controller; // ✅ NOUVEAU 2025-11-08: Contrôleur pour fil de commentaires produits
 pub mod product_lifecycle_controller;
 pub mod product_reactions_controller; // ✅ NOUVEAU 2025-11-04: Contrôleur pour réactions/émotions sur les produits
+pub mod product_stats_controller; // ✅ NOUVEAU 2026-03-03: Contrôleur statistiques produit (dashboard prestataire)
 pub mod product_video_controller; // ✅ Contrôleur génération vidéo produit instantanée
 pub mod products_controller; // ✅ PHASE 3: Controller pour gestion produits via table service_products // ✅ Contrôleur de gestion du cycle de vie des produits
 pub mod prometheus_metrics_controller; // ✅ Phase 3: Endpoint Prometheus centralisé

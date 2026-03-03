@@ -1494,30 +1494,23 @@ const MesProduitsScreen: React.FC = () => {
         }
     };
 
-    // Voir les statistiques d'un produit
+    // ✅ AMÉLIORÉ 2026-03-03: Naviguer vers l'écran de stats détaillées du produit
     const handleViewStats = (product: ManagedProduct) => {
-        const stats = `📊 Statistiques de "${product.nom}"\n\n` +
-            `👁️ Vues: ${product.views || 0}\n` +
-            `💬 Interactions: ${product.interactions || 0}\n` +
-            `📅 Créé le: ${product.createdAt ? new Date(product.createdAt).toLocaleDateString('fr-FR') : 'N/A'}\n` +
-            `✅ Statut: ${product.is_active ? 'Actif' : 'Inactif'}\n` +
-            `🏷️ Catégorie: ${getProductTypeLabel(product.category_key || product.type)}`;
-
-        Alert.alert('📊 Statistiques', stats, [{ text: 'OK' }]);
+        const numericId = resolveNumericId(product.rawProductId ?? product.id);
+        if (numericId === null) {
+            Alert.alert('Erreur', 'Impossible de résoudre l\'identifiant du produit');
+            return;
+        }
+        navigation.navigate('ProductStats' as never, {
+            productId: numericId,
+            productName: product.nom || 'Produit',
+            serviceId: product.serviceId,
+        } as never);
     };
 
+    // ✅ AMÉLIORÉ 2026-03-03: Naviguer vers le dashboard prestataire global
     const handleViewGlobalStats = () => {
-        const totalViews = products.reduce((sum, item) => sum + (Number(item.views) || 0), 0);
-        const totalShares = products.reduce((sum, item) => sum + (Number(item.shares) || 0), 0);
-        const totalSaves = products.reduce((sum, item) => sum + (Number(item.saves) || 0), 0);
-
-        Alert.alert(
-            '📊 Vue d’ensemble',
-            `👁️ Vues cumulées : ${totalViews.toLocaleString('fr-FR')}\n` +
-            `🔁 Partages : ${totalShares.toLocaleString('fr-FR')}\n` +
-            `⭐ Favoris : ${totalSaves.toLocaleString('fr-FR')}`,
-            [{ text: 'OK' }]
-        );
+        navigation.navigate('DashboardPrestataire' as never);
     };
 
     // Filtrer les produits
@@ -2294,6 +2287,13 @@ const MesProduitsScreen: React.FC = () => {
                                         }}
                                     >
                                         <SafeIcon name="zap" size={18} color="#F59E0B" type="lucide" />
+                                    </TouchableOpacity>
+                                    {/* ✅ NOUVEAU 2026-03-03: Bouton Dashboard stats global */}
+                                    <TouchableOpacity
+                                        style={[styles.headerIconButton, { backgroundColor: 'rgba(99, 102, 241, 0.12)', borderWidth: 1, borderColor: 'rgba(99, 102, 241, 0.25)' }]}
+                                        onPress={handleViewGlobalStats}
+                                    >
+                                        <SafeIcon name="bar-chart-2" size={18} color="#6366F1" />
                                     </TouchableOpacity>
                                     {/* ✅ Menu (trois points) à la fin */}
                                     <TouchableOpacity

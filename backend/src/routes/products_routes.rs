@@ -7,6 +7,10 @@ use axum::{
 };
 use std::sync::Arc;
 
+use crate::controllers::product_stats_controller::{
+    get_all_products_stats, get_product_stats, get_product_stats_timeline,
+    get_product_stats_visitors,
+};
 use crate::controllers::products_controller::{
     delete_product, duplicate_product, get_product, get_products_by_service, get_products_by_user,
     get_products_by_user_path, og_placeholder_image, share_product_redirect,
@@ -53,6 +57,26 @@ pub fn products_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route(
             "/api/products/user/{user_id}",
             get(get_products_by_user_path)
+                .layer(middleware::from_fn_with_state(state.clone(), jwt_auth)),
+        )
+        // ✅ NOUVEAU 2026-03-03: Routes statistiques produit (dashboard prestataire)
+        .route(
+            "/api/products/{product_id}/stats",
+            get(get_product_stats).layer(middleware::from_fn_with_state(state.clone(), jwt_auth)),
+        )
+        .route(
+            "/api/products/{product_id}/stats/timeline",
+            get(get_product_stats_timeline)
+                .layer(middleware::from_fn_with_state(state.clone(), jwt_auth)),
+        )
+        .route(
+            "/api/products/{product_id}/stats/visitors",
+            get(get_product_stats_visitors)
+                .layer(middleware::from_fn_with_state(state.clone(), jwt_auth)),
+        )
+        .route(
+            "/api/products/all-stats",
+            get(get_all_products_stats)
                 .layer(middleware::from_fn_with_state(state.clone(), jwt_auth)),
         )
         // ✅ NOUVEAU: Route publique pour partage intelligent de produits

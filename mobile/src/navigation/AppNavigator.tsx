@@ -1687,6 +1687,15 @@ const SecondaryStack = () => {
         component={DashboardPrestataireScreenWithSafeArea}
       />
       <Stack.Screen
+        name="ProductStats"
+        component={withNavigatorSafeArea(require('../screens/ProductStatsScreen').default)}
+        options={{
+          ...defaultScreenOptions,
+          title: 'Statistiques Produit',
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
         name="AgencyAnalyticsDashboard"
         component={withNavigatorSafeArea(require('../screens/AgencyAnalyticsDashboard').default)}
         options={{
