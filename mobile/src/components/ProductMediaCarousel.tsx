@@ -264,7 +264,7 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
                             }}
                             source={{ uri: media.uri }}
                             style={styles.media}
-                            resizeMode={ResizeMode.COVER}
+                            resizeMode={ResizeMode.CONTAIN}
                             shouldPlay={playingVideoIndex === index}
                             isLooping
                             isMuted={playingVideoIndex !== index}
@@ -459,6 +459,7 @@ const styles = StyleSheet.create({
         width: '100%',
         height: '100%',
         position: 'relative',
+        backgroundColor: '#1a1a2e',
     },
     playButton: {
         position: 'absolute',

@@ -62,6 +62,11 @@ web-build/
 *.key
 *.mobileprovision
 
+# Production keystore & credentials (CRITICAL - DO NOT COMMIT)
+android/app/release.keystore
+KEYSTORE_INFO_PRODUCTION.md
+**/release.keystore
+
 # Firebase
 google-services.json
 GoogleService-Info.plist

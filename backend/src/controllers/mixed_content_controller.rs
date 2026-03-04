@@ -26,6 +26,8 @@ pub struct MixedContentQuery {
     /// Nombre max de résultats
     #[serde(default = "default_limit")]
     pub limit: i32,
+    /// ✅ NOUVEAU 2026-03-04: Format de contenu demandé ("video" pour feed vidéo)
+    pub format: Option<String>,
 }
 
 fn default_limit() -> i32 {
@@ -49,11 +51,50 @@ pub struct ContentItem {
     pub frequency_ratio: Option<f32>,
 }
 
+/// ✅ Helper: Construit URL média avec fallback pour anciens médias locaux
+fn build_media_url_with_fallback(state: &Arc<AppState>, path: &str) -> String {
+    if path.starts_with("http://") || path.starts_with("https://") {
+        return path.to_string();
+    }
+    if state.media_storage.is_remote() {
+        state.media_storage.build_public_url(path)
+    } else {
+        let api_base_url = std::env::var("PUBLIC_BASE_URL")
+            .or_else(|_| std::env::var("UPLOAD_BASE_URL"))
+            .unwrap_or_else(|_| "https://yukpomnang.onrender.com".to_string());
+        let clean_path = path.trim_start_matches('/');
+        format!(
+            "{}/api/media/files/{}",
+            api_base_url.trim_end_matches('/'),
+            clean_path
+        )
+    }
+}
+
 /// Récupérer le contenu mixte (publicités + produits organiques)
 pub async fn get_mixed_content(
     State(state): State<Arc<AppState>>,
     Query(params): Query<MixedContentQuery>,
 ) -> AppResult<impl IntoResponse> {
+    // ✅ NOUVEAU 2026-03-04: Si format=video, utiliser le feed vidéo dédié
+    // qui query la table media directement au lieu de services.data JSON
+    if params.format.as_deref() == Some("video") {
+        log_info(&format!(
+            "[MixedContent] 🎬 Requête feed VIDÉO - User: {:?}, Limit: {}",
+            params.user_id, params.limit
+        ));
+        let videos = fetch_video_feed_from_media(&state, params.limit).await?;
+        log_info(&format!(
+            "[MixedContent] 🎬 {} vidéos récupérées depuis table media",
+            videos.len()
+        ));
+        return Ok(Json(json!({
+            "success": true,
+            "data": videos,
+            "count": videos.len()
+        })));
+    }
+
     log_info(&format!(
         "[MixedContent] Requête contenu mixte - User: {:?}, Categories: {:?}, Session: {:?}",
         params.user_id, params.categories, params.session_id
@@ -386,6 +427,130 @@ async fn fetch_ml_recommended_content(
                 "hashtags": video.hashtags,
                 "ml_score": video.total_score,
                 "engagement_score": video.engagement_score,
+            }),
+            boost_level: None,
+            frequency_ratio: None,
+        });
+    }
+
+    Ok(content)
+}
+
+/// ✅ NOUVEAU 2026-03-04: Feed vidéo dédié qui query la table media directement
+/// C'est le fix principal: les vidéos produits sont stockées dans la table media,
+/// pas dans services.data JSON. L'ancien code lisait services.data.videos qui est
+/// presque toujours null, d'où l'absence de vidéos dans le feed.
+async fn fetch_video_feed_from_media(
+    state: &Arc<AppState>,
+    limit: i32,
+) -> AppResult<Vec<ContentItem>> {
+    let pool = &state.pg;
+
+    let rows = sqlx::query(
+        r#"
+        SELECT 
+            m.id,
+            m.service_id,
+            m.product_index,
+            m.path as video_path,
+            m.uploaded_at,
+            COALESCE(m.ai_tags, ARRAY[]::text[]) as hashtags,
+            s.data as service_data,
+            s.category,
+            s.user_id as seller_user_id,
+            u.name as seller_name,
+            u.avatar_url as seller_avatar,
+            -- Récupérer la première image du même service comme thumbnail
+            (
+                SELECT m2.path FROM media m2 
+                WHERE m2.service_id = m.service_id 
+                AND (m2.type = 'image' OR m2.media_type = 'image')
+                AND m2.path IS NOT NULL
+                ORDER BY COALESCE(m2.is_main_image, FALSE) DESC, m2.id ASC
+                LIMIT 1
+            ) as thumbnail_path,
+            -- Récupérer le nom du produit depuis service_products
+            (
+                SELECT sp.product_name FROM service_products sp
+                WHERE sp.service_id = m.service_id
+                AND (sp.product_index = m.product_index OR m.product_index IS NULL)
+                AND sp.is_active = true
+                LIMIT 1
+            ) as product_name
+        FROM media m
+        INNER JOIN services s ON s.id = m.service_id AND s.is_active = true
+        LEFT JOIN users u ON u.id = s.user_id
+        WHERE m.type = 'video'
+        AND m.path IS NOT NULL
+        AND m.path != ''
+        ORDER BY m.uploaded_at DESC
+        LIMIT $1
+        "#,
+    )
+    .bind(limit)
+    .fetch_all(pool)
+    .await
+    .map_err(|e| {
+        log_error(&format!("[MixedContent] Erreur fetch video feed: {}", e));
+        AppError::Internal(format!("Erreur fetch video feed: {}", e))
+    })?;
+
+    let mut content = Vec::new();
+
+    for row in rows {
+        let media_id: i32 = row.try_get("id")?;
+        let service_id: i32 = row.try_get("service_id")?;
+        let video_path: String = row.try_get("video_path")?;
+        let thumbnail_path: Option<String> = row.try_get("thumbnail_path").ok().flatten();
+        let service_data: Value = row.get::<Option<_>, _>("service_data").unwrap_or(json!({}));
+        let category: Option<String> = row.try_get("category").ok().flatten();
+        let seller_name: Option<String> = row.try_get("seller_name").ok().flatten();
+        let seller_avatar: Option<String> = row.try_get("seller_avatar").ok().flatten();
+        let product_name: Option<String> = row.try_get("product_name").ok().flatten();
+        let hashtags: Vec<String> = row.try_get("hashtags").unwrap_or_default();
+
+        // Construire les URLs CDN/S3 à partir des paths
+        let video_url = build_media_url_with_fallback(state, &video_path);
+        let thumbnail_url =
+            thumbnail_path.as_ref().map(|t| build_media_url_with_fallback(state, t));
+
+        // Extraire le titre du service
+        let service_title = service_data
+            .get("titre_service")
+            .and_then(|v| v.get("valeur").and_then(|v2| v2.as_str()).or(v.as_str()))
+            .or(service_data.get("titre").and_then(|v| v.as_str()))
+            .unwrap_or("Vidéo")
+            .to_string();
+
+        // Titre: nom du produit > titre du service > "Vidéo"
+        let titre = product_name.clone().unwrap_or(service_title.clone());
+
+        // Description
+        let description = service_data
+            .get("description")
+            .and_then(|v| v.get("valeur").and_then(|v2| v2.as_str()).or(v.as_str()))
+            .map(|s| s.to_string());
+
+        content.push(ContentItem {
+            content_type: "organic".to_string(),
+            is_paid: false,
+            data: json!({
+                "id": media_id,
+                "content_id": format!("media_{}", media_id),
+                "service_id": service_id,
+                "titre": titre,
+                "title": titre,
+                "description": description,
+                "video": video_url,
+                "videoUrl": video_url,
+                "videos": [video_url],
+                "thumbnail": thumbnail_url,
+                "cover": thumbnail_url,
+                "category": category,
+                "seller_name": seller_name,
+                "seller_avatar": seller_avatar,
+                "hashtags": hashtags,
+                "titre_service": service_title,
             }),
             boost_level: None,
             frequency_ratio: None,

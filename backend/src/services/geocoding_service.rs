@@ -114,9 +114,10 @@ impl GeocodingService {
     }
 
     pub fn with_cache(redis_client: Option<redis::Client>) -> Self {
+        // ✅ CORRIGÉ 2026-03-04: Ne pas hardcoder la clé Android restreinte comme fallback
         let api_key = std::env::var("GOOGLE_MAPS_API_KEY").unwrap_or_else(|_| {
-            warn!("GOOGLE_MAPS_API_KEY non definie, utilisation de la cle par defaut");
-            "AIzaSyDqlMAysWsGzv1jQtR6WJn8LZXpH75SwFo".to_string()
+            warn!("GOOGLE_MAPS_API_KEY non definie — le geocoding échouera");
+            String::new()
         });
 
         let timeout = get_geocoding_timeout();

@@ -156,9 +156,10 @@ pub struct GooglePlacesService {
 
 impl GooglePlacesService {
     pub fn new() -> Self {
+        // ✅ CORRIGÉ 2026-03-04: Ne pas hardcoder la clé Android restreinte comme fallback
         let api_key = std::env::var("GOOGLE_MAPS_API_KEY").unwrap_or_else(|_| {
-            warn!("GOOGLE_MAPS_API_KEY non définie, utilisation de la clé par défaut");
-            "AIzaSyDqlMAysWsGzv1jQtR6WJn8LZXpH75SwFo".to_string()
+            warn!("GOOGLE_MAPS_API_KEY non définie — les appels Google Places échoueront");
+            String::new()
         });
 
         let client = Client::builder()

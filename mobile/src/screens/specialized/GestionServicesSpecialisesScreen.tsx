@@ -12,9 +12,9 @@ import {
     View,
 } from 'react-native';
 import ConflictResolutionModal, { ConflictInfo } from '../../components/ConflictResolutionModal';
-import { NativeCard } from '../../components/SafeNativeDesign';
 import NotificationPreferencesModal from '../../components/NotificationPreferencesModal';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeCard } from '../../components/SafeNativeDesign';
 import ServiceCard from '../../components/ServiceCard';
 import ServiceFilters, { ServiceFilters as ServiceFiltersType } from '../../components/ServiceFilters';
 import ServiceListItem from '../../components/ServiceListItem';
@@ -1266,27 +1266,43 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                     <Text style={styles.emptyTitle} accessibilityRole="header">
                         {searchQuery || filter !== 'tous'
                             ? 'Aucun résultat trouvé'
-                            : 'Aucun service spécialisé'}
+                            : 'Bienvenue sur votre espace partenaire'}
                     </Text>
                     <Text style={styles.emptyText} accessibilityRole="text">
                         {searchQuery || filter !== 'tous'
                             ? 'Aucun service ne correspond à vos critères de recherche. Essayez de modifier vos filtres.'
-                            : 'Créez votre premier service spécialisé pour commencer à proposer vos services sur Yukpo'}
+                            : 'Commencez par créer votre premier service pour proposer vos prestations aux utilisateurs de Yukpo.'}
                     </Text>
-                    {/* ✅ AMÉLIORÉ: CTA avec meilleur design et accessibilité - Masqué pour non-partenaires */}
+                    {/* ✅ AMÉLIORÉ: CTA avec navigation directe vers le bon formulaire selon le partner_type */}
                     <View style={styles.emptyActions}>
-                        {user?.role === 'partenaire' && (
-                            <TouchableOpacity
-                                onPress={() => (navigation as any).navigate('MesServicesSpecialises')}
-                                style={[styles.createButton, { backgroundColor: modernColors.primary }]}
-                                accessibilityRole="button"
-                                accessibilityLabel="Créer un nouveau service spécialisé"
-                                accessibilityHint="Ouvre le formulaire de création de service"
-                            >
-                                <SafeIcon name="plus" size={18} color="#fff" />
-                                <Text style={styles.createButtonText}>Créer un service</Text>
-                            </TouchableOpacity>
-                        )}
+                        {user?.role === 'partenaire' && (() => {
+                            const partnerFormMap: Record<string, { screen: string; label: string }> = {
+                                'pharmacie': { screen: 'PharmacieForm', label: 'Enregistrer ma pharmacie' },
+                                'hopital': { screen: 'HopitalForm', label: 'Enregistrer mon hôpital' },
+                                'laboratoire': { screen: 'LaboratoireForm', label: 'Enregistrer mon laboratoire' },
+                                'banquesang': { screen: 'BanqueSangForm', label: 'Enregistrer ma banque de sang' },
+                                'agence de voyage': { screen: 'AgenceVoyageForm', label: 'Enregistrer mon agence' },
+                                'hotel': { screen: 'ImmobilierForm', label: 'Ajouter un hébergement' },
+                                'meuble': { screen: 'ImmobilierForm', label: 'Ajouter un meublé' },
+                                'chauffeur': { screen: 'TaxiForm', label: 'Créer mon profil chauffeur' },
+                                'supermarche': { screen: 'SupermarketHome', label: 'Gérer mon supermarché' },
+                            };
+                            const formInfo = user.partner_type ? partnerFormMap[user.partner_type] : null;
+                            const targetScreen = formInfo?.screen || 'MesServicesSpecialises';
+                            const buttonLabel = formInfo?.label || 'Créer un service';
+                            return (
+                                <TouchableOpacity
+                                    onPress={() => (navigation as any).navigate(targetScreen)}
+                                    style={[styles.createButton, { backgroundColor: modernColors.primary }]}
+                                    accessibilityRole="button"
+                                    accessibilityLabel={buttonLabel}
+                                    accessibilityHint="Ouvre le formulaire de création de service"
+                                >
+                                    <SafeIcon name="plus" size={18} color="#fff" />
+                                    <Text style={styles.createButtonText}>{buttonLabel}</Text>
+                                </TouchableOpacity>
+                            );
+                        })()}
                         {searchQuery || filter !== 'tous' ? (
                             <TouchableOpacity
                                 onPress={() => {

@@ -22,14 +22,14 @@ export const useDeepLinkRedirect = () => {
             console.log('[useDeepLinkRedirect] Navigation non disponible encore');
             return;
         }
-        
+
         // Vérifier que navigate est une fonction (peut être undefined si NavigationContainer n'est pas prêt)
         const navNavigate = (navigation as any)?.navigate;
         if (typeof navNavigate !== 'function') {
             console.log('[useDeepLinkRedirect] navigation.navigate n\'est pas une fonction, attente...');
             return;
         }
-        
+
         // ✅ NOUVEAU: Gérer la redirection des partenaires vers leur écran spécialisé
         const handlePartnerRedirect = () => {
             if (user?.role === 'partenaire') {
@@ -42,16 +42,19 @@ export const useDeepLinkRedirect = () => {
                         'hopital': 'HopitalForm',
                         'laboratoire': 'LaboratoireForm',
                         'agence de voyage': 'AgenceVoyageForm',
-                        // ✅ Types sans écran dédié : redirection vers écran générique
-                        'etablissementscolaire': 'GestionServicesSpecialises',
-                        'demenagement': 'GestionServicesSpecialises',
-                        'transport': 'GestionServicesSpecialises',
-                        'assureur': 'GestionServicesSpecialises',
-                        'supermarche': 'GestionServicesSpecialises',
-                        'telecom': 'GestionServicesSpecialises',
-                        'livraison': 'GestionServicesSpecialises',
+                        'hotel': 'ImmobilierForm',
+                        'meuble': 'ImmobilierForm',
+                        'chauffeur': 'TaxiForm',
+                        'supermarche': 'SupermarketHome',
+                        'livraison_courses_marche': 'MesServicesSpecialises',
+                        'etablissementscolaire': 'MesServicesSpecialises',
+                        'demenagement': 'MesServicesSpecialises',
+                        'transport': 'MesServicesSpecialises',
+                        'assureur': 'MesServicesSpecialises',
+                        'telecom': 'MesServicesSpecialises',
+                        'livraison': 'MesServicesSpecialises',
                     };
-                    
+
                     const targetScreen = partnerTypeToScreen[user.partner_type];
                     if (targetScreen) {
                         try {
@@ -64,30 +67,30 @@ export const useDeepLinkRedirect = () => {
                             console.error('[useDeepLinkRedirect] ❌ Erreur redirection partenaire:', error);
                         }
                     } else {
-                        console.warn(`[useDeepLinkRedirect] ⚠️ Type partenaire "${user.partner_type}" non mappé, redirection vers écran générique`);
+                        console.warn(`[useDeepLinkRedirect] ⚠️ Type partenaire "${user.partner_type}" non mappé, redirection vers sélecteur de services`);
                         try {
                             const nav = navigation as any;
                             if (nav && typeof nav?.navigate === 'function') {
-                                nav.navigate('GestionServicesSpecialises');
+                                nav.navigate('MesServicesSpecialises');
                             }
                         } catch (error) {
-                            console.error('[useDeepLinkRedirect] ❌ Erreur redirection écran générique:', error);
+                            console.error('[useDeepLinkRedirect] ❌ Erreur redirection sélecteur:', error);
                         }
                     }
                 } else {
-                    console.warn('[useDeepLinkRedirect] ⚠️ Partenaire sans type - redirection vers écran générique');
+                    console.warn('[useDeepLinkRedirect] ⚠️ Partenaire sans type - redirection vers sélecteur de services');
                     try {
                         const nav = navigation as any;
                         if (nav && typeof nav?.navigate === 'function') {
-                            nav.navigate('GestionServicesSpecialises');
+                            nav.navigate('MesServicesSpecialises');
                         }
                     } catch (error) {
-                        console.error('[useDeepLinkRedirect] ❌ Erreur redirection écran générique:', error);
+                        console.error('[useDeepLinkRedirect] ❌ Erreur redirection sélecteur:', error);
                     }
                 }
             }
         };
-        
+
         // Vérifier s'il y a un deep link en attente seulement si l'utilisateur vient de se connecter
         if (user) {
             const checkDeepLink = async () => {
@@ -106,9 +109,8 @@ export const useDeepLinkRedirect = () => {
                 }
             };
 
-            // Attendre un peu que la navigation soit prête
+            // Attendre que la navigation soit prête (délai minimal car on est déjà dans NavigationContainer)
             const timer = setTimeout(() => {
-                // ✅ CRITIQUE: Vérifier à nouveau que navigation est disponible avant d'appeler
                 const nav = navigation as any;
                 if (nav && typeof nav?.navigate === 'function') {
                     checkDeepLink().catch(error => {
@@ -117,7 +119,7 @@ export const useDeepLinkRedirect = () => {
                 } else {
                     console.warn('[useDeepLinkRedirect] Navigation non disponible après délai');
                 }
-            }, 500);
+            }, 50);
 
             return () => clearTimeout(timer);
         }

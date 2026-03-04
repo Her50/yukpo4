@@ -527,6 +527,46 @@ pub async fn persist_base64_media(
     })
 }
 
+/// ✅ CORRIGÉ 2026-03-04: Helper pour extraire un tableau depuis un champ qui peut être:
+/// - Un tableau direct: ["url1", "url2"]
+/// - Un objet {valeur: ["url1", "url2"], type_donnee: "media"} (format formulaire dynamique mobile)
+/// - Un objet {valeur: "url1"} (valeur unique)
+fn extract_array_or_valeur(val: &serde_json::Value) -> Option<Vec<String>> {
+    // Cas 1: Tableau direct
+    if let Some(arr) = val.as_array() {
+        let items: Vec<String> =
+            arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect();
+        if !items.is_empty() {
+            return Some(items);
+        }
+        return None;
+    }
+    // Cas 2: Objet avec champ "valeur"
+    if let Some(obj) = val.as_object() {
+        if let Some(valeur) = obj.get("valeur") {
+            // valeur peut être un tableau ou une string
+            if let Some(arr) = valeur.as_array() {
+                let items: Vec<String> =
+                    arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect();
+                if !items.is_empty() {
+                    return Some(items);
+                }
+            } else if let Some(s) = valeur.as_str() {
+                if !s.is_empty() {
+                    return Some(vec![s.to_string()]);
+                }
+            }
+        }
+    }
+    // Cas 3: String simple
+    if let Some(s) = val.as_str() {
+        if !s.is_empty() {
+            return Some(vec![s.to_string()]);
+        }
+    }
+    None
+}
+
 /// ✅ NOUVEAU: Télécharge et sauvegarde une image depuis une URL HTTP/HTTPS
 /// ✅ CORRIGÉ 2025-12-27: Utilise MediaStorageService pour upload vers S3/Wasabi
 pub async fn download_and_save_image(
@@ -2980,18 +3020,20 @@ pub async fn creer_service(
 
     // ✅ NOUVEAU: Support explicite des URLs (imageUrls, videoUrls, etc.)
     // Priorité: imageUrls (upload préalable) > base64_image (rétrocompatibilité)
+    // ✅ CORRIGÉ 2026-03-04: Utiliser extract_array_or_valeur pour gérer le format {valeur: [...]} du formulaire dynamique
     let service_images: Vec<String> = {
         // Chercher d'abord dans imageUrls (upload préalable)
-        if let Some(image_urls) = data_processed.get("imageUrls").and_then(|v| v.as_array()) {
-            image_urls.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect()
+        if let Some(urls) = data_processed.get("imageUrls").and_then(|v| extract_array_or_valeur(v))
+        {
+            urls
         }
         // Fallback: base64_image (rétrocompatibilité)
-        else {
-            data_processed
-                .get("base64_image")
-                .and_then(|v| v.as_array())
-                .map(|arr| arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect())
-                .unwrap_or_default()
+        else if let Some(imgs) =
+            data_processed.get("base64_image").and_then(|v| extract_array_or_valeur(v))
+        {
+            imgs
+        } else {
+            Vec::new()
         }
     };
 
@@ -3330,13 +3372,13 @@ pub async fn creer_service(
                     prod_processed.keys().collect::<Vec<_>>()
                 );
 
-                // ✅ NOUVEAU: Chercher d'abord dans "imageUrls" (upload préalable)
-                if let Some(image_urls) = prod_processed.get("imageUrls").and_then(|v| v.as_array())
+                // ✅ CORRIGÉ 2026-03-04: Utiliser extract_array_or_valeur pour gérer {valeur: [...]} du formulaire dynamique
+                // Chercher d'abord dans "imageUrls" (upload préalable)
+                if let Some(image_urls) =
+                    prod_processed.get("imageUrls").and_then(|v| extract_array_or_valeur(v))
                 {
                     let count = image_urls.len();
-                    images_to_process.extend(
-                        image_urls.iter().filter_map(|v| v.as_str().map(|s| s.to_string())),
-                    );
+                    images_to_process.extend(image_urls);
                     if count > 0 {
                         log::info!(
                             "[creer_service] ✅ Trouvé {} image(s) dans champ 'imageUrls' (upload préalable) pour produit {}",
@@ -3345,14 +3387,12 @@ pub async fn creer_service(
                         );
                     }
                 }
-                // Chercher dans "images" (URLs ou base64)
+                // Chercher dans "images" (URLs ou base64) — gère aussi {valeur: [...]}
                 if let Some(product_images) =
-                    prod_processed.get("images").and_then(|v| v.as_array())
+                    prod_processed.get("images").and_then(|v| extract_array_or_valeur(v))
                 {
                     let count = product_images.len();
-                    images_to_process.extend(
-                        product_images.iter().filter_map(|v| v.as_str().map(|s| s.to_string())),
-                    );
+                    images_to_process.extend(product_images);
                     if count > 0 {
                         log::info!(
                             "[creer_service] ✅ Trouvé {} image(s) dans champ 'images' pour produit {}",
@@ -3361,36 +3401,26 @@ pub async fn creer_service(
                         );
                     }
                 }
-                // Chercher dans "base64_image" (rétrocompatibilité)
-                if let Some(base64_image) = prod_processed.get("base64_image") {
-                    if let Some(base64_array) = base64_image.as_array() {
-                        let count = base64_array.len();
-                        images_to_process.extend(
-                            base64_array.iter().filter_map(|v| v.as_str().map(|s| s.to_string())),
-                        );
-                        if count > 0 {
-                            log::info!(
-                                "[creer_service] ✅ Trouvé {} image(s) dans champ 'base64_image' (array) pour produit {}",
-                                count,
-                                product_id
-                            );
-                        }
-                    } else if let Some(base64_str) = base64_image.as_str() {
-                        images_to_process.push(base64_str.to_string());
+                // Chercher dans "base64_image" (rétrocompatibilité) — gère aussi {valeur: [...]}
+                if let Some(base64_images) =
+                    prod_processed.get("base64_image").and_then(|v| extract_array_or_valeur(v))
+                {
+                    let count = base64_images.len();
+                    images_to_process.extend(base64_images);
+                    if count > 0 {
                         log::info!(
-                            "[creer_service] ✅ Trouvé 1 image dans champ 'base64_image' (string) pour produit {}",
+                            "[creer_service] ✅ Trouvé {} image(s) dans champ 'base64_image' pour produit {}",
+                            count,
                             product_id
                         );
                     }
                 }
-                // Chercher dans "images_base64" ou "image_base64" (base64)
+                // Chercher dans "images_base64" ou "image_base64" (base64) — gère aussi {valeur: [...]}
                 if let Some(images_base64) =
-                    prod_processed.get("images_base64").and_then(|v| v.as_array())
+                    prod_processed.get("images_base64").and_then(|v| extract_array_or_valeur(v))
                 {
                     let count = images_base64.len();
-                    images_to_process.extend(
-                        images_base64.iter().filter_map(|v| v.as_str().map(|s| s.to_string())),
-                    );
+                    images_to_process.extend(images_base64);
                     if count > 0 {
                         log::info!(
                             "[creer_service] ✅ Trouvé {} image(s) dans champ 'images_base64' pour produit {}",
@@ -3746,35 +3776,30 @@ pub async fn creer_service(
             // Extraire les vidéos depuis data_processed (contient les médias base64)
             let mut videos_to_process: Vec<String> = Vec::new();
             if let Some(prod_processed) = produit_from_processed {
-                // ✅ NOUVEAU: Chercher d'abord dans "videoUrls" (upload préalable)
-                if let Some(video_urls) = prod_processed.get("videoUrls").and_then(|v| v.as_array())
+                // ✅ CORRIGÉ 2026-03-04: Utiliser extract_array_or_valeur pour gérer {valeur: [...]} du formulaire dynamique
+                // Chercher d'abord dans "videoUrls" (upload préalable)
+                if let Some(video_urls) =
+                    prod_processed.get("videoUrls").and_then(|v| extract_array_or_valeur(v))
                 {
-                    videos_to_process.extend(
-                        video_urls.iter().filter_map(|v| v.as_str().map(|s| s.to_string())),
-                    );
+                    let count = video_urls.len();
+                    videos_to_process.extend(video_urls);
                     log::info!(
                         "[creer_service] ✅ Trouvé {} vidéo(s) dans champ 'videoUrls' (upload préalable) pour produit {}",
-                        video_urls.len(),
+                        count,
                         product_id
                     );
                 }
-                // Chercher dans "videos" (URLs ou base64)
+                // Chercher dans "videos" (URLs ou base64) — gère aussi {valeur: [...]}
                 if let Some(product_videos) =
-                    prod_processed.get("videos").and_then(|v| v.as_array())
+                    prod_processed.get("videos").and_then(|v| extract_array_or_valeur(v))
                 {
-                    videos_to_process.extend(
-                        product_videos.iter().filter_map(|v| v.as_str().map(|s| s.to_string())),
-                    );
+                    videos_to_process.extend(product_videos);
                 }
-                // Chercher dans "video_base64" (rétrocompatibilité)
-                if let Some(video_base64) = prod_processed.get("video_base64") {
-                    if let Some(video_array) = video_base64.as_array() {
-                        videos_to_process.extend(
-                            video_array.iter().filter_map(|v| v.as_str().map(|s| s.to_string())),
-                        );
-                    } else if let Some(video_str) = video_base64.as_str() {
-                        videos_to_process.push(video_str.to_string());
-                    }
+                // Chercher dans "video_base64" (rétrocompatibilité) — gère aussi {valeur: [...]}
+                if let Some(video_base64) =
+                    prod_processed.get("video_base64").and_then(|v| extract_array_or_valeur(v))
+                {
+                    videos_to_process.extend(video_base64);
                 }
             }
 
@@ -3976,11 +4001,11 @@ pub async fn creer_service(
     }
 
     // ✅ FALLBACK : si aucune image de service n'a été sauvegardée via les produits
+    // ✅ CORRIGÉ 2026-03-04: Utiliser extract_array_or_valeur pour gérer {valeur: [...]} du formulaire dynamique
     if saved_service_images.is_empty() {
-        if let Some(images) = data_processed.get("base64_image").and_then(|v| v.as_array()) {
-            let image_strings: Vec<String> =
-                images.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect();
-
+        if let Some(image_strings) =
+            data_processed.get("base64_image").and_then(|v| extract_array_or_valeur(v))
+        {
             if !image_strings.is_empty() {
                 log::info!(
                     "[creer_service] 🖼️ Sauvegarde de {} images globales pour le service {}",
@@ -4138,15 +4163,17 @@ pub async fn creer_service(
 
     // Audios
     // ✅ NOUVEAU: Support audioUrls (upload préalable) > audio_base64 (rétrocompatibilité)
+    // ✅ CORRIGÉ 2026-03-04: Utiliser extract_array_or_valeur pour gérer {valeur: [...]} du formulaire dynamique
     let audio_strings: Vec<String> = {
-        if let Some(audio_urls) = data_processed.get("audioUrls").and_then(|v| v.as_array()) {
-            audio_urls.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect()
+        if let Some(urls) = data_processed.get("audioUrls").and_then(|v| extract_array_or_valeur(v))
+        {
+            urls
+        } else if let Some(auds) =
+            data_processed.get("audio_base64").and_then(|v| extract_array_or_valeur(v))
+        {
+            auds
         } else {
-            data_processed
-                .get("audio_base64")
-                .and_then(|v| v.as_array())
-                .map(|arr| arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect())
-                .unwrap_or_default()
+            Vec::new()
         }
     };
 
@@ -4231,15 +4258,17 @@ pub async fn creer_service(
 
     // Vidéos
     // ✅ NOUVEAU: Support videoUrls (upload préalable) > video_base64 (rétrocompatibilité)
+    // ✅ CORRIGÉ 2026-03-04: Utiliser extract_array_or_valeur pour gérer {valeur: [...]} du formulaire dynamique
     let video_strings: Vec<String> = {
-        if let Some(video_urls) = data_processed.get("videoUrls").and_then(|v| v.as_array()) {
-            video_urls.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect()
+        if let Some(urls) = data_processed.get("videoUrls").and_then(|v| extract_array_or_valeur(v))
+        {
+            urls
+        } else if let Some(vids) =
+            data_processed.get("video_base64").and_then(|v| extract_array_or_valeur(v))
+        {
+            vids
         } else {
-            data_processed
-                .get("video_base64")
-                .and_then(|v| v.as_array())
-                .map(|arr| arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect())
-                .unwrap_or_default()
+            Vec::new()
         }
     };
 

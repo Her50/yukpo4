@@ -535,15 +535,25 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
       || product.variation_prix || product.variabilite_prix || product.price_variant;
 
     if (variationPrix) {
+      // ✅ CORRIGÉ 2026-03-04: Dé-wrapper le format formulaire dynamique {type_donnee, valeur: {...}, origine_champs}
+      // Le mobile envoie variation_prix sous forme {valeur: {variable: "pointure", modalites: [...]}}
+      let unwrappedVariationPrix = variationPrix;
+      if (typeof variationPrix === 'object' && !Array.isArray(variationPrix) &&
+        variationPrix.origine_champs && variationPrix.valeur &&
+        typeof variationPrix.valeur === 'object' && !Array.isArray(variationPrix.valeur)) {
+        unwrappedVariationPrix = variationPrix.valeur;
+      }
+
       console.log('[ProductCard] 🔍 variation_prix trouvé:', {
-        type: typeof variationPrix,
-        isArray: Array.isArray(variationPrix),
-        keys: typeof variationPrix === 'object' && !Array.isArray(variationPrix) ? Object.keys(variationPrix) : [],
-        hasModalites: typeof variationPrix === 'object' && !Array.isArray(variationPrix) && 'modalites' in variationPrix,
+        type: typeof unwrappedVariationPrix,
+        isArray: Array.isArray(unwrappedVariationPrix),
+        keys: typeof unwrappedVariationPrix === 'object' && !Array.isArray(unwrappedVariationPrix) ? Object.keys(unwrappedVariationPrix) : [],
+        hasModalites: typeof unwrappedVariationPrix === 'object' && !Array.isArray(unwrappedVariationPrix) && 'modalites' in unwrappedVariationPrix,
+        wasWrapped: unwrappedVariationPrix !== variationPrix,
       });
       // Si c'est un objet avec modalites
-      if (typeof variationPrix === 'object' && !Array.isArray(variationPrix)) {
-        const modalites = variationPrix.modalites || variationPrix.valeur || variationPrix;
+      if (typeof unwrappedVariationPrix === 'object' && !Array.isArray(unwrappedVariationPrix)) {
+        const modalites = unwrappedVariationPrix.modalites || unwrappedVariationPrix.valeur || unwrappedVariationPrix;
 
         if (Array.isArray(modalites) && modalites.length > 0) {
           variants = modalites.map((modalite: any) => {
@@ -569,16 +579,16 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
 
           hasVariant = variants.length > 0;
 
-          if (variationPrix.variable) {
-            productData.variant_dimension = variationPrix.variable;
+          if (unwrappedVariationPrix.variable) {
+            productData.variant_dimension = unwrappedVariationPrix.variable;
           }
 
           console.log('[ProductCard] ✅ variation_prix transformé en variants:', variants.length);
         }
       }
       // Si c'est directement un tableau
-      else if (Array.isArray(variationPrix) && variationPrix.length > 0) {
-        variants = variationPrix.map((modalite: any) => {
+      else if (Array.isArray(unwrappedVariationPrix) && unwrappedVariationPrix.length > 0) {
+        variants = unwrappedVariationPrix.map((modalite: any) => {
           const variant: any = {};
           if (modalite.valeur || modalite.value) {
             variant.value = modalite.valeur || modalite.value;
@@ -1446,7 +1456,7 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
   useEffect(() => {
     if (!hasVariant || variants.length <= 1 || isScrollingManually) return;
 
-    const cardWidth = 120 + 8; // width + marginRight = 128 (correspond à snapToInterval)
+    const cardWidth = 110 + 8; // width + marginRight = 118 (correspond à snapToInterval)
 
     let autoScrollInterval: NodeJS.Timeout | null = null;
 
@@ -1525,7 +1535,7 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
   // ✅ NOUVEAU 2026-01-14: Synchroniser currentVariantIndex avec le scroll réel
   const handleVariantsScroll = (event: any) => {
     const contentOffsetX = event.nativeEvent.contentOffset.x;
-    const cardWidth = 120 + 8;
+    const cardWidth = 110 + 8; // ✅ CORRIGÉ 2026-03-04: 120 → 110
     const index = Math.round(contentOffsetX / cardWidth);
     setCurrentVariantIndex(index);
   };
@@ -1918,7 +1928,7 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
                       setTimeout(() => setIsScrollingManually(false), 3000);
                     }}
                     decelerationRate="fast"
-                    snapToInterval={128} // ✅ CORRIGÉ: cardWidth (120) + marginRight (8) = 128
+                    snapToInterval={118} // ✅ CORRIGÉ 2026-03-04: cardWidth (110) + marginRight (8) = 118
                     snapToAlignment="start"
                     pagingEnabled={false} // ✅ Utiliser snapToInterval au lieu de pagingEnabled
                     style={{ flexGrow: 0 }} // ✅ CORRIGÉ 2026-01-21: Forcer le ScrollView à prendre seulement la largeur nécessaire
@@ -2072,8 +2082,8 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
             } catch (navError) {
               console.warn('[ProductCard] Erreur navigation suivi:', navError);
             }
-          }
-        />
+          }}
+        ></OrderDeliveryModal>
       )}
 
       {showGallery && (
@@ -2213,9 +2223,9 @@ const styles = StyleSheet.create({
     opacity: 0.9,
   },
   content: {
-    padding: 12, // ✅ OPTIMISÉ 2026-01-14: Padding uniforme (12px = 3x4px)
-    gap: 8, // ✅ OPTIMISÉ: Espacement uniforme (8px = 2x4px) pour meilleure cohérence
-    backgroundColor: 'rgba(255, 255, 255, 0.98)', // ✅ OPTIMISÉ: Fond plus opaque
+    padding: 10, // ✅ OPTIMISÉ 2026-03-04: 12 → 10 pour layout plus compact
+    gap: 6, // ✅ OPTIMISÉ 2026-03-04: 8 → 6 pour réduire l'espacement vertical
+    backgroundColor: 'rgba(255, 255, 255, 0.98)',
     borderBottomLeftRadius: 14,
     borderBottomRightRadius: 14,
   },
@@ -2229,9 +2239,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 8, // ✅ OPTIMISÉ: 8px (2x4px) pour espacement uniforme
-    gap: 8, // ✅ OPTIMISÉ: 8px pour espacement uniforme entre éléments
-    minHeight: 28, // ✅ OPTIMISÉ: Hauteur minimale pour alignement vertical
+    marginBottom: 4, // ✅ OPTIMISÉ 2026-03-04: 8 → 4 plus compact
+    gap: 6, // ✅ OPTIMISÉ 2026-03-04: 8 → 6
+    minHeight: 24, // ✅ OPTIMISÉ 2026-03-04: 28 → 24 plus compact
   },
   distanceBadgeClickable: {
     flexDirection: 'row',
@@ -2279,15 +2289,14 @@ const styles = StyleSheet.create({
   },
   // ✅ OPTIMISÉ 2026-01-14: Section produit - Titre et description avec hiérarchie claire
   productHeaderSection: {
-    marginBottom: 8, // ✅ OPTIMISÉ: 8px (2x4px) pour espacement uniforme
+    marginBottom: 4, // ✅ OPTIMISÉ 2026-03-04: 8 → 4 plus compact
   },
   // ✅ OPTIMISÉ 2026-01-14: Description - Positionnée juste sous le titre
   productDescription: {
-    fontSize: 11, // ✅ OPTIMISÉ: Légèrement plus grand pour meilleure lisibilité
+    fontSize: 11,
     color: '#6B7280',
-    lineHeight: 16, // ✅ OPTIMISÉ: Line height augmenté pour meilleure lisibilité
-    marginTop: 4, // ✅ OPTIMISÉ: 4px d'espacement après le titre
-    // ✅ CORRECTION: Permettre l'affichage multiline avec flexWrap pour préserver la mise en forme
+    lineHeight: 15, // ✅ OPTIMISÉ 2026-03-04: 16 → 15 plus compact
+    marginTop: 2, // ✅ OPTIMISÉ 2026-03-04: 4 → 2
     flexWrap: 'wrap',
     flexShrink: 1,
   },
@@ -2296,9 +2305,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 8, // ✅ OPTIMISÉ: 8px entre prestataire et adresse
-    marginBottom: 8, // ✅ OPTIMISÉ: 8px avant la section suivante
-    flexWrap: 'wrap', // ✅ OPTIMISÉ: Permet le retour à la ligne si nécessaire
+    gap: 6, // ✅ OPTIMISÉ 2026-03-04: 8 → 6
+    marginBottom: 4, // ✅ OPTIMISÉ 2026-03-04: 8 → 4
+    flexWrap: 'wrap',
   },
   prestataireNameCompact: {
     flexDirection: 'row',
@@ -2349,34 +2358,43 @@ const styles = StyleSheet.create({
   // ✅ OPTIMISÉ 2026-01-14: Actions - Boutons bien visibles avec espacement uniforme
   actionsRow: {
     flexDirection: 'row',
-    gap: 8, // ✅ OPTIMISÉ: 8px entre les boutons pour espacement uniforme
+    gap: 6, // ✅ OPTIMISÉ 2026-03-04: 8 → 6
     alignItems: 'center',
-    marginTop: 8, // ✅ OPTIMISÉ: 8px avant les actions
-    marginBottom: 0, // ✅ OPTIMISÉ: Pas de marge bottom car dernière section
+    marginTop: 4, // ✅ OPTIMISÉ 2026-03-04: 8 → 4
+    marginBottom: 0,
   },
   actionButtonDeliveryCompact: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 4,
-    paddingVertical: 6,
+    paddingVertical: 7, // ✅ OPTIMISÉ 2026-03-04: 6 → 7 pour meilleur touch target
     paddingHorizontal: 10,
     backgroundColor: '#10B981',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#059669',
+    borderRadius: 20, // ✅ OPTIMISÉ 2026-03-04: 8 → 20 pill shape pro
+    borderWidth: 0,
     flex: 1,
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 2,
   },
   actionButtonChatCompact: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 4,
-    paddingVertical: 6,
+    paddingVertical: 7, // ✅ OPTIMISÉ 2026-03-04: 6 → 7 pour meilleur touch target
     paddingHorizontal: 10,
     backgroundColor: modernColors.primary,
-    borderRadius: 8,
+    borderRadius: 20, // ✅ OPTIMISÉ 2026-03-04: 8 → 20 pill shape pro
     flex: 1,
+    shadowColor: modernColors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 2,
   },
   actionButtonDeliveryTextCompact: {
     color: '#FFFFFF',
@@ -2391,9 +2409,8 @@ const styles = StyleSheet.create({
   // ✅ CORRIGÉ 2026-01-14: Container commentaires avec hauteur adaptative (non coupés)
   // ✅ AMÉLIORÉ 2026-01-23: Ajout d'un header cliquable pour accéder facilement aux avis
   commentsContainerCompact: {
-    marginTop: 4,
-    minHeight: 40, // Hauteur minimale pour afficher au moins un commentaire
-    // ✅ SUPPRIMÉ: maxHeight pour éviter de couper les commentaires
+    marginTop: 2, // ✅ OPTIMISÉ 2026-03-04: 4 → 2
+    minHeight: 40,
   },
   commentsHeaderButton: {
     backgroundColor: modernColors.primary + '10', // 10% opacity
@@ -2437,11 +2454,11 @@ const styles = StyleSheet.create({
     marginLeft: 2, // ✅ RÉDUIT 2026-01-13: 4 -> 2
   },
   productName: {
-    fontSize: 15, // ✅ OPTIMISÉ 2026-01-14: Taille augmentée pour meilleure hiérarchie visuelle
+    fontSize: 14, // ✅ OPTIMISÉ 2026-03-04: 15 → 14 plus compact sans sacrifier lisibilité
     fontWeight: '700',
-    color: '#111827', // ✅ OPTIMISÉ: Couleur plus foncée pour meilleur contraste
-    lineHeight: 20, // ✅ OPTIMISÉ: Line height augmenté pour meilleure lisibilité
-    letterSpacing: -0.2, // ✅ OPTIMISÉ: Légère réduction d'espacement pour compacité
+    color: '#111827',
+    lineHeight: 18, // ✅ OPTIMISÉ 2026-03-04: 20 → 18
+    letterSpacing: -0.2,
   },
   // ✅ SUPPRIMÉ 2026-01-14: prestataireRow, avatar, avatarPlaceholder, prestataireName remplacés par prestataireNameCompact
   // ✅ SUPPRIMÉ 2026-01-14: locationRow, locationText, locationSection remplacés par addressRow
@@ -2454,12 +2471,12 @@ const styles = StyleSheet.create({
   },
   // ✅ OPTIMISÉ 2026-01-14: Carte métriques compacte avec fond subtil
   metricsCardCompact: {
-    marginTop: 0, // ✅ OPTIMISÉ: Pas de marge top car déjà dans le flux
-    marginBottom: 8, // ✅ OPTIMISÉ: 8px avant la section suivante
-    borderRadius: 8, // ✅ OPTIMISÉ: 8px border radius
-    paddingVertical: 6, // ✅ OPTIMISÉ: 6px padding vertical
-    paddingHorizontal: 8, // ✅ OPTIMISÉ: 8px padding horizontal
-    backgroundColor: '#F9FAFB', // ✅ OPTIMISÉ: Fond subtil sans gradient pour simplicité
+    marginTop: 0,
+    marginBottom: 4, // ✅ OPTIMISÉ 2026-03-04: 8 → 4
+    borderRadius: 8,
+    paddingVertical: 4, // ✅ OPTIMISÉ 2026-03-04: 6 → 4
+    paddingHorizontal: 6, // ✅ OPTIMISÉ 2026-03-04: 8 → 6
+    backgroundColor: '#F9FAFB',
     borderWidth: 1,
     borderColor: '#F3F4F6',
   },
@@ -2494,7 +2511,7 @@ const styles = StyleSheet.create({
     color: '#6B7280',
   },
   characteristicsSection: {
-    gap: 2, // ✅ RÉDUIT 2026-01-13: 4 -> 2
+    gap: 1, // ✅ OPTIMISÉ 2026-03-04: 2 → 1
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -2512,22 +2529,24 @@ const styles = StyleSheet.create({
   },
   chip: {
     backgroundColor: '#EEF2FF',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: modernColors.primary,
+    paddingHorizontal: 7, // ✅ OPTIMISÉ 2026-03-04: 8 → 7
+    paddingVertical: 3, // ✅ OPTIMISÉ 2026-03-04: 4 → 3
+    borderRadius: 12, // ✅ OPTIMISÉ 2026-03-04: 8 → 12 pill shape
+    borderWidth: 0.5,
+    borderColor: modernColors.primary + '60', // ✅ OPTIMISÉ 2026-03-04: bordure plus subtile
   },
   chipText: {
-    fontSize: 11,
+    fontSize: 10, // ✅ OPTIMISÉ 2026-03-04: 11 → 10
     color: modernColors.primary,
     fontWeight: '600',
   },
   priceVariations: {
-    gap: 2, // ✅ COMPACT 2026-01-13: 4 -> 2 pour réduire de 50%+
-    backgroundColor: '#F9FAFB',
-    padding: 3, // ✅ COMPACT 2026-01-13: 6 -> 3 pour réduire de 50%+
-    borderRadius: 6, // ✅ COMPACT 2026-01-13: 8 -> 6
+    gap: 2,
+    backgroundColor: '#F8FAFC', // ✅ OPTIMISÉ 2026-03-04: fond plus clair
+    padding: 6, // ✅ OPTIMISÉ 2026-03-04: 3 → 6 pour meilleur rendu
+    borderRadius: 10, // ✅ OPTIMISÉ 2026-03-04: 6 → 10
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   variantsScrollContainer: {
     gap: 8,
@@ -2535,12 +2554,12 @@ const styles = StyleSheet.create({
     paddingRight: 4,
   },
   variantCard: {
-    width: 120,
+    width: 110, // ✅ OPTIMISÉ 2026-03-04: 120 → 110 plus compact
     backgroundColor: '#FFFFFF',
     borderRadius: 10,
-    padding: 8,
-    borderWidth: 1.5,
-    borderColor: '#E5E7EB',
+    padding: 6, // ✅ OPTIMISÉ 2026-03-04: 8 → 6
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
     marginRight: 8,
   },
   variantCardSelected: {
@@ -2613,8 +2632,8 @@ const styles = StyleSheet.create({
     color: '#6B7280',
   },
   priceFromValue: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 15, // ✅ OPTIMISÉ 2026-03-04: 14 → 15 prix plus visible
+    fontWeight: '800',
     color: modernColors.primary,
   },
   priceUniqueContainer: {
@@ -2630,7 +2649,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   price: {
-    fontSize: 14, // ✅ COMPACT 2026-01-13: 18 -> 14 pour réduire de 50%+
+    fontSize: 16, // ✅ OPTIMISÉ 2026-03-04: 14 → 16, le prix doit être visuellement dominant
     fontWeight: '800',
     color: modernColors.primary,
   },
@@ -2694,9 +2713,9 @@ const styles = StyleSheet.create({
   // ✅ SUPPRIMÉ 2026-01-14: footer supprimé (informations déplacées dans topHeaderRow)
   // ✅ SUPPRIMÉ 2026-01-14: secondaryActions supprimé (partage déplacé en haut)
   cardGradient: {
-    borderRadius: 18,
+    borderRadius: 16, // ✅ OPTIMISÉ 2026-03-04: 18 → 16
     padding: 1,
-    marginBottom: 8, // ✅ RÉDUIT 2026-01-14: 12 -> 8
+    marginBottom: 10, // ✅ OPTIMISÉ 2026-03-04: 8 → 10 un peu d'air entre les cartes
   },
 });
 

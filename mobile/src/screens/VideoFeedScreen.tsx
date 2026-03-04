@@ -65,6 +65,21 @@ const normalizeVideoUrl = (url: any): string | null => {
     return mediaService.getVideoUrl(trimmed) || trimmed;
 };
 
+// ✅ CORRIGÉ 2026-03-04: Helper pour extraire une vidéo depuis un champ qui peut être:
+// - Une string directe: "url"
+// - Un tableau: ["url1", "url2"]
+// - Un objet {valeur: ["url1", "url2"]} (format formulaire dynamique)
+const extractVideoFromField = (field: any): string | null => {
+    if (!field) return null;
+    if (typeof field === 'string') return field;
+    if (Array.isArray(field)) return field[0] || null;
+    if (typeof field === 'object' && field.valeur) {
+        if (typeof field.valeur === 'string') return field.valeur;
+        if (Array.isArray(field.valeur)) return field.valeur[0] || null;
+    }
+    return null;
+};
+
 const normalizeFeed = (raw: any[]): FeedItem[] => {
     if (!Array.isArray(raw)) {
         console.warn('[VideoFeedScreen] normalizeFeed: raw n\'est pas un tableau', typeof raw, raw);
@@ -72,11 +87,14 @@ const normalizeFeed = (raw: any[]): FeedItem[] => {
     }
     return raw
         .map((item, index) => {
+            // ✅ CORRIGÉ 2026-03-04: Chercher la vidéo dans tous les formats possibles
             const rawVideo =
                 item?.videoUrl ||
                 item?.video ||
+                item?.data?.videoUrl ||
                 item?.data?.video ||
-                item?.data?.videos?.[0];
+                extractVideoFromField(item?.data?.videos) ||
+                extractVideoFromField(item?.videos);
             if (!rawVideo) return null;
 
             const video = normalizeVideoUrl(rawVideo);
@@ -152,9 +170,11 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
     const fetchFeed = useCallback(async (isRefresh = false) => {
         if (!isRefresh) setLoading(true);
         try {
+            // ✅ CORRIGÉ 2026-03-04: Passer user_id pour recommandations ML personnalisées
+            const userIdParam = user?.id ? `&user_id=${user.id}` : '';
             const endpoint = showOnlyMyVideos
                 ? '/api/videos/my-videos'
-                : '/api/content/mixed?limit=30&format=video';
+                : `/api/content/mixed?limit=30&format=video${userIdParam}`;
             const response = await apiGet(endpoint);
             let data = response?.data;
             if (data && typeof data === 'object' && !Array.isArray(data)) {
@@ -178,7 +198,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
             setLoading(false);
             setRefreshing(false);
         }
-    }, [showOnlyMyVideos]);
+    }, [showOnlyMyVideos, user?.id]);
 
     useEffect(() => { fetchFeed(); }, [fetchFeed]);
 

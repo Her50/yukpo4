@@ -5,16 +5,16 @@
  * Permet d'ajouter, modifier et supprimer des lignes
  */
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
+    ActivityIndicator,
+    Animated,
+    ScrollView,
     StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
     View,
-    ScrollView,
-    ActivityIndicator,
-    Animated,
 } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
@@ -46,7 +46,7 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
 }) => {
     // ✅ NOUVEAU: Toast pour les notifications
     const toaster = useToaster();
-    
+
     // État du tableau : chaque ligne contient un label et une valeur
     const [rows, setRows] = useState<SubCharacteristicRow[]>([]);
     const [editingIndex, setEditingIndex] = useState<number | null>(null);
@@ -68,16 +68,16 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
         } else if (sousCaracteristiques && Object.keys(sousCaracteristiques).length > 0) {
             // ✅ CORRECTION CRITIQUE: Utiliser la valeur parsée si disponible pour garantir l'alignement correct
             const initialRowsFromIA: SubCharacteristicRow[] = [];
-            
+
             // ✅ DEBUG: Logger les données reçues pour diagnostiquer le problème
             console.log('[SubCharacteristicsTable] 🔍 sousCaracteristiques reçues:', JSON.stringify(sousCaracteristiques, null, 2));
             console.log('[SubCharacteristicsTable] 🔍 valeur parsée:', valeur);
             console.log('[SubCharacteristicsTable] 🔍 productLabels:', productLabels);
-            
+
             // ✅ CORRECTION MAJEURE: Ne PAS utiliser la chaîne valeur pour mapper les valeurs aux labels
             // Car la chaîne valeur peut contenir des valeurs incohérentes ou des valeurs supplémentaires
             // À la place, utiliser DIRECTEMENT sous_caracteristiques et productLabels
-            
+
             // Déterminer l'ordre des labels (clés réelles dans sousCaracteristiques)
             // Priorité 1: productLabels (ordre garanti depuis l'IA) - CRITIQUE pour l'alignement
             // Priorité 2: Ordre des clés dans sousCaracteristiques
@@ -114,7 +114,7 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
                     }
                 }
             }
-            
+
             // Si aucun label valide dans productLabels, utiliser les clés de sousCaracteristiques (sans doublons)
             if (orderedLabels.length === 0) {
                 const allKeys = Object.keys(sousCaracteristiques);
@@ -122,15 +122,15 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
                 console.log('[SubCharacteristicsTable] 🔍 Aucun label valide dans productLabels, utilisation des clés de sousCaracteristiques (sans doublons):', orderedLabels);
                 console.warn('[SubCharacteristicsTable] ⚠️ ATTENTION: productLabels non disponible ou sans correspondance, utilisation de Object.keys() comme fallback.');
             }
-            
+
             console.log('[SubCharacteristicsTable] 🔍 Labels ordonnés depuis productLabels:', orderedLabels);
             console.log('[SubCharacteristicsTable] 🔍 Clés dans sousCaracteristiques:', Object.keys(sousCaracteristiques));
-            
+
             // ✅ CORRECTION CRITIQUE: Vérifier que tous les labels ordonnés existent dans sousCaracteristiques
             // et que toutes les clés de sousCaracteristiques sont présentes dans orderedLabels
             const missingLabels = orderedLabels.filter(label => !sousCaracteristiques.hasOwnProperty(label));
             const missingKeys = Object.keys(sousCaracteristiques).filter(key => !orderedLabels.includes(key));
-            
+
             if (missingLabels.length > 0) {
                 console.warn('[SubCharacteristicsTable] ⚠️ Labels dans productLabels qui n\'existent pas dans sousCaracteristiques:', missingLabels);
             }
@@ -140,7 +140,7 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
                 orderedLabels = [...orderedLabels, ...missingKeys];
                 console.log('[SubCharacteristicsTable] ✅ Clés manquantes ajoutées à orderedLabels:', missingKeys);
             }
-            
+
             // ✅ NOUVEAU: Si on a une valeur parsée ET qu'elle est cohérente, l'utiliser pour pré-remplir les valeurs préférées par l'IA
             // Mais TOUJOURS vérifier que la valeur existe dans le tableau de sousCaracteristiques[label]
             let parsedValues: string[] = [];
@@ -149,7 +149,7 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
                 console.log('[SubCharacteristicsTable] 🔍 Valeurs parsées depuis valeur:', parsedValues);
                 console.log('[SubCharacteristicsTable] 🔍 Nombre de valeurs parsées:', parsedValues.length);
                 console.log('[SubCharacteristicsTable] 🔍 Nombre de labels ordonnés:', orderedLabels.length);
-                
+
                 // Vérifier si la valeur parsée est cohérente (même nombre de valeurs que de labels)
                 if (parsedValues.length !== orderedLabels.length) {
                     console.warn(`[SubCharacteristicsTable] ⚠️ INCOHÉRENCE DÉTECTÉE: ${parsedValues.length} valeurs parsées mais ${orderedLabels.length} labels`);
@@ -159,7 +159,7 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
                     parsedValues = []; // Ignorer la chaîne valeur si elle est incohérente
                 }
             }
-            
+
             // ✅ CORRECTION CRITIQUE: Parcourir les labels dans l'ordre garanti par productLabels
             // Pour chaque label, utiliser la valeur de la chaîne parsée SI elle existe dans sousCaracteristiques[label]
             // Sinon, utiliser la première valeur de sousCaracteristiques[label]
@@ -175,7 +175,7 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
                     initialRowsFromIA.push(row);
                     return;
                 }
-                
+
                 // ✅ NOUVEAU: Si on a une valeur parsée cohérente, vérifier si la valeur à l'index correspond existe dans le tableau
                 let selectedValue: string | null = null;
                 if (parsedValues.length > 0 && index < parsedValues.length) {
@@ -189,13 +189,13 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
                         // Continuer pour utiliser la première valeur à la place
                     }
                 }
-                
+
                 // Si aucune valeur parsée valide, utiliser la première valeur du tableau
                 if (!selectedValue) {
                     selectedValue = values[0];
                     console.log(`[SubCharacteristicsTable] ✅ Utilisation première valeur pour "${label}" [index ${index}]: "${selectedValue}"`);
                 }
-                
+
                 if (selectedValue && typeof selectedValue === 'string' && selectedValue.trim().length > 0) {
                     const row = {
                         label: label.trim(),
@@ -213,13 +213,13 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
                     initialRowsFromIA.push(row);
                 }
             });
-            
+
             // ✅ CORRECTION: Si on avait une valeur parsée mais qu'elle était incohérente, logger un avertissement
             if (valeur && valeur.trim().length > 0 && parsedValues.length === 0) {
                 console.warn(`[SubCharacteristicsTable] ⚠️ Chaîne valeur ignorée car incohérente. Utilisation directe de sous_caracteristiques.`);
             }
-            
-            console.log('[SubCharacteristicsTable] ✅ Tableau final initialisé avec', initialRowsFromIA.length, 'lignes:', 
+
+            console.log('[SubCharacteristicsTable] ✅ Tableau final initialisé avec', initialRowsFromIA.length, 'lignes:',
                 initialRowsFromIA.map(r => `${r.label}: ${r.value}`).join(', '));
             setRows(initialRowsFromIA);
         }
@@ -242,15 +242,15 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
         if (isValidated && validatedRowsSnapshot.length > 0) {
             // Comparer les lignes actuelles avec le snapshot validé
             const currentValidRows = rows.filter(r => r.label.trim() && r.value.trim());
-            const hasChanged = 
+            const hasChanged =
                 currentValidRows.length !== validatedRowsSnapshot.length ||
                 currentValidRows.some((row, index) => {
                     const validatedRow = validatedRowsSnapshot[index];
-                    return !validatedRow || 
-                           row.label !== validatedRow.label || 
-                           row.value !== validatedRow.value;
+                    return !validatedRow ||
+                        row.label !== validatedRow.label ||
+                        row.value !== validatedRow.value;
                 });
-            
+
             if (hasChanged) {
                 // Les lignes ont changé, réactiver le bouton
                 setIsValidated(false);
@@ -283,13 +283,13 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
         setEditingIndex(null);
         setEditingLabel('');
         setEditingValue('');
-        
+
         // ✅ NOUVEAU: Réactiver le bouton si on modifie après validation
         if (isValidated) {
             setIsValidated(false);
             setValidatedRowsSnapshot([]);
         }
-        
+
         // ✅ NOUVEAU : Sauvegarder automatiquement dans le formulaire (sans DB)
         if (onRowsChange) {
             onRowsChange(newRows);
@@ -307,13 +307,13 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
     const removeRow = (index: number) => {
         const newRows = rows.filter((_, i) => i !== index);
         setRows(newRows);
-        
+
         // ✅ NOUVEAU: Réactiver le bouton si on supprime après validation
         if (isValidated) {
             setIsValidated(false);
             setValidatedRowsSnapshot([]);
         }
-        
+
         // ✅ NOUVEAU : Sauvegarder automatiquement dans le formulaire (sans DB)
         if (onRowsChange) {
             onRowsChange(newRows);
@@ -329,19 +329,19 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
         setEditingIndex(newIndex);
         setEditingLabel('');
         setEditingValue('');
-        
+
         // ✅ NOUVEAU: Réactiver le bouton si on ajoute après validation
         if (isValidated) {
             setIsValidated(false);
             setValidatedRowsSnapshot([]);
         }
-        
+
         // ✅ NOUVEAU : Sauvegarder automatiquement dans le formulaire (sans DB)
-        // Note : On ne sauvegarde pas les lignes vides, seulement après édition
-        // if (onRowsChange) {
-        //     onRowsChange(newRows);
-        // }
-        
+        // ✅ CORRECTION: Sauvegarder les lignes vides aussi pour permettre la modification immédiate
+        if (onRowsChange) {
+            onRowsChange(newRows);
+        }
+
         // Scroller vers la nouvelle ligne après un court délai pour permettre le rendu
         setTimeout(() => {
             if (scrollViewRef.current) {
@@ -366,7 +366,7 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
         }
 
         // Filtrer les lignes vides
-        const validRows = rows.filter(row => 
+        const validRows = rows.filter(row =>
             row.label.trim().length > 0 && row.value.trim().length > 0
         );
 
@@ -377,7 +377,7 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
 
         // ✅ FEEDBACK VISUEL: Animation et état de validation
         setIsValidating(true);
-        
+
         // Animation de scale pour le bouton
         Animated.sequence([
             Animated.timing(scaleAnim, {
@@ -447,9 +447,9 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
             </View>
 
             {/* Corps du tableau */}
-            <ScrollView 
+            <ScrollView
                 ref={scrollViewRef}
-                style={styles.tableBody} 
+                style={styles.tableBody}
                 nestedScrollEnabled
             >
                 {rows.length === 0 ? (
@@ -577,7 +577,7 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
                     </TouchableOpacity>
                 </Animated.View>
             </View>
-            
+
             {/* ✅ NOUVEAU: Badge de validation réussie (affiché de manière persistante) */}
             {isValidated && (
                 <View style={styles.successBadge}>

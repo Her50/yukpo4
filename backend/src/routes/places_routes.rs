@@ -99,10 +99,13 @@ pub async fn autocomplete_places(
         _ => None,
     };
 
-    // ✅ CORRIGÉ 2026-02-25: Clé Google Maps depuis env var ou fallback
+    // ✅ CORRIGÉ 2026-03-04: Clé Google Maps depuis env var (GCP Secret Manager)
+    // NE PAS hardcoder de clé Android/iOS ici — le backend a besoin d'une clé SERVEUR
     let google_api_key = std::env::var("GOOGLE_MAPS_API_KEY").unwrap_or_else(|_| {
-        eprintln!("[Places API] GOOGLE_MAPS_API_KEY non trouvée dans env, utilisation du fallback");
-        "AIzaSyDqlMAysWsGzv1jQtR6WJn8LZXpH75SwFo".to_string()
+        eprintln!(
+            "[Places API] ⚠️ GOOGLE_MAPS_API_KEY non trouvée dans env — autocomplete désactivé"
+        );
+        String::new()
     });
     // Log masqué pour diagnostic
     if google_api_key.len() > 10 {
@@ -416,8 +419,8 @@ pub async fn get_google_business_details(
     State(_state): State<Arc<AppState>>,
     Query(params): Query<GoogleBusinessDetailsQuery>,
 ) -> impl IntoResponse {
-    let api_key = std::env::var("GOOGLE_MAPS_API_KEY")
-        .unwrap_or_else(|_| "AIzaSyDqlMAysWsGzv1jQtR6WJn8LZXpH75SwFo".to_string());
+    // ✅ CORRIGÉ 2026-03-04: Ne pas hardcoder la clé Android restreinte
+    let api_key = std::env::var("GOOGLE_MAPS_API_KEY").unwrap_or_default();
 
     if api_key.is_empty() {
         return (

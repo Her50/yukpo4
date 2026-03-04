@@ -86,6 +86,8 @@ struct PointsOfInterestRequest {
     origin_lng: f64,
     dest_lat: f64,
     dest_lng: f64,
+    /// JSON-encoded array of {lat,lng} objects representing the route steps
+    route_steps: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -515,29 +517,76 @@ async fn get_points_of_interest(
         params.dest_lng,
     );
 
-    // ✅ FIX 2026-03-03: Rechercher les POI à 3 points le long du trajet
-    // (zone départ, milieu, zone arrivée) pour couvrir tout le parcours
-    let search_points = vec![
-        // Point 1: Proche de l'origine (25% du trajet)
-        (
-            params.origin_lat + (params.dest_lat - params.origin_lat) * 0.25,
-            params.origin_lng + (params.dest_lng - params.origin_lng) * 0.25,
-        ),
-        // Point 2: Milieu du trajet
-        (
-            (params.origin_lat + params.dest_lat) / 2.0,
-            (params.origin_lng + params.dest_lng) / 2.0,
-        ),
-        // Point 3: Proche de la destination (75% du trajet)
-        (
-            params.origin_lat + (params.dest_lat - params.origin_lat) * 0.75,
-            params.origin_lng + (params.dest_lng - params.origin_lng) * 0.75,
-        ),
-    ];
+    // ✅ FIX 2026-03-04: Utiliser les VRAIS points du trajet (steps) au lieu d'une interpolation linéaire
+    // Cela évite que les POI soient trouvés "derrière" ou "à l'opposé" du trajet réel
+    let route_step_points: Vec<(f64, f64)> = if let Some(ref steps_json) = params.route_steps {
+        // Parser les steps envoyés par le mobile
+        if let Ok(steps) = serde_json::from_str::<Vec<LocationCoords>>(steps_json) {
+            steps.iter().map(|s| (s.lat, s.lng)).collect()
+        } else {
+            vec![]
+        }
+    } else {
+        vec![]
+    };
 
-    // ✅ FIX 2026-03-03: Rayon adaptatif par point de recherche
-    // Pour chaque point: ~20% de la distance totale, min 500m, max 3km
-    let radius_per_point = ((route_distance * 0.20).max(500.0).min(3000.0)) as u32;
+    // Points de recherche: soit les vrais steps du trajet, soit fallback linéaire
+    let search_points: Vec<(f64, f64)> = if route_step_points.len() >= 3 {
+        // Échantillonner ~5 points répartis le long des vrais steps
+        let step_count = route_step_points.len();
+        let mut sampled = Vec::new();
+        let sample_indices = if step_count <= 5 {
+            (0..step_count).collect::<Vec<_>>()
+        } else {
+            vec![
+                step_count / 5,
+                2 * step_count / 5,
+                3 * step_count / 5,
+                4 * step_count / 5,
+            ]
+        };
+        for idx in sample_indices {
+            sampled.push(route_step_points[idx]);
+        }
+        sampled
+    } else {
+        // Fallback: interpolation linéaire (ancien comportement)
+        vec![
+            (
+                params.origin_lat + (params.dest_lat - params.origin_lat) * 0.25,
+                params.origin_lng + (params.dest_lng - params.origin_lng) * 0.25,
+            ),
+            (
+                (params.origin_lat + params.dest_lat) / 2.0,
+                (params.origin_lng + params.dest_lng) / 2.0,
+            ),
+            (
+                params.origin_lat + (params.dest_lat - params.origin_lat) * 0.75,
+                params.origin_lng + (params.dest_lng - params.origin_lng) * 0.75,
+            ),
+        ]
+    };
+
+    // ✅ FIX 2026-03-04: Rayon adaptatif — plus petit quand on a les vrais steps (meilleure précision)
+    let has_real_steps = route_step_points.len() >= 3;
+    let radius_per_point = if has_real_steps {
+        // Avec les vrais points du trajet, un rayon plus petit suffit (500m–1500m)
+        ((route_distance * 0.10).max(500.0).min(1500.0)) as u32
+    } else {
+        // Sans steps, rayon plus large pour compenser l'imprécision
+        ((route_distance * 0.20).max(500.0).min(3000.0)) as u32
+    };
+
+    // ✅ FIX 2026-03-04: Garder les step points pour calculer la distance DEPUIS LE TRAJET (pas l'origine)
+    let route_path_for_distance: Vec<(f64, f64)> = if route_step_points.len() >= 2 {
+        route_step_points.clone()
+    } else {
+        // Fallback: créer un chemin simple origin → dest
+        vec![
+            (params.origin_lat, params.origin_lng),
+            (params.dest_lat, params.dest_lng),
+        ]
+    };
 
     let client = reqwest::Client::new();
     let mut seen_place_ids = std::collections::HashSet::new();
@@ -572,13 +621,25 @@ async fn get_points_of_interest(
                                     let lng =
                                         location.get("lng").and_then(|l| l.as_f64()).unwrap_or(0.0);
 
-                                    // ✅ FIX 2026-03-03: Distance depuis l'ORIGINE de l'utilisateur (Haversine)
-                                    let distance_from_origin = haversine_distance(
-                                        params.origin_lat,
-                                        params.origin_lng,
-                                        lat,
-                                        lng,
-                                    );
+                                    // ✅ FIX 2026-03-04: Distance depuis le TRAJET (point le plus proche)
+                                    // = combien l'utilisateur devra dévier pour atteindre ce POI
+                                    let distance_from_route = route_path_for_distance
+                                        .iter()
+                                        .map(|(slat, slng)| {
+                                            haversine_distance(*slat, *slng, lat, lng)
+                                        })
+                                        .fold(f64::MAX, f64::min);
+
+                                    // ✅ FIX 2026-03-04: Filtrer les POI trop éloignés du trajet réel
+                                    // Max 1500m de détour (sauf si le trajet est très court)
+                                    let max_detour = if route_distance < 3000.0 {
+                                        800.0
+                                    } else {
+                                        1500.0
+                                    };
+                                    if distance_from_route > max_detour {
+                                        continue;
+                                    }
 
                                     let name = result
                                         .get("name")
@@ -610,7 +671,7 @@ async fn get_points_of_interest(
                                         name,
                                         poi_type: mapped_type.to_string(),
                                         location: LocationCoords { lat, lng },
-                                        distance_from_route_meters: distance_from_origin,
+                                        distance_from_route_meters: distance_from_route,
                                         rating,
                                         is_open,
                                     });
@@ -623,7 +684,7 @@ async fn get_points_of_interest(
         }
     }
 
-    // Trier par distance depuis l'origine de l'utilisateur
+    // ✅ FIX 2026-03-04: Trier par distance de détour (les plus proches du trajet en premier)
     all_pois.sort_by(|a, b| {
         a.distance_from_route_meters
             .partial_cmp(&b.distance_from_route_meters)

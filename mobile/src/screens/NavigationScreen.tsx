@@ -12,7 +12,8 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
+// ✅ FIX 2026-03-04: Remplacé KeyboardAwareScrollView par ScrollView simple
+// KeyboardAwareScrollView bloquait le scroll horizontal des cartes de routes
 import LocationSelector, { LocationObject } from '../components/LocationSelector';
 import { NativeCard } from '../components/NativeDesign';
 import SafeIcon from '../components/SafeIcon';
@@ -200,7 +201,7 @@ const NavigationScreen: React.FC = () => {
         const destLower = dest.toLowerCase().trim();
         if (destLower === 'domicile' || destLower === 'bureau') {
             try {
-                const response = await apiGet(`/api/navigation/destinations/${destLower}`);
+                const response = await apiGet(`/api/navigation/destinations/by-label/${destLower}`);
                 if (response?.data) {
                     return { lat: response.data.latitude, lng: response.data.longitude, address: response.data.address };
                 }
@@ -285,8 +286,13 @@ const NavigationScreen: React.FC = () => {
         try {
             const origin = await getCurrentPosition();
             if (!origin) { setLoadingPOI(false); return; }
+            // ✅ FIX 2026-03-04: Envoyer les vrais steps du trajet pour que le backend
+            // cherche les POI le long du VRAI parcours (pas une ligne droite)
+            const stepsParam = route.steps && route.steps.length > 0
+                ? `&route_steps=${encodeURIComponent(JSON.stringify(route.steps.map(s => ({ lat: s.location.lat, lng: s.location.lng }))))}`
+                : '';
             const response = await apiGet(
-                `/api/navigation/points-of-interest?route_id=${route.id}&origin_lat=${origin.lat}&origin_lng=${origin.lng}&dest_lat=${destinationCoords.lat}&dest_lng=${destinationCoords.lng}`
+                `/api/navigation/points-of-interest?route_id=${route.id}&origin_lat=${origin.lat}&origin_lng=${origin.lng}&dest_lat=${destinationCoords.lat}&dest_lng=${destinationCoords.lng}${stepsParam}`
             );
             if (response?.data?.pois) {
                 setPointsOfInterest(response.data.pois);
@@ -325,16 +331,25 @@ const NavigationScreen: React.FC = () => {
                 distance_meters: route.distance_meters, duration_seconds: route.duration_seconds,
                 waypoints: waypoints.map(wp => ({ lat: wp.lat, lng: wp.lng })),
             });
+            // ✅ FIX 2026-03-04: Utiliser Google Maps URL universelle qui supporte les waypoints
+            // maps:// (iOS) et google.navigation: (Android) ne supportent PAS les waypoints
             const waypointsStr = waypoints.length > 0
                 ? `&waypoints=${waypoints.map(wp => `${wp.lat},${wp.lng}`).join('|')}` : '';
-            const googleMapsUrl = Platform.select({
-                ios: `maps://app?daddr=${destinationCoords.lat},${destinationCoords.lng}&dirflg=d${waypointsStr}`,
-                android: `google.navigation:q=${destinationCoords.lat},${destinationCoords.lng}${waypointsStr}`,
-                default: `https://www.google.com/maps/dir/?api=1&destination=${destinationCoords.lat},${destinationCoords.lng}${waypointsStr}`,
-            });
-            const canOpen = await Linking.canOpenURL(googleMapsUrl || '');
-            if (canOpen) { await Linking.openURL(googleMapsUrl || ''); }
-            else { await Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${destinationCoords.lat},${destinationCoords.lng}${waypointsStr}`); }
+            if (waypoints.length > 0) {
+                // Avec waypoints → toujours utiliser l'URL web Google Maps (seule qui supporte les étapes)
+                const webUrl = `https://www.google.com/maps/dir/?api=1&origin=${origin.lat},${origin.lng}&destination=${destinationCoords.lat},${destinationCoords.lng}${waypointsStr}&travelmode=driving`;
+                await Linking.openURL(webUrl);
+            } else {
+                // Sans waypoints → utiliser l'app native si disponible
+                const nativeUrl = Platform.select({
+                    ios: `maps://app?daddr=${destinationCoords.lat},${destinationCoords.lng}&dirflg=d`,
+                    android: `google.navigation:q=${destinationCoords.lat},${destinationCoords.lng}`,
+                    default: `https://www.google.com/maps/dir/?api=1&destination=${destinationCoords.lat},${destinationCoords.lng}&travelmode=driving`,
+                });
+                const canOpen = await Linking.canOpenURL(nativeUrl || '');
+                if (canOpen) { await Linking.openURL(nativeUrl || ''); }
+                else { await Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${destinationCoords.lat},${destinationCoords.lng}&travelmode=driving`); }
+            }
         } catch (error) {
             console.error('Erreur navigation:', error);
             Alert.alert('Erreur', 'Impossible d\'ouvrir la navigation');
@@ -387,14 +402,12 @@ const NavigationScreen: React.FC = () => {
     // ── Rendu ──────────────────────────────────────────────────────────────
     return (
         <SafeNativeView style={styles.container}>
-            <KeyboardAwareScrollView
+            <ScrollView
                 style={styles.scrollView}
                 contentContainerStyle={styles.scrollContent}
-                enableOnAndroid={true}
-                enableAutomaticScroll={true}
-                extraScrollHeight={100}
                 keyboardShouldPersistTaps="handled"
                 scrollEnabled={parentScrollEnabled}
+                nestedScrollEnabled={true}
             >
                 {/* ━━ Header compact ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
                 <View style={styles.header}>
@@ -669,7 +682,7 @@ const NavigationScreen: React.FC = () => {
                                                         <View style={styles.poiItemInfo}>
                                                             <Text style={styles.poiName} numberOfLines={1}>{poi.name}</Text>
                                                             <View style={styles.poiMeta}>
-                                                                <Text style={styles.poiDistance}>📍 {formatDistance(poi.distance_from_route_meters)}</Text>
+                                                                <Text style={styles.poiDistance}>↗️ {formatDistance(poi.distance_from_route_meters)} détour</Text>
                                                                 {poi.rating != null && poi.rating > 0 && (
                                                                     <View style={styles.poiRating}>
                                                                         <SafeIcon name="Star" size={11} color="#FBBF24" />
@@ -709,7 +722,7 @@ const NavigationScreen: React.FC = () => {
                         <Text style={styles.goButtonText}>Démarrer la navigation</Text>
                     </TouchableOpacity>
                 )}
-            </KeyboardAwareScrollView>
+            </ScrollView>
         </SafeNativeView>
     );
 };

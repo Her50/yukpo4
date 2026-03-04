@@ -623,7 +623,18 @@ const MainStack = () => {
   const [hasServicesOrProducts, setHasServicesOrProducts] = React.useState(false);
 
   // ✅ CORRECTION CRASH: Vérifier si l'utilisateur a des services spécialisés avec timeout, délai et cache
+  // ✅ OPTIMISATION: Détection immédiate par partner_type pour les types supportés par GestionServicesSpecialises
+  const GESTION_SUPPORTED_TYPES = ['pharmacie', 'hopital', 'laboratoire', 'agence de voyage', 'banquesang', 'covoiturage', 'taxi'];
+  const isGestionPartner = user?.role === 'partenaire' && user?.partner_type && GESTION_SUPPORTED_TYPES.includes(user.partner_type);
+
   useEffect(() => {
+    // Si le partenaire est d'un type supporté par GestionServicesSpecialises, activer immédiatement
+    if (isGestionPartner) {
+      setHasSpecializedServices(true);
+      setHasServicesOrProducts(true);
+      return;
+    }
+
     const checkSpecializedServices = async () => {
       if (!user?.id) {
         setHasSpecializedServices(false);
@@ -898,14 +909,31 @@ const DeliveryShoppingFlow = () => {
 // ⚠️ IMPORTANT: Les hooks doivent être appelés inconditionnellement (pas dans try-catch)
 // ✅ SIMPLIFICATION: Ne pas utiliser useNavigation() directement ici, laisser useDeepLinkRedirect gérer
 const MainStackWithDeepLinks = (props: any) => {
-  // ✅ CORRECTION CRASH: useDeepLinkRedirect appelé dans un composant enfant du Stack.Navigator
-  // pour s'assurer que NavigationContainer est prêt
-  // useDeepLinkRedirect gère maintenant aussi la redirection des partenaires
+  const { user } = useAuth();
+  const [partnerRedirectPending, setPartnerRedirectPending] = React.useState(
+    () => user?.role === 'partenaire' && !!user?.partner_type
+  );
+
   useDeepLinkRedirect();
 
-  // ✅ SIMPLIFICATION: Retirer useNavigation() et la logique de redirection des partenaires
-  // car cela cause le crash "undefined is not a function"
-  // La redirection des partenaires est maintenant gérée dans useDeepLinkRedirect
+  React.useEffect(() => {
+    if (partnerRedirectPending) {
+      const timer = setTimeout(() => setPartnerRedirectPending(false), 300);
+      return () => clearTimeout(timer);
+    }
+    return undefined;
+  }, [partnerRedirectPending]);
+
+  if (partnerRedirectPending) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFFFFF' }}>
+        <ActivityIndicator size="large" color={modernColors.primary} />
+        <Text style={{ marginTop: 12, fontSize: 15, color: modernColors.textSecondary, fontWeight: '500' }}>
+          Préparation de votre espace...
+        </Text>
+      </View>
+    );
+  }
 
   return <MainStack {...props} />;
 };
@@ -1864,33 +1892,8 @@ const AppNavigator: React.FC = () => {
     return <AuthStack />;
   }
 
-  // ✅ NOUVEAU: Rediriger les partenaires vers leur écran spécialisé
-  if (user.role === 'partenaire' && user.partner_type) {
-    console.log('[AppNavigator] 🏢 Mode Partenaire - Redirection vers écran spécialisé');
-    // Rediriger vers l'écran de gestion du service spécialisé selon le type
-    // ✅ NOUVEAU: Mapping complet de tous les types de partenaires vers leurs écrans
-    const partnerTypeToScreen: Record<string, string> = {
-      'banquesang': 'BanqueSangForm',
-      'pharmacie': 'PharmacieForm',
-      'hopital': 'HopitalForm',
-      'laboratoire': 'LaboratoireForm',
-      'agence de voyage': 'AgenceVoyageForm',
-      // ✅ Types sans écran dédié : redirection vers écran générique
-      'etablissementscolaire': 'GestionServicesSpecialises',
-      'demenagement': 'GestionServicesSpecialises',
-      'transport': 'GestionServicesSpecialises',
-      'assureur': 'GestionServicesSpecialises',
-      'supermarche': 'GestionServicesSpecialises',
-      'telecom': 'GestionServicesSpecialises',
-      'livraison': 'GestionServicesSpecialises',
-    };
-
-    const targetScreen = partnerTypeToScreen[user.partner_type] || 'GestionServicesSpecialises';
-    // Note: La navigation sera gérée dans SecondaryStack avec un useEffect
-    // Pour l'instant, on charge l'app normalement et la redirection se fera dans SecondaryStack
-  }
-
   // ✅ Si connecté: Charger TOUS les providers nécessaires
+  // La redirection des partenaires vers leur écran spécialisé est gérée par useDeepLinkRedirect dans MainStackWithDeepLinks
   console.log('[AppNavigator] 👤 Mode Connecté - Chargement des providers');
   return <AuthenticatedApp />;
 };

@@ -539,6 +539,8 @@ pub async fn duplicate_product(
 /// Structure pour les paramètres de requête de partage
 #[derive(Debug, Deserialize)]
 pub struct ShareQueryParams {
+    /// ✅ CORRIGÉ 2026-03-04: Accepter à la fois "serviceId" (camelCase du mobile) et "service_id" (snake_case)
+    #[serde(alias = "serviceId")]
     pub service_id: Option<i32>,
 }
 
@@ -551,17 +553,50 @@ pub async fn share_product_redirect(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
 ) -> AppResult<axum::response::Response> {
-    let service_id = params.service_id.ok_or_else(|| {
-        AppError::BadRequest("serviceId est requis dans les paramètres de requête".to_string())
-    })?;
+    // ✅ CORRIGÉ 2026-03-04: Ne plus exiger serviceId — le dériver du product_id path ou de la DB
+    // Le mobile envoie ?serviceId=X (camelCase), mais l'ancien struct attendait ?service_id=X (snake_case)
+    // De plus, certains liens de partage n'incluent pas serviceId du tout
 
     // Récupérer le User-Agent
     let user_agent = headers.get("user-agent").and_then(|h| h.to_str().ok()).unwrap_or("");
-
-    // ✅ CORRIGÉ 2026-02-27: Ne PLUS rediriger mobile vers yukpomnang:// (les navigateurs bloquent les custom schemes)
-    // Au lieu de ça, toujours servir la page HTML qui gère intelligemment la redirection
-    // via intent:// (Android Chrome) et Universal Links (iOS)
     let is_mobile = is_mobile_user_agent(user_agent);
+
+    // Parser product_id (format: service_id_product_index ou juste product_index)
+    let (parsed_service_id, product_index) = if let Some(underscore_pos) = product_id.find('_') {
+        let service_id_str = &product_id[..underscore_pos];
+        let index_str = &product_id[underscore_pos + 1..];
+        (
+            service_id_str.parse::<i32>().ok(),
+            index_str.parse::<i32>().ok(),
+        )
+    } else {
+        (None, product_id.parse::<i32>().ok())
+    };
+
+    // ✅ CORRIGÉ 2026-03-04: Résoudre service_id depuis 3 sources (priorité décroissante)
+    // 1. Query param ?serviceId=X
+    // 2. Extrait du path /product/serviceId_productIndex
+    // 3. Lookup dans la DB via service_products.product_index
+    let service_id = if let Some(sid) = params.service_id.or(parsed_service_id) {
+        sid
+    } else if let Some(pidx) = product_index {
+        // Chercher le service_id dans la base de données
+        sqlx::query_scalar::<_, i32>(
+            "SELECT service_id FROM service_products WHERE product_index = $1 AND is_active = true LIMIT 1"
+        )
+        .bind(pidx)
+        .fetch_optional(&state.pg)
+        .await
+        .ok()
+        .flatten()
+        .ok_or_else(|| {
+            AppError::NotFound(format!("Produit non trouvé pour product_id: {}", product_id))
+        })?
+    } else {
+        return Err(AppError::BadRequest(
+            "Impossible de déterminer le service: utilisez /product/serviceId_productIndex ou ?serviceId=X".to_string()
+        ));
+    };
 
     log::info!(
         "🔗 [share_product_redirect] product_id={}, service_id={}, mobile={}, UA={}",
@@ -573,18 +608,6 @@ pub async fn share_product_redirect(
 
     // Récupérer les informations du produit
     let products_service = &state.products_service;
-
-    // Parser product_id (format: service_id_product_index ou juste product_index)
-    let (parsed_service_id, product_index) = if let Some(underscore_pos) = product_id.find('_') {
-        let service_id_str = &product_id[..underscore_pos];
-        let index_str = &product_id[underscore_pos + 1..];
-        (
-            service_id_str.parse::<i32>().ok(),
-            index_str.parse::<i32>().ok(),
-        )
-    } else {
-        (Some(service_id), product_id.parse::<i32>().ok())
-    };
 
     let final_service_id = parsed_service_id.unwrap_or(service_id);
     let final_product_index = product_index.unwrap_or(0);
@@ -1070,9 +1093,10 @@ pub async fn share_service_redirect(
         &user_agent[..user_agent.len().min(80)]
     );
 
-    // Récupérer les informations du service
+    // ✅ CORRIGÉ 2026-03-04: Retirer les colonnes inexistantes (titre, description, categorie, prix, devise)
+    // Ces informations sont stockées dans la colonne JSON 'data', pas comme colonnes séparées
     let service_row = sqlx::query(
-        r#"SELECT id, titre, description, categorie, prix, devise, data, user_id
+        r#"SELECT id, data, user_id, category
            FROM services WHERE id = $1"#,
     )
     .bind(service_id)
@@ -1081,55 +1105,52 @@ pub async fn share_service_redirect(
     .map_err(|e| AppError::Internal(format!("Erreur DB service: {}", e)))?
     .ok_or_else(|| AppError::NotFound(format!("Service {} non trouvé", service_id)))?;
 
-    let service_titre: String = service_row
-        .try_get::<Option<String>, _>("titre")
-        .ok()
-        .flatten()
-        .or_else(|| {
-            service_row.try_get::<Option<Value>, _>("data").ok().flatten().and_then(|d| {
-                d.get("titre_service")
-                    .and_then(|v| v.get("valeur"))
-                    .and_then(|v| v.as_str())
-                    .map(|s| s.to_string())
-            })
-        })
+    // ✅ CORRIGÉ 2026-03-04: Extraire toutes les infos depuis la colonne JSON 'data'
+    // Les colonnes titre, description, prix, devise n'existent PAS dans la table services
+    let service_data: Value =
+        service_row.get::<Option<Value>, _>("data").unwrap_or(serde_json::json!({}));
+
+    let service_titre: String = service_data
+        .get("titre_service")
+        .and_then(|v| v.get("valeur").and_then(|v2| v2.as_str()).or(v.as_str()))
+        .or_else(|| service_data.get("titre").and_then(|v| v.as_str()))
+        .map(|s| s.to_string())
         .unwrap_or_else(|| "Service Yukpomnang".to_string());
 
-    let raw_service_description: String = service_row
-        .try_get::<Option<String>, _>("description")
-        .ok()
-        .flatten()
-        .or_else(|| {
-            service_row.try_get::<Option<Value>, _>("data").ok().flatten().and_then(|d| {
-                d.get("description")
-                    .and_then(|v| v.get("valeur"))
-                    .and_then(|v| v.as_str())
-                    .map(|s| s.to_string())
-            })
-        })
+    let raw_service_description: String = service_data
+        .get("description")
+        .and_then(|v| v.get("valeur").and_then(|v2| v2.as_str()).or(v.as_str()))
+        .map(|s| s.to_string())
         .unwrap_or_else(|| "Découvrez ce service sur Yukpomnang".to_string())
         .chars()
         .take(180)
         .collect::<String>();
 
-    let service_prix: Option<String> = service_row
-        .try_get::<Option<rust_decimal::Decimal>, _>("prix")
-        .ok()
-        .flatten()
-        .map(|p| p.to_string())
-        .or_else(|| {
-            service_row.try_get::<Option<Value>, _>("data").ok().flatten().and_then(|d| {
-                d.get("prix")
-                    .and_then(|v| v.get("valeur"))
-                    .and_then(|v| v.as_str())
-                    .map(|s| s.to_string())
-            })
-        });
+    let service_prix: Option<String> = service_data.get("prix").and_then(|v| {
+        // Cas 1: {valeur: "5000"} ou {valeur: 5000}
+        if let Some(inner) = v.get("valeur") {
+            inner
+                .as_str()
+                .map(|s| s.to_string())
+                .or_else(|| inner.as_f64().map(|f| format!("{}", f as i64)))
+                .or_else(|| inner.as_i64().map(|i| i.to_string()))
+        }
+        // Cas 2: "5000"
+        else if let Some(s) = v.as_str() {
+            Some(s.to_string())
+        }
+        // Cas 3: 5000 (nombre direct)
+        else if let Some(f) = v.as_f64() {
+            Some(format!("{}", f as i64))
+        } else {
+            None
+        }
+    });
 
-    let service_devise: String = service_row
-        .try_get::<Option<String>, _>("devise")
-        .ok()
-        .flatten()
+    let service_devise: String = service_data
+        .get("devise")
+        .and_then(|v| v.get("valeur").and_then(|v2| v2.as_str()).or(v.as_str()))
+        .map(|s| s.to_string())
         .unwrap_or_else(|| "XAF".to_string());
 
     // ✅ CORRIGÉ: og:description inclut le prix pour que les previews sociales l'affichent
