@@ -94,6 +94,7 @@ pub async fn list_upcoming_sessions(
 
 pub async fn start_live_session(
     State(state): State<Arc<AppState>>,
+    Authenticated(user): Authenticated,
     Json(payload): Json<CreateLiveSessionRequest>,
 ) -> AppResult<Json<serde_json::Value>> {
     if !state
@@ -173,6 +174,7 @@ pub async fn get_join_information(
 pub async fn register_replay(
     State(state): State<Arc<AppState>>,
     Path(session_id): Path<Uuid>,
+    Authenticated(user): Authenticated,
     Json(payload): Json<SaveReplayRequest>,
 ) -> AppResult<Json<serde_json::Value>> {
     let replay = LiveStreamingService::save_replay(&state.pg, session_id, payload).await?;

@@ -92,6 +92,7 @@ pub struct HeatmapPoint {
     pub shares_count: i64,
 }
 
+#[derive(Clone)]
 pub struct VideoAnalyticsService {
     pool: Arc<PgPool>,
 }

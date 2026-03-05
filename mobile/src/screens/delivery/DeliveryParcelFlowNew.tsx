@@ -144,17 +144,6 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
         return 0;
     };
 
-    // ✅ Obtenir les tranches d'assurance pour affichage
-    const getInsuranceTiers = () => {
-        return [
-            { range: '0 - 10 000 FCFA', rate: '2%', example: 'Ex: 10 000 FCFA → 200 FCFA' },
-            { range: '10 001 - 50 000 FCFA', rate: '1.5%', example: 'Ex: 50 000 FCFA → 750 FCFA' },
-            { range: '50 001 - 100 000 FCFA', rate: '1%', example: 'Ex: 100 000 FCFA → 1 000 FCFA' },
-            { range: '100 001 - 500 000 FCFA', rate: '0.8%', example: 'Ex: 500 000 FCFA → 4 000 FCFA' },
-            { range: '> 500 000 FCFA', rate: '0.5%', example: 'Ex: 1 000 000 FCFA → 5 000 FCFA' },
-        ];
-    };
-
     // ✅ Calculer l'assurance quand la valeur déclarée change
     useEffect(() => {
         if (declaredValue && !isNaN(parseFloat(declaredValue))) {
@@ -805,37 +794,12 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
                 {!declaredValue && (
                     <Text style={styles.errorText}>Ce champ est obligatoire</Text>
                 )}
-                {declaredValue && !isNaN(parseFloat(declaredValue)) && insuranceCost > 0 && (() => {
-                    const value = parseFloat(declaredValue);
-                    let rate = 'N/A';
-                    if (value >= 0 && value <= 10000) rate = '2%';
-                    else if (value >= 10001 && value <= 50000) rate = '1.5%';
-                    else if (value >= 50001 && value <= 100000) rate = '1%';
-                    else if (value >= 100001 && value <= 500000) rate = '0.8%';
-                    else if (value > 500000) rate = '0.5%';
-                    return (
-                        <Text style={styles.helperText}>
-                            Assurance: {insuranceCost.toLocaleString('fr-FR')} FCFA (taux: {rate})
-                        </Text>
-                    );
-                })()}
+                {declaredValue && !isNaN(parseFloat(declaredValue)) && insuranceCost > 0 && (
+                    <Text style={styles.helperText}>
+                        Assurance: {insuranceCost.toLocaleString('fr-FR')} FCFA
+                    </Text>
+                )}
             </View>
-
-            {/* Tableau des tranches d'assurance */}
-            {declaredValue && !isNaN(parseFloat(declaredValue)) && (
-                <View style={styles.insuranceTableContainer}>
-                    <Text style={styles.insuranceTableTitle}>Tranches d'assurance</Text>
-                    <View style={styles.insuranceTable}>
-                        {getInsuranceTiers().map((tier, index) => (
-                            <View key={index} style={styles.insuranceTableRow}>
-                                <Text style={styles.insuranceTableRange}>{tier.range}</Text>
-                                <Text style={styles.insuranceTableRate}>{tier.rate}</Text>
-                                <Text style={styles.insuranceTableExample}>{tier.example}</Text>
-                            </View>
-                        ))}
-                    </View>
-                </View>
-            )}
 
             <View style={styles.inputGroup}>
                 <Text style={styles.label}>Notes (optionnel)</Text>
@@ -2079,52 +2043,6 @@ const styles = StyleSheet.create({
         fontSize: 11,
         color: modernColors.textSecondary,
         marginTop: 4,
-        fontStyle: 'italic',
-    },
-    // ✅ Styles pour tableau d'assurance
-    insuranceTableContainer: {
-        marginTop: 16,
-        marginBottom: 16,
-    },
-    insuranceTableTitle: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: modernColors.text,
-        marginBottom: 8,
-    },
-    insuranceTable: {
-        backgroundColor: modernColors.surfaceVariant,
-        borderRadius: 8,
-        padding: 12,
-        borderWidth: 1,
-        borderColor: modernColors.border,
-    },
-    insuranceTableRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingVertical: 8,
-        borderBottomWidth: 1,
-        borderBottomColor: modernColors.border,
-    },
-    insuranceTableRange: {
-        flex: 1,
-        fontSize: 12,
-        color: modernColors.text,
-        fontWeight: '500',
-    },
-    insuranceTableRate: {
-        flex: 0.5,
-        fontSize: 12,
-        color: modernColors.primary,
-        fontWeight: '600',
-        textAlign: 'center',
-    },
-    insuranceTableExample: {
-        flex: 1.5,
-        fontSize: 10,
-        color: modernColors.textSecondary,
-        textAlign: 'right',
         fontStyle: 'italic',
     },
     // ✅ Styles pour récapitulatif
