@@ -780,6 +780,11 @@ pub async fn share_product_redirect(
     .flatten()
     .collect();
 
+    // ✅ AMÉLIORÉ: Utiliser des URLs pré-signées plus longues pour les vidéos (30 jours)
+    // Les crawlers sociaux mettent en cache les previews pendant longtemps
+    let video_expiry_seconds = 30 * 24 * 3600; // 30 jours
+    let image_expiry_seconds = 7 * 24 * 3600; // 7 jours
+
     let mut product_images_db: Vec<String> = Vec::with_capacity(product_image_paths.len());
     for path in &product_image_paths {
         let url = if path.starts_with("http://") || path.starts_with("https://") {
@@ -864,11 +869,6 @@ pub async fn share_product_redirect(
     .into_iter()
     .flatten()
     .collect();
-
-    // ✅ AMÉLIORÉ: Utiliser des URLs pré-signées plus longues pour les vidéos (30 jours)
-    // Les crawlers sociaux mettent en cache les previews pendant longtemps
-    let video_expiry_seconds = 30 * 24 * 3600; // 30 jours
-    let image_expiry_seconds = 7 * 24 * 3600; // 7 jours
 
     let mut all_product_videos: Vec<String> = Vec::new();
     for path in &product_video_paths {

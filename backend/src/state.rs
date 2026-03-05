@@ -127,6 +127,12 @@ pub struct AppState {
     pub gpu_service: Option<Arc<GpuService>>,
     /// ✅ NOUVEAU 2026-02-15: Service de gestion Redis Memorystore automatisé GCP
     pub redis_scaling_service: Option<Arc<RedisScalingService>>,
+    /// ✅ NOUVEAU 2026-03-05: Service de transcodage vidéo HLS/DASH (TikTok/Shorts)
+    pub video_transcoding: Option<Arc<crate::services::video_transcoding_service::VideoTranscodingService>>,
+    /// ✅ NOUVEAU 2026-03-05: Service de musique trending TikTok/Shorts
+    pub trending_music: Option<Arc<crate::services::trending_music_service::TrendingMusicService>>,
+    /// ✅ NOUVEAU 2026-03-05: Service de génération vidéo IA (Runway/Sora/Pika)
+    pub generative_video: Option<Arc<crate::services::generative_video_service::GenerativeVideoService>>,
 }
 
 impl AppState {

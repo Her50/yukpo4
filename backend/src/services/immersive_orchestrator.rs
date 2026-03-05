@@ -16,6 +16,23 @@ use crate::{
     state::AppState,
 };
 
+// ✅ NOUVEAU: Templates spécifiques TikTok/Shorts
+const TIKTOK_TEMPLATES: &[&str] = &[
+    "tiktok_product_showcase",
+    "tiktok_before_after", 
+    "tiktok_unboxing",
+    "tiktok_tutorial",
+    "tiktok_transition",
+    "tiktok_text_overlay",
+];
+
+const SHORTS_TEMPLATES: &[&str] = &[
+    "shorts_vertical_story",
+    "shorts_quick_demo",
+    "shorts_comparison",
+    "shorts_call_to_action",
+];
+
 #[derive(Debug, Clone)]
 pub struct TimelineBusinessContext {
     pub service_category: Option<String>,

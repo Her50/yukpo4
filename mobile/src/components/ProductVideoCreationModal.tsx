@@ -4966,8 +4966,8 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             }
 
             Alert.alert(
-                'Génération impossible',
-                errorMessage + '\n\nVérifiez votre connexion et réessayez.',
+                'Erreur de création vidéo',
+                errorMessage + '\n\nConseils :\n• Vérifiez que vous avez des images dans votre médiathèque\n• Activez "Générer images automatiquement" si vous n\'avez pas d\'images\n• Assurez-vous que le script ou le brief est rempli\n• Vérifiez votre connexion internet',
                 [{ text: 'OK' }]
             );
         } finally {

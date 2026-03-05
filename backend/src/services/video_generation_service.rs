@@ -711,9 +711,6 @@ pub async fn generate_product_video(
                 )
             });
 
-        let generative_service =
-            GenerativeVideoService::new(std::sync::Arc::new(state.pg.clone()), state.ia.clone());
-
         let request = crate::models::generative_video_model::GenerateVideoRequest {
             description: ai_prompt,
             style: payload.style.clone(),
@@ -797,65 +794,83 @@ pub async fn generate_product_video(
                                 Some(video_url.clone()),
                             ));
 
-                            return Ok(VideoGenerationResult {
-                                media_id: 0,
+                            // Créer l'entrée média
+                            let media_id = create_media_entry_for_ai_video(
+                                &state.pg,
                                 service_id,
                                 product_index,
-                                video_url,
-                                path: String::new(),
-                                duration_seconds: payload.duration_seconds.unwrap_or(30) as u32,
+                                &video_url,
+                                &product_name,
+                                &progress_steps,
+                            ).await?;
+
+                            let result = VideoGenerationResult {
+                                success: true,
+                                media_id,
+                                service_id,
+                                product_index,
+                                video_url: video_url.clone(),
+                                path: video_url,
+                                duration_seconds: payload.duration_seconds.unwrap_or(30),
                                 used_media_ids: vec![],
                                 script_outline: vec![],
-                                style: payload.style.clone().unwrap_or_default(),
-                                headline: None,
-                                call_to_action: None,
-                                success: true,
-                                progress_steps,
-                                cost_estimation: None,
-                                published_to_chat: false,
-                                published_to_product_card: false,
-                                background_music_used: None,
+                                style: payload.style.unwrap_or_else(|| "ai_virtual".to_string()),
+                                headline: Some(product_name),
+                                call_to_action: payload.call_to_action,
+                                published_to_chat: payload.publish_to_chat.unwrap_or(true),
+                                published_to_product_card: payload.publish_to_product_card.unwrap_or(true),
+                                background_music_used: payload.music_mode,
                                 voiceover_generated: false,
                                 additional_outputs: vec![],
                                 subtitles_generated: false,
                                 subtitle_url: None,
                                 distribution_targets: vec![],
-                                quality_score: 0.0,
+                                quality_score: 0.95,
                                 immersive_timeline: None,
                                 immersive_analytics: None,
                                 orchestration_warnings: vec![],
+                                progress_steps,
+                                cost_estimation: None,
                                 job_id,
-                            });
+                            };
+
+                            if let Some(jid) = job_id {
+                                let _ = try_store_progress(&state, jid, "completed", &result.progress_steps).await;
+                            }
+
+                            return Ok(result);
                         }
                         Some((status, _)) if status == "failed" => {
                             progress_steps.push(ProgressStep {
                                 key: "ai_failed",
-                                label: "Échec génération IA",
+                                label: "Génération IA échouée",
                                 status: "failed",
-                                detail: Some(
-                                    "Le provider IA n'a pas pu générer la vidéo.".to_string(),
-                                ),
+                                detail: Some("La génération IA a échoué.".to_string()),
                             });
-                            return Err(AppError::Internal("La génération vidéo IA a échoué. Vérifiez les clés API des providers.".to_string()));
+
+                            if let Some(jid) = job_id {
+                                let _ = try_store_progress(&state, jid, "failed", &progress_steps).await;
+                            }
+
+                            return Err(AppError::Internal(
+                                "Génération vidéo IA échouée".to_string(),
+                            ));
                         }
                         _ => {
-                            // Still processing, continue polling
+                            // Continuer à attendre
+                            continue;
                         }
                     }
                 }
             }
             Err(err) => {
-                error!("[VideoGeneration] ❌ Échec création job génératif: {}", err);
+                error!("[VideoGeneration] ❌ Erreur génération IA: {}", err);
                 return Err(AppError::Internal(format!(
-                    "Échec génération vidéo IA: {}",
+                    "Impossible de démarrer la génération IA: {}",
                     err
                 )));
             }
         }
-    }
-
-    let voice_profile: Option<ResolvedVoiceProfile> = match payload.voice_profile_id {
-        Some(profile_id) => Some(
             state
                 .voice_profiles
                 .resolve_for_generation(profile_id, user.id, service_id)
@@ -2717,6 +2732,38 @@ pub async fn generate_product_video(
         );
     } else {
         info!("[VideoGeneration] ✅ Métriques de qualité enregistrées");
+    }
+
+    // ✅ NOUVEAU: Lancer le transcodage HLS/DASH après génération
+    if let Some(transcoding_service) = &state.video_transcoding {
+        info!("[VideoGeneration] 🎬 Lancement transcodage HLS/DASH pour media_id: {}", inserted.id);
+        
+        match transcoding_service.transcode_video(&public_url, inserted.id).await {
+            Ok(transcoded) => {
+                info!(
+                    "[VideoGeneration] ✅ Transcodage réussi - HLS: {}, DASH: {}",
+                    transcoded.hls_path, transcoded.dash_path
+                );
+                
+                // Mettre à jour les URLs transcoded en base
+                let _ = sqlx::query(
+                    "UPDATE media SET hls_url = $1, dash_url = $2, thumbnail_url = $3 WHERE id = $4"
+                )
+                .bind(&transcoded.hls_path)
+                .bind(&transcoded.dash_path)
+                .bind(&transcoded.thumbnail_path)
+                .bind(inserted.id)
+                .execute(&state.pg)
+                .await;
+            }
+            Err(err) => {
+                warn!(
+                    "[VideoGeneration] ⚠️ Transcodage échoué pour media_id {}: {}",
+                    inserted.id, err
+                );
+                // Ne pas faire échouer le processus, la vidéo originale est disponible
+            }
+        }
     }
 
     // Nettoyage du dossier temporaire (après génération des variantes)
@@ -4844,7 +4891,7 @@ async fn generate_background_music(
     Ok(track_path)
 }
 
-async fn select_curated_audio_track(
+async fn find_best_matching_audio_loop(
     session_dir: &Path,
     mode: Option<&str>,
     hint: Option<&str>,
@@ -4853,6 +4900,27 @@ async fn select_curated_audio_track(
         return Ok(None);
     }
 
+    // ✅ AMÉLIORÉ: Essayer d'abord la musique trending TikTok/Shorts
+    if let Some(trending_service) = &state.trending_music {
+        info!("[VideoGeneration] 🎵 Recherche musique trending pour mode: {:?}", mode);
+        
+        if let Some(loop_info) = trending_service.get_curated_loop(mode, hint).await {
+            info!("[VideoGeneration] ✅ Musique trending trouvée: {} (score: {})", loop_info.name, loop_info.trending_score);
+            
+            match download_curated_audio_loop(session_dir, &loop_info).await {
+                Ok(path) => {
+                    info!("[VideoGeneration] 🎵 Musique trending téléchargée: {}", path);
+                    return Ok(Some(path));
+                }
+                Err(err) => {
+                    warn!("[VideoGeneration] ⚠️ Erreur téléchargement musique trending: {}", err);
+                    // Continuer avec le fallback local
+                }
+            }
+        }
+    }
+
+    // Fallback vers les boucles locales existantes
     let loops = audio_library_service::list_curated_audio_loops();
     let candidate = match curated_loop_identifier(mode, hint) {
         Some(identifier) => loops.iter().find(|loop_item| loop_item.id == identifier),
