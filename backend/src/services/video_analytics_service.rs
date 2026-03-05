@@ -2,7 +2,6 @@
 // Track watch time, skip rate, completion rate, heatmaps, performance créateurs
 
 use crate::core::types::{AppError, AppResult};
-use crate::utils::log::{log_error, log_info};
 use crate::AppState;
 use chrono::{DateTime, Duration, Utc};
 use log::{error, info};
@@ -241,19 +240,19 @@ impl VideoAnalyticsService {
 
         // 8️⃣ Score d'engagement
         let engagement_score = self.calculate_engagement_score(
-            views_data.total_views.unwrap_or(0) as f64,
-            completion_data.completion_rate.unwrap_or(0.0),
-            skip_data.skip_rate.unwrap_or(0.0),
+            views_data.0.unwrap_or(0) as f64,
+            completion_data.0.unwrap_or(0.0),
+            skip_data.0.unwrap_or(0.0),
             &performance,
         );
 
         Ok(VideoAnalyticsSummary {
             video_id,
-            total_views: views_data.total_views.unwrap_or(0),
-            unique_viewers: views_data.unique_viewers.unwrap_or(0),
-            avg_watch_time_seconds: views_data.avg_position.unwrap_or(0.0),
-            completion_rate: completion_data.completion_rate.unwrap_or(0.0),
-            skip_rate: skip_data.skip_rate.unwrap_or(0.0),
+            total_views: views_data.0.unwrap_or(0),
+            unique_viewers: views_data.1.unwrap_or(0),
+            avg_watch_time_seconds: views_data.2.unwrap_or(0.0),
+            completion_rate: completion_data.0.unwrap_or(0.0),
+            skip_rate: skip_data.0.unwrap_or(0.0),
             engagement_score,
             top_dropoff_points: dropoff_points,
             quality_distribution: quality_dist,
@@ -572,7 +571,7 @@ pub async fn get_analytics_service(pool: Arc<PgPool>) -> Arc<VideoAnalyticsServi
     if service.is_none() {
         *service = Some(VideoAnalyticsService::new(pool));
     }
-    service.as_ref().unwrap().clone()
+    Arc::clone(service.as_ref().unwrap())
 }
 
 // Legacy functions for compatibility

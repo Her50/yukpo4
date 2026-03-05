@@ -860,7 +860,7 @@ IMPORTANT:
         let mut cache = self.cache.write().await;
         cache.retain(|_, (_, cached_time)| {
             let elapsed = now - *cached_time;
-            elapsed.timestamp() < 300 // Garder seulement les entrées < 5 min
+            elapsed.num_seconds() < 300 // Garder seulement les entrées < 5 min
         });
     }
 }
