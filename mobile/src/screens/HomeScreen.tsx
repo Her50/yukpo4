@@ -48,7 +48,7 @@ const PromotionsBar: React.FC<{ navigate: (route: string) => boolean }> = ({ nav
     const promotions = [
         { id: 'flash', icon: 'zap', title: 'Flash Promo', route: 'FlashPromosActive', color: '#F59E0B' },
         { id: 'blackfriday', icon: 'shopping-bag', title: 'Black Friday', route: 'GlobalPromoCatalog', color: '#DC2626' },
-        { id: 'live', icon: 'video', title: 'Lives', route: 'VideoFeed', color: '#8B5CF6' },
+        { id: 'live', icon: 'video', title: 'Lives', route: 'LivesList', color: '#8B5CF6' },
     ];
 
     return (

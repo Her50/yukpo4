@@ -2,17 +2,16 @@
 // Header gradient, sections collapsibles, chips design, media uploader, GPS intégré
 // Exploite endpoints: CRUD immobilier, upload média, Google Places photos, recherche
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { LinearGradient } from 'expo-linear-gradient';
 import * as FileSystem from 'expo-file-system';
+import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
     Alert,
     ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
-    View,
+    View
 } from 'react-native';
 import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 import ModernGPSModal from '../../components/ModernGPSModal';
@@ -280,13 +279,51 @@ const ImmobilierFormScreen: React.FC = () => {
 
                 {/* Section: Caractéristiques */}
                 <View style={st.section}>
-                    <View style={st.sectionHdr}><SafeIcon name="ruler" size={18} color="#7C3AED" /><Text style={st.sectionTitle}>Caractéristiques</Text></View>
-                    <View style={{ flexDirection: 'row', gap: 12 }}>
-                        <View style={[st.field, { flex: 1 }]}><NativeInput label="Superficie (m²)" value={formData.superficie_m2} onChangeText={t => setFormData({ ...formData, superficie_m2: t })} placeholder="0" keyboardType="numeric" /></View>
-                        <View style={[st.field, { flex: 1 }]}><NativeInput label="Chambres" value={formData.nb_chambres} onChangeText={t => setFormData({ ...formData, nb_chambres: t })} placeholder="0" keyboardType="numeric" /></View>
-                        <View style={[st.field, { flex: 1 }]}><NativeInput label="Salles bain" value={formData.nb_salles_bain} onChangeText={t => setFormData({ ...formData, nb_salles_bain: t })} placeholder="0" keyboardType="numeric" /></View>
+                    <View style={st.sectionHdr}><SafeIcon name="ruler" size={18} color="#7C3AED" /><Text style={st.sectionTitle}>Caractéristiques principales</Text></View>
+
+                    {/* ✅ AMÉLIORÉ: Design plus intuitif avec icônes et labels clairs */}
+                    <View style={st.characteristicsGrid}>
+                        <View style={st.characteristicCard}>
+                            <SafeIcon name="maximize-2" size={20} color="#7C3AED" />
+                            <Text style={st.characteristicLabel}>Superficie</Text>
+                            <NativeInput
+                                label="Surface (m²)"
+                                value={formData.superficie_m2}
+                                onChangeText={t => setFormData({ ...formData, superficie_m2: t })}
+                                placeholder="120"
+                                keyboardType="numeric"
+                                style={st.characteristicInput}
+                            />
+                        </View>
+
+                        <View style={st.characteristicCard}>
+                            <SafeIcon name="door-open" size={20} color="#7C3AED" />
+                            <Text style={st.characteristicLabel}>Chambres</Text>
+                            <NativeInput
+                                label="Nb chambres"
+                                value={formData.nb_chambres}
+                                onChangeText={t => setFormData({ ...formData, nb_chambres: t })}
+                                placeholder="3"
+                                keyboardType="numeric"
+                                style={st.characteristicInput}
+                            />
+                        </View>
+
+                        <View style={st.characteristicCard}>
+                            <SafeIcon name="droplet" size={20} color="#7C3AED" />
+                            <Text style={st.characteristicLabel}>Salles bain</Text>
+                            <NativeInput
+                                label="Nb SDB"
+                                value={formData.nb_salles_bain}
+                                onChangeText={t => setFormData({ ...formData, nb_salles_bain: t })}
+                                placeholder="2"
+                                keyboardType="numeric"
+                                style={st.characteristicInput}
+                            />
+                        </View>
                     </View>
-                    <Text style={st.label}>Standing</Text>
+
+                    <Text style={st.label}>Standing du bien</Text>
                     <View style={st.chips}>{STANDINGS.map(s => <TouchableOpacity key={s} style={[st.chip, formData.standing === s && st.chipOn]} onPress={() => setFormData({ ...formData, standing: s })}><Text style={[st.chipText, formData.standing === s && st.chipTextOn]}>{formatLabel(s)}</Text></TouchableOpacity>)}</View>
                     <Text style={[st.label, { marginTop: 16 }]}>État général</Text>
                     <View style={st.chips}>{ETATS.map(e => <TouchableOpacity key={e} style={[st.chip, formData.etat_general === e && st.chipOn]} onPress={() => setFormData({ ...formData, etat_general: e })}><Text style={[st.chipText, formData.etat_general === e && st.chipTextOn]}>{formatLabel(e)}</Text></TouchableOpacity>)}</View>
@@ -369,6 +406,30 @@ const st = StyleSheet.create({
     chipOn: { backgroundColor: '#7C3AED', borderColor: '#7C3AED' },
     chipText: { fontSize: 13, color: '#374151' },
     chipTextOn: { color: '#fff', fontWeight: '600' },
+
+    // ✅ NOUVEAU: Caractéristiques améliorées
+    characteristicsGrid: { flexDirection: 'column', gap: 16 },
+    characteristicCard: {
+        backgroundColor: '#FAFBFF',
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        borderRadius: 12,
+        padding: 16,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12
+    },
+    characteristicLabel: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#374151',
+        minWidth: 70,
+        textAlign: 'center'
+    },
+    characteristicInput: {
+        flex: 1,
+        marginBottom: 0 // ✅ Enlever le margin car déjà dans la carte
+    },
 });
 
 export default ImmobilierFormScreen;

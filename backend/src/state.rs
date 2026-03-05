@@ -583,6 +583,12 @@ impl AppState {
                     None
                 }
             },
+            // ✅ NOUVEAU 2026-03-05: Service de transcodage vidéo HLS/DASH (TikTok/Shorts)
+            video_transcoding: None,
+            // ✅ NOUVEAU 2026-03-05: Service de musique trending TikTok/Shorts
+            trending_music: None,
+            // ✅ NOUVEAU 2026-03-05: Service de génération vidéo IA (Runway/Sora/Pika)
+            generative_video: None,
         }
     }
 
@@ -840,6 +846,10 @@ impl AppState {
             // ✅ NOUVEAU 2026-02-14: Service GPU désactivé pour les tests
             gpu_service: None,
             redis_scaling_service: None,
+            // ✅ NOUVEAU 2026-03-05: Services vidéo désactivés pour les tests
+            video_transcoding: None,
+            trending_music: None,
+            generative_video: None,
         }
     }
 }

@@ -274,5 +274,7 @@ pub mod spotify_integration_service; // ✅ NOUVEAU Phase 2.2: Service d'intégr
 pub mod statistiques_emploi_service; // ✅ NOUVEAU 2025-01-28: Service statistiques emploi
 pub mod template_service; // ✅ NOUVEAU 2025-01-27: Service de gestion templates vidéo par industrie (50+)
 pub mod transcoding_service; // ✅ NOUVEAU Phase 2.3: Service de transcodage vidéo multi-formats
+pub mod trending_music_service; // ✅ NOUVEAU 2026-03-05: Service de musique trending TikTok/Shorts
+pub mod video_transcoding_service; // ✅ NOUVEAU 2026-03-05: Service de transcodage vidéo HLS/DASH (TikTok/Shorts)
 pub mod watermark_service; // ✅ NOUVEAU 2025-01-27: Service de watermark Yukpo pour branding vidéo
 pub mod youtube_audio_service; // ✅ NOUVEAU Phase 2.2: Service YouTube Audio Library // ✅ NOUVEAU Phase 3.2 Améliorations: Service de rendu 3D complet

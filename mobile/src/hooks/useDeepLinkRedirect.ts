@@ -30,65 +30,15 @@ export const useDeepLinkRedirect = () => {
             return;
         }
 
-        // ✅ NOUVEAU: Gérer la redirection des partenaires vers leur écran spécialisé
+        // ✅ MODIFIÉ: NE PAS rediriger automatiquement les partenaires vers leur écran spécialisé
+        // Les partenaires doivent accéder à HomeScreen et utiliser le bouton "Mes Services" pour la gestion
         const handlePartnerRedirect = () => {
+            // ✅ DÉSACTIVÉ: Plus de redirection automatique pour les partenaires
+            // Les partenaires restent sur HomeScreen et utilisent "Mes Services" dans la TabBar
             if (user?.role === 'partenaire') {
-                if (user.partner_type) {
-                    console.log(`[useDeepLinkRedirect] 🏢 Partenaire identifié: type="${user.partner_type}"`);
-                    // ✅ NOUVEAU: Mapping complet de tous les types de partenaires vers leurs écrans
-                    // ✅ CORRIGÉ 2026-03-05: hotel/meuble → HotelDashboard au lieu de ImmobilierForm
-                    const partnerTypeToScreen: Record<string, string> = {
-                        'banquesang': 'BanqueSangForm',
-                        'pharmacie': 'PharmacieForm',
-                        'hopital': 'HopitalForm',
-                        'laboratoire': 'LaboratoireForm',
-                        'agence de voyage': 'AgenceVoyageForm',
-                        'hotel': 'HotelDashboard',
-                        'meuble': 'HotelDashboard',
-                        'chauffeur': 'TaxiForm',
-                        'supermarche': 'SupermarketHome',
-                        'livraison_courses_marche': 'MesServicesSpecialises',
-                        'etablissementscolaire': 'MesServicesSpecialises',
-                        'demenagement': 'MesServicesSpecialises',
-                        'transport': 'MesServicesSpecialises',
-                        'assureur': 'MesServicesSpecialises',
-                        'telecom': 'MesServicesSpecialises',
-                        'livraison': 'MesServicesSpecialises',
-                    };
-
-                    const targetScreen = partnerTypeToScreen[user.partner_type];
-                    if (targetScreen) {
-                        try {
-                            const nav = navigation as any;
-                            if (nav && typeof nav?.navigate === 'function') {
-                                console.log(`[useDeepLinkRedirect] ✅ Redirection partenaire "${user.partner_type}" vers ${targetScreen}`);
-                                nav.navigate(targetScreen);
-                            }
-                        } catch (error) {
-                            console.error('[useDeepLinkRedirect] ❌ Erreur redirection partenaire:', error);
-                        }
-                    } else {
-                        console.warn(`[useDeepLinkRedirect] ⚠️ Type partenaire "${user.partner_type}" non mappé, redirection vers sélecteur de services`);
-                        try {
-                            const nav = navigation as any;
-                            if (nav && typeof nav?.navigate === 'function') {
-                                nav.navigate('MesServicesSpecialises');
-                            }
-                        } catch (error) {
-                            console.error('[useDeepLinkRedirect] ❌ Erreur redirection sélecteur:', error);
-                        }
-                    }
-                } else {
-                    console.warn('[useDeepLinkRedirect] ⚠️ Partenaire sans type - redirection vers sélecteur de services');
-                    try {
-                        const nav = navigation as any;
-                        if (nav && typeof nav?.navigate === 'function') {
-                            nav.navigate('MesServicesSpecialises');
-                        }
-                    } catch (error) {
-                        console.error('[useDeepLinkRedirect] ❌ Erreur redirection sélecteur:', error);
-                    }
-                }
+                console.log(`[useDeepLinkRedirect] 🏢 Partenaire identifié: type="${user.partner_type}" - Pas de redirection automatique`);
+                console.log('[useDeepLinkRedirect] ℹ️ Le partenaire accède à HomeScreen et utilise "Mes Services" pour la gestion');
+                return; // Ne faire aucune redirection
             }
         };
 

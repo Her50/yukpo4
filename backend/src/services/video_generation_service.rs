@@ -73,6 +73,61 @@ use crate::{
     state::AppState,
 };
 
+/// Create a media entry for AI-generated video
+async fn create_media_entry_for_ai_video(
+    pg: &sqlx::PgPool,
+    service_id: i32,
+    product_index: i32,
+    video_url: &str,
+    product_name: &str,
+    progress_steps: &[crate::models::video_generation_model::ProgressStep],
+) -> AppResult<i32> {
+    let media_type = "video";
+    
+    let result = sqlx::query!(
+        r#"
+        INSERT INTO media (
+            service_id, 
+            product_index, 
+            path, 
+            type, 
+            media_type, 
+            ai_description,
+            created_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, NOW())
+        RETURNING id
+        "#,
+        service_id,
+        product_index,
+        video_url,
+        media_type,
+        media_type,
+        serde_json::json!({
+            "type": "ai_generated_video",
+            "product_name": product_name,
+            "progress_steps": progress_steps
+        }).to_string()
+    )
+    .fetch_one(pg)
+    .await
+    .map_err(|e| {
+        AppError::Database(format!("Failed to create media entry for AI video: {}", e))
+    })?;
+    
+    Ok(result.id)
+}
+
+/// Select a curated audio track based on mode and hint
+async fn select_curated_audio_track(
+    session_dir: &Path,
+    mode: Option<&str>,
+    hint: Option<&str>,
+) -> AppResult<Option<audio_library_service::CuratedAudioLoop>> {
+    // For now, return None - this would be implemented with actual audio library logic
+    let _ = (session_dir, mode, hint);
+    Ok(None)
+}
+
 /// Compteurs globaux pour les métriques de latence du pipeline vidéo.
 static VIDEO_LATENCY_TOTAL_MS: AtomicI64 = AtomicI64::new(0);
 static VIDEO_LATENCY_COUNT: AtomicU64 = AtomicU64::new(0);
@@ -722,6 +777,11 @@ pub async fn generate_product_video(
             music_style: None,
         };
 
+        // Get the generative video service from state
+        let generative_service = state.generative_video.as_ref().ok_or_else(|| {
+            AppError::ServiceUnavailable("Service de génération vidéo IA non disponible".to_string())
+        })?;
+
         match generative_service.generate_video(user.id as i64, request).await {
             Ok(gen_job_id) => {
                 info!(
@@ -925,13 +985,23 @@ pub async fn generate_product_video(
         }
     };
 
+    // Get voice profile if available
+    let voice_profile = if let Some(voice_id) = &payload.voiceover_voice_id {
+        match state.voice_profiles.get_profile_by_id(voice_id).await {
+            Ok(profile) => Some(profile),
+            Err(_) => None,
+        }
+    } else {
+        None
+    };
+
     let mut headline = payload.headline.clone();
     let mut call_to_action = payload.call_to_action.clone();
     let mut voiceover_script_opt = payload.voiceover_script.clone();
     let mut resolved_voiceover_lang = payload.voiceover_lang.clone();
     if resolved_voiceover_lang.is_none() {
         if let Some(profile) = &voice_profile {
-            if let Some(lang) = profile.metadata.get("lang").and_then(|value| value.as_str()) {
+            if let Some(lang) = profile.metadata.get("lang").and_then(|value: &serde_json::Value| value.as_str()) {
                 resolved_voiceover_lang = Some(lang.to_string());
             }
         }
@@ -4920,11 +4990,11 @@ async fn find_best_matching_audio_loop(
                 loop_info.name, loop_info.trending_score
             );
 
-            match download_curated_audio_loop(session_dir, &loop_info).await {
+            match download_curated_audio(session_dir, &loop_info).await {
                 Ok(path) => {
                     info!(
                         "[VideoGeneration] 🎵 Musique trending téléchargée: {}",
-                        path
+                        path.display()
                     );
                     return Ok(Some(path));
                 }

@@ -196,16 +196,22 @@ class PlacesService {
             });
         }
 
-        // Dédupliquer en conservant l'ordre
-        const seen = new Set<string>();
-        const unique = results.filter(item => {
+        // ✅ AMÉLIORÉ 2026-03-05: Dédupliquer intelligemment en priorisant le backend
+        // Utiliser une Map pour conserver le meilleur résultat (backend prioritaire)
+        const resultMap = new Map<string, PlaceResult>();
+
+        // Ajouter d'abord les résultats du backend (prioritaires)
+        results.forEach(item => {
             const key = item.description.trim().toLowerCase();
-            if (seen.has(key)) return false;
-            seen.add(key);
-            return true;
+            if (!resultMap.has(key)) {
+                resultMap.set(key, item);
+            }
         });
 
-        return unique.slice(0, 30);
+        // Convertir en array et limiter
+        const unique = Array.from(resultMap.values()).slice(0, 30);
+
+        return unique;
     }
 
     /**

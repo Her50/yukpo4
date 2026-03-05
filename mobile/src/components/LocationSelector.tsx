@@ -701,10 +701,10 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
                     place_id: enrichedResult?.place_id,
                 };
                 console.log('[LocationSelector] Appel onSelect avec:', finalLocation);
-                // ✅ CORRIGÉ: Mettre à jour query avec la valeur sélectionnée avant d'appeler onSelect
+                // ✅ CORRIGÉ: Mettre à jour les états correctement
                 setQuery(display);
                 setIsFocused(false);
-                onSelect(finalLocation);
+                onSelect(finalLocation); // Le parent mettra à jour value, ce qui recalculera displayValue
                 // ✅ AMÉLIORÉ: Blur après un court délai pour permettre la mise à jour
                 setTimeout(() => {
                     inputRef.current?.blur();
@@ -721,10 +721,10 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
                     place_id: enrichedResult?.place_id,
                 };
                 console.log('[LocationSelector] Fallback - Appel onSelect avec:', finalLocation);
-                // ✅ CORRIGÉ: Mettre à jour query avec la valeur sélectionnée
+                // ✅ CORRIGÉ: Mettre à jour les états correctement
                 setQuery(display);
                 setIsFocused(false);
-                onSelect(finalLocation);
+                onSelect(finalLocation); // Le parent mettra à jour value, ce qui recalculera displayValue
                 setTimeout(() => {
                     inputRef.current?.blur();
                     selectingOptionRef.current = false;
@@ -741,10 +741,10 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
                 place_id: enrichedResult?.place_id,
             };
             console.log('[LocationSelector] Sans enrichissement - Appel onSelect avec:', finalLocation);
-            // ✅ CORRIGÉ: Mettre à jour query avec la valeur sélectionnée
+            // ✅ CORRIGÉ: Mettre à jour les états correctement
             setQuery(display);
             setIsFocused(false);
-            onSelect(finalLocation);
+            onSelect(finalLocation); // Le parent mettra à jour value, ce qui recalculera displayValue
             setTimeout(() => {
                 inputRef.current?.blur();
                 selectingOptionRef.current = false;
@@ -851,7 +851,6 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
                                             selectingOptionRef.current = true;
                                             handleSelectOption(opt, index);
                                         }}
-                                        delayPressIn={0} // ✅ NOUVEAU: Pas de délai pour une sélection immédiate
                                         hitSlop={{ top: 12, bottom: 12, left: 0, right: 0 }} // ✅ AUGMENTÉ: Zone de clic plus grande
                                     >
                                         <View style={styles.optionContent}>

@@ -862,7 +862,22 @@ const MainStack = () => {
         },
       })}
     >
-      <Tab.Screen name="Home" component={HomeScreenWithSafeArea} options={{ tabBarLabel: 'Accueil' }} />
+      <Tab.Screen
+        name="Home"
+        component={HomeScreenWithSafeArea}
+        options={{
+          tabBarLabel: 'Accueil',
+          // ✅ NOUVEAU: Icône maison pour HomeScreen
+          tabBarIcon: ({ focused, color, size }) => (
+            <SafeIcon
+              name="home"
+              size={size}
+              color={focused ? modernColors.primary : color}
+              type="lucide"
+            />
+          ),
+        }}
+      />
       {/* ✅ MODIFIÉ: Onglet "Mes Services" toujours visible - entre Accueil et Vidéo */}
       {hasSpecializedServices ? (
         <Tab.Screen
@@ -871,6 +886,15 @@ const MainStack = () => {
           options={{
             tabBarLabel: 'Mes Services',
             title: 'Gestion Services Spécialisés',
+            // ✅ NOUVEAU: Icône spécifique pour les partenaires (gestion/administration)
+            tabBarIcon: ({ focused, color, size }) => (
+              <SafeIcon
+                name="briefcase"
+                size={size}
+                color={focused ? modernColors.primary : color}
+                type="lucide"
+              />
+            ),
           }}
         />
       ) : (
@@ -880,6 +904,15 @@ const MainStack = () => {
           options={{
             tabBarLabel: 'Mes Services',
             title: 'Mes Services',
+            // ✅ NOUVEAU: Icône standard pour les utilisateurs ordinaires
+            tabBarIcon: ({ focused, color, size }) => (
+              <SafeIcon
+                name="shopping-bag"
+                size={size}
+                color={focused ? modernColors.primary : color}
+                type="lucide"
+              />
+            ),
           }}
         />
       )}
@@ -947,22 +980,20 @@ const DeliveryShoppingFlow = () => {
 // ⚠️ IMPORTANT: Les hooks doivent être appelés inconditionnellement (pas dans try-catch)
 // ✅ SIMPLIFICATION: Ne pas utiliser useNavigation() directement ici, laisser useDeepLinkRedirect gérer
 const MainStackWithDeepLinks = (props: any) => {
-  const { user } = useAuth();
-  const [partnerRedirectPending, setPartnerRedirectPending] = React.useState(
-    () => user?.role === 'partenaire' && !!user?.partner_type
-  );
+  // ✅ MODIFIÉ: Désactiver la redirection automatique des partenaires
+  // Les partenaires accèdent directement à HomeScreen sans redirection
+  const [partnerRedirectPending, setPartnerRedirectPending] = React.useState(false);
 
   useDeepLinkRedirect();
 
+  // ✅ DÉSACTIVÉ: Plus de délai de redirection pour les partenaires
   React.useEffect(() => {
-    if (partnerRedirectPending) {
-      const timer = setTimeout(() => setPartnerRedirectPending(false), 300);
-      return () => clearTimeout(timer);
-    }
+    // Ne plus gérer partnerRedirectPending car les partenaires ne sont plus redirigés
     return undefined;
-  }, [partnerRedirectPending]);
+  }, []);
 
-  if (partnerRedirectPending) {
+  // ✅ DÉSACTIVÉ: Plus d'écran de chargement pour les partenaires
+  if (false && partnerRedirectPending) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFFFFF' }}>
         <ActivityIndicator size="large" color={modernColors.primary} />

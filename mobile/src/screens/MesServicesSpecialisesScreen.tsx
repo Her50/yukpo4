@@ -10,8 +10,8 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import { NativeButton } from '../components/SafeNativeDesign';
 import SafeIcon from '../components/SafeIcon';
+import { NativeButton } from '../components/SafeNativeDesign';
 import { useAuth } from '../contexts/AuthContext';
 import { servicesApi } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
@@ -554,19 +554,28 @@ const styles = StyleSheet.create({
     header: {
         padding: 20,
         paddingTop: 40,
-        backgroundColor: '#fff',
+        backgroundColor: '#FFFFFF', // ✅ AMÉLIORÉ: Blanc pur pour meilleur contraste
         borderBottomWidth: 1,
         borderBottomColor: '#E5E7EB',
+        shadowColor: '#000', // ✅ AJOUT: Ombre pour séparation visuelle
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+        elevation: 2,
     },
     title: {
         fontSize: 28,
         fontWeight: '900',
-        color: '#111827',
+        color: '#111827', // ✅ AMÉLIORÉ: Contraste maximal
         marginBottom: 8,
+        textShadowColor: 'rgba(0,0,0,0.1)', // ✅ AJOUT: Ombre subtile pour lisibilité
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 1,
     },
     subtitle: {
         fontSize: 16,
-        color: '#6B7280',
+        color: '#4B5563', // ✅ AMÉLIORÉ: Plus foncé pour meilleure lisibilité
+        fontWeight: '500',
     },
     group: {
         marginTop: 24,
@@ -602,15 +611,19 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.08,
         shadowRadius: 4,
         elevation: 3,
+        minHeight: 140, // ✅ AJOUT: Hauteur minimale pour éviter les cartes trop petites
         // ✅ Supprimer minHeight pour laisser le contenu définir la hauteur
     },
     serviceIconContainer: {
-        width: 40, // ✅ Réduit pour correspondre à l'image
-        height: 40,
-        borderRadius: 10,
+        width: 44, // ✅ AUGMENTÉ: Icônes plus visibles
+        height: 44,
+        borderRadius: 12,
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 10,
+        marginBottom: 12,
+        backgroundColor: '#F9FAFB', // ✅ AJOUT: Fond plus visible
+        borderWidth: 1, // ✅ AJOUT: Bordure pour meilleure visibilité
+        borderColor: '#E5E7EB',
     },
     serviceTitle: {
         fontSize: 15, // ✅ Légèrement réduit
@@ -618,11 +631,14 @@ const styles = StyleSheet.create({
         color: '#111827',
         marginBottom: 4,
         lineHeight: 20,
+        textAlign: 'center', // ✅ AJOUT: Centrer pour éviter débordement
     },
     serviceDescription: {
         fontSize: 12,
         color: '#6B7280',
         lineHeight: 16,
+        textAlign: 'center', // ✅ AJOUT: Centrer pour éviter débordement
+        flex: 1, // ✅ AJOUT: Permettre au texte de s'adapter
     },
     searchContainer: {
         padding: 16,
