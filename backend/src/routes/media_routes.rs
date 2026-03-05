@@ -87,8 +87,6 @@ pub fn media_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             "/api/media/product/{service_id}/{product_index}/estimate-video",
             post(estimate_video_cost_for_product),
         )
-        // ✅ ALIAS: /api/studio/templates → /api/templates (compatibilité mobile)
-        .route("/api/studio/templates", get(list_templates))
         // ✅ NOUVEAU: Route pour bibliothèque audio (utilisée par le studio vidéo)
         .route("/api/audio-library", get(get_audio_library))
         // ✅ CORRIGÉ 2026-01-02: Route pour récupérer le statut d'un job de génération vidéo

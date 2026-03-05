@@ -177,6 +177,7 @@ import BusReturnRequestFormScreen from '../screens/specialized/BusReturnRequestF
 import BusReturnRequestsScreen from '../screens/specialized/BusReturnRequestsScreen';
 // ✅ NOUVEAU 2026-01-27: Écrans hôtels/meublés (paiement réservation + QR scanner)
 import HotelBookingPaymentScreen from '../screens/specialized/HotelBookingPaymentScreen';
+import HotelDashboardScreen from '../screens/specialized/HotelDashboardScreen';
 import HotelQRScannerScreen from '../screens/specialized/HotelQRScannerScreen';
 // ✅ NOUVEAU 2025-01-28: Écrans Bourse du livre scolaire
 import LivreScolaireDetailsScreen from '../screens/specialized/LivreScolaireDetailsScreen';
@@ -189,7 +190,10 @@ import MesLivresScreen from '../screens/specialized/MesLivresScreen';
 import ConcoursEntreeScreen from '../screens/orientation/ConcoursEntreeScreen';
 import ConferencesLivesScreen from '../screens/orientation/ConferencesLivesScreen';
 // ✅ NOUVEAU 2026-03-05: Écrans Live Streaming
-import CreateEtablissementScreen from '../screens/orientation/CreateEtablissementScreen';
+import LiveHostScreen from '../screens/LiveHostScreen';
+import LivesListScreen from '../screens/LivesListScreen';
+import StartLiveScreen from '../screens/StartLiveScreen';
+// ✅ NOUVEAU 2026-03-05: Écrans Orientation scolaire
 import EtablissementDetailsScreen from '../screens/orientation/EtablissementDetailsScreen';
 import EtablissementSearchScreen from '../screens/orientation/EtablissementSearchScreen';
 import ExperiencesEtudiantsScreen from '../screens/orientation/ExperiencesEtudiantsScreen';
