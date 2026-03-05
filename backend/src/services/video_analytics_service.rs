@@ -3,7 +3,9 @@
 
 use crate::core::types::{AppError, AppResult};
 use crate::utils::log::{log_error, log_info};
+use crate::AppState;
 use chrono::{DateTime, Duration, Utc};
+use log::{error, info};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqlx::{FromRow, PgPool};
@@ -117,7 +119,7 @@ impl VideoAnalyticsService {
         let device_info_json =
             event.device_info.map(|d| serde_json::to_string(&d)).transpose().unwrap_or(None);
 
-        sqlx::query!(
+        sqlx::query(
             r#"
             INSERT INTO video_analytics_events (
                 video_id, user_id, session_id, event_type, 
@@ -125,16 +127,16 @@ impl VideoAnalyticsService {
                 device_info, quality
             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
             "#,
-            event.video_id,
-            event.user_id,
-            event.session_id,
-            event_type_str,
-            event.timestamp,
-            event.position_seconds,
-            event.duration_seconds,
-            device_info_json,
-            event.quality
         )
+        .bind(event.video_id)
+        .bind(event.user_id)
+        .bind(&event.session_id)
+        .bind(&event_type_str)
+        .bind(event.timestamp)
+        .bind(event.position_seconds)
+        .bind(event.duration_seconds)
+        .bind(&device_info_json)
+        .bind(&event.quality)
         .execute(&*self.pool)
         .await
         .map_err(|e| AppError::Database(format!("Erreur insertion événement analytics: {}", e)))?;
@@ -570,18 +572,10 @@ pub async fn get_analytics_service(pool: Arc<PgPool>) -> Arc<VideoAnalyticsServi
     if service.is_none() {
         *service = Some(VideoAnalyticsService::new(pool));
     }
-    Arc::clone(service.as_ref().unwrap())
+    Arc::clone(&service.as_ref().unwrap())
 }
 
 // Legacy functions for compatibility
-#[derive(Debug, serde::Serialize, FromRow)]
-pub struct QualityScoreRecord {
-    pub media_id: i32,
-    pub service_id: i32,
-    pub quality_score: f32,
-    pub occurred_at: DateTime<Utc>,
-}
-
 #[derive(Debug, serde::Serialize, FromRow)]
 pub struct QualityScoreRecord {
     pub media_id: i32,

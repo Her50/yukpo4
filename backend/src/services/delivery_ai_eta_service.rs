@@ -847,16 +847,20 @@ IMPORTANT:
             ai_predictions: self.ai_predictions.load(Ordering::Relaxed),
             fallback_predictions: self.fallback_predictions.load(Ordering::Relaxed),
             cache_hits: self.cache_hits.load(Ordering::Relaxed),
-            cache_size: self.cache.len(),
+            cache_size: {
+                let cache = self.cache.read().unwrap();
+                cache.len()
+            },
         }
     }
 
     /// Nettoie le cache des entrées expirées
     pub fn cleanup_cache(&mut self) {
         let now = Utc::now();
-        self.cache.retain(|_, (_, cached_time)| {
+        let mut cache = self.cache.write().unwrap();
+        cache.retain(|_, (_, cached_time)| {
             let elapsed = now - *cached_time;
-            elapsed.num_seconds() < 300 // Garder seulement les entrées < 5 min
+            elapsed.timestamp() < 300 // Garder seulement les entrées < 5 min
         });
     }
 }
