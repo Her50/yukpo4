@@ -1,10 +1,10 @@
 // @ts-nocheck
 // Migration vers des composants React Native natifs pour éviter les crashes
 // ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
-import * as React from 'react';
-import { useState, useEffect } from 'react';
-import ReactNative from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native'; // ✅ NOUVEAU 2026-02-06: Pour gérer les paramètres de route
+import * as React from 'react';
+import { useEffect, useState } from 'react';
+import ReactNative from 'react-native';
 import { SafeNativeView } from '../components/SafeNativeView';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -52,7 +52,7 @@ const SettingsScreen: React.FC = () => {
   const { user, updateUser } = useAuth();
   const { themeMode, setThemeMode, isDark } = useTheme(); // ✅ NOUVEAU: Utiliser ThemeContext
   const [loading, setLoading] = useState(false);
-  
+
   // ✅ NOUVEAU 2026-02-06: État pour le changement de mot de passe
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [passwordData, setPasswordData] = useState({
@@ -104,7 +104,7 @@ const SettingsScreen: React.FC = () => {
   const [changingPassword, setChangingPassword] = useState(false);
 
   const [activeSection, setActiveSection] = useState<string>('profile');
-  
+
   // ✅ NOUVEAU 2026-02-06: Vérifier les paramètres de route au montage
   useEffect(() => {
     // @ts-ignore - route peut avoir des paramètres
@@ -118,7 +118,7 @@ const SettingsScreen: React.FC = () => {
       }
     }
   }, [route]);
-  
+
   // ✅ NOUVEAU 2026-02-06: Vérifier les paramètres de route au montage
   useEffect(() => {
     // @ts-ignore - route peut avoir des paramètres
@@ -523,7 +523,7 @@ const SettingsScreen: React.FC = () => {
 
     try {
       setChangingPassword(true);
-      
+
       const response = await apiPost('/api/users/change-password', {
         current_password: passwordData.currentPassword,
         new_password: passwordData.newPassword
@@ -531,10 +531,12 @@ const SettingsScreen: React.FC = () => {
 
       if (response.success) {
         Alert.alert('Succès', 'Votre mot de passe a été modifié avec succès', [
-          { text: 'OK', onPress: () => {
-            setShowPasswordModal(false);
-            setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
-          }}
+          {
+            text: 'OK', onPress: () => {
+              setShowPasswordModal(false);
+              setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+            }
+          }
         ]);
       } else {
         throw new Error(response.error || 'Erreur lors du changement de mot de passe');
@@ -758,7 +760,7 @@ const SettingsScreen: React.FC = () => {
               </View>
             </View>
           </View>
-        </ReactNative.Modal>
+        </Modal>
       )}
     </SafeNativeView>
   );
