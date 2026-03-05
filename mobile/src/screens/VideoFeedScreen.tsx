@@ -276,6 +276,13 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
     // ✅ Lancer préchargement quand currentIndex change
     useEffect(() => {
         if (feed.length > 0 && currentIndex >= 0) {
+            // ✅ NOUVEAU: Réinitialiser le compteur de lectures pour la nouvelle vidéo
+            const currentItem = feed[currentIndex];
+            const contentId = currentItem?.contentId || currentItem?.id;
+            if (contentId && !playCountRef.current[contentId]) {
+                setPlayCount(prev => ({ ...prev, [contentId]: 0 }));
+            }
+
             // Délai court pour ne pas impacter la performance du scroll
             const timeoutId = setTimeout(() => {
                 preloadNextVideos(currentIndex);
@@ -759,6 +766,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                         </Text>
                     )}
 
+                    {/* ✅ Bouton CTA flottant toujours visible */}
                     {item.serviceId && (
                         <TouchableOpacity
                             style={styles.ctaButton}
@@ -768,6 +776,15 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                             <SafeIcon name="shopping-bag" size={16} color="#fff" type="lucide" />
                             <Text style={styles.ctaText}>Voir le produit</Text>
                         </TouchableOpacity>
+                    )}
+
+                    {/* ✅ Indicateur de lecture (comme TikTok) */}
+                    {isActive && (
+                        <View style={styles.playIndicator}>
+                            <Text style={styles.playIndicatorText}>
+                                {playCount[contentId] === 1 ? '🔄' : '▶️'} {playCount[contentId] || 1}/2
+                            </Text>
+                        </View>
                     )}
                 </View>
 
@@ -1209,7 +1226,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingVertical: 10,
         borderRadius: 50,
-        backgroundColor: 'rgba(255,45,85,0.9)',
+        backgroundColor: 'rgba(255,45,85,0.95)', // ✅ AJOUT: Plus opaque
         marginTop: 4,
         // ✅ AJOUT: Positionnement absolu en bas pour être toujours visible
         position: 'absolute',
@@ -1221,6 +1238,8 @@ const styles = StyleSheet.create({
         shadowRadius: 4,
         elevation: 6,
         zIndex: 25,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.2)', // ✅ AJOUT: Bordure subtile
     },
     ctaText: {
         color: '#fff',
@@ -1362,6 +1381,22 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 16,
         fontWeight: '800',
+    },
+    // ✅ AJOUT: Indicateur de lecture style TikTok
+    playIndicator: {
+        position: 'absolute',
+        top: Platform.OS === 'ios' ? 52 : 32,
+        left: 16,
+        backgroundColor: 'rgba(0,0,0,0.6)',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 12,
+        zIndex: 30,
+    },
+    playIndicatorText: {
+        color: '#fff',
+        fontSize: 11,
+        fontWeight: '700',
     },
 });
 

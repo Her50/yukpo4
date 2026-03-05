@@ -785,8 +785,8 @@ pub async fn share_product_redirect(
         let url = if path.starts_with("http://") || path.starts_with("https://") {
             path.clone()
         } else if state.media_storage.is_remote() {
-            // ✅ URL pré-signée (7 jours) — les crawlers sociaux mettent en cache l'image
-            match state.media_storage.generate_presigned_url(path, 7 * 24 * 3600).await {
+            // ✅ URL pré-signée (7 jours pour images) — les crawlers sociaux mettent en cache l'image
+            match state.media_storage.generate_presigned_url(path, image_expiry_seconds).await {
                 Ok(presigned) => presigned,
                 Err(_) => state.media_storage.build_public_url(path),
             }
@@ -834,7 +834,7 @@ pub async fn share_product_redirect(
         {
             img
         } else if state.media_storage.is_remote() {
-            match state.media_storage.generate_presigned_url(&img, 7 * 24 * 3600).await {
+            match state.media_storage.generate_presigned_url(&img, image_expiry_seconds).await {
                 Ok(presigned) => presigned,
                 Err(_) => state.media_storage.build_public_url(&img),
             }
@@ -865,12 +865,17 @@ pub async fn share_product_redirect(
     .flatten()
     .collect();
 
+    // ✅ AMÉLIORÉ: Utiliser des URLs pré-signées plus longues pour les vidéos (30 jours)
+    // Les crawlers sociaux mettent en cache les previews pendant longtemps
+    let video_expiry_seconds = 30 * 24 * 3600; // 30 jours
+    let image_expiry_seconds = 7 * 24 * 3600; // 7 jours
+
     let mut all_product_videos: Vec<String> = Vec::new();
     for path in &product_video_paths {
         let url = if path.starts_with("http://") || path.starts_with("https://") {
             path.clone()
         } else if state.media_storage.is_remote() {
-            match state.media_storage.generate_presigned_url(path, 7 * 24 * 3600).await {
+            match state.media_storage.generate_presigned_url(path, video_expiry_seconds).await {
                 Ok(presigned) => presigned,
                 Err(_) => state.media_storage.build_public_url(path),
             }
@@ -908,7 +913,7 @@ pub async fn share_product_redirect(
         {
             vid
         } else if state.media_storage.is_remote() {
-            match state.media_storage.generate_presigned_url(&vid, 7 * 24 * 3600).await {
+            match state.media_storage.generate_presigned_url(&vid, video_expiry_seconds).await {
                 Ok(presigned) => presigned,
                 Err(_) => state.media_storage.build_public_url(&vid),
             }
@@ -1607,11 +1612,25 @@ pub async fn share_service_redirect(
         html.push_str(&service_titre);
         html.push_str("\" />");
     }
-    // ✅ AJOUTÉ: og:video pour les crawlers sociaux
+    // ✅ AJOUTÉ: og:video pour les crawlers sociaux avec meta tags enrichis (services)
     if let Some(ref vid_url) = first_video_url {
         html.push_str("\n    <meta property=\"og:video\" content=\"");
         html.push_str(vid_url);
         html.push_str("\" />\n    <meta property=\"og:video:type\" content=\"video/mp4\" />\n    <meta property=\"og:video:width\" content=\"1280\" />\n    <meta property=\"og:video:height\" content=\"720\" />");
+
+        // ✅ AJOUTÉ: Meta tags supplémentaires pour Facebook
+        html.push_str("\n    <meta property=\"og:video:secure_url\" content=\"");
+        html.push_str(vid_url);
+        html.push_str("\" />\n    <meta property=\"og:video:duration\" content=\"30\" />");
+
+        // ✅ AJOUTÉ: Twitter video player
+        html.push_str("\n    <meta name=\"twitter:player\" content=\"");
+        html.push_str(vid_url);
+        html.push_str("\" />\n    <meta name=\"twitter:player:width\" content=\"1280\" />\n    <meta name=\"twitter:player:height\" content=\"720\" />\n    <meta name=\"twitter:stream\" content=\"");
+        html.push_str(vid_url);
+        html.push_str(
+            "\" />\n    <meta name=\"twitter:stream:content_type\" content=\"video/mp4\" />",
+        );
     }
     html.push_str("\n    <meta property=\"og:url\" content=\"");
     html.push_str(&share_url);
