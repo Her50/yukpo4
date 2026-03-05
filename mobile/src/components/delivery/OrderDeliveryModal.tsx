@@ -1570,29 +1570,15 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                             )}
                         </View>
 
-                        {/* ✅ FIX 2026-03-03: Message de garantie remboursement */}
+                        {/* ✅ SIMPLIFIÉ: Message de garantie minimal */}
                         <View style={styles.guaranteeCard}>
                             <View style={styles.guaranteeHeader}>
                                 <SafeIcon name="shield" size={20} color="#059669" />
                                 <Text style={styles.guaranteeTitle}>Garantie satisfaction Yukpo</Text>
                             </View>
                             <Text style={styles.guaranteeText}>
-                                Le paiement de la marchandise est intégralement remboursable si vous n'êtes pas satisfait à la livraison. Seuls les frais de livraison seront retenus.
+                                Remboursement intégral du produit si insatisfaction. Assurance colis incluse.
                             </Text>
-                            <View style={styles.guaranteeBullets}>
-                                <View style={styles.guaranteeBulletRow}>
-                                    <SafeIcon name="check-circle" size={14} color="#059669" />
-                                    <Text style={styles.guaranteeBulletText}>Remboursement intégral du produit si insatisfaction</Text>
-                                </View>
-                                <View style={styles.guaranteeBulletRow}>
-                                    <SafeIcon name="check-circle" size={14} color="#059669" />
-                                    <Text style={styles.guaranteeBulletText}>Frais de livraison ({isDeliveryFree ? 'Gratuits' : deliveryCost !== null ? `${deliveryCost.toLocaleString('fr-FR')} FCFA` : '...'}) non remboursables</Text>
-                                </View>
-                                <View style={styles.guaranteeBulletRow}>
-                                    <SafeIcon name="check-circle" size={14} color="#059669" />
-                                    <Text style={styles.guaranteeBulletText}>Assurance colis incluse pour votre protection</Text>
-                                </View>
-                            </View>
                         </View>
                     </View>
                 </ScrollView>
@@ -1648,7 +1634,7 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                         ]}>
                             {loading ? 'Création...' :
                                 userBalance < ((productPrice || 0) + (isDeliveryFree ? 0 : (deliveryCost || 0)) + insuranceCost)
-                                    ? 'Recharger pour continuer'
+                                    ? 'Continuer'
                                     : `Confirmer ${((productPrice || 0) + (isDeliveryFree ? 0 : (deliveryCost || 0)) + insuranceCost) > 0 ? `• ${((productPrice || 0) + (isDeliveryFree ? 0 : (deliveryCost || 0)) + insuranceCost).toLocaleString('fr-FR')} FCFA` : ''}`
                             }
                         </Text>
@@ -2414,26 +2400,30 @@ const styles = StyleSheet.create({
         flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
-        paddingVertical: 12,
-        paddingHorizontal: 6,
+        paddingVertical: 16,
+        paddingHorizontal: 8,
         borderRadius: 12,
         borderWidth: 2,
         borderColor: '#E5E7EB',
         backgroundColor: '#FFFFFF',
         position: 'relative',
+        minWidth: 90, // ✅ AJOUT: Largeur minimale pour éviter l'étirement
+        maxWidth: 110, // ✅ AJOUT: Largeur maximale pour maintenir la forme
     },
     deliveryModeLabel: {
-        fontSize: 12,
-        fontWeight: '600',
+        fontSize: 13, // ✅ AJOUT: Légèrement plus grand
+        fontWeight: '700', // ✅ AJOUT: Plus gras
         color: modernColors.text,
         marginTop: 4,
         textAlign: 'center',
+        lineHeight: 16, // ✅ AJOUT: Hauteur de ligne pour éviter le chevauchement
     },
     deliveryModeDesc: {
-        fontSize: 10,
+        fontSize: 9, // ✅ AJOUT: Plus petit pour tenir dans l'espace
         color: modernColors.textSecondary,
-        marginTop: 2,
+        marginTop: 1, // ✅ AJOUT: Moins d'espace
         textAlign: 'center',
+        lineHeight: 12, // ✅ AJOUT: Hauteur de ligne compacte
     },
     deliveryModeCheck: {
         position: 'absolute',
@@ -2471,21 +2461,6 @@ const styles = StyleSheet.create({
         lineHeight: 20,
         marginBottom: 10,
     },
-    guaranteeBullets: {
-        gap: 6,
-    },
-    guaranteeBulletRow: {
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-        gap: 6,
-    },
-    guaranteeBulletText: {
-        fontSize: 12,
-        color: '#065F46',
-        flex: 1,
-        lineHeight: 18,
-    },
 });
 
 export default OrderDeliveryModal;
-
