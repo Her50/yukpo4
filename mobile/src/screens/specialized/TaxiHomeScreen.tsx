@@ -2,6 +2,7 @@
 // Structure claire : Recherche de taxis vs Création de service taxi
 
 import { useNavigation } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
@@ -66,7 +67,8 @@ const TaxiHomeScreen: React.FC = () => {
                 const response = await apiGet(`/api/users/${user.id}/driver-status`);
 
                 if (response.success && response.data) {
-                    const driverStatus = response.data.driver_status || response.data.is_driver;
+                    const r = response.data as any;
+                    const driverStatus = r?.driver_status || r?.is_driver;
                     setIsDriverValidated(driverStatus === 'validated' || driverStatus === 'approved' || driverStatus === true);
                 } else {
                     setIsDriverValidated(false);
@@ -202,9 +204,10 @@ const TaxiHomeScreen: React.FC = () => {
 
             const response = await taxiService.searchTaxis(filters);
 
-            if (response.success && response.data?.data) {
+            const r = response.data as any;
+            if (response.success && r?.data) {
                 // Filtrer par disponibilité côté client si nécessaire
-                let filteredTaxis = response.data.data;
+                let filteredTaxis = r.data;
                 if (availableOnly) {
                     filteredTaxis = filteredTaxis.filter(t => t.is_available !== false);
                 }
@@ -342,8 +345,9 @@ const TaxiHomeScreen: React.FC = () => {
 
             const response = await taxiService.searchTaxis(filters);
 
-            if (response.success && response.data?.data) {
-                let filteredTaxis = response.data.data;
+            const r = response.data as any;
+            if (response.success && r?.data) {
+                let filteredTaxis = r.data;
                 if (availableOnly) {
                     filteredTaxis = filteredTaxis.filter(t => t.is_available !== false);
                 }
@@ -457,27 +461,26 @@ const TaxiHomeScreen: React.FC = () => {
 
     return (
         <SafeNativeView style={styles.container}>
-            {/* Header sticky avec mode toggle */}
-            {/* ✅ REFONDU: Header avec fond blanc pour meilleur contraste */}
+            {/* Header avec gradient */}
             <View style={styles.headerContainer}>
-                <View style={styles.headerGradient}>
-                    {/* ✅ MODIFIÉ: Barre d'actions en haut avec boutons isolés gauche/droite */}
+                <LinearGradient colors={['#92400E', '#F59E0B']} style={styles.headerGradient}>
                     <View style={styles.headerActionsBar}>
-                        <TouchableOpacity
-                            onPress={() => {
-                                hapticPress();
-                                // ✅ CORRIGÉ: Navigation vers l'écran d'enregistrement de chauffeur
-                                (navigation as any).navigate('CourierRegistration', {
-                                    applicationType: 'driver', // ✅ Indique que c'est pour un chauffeur (taxi/covoiturage)
-                                });
-                            }}
-                            style={styles.registerDriverButtonLeft}
-                        >
-                            <SafeIcon name="user" size={18} color="#06B6D4" type="lucide" />
-                            <Text style={styles.registerDriverTextLeft} numberOfLines={1} adjustsFontSizeToFit>
-                                Devenir chauffeur
-                            </Text>
-                        </TouchableOpacity>
+                        {!isDriverValidated && (
+                            <TouchableOpacity
+                                onPress={() => {
+                                    hapticPress();
+                                    (navigation as any).navigate('CourierRegistration', {
+                                        applicationType: 'driver',
+                                    });
+                                }}
+                                style={styles.registerDriverButtonLeft}
+                            >
+                                <SafeIcon name="user" size={18} color="#fff" type="lucide" />
+                                <Text style={styles.registerDriverTextLeft} numberOfLines={1} adjustsFontSizeToFit>
+                                    Devenir chauffeur
+                                </Text>
+                            </TouchableOpacity>
+                        )}
                         <TouchableOpacity
                             onPress={() => {
                                 hapticPress();
@@ -517,21 +520,21 @@ const TaxiHomeScreen: React.FC = () => {
                             }}
                             style={styles.backButton}
                         >
-                            <SafeIcon name="arrow-left" size={24} color="#111827" />
+                            <SafeIcon name="arrow-left" size={24} color="#FFFFFF" />
                         </TouchableOpacity>
                         <View style={styles.headerTitleContainer}>
-                            <Text style={styles.headerTitle}>
+                            <Text style={[styles.headerTitle, { color: '#FFFFFF' }]}>
                                 {viewMode === 'search' ? 'Rechercher un taxi' : 'Créer un service taxi'}
                             </Text>
                             {viewMode === 'search' && totalResults > 0 && (
-                                <Text style={styles.headerSubtitle}>
+                                <Text style={[styles.headerSubtitle, { color: '#ffffffCC' }]}>
                                     {totalResults} taxi{totalResults > 1 ? 's' : ''} disponible{totalResults > 1 ? 's' : ''}
                                 </Text>
                             )}
                         </View>
                     </View>
 
-                    {/* ✅ REFONDU: Champs compacts mais visibles - style moderne */}
+                    {/* Champs compacts - style moderne */}
                     {viewMode === 'search' && (
                         <View style={styles.searchContainer}>
                             {/* Départ - Compact */}
@@ -692,190 +695,192 @@ const TaxiHomeScreen: React.FC = () => {
                             </TouchableOpacity>
                         </View>
                     )}
-                </View>
+                </LinearGradient>
             </View>
 
             {/* Contenu selon le mode */}
-            {viewMode === 'search' ? (
-                // Mode recherche : Liste des taxis
-                !hasSearched && !loading ? (
-                    <FlatList
-                        data={recommendations}
-                        keyExtractor={(item) => `reco-${item.id}`}
-                        contentContainerStyle={styles.listContent}
-                        ListHeaderComponent={
-                            <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
-                                <View style={{ alignItems: 'center', marginBottom: 16 }}>
-                                    <SafeIcon name="map-pin" size={48} color="#9CA3AF" />
-                                    <Text style={styles.emptyText}>Sélectionnez votre trajet</Text>
-                                    <Text style={[styles.emptySubtext, { marginBottom: 8 }]} numberOfLines={3}>
-                                        Choisissez un point de départ et une destination précise, puis cliquez sur "Rechercher"
-                                    </Text>
-                                </View>
+            {
+                viewMode === 'search' ? (
+                    // Mode recherche : Liste des taxis
+                    !hasSearched && !loading ? (
+                        <FlatList
+                            data={recommendations}
+                            keyExtractor={(item) => `reco-${item.id}`}
+                            contentContainerStyle={styles.listContent}
+                            ListHeaderComponent={
+                                <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
+                                    <View style={{ alignItems: 'center', marginBottom: 16 }}>
+                                        <SafeIcon name="map-pin" size={48} color="#9CA3AF" />
+                                        <Text style={styles.emptyText}>Sélectionnez votre trajet</Text>
+                                        <Text style={[styles.emptySubtext, { marginBottom: 8 }]} numberOfLines={3}>
+                                            Choisissez un point de départ et une destination précise, puis cliquez sur "Rechercher"
+                                        </Text>
+                                    </View>
 
-                                {/* ✅ IA: Prédiction de demande en temps réel */}
-                                {demandPrediction && (
-                                    <View style={styles.iaDemandCard}>
-                                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
-                                            <SafeIcon name="trending-up" size={16} color="#06B6D4" type="lucide" />
-                                            <Text style={styles.iaDemandTitle}>Demande en temps réel</Text>
-                                        </View>
-                                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                                            <View style={[
-                                                styles.iaDemandBadge,
-                                                demandPrediction.level === 'high' ? { backgroundColor: '#FEE2E2' } :
-                                                    demandPrediction.level === 'low' ? { backgroundColor: '#D1FAE5' } :
-                                                        { backgroundColor: '#FEF3C7' }
-                                            ]}>
-                                                <Text style={[
-                                                    styles.iaDemandBadgeText,
-                                                    demandPrediction.level === 'high' ? { color: '#DC2626' } :
-                                                        demandPrediction.level === 'low' ? { color: '#059669' } :
-                                                            { color: '#D97706' }
-                                                ]}>
-                                                    {demandPrediction.level === 'high' ? 'Forte demande' :
-                                                        demandPrediction.level === 'low' ? 'Faible demande' : 'Demande normale'}
-                                                </Text>
+                                    {/* ✅ IA: Prédiction de demande en temps réel */}
+                                    {demandPrediction && (
+                                        <View style={styles.iaDemandCard}>
+                                            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+                                                <SafeIcon name="trending-up" size={16} color="#06B6D4" type="lucide" />
+                                                <Text style={styles.iaDemandTitle}>Demande en temps réel</Text>
                                             </View>
-                                            {demandPrediction.confidence > 0 && (
-                                                <Text style={styles.iaConfidenceText}>
-                                                    Confiance: {Math.round(demandPrediction.confidence * 100)}%
+                                            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                <View style={[
+                                                    styles.iaDemandBadge,
+                                                    demandPrediction.level === 'high' ? { backgroundColor: '#FEE2E2' } :
+                                                        demandPrediction.level === 'low' ? { backgroundColor: '#D1FAE5' } :
+                                                            { backgroundColor: '#FEF3C7' }
+                                                ]}>
+                                                    <Text style={[
+                                                        styles.iaDemandBadgeText,
+                                                        demandPrediction.level === 'high' ? { color: '#DC2626' } :
+                                                            demandPrediction.level === 'low' ? { color: '#059669' } :
+                                                                { color: '#D97706' }
+                                                    ]}>
+                                                        {demandPrediction.level === 'high' ? 'Forte demande' :
+                                                            demandPrediction.level === 'low' ? 'Faible demande' : 'Demande normale'}
+                                                    </Text>
+                                                </View>
+                                                {demandPrediction.confidence > 0 && (
+                                                    <Text style={styles.iaConfidenceText}>
+                                                        Confiance: {Math.round(demandPrediction.confidence * 100)}%
+                                                    </Text>
+                                                )}
+                                            </View>
+                                            {demandPrediction.level === 'high' && (
+                                                <Text style={styles.iaDemandHint}>
+                                                    Les tarifs peuvent être majorés en période de forte demande
                                                 </Text>
                                             )}
                                         </View>
-                                        {demandPrediction.level === 'high' && (
-                                            <Text style={styles.iaDemandHint}>
-                                                Les tarifs peuvent être majorés en période de forte demande
-                                            </Text>
-                                        )}
-                                    </View>
-                                )}
+                                    )}
 
-                                {/* ✅ IA: Titre recommandations */}
-                                {(loadingRecommendations || recommendations.length > 0) && (
-                                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12, marginBottom: 8 }}>
-                                        <SafeIcon name="sparkles" size={16} color="#06B6D4" type="lucide" />
-                                        <Text style={styles.iaRecoTitle}>Recommandés pour vous</Text>
-                                        {loadingRecommendations && (
-                                            <ActivityIndicator size="small" color="#06B6D4" style={{ marginLeft: 8 }} />
-                                        )}
-                                    </View>
-                                )}
-                            </View>
-                        }
-                        renderItem={({ item }) => (
-                            <TaxiCard
-                                taxi={item}
-                                onPress={() => navigation.navigate('TaxiDetails' as never, { taxiId: item.id } as never)}
-                                onCall={() => {
-                                    hapticPress();
-                                    if (item.telephone) Linking.openURL(`tel:${item.telephone}`);
-                                }}
-                                onBook={() => {
-                                    hapticPress();
-                                    navigation.navigate('TaxiBooking' as never, {
-                                        taxiId: item.id,
-                                        depart: typeof depart === 'object' ? (depart as LocationObject)?.place_name : depart,
-                                        destination: '',
-                                    } as never);
-                                }}
-                                formatPrice={formatPrice}
-                                formatDistance={formatDistance}
-                            />
-                        )}
-                        ListEmptyComponent={
-                            !loadingRecommendations ? null : (
-                                <View style={{ padding: 20, alignItems: 'center' }}>
-                                    <ActivityIndicator size="small" color="#06B6D4" />
+                                    {/* ✅ IA: Titre recommandations */}
+                                    {(loadingRecommendations || recommendations.length > 0) && (
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12, marginBottom: 8 }}>
+                                            <SafeIcon name="sparkles" size={16} color="#06B6D4" type="lucide" />
+                                            <Text style={styles.iaRecoTitle}>Recommandés pour vous</Text>
+                                            {loadingRecommendations && (
+                                                <ActivityIndicator size="small" color="#06B6D4" style={{ marginLeft: 8 }} />
+                                            )}
+                                        </View>
+                                    )}
                                 </View>
-                            )
-                        }
-                    />
-                ) : loading && taxis.length === 0 ? (
-                    <View style={styles.centerContainer}>
-                        <ActivityIndicator size="large" color={modernColors.primary} />
-                        <Text style={styles.loadingText}>Recherche de taxis...</Text>
-                    </View>
-                ) : error && taxis.length === 0 ? (
-                    <View style={styles.centerContainer}>
-                        <SafeIcon name="taxi" size={64} color="#9CA3AF" />
-                        <Text style={styles.errorText}>{error}</Text>
-                        <TouchableOpacity
-                            style={styles.retryButton}
-                            onPress={loadNearbyTaxis}
-                        >
-                            <Text style={styles.retryButtonText}>Réessayer</Text>
-                        </TouchableOpacity>
-                    </View>
+                            }
+                            renderItem={({ item }) => (
+                                <TaxiCard
+                                    taxi={item}
+                                    onPress={() => navigation.navigate('TaxiDetails' as never, { taxiId: item.id } as never)}
+                                    onCall={() => {
+                                        hapticPress();
+                                        if (item.telephone) Linking.openURL(`tel:${item.telephone}`);
+                                    }}
+                                    onBook={() => {
+                                        hapticPress();
+                                        navigation.navigate('TaxiBooking' as never, {
+                                            taxiId: item.id,
+                                            depart: typeof depart === 'object' ? (depart as LocationObject)?.place_name : depart,
+                                            destination: '',
+                                        } as never);
+                                    }}
+                                    formatPrice={formatPrice}
+                                    formatDistance={formatDistance}
+                                />
+                            )}
+                            ListEmptyComponent={
+                                !loadingRecommendations ? null : (
+                                    <View style={{ padding: 20, alignItems: 'center' }}>
+                                        <ActivityIndicator size="small" color="#06B6D4" />
+                                    </View>
+                                )
+                            }
+                        />
+                    ) : loading && taxis.length === 0 ? (
+                        <View style={styles.centerContainer}>
+                            <ActivityIndicator size="large" color={modernColors.primary} />
+                            <Text style={styles.loadingText}>Recherche de taxis...</Text>
+                        </View>
+                    ) : error && taxis.length === 0 ? (
+                        <View style={styles.centerContainer}>
+                            <SafeIcon name="taxi" size={64} color="#9CA3AF" />
+                            <Text style={styles.errorText}>{error}</Text>
+                            <TouchableOpacity
+                                style={styles.retryButton}
+                                onPress={loadNearbyTaxis}
+                            >
+                                <Text style={styles.retryButtonText}>Réessayer</Text>
+                            </TouchableOpacity>
+                        </View>
+                    ) : (
+                        <FlatList
+                            data={taxis}
+                            keyExtractor={(item) => item.id.toString()}
+                            renderItem={({ item }) => (
+                                <TaxiCard
+                                    taxi={item}
+                                    onPress={() => navigation.navigate('TaxiDetails' as never, { taxiId: item.id } as never)}
+                                    onCall={() => {
+                                        hapticPress();
+                                        if (item.telephone) {
+                                            Linking.openURL(`tel:${item.telephone}`);
+                                        }
+                                    }}
+                                    onWhatsApp={() => {
+                                        hapticPress();
+                                        const phone = item.whatsapp || item.telephone;
+                                        if (phone) {
+                                            const cleanPhone = phone.replace(/[^0-9+]/g, '');
+                                            Linking.openURL(`whatsapp://send?phone=${cleanPhone}&text=Bonjour, je souhaite réserver un taxi.`).catch(() => {
+                                                Linking.openURL(`https://wa.me/${cleanPhone}?text=Bonjour, je souhaite réserver un taxi.`);
+                                            });
+                                        }
+                                    }}
+                                    onBook={() => {
+                                        hapticPress();
+                                        navigation.navigate('TaxiBooking' as never, {
+                                            taxiId: item.id,
+                                            depart: typeof depart === 'object' ? (depart as LocationObject)?.place_name : depart,
+                                            destination: typeof destination === 'object' ? (destination as LocationObject)?.place_name : destination,
+                                        } as never);
+                                    }}
+                                    formatPrice={formatPrice}
+                                    formatDistance={formatDistance}
+                                />
+                            )}
+                            contentContainerStyle={styles.listContent}
+                            refreshControl={
+                                <RefreshControl
+                                    refreshing={refreshing}
+                                    onRefresh={() => {
+                                        setRefreshing(true);
+                                        loadNearbyTaxis();
+                                    }}
+                                    colors={[modernColors.primary]}
+                                />
+                            }
+                            ListEmptyComponent={
+                                <View style={styles.emptyContainer}>
+                                    <SafeIcon name="taxi" size={64} color="#9CA3AF" />
+                                    <Text style={styles.emptyText}>Aucun taxi trouvé</Text>
+                                    <Text style={styles.emptySubtext} numberOfLines={2}>
+                                        Essayez de modifier vos critères de recherche
+                                    </Text>
+                                </View>
+                            }
+                        />
+                    )
                 ) : (
-                    <FlatList
-                        data={taxis}
-                        keyExtractor={(item) => item.id.toString()}
-                        renderItem={({ item }) => (
-                            <TaxiCard
-                                taxi={item}
-                                onPress={() => navigation.navigate('TaxiDetails' as never, { taxiId: item.id } as never)}
-                                onCall={() => {
-                                    hapticPress();
-                                    if (item.telephone) {
-                                        Linking.openURL(`tel:${item.telephone}`);
-                                    }
-                                }}
-                                onWhatsApp={() => {
-                                    hapticPress();
-                                    const phone = item.whatsapp || item.telephone;
-                                    if (phone) {
-                                        const cleanPhone = phone.replace(/[^0-9+]/g, '');
-                                        Linking.openURL(`whatsapp://send?phone=${cleanPhone}&text=Bonjour, je souhaite réserver un taxi.`).catch(() => {
-                                            Linking.openURL(`https://wa.me/${cleanPhone}?text=Bonjour, je souhaite réserver un taxi.`);
-                                        });
-                                    }
-                                }}
-                                onBook={() => {
-                                    hapticPress();
-                                    navigation.navigate('TaxiBooking' as never, {
-                                        taxiId: item.id,
-                                        depart: typeof depart === 'object' ? (depart as LocationObject)?.place_name : depart,
-                                        destination: typeof destination === 'object' ? (destination as LocationObject)?.place_name : destination,
-                                    } as never);
-                                }}
-                                formatPrice={formatPrice}
-                                formatDistance={formatDistance}
-                            />
-                        )}
-                        contentContainerStyle={styles.listContent}
-                        refreshControl={
-                            <RefreshControl
-                                refreshing={refreshing}
-                                onRefresh={() => {
-                                    setRefreshing(true);
-                                    loadNearbyTaxis();
-                                }}
-                                colors={[modernColors.primary]}
-                            />
-                        }
-                        ListEmptyComponent={
-                            <View style={styles.emptyContainer}>
-                                <SafeIcon name="taxi" size={64} color="#9CA3AF" />
-                                <Text style={styles.emptyText}>Aucun taxi trouvé</Text>
-                                <Text style={styles.emptySubtext} numberOfLines={2}>
-                                    Essayez de modifier vos critères de recherche
-                                </Text>
-                            </View>
-                        }
+                    // Mode création : Formulaire
+                    <CreateTaxiForm
+                        taxiForm={taxiForm}
+                        onFormChange={setTaxiForm}
+                        onCreate={handleCreateTaxi}
+                        creating={creating}
+                        location={location}
                     />
                 )
-            ) : (
-                // Mode création : Formulaire
-                <CreateTaxiForm
-                    taxiForm={taxiForm}
-                    onFormChange={setTaxiForm}
-                    onCreate={handleCreateTaxi}
-                    creating={creating}
-                    location={location}
-                />
-            )}
-        </SafeNativeView>
+            }
+        </SafeNativeView >
     );
 };
 

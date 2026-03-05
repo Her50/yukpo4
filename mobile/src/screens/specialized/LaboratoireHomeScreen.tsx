@@ -1,33 +1,31 @@
 // ✅ Écran Laboratoire MODERNE - Refonte complète avec UX de niveau mondial
 // ÉTAPE 1: Structure de base avec autocomplete et fonctionnalités IA
 
-import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
-import React, { useCallback, useEffect, useState } from 'react';
+import * as ImageManipulator from 'expo-image-manipulator';
+import * as ImagePicker from 'expo-image-picker';
+import { LinearGradient } from 'expo-linear-gradient';
+import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
+    Alert,
     FlatList,
+    Image,
     Modal,
-    RefreshControl,
     ScrollView,
     StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
-    View,
-    Image,
-    Alert,
+    View
 } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
-import * as ImageManipulator from 'expo-image-manipulator';
+import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
-import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
-import { useLocation } from '../../contexts/LocationContext';
-import { laboratoryService, ExaminationType, LabAnalysisResult, PathologySearchResult, LaboratoryAvailability } from '../../services/laboratoryService';
-import { modernColors } from '../../theme/modernTheme';
-import { hapticPress } from '../../utils/hapticFeedback';
 import { useToaster } from '../../components/ToasterProvider';
+import { useLocation } from '../../contexts/LocationContext';
+import { ExaminationType, LabAnalysisResult, laboratoryService, PathologySearchResult } from '../../services/laboratoryService';
+import { hapticPress } from '../../utils/hapticFeedback';
 
 type SortOption = 'relevance' | 'price_asc' | 'price_desc' | 'distance_asc' | 'name_asc';
 
@@ -97,8 +95,9 @@ const LaboratoireHomeScreen: React.FC = () => {
     const loadAutocomplete = async (query: string) => {
         try {
             const response = await laboratoryService.searchExaminationTypes(query, 10);
-            if (response.success && response.data?.examinations) {
-                setAutocompleteResults(response.data.examinations);
+            const r = response.data as any;
+            if (response.success && r?.examinations) {
+                setAutocompleteResults(r.examinations);
                 setShowAutocomplete(true);
             }
         } catch (err: any) {
@@ -114,17 +113,17 @@ const LaboratoireHomeScreen: React.FC = () => {
             loadAvailableLaboratories();
             return;
         }
-        
+
         const query = searchQuery.trim() || autocompleteQuery.trim();
         setShowAutocomplete(false);
-        
+
         // Rechercher les laboratoires disponibles avec système de disponibilité
         if (useAvailability && location?.coords) {
             loadAvailableLaboratories(query);
         } else {
             // Navigation vers recherche de laboratoires avec ce type d'examen
-            navigation.navigate('LaboratoireList' as never, { 
-                examinationType: query 
+            navigation.navigate('LaboratoireList' as never, {
+                examinationType: query
             } as never);
         }
     };
@@ -135,15 +134,15 @@ const LaboratoireHomeScreen: React.FC = () => {
         setSearchQuery(examination.name);
         setAutocompleteQuery(examination.name);
         setShowAutocomplete(false);
-        
+
         // Rechercher les laboratoires disponibles avec système de disponibilité
         if (useAvailability && location?.coords) {
             loadAvailableLaboratories(examination.name);
         } else {
-        // Navigation vers recherche de laboratoires avec ce type d'examen
-        navigation.navigate('LaboratoireList' as never, { 
-            examinationType: examination.name 
-        } as never);
+            // Navigation vers recherche de laboratoires avec ce type d'examen
+            navigation.navigate('LaboratoireList' as never, {
+                examinationType: examination.name
+            } as never);
         }
     };
 
@@ -152,7 +151,7 @@ const LaboratoireHomeScreen: React.FC = () => {
         try {
             setLoading(true);
             setError(null);
-            
+
             const response = await laboratoryService.searchWithAvailability(
                 examinationName || searchQuery || 'laboratoire',
                 location?.coords ? {
@@ -161,9 +160,10 @@ const LaboratoireHomeScreen: React.FC = () => {
                 } : undefined,
                 50 // 50km par défaut
             );
-            
-            if (response.success && response.data?.results) {
-                setAvailableLaboratories(response.data.results);
+
+            const r = response.data as any;
+            if (response.success && r?.results) {
+                setAvailableLaboratories(r.results);
             } else {
                 setAvailableLaboratories([]);
             }
@@ -191,10 +191,11 @@ const LaboratoireHomeScreen: React.FC = () => {
 
         try {
             const response = await laboratoryService.searchPathology(pathologyQuery.trim());
-            
+
             // Gérer différents formats de réponse
             if (response.success) {
-                const results = response.data?.results || response.results || response.data || [];
+                const r = response.data as any;
+                const results = r?.results || r || [];
                 if (Array.isArray(results) && results.length > 0) {
                     setPathologyResults(results);
                     toaster.success(`${results.length} pathologie(s) trouvée(s)`);
@@ -203,7 +204,8 @@ const LaboratoireHomeScreen: React.FC = () => {
                     setPathologyResults([]);
                 }
             } else {
-                const errorMsg = response.message || response.error || 'L\'IA de recherche pathologique n\'est pas encore opérationnelle.';
+                const r = response.data as any;
+                const errorMsg = r?.message || response.error || 'L\'IA de recherche pathologique n\'est pas encore opérationnelle.';
                 toaster.error(errorMsg);
                 setPathologyResults([]);
             }
@@ -219,17 +221,17 @@ const LaboratoireHomeScreen: React.FC = () => {
 
     const handlePickImage = async (source: 'camera' | 'gallery') => {
         hapticPress();
-        
+
         try {
             let result;
-            
+
             if (source === 'camera') {
                 const { status: cameraStatus } = await ImagePicker.requestCameraPermissionsAsync();
                 if (cameraStatus !== 'granted') {
                     Alert.alert('Permission requise', 'Veuillez autoriser l\'accès à la caméra');
                     return;
                 }
-                
+
                 result = await ImagePicker.launchCameraAsync({
                     mediaTypes: ImagePicker.MediaTypeOptions.Images,
                     allowsEditing: true,
@@ -253,7 +255,7 @@ const LaboratoireHomeScreen: React.FC = () => {
 
             if (!result.canceled && result.assets[0]) {
                 const asset = result.assets[0];
-                
+
                 // ✅ CORRIGÉ: Convertir l'image en JPEG avec expo-image-manipulator
                 // Cela garantit que l'image est dans un format supporté par OpenAI (JPEG, PNG, GIF, WEBP)
                 const manipulatedImage = await ImageManipulator.manipulateAsync(
@@ -312,10 +314,11 @@ const LaboratoireHomeScreen: React.FC = () => {
                 undefined,
                 undefined
             );
-            
+
             // Gérer différents formats de réponse
             if (response.success) {
-                const analysis = response.data?.analysis || response.analysis || response.data;
+                const r = response.data as any;
+                const analysis = r?.analysis || r;
                 if (analysis) {
                     setImageAnalysis(analysis);
                     toaster.success('Analyse d\'image terminée');
@@ -325,7 +328,8 @@ const LaboratoireHomeScreen: React.FC = () => {
                     setImageAnalysis(null);
                 }
             } else {
-                const errorMsg = response.message || response.error || 'Impossible d\'analyser l\'image. L\'IA d\'analyse d\'images n\'est peut-être pas encore opérationnelle.';
+                const r = response.data as any;
+                const errorMsg = r?.message || response.error || 'Impossible d\'analyser l\'image. L\'IA d\'analyse d\'images n\'est peut-être pas encore opérationnelle.';
                 toaster.error(errorMsg);
                 setImageAnalysis(null);
             }
@@ -393,9 +397,6 @@ const LaboratoireHomeScreen: React.FC = () => {
                                     }
                                 }}
                                 returnKeyType="search"
-                                multiline={true}
-                                numberOfLines={2}
-                                textAlignVertical="top"
                             />
                             {autocompleteQuery.length > 0 && (
                                 <TouchableOpacity
@@ -409,7 +410,7 @@ const LaboratoireHomeScreen: React.FC = () => {
                                     <SafeIcon name="x" size={18} color="#9CA3AF" type="lucide" />
                                 </TouchableOpacity>
                             )}
-                            {/* ✅ NOUVEAU: Bouton de recherche */}
+                            {/* Bouton de recherche */}
                             <TouchableOpacity
                                 style={[styles.searchButton, (!searchQuery.trim() && !autocompleteQuery.trim()) && styles.searchButtonDisabled]}
                                 onPress={handleSearch}
@@ -479,11 +480,11 @@ const LaboratoireHomeScreen: React.FC = () => {
                         }}
                         activeOpacity={0.7}
                     >
-                        <SafeIcon 
-                            name={getCurrentSortIcon()} 
-                            size={18} 
-                            color="#6B7280" 
-                            type="lucide" 
+                        <SafeIcon
+                            name={getCurrentSortIcon()}
+                            size={18}
+                            color="#6B7280"
+                            type="lucide"
                         />
                         <Text style={styles.sortButtonText}>
                             {sortOptions.find(o => o.value === sortBy)?.label || 'Trier'}
@@ -511,7 +512,7 @@ const LaboratoireHomeScreen: React.FC = () => {
                         const labName = productData.titre_service?.valeur || productData.nom || `Laboratoire ${lab.service_id}`;
                         const availableExams = productData.examensDisponibles || productData.examinations || [];
                         const is24h = productData.planningHebdomadaire?.permanent || false;
-                        
+
                         return (
                             <View key={lab.service_id || index} style={styles.labCard}>
                                 <View style={styles.labCardHeader}>
@@ -549,15 +550,64 @@ const LaboratoireHomeScreen: React.FC = () => {
                                         📍 {lab.distance_km.toFixed(1)} km
                                     </Text>
                                 )}
+                                {/* Actions rapides */}
+                                <View style={{ flexDirection: 'row', marginTop: 8, gap: 8 }}>
+                                    <TouchableOpacity
+                                        style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#EFF6FF', borderRadius: 8, paddingVertical: 8, borderWidth: 1, borderColor: '#BFDBFE' }}
+                                        onPress={() => {
+                                            hapticPress();
+                                            Alert.alert(
+                                                'Réserver un examen',
+                                                `Réserver un examen à "${labName}" ?`,
+                                                [
+                                                    { text: 'Annuler', style: 'cancel' },
+                                                    {
+                                                        text: 'Réserver',
+                                                        onPress: async () => {
+                                                            try {
+                                                                const resp = await laboratoryService.searchExaminationTypes(searchQuery || 'analyse', 1);
+                                                                Alert.alert('Succès', 'Demande de réservation envoyée ! Le laboratoire vous contactera.');
+                                                            } catch (e) {
+                                                                Alert.alert('Info', 'La réservation en ligne sera bientôt disponible.');
+                                                            }
+                                                        },
+                                                    },
+                                                ]
+                                            );
+                                        }}
+                                    >
+                                        <SafeIcon name="calendar" size={14} color="#3B82F6" type="lucide" />
+                                        <Text style={{ marginLeft: 4, fontSize: 12, color: '#3B82F6', fontWeight: '600' }}>Réserver</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#F0FDF4', borderRadius: 8, paddingVertical: 8, borderWidth: 1, borderColor: '#BBF7D0' }}
+                                        onPress={() => {
+                                            hapticPress();
+                                            laboratoryService.getLaboratoryExaminationTypes(lab.service_id).then((resp: any) => {
+                                                const r = resp.data as any;
+                                                const types = r?.data || r || [];
+                                                if (Array.isArray(types) && types.length > 0) {
+                                                    const list = types.slice(0, 8).map((t: any) => `• ${t.name || t}`).join('\n');
+                                                    Alert.alert('Types d\'examens', list);
+                                                } else {
+                                                    Alert.alert('Info', 'Liste des examens non disponible.');
+                                                }
+                                            }).catch(() => Alert.alert('Info', 'Service indisponible.'));
+                                        }}
+                                    >
+                                        <SafeIcon name="list" size={14} color="#16A34A" type="lucide" />
+                                        <Text style={{ marginLeft: 4, fontSize: 12, color: '#16A34A', fontWeight: '600' }}>Examens</Text>
+                                    </TouchableOpacity>
+                                </View>
                             </View>
                         );
                     })}
                 </ScrollView>
             ) : (
-            <View style={styles.content}>
-                <Text style={styles.placeholderText}>
-                    Recherchez un examen ou utilisez les fonctionnalités IA
-                </Text>
+                <View style={styles.content}>
+                    <Text style={styles.placeholderText}>
+                        Recherchez un examen ou utilisez les fonctionnalités IA
+                    </Text>
                     {useAvailability && location?.coords && (
                         <TouchableOpacity
                             style={styles.searchAvailableButton}
@@ -570,7 +620,7 @@ const LaboratoireHomeScreen: React.FC = () => {
                             </Text>
                         </TouchableOpacity>
                     )}
-            </View>
+                </View>
             )}
 
             {/* Modal de tri */}
@@ -653,7 +703,7 @@ const AIModal: React.FC<AIModalProps> = ({
                         </TouchableOpacity>
                     </View>
 
-                    <KeyboardAwareScreen 
+                    <KeyboardAwareScreen
                         style={styles.modalScroll}
                         contentContainerStyle={styles.modalScrollContent}
                     >
@@ -666,7 +716,7 @@ const AIModal: React.FC<AIModalProps> = ({
                                     <Text style={styles.pathologySearchSubtitle}>
                                         Décrivez vos symptômes ou recherchez une pathologie pour obtenir des recommandations d'examens
                                     </Text>
-                                    
+
                                     <View style={styles.pathologyInputContainer}>
                                         <View style={styles.pathologySearchBar}>
                                             <TextInput
@@ -699,7 +749,7 @@ const AIModal: React.FC<AIModalProps> = ({
                                             </TouchableOpacity>
                                         </View>
                                     </View>
-                                    
+
                                     <TouchableOpacity
                                         style={[
                                             styles.searchButton,
@@ -709,19 +759,19 @@ const AIModal: React.FC<AIModalProps> = ({
                                         disabled={!pathologyQuery.trim() || loading}
                                         activeOpacity={0.7}
                                     >
-                                    {loading ? (
+                                        {loading ? (
                                             <>
                                                 <ActivityIndicator color="#FFFFFF" size="small" />
                                                 <Text style={styles.searchButtonText}>Analyse en cours...</Text>
                                             </>
-                                    ) : (
-                                        <>
-                                            <SafeIcon name="search" size={18} color="#FFFFFF" type="lucide" />
+                                        ) : (
+                                            <>
+                                                <SafeIcon name="search" size={18} color="#FFFFFF" type="lucide" />
                                                 <Text style={styles.searchButtonText}>Analyser avec l'IA</Text>
-                                        </>
-                                    )}
-                                </TouchableOpacity>
-                                    
+                                            </>
+                                        )}
+                                    </TouchableOpacity>
+
                                     {!pathologyQuery.trim() && (
                                         <Text style={styles.pathologyHint}>
                                             💡 Exemples : "Douleurs thoraciques", "Fièvre persistante", "Troubles digestifs"

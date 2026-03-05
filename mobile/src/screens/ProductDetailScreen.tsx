@@ -10,10 +10,10 @@ import {
     Text,
     View
 } from 'react-native';
-import { NativeButton } from '../components/SafeNativeDesign';
 import NavigatorToolbar from '../components/NavigatorToolbar';
 import ProductCard from '../components/ProductCard';
 import SafeIcon from '../components/SafeIcon';
+import { NativeButton } from '../components/SafeNativeDesign';
 import { useAuth } from '../contexts/AuthContext';
 import { apiGet } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
@@ -45,7 +45,7 @@ const ProductDetailScreen: React.FC = () => {
             // ✅ CORRIGÉ 2026-02-10: Parser productId qui peut être au format "service_id_product_index" (ex: "1_1")
             let finalServiceId = serviceId;
             let finalProductIndex = productIndex;
-            
+
             if (productId && typeof productId === 'string') {
                 // Vérifier si productId est au format "service_id_product_index"
                 const underscoreIndex = productId.indexOf('_');
@@ -141,7 +141,7 @@ const ProductDetailScreen: React.FC = () => {
             // Si le produit vient de l'API service_products, il a déjà la structure correcte
             const productData = foundProduct.product_data || foundProduct;
             const productName = productData.nom || productData.nom_produit || foundProduct.product_name || foundProduct.nom || 'Produit';
-            
+
             const enrichedProduct = {
                 ...foundProduct,
                 // ✅ S'assurer que les propriétés principales sont au niveau racine pour ProductCard
@@ -154,6 +154,10 @@ const ProductDetailScreen: React.FC = () => {
             };
 
             setProduct(enrichedProduct);
+
+            // Déterminer le type d'offre pour le bouton intelligent
+            const typeOffre = loadedService.data?.type_offre?.valeur || loadedService.data?.type_offre || '';
+            const category = loadedService.category || loadedService.data?.categorie_service?.valeur || '';
 
             // Charger les infos du prestataire
             if (loadedService.user_id) {
@@ -185,6 +189,26 @@ const ProductDetailScreen: React.FC = () => {
         } finally {
             setLoading(false);
         }
+    };
+
+    // Bouton intelligent: "boutique" si produits, "prestations" si services
+    const getSmartButtonLabel = () => {
+        const typeOffre = service?.data?.type_offre?.valeur || service?.data?.type_offre || '';
+        const category = service?.category || service?.data?.categorie_service?.valeur || '';
+        const typeStr = String(typeOffre).toLowerCase();
+        const catStr = String(category).toLowerCase();
+
+        // Services de type prestation
+        const isPrestation = typeStr === 'prestation' || typeStr === 'service' ||
+            catStr.includes('service') || catStr.includes('prestation') ||
+            catStr.includes('reparation') || catStr.includes('coiffure') ||
+            catStr.includes('mecanique') || catStr.includes('plomberie') ||
+            catStr.includes('electricite') || catStr.includes('nettoyage');
+
+        if (isPrestation) {
+            return '\u{1F527} Voir toutes les prestations';
+        }
+        return '\u{1F6CD}\u{FE0F} Voir la boutique';
     };
 
     if (loading) {
@@ -304,10 +328,12 @@ const ProductDetailScreen: React.FC = () => {
                     />
 
                     <NativeButton
-                        title="🏢 Voir le service complet"
+                        title={getSmartButtonLabel()}
                         onPress={() => {
+                            console.log('[ProductDetailScreen] Navigation vers ServiceDetailShared, serviceId:', serviceId);
                             navigation.navigate('ServiceDetailShared' as never, {
-                                id: serviceId
+                                id: serviceId,
+                                serviceId: serviceId,
                             });
                         }}
                         variant="outline"

@@ -544,6 +544,133 @@ pub struct ShareQueryParams {
     pub service_id: Option<i32>,
 }
 
+/// Helper: construit la galerie HTML + JS pour vidéos + images (vidéos en premier)
+/// Retourne (gallery_html, media_js_array, first_video_url)
+fn build_media_gallery(
+    videos: &[String],
+    images: &[String],
+    item_name: &str,
+) -> (String, String, Option<String>) {
+    let mut all_media: Vec<(&str, bool)> = Vec::new();
+    for v in videos {
+        all_media.push((v.as_str(), true));
+    }
+    for i in images {
+        all_media.push((i.as_str(), false));
+    }
+
+    let gallery_html = if all_media.is_empty() {
+        String::new()
+    } else if all_media.len() == 1 {
+        let (url, is_vid) = all_media[0];
+        if is_vid {
+            format!(
+                r#"<div class="media-hero"><video src="{}" autoplay muted loop playsinline></video></div>"#,
+                url
+            )
+        } else {
+            format!(
+                r#"<div class="media-hero"><img src="{}" alt="{}" /></div>"#,
+                url, item_name
+            )
+        }
+    } else {
+        let (first_url, first_is_vid) = all_media[0];
+        let vid_style = if first_is_vid {
+            ""
+        } else {
+            " style=\"display:none\""
+        };
+        let img_style = if first_is_vid {
+            " style=\"display:none\""
+        } else {
+            ""
+        };
+        let vid_src = if first_is_vid { first_url } else { "" };
+        let img_src = if first_is_vid { "" } else { first_url };
+
+        let main_html = format!(
+            r#"<div class="gallery-main"><video id="main-video" src="{}" autoplay muted loop playsinline{}></video><img id="main-image" src="{}" alt="{}"{} /></div>"#,
+            vid_src, vid_style, img_src, item_name, img_style
+        );
+
+        let thumbs: String = all_media.iter().enumerate().map(|(idx, (url, is_vid))| {
+            let active = if idx == 0 { " active" } else { "" };
+            if *is_vid {
+                format!(
+                    r#"<div class="thumb-wrap{}" onclick="showMedia({})"><video src="{}" class="thumb-media" muted preload="metadata"></video><div class="play-badge">&#9654;</div></div>"#,
+                    active, idx, url
+                )
+            } else {
+                format!(
+                    r#"<div class="thumb-wrap{}" onclick="showMedia({})"><img src="{}" alt="{}" class="thumb-media" /></div>"#,
+                    active, idx, url, item_name
+                )
+            }
+        }).collect::<Vec<_>>().join("\n            ");
+
+        format!(
+            r#"<div class="gallery-container">{}<div class="gallery-thumbs">{}</div></div>"#,
+            main_html, thumbs
+        )
+    };
+
+    let media_js_array = format!(
+        "[{}]",
+        all_media
+            .iter()
+            .map(|(url, is_vid)| {
+                format!(r#"{{"u":"{}","v":{}}}"#, url.replace('"', "\\\""), is_vid)
+            })
+            .collect::<Vec<_>>()
+            .join(",")
+    );
+
+    let first_video = videos.first().cloned();
+    (gallery_html, media_js_array, first_video)
+}
+
+/// CSS commun pour la galerie média (vidéos + images)
+fn media_gallery_css() -> &'static str {
+    r#"
+        .media-hero { margin: 20px 0; text-align: center; }
+        .media-hero img, .media-hero video { max-width: 100%; height: auto; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .gallery-container { margin: 20px 0; }
+        .gallery-main { margin-bottom: 16px; text-align: center; position: relative; }
+        .gallery-main video, .gallery-main img { max-width: 100%; height: auto; max-height: 500px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); object-fit: contain; }
+        .gallery-thumbs { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 12px; }
+        .thumb-wrap { position: relative; display: inline-flex; cursor: pointer; border: 2px solid transparent; border-radius: 8px; overflow: hidden; transition: all 0.2s; opacity: 0.7; width: 80px; height: 80px; }
+        .thumb-wrap:hover { opacity: 1; border-color: #667eea; transform: scale(1.05); }
+        .thumb-wrap.active { opacity: 1; border-color: #667eea; }
+        .thumb-media { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .play-badge { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); color: #fff; font-size: 16px; background: rgba(0,0,0,0.5); border-radius: 50%; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+    "#
+}
+
+/// JS commun pour la galerie média
+fn media_gallery_js() -> &'static str {
+    r#"
+        function showMedia(index) {
+            var item = mediaItems[index];
+            if (!item) return;
+            var vid = document.getElementById('main-video');
+            var img = document.getElementById('main-image');
+            if (item.v) {
+                if (vid) { vid.src = item.u; vid.style.display = ''; vid.play(); }
+                if (img) img.style.display = 'none';
+            } else {
+                if (img) { img.src = item.u; img.style.display = ''; }
+                if (vid) { vid.style.display = 'none'; vid.pause(); }
+            }
+            var wraps = document.querySelectorAll('.thumb-wrap');
+            for (var i = 0; i < wraps.length; i++) {
+                wraps[i].className = wraps[i].className.replace(' active', '');
+                if (i === index) wraps[i].className += ' active';
+            }
+        }
+    "#
+}
+
 /// GET /product/:product_id?serviceId=:service_id
 /// Route publique pour le partage intelligent de produits
 /// Détecte le User-Agent et redirige vers l'app si mobile, ou affiche la page web si desktop
@@ -695,15 +822,105 @@ pub async fn share_product_redirect(
     };
 
     // Fusionner les images (DB en priorité, puis product_data)
+    // ✅ CORRIGÉ: Convertir les chemins relatifs de product_data en URLs pré-signées
     let mut all_product_images = product_images_db;
     for img in product_images_from_data {
-        if !img.is_empty() && !all_product_images.contains(&img) {
-            all_product_images.push(img);
+        if img.is_empty() || all_product_images.contains(&img) {
+            continue;
         }
+        let resolved_url = if img.starts_with("http://")
+            || img.starts_with("https://")
+            || img.starts_with("data:")
+        {
+            img
+        } else if state.media_storage.is_remote() {
+            match state.media_storage.generate_presigned_url(&img, 7 * 24 * 3600).await {
+                Ok(presigned) => presigned,
+                Err(_) => state.media_storage.build_public_url(&img),
+            }
+        } else {
+            state.media_storage.build_public_url(&img)
+        };
+        all_product_images.push(resolved_url);
+    }
+
+    // ✅ AJOUTÉ: Récupérer les VIDÉOS du produit depuis la table media
+    let product_video_paths: Vec<String> = sqlx::query_scalar::<_, Option<String>>(
+        r#"
+        SELECT path FROM media
+        WHERE service_id = $1
+        AND (product_index = $2 OR product_index IS NULL)
+        AND (type = 'video' OR media_type = 'video')
+        ORDER BY CASE WHEN product_index = $2 THEN 0 ELSE 1 END,
+            COALESCE(display_order, 0) ASC, id ASC
+        "#,
+    )
+    .bind(final_service_id)
+    .bind(final_product_index)
+    .fetch_all(&state.pg)
+    .await
+    .ok()
+    .unwrap_or_default()
+    .into_iter()
+    .flatten()
+    .collect();
+
+    let mut all_product_videos: Vec<String> = Vec::new();
+    for path in &product_video_paths {
+        let url = if path.starts_with("http://") || path.starts_with("https://") {
+            path.clone()
+        } else if state.media_storage.is_remote() {
+            match state.media_storage.generate_presigned_url(path, 7 * 24 * 3600).await {
+                Ok(presigned) => presigned,
+                Err(_) => state.media_storage.build_public_url(path),
+            }
+        } else {
+            state.media_storage.build_public_url(path)
+        };
+        all_product_videos.push(url);
+    }
+
+    // Extraire vidéos depuis product_data.videos
+    let product_videos_from_data: Vec<String> = {
+        let videos_val = product_data.as_object().and_then(|obj| obj.get("videos"));
+        match videos_val {
+            Some(v) if v.is_array() => v
+                .as_array()
+                .unwrap()
+                .iter()
+                .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                .collect(),
+            Some(v) if v.is_object() => v
+                .get("valeur")
+                .and_then(|v| v.as_array())
+                .map(|arr| arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect())
+                .unwrap_or_default(),
+            _ => Vec::new(),
+        }
+    };
+    for vid in product_videos_from_data {
+        if vid.is_empty() || all_product_videos.contains(&vid) {
+            continue;
+        }
+        let resolved_url = if vid.starts_with("http://")
+            || vid.starts_with("https://")
+            || vid.starts_with("data:")
+        {
+            vid
+        } else if state.media_storage.is_remote() {
+            match state.media_storage.generate_presigned_url(&vid, 7 * 24 * 3600).await {
+                Ok(presigned) => presigned,
+                Err(_) => state.media_storage.build_public_url(&vid),
+            }
+        } else {
+            state.media_storage.build_public_url(&vid)
+        };
+        all_product_videos.push(resolved_url);
     }
 
     log::info!(
-        "🖼️ [share_product_redirect] {} images trouvées pour produit {}",
+        "🖼️ [share_product_redirect] {} vidéos + {} images pour produit {}",
+        all_product_videos.len(),
         all_product_images.len(),
         product_id
     );
@@ -726,41 +943,9 @@ pub async fn share_product_redirect(
         )
     });
 
-    // Construire la galerie HTML d'images
-    let images_gallery_html = if all_product_images.is_empty() {
-        String::new()
-    } else if all_product_images.len() == 1 {
-        format!(
-            r#"<div class="product-image"><img src="{}" alt="{}" /></div>"#,
-            all_product_images[0], product_name
-        )
-    } else {
-        let thumbs: String = all_product_images.iter().enumerate().map(|(idx, url)| {
-            let active = if idx == 0 { " active" } else { "" };
-            format!(
-                r#"<img src="{}" alt="{} - Image {}" class="gallery-thumb{}" onclick="showImage({})" />"#,
-                url, product_name, idx + 1, active, idx
-            )
-        }).collect::<Vec<_>>().join("\n            ");
-
-        format!(
-            r#"<div class="gallery-container">
-            <div class="gallery-main"><img id="main-image" src="{}" alt="{}" /></div>
-            <div class="gallery-thumbs">{}</div>
-        </div>"#,
-            all_product_images[0], product_name, thumbs
-        )
-    };
-
-    // Construire le tableau JS des images
-    let images_js_array = format!(
-        "[{}]",
-        all_product_images
-            .iter()
-            .map(|url| format!("\"{}\"", url.replace('"', "\\\"")))
-            .collect::<Vec<_>>()
-            .join(", ")
-    );
+    // ✅ Construire la galerie HTML avec vidéos + images (vidéos EN PREMIER)
+    let (media_gallery_html, media_js_array, first_video_url) =
+        build_media_gallery(&all_product_videos, &all_product_images, product_name);
 
     let share_url = format!(
         "{}/product/{}?serviceId={}",
@@ -866,6 +1051,12 @@ pub async fn share_product_redirect(
         html.push_str(product_name);
         html.push_str("\" />");
     }
+    // ✅ AJOUTÉ: og:video pour les crawlers sociaux (WhatsApp, Facebook, Twitter)
+    if let Some(ref vid_url) = first_video_url {
+        html.push_str("\n    <meta property=\"og:video\" content=\"");
+        html.push_str(vid_url);
+        html.push_str("\" />\n    <meta property=\"og:video:type\" content=\"video/mp4\" />\n    <meta property=\"og:video:width\" content=\"1280\" />\n    <meta property=\"og:video:height\" content=\"720\" />");
+    }
     html.push_str(
         r#"
     <meta property="og:url" content=""#,
@@ -967,29 +1158,24 @@ pub async fn share_product_redirect(
         .button-secondary {
             background: #10b981; margin-top: 8px;
         }
-        .product-image { margin: 20px 0; text-align: center; }
-        .product-image img { max-width: 100%; height: auto; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        .gallery-container { margin: 20px 0; }
-        .gallery-main { margin-bottom: 16px; text-align: center; }
-        .gallery-main img { max-width: 100%; height: auto; max-height: 500px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); object-fit: contain; }
-        .gallery-thumbs { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 12px; }
-        .gallery-thumb { width: 80px; height: 80px; object-fit: cover; border-radius: 8px; cursor: pointer; border: 2px solid transparent; transition: all 0.2s; opacity: 0.7; }
-        .gallery-thumb:hover { opacity: 1; border-color: #667eea; transform: scale(1.05); }
-        .gallery-thumb.active { opacity: 1; border-color: #667eea; }
         .store-badges { display: flex; gap: 12px; justify-content: center; margin-top: 16px; flex-wrap: wrap; }
-        .store-badge { height: 40px; }
+        .store-badge { height: 40px; }"#);
+    html.push_str(media_gallery_css());
+    html.push_str(
+        r#"
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>"#);
+        <h1>"#,
+    );
     html.push_str(product_name);
     html.push_str(
         r#"</h1>
         "#,
     );
     html.push_str(&price_html);
-    html.push_str(&images_gallery_html);
+    html.push_str(&media_gallery_html);
     html.push_str(
         r#"
         <div class="description">"#,
@@ -1008,23 +1194,12 @@ pub async fn share_product_redirect(
     html.push_str("';\n");
     html.push_str("        var PLAY_STORE = 'https://play.google.com/store/apps/details?id=com.yukpomnang.mobile';\n");
     html.push_str("        var APP_STORE = 'https://apps.apple.com/app/yukpomnang';\n");
-    html.push_str("        var productImages = ");
-    html.push_str(&images_js_array);
-    html.push_str(r#";
-
-        // Galerie d'images
-        function showImage(index) {
-            var mainImg = document.getElementById('main-image');
-            if (mainImg && productImages[index]) {
-                mainImg.src = productImages[index];
-                var thumbs = document.querySelectorAll('.gallery-thumb');
-                for (var i = 0; i < thumbs.length; i++) {
-                    thumbs[i].className = thumbs[i].className.replace(' active', '');
-                    if (i === index) thumbs[i].className += ' active';
-                }
-            }
-        }
-
+    html.push_str("        var mediaItems = ");
+    html.push_str(&media_js_array);
+    html.push_str(";");
+    html.push_str(media_gallery_js());
+    html.push_str(
+        r#"
         // Détection plateforme
         var ua = navigator.userAgent || '';
         var isAndroid = /Android/i.test(ua);
@@ -1035,25 +1210,20 @@ pub async fn share_product_redirect(
         var openBtn = document.getElementById('open-app-btn');
         if (openBtn) {
             if (isAndroid) {
-                // Android: utiliser intent:// qui fonctionne dans Chrome et redirige vers le Play Store si l'app n'est pas installée
                 openBtn.href = INTENT_URL;
             } else if (isIOS) {
-                // iOS: essayer le custom scheme, fallback vers App Store
                 openBtn.href = DEEP_LINK;
                 openBtn.onclick = function() {
                     setTimeout(function() { window.location.href = APP_STORE; }, 1500);
                 };
             } else {
-                // Desktop: cacher le bouton "Ouvrir dans l'app", garder le téléchargement
                 openBtn.style.display = 'none';
             }
         }
 
-        // Sur mobile, tenter l'ouverture automatique de l'app après un court délai
         if (isMobile) {
             setTimeout(function() {
                 if (isAndroid) {
-                    // intent:// URL gère automatiquement le fallback vers le Play Store
                     window.location.href = INTENT_URL;
                 } else if (isIOS) {
                     window.location.href = DEEP_LINK;
@@ -1063,7 +1233,8 @@ pub async fn share_product_redirect(
         }
     </script>
 </body>
-</html>"#);
+</html>"#,
+    );
 
     log::info!(
         "🌐 [share_product_redirect] Page HTML générée: product={}, images={}, mobile={}",
@@ -1193,8 +1364,168 @@ pub async fn share_service_redirect(
         all_service_images.push(url);
     }
 
+    // ✅ CORRIGÉ: Fallback — si aucune image dans la table media, extraire depuis service_data
+    // Les images peuvent être dans data.images, data.produits[].images, data.logo, data.banniere
+    if all_service_images.is_empty() {
+        let mut fallback_paths: Vec<String> = Vec::new();
+
+        // Extraire images depuis data.images (format tableau ou {valeur: [...]})
+        let extract_image_paths = |val: Option<&Value>| -> Vec<String> {
+            match val {
+                Some(v) if v.is_array() => v
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                    .collect(),
+                Some(v) if v.is_object() => v
+                    .get("valeur")
+                    .and_then(|v| v.as_array())
+                    .map(|arr| {
+                        arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect()
+                    })
+                    .unwrap_or_default(),
+                Some(v) if v.is_string() => vec![v.as_str().unwrap().to_string()],
+                _ => Vec::new(),
+            }
+        };
+
+        // Service-level images
+        fallback_paths.extend(extract_image_paths(service_data.get("images")));
+        fallback_paths.extend(extract_image_paths(service_data.get("logo")));
+        fallback_paths.extend(extract_image_paths(service_data.get("banniere")));
+        fallback_paths.extend(extract_image_paths(service_data.get("banner")));
+        fallback_paths.extend(extract_image_paths(service_data.get("images_realisations")));
+
+        // Product-level images (from data.produits)
+        if let Some(produits) = service_data.get("produits") {
+            let produits_arr = if produits.is_array() {
+                produits.as_array().cloned()
+            } else if let Some(inner) = produits.get("valeur").and_then(|v| v.as_array()) {
+                Some(inner.clone())
+            } else {
+                None
+            };
+            if let Some(arr) = produits_arr {
+                for prod in &arr {
+                    fallback_paths.extend(extract_image_paths(prod.get("images")));
+                }
+            }
+        }
+
+        // Convert fallback paths to presigned URLs
+        for img in fallback_paths {
+            if img.is_empty() || all_service_images.contains(&img) {
+                continue;
+            }
+            let resolved_url = if img.starts_with("http://")
+                || img.starts_with("https://")
+                || img.starts_with("data:")
+            {
+                img
+            } else if state.media_storage.is_remote() {
+                match state.media_storage.generate_presigned_url(&img, 7 * 24 * 3600).await {
+                    Ok(presigned) => presigned,
+                    Err(_) => state.media_storage.build_public_url(&img),
+                }
+            } else {
+                state.media_storage.build_public_url(&img)
+            };
+            all_service_images.push(resolved_url);
+        }
+    }
+
+    // ✅ AJOUTÉ: Récupérer les VIDÉOS du service depuis la table media
+    let service_video_paths: Vec<String> = sqlx::query_scalar::<_, Option<String>>(
+        r#"SELECT path FROM media
+           WHERE service_id = $1 AND (type = 'video' OR media_type = 'video')
+           ORDER BY COALESCE(display_order, 0) ASC, id ASC"#,
+    )
+    .bind(service_id)
+    .fetch_all(&state.pg)
+    .await
+    .ok()
+    .unwrap_or_default()
+    .into_iter()
+    .flatten()
+    .collect();
+
+    let mut all_service_videos: Vec<String> = Vec::new();
+    for path in &service_video_paths {
+        let url = if path.starts_with("http://") || path.starts_with("https://") {
+            path.clone()
+        } else if state.media_storage.is_remote() {
+            match state.media_storage.generate_presigned_url(path, 7 * 24 * 3600).await {
+                Ok(presigned) => presigned,
+                Err(_) => state.media_storage.build_public_url(path),
+            }
+        } else {
+            state.media_storage.build_public_url(path)
+        };
+        all_service_videos.push(url);
+    }
+
+    // Extraire vidéos depuis service_data.videos (fallback)
+    if all_service_videos.is_empty() {
+        let extract_paths = |val: Option<&Value>| -> Vec<String> {
+            match val {
+                Some(v) if v.is_array() => v
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                    .collect(),
+                Some(v) if v.is_object() => v
+                    .get("valeur")
+                    .and_then(|v| v.as_array())
+                    .map(|arr| {
+                        arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect()
+                    })
+                    .unwrap_or_default(),
+                Some(v) if v.is_string() => vec![v.as_str().unwrap().to_string()],
+                _ => Vec::new(),
+            }
+        };
+        let mut video_fallback = extract_paths(service_data.get("videos"));
+        // Videos from products
+        if let Some(produits) = service_data.get("produits") {
+            let produits_arr = if produits.is_array() {
+                produits.as_array().cloned()
+            } else if let Some(inner) = produits.get("valeur").and_then(|v| v.as_array()) {
+                Some(inner.clone())
+            } else {
+                None
+            };
+            if let Some(arr) = produits_arr {
+                for prod in &arr {
+                    video_fallback.extend(extract_paths(prod.get("videos")));
+                }
+            }
+        }
+        for vid in video_fallback {
+            if vid.is_empty() || all_service_videos.contains(&vid) {
+                continue;
+            }
+            let resolved_url = if vid.starts_with("http://")
+                || vid.starts_with("https://")
+                || vid.starts_with("data:")
+            {
+                vid
+            } else if state.media_storage.is_remote() {
+                match state.media_storage.generate_presigned_url(&vid, 7 * 24 * 3600).await {
+                    Ok(presigned) => presigned,
+                    Err(_) => state.media_storage.build_public_url(&vid),
+                }
+            } else {
+                state.media_storage.build_public_url(&vid)
+            };
+            all_service_videos.push(resolved_url);
+        }
+    }
+
     log::info!(
-        "🖼️ [share_service_redirect] {} images trouvées pour service {}",
+        "🖼️ [share_service_redirect] {} vidéos + {} images pour service {}",
+        all_service_videos.len(),
         all_service_images.len(),
         service_id
     );
@@ -1224,40 +1555,9 @@ pub async fn share_service_redirect(
         .map(|p| format!(r#"<div class="price">{} {}</div>"#, p, service_devise))
         .unwrap_or_default();
 
-    // ✅ Construire la galerie HTML d'images (comme pour les produits)
-    let images_gallery_html = if all_service_images.is_empty() {
-        String::new()
-    } else if all_service_images.len() == 1 {
-        format!(
-            r#"<div class="product-image"><img src="{}" alt="{}" /></div>"#,
-            all_service_images[0], service_titre
-        )
-    } else {
-        let thumbs: String = all_service_images.iter().enumerate().map(|(idx, url)| {
-            let active = if idx == 0 { " active" } else { "" };
-            format!(
-                r#"<img src="{}" alt="{} - Image {}" class="gallery-thumb{}" onclick="showImage({})" />"#,
-                url, service_titre, idx + 1, active, idx
-            )
-        }).collect::<Vec<_>>().join("\n            ");
-        format!(
-            r#"<div class="gallery-container">
-            <div class="gallery-main"><img id="main-image" src="{}" alt="{}" /></div>
-            <div class="gallery-thumbs">{}</div>
-        </div>"#,
-            all_service_images[0], service_titre, thumbs
-        )
-    };
-
-    // Construire le tableau JS des images
-    let images_js_array = format!(
-        "[{}]",
-        all_service_images
-            .iter()
-            .map(|url| format!("\"{}\"", url.replace('"', "\\\"")))
-            .collect::<Vec<_>>()
-            .join(", ")
-    );
+    // ✅ Construire la galerie HTML avec vidéos + images (vidéos EN PREMIER)
+    let (media_gallery_html, media_js_array, first_video_url) =
+        build_media_gallery(&all_service_videos, &all_service_images, &service_titre);
 
     // Prix OG meta tags
     let price_og_html = service_prix
@@ -1307,6 +1607,12 @@ pub async fn share_service_redirect(
         html.push_str(&service_titre);
         html.push_str("\" />");
     }
+    // ✅ AJOUTÉ: og:video pour les crawlers sociaux
+    if let Some(ref vid_url) = first_video_url {
+        html.push_str("\n    <meta property=\"og:video\" content=\"");
+        html.push_str(vid_url);
+        html.push_str("\" />\n    <meta property=\"og:video:type\" content=\"video/mp4\" />\n    <meta property=\"og:video:width\" content=\"1280\" />\n    <meta property=\"og:video:height\" content=\"720\" />");
+    }
     html.push_str("\n    <meta property=\"og:url\" content=\"");
     html.push_str(&share_url);
     html.push_str(
@@ -1350,15 +1656,6 @@ pub async fn share_service_redirect(
         h1 { color: #1f2937; margin: 0 0 16px 0; font-size: 28px; }
         .price { font-size: 24px; font-weight: bold; color: #10b981; margin: 16px 0; }
         .description { color: #6b7280; line-height: 1.6; margin: 16px 0; }
-        .product-image { margin: 20px 0; text-align: center; }
-        .product-image img { max-width: 100%; height: auto; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        .gallery-container { margin: 20px 0; }
-        .gallery-main { margin-bottom: 16px; text-align: center; }
-        .gallery-main img { max-width: 100%; height: auto; max-height: 500px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); object-fit: contain; }
-        .gallery-thumbs { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 12px; }
-        .gallery-thumb { width: 80px; height: 80px; object-fit: cover; border-radius: 8px; cursor: pointer; border: 2px solid transparent; transition: all 0.2s; opacity: 0.7; }
-        .gallery-thumb:hover { opacity: 1; border-color: #667eea; transform: scale(1.05); }
-        .gallery-thumb.active { opacity: 1; border-color: #667eea; }
         .button {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white; border: none; padding: 16px 32px; border-radius: 8px;
@@ -1368,16 +1665,20 @@ pub async fn share_service_redirect(
         }
         .button:hover { transform: translateY(-2px); }
         .button-secondary { background: #10b981; margin-top: 8px; }
-        .store-badges { display: flex; gap: 12px; justify-content: center; margin-top: 16px; flex-wrap: wrap; }
+        .store-badges { display: flex; gap: 12px; justify-content: center; margin-top: 16px; flex-wrap: wrap; }"#);
+    html.push_str(media_gallery_css());
+    html.push_str(
+        r#"
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>"#);
+        <h1>"#,
+    );
     html.push_str(&service_titre);
     html.push_str("</h1>\n");
     html.push_str(&price_html);
-    html.push_str(&images_gallery_html);
+    html.push_str(&media_gallery_html);
     html.push_str(
         r#"
         <div class="description">"#,
@@ -1396,24 +1697,12 @@ pub async fn share_service_redirect(
     html.push_str("';\n");
     html.push_str("        var PLAY_STORE = 'https://play.google.com/store/apps/details?id=com.yukpomnang.mobile';\n");
     html.push_str("        var APP_STORE = 'https://apps.apple.com/app/yukpomnang';\n");
-    html.push_str("        var serviceImages = ");
-    html.push_str(&images_js_array);
+    html.push_str("        var mediaItems = ");
+    html.push_str(&media_js_array);
+    html.push_str(";");
+    html.push_str(media_gallery_js());
     html.push_str(
-        r#";
-
-        // Galerie d'images
-        function showImage(index) {
-            var mainImg = document.getElementById('main-image');
-            if (mainImg && serviceImages[index]) {
-                mainImg.src = serviceImages[index];
-                var thumbs = document.querySelectorAll('.gallery-thumb');
-                for (var i = 0; i < thumbs.length; i++) {
-                    thumbs[i].className = thumbs[i].className.replace(' active', '');
-                    if (i === index) thumbs[i].className += ' active';
-                }
-            }
-        }
-
+        r#"
         var ua = navigator.userAgent || '';
         var isAndroid = /Android/i.test(ua);
         var isIOS = /iPhone|iPad|iPod/i.test(ua);
@@ -1449,8 +1738,9 @@ pub async fn share_service_redirect(
     );
 
     log::info!(
-        "🌐 [share_service_redirect] Page HTML générée: service={}, images={}, mobile={}",
+        "🌐 [share_service_redirect] Page HTML générée: service={}, vidéos={}, images={}, mobile={}",
         service_id,
+        all_service_videos.len(),
         all_service_images.len(),
         is_mobile
     );

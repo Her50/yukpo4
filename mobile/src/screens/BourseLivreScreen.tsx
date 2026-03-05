@@ -114,7 +114,7 @@ const BourseLivreScreen: React.FC = () => {
             }
 
             const response = await apiGet<{ livres: LivreScolaire[] }>(
-                '/api/livres-scolaires/search',
+                '/api/bourse-livre/search',
                 { params }
             );
 

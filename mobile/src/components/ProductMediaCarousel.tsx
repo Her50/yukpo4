@@ -264,7 +264,7 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
                             }}
                             source={{ uri: media.uri }}
                             style={styles.media}
-                            resizeMode={ResizeMode.CONTAIN}
+                            resizeMode={ResizeMode.COVER}
                             shouldPlay={playingVideoIndex === index}
                             isLooping
                             isMuted={playingVideoIndex !== index}

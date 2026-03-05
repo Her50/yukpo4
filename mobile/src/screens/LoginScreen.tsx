@@ -68,87 +68,90 @@ const LoginScreen: React.FC = () => {
   };
 
   return (
-    <KeyboardAwareScreen 
+    <KeyboardAwareScreen
       style={styles.container}
       contentContainerStyle={styles.scrollContainer}
     >
-        <View style={styles.content}>
-          <Text style={styles.title}>Connexion Yukpo</Text>
+      <View style={styles.content}>
+        <Text style={styles.title}>
+          <Text style={styles.brandYuk}>Yuk</Text>
+          <Text style={styles.brandPo}>po</Text>
+        </Text>
 
-          <Text style={styles.subtitle}>
-            Connectez-vous avec votre compte Google ou Facebook
-          </Text>
+        <Text style={styles.subtitle}>
+          Connectez-vous avec votre compte Google ou Facebook
+        </Text>
 
-          {/* Boutons OAuth */}
-          <TouchableOpacity style={[styles.oauthButton, styles.googleButton]}>
-            <Text style={styles.oauthButtonText}>Continuer avec Google</Text>
-          </TouchableOpacity>
+        {/* Boutons OAuth */}
+        <TouchableOpacity style={[styles.oauthButton, styles.googleButton]}>
+          <Text style={styles.oauthButtonText}>Continuer avec Google</Text>
+        </TouchableOpacity>
 
-          <TouchableOpacity style={[styles.oauthButton, styles.facebookButton]}>
-            <Text style={styles.oauthButtonText}>Continuer avec Facebook</Text>
-          </TouchableOpacity>
+        <TouchableOpacity style={[styles.oauthButton, styles.facebookButton]}>
+          <Text style={styles.oauthButtonText}>Continuer avec Facebook</Text>
+        </TouchableOpacity>
 
-          <View style={styles.separator}>
-            <View style={styles.separatorLine} />
-            <Text style={styles.separatorText}>ou utilisez vos identifiants :</Text>
-            <View style={styles.separatorLine} />
-          </View>
-
-          {/* Formulaire de connexion */}
-          <View style={styles.formContainer}>
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Adresse email</Text>
-              <TextInput
-                style={styles.input}
-                value={email}
-                onChangeText={setEmail}
-                placeholder="Votre email"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-            </View>
-
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Mot de passe</Text>
-              <TextInput
-                style={styles.input}
-                value={password}
-                onChangeText={setPassword}
-                placeholder="Votre mot de passe"
-                secureTextEntry
-              />
-            </View>
-
-            {error && (
-              <Text style={styles.errorText}>{error}</Text>
-            )}
-
-            <TouchableOpacity
-              style={[styles.loginButton, loading && styles.loginButtonDisabled]}
-              onPress={handleLogin}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.loginButtonText}>Se connecter</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-
-          <TouchableOpacity onPress={handleRegister} style={styles.registerLink}>
-            <Text style={styles.registerText}>
-              Pas encore inscrit ? <Text style={styles.registerLinkText}>Cr�er un compte</Text>
-            </Text>
-          </TouchableOpacity>
-
-          {/* Debug info */}
-          <View style={styles.debugContainer}>
-            <Text style={styles.debugText}>Debug Info:</Text>
-            <Text style={styles.debugText}>API URL: {APP_CONFIG.API_BASE_URL}</Text>
-          </View>
+        <View style={styles.separator}>
+          <View style={styles.separatorLine} />
+          <Text style={styles.separatorText}>ou utilisez vos identifiants :</Text>
+          <View style={styles.separatorLine} />
         </View>
+
+        {/* Formulaire de connexion */}
+        <View style={styles.formContainer}>
+          <View style={styles.inputContainer}>
+            <Text style={styles.inputLabel}>Adresse email</Text>
+            <TextInput
+              style={styles.input}
+              value={email}
+              onChangeText={setEmail}
+              placeholder="Votre email"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Text style={styles.inputLabel}>Mot de passe</Text>
+            <TextInput
+              style={styles.input}
+              value={password}
+              onChangeText={setPassword}
+              placeholder="Votre mot de passe"
+              secureTextEntry
+            />
+          </View>
+
+          {error && (
+            <Text style={styles.errorText}>{error}</Text>
+          )}
+
+          <TouchableOpacity
+            style={[styles.loginButton, loading && styles.loginButtonDisabled]}
+            onPress={handleLogin}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.loginButtonText}>Se connecter</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+
+        <TouchableOpacity onPress={handleRegister} style={styles.registerLink}>
+          <Text style={styles.registerText}>
+            Pas encore inscrit ? <Text style={styles.registerLinkText}>Cr�er un compte</Text>
+          </Text>
+        </TouchableOpacity>
+
+        {/* Debug info */}
+        <View style={styles.debugContainer}>
+          <Text style={styles.debugText}>Debug Info:</Text>
+          <Text style={styles.debugText}>API URL: {APP_CONFIG.API_BASE_URL}</Text>
+        </View>
+      </View>
     </KeyboardAwareScreen>
   );
 };
@@ -170,9 +173,15 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
+    color: '#333',
     textAlign: 'center',
     marginBottom: 10,
-    color: '#333',
+  },
+  brandYuk: {
+    color: '#3B82F6', // Bleu (cohérent avec le logo officiel)
+  },
+  brandPo: {
+    color: '#7C3AED', // Violet (cohérent avec le logo officiel)
   },
   subtitle: {
     fontSize: 16,

@@ -56,6 +56,7 @@ use crate::{
         commerce_connector_service::ProductConnectorSnapshot,
         cost_service::CostEstimation,
         distribution_automation_service,
+        generative_video_service::GenerativeVideoService,
         immersive_orchestrator::{
             ImmersiveOrchestrator, TimelineAnalytics, TimelineBrollAsset, TimelineBusinessContext,
             TimelineMediaItem, TimelineRequest,
@@ -156,6 +157,10 @@ pub struct VideoGenerationPayload {
     pub auto_generate_images: Option<bool>,
     /// ✅ NOUVEAU 2025-01-27: Activer/désactiver le watermark Yukpo (défaut: true pour branding)
     pub enable_watermark: Option<bool>,
+    /// ✅ NOUVEAU: Source de création - "media" (photos utilisateur) ou "ai_virtual" (vidéo 100% IA)
+    pub creation_source: Option<String>,
+    /// ✅ NOUVEAU: Prompt texte pour génération vidéo 100% IA (Runway/Sora/Pika)
+    pub ai_video_prompt: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -687,6 +692,167 @@ pub async fn generate_product_video(
     } else {
         None
     };
+
+    // ✅ NOUVEAU: Mode "ai_virtual" - Génération vidéo 100% IA via Runway/Sora/Pika
+    if payload.creation_source.as_deref() == Some("ai_virtual") {
+        info!(
+            "[VideoGeneration] 🎬 Mode AI Virtual activé pour service_id={}, product_index={}",
+            service_id, product_index
+        );
+
+        let ai_prompt = payload
+            .ai_video_prompt
+            .clone()
+            .or_else(|| payload.voiceover_script.clone())
+            .unwrap_or_else(|| {
+                format!(
+                    "Vidéo marketing professionnelle pour {} - {}",
+                    product_name, product_type
+                )
+            });
+
+        let generative_service =
+            GenerativeVideoService::new(std::sync::Arc::new(state.pg.clone()), state.ia.clone());
+
+        let request = crate::models::generative_video_model::GenerateVideoRequest {
+            description: ai_prompt,
+            style: payload.style.clone(),
+            mood: payload.style_color_palette.clone(),
+            aspect_ratio: Some("9:16".to_string()),
+            duration_seconds: payload.duration_seconds.map(|d| d as f64).or(Some(30.0)),
+            resolution: Some("1080p".to_string()),
+            provider: None,
+            music_style: None,
+        };
+
+        match generative_service.generate_video(user.id as i64, request).await {
+            Ok(gen_job_id) => {
+                info!(
+                    "[VideoGeneration] ✅ Job génératif créé: {} pour user {}",
+                    gen_job_id, user.id
+                );
+
+                // Créer un résultat avec le job_id pour le polling
+                let session_dir = PathBuf::from(
+                    std::env::var("UPLOAD_STORAGE_PATH").unwrap_or_else(|_| "uploads".to_string()),
+                )
+                .join("generative_videos")
+                .join(&gen_job_id);
+                let _ = fs::create_dir_all(&session_dir).await;
+
+                let mut progress_steps = vec![
+                    ProgressStep::completed("ai_storyboard", "Scénario IA généré", None),
+                    ProgressStep::completed(
+                        "ai_generation",
+                        "Vidéo IA en cours de génération",
+                        Some(format!("Job: {}", gen_job_id)),
+                    ),
+                ];
+
+                if let Some(jid) = job_id {
+                    let _ = try_store_progress(&state, jid, "running", &progress_steps).await;
+                }
+
+                // Attendre la fin de la génération (polling interne)
+                let max_wait = std::time::Duration::from_secs(600); // 10 min max
+                let poll_interval = std::time::Duration::from_secs(10);
+                let start = Instant::now();
+
+                loop {
+                    if start.elapsed() > max_wait {
+                        progress_steps.push(ProgressStep {
+                            key: "timeout",
+                            label: "Délai dépassé",
+                            status: "failed",
+                            detail: Some("La génération IA a pris trop de temps.".to_string()),
+                        });
+                        return Err(AppError::Internal(
+                            "Délai de génération IA dépassé (10 min).".to_string(),
+                        ));
+                    }
+
+                    tokio::time::sleep(poll_interval).await;
+
+                    let job_status: Option<(String, Option<Value>)> = sqlx::query_as(
+                        "SELECT status, result_payload FROM generative_video_jobs WHERE job_id = $1"
+                    )
+                    .bind(&gen_job_id)
+                    .fetch_optional(&state.pg)
+                    .await
+                    .ok()
+                    .flatten();
+
+                    match job_status {
+                        Some((status, result)) if status == "completed" => {
+                            let video_url = result
+                                .as_ref()
+                                .and_then(|r| r.get("video_url"))
+                                .and_then(|v| v.as_str())
+                                .unwrap_or("")
+                                .to_string();
+
+                            progress_steps.push(ProgressStep::completed(
+                                "ai_complete",
+                                "Vidéo IA générée",
+                                Some(video_url.clone()),
+                            ));
+
+                            return Ok(VideoGenerationResult {
+                                media_id: 0,
+                                service_id,
+                                product_index,
+                                video_url,
+                                path: String::new(),
+                                duration_seconds: payload.duration_seconds.unwrap_or(30) as u32,
+                                used_media_ids: vec![],
+                                script_outline: vec![],
+                                style: payload.style.clone().unwrap_or_default(),
+                                headline: None,
+                                call_to_action: None,
+                                success: true,
+                                progress_steps,
+                                cost_estimation: None,
+                                published_to_chat: false,
+                                published_to_product_card: false,
+                                background_music_used: None,
+                                voiceover_generated: false,
+                                additional_outputs: vec![],
+                                subtitles_generated: false,
+                                subtitle_url: None,
+                                distribution_targets: vec![],
+                                quality_score: 0.0,
+                                immersive_timeline: None,
+                                immersive_analytics: None,
+                                orchestration_warnings: vec![],
+                                job_id,
+                            });
+                        }
+                        Some((status, _)) if status == "failed" => {
+                            progress_steps.push(ProgressStep {
+                                key: "ai_failed",
+                                label: "Échec génération IA",
+                                status: "failed",
+                                detail: Some(
+                                    "Le provider IA n'a pas pu générer la vidéo.".to_string(),
+                                ),
+                            });
+                            return Err(AppError::Internal("La génération vidéo IA a échoué. Vérifiez les clés API des providers.".to_string()));
+                        }
+                        _ => {
+                            // Still processing, continue polling
+                        }
+                    }
+                }
+            }
+            Err(err) => {
+                error!("[VideoGeneration] ❌ Échec création job génératif: {}", err);
+                return Err(AppError::Internal(format!(
+                    "Échec génération vidéo IA: {}",
+                    err
+                )));
+            }
+        }
+    }
 
     let voice_profile: Option<ResolvedVoiceProfile> = match payload.voice_profile_id {
         Some(profile_id) => Some(
@@ -4007,10 +4173,101 @@ async fn generate_voiceover_audio(
         return Err(AppError::BadRequest("Script voix off vide.".to_string()));
     }
 
+    let filename = format!("voiceover_{}_{}.mp3", lang, Uuid::new_v4());
+    let audio_path = session_dir.join(&filename);
+
+    // ── Tentative 1: OpenAI TTS API (voix naturelle haute qualité) ──
+    if let Ok(api_key) = std::env::var("OPENAI_API_KEY") {
+        let api_key = api_key.trim().to_string();
+        if !api_key.is_empty() {
+            let openai_voice = match voice {
+                "fr_premium" | "fr" | "fr-fr" => "alloy",
+                "en_premium" | "en" | "en-us" => "nova",
+                "es_premium" | "es" => "shimmer",
+                _ => "alloy",
+            };
+
+            info!(
+                "[VideoGeneration] 🎙️ Appel OpenAI TTS: voice={}, lang={}, script_len={}",
+                openai_voice,
+                lang,
+                script.len()
+            );
+
+            let client = reqwest::Client::new();
+            let payload = serde_json::json!({
+                "model": "tts-1-hd",
+                "voice": openai_voice,
+                "input": script,
+                "response_format": "mp3",
+                "speed": 1.0
+            });
+
+            match client
+                .post("https://api.openai.com/v1/audio/speech")
+                .header("Authorization", format!("Bearer {}", api_key))
+                .header("Content-Type", "application/json")
+                .json(&payload)
+                .send()
+                .await
+            {
+                Ok(response) if response.status().is_success() => match response.bytes().await {
+                    Ok(bytes) if bytes.len() > 1000 => {
+                        fs::write(&audio_path, &bytes).await.map_err(|err| {
+                            AppError::Internal(format!("Écriture voix off TTS: {err}"))
+                        })?;
+                        info!(
+                            "[VideoGeneration] ✅ Voix off OpenAI TTS générée: {} ({} bytes)",
+                            filename,
+                            bytes.len()
+                        );
+
+                        let transcript_name = format!("voiceover_{}.txt", Uuid::new_v4());
+                        let transcript_content = format!("lang={lang}\nvoice={voice}\nopenai_voice={openai_voice}\nmodel=tts-1-hd\n\n{script}");
+                        let _ = fs::write(
+                            session_dir.join(transcript_name),
+                            transcript_content.as_bytes(),
+                        )
+                        .await;
+
+                        return Ok(audio_path);
+                    }
+                    Ok(bytes) => {
+                        warn!(
+                            "[VideoGeneration] ⚠️ OpenAI TTS réponse trop petite: {} bytes",
+                            bytes.len()
+                        );
+                    }
+                    Err(e) => {
+                        warn!(
+                            "[VideoGeneration] ⚠️ OpenAI TTS lecture bytes échouée: {}",
+                            e
+                        );
+                    }
+                },
+                Ok(response) => {
+                    let status = response.status();
+                    let body = response.text().await.unwrap_or_default();
+                    warn!(
+                        "[VideoGeneration] ⚠️ OpenAI TTS HTTP {}: {}",
+                        status,
+                        body.chars().take(300).collect::<String>()
+                    );
+                }
+                Err(e) => {
+                    warn!("[VideoGeneration] ⚠️ OpenAI TTS erreur réseau: {}", e);
+                }
+            }
+        }
+    }
+
+    // ── Fallback: Générer du silence calibré (si OpenAI TTS indisponible) ──
+    warn!(
+        "[VideoGeneration] ⚠️ Fallback voix off silence (OPENAI_API_KEY manquante ou TTS échoué)"
+    );
     let word_count = script.split_whitespace().count().max(1) as f32;
     let duration = (word_count / 2.6).clamp(3.0, 90.0);
 
-    let filename = format!("voiceover_{}_{}.mp3", lang, Uuid::new_v4());
     run_ffmpeg(
         session_dir,
         vec![
@@ -4030,15 +4287,13 @@ async fn generate_voiceover_audio(
     )
     .await?;
 
-    let audio_path = session_dir.join(&filename);
     let transcript_name = format!("voiceover_{}.txt", Uuid::new_v4());
-    let transcript_content = format!("lang={lang}\nvoice={voice}\n\n{script}");
-    fs::write(
+    let transcript_content = format!("lang={lang}\nvoice={voice}\nfallback=silence\n\n{script}");
+    let _ = fs::write(
         session_dir.join(transcript_name),
         transcript_content.as_bytes(),
     )
-    .await
-    .map_err(|err| AppError::Internal(format!("Impossible d'écrire le script voix off: {err}")))?;
+    .await;
 
     Ok(audio_path)
 }

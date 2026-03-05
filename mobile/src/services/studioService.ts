@@ -16,6 +16,8 @@ type ApiResponse<T> = {
     success?: boolean;
     data?: T | null;
     error?: string | null;
+    status?: number | null;
+    code?: string | null;
 };
 
 const BASE = '/api/studio';
@@ -222,7 +224,7 @@ export const studioService = {
             const errorData = (response as any).data;
             const backendError = errorData?.error || errorData?.message || response.error;
             const errorMsg = backendError || 'Erreur lors de la génération de la prévisualisation';
-            
+
             console.error('[studioService] Preview error details:', {
                 success: response.success,
                 error: response.error,
@@ -230,18 +232,18 @@ export const studioService = {
                 data: errorData,
                 backendError,
             });
-            
+
             // ✅ AMÉLIORÉ: Message d'erreur plus informatif selon le type
             if ((response as any).status === 400) {
                 // ✅ AMÉLIORÉ: Ne pas préfixer "Erreur 400:" si le message backend est déjà informatif
-                if (errorMsg.includes('n\'est pas configuré') || 
-                    errorMsg.includes('VIDEO_RENDERER') || 
+                if (errorMsg.includes('n\'est pas configuré') ||
+                    errorMsg.includes('VIDEO_RENDERER') ||
                     errorMsg.includes('temporairement indisponible')) {
                     throw new Error(errorMsg);
                 }
                 throw new Error(`Erreur de configuration: ${errorMsg}`);
             }
-            
+
             throw new Error(errorMsg);
         }
 
@@ -316,7 +318,7 @@ export const studioService = {
 
     // ✅ Phase 9 - Amélioration 31 : Chaînage vidéos
     async setDependencies(sessionId: string, childSessionIds: string[]): Promise<VideoDependency[]> {
-        const response = await apiPost<VideoDependency[]>(
+        const response = await apiPut<VideoDependency[]>(
             `${BASE}/sessions/${sessionId}/dependencies`,
             { child_session_ids: childSessionIds },
         );

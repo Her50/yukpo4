@@ -71,6 +71,7 @@ import ManageAgencySchedulesScreen from '../screens/ManageAgencySchedulesScreen'
 import ManageBusSeatsScreen from '../screens/ManageBusSeatsScreen';
 import MesProduitsScreen from '../screens/MesProduitsScreen';
 import MesServicesSpecialisesScreen from '../screens/MesServicesSpecialisesScreen';
+import MesSuivisScreen from '../screens/MesSuivisScreen';
 import MyBusTicketsScreen from '../screens/MyBusTicketsScreen';
 import NavigationScreen from '../screens/NavigationScreen'; // ✅ NOUVEAU: Écran navigation intelligente
 import OrderStatusScreen from '../screens/OrderStatusScreen';
@@ -167,6 +168,8 @@ import MyBloodDonationsScreen from '../screens/specialized/MyBloodDonationsScree
 // ✅ NOUVEAU: Écrans tickets bus
 import BusTicketBookingScreen from '../screens/specialized/BusTicketBookingScreen';
 import BusTicketDetailsScreen from '../screens/specialized/BusTicketDetailsScreen';
+import BusTicketQRScannerScreen from '../screens/specialized/BusTicketQRScannerScreen';
+import BusTicketQRScreen from '../screens/specialized/BusTicketQRScreen';
 import BusTicketSearchScreen from '../screens/specialized/BusTicketSearchScreen';
 import TicketVoyageHomeScreen from '../screens/specialized/TicketVoyageHomeScreen';
 // ✅ NOUVEAU: Écrans retour bus (aller-retour)
@@ -244,6 +247,7 @@ const ProfileScreenWithSafeArea = withNavigatorSafeArea(ProfileScreen);
 const GestionServicesSpecialisesScreenWithSafeArea = withNavigatorSafeArea(GestionServicesSpecialisesScreen);
 const ServicesDashboardWithSafeArea = withNavigatorSafeArea(ServicesDashboard);
 const MesProduitsScreenWithSafeArea = withNavigatorSafeArea(MesProduitsScreen);
+const MesSuivisScreenWithSafeArea = withNavigatorSafeArea(MesSuivisScreen);
 const ContactScreenWithSafeArea = withNavigatorSafeArea(ContactScreen);
 const NavigationScreenWithSafeArea = withNavigatorSafeArea(NavigationScreen);
 const EnhancedSettingsScreenWithSafeArea = withNavigatorSafeArea(EnhancedSettingsScreen);
@@ -429,6 +433,7 @@ const ShoppingListScreenWithSafeArea = withNavigatorSafeArea(ShoppingListScreen)
 const RecipeDetailsScreenWithSafeArea = withNavigatorSafeArea(RecipeDetailsScreen);
 // ✅ NOUVEAU 2026-01-27: Écrans hôtels/meublés avec SafeArea
 const HotelBookingPaymentScreenWithSafeArea = withNavigatorSafeArea(HotelBookingPaymentScreen);
+const HotelDashboardScreenWithSafeArea = withNavigatorSafeArea(HotelDashboardScreen);
 const HotelQRScannerScreenWithSafeArea = withNavigatorSafeArea(HotelQRScannerScreen);
 
 const Stack = createStackNavigator();
@@ -624,7 +629,8 @@ const MainStack = () => {
 
   // ✅ CORRECTION CRASH: Vérifier si l'utilisateur a des services spécialisés avec timeout, délai et cache
   // ✅ OPTIMISATION: Détection immédiate par partner_type pour les types supportés par GestionServicesSpecialises
-  const GESTION_SUPPORTED_TYPES = ['pharmacie', 'hopital', 'laboratoire', 'agence de voyage', 'banquesang', 'covoiturage', 'taxi'];
+  // ✅ CORRIGÉ 2026-03-05: Ajout hotel, meuble, supermarche, chauffeur aux types supportés
+  const GESTION_SUPPORTED_TYPES = ['pharmacie', 'hopital', 'laboratoire', 'agence de voyage', 'banquesang', 'covoiturage', 'taxi', 'hotel', 'meuble', 'supermarche', 'chauffeur'];
   const isGestionPartner = user?.role === 'partenaire' && user?.partner_type && GESTION_SUPPORTED_TYPES.includes(user.partner_type);
 
   useEffect(() => {
@@ -1040,6 +1046,7 @@ const SecondaryStack = () => {
       <Stack.Screen name="MyFavorites" component={MyFavoritesScreenWithSafeArea} />
       <Stack.Screen name="ImmobilierPriceAlerts" component={ImmobilierPriceAlertsScreenWithSafeArea} />
       {/* ✅ NOUVEAU 2026-01-27: Écrans hôtels/meublés */}
+      <Stack.Screen name="HotelDashboard" component={HotelDashboardScreenWithSafeArea} options={{ title: 'Dashboard Hôtel' }} />
       <Stack.Screen name="HotelBookingPayment" component={HotelBookingPaymentScreenWithSafeArea} options={{ title: 'Paiement réservation' }} />
       <Stack.Screen name="HotelQRScanner" component={HotelQRScannerScreenWithSafeArea} options={{ title: 'Scanner QR réservation' }} />
       <Stack.Screen name="HotelReservationQR" component={HotelQRScannerScreenWithSafeArea} options={{ title: 'Mon QR réservation' }} />
@@ -1594,6 +1601,16 @@ const SecondaryStack = () => {
         component={withNavigatorSafeArea(BusTicketDetailsScreen)}
         options={{ title: 'Mon ticket' }}
       />
+      <Stack.Screen
+        name="BusTicketQR"
+        component={withNavigatorSafeArea(BusTicketQRScreen)}
+        options={{ title: 'Mon QR Ticket' }}
+      />
+      <Stack.Screen
+        name="BusTicketQRScanner"
+        component={withNavigatorSafeArea(BusTicketQRScannerScreen)}
+        options={{ title: 'Scanner Ticket' }}
+      />
       {/* ✅ NOUVEAU: Routes demandes de retour (aller-retour) */}
       <Stack.Screen
         name="BusReturnRequests"
@@ -1625,6 +1642,7 @@ const SecondaryStack = () => {
       <Stack.Screen name="FormulaireYukpoIntelligent" component={FormulaireYukpoIntelligentWithSafeArea} />
       <Stack.Screen name="AjouterProduitSimple" component={AjouterProduitSimpleWithSafeArea} />
       <Stack.Screen name="MesProduits" component={MesProduitsScreenWithSafeArea} />
+      <Stack.Screen name="MesSuivis" component={MesSuivisScreenWithSafeArea} options={{ title: 'Mes Suivis', headerShown: false }} />
       <Stack.Screen
         name="ProductDetail"
         component={ProductDetailScreenWithSafeArea}

@@ -1,8 +1,9 @@
 // ✅ Écran Bourse du Livre MODERNE - Refonte complète avec UX intuitive et rassurante
 // Fonctionnalités : Affichage livres proches, recherche, ajout simplifié (photo → IA → prix)
 
-import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
+import * as ImagePicker from 'expo-image-picker';
+import { LinearGradient } from 'expo-linear-gradient';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
@@ -18,14 +19,12 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useLocation } from '../../contexts/LocationContext';
-import { livreScolaireService, LivreScolaire, BookImageAnalysis, SearchLivresFilters } from '../../services/livreScolaireService';
+import { BookImageAnalysis, LivreScolaire, livreScolaireService, SearchLivresFilters } from '../../services/livreScolaireService';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
-import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 
 const LivreScolaireHomeScreen: React.FC = () => {
     const navigation = useNavigation();
@@ -70,9 +69,10 @@ const LivreScolaireHomeScreen: React.FC = () => {
             }
 
             const response = await livreScolaireService.searchLivres(filters);
-            
-            if (response.success && response.data?.livres) {
-                const livresData = response.data.livres.map((item: any) => ({
+
+            const r = response.data as any;
+            if (response.success && r?.livres) {
+                const livresData = r.livres.map((item: any) => ({
                     ...item.livre,
                     distance_km: item.distance_km,
                 }));
@@ -115,15 +115,16 @@ const LivreScolaireHomeScreen: React.FC = () => {
             }
 
             const response = await livreScolaireService.searchLivres(filters);
-            
-            if (response.success && response.data?.livres) {
+
+            const r = response.data as any;
+            if (response.success && r?.livres) {
                 // Filtrer côté client par query (en attendant que le backend le fasse)
-                const filtered = response.data.livres
+                const filtered = r.livres
                     .map((item: any) => ({
                         ...item.livre,
                         distance_km: item.distance_km,
                     }))
-                    .filter((livre: LivreScolaire) => 
+                    .filter((livre: LivreScolaire) =>
                         livre.titre.toLowerCase().includes(searchQuery.toLowerCase()) ||
                         livre.auteur?.toLowerCase().includes(searchQuery.toLowerCase()) ||
                         livre.matiere.toLowerCase().includes(searchQuery.toLowerCase())
@@ -175,8 +176,9 @@ const LivreScolaireHomeScreen: React.FC = () => {
                 location?.coords?.longitude
             );
 
-            if (response.success && response.data?.book_info) {
-                setBookInfo(response.data.book_info);
+            const r = response.data as any;
+            if (response.success && r?.book_info) {
+                setBookInfo(r.book_info);
                 setShowAddModal(true);
             } else {
                 Alert.alert('Erreur', 'Impossible d\'analyser l\'image');

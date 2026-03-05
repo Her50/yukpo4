@@ -123,52 +123,71 @@ impl AlertesEmploiService {
     async fn send_alerte(&self, alerte: &AlerteEmploi) -> AppResult<()> {
         info!("[send_alerte] Envoi alerte id={}", alerte.id);
 
-        // Rechercher les offres correspondantes
-        let mut query = String::from(
-            "SELECT * FROM offres_emploi WHERE statut = 'active' AND is_active = true",
-        );
+        // ✅ FIX: Requête paramétrée (pas de string formatting) pour éviter les injections SQL
+        let mut conditions = vec![
+            "statut = 'active'".to_string(),
+            "is_active = true".to_string(),
+        ];
+        let mut bind_values: Vec<String> = vec![];
+        let mut param_idx = 1;
+
+        // Alerte ID pour la sous-requête dernier_envoi (toujours $1)
+        bind_values.push(alerte.id.to_string());
+        param_idx += 1; // $1 réservé pour alerte.id
 
         if let Some(secteur) = &alerte.secteur {
-            query.push_str(&format!(" AND secteur = '{}'", secteur.replace("'", "''")));
+            conditions.push(format!("secteur = ${}", param_idx));
+            bind_values.push(secteur.clone());
+            param_idx += 1;
         }
 
         if let Some(ref types) = alerte.type_contrat {
             if !types.is_empty() {
-                query.push_str(&format!(
-                    " AND type_contrat = ANY(ARRAY[{}])",
-                    types
-                        .iter()
-                        .map(|t| format!("'{}'", t.replace("'", "''")))
-                        .collect::<Vec<_>>()
-                        .join(",")
-                ));
+                let types_str = format!(
+                    "{{{}}}",
+                    types.iter().map(|t| format!("\"{}\"", t)).collect::<Vec<_>>().join(",")
+                );
+                conditions.push(format!("type_contrat = ANY(${}::text[])", param_idx));
+                bind_values.push(types_str);
             }
         }
 
         if let Some(remote) = alerte.remote {
-            query.push_str(&format!(" AND remote = {}", remote));
+            if remote {
+                conditions.push("remote = true".to_string());
+            }
         }
 
         if let Some(salaire_min) = &alerte.salaire_min {
             if let Ok(salaire_f64) = salaire_min.to_string().parse::<f64>() {
-                query.push_str(&format!(
-                    " AND (salaire_max IS NULL OR salaire_max >= {})",
+                conditions.push(format!(
+                    "(salaire_max IS NULL OR salaire_max >= {}::numeric)",
                     salaire_f64
                 ));
             }
         }
 
-        query.push_str(" AND date_publication > COALESCE((SELECT dernier_envoi FROM alertes_emploi WHERE id = $1), '1970-01-01'::timestamp)");
-        query.push_str(" ORDER BY date_publication DESC LIMIT 20");
+        conditions.push(
+            "date_publication > COALESCE((SELECT dernier_envoi FROM alertes_emploi WHERE id = $1), '1970-01-01'::timestamp)".to_string()
+        );
 
-        let offres = sqlx::query_as::<_, OffreEmploi>(&query)
-            .bind(alerte.id)
-            .fetch_all(&self.pool)
-            .await
-            .map_err(|e| {
-                error!("[send_alerte] Erreur recherche offres: {}", e);
-                AppError::Internal(format!("Erreur recherche offres: {}", e))
-            })?;
+        let query_sql = format!(
+            "SELECT * FROM offres_emploi WHERE {} ORDER BY date_publication DESC LIMIT 20",
+            conditions.join(" AND ")
+        );
+
+        let mut query = sqlx::query_as::<_, OffreEmploi>(&query_sql);
+        // Bind $1 = alerte.id
+        query = query.bind(alerte.id);
+        // Bind les paramètres additionnels
+        for val in bind_values.iter().skip(1) {
+            query = query.bind(val);
+        }
+
+        let offres = query.fetch_all(&self.pool).await.map_err(|e| {
+            error!("[send_alerte] Erreur recherche offres: {}", e);
+            AppError::Internal(format!("Erreur recherche offres: {}", e))
+        })?;
 
         if offres.is_empty() {
             info!(
@@ -178,8 +197,6 @@ impl AlertesEmploiService {
             return Ok(());
         }
 
-        // TODO: Envoyer notification push/email au candidat
-        // Pour l'instant, on log juste
         info!(
             "[send_alerte] ✅ {} nouvelles offres trouvées pour alerte {} (candidat_id={})",
             offres.len(),
@@ -187,8 +204,41 @@ impl AlertesEmploiService {
             alerte.candidat_id
         );
 
-        // Ici, on pourrait appeler un service de notification
-        // push_notification_service::send_notification(...)
+        // ✅ FIX: Envoyer une vraie push notification au candidat
+        let title = format!(
+            "🔔 {} nouvelles offres correspondent à votre alerte !",
+            offres.len()
+        );
+        let body = if offres.len() == 1 {
+            format!("Nouvelle offre: {}", offres[0].titre_poste)
+        } else {
+            format!(
+                "{}, {} et {} autre(s)",
+                offres[0].titre_poste,
+                offres.get(1).map(|o| o.titre_poste.as_str()).unwrap_or(""),
+                offres.len().saturating_sub(2)
+            )
+        };
+
+        let data = serde_json::json!({
+            "type": "job_alert",
+            "alerte_id": alerte.id,
+            "nb_offres": offres.len(),
+            "offre_ids": offres.iter().take(5).map(|o| o.id).collect::<Vec<_>>(),
+        });
+
+        if let Err(e) = crate::services::push_notification_service::send_push_notification(
+            &self.pool,
+            alerte.candidat_id,
+            title,
+            body,
+            Some(data),
+            Some("default".to_string()),
+        )
+        .await
+        {
+            warn!("[send_alerte] Erreur push notification: {}", e);
+        }
 
         Ok(())
     }

@@ -62,8 +62,9 @@ const MesTrocsScreen: React.FC = () => {
             const params = filter !== 'all' ? `?statut=${filter}` : '';
             const response = await apiGet(`/api/troc-livres/my-trocs${params}`);
 
-            if (response.success && response.data) {
-                setTrocs(response.data.trocs || []);
+            const r = response.data as any;
+            if (response.success && r) {
+                setTrocs(r.trocs || []);
             } else {
                 Alert.alert('Erreur', 'Impossible de charger vos trocs');
             }

@@ -11,12 +11,11 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { NativeButton } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeButton } from '../../components/SafeNativeDesign';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { immobilierService } from '../../services/immobilierService';
 import { modernColors } from '../../theme/modernTheme';
-import { getCurrencyIntelligently } from '../../utils/currencyUtils';
 
 type RouteParams = {
     reservationId: number;
@@ -58,15 +57,16 @@ const HotelBookingPaymentScreen: React.FC = () => {
                 paymentType === 'advance' ? montantAvance : undefined
             );
 
-            if (response.success && response.data) {
+            const resData = (response?.data || response) as any;
+            if (resData?.success && resData?.data) {
+                const payResult = resData.data;
                 Alert.alert(
                     'Paiement réussi',
-                    `Votre paiement de ${formatPrice(response.data.amount_paid)} a été confirmé.${response.data.new_payment_status === 'fully_paid' ? '\n\nVotre réservation est confirmée !' : '\n\nMontant restant: ' + formatPrice(response.data.remaining_amount)}`,
+                    `Votre paiement de ${formatPrice(payResult.amount_paid)} a été confirmé.${payResult.new_payment_status === 'fully_paid' ? '\n\nVotre réservation est confirmée !' : '\n\nMontant restant: ' + formatPrice(payResult.remaining_amount)}`,
                     [
                         {
                             text: 'Voir mon QR code',
                             onPress: () => {
-                                // Naviguer vers l'écran QR
                                 (navigation as any).navigate('HotelReservationQR', {
                                     reservationId: reservationId,
                                     propertyName: propertyName,
@@ -78,13 +78,13 @@ const HotelBookingPaymentScreen: React.FC = () => {
                             style: 'cancel',
                             onPress: () => {
                                 navigation.goBack();
-                                navigation.goBack(); // Retourner à l'écran précédent
+                                navigation.goBack();
                             },
                         },
                     ]
                 );
             } else {
-                Alert.alert('Erreur', 'Le paiement a échoué');
+                Alert.alert('Erreur', resData?.message || 'Le paiement a échoué');
             }
         } catch (err: any) {
             console.error('[HotelBookingPaymentScreen] Erreur:', err);
@@ -104,7 +104,7 @@ const HotelBookingPaymentScreen: React.FC = () => {
                 <View style={styles.headerSpacer} />
             </View>
 
-            <ScrollView 
+            <ScrollView
                 style={styles.scrollView}
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
@@ -119,7 +119,7 @@ const HotelBookingPaymentScreen: React.FC = () => {
                 {/* Type de paiement */}
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>💳 Type de paiement</Text>
-                    
+
                     <TouchableOpacity
                         style={[
                             styles.paymentTypeCard,
@@ -128,10 +128,10 @@ const HotelBookingPaymentScreen: React.FC = () => {
                         onPress={() => setPaymentType('advance')}
                     >
                         <View style={styles.paymentTypeHeader}>
-                            <SafeIcon 
-                                name={paymentType === 'advance' ? 'check-circle' : 'circle'} 
-                                size={24} 
-                                color={paymentType === 'advance' ? modernColors.primary : '#9CA3AF'} 
+                            <SafeIcon
+                                name={paymentType === 'advance' ? 'check-circle' : 'circle'}
+                                size={24}
+                                color={paymentType === 'advance' ? modernColors.primary : '#9CA3AF'}
                             />
                             <Text style={[
                                 styles.paymentTypeTitle,
@@ -157,10 +157,10 @@ const HotelBookingPaymentScreen: React.FC = () => {
                         onPress={() => setPaymentType('full')}
                     >
                         <View style={styles.paymentTypeHeader}>
-                            <SafeIcon 
-                                name={paymentType === 'full' ? 'check-circle' : 'circle'} 
-                                size={24} 
-                                color={paymentType === 'full' ? modernColors.primary : '#9CA3AF'} 
+                            <SafeIcon
+                                name={paymentType === 'full' ? 'check-circle' : 'circle'}
+                                size={24}
+                                color={paymentType === 'full' ? modernColors.primary : '#9CA3AF'}
                             />
                             <Text style={[
                                 styles.paymentTypeTitle,
@@ -181,7 +181,7 @@ const HotelBookingPaymentScreen: React.FC = () => {
                 {/* Méthode de paiement */}
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>💳 Méthode de paiement</Text>
-                    
+
                     <View style={styles.paymentMethodsGrid}>
                         {[
                             { value: 'mobile_money', label: 'Mobile Money', icon: 'smartphone' },
@@ -197,10 +197,10 @@ const HotelBookingPaymentScreen: React.FC = () => {
                                 ]}
                                 onPress={() => setPaymentMethod(method.value)}
                             >
-                                <SafeIcon 
-                                    name={method.icon} 
-                                    size={24} 
-                                    color={paymentMethod === method.value ? modernColors.primary : '#6B7280'} 
+                                <SafeIcon
+                                    name={method.icon}
+                                    size={24}
+                                    color={paymentMethod === method.value ? modernColors.primary : '#6B7280'}
                                 />
                                 <Text style={[
                                     styles.paymentMethodLabel,
@@ -253,7 +253,7 @@ const HotelBookingPaymentScreen: React.FC = () => {
                 <View style={styles.infoBox}>
                     <SafeIcon name="info" size={20} color={modernColors.primary} />
                     <Text style={styles.infoText}>
-                        {paymentType === 'advance' 
+                        {paymentType === 'advance'
                             ? 'Vous pourrez payer le reste à votre arrivée. La réservation sera confirmée après le paiement.'
                             : 'Votre réservation sera confirmée immédiatement après le paiement.'}
                     </Text>

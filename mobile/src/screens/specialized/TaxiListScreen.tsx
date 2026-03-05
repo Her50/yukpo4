@@ -11,8 +11,8 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import { NativeCard } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeCard } from '../../components/SafeNativeDesign';
 import { apiGet } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 
@@ -84,8 +84,9 @@ const TaxiListScreen: React.FC = () => {
 
             const response = await apiGet(`/api/taxis/search?${queryParams.toString()}`);
 
-            if (response.success && response.data) {
-                const newTaxis = response.data.data || [];
+            const r = response.data as any;
+            if (response.success && r) {
+                const newTaxis = r.data || [];
                 if (isRefresh || currentPage === 1) {
                     setTaxis(newTaxis);
                 } else {

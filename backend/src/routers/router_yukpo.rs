@@ -309,9 +309,10 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
     let image_search_routes_merged =
         crate::routes::image_search_routes::image_search_routes(state.clone());
 
-    // ✅ NOUVEAU: Routes pour système de publicité (intégrées directement)
+    // ✅ Routes pour système de publicité (intégrées directement)
     use crate::controllers::publicite_controller;
     let publicite_routes_inline = Router::new()
+        // CRUD
         .route(
             "/api/publicites/create",
             post(publicite_controller::create_publicite),
@@ -324,6 +325,19 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
             "/api/publicites/{id}",
             get(publicite_controller::get_publicite_by_id),
         )
+        .route(
+            "/api/publicites/{id}/pause",
+            post(publicite_controller::pause_publicite),
+        )
+        .route(
+            "/api/publicites/{id}/resume",
+            post(publicite_controller::resume_publicite),
+        )
+        .route(
+            "/api/publicites/{id}/delete",
+            post(publicite_controller::delete_publicite),
+        )
+        // Listing & tracking
         .route(
             "/api/publicites/actives",
             get(publicite_controller::get_active_publicites),
@@ -339,6 +353,62 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route(
             "/api/publicites/track-view",
             post(publicite_controller::track_publicite_view),
+        )
+        // Analytics & optimization
+        .route(
+            "/api/publicites/analytics",
+            get(publicite_controller::get_advanced_analytics),
+        )
+        .route(
+            "/api/publicites/optimization",
+            get(publicite_controller::get_optimization_suggestions),
+        )
+        .route(
+            "/api/publicites/{id}/analyze",
+            get(publicite_controller::analyze_campaign),
+        )
+        // Alerts
+        .route(
+            "/api/publicites/alerts",
+            get(publicite_controller::get_publicite_alerts),
+        )
+        .route(
+            "/api/publicites/alerts/check",
+            post(publicite_controller::trigger_alert_check),
+        )
+        // Export / Import
+        .route(
+            "/api/publicites/{id}/export",
+            get(publicite_controller::export_campaign),
+        )
+        .route(
+            "/api/publicites/export",
+            get(publicite_controller::export_all_campaigns),
+        )
+        .route(
+            "/api/publicites/export-excel",
+            get(publicite_controller::export_excel_campaigns),
+        )
+        .route(
+            "/api/publicites/import",
+            post(publicite_controller::import_campaign),
+        )
+        // Versioning
+        .route(
+            "/api/publicites/{id}/versions",
+            get(publicite_controller::get_publicite_versions),
+        )
+        .route(
+            "/api/publicites/{id}/versions/{version_number}",
+            get(publicite_controller::get_publicite_version),
+        )
+        .route(
+            "/api/publicites/{id}/versions/{version_number}/restore",
+            post(publicite_controller::restore_publicite_version),
+        )
+        .route(
+            "/api/publicites/{campaign_id}/versions/{version1}/compare/{version2}",
+            get(publicite_controller::compare_publicite_versions),
         );
 
     // Combinaison des routes

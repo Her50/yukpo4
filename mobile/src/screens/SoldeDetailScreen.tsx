@@ -251,7 +251,7 @@ const SoldeDetailScreen: React.FC = () => {
 
       {/* Liste des utilisations */}
       <View style={styles.listContainer}>
-        <Text style={styles.listTitle}>Détail des utilisations Yukpo</Text>
+        <Text style={styles.listTitle}>Détail des utilisations <Text style={styles.brandYuk}>Yuk</Text><Text style={styles.brandPo}>po</Text></Text>
         {loading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={theme.colors.primary} />
@@ -281,7 +281,7 @@ const SoldeDetailScreen: React.FC = () => {
         ) : (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyIcon}>📭</Text>
-            <Text style={styles.emptyText}>Aucune utilisation Yukpo enregistrée</Text>
+            <Text style={styles.emptyText}>Aucune utilisation <Text style={styles.brandYuk}>Yuk</Text><Text style={styles.brandPo}>po</Text> enregistrée</Text>
           </View>
         )}
       </View>
@@ -691,6 +691,12 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#D97706',
     fontWeight: 'bold',
+  },
+  brandYuk: {
+    color: '#3B82F6', // Bleu (cohérent avec le logo officiel)
+  },
+  brandPo: {
+    color: '#7C3AED', // Violet (cohérent avec le logo officiel)
   },
 });
 

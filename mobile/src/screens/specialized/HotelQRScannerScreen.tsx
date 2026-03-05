@@ -1,11 +1,12 @@
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import React, { useCallback, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import QRCodeScanner from '../../components/QRCodeScanner';
 import SafeIcon from '../../components/SafeIcon';
 import { NativeButton } from '../../components/SafeNativeDesign';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { apiPost } from '../../services/api';
+import { immobilierService } from '../../services/immobilierService';
 import { modernColors } from '../../theme/modernTheme';
 
 type HotelQRScannerRouteParams = {
@@ -52,20 +53,19 @@ const HotelQRScannerScreen: React.FC = () => {
       setRawCode(qrData);
       setLoading(true);
       try {
-        // Ici, on envoie directement le code texte au backend
         const response = await apiPost('/api/hotel/reservations/scan-qr', {
           qr_code: qrData,
         });
 
-        if (response?.success && response.data) {
-          const d = response.data;
-          setScanData(d as ScanResponse);
+        const resData = (response?.data || response) as any;
+        if (resData?.success && resData?.data) {
+          setScanData(resData.data as ScanResponse);
           Alert.alert("Succès", "Réservation trouvée et chargée");
           setScannerVisible(false);
         } else {
           Alert.alert(
             "Erreur",
-            response?.error ||
+            resData?.message || resData?.error ||
             "Impossible de trouver une réservation pour ce QR code"
           );
         }
@@ -94,6 +94,45 @@ const HotelQRScannerScreen: React.FC = () => {
     setRawCode(null);
     setScannerVisible(true);
   }, []);
+
+  const handleCheckIn = useCallback(async () => {
+    if (!scanData) return;
+    try {
+      const res = await immobilierService.checkInReservation(scanData.reservation_id);
+      const rd = (res?.data || res) as any;
+      if (rd?.success) {
+        Alert.alert('Succès', `Check-in effectué pour ${scanData.client_name}`);
+        setScanData({ ...scanData, status: 'checked_in', can_check_in: false, can_check_out: true });
+      } else {
+        Alert.alert('Erreur', rd?.message || 'Erreur lors du check-in');
+      }
+    } catch (e: any) {
+      Alert.alert('Erreur', e.message || 'Impossible d\'effectuer le check-in');
+    }
+  }, [scanData]);
+
+  const handleCheckOut = useCallback(() => {
+    if (!scanData) return;
+    Alert.alert('Confirmer le check-out', `Check-out de ${scanData.client_name} ?`, [
+      { text: 'Annuler', style: 'cancel' },
+      {
+        text: 'Confirmer', onPress: async () => {
+          try {
+            const res = await immobilierService.checkOutReservation(scanData.reservation_id);
+            const rd = (res?.data || res) as any;
+            if (rd?.success) {
+              Alert.alert('Succès', 'Check-out effectué');
+              setScanData({ ...scanData, status: 'checked_out', can_check_in: false, can_check_out: false });
+            } else {
+              Alert.alert('Erreur', rd?.message || 'Erreur check-out');
+            }
+          } catch (e: any) {
+            Alert.alert('Erreur', e.message || 'Impossible d\'effectuer le check-out');
+          }
+        }
+      }
+    ]);
+  }, [scanData]);
 
   const formatAmount = (value: string | number) => {
     const n =
@@ -222,7 +261,7 @@ const HotelQRScannerScreen: React.FC = () => {
         {!scanData && (
           <View style={styles.infoCard}>
             <Text style={styles.infoTitle}>
-              Scannez le QR code du client à l’accueil
+              Scannez le QR code du client à l'accueil
             </Text>
             <Text style={styles.infoText}>
               Le système vous indiquera automatiquement :
@@ -310,35 +349,20 @@ const HotelQRScannerScreen: React.FC = () => {
             </View>
 
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Actions possibles</Text>
-              <Text style={styles.helperText}>
-                Ces informations sont à titre indicatif pour l’agent
-                d’accueil. Les boutons d’action pourront être reliés plus tard
-                à un système de check-in / check-out complet.
-              </Text>
+              <Text style={styles.sectionTitle}>Actions</Text>
               <View style={styles.actionsRow}>
                 <NativeButton
                   title="Check-in"
                   variant={scanData.can_check_in ? 'primary' : 'secondary'}
                   disabled={!scanData.can_check_in}
-                  onPress={() =>
-                    Alert.alert(
-                      "Info",
-                      "Le flux complet de check-in sera implémenté dans une prochaine étape"
-                    )
-                  }
+                  onPress={handleCheckIn}
                   style={styles.actionButton}
                 />
                 <NativeButton
                   title="Check-out"
                   variant={scanData.can_check_out ? 'primary' : 'secondary'}
                   disabled={!scanData.can_check_out}
-                  onPress={() =>
-                    Alert.alert(
-                      "Info",
-                      "Le flux complet de check-out sera implémenté dans une prochaine étape"
-                    )
-                  }
+                  onPress={handleCheckOut}
                   style={styles.actionButton}
                 />
               </View>

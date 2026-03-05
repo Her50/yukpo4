@@ -11,8 +11,8 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiGet, apiPost } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
@@ -64,8 +64,9 @@ const TrocDetailsScreen: React.FC = () => {
 
             const response = await apiGet(endpoint);
 
-            if (response.success && response.data) {
-                setTroc(response.data);
+            const r = response.data as any;
+            if (response.success && r) {
+                setTroc(r);
             } else {
                 Alert.alert('Erreur', 'Impossible de charger les détails du troc');
                 navigation.goBack();

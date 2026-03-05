@@ -12,8 +12,8 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiGet, apiPost } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
@@ -58,10 +58,11 @@ const LivreScolaireDetailsScreen: React.FC = () => {
     const loadLivreDetails = async () => {
         try {
             setLoading(true);
-            const response = await apiGet(`/api/livres-scolaires/${params.livreId}`);
+            const response = await apiGet(`/api/bourse-livre/${params.livreId}`);
 
-            if (response.success && response.data) {
-                setLivre(response.data.livre);
+            const r = response.data as any;
+            if (response.success && r) {
+                setLivre(r.livre);
             } else {
                 Alert.alert('Erreur', 'Impossible de charger les détails du livre');
                 navigation.goBack();
@@ -85,10 +86,11 @@ const LivreScolaireDetailsScreen: React.FC = () => {
                 max_participants: 5,
             });
 
-            if (response.success && response.data) {
+            const r = response.data as any;
+            if (response.success && r) {
                 navigation.navigate('TrocMatching' as never, {
                     livreId: livre.id,
-                    matchings: response.data.matchings,
+                    matchings: r.matchings,
                 } as never);
             }
         } catch (error: any) {
@@ -247,7 +249,7 @@ const LivreScolaireDetailsScreen: React.FC = () => {
                             variant="outline"
                             onPress={async () => {
                                 try {
-                                    await apiPost(`/api/livres-scolaires/${livre.id}/availability`, {
+                                    await apiPost(`/api/bourse-livre/${livre.id}/availability`, {
                                         is_available: !livre.is_available,
                                     });
                                     loadLivreDetails();

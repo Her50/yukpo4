@@ -181,16 +181,25 @@ impl OffresEmploiService {
         let limit = request.limit.unwrap_or(20).clamp(1, 100);
         let offset = (page - 1) * limit;
 
-        // ✅ CORRECTION: Requête SQL qui récupère TOUTES les offres actives créées
-        // Utiliser une requête SQLx simple mais complète avec filtres optionnels
-
-        // ✅ Ajouter les filtres dynamiques si présents
-        let mut where_conditions = vec![];
+        // ✅ Construction dynamique des filtres SQL avec bind params numérotés
+        let mut conditions = vec![
+            "statut = 'active'".to_string(),
+            "is_active = true".to_string(),
+        ];
+        let mut bind_values: Vec<String> = vec![];
+        let mut param_idx = 1;
 
         // Recherche textuelle (titre, description, secteur, domaine, compétences, tags)
-        let search_pattern = if let Some(query_text) = &request.query {
+        let _search_pattern = if let Some(query_text) = &request.query {
             if !query_text.trim().is_empty() {
-                Some(format!("%{}%", query_text.trim()))
+                let pattern = format!("%{}%", query_text.trim());
+                conditions.push(format!(
+                    "(titre_poste ILIKE ${p} OR description ILIKE ${p} OR secteur ILIKE ${p} OR COALESCE(domaine, '') ILIKE ${p} OR EXISTS (SELECT 1 FROM unnest(COALESCE(competences_requises, ARRAY[]::text[])) AS comp WHERE comp ILIKE ${p}) OR EXISTS (SELECT 1 FROM unnest(COALESCE(tags, ARRAY[]::text[])) AS tag WHERE tag ILIKE ${p}))",
+                    p = param_idx
+                ));
+                bind_values.push(pattern.clone());
+                param_idx += 1;
+                Some(pattern)
             } else {
                 None
             }
@@ -198,48 +207,166 @@ impl OffresEmploiService {
             None
         };
 
-        // Construire la requête SQL avec filtres si nécessaire
-        let offres = if let Some(ref pattern) = search_pattern {
-            where_conditions.push(
-                "(titre_poste ILIKE $1 OR description ILIKE $1 OR secteur ILIKE $1 OR COALESCE(domaine, '') ILIKE $1 OR EXISTS (SELECT 1 FROM unnest(COALESCE(competences_requises, ARRAY[]::text[])) AS comp WHERE comp ILIKE $1) OR EXISTS (SELECT 1 FROM unnest(COALESCE(tags, ARRAY[]::text[])) AS tag WHERE tag ILIKE $1))".to_string()
-            );
-            let query_sql = format!(
-                "SELECT * FROM offres_emploi WHERE statut = 'active' AND is_active = true AND {} ORDER BY date_publication DESC LIMIT $2 OFFSET $3",
-                where_conditions.join(" AND ")
-            );
-            sqlx::query_as::<_, OffreEmploi>(&query_sql)
-                .bind(pattern)
-                .bind(limit)
-                .bind(offset)
-                .fetch_all(&self.pool)
-                .await
+        // Filtre par secteur
+        let _secteur_val = if let Some(secteur) = &request.secteur {
+            if !secteur.trim().is_empty() {
+                conditions.push(format!("secteur = ${}", param_idx));
+                bind_values.push(secteur.trim().to_string());
+                param_idx += 1;
+                Some(secteur.clone())
+            } else {
+                None
+            }
         } else {
-            // ✅ REQUÊTE DE BASE: Récupère toutes les offres actives créées
-            sqlx::query_as::<_, OffreEmploi>(
-                r#"
-                SELECT * FROM offres_emploi
-                WHERE statut = 'active' AND is_active = true
-                ORDER BY date_publication DESC
-                LIMIT $1 OFFSET $2
-                "#,
-            )
-            .bind(limit)
-            .bind(offset)
-            .fetch_all(&self.pool)
-            .await
+            None
+        };
+
+        // Filtre par type de contrat (peut être multiple)
+        let _type_contrat_val = if let Some(types) = &request.type_contrat {
+            if !types.is_empty() {
+                conditions.push(format!("type_contrat = ANY(${}::text[])", param_idx));
+                let types_str = format!(
+                    "{{{}}}",
+                    types.iter().map(|t| format!("\"{}\"", t)).collect::<Vec<_>>().join(",")
+                );
+                bind_values.push(types_str.clone());
+                param_idx += 1;
+                Some(types_str)
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
+        // Filtre salaire min (offre doit avoir salaire_max >= demandé)
+        let _salaire_min_str = if let Some(salaire_min) = request.salaire_min {
+            conditions.push(format!(
+                "(salaire_max IS NULL OR salaire_max >= ${}::numeric)",
+                param_idx
+            ));
+            let val = salaire_min.to_string();
+            bind_values.push(val.clone());
+            param_idx += 1;
+            Some(val)
+        } else {
+            None
+        };
+
+        // Filtre salaire max (offre doit avoir salaire_min <= demandé)
+        let _salaire_max_str = if let Some(salaire_max) = request.salaire_max {
+            conditions.push(format!(
+                "(salaire_min IS NULL OR salaire_min <= ${}::numeric)",
+                param_idx
+            ));
+            let val = salaire_max.to_string();
+            bind_values.push(val.clone());
+            param_idx += 1;
+            Some(val)
+        } else {
+            None
+        };
+
+        // Filtre remote
+        if let Some(remote) = request.remote {
+            if remote {
+                conditions.push("remote = true".to_string());
+            }
         }
-        .map_err(|e| {
+
+        // Filtre niveau d'étude
+        let _niveau_val = if let Some(niveau) = &request.niveau_etude {
+            if !niveau.trim().is_empty() {
+                conditions.push(format!(
+                    "(niveau_etude IS NULL OR niveau_etude = ${})",
+                    param_idx
+                ));
+                bind_values.push(niveau.trim().to_string());
+                param_idx += 1;
+                Some(niveau.clone())
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
+        // Filtre expérience min
+        if let Some(exp) = request.experience_min {
+            conditions.push(format!(
+                "(experience_min IS NULL OR experience_min <= {})",
+                exp
+            ));
+        }
+
+        // Filtre lieu de travail
+        let _lieu_val = if let Some(lieu) = &request.lieu_travail {
+            if !lieu.trim().is_empty() {
+                let pattern = format!("%{}%", lieu.trim());
+                conditions.push(format!("lieu_travail ILIKE ${}", param_idx));
+                bind_values.push(pattern.clone());
+                Some(pattern)
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
+        // ✅ Filtre GPS proximité (si gps + distance_max_km fournis)
+        let gps_vals = if let Some(gps) = &request.gps {
+            if let Some((lat, lng)) = parse_gps(gps) {
+                let distance_km = request.distance_max_km.unwrap_or(50.0);
+                conditions.push(format!(
+                    "location_point IS NOT NULL AND ST_DWithin(location_point, ST_GeogFromText('POINT({} {})'), {})",
+                    lng, lat, distance_km * 1000.0
+                ));
+                Some((lat, lng))
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
+        let where_clause = conditions.join(" AND ");
+
+        // Construire la requête avec ORDER BY (prioriser proximité si GPS fourni)
+        let order_by = if gps_vals.is_some() {
+            let (lat, lng) = gps_vals.unwrap();
+            format!(
+                "CASE WHEN location_point IS NOT NULL THEN ST_Distance(location_point, ST_GeogFromText('POINT({} {})')) ELSE 999999999 END ASC, date_publication DESC",
+                lng, lat
+            )
+        } else {
+            "date_publication DESC".to_string()
+        };
+
+        let query_sql = format!(
+            "SELECT * FROM offres_emploi WHERE {} ORDER BY {} LIMIT {} OFFSET {}",
+            where_clause, order_by, limit, offset
+        );
+        let count_sql = format!(
+            "SELECT COUNT(*)::bigint FROM offres_emploi WHERE {}",
+            where_clause
+        );
+
+        // Exécuter la requête avec bind dynamique
+        let mut query = sqlx::query_as::<_, OffreEmploi>(&query_sql);
+        let mut count_query = sqlx::query_scalar::<_, i64>(&count_sql);
+
+        // Bind les paramètres dans l'ordre
+        for val in &bind_values {
+            query = query.bind(val);
+            count_query = count_query.bind(val);
+        }
+
+        let offres = query.fetch_all(&self.pool).await.map_err(|e| {
             error!("[search_offres] Erreur SQL: {}", e);
             AppError::Internal(format!("Erreur recherche offres: {}", e))
         })?;
 
-        // Compter le total d'offres actives
-        let total: i64 = sqlx::query_scalar::<_, i64>(
-            "SELECT COUNT(*)::bigint FROM offres_emploi WHERE statut = 'active' AND is_active = true"
-        )
-        .fetch_one(&self.pool)
-        .await
-        .unwrap_or(0);
+        let total: i64 = count_query.fetch_one(&self.pool).await.unwrap_or(0);
 
         // Mettre en cache
         if let Some(redis) = &self.redis_client {
@@ -303,6 +430,124 @@ impl OffresEmploiService {
         }
 
         Ok(())
+    }
+
+    /// Met à jour une offre d'emploi existante
+    pub async fn update_offre(
+        &self,
+        offre_id: i32,
+        entreprise_id: i32,
+        request: CreateOffreEmploiRequest,
+    ) -> AppResult<OffreEmploi> {
+        info!(
+            "[update_offre] offre_id={}, entreprise_id={}",
+            offre_id, entreprise_id
+        );
+
+        // Vérifier que l'offre appartient à l'utilisateur
+        let owner: Option<i32> =
+            sqlx::query_scalar("SELECT entreprise_id FROM offres_emploi WHERE id = $1")
+                .bind(offre_id)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(|e| {
+                    error!("[update_offre] Erreur vérification: {}", e);
+                    AppError::Internal(format!("Erreur vérification offre: {}", e))
+                })?;
+
+        if owner != Some(entreprise_id) {
+            return Err(AppError::Forbidden(
+                "Vous n'êtes pas propriétaire de cette offre".to_string(),
+            ));
+        }
+
+        // Convertir GPS en location_point si fourni
+        let location_point = if let Some(gps) = &request.gps {
+            if let Some((lat, lng)) = parse_gps(gps) {
+                Some(format!("POINT({} {})", lng, lat))
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
+        let salaire_min = request
+            .salaire_min
+            .map(|s| BigDecimal::from_str(&s.to_string()).unwrap_or_default());
+        let salaire_max = request
+            .salaire_max
+            .map(|s| BigDecimal::from_str(&s.to_string()).unwrap_or_default());
+
+        let langues_requises_json = request
+            .langues_requises
+            .as_ref()
+            .map(|v| serde_json::to_value(v).unwrap_or(Value::Null));
+
+        let offre = sqlx::query_as::<_, OffreEmploi>(
+            r#"
+            UPDATE offres_emploi SET
+                titre_poste = $1, description = $2, type_contrat = $3, duree_contrat = $4,
+                lieu_travail = $5, adresse = $6, gps = $7,
+                location_point = CASE WHEN $8::TEXT IS NOT NULL THEN ST_GeogFromText($8::TEXT) ELSE location_point END,
+                remote = $9, remote_partiel = $10,
+                salaire_min = $11, salaire_max = $12, devise = $13, salaire_negociable = $14,
+                niveau_etude = $15, experience_min = $16, competences_requises = $17,
+                langues_requises = $18, permis_requis = $19,
+                secteur = $20, domaine = $21, tags = $22,
+                date_limite_candidature = $23, date_debut_poste = $24,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = $25
+            RETURNING
+                id, entreprise_id, titre_poste, description, type_contrat, duree_contrat,
+                lieu_travail, adresse, gps, remote, remote_partiel,
+                salaire_min, salaire_max, devise, salaire_negociable,
+                niveau_etude, experience_min, competences_requises, langues_requises, permis_requis,
+                secteur, domaine, tags, date_limite_candidature, date_debut_poste, statut,
+                date_publication, nombre_vues, nombre_candidatures, is_active, is_verified, created_at, updated_at
+            "#,
+        )
+        .bind(&request.titre_poste)
+        .bind(&request.description)
+        .bind(&request.type_contrat)
+        .bind(request.duree_contrat)
+        .bind(&request.lieu_travail)
+        .bind(request.adresse.as_deref())
+        .bind(request.gps.as_deref())
+        .bind(location_point.as_deref())
+        .bind(request.remote.unwrap_or(false))
+        .bind(request.remote_partiel.unwrap_or(false))
+        .bind(salaire_min.as_ref())
+        .bind(salaire_max.as_ref())
+        .bind(request.devise.unwrap_or_else(|| "XAF".to_string()))
+        .bind(request.salaire_negociable.unwrap_or(false))
+        .bind(request.niveau_etude.as_deref())
+        .bind(request.experience_min)
+        .bind(request.competences_requises.as_deref())
+        .bind(langues_requises_json.as_ref())
+        .bind(request.permis_requis.as_deref())
+        .bind(&request.secteur)
+        .bind(request.domaine.as_deref())
+        .bind(request.tags.as_deref())
+        .bind(request.date_limite_candidature)
+        .bind(request.date_debut_poste)
+        .bind(offre_id)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| {
+            error!("[update_offre] Erreur: {}", e);
+            AppError::Internal(format!("Erreur mise à jour offre: {}", e))
+        })?;
+
+        // Invalider les caches
+        self.invalidate_search_cache().await;
+        if let Some(redis) = &self.redis_client {
+            let _ = redis_helper::delete_with_retry(redis, &format!("emploi:details:{}", offre_id))
+                .await;
+        }
+
+        info!("[update_offre] ✅ Offre {} mise à jour", offre_id);
+        Ok(offre)
     }
 
     /// Ferme une offre (statut 'pourvue' ou 'fermee')

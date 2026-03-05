@@ -1,8 +1,8 @@
 // @ts-nocheck
-import * as React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { Card, Title, Paragraph, Button } from 'react-native-paper';
+import * as React from 'react';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Card, Title } from 'react-native-paper';
 import { SafeNativeView } from '../components/SafeNativeView';
 
 const StartScreen = () => {
@@ -10,58 +10,58 @@ const StartScreen = () => {
 
   return (
     <SafeNativeView style={styles.container}>
-      <ScrollView 
+      <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
       >
-      <View style={styles.content}>
-        <Text style={styles.title}>
-          ?? D�marrer avec Yukpo
-        </Text>
-        <Text style={styles.subtitle}>
-          Dites-nous ce que vous cherchez ou proposez : Yukpo vous guide.
-        </Text>
-        
-        <View style={styles.cardsContainer}>
-          <Card style={styles.card}>
-            <Card.Content style={styles.cardContent}>
-              <Title style={styles.cardTitle}>?? Je suis prestataire</Title>
-              <TouchableOpacity 
-                style={styles.button}
-                onPress={() => navigation.navigate('CreateService' as never)}
-              >
-                <Text style={styles.buttonText}>Cr�er ou g�rer mes services</Text>
-              </TouchableOpacity>
-            </Card.Content>
-          </Card>
-          
-          <Card style={styles.card}>
-            <Card.Content style={styles.cardContent}>
-              <Title style={styles.cardTitle}>?? Je cherche une solution</Title>
-              <TouchableOpacity 
-                style={styles.button}
-                onPress={() => navigation.navigate('RechercheBesoin' as never)}
-              >
-                <Text style={styles.buttonText}>Exprimer mon besoin</Text>
-              </TouchableOpacity>
-            </Card.Content>
-          </Card>
-          
-          <Card style={styles.card}>
-            <Card.Content style={styles.cardContent}>
-              <Title style={styles.cardTitle}>?? Acc�s IA Yukpo</Title>
-              <TouchableOpacity 
-                style={styles.button}
-                onPress={() => navigation.navigate('AIHub' as never)}
-              >
-                <Text style={styles.buttonText}>Outils intelligents Yukpo</Text>
-              </TouchableOpacity>
-            </Card.Content>
-          </Card>
+        <View style={styles.content}>
+          <Text style={styles.title}>
+            ?? Dmarrer avec <Text style={styles.brandYuk}>Yuk</Text><Text style={styles.brandPo}>po</Text>
+          </Text>
+          <Text style={styles.subtitle}>
+            Dites-nous ce que vous cherchez ou proposez : <Text style={styles.brandYuk}>Yuk</Text><Text style={styles.brandPo}>po</Text> vous guide.
+          </Text>
+
+          <View style={styles.cardsContainer}>
+            <Card style={styles.card}>
+              <Card.Content style={styles.cardContent}>
+                <Title style={styles.cardTitle}>?? Je suis prestataire</Title>
+                <TouchableOpacity
+                  style={styles.button}
+                  onPress={() => navigation.navigate('CreateService' as never)}
+                >
+                  <Text style={styles.buttonText}>Cr�er ou g�rer mes services</Text>
+                </TouchableOpacity>
+              </Card.Content>
+            </Card>
+
+            <Card style={styles.card}>
+              <Card.Content style={styles.cardContent}>
+                <Title style={styles.cardTitle}>?? Je cherche une solution</Title>
+                <TouchableOpacity
+                  style={styles.button}
+                  onPress={() => navigation.navigate('RechercheBesoin' as never)}
+                >
+                  <Text style={styles.buttonText}>Exprimer mon besoin</Text>
+                </TouchableOpacity>
+              </Card.Content>
+            </Card>
+
+            <Card style={styles.card}>
+              <Card.Content style={styles.cardContent}>
+                <Title style={styles.cardTitle}>?? Accs IA <Text style={styles.brandYuk}>Yuk</Text><Text style={styles.brandPo}>po</Text></Title>
+                <TouchableOpacity
+                  style={styles.button}
+                  onPress={() => navigation.navigate('AIHub' as never)}
+                >
+                  <Text style={styles.buttonText}>Outils intelligents <Text style={styles.brandYuk}>Yuk</Text><Text style={styles.brandPo}>po</Text></Text>
+                </TouchableOpacity>
+              </Card.Content>
+            </Card>
+          </View>
         </View>
-      </View>
       </ScrollView>
     </SafeNativeView>
   );
@@ -124,6 +124,12 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: '600',
+  },
+  brandYuk: {
+    color: '#3B82F6', // Bleu (cohérent avec le logo officiel)
+  },
+  brandPo: {
+    color: '#7C3AED', // Violet (cohérent avec le logo officiel)
   },
 });
 

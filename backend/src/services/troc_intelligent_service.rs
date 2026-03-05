@@ -655,6 +655,13 @@ impl TrocIntelligentService {
                 .map_err(|e| AppError::Internal(format!("Erreur récupération troc: {}", e)))?
                 .ok_or_else(|| AppError::NotFound("Troc non trouvé".to_string()))?;
 
+        // ✅ FIX: Vérifier que l'utilisateur est impliqué dans le troc
+        if troc.initiateur_id != user_id && troc.participant_id != user_id {
+            return Err(AppError::Forbidden(
+                "Vous n'êtes pas impliqué dans ce troc".to_string(),
+            ));
+        }
+
         if troc.statut != "accepte" {
             return Err(AppError::BadRequest(
                 "Le troc doit être accepté avant d'être complété".to_string(),

@@ -1,4 +1,5 @@
 // ✅ Écran Immobilier MODERNE - Refonte complète avec UX de niveau mondial
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useCallback, useEffect, useState } from 'react';
@@ -24,6 +25,8 @@ import { useCurrencyDetection } from '../../hooks/useCurrencyDetection';
 import { immobilierService, PropertySearchFilters, RealEstateProperty } from '../../services/immobilierService';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
+
+const FAVORITES_KEY = '@immobilier_favorites';
 
 type ViewMode = 'list' | 'grid';
 type SortOption = 'relevance' | 'price_asc' | 'price_desc' | 'date_desc' | 'superficie_desc';
@@ -60,8 +63,35 @@ const ImmobilierHomeScreen: React.FC = () => {
     const [showSortModal, setShowSortModal] = useState(false);
     const [searchFocused, setSearchFocused] = useState(false);
 
-    // ✅ NOUVEAU: Favoris locaux
+    // Favoris persistés dans AsyncStorage
     const [favorites, setFavorites] = useState<Set<string>>(new Set());
+
+    // Charger les favoris serveur + local fallback au démarrage
+    useEffect(() => {
+        (async () => {
+            try {
+                // Essayer d'abord le serveur
+                const serverResponse = await immobilierService.getMyFavorites();
+                if (serverResponse.success && Array.isArray((serverResponse as any).data)) {
+                    const ids = ((serverResponse as any).data as RealEstateProperty[]).map(p => p.id.toString());
+                    setFavorites(new Set(ids));
+                    await AsyncStorage.setItem(FAVORITES_KEY, JSON.stringify(ids));
+                    return;
+                }
+            } catch (e) { /* fallback local */ }
+            // Fallback local
+            try {
+                const stored = await AsyncStorage.getItem(FAVORITES_KEY);
+                if (stored) setFavorites(new Set(JSON.parse(stored)));
+            } catch (e) { console.warn('[Immobilier] Favoris load error:', e); }
+        })();
+    }, []);
+
+    // Sauvegarder les favoris localement à chaque changement
+    useEffect(() => {
+        AsyncStorage.setItem(FAVORITES_KEY, JSON.stringify([...favorites])).catch(() => { });
+    }, [favorites]);
+
     // ✅ NOUVEAU: Modal simulation prêt
     const [showLoanModal, setShowLoanModal] = useState(false);
     const [loanProperty, setLoanProperty] = useState<RealEstateProperty | null>(null);
@@ -240,21 +270,74 @@ const ImmobilierHomeScreen: React.FC = () => {
         });
     };
 
-    // ✅ NOUVEAU: Toggle favori
+    // Toggle favori avec sync serveur
     const handleToggleFavorite = (property: RealEstateProperty) => {
         hapticPress();
         const id = property.id.toString();
+        const isFav = favorites.has(id);
+        // Optimistic update
         setFavorites(prev => {
             const next = new Set(prev);
-            if (next.has(id)) {
-                next.delete(id);
-            } else {
-                next.add(id);
-                // Appeler le backend en arrière-plan (best-effort)
-                immobilierService.addToFavorites?.(property.id)?.catch(() => { });
-            }
+            isFav ? next.delete(id) : next.add(id);
             return next;
         });
+        // Sync serveur en arrière-plan
+        if (isFav) {
+            immobilierService.removeFromFavorites(property.id).catch(() => { });
+        } else {
+            immobilierService.addToFavorites(property.id).catch(() => { });
+        }
+    };
+
+    // Track view quand l'utilisateur ouvre un bien
+    const handlePropertyPressWithTracking = (property: RealEstateProperty) => {
+        immobilierService.trackPropertyView(property.id, undefined, undefined, 'search').catch(() => { });
+        handlePropertyPress(property);
+    };
+
+    // Partager un bien
+    const handleShareProperty = async (property: RealEstateProperty) => {
+        hapticPress();
+        try {
+            const resp = await immobilierService.shareProperty(property.id, 'link');
+            if ((resp as any).success && (resp as any).share_url) {
+                const { Share } = require('react-native');
+                await Share.share({
+                    message: `${property.titre} - ${property.ville || ''}\n${(resp as any).share_url}`,
+                    url: (resp as any).share_url,
+                });
+            }
+        } catch (e) { console.warn('[Immobilier] Share error:', e); }
+    };
+
+    // Réserver une visite
+    const handleBookVisit = async (property: RealEstateProperty) => {
+        hapticPress();
+        Alert.alert(
+            'Réserver une visite',
+            `Voulez-vous réserver une visite pour "${property.titre}" ?`,
+            [
+                { text: 'Annuler', style: 'cancel' },
+                {
+                    text: 'Réserver',
+                    onPress: async () => {
+                        try {
+                            const tomorrow = new Date();
+                            tomorrow.setDate(tomorrow.getDate() + 1);
+                            const dateStr = tomorrow.toISOString().split('T')[0];
+                            const resp = await immobilierService.bookVisit(property.id, dateStr, '10:00', 'en_personne');
+                            if ((resp as any).success) {
+                                Alert.alert('Succès', 'Visite réservée ! Vous serez contacté pour confirmation.');
+                            } else {
+                                Alert.alert('Erreur', 'Impossible de réserver la visite.');
+                            }
+                        } catch (e) {
+                            Alert.alert('Erreur', 'Service momentanément indisponible.');
+                        }
+                    },
+                },
+            ]
+        );
     };
 
     // ✅ NOUVEAU: Simulation prêt immobilier
@@ -563,34 +646,50 @@ const ImmobilierHomeScreen: React.FC = () => {
                         <View style={viewMode === 'grid' ? styles.gridItem : undefined}>
                             <ImmobilierResultCard
                                 property={item}
-                                onPress={() => handlePropertyPress(item)}
+                                onPress={() => handlePropertyPressWithTracking(item)}
                             />
-                            {/* ✅ NOUVEAU: Boutons d'action rapide */}
-                            <View style={{ flexDirection: 'row', paddingHorizontal: 16, paddingBottom: 8, gap: 8 }}>
+                            {/* Boutons d'action rapide */}
+                            <View style={{ flexDirection: 'row', paddingHorizontal: 16, paddingBottom: 4, gap: 6 }}>
                                 <TouchableOpacity
-                                    style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: favorites.has(item.id.toString()) ? '#FEF2F2' : '#F9FAFB', borderRadius: 8, paddingVertical: 8, borderWidth: 1, borderColor: favorites.has(item.id.toString()) ? '#FCA5A5' : '#E5E7EB' }}
+                                    style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: favorites.has(item.id.toString()) ? '#FEF2F2' : '#F9FAFB', borderRadius: 8, paddingVertical: 7, borderWidth: 1, borderColor: favorites.has(item.id.toString()) ? '#FCA5A5' : '#E5E7EB' }}
                                     onPress={() => handleToggleFavorite(item)}
                                 >
                                     <SafeIcon name="heart" size={14} color={favorites.has(item.id.toString()) ? '#EF4444' : '#9CA3AF'} type="lucide" />
-                                    <Text style={{ marginLeft: 4, fontSize: 12, color: favorites.has(item.id.toString()) ? '#EF4444' : '#6B7280' }}>Favori</Text>
+                                    <Text style={{ marginLeft: 4, fontSize: 11, color: favorites.has(item.id.toString()) ? '#EF4444' : '#6B7280' }}>Favori</Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity
-                                    style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#EFF6FF', borderRadius: 8, paddingVertical: 8, borderWidth: 1, borderColor: '#BFDBFE' }}
+                                    style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#EFF6FF', borderRadius: 8, paddingVertical: 7, borderWidth: 1, borderColor: '#BFDBFE' }}
                                     onPress={() => handleAIPriceEstimate(item)}
                                 >
                                     <SafeIcon name="bar-chart-2" size={14} color="#3B82F6" type="lucide" />
-                                    <Text style={{ marginLeft: 4, fontSize: 12, color: '#3B82F6' }}>Estimer</Text>
+                                    <Text style={{ marginLeft: 4, fontSize: 11, color: '#3B82F6' }}>Estimer</Text>
                                 </TouchableOpacity>
-                                {item.prix_vente && (
+                                <TouchableOpacity
+                                    style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFF7ED', borderRadius: 8, paddingVertical: 7, borderWidth: 1, borderColor: '#FED7AA' }}
+                                    onPress={() => handleBookVisit(item)}
+                                >
+                                    <SafeIcon name="calendar" size={14} color="#F97316" type="lucide" />
+                                    <Text style={{ marginLeft: 4, fontSize: 11, color: '#F97316' }}>Visite</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#F9FAFB', borderRadius: 8, paddingVertical: 7, borderWidth: 1, borderColor: '#E5E7EB' }}
+                                    onPress={() => handleShareProperty(item)}
+                                >
+                                    <SafeIcon name="share-2" size={14} color="#6B7280" type="lucide" />
+                                    <Text style={{ marginLeft: 4, fontSize: 11, color: '#6B7280' }}>Partager</Text>
+                                </TouchableOpacity>
+                            </View>
+                            {item.prix_vente && (
+                                <View style={{ flexDirection: 'row', paddingHorizontal: 16, paddingBottom: 8, gap: 6 }}>
                                     <TouchableOpacity
-                                        style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#ECFDF5', borderRadius: 8, paddingVertical: 8, borderWidth: 1, borderColor: '#A7F3D0' }}
+                                        style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#ECFDF5', borderRadius: 8, paddingVertical: 7, borderWidth: 1, borderColor: '#A7F3D0' }}
                                         onPress={() => handleLoanSimulation(item)}
                                     >
                                         <SafeIcon name="calculator" size={14} color="#10B981" type="lucide" />
-                                        <Text style={{ marginLeft: 4, fontSize: 12, color: '#10B981' }}>Prêt</Text>
+                                        <Text style={{ marginLeft: 4, fontSize: 11, color: '#10B981' }}>Simuler prêt</Text>
                                     </TouchableOpacity>
-                                )}
-                            </View>
+                                </View>
+                            )}
                         </View>
                     )}
                     numColumns={viewMode === 'grid' ? 2 : 1}

@@ -98,8 +98,9 @@ const HopitalHomeScreen: React.FC = () => {
     const loadAutocomplete = async (query: string) => {
         try {
             const response = await hospitalService.searchMedicalServices(query, 10);
-            if (response.success && response.services) {
-                setAutocompleteResults(response.services);
+            const r = response.data as any;
+            if (response.success && r?.services) {
+                setAutocompleteResults(r.services);
                 setShowAutocomplete(true);
             }
         } catch (err: any) {
@@ -163,8 +164,9 @@ const HopitalHomeScreen: React.FC = () => {
                 50 // 50km par défaut
             );
 
-            if (response.success && response.data) {
-                setAvailableServices(response.data);
+            const r = response.data as any;
+            if (response.success && r) {
+                setAvailableServices(r);
             } else {
                 setAvailableServices([]);
             }
@@ -272,13 +274,15 @@ const HopitalHomeScreen: React.FC = () => {
                     'general'
                 );
 
-                if (analysisResponse.success && analysisResponse.data) {
+                const ar = analysisResponse.data as any;
+                if (analysisResponse.success && ar) {
                     // Gérer différents formats de réponse
-                    const analysis = analysisResponse.data.analysis || analysisResponse.data;
+                    const analysis = ar?.analysis || ar;
                     setImageAnalysis(analysis);
                     toaster.success('Analyse d\'image terminée');
                 } else {
-                    const errorMsg = analysisResponse.error || analysisResponse.data?.error || 'Impossible d\'analyser l\'image. L\'IA d\'analyse d\'images n\'est peut-être pas encore opérationnelle.';
+                    const ar = analysisResponse.data as any;
+                    const errorMsg = analysisResponse.error || ar?.error || 'Impossible d\'analyser l\'image. L\'IA d\'analyse d\'images n\'est peut-être pas encore opérationnelle.';
                     toaster.error(errorMsg);
                     setImageAnalysis(null);
                 }
@@ -312,6 +316,59 @@ const HopitalHomeScreen: React.FC = () => {
                 },
             ]
         );
+    };
+
+    // Réserver un RDV
+    const handleBookAppointment = (service: MedicalServiceAvailability) => {
+        hapticPress();
+        Alert.alert(
+            'Prendre rendez-vous',
+            `Réserver une consultation à "${service.service_title}" ?`,
+            [
+                { text: 'Annuler', style: 'cancel' },
+                {
+                    text: 'Réserver',
+                    onPress: async () => {
+                        try {
+                            const resp = await hospitalService.bookAppointment(service.service_id, {
+                                service_name: searchQuery || 'Consultation générale',
+                                notes: 'Réservé depuis l\'application',
+                            });
+                            if ((resp as any).success) {
+                                Alert.alert('Succès', 'Rendez-vous réservé ! Vous recevrez une confirmation.');
+                            } else {
+                                Alert.alert('Info', 'Le service de réservation en ligne n\'est pas encore disponible pour cet hôpital.');
+                            }
+                        } catch (e) {
+                            Alert.alert('Info', 'La réservation en ligne sera bientôt disponible.');
+                        }
+                    },
+                },
+            ]
+        );
+    };
+
+    // Vérifier le triage IA
+    const handleAITriage = async () => {
+        hapticPress();
+        if (!pathologyQuery.trim()) {
+            toaster.warning('Décrivez vos symptômes pour obtenir une évaluation.');
+            return;
+        }
+        setLoadingAI(true);
+        try {
+            const resp = await hospitalService.getAIRecommendations(
+                pathologyQuery,
+                undefined,
+                location?.coords ? { lat: location.coords.latitude, lng: location.coords.longitude } : undefined
+            );
+            if ((resp as any).success && (resp as any).data?.recommendation) {
+                const reco = (resp as any).data.recommendation;
+                const msg = reco.preliminary_analysis || reco.advice?.join('\n') || 'Consultez un médecin.';
+                Alert.alert('Évaluation IA', msg);
+            }
+        } catch (e) { toaster.error('Service IA momentanément indisponible.'); }
+        finally { setLoadingAI(false); }
     };
 
     return (
@@ -368,9 +425,6 @@ const HopitalHomeScreen: React.FC = () => {
                                     }
                                 }}
                                 returnKeyType="search"
-                                multiline={true}
-                                numberOfLines={2}
-                                textAlignVertical="top"
                             />
                             {autocompleteQuery.length > 0 && (
                                 <TouchableOpacity
@@ -518,6 +572,34 @@ const HopitalHomeScreen: React.FC = () => {
                                     <Text style={styles.bloodBankText}>Banque de sang</Text>
                                 </View>
                             )}
+                            {/* Actions rapides */}
+                            <View style={{ flexDirection: 'row', marginTop: 8, gap: 8 }}>
+                                <TouchableOpacity
+                                    style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#EFF6FF', borderRadius: 8, paddingVertical: 8, borderWidth: 1, borderColor: '#BFDBFE' }}
+                                    onPress={() => handleBookAppointment(service)}
+                                >
+                                    <SafeIcon name="calendar" size={14} color="#3B82F6" type="lucide" />
+                                    <Text style={{ marginLeft: 4, fontSize: 12, color: '#3B82F6', fontWeight: '600' }}>Prendre RDV</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FEF2F2', borderRadius: 8, paddingVertical: 8, borderWidth: 1, borderColor: '#FCA5A5' }}
+                                    onPress={() => {
+                                        hapticPress();
+                                        hospitalService.getWaitTimes(service.service_id).then((resp: any) => {
+                                            const wt = resp?.data?.wait_times || resp?.wait_times;
+                                            if (wt && wt.length > 0) {
+                                                const avg = wt[0]?.avg_wait_time_minutes || wt[0]?.estimated_wait_minutes || '?';
+                                                Alert.alert('Temps d\'attente', `Temps moyen estimé : ${avg} min`);
+                                            } else {
+                                                Alert.alert('Info', 'Données de temps d\'attente non disponibles actuellement.');
+                                            }
+                                        }).catch(() => Alert.alert('Info', 'Service de temps d\'attente indisponible.'));
+                                    }}
+                                >
+                                    <SafeIcon name="clock" size={14} color="#EF4444" type="lucide" />
+                                    <Text style={{ marginLeft: 4, fontSize: 12, color: '#EF4444', fontWeight: '600' }}>Attente</Text>
+                                </TouchableOpacity>
+                            </View>
                         </View>
                     ))}
                 </ScrollView>

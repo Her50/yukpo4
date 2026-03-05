@@ -809,6 +809,129 @@ impl HotelRoomManagementService {
         Ok(result)
     }
 
+    /// Traite un paiement pour une réservation hôtel/meublé (avance ou solde complet)
+    pub async fn pay_hotel_reservation(
+        pool: &PgPool,
+        _user_id: i32,
+        reservation_id: i32,
+        payment_type: &str,   // "advance" ou "full"
+        payment_method: &str, // "mobile_money", "cash", "card", etc.
+        montant_avance: Option<f64>,
+    ) -> Result<serde_json::Value, AppError> {
+        // Récupérer la réservation
+        let row = sqlx::query(
+            r#"
+            SELECT property_id, montant_total, montant_avance, payment_status, status
+            FROM hotel_meuble_reservations
+            WHERE id = $1
+            "#,
+        )
+        .bind(reservation_id)
+        .fetch_optional(pool)
+        .await
+        .map_err(|e| {
+            log::error!(
+                "[pay_hotel_reservation] Erreur récupération réservation: {}",
+                e
+            );
+            AppError::Internal("Erreur récupération réservation".to_string())
+        })?;
+
+        let row = match row {
+            Some(r) => r,
+            None => return Err(AppError::NotFound("Réservation introuvable".to_string())),
+        };
+
+        let total: Decimal = row.try_get("montant_total").unwrap_or(Decimal::ZERO);
+        let current_avance: Decimal = row.try_get("montant_avance").unwrap_or(Decimal::ZERO);
+        let current_payment_status: String =
+            row.try_get("payment_status").unwrap_or_else(|_| "pending".to_string());
+
+        if current_payment_status == "fully_paid" {
+            return Err(AppError::BadRequest(
+                "Cette réservation est déjà entièrement payée".to_string(),
+            ));
+        }
+
+        let remaining = total.checked_sub(current_avance).unwrap_or(Decimal::ZERO);
+
+        let amount_paid: Decimal;
+        let new_avance: Decimal;
+        let new_payment_status: &str;
+
+        match payment_type {
+            "full" => {
+                amount_paid = remaining;
+                new_avance = total;
+                new_payment_status = "fully_paid";
+            }
+            "advance" => {
+                let adv = montant_avance.unwrap_or(0.0);
+                amount_paid = Decimal::from_f64_retain(adv).unwrap_or(Decimal::ZERO);
+                if amount_paid <= Decimal::ZERO {
+                    return Err(AppError::BadRequest(
+                        "Le montant de l'avance doit être supérieur à 0".to_string(),
+                    ));
+                }
+                if amount_paid > remaining {
+                    return Err(AppError::BadRequest(format!(
+                        "Le montant ({}) dépasse le reste à payer ({})",
+                        amount_paid, remaining
+                    )));
+                }
+                new_avance = current_avance.checked_add(amount_paid).unwrap_or(total);
+                new_payment_status = if new_avance >= total {
+                    "fully_paid"
+                } else {
+                    "advance_paid"
+                };
+            }
+            _ => {
+                return Err(AppError::BadRequest(
+                    "Type de paiement invalide (advance ou full attendu)".to_string(),
+                ));
+            }
+        }
+
+        // Mettre à jour la réservation
+        sqlx::query(
+            r#"
+            UPDATE hotel_meuble_reservations
+            SET montant_avance = $1,
+                payment_status = $2,
+                payment_method = $3,
+                status = CASE WHEN $2 = 'fully_paid' AND status = 'pending' THEN 'confirmed' ELSE status END,
+                updated_at = NOW()
+            WHERE id = $4
+            "#,
+        )
+        .bind(new_avance)
+        .bind(new_payment_status)
+        .bind(payment_method)
+        .bind(reservation_id)
+        .execute(pool)
+        .await
+        .map_err(|e| {
+            log::error!("[pay_hotel_reservation] Erreur mise à jour paiement: {}", e);
+            AppError::Internal("Erreur mise à jour paiement".to_string())
+        })?;
+
+        let new_remaining = total.checked_sub(new_avance).unwrap_or(Decimal::ZERO);
+
+        log::info!(
+            "[pay_hotel_reservation] reservation_id={}, amount_paid={}, new_status={}, remaining={}",
+            reservation_id, amount_paid, new_payment_status, new_remaining
+        );
+
+        Ok(json!({
+            "amount_paid": amount_paid.to_string().parse::<f64>().unwrap_or(0.0),
+            "new_payment_status": new_payment_status,
+            "remaining_amount": new_remaining.to_string().parse::<f64>().unwrap_or(0.0),
+            "montant_avance_total": new_avance.to_string().parse::<f64>().unwrap_or(0.0),
+            "montant_total": total.to_string().parse::<f64>().unwrap_or(0.0),
+        }))
+    }
+
     /// Met à jour le statut d'une réservation (check-in ou check-out)
     pub async fn update_reservation_status(
         pool: &PgPool,

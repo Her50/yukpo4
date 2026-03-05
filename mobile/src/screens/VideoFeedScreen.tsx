@@ -1,4 +1,4 @@
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useIsFocused, useNavigation } from '@react-navigation/native';
 import { AVPlaybackStatus, ResizeMode, Video } from 'expo-av';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -9,6 +9,7 @@ import {
     Animated,
     Dimensions,
     FlatList,
+    Modal,
     Platform,
     Pressable,
     RefreshControl,
@@ -20,6 +21,7 @@ import {
     View,
     ViewToken,
 } from 'react-native';
+import ProductCommentsSection from '../components/ProductCommentsSection';
 import SafeIcon from '../components/SafeIcon';
 import { SafeNativeView } from '../components/SafeNativeView';
 import { useAuth } from '../contexts/AuthContext';
@@ -41,6 +43,7 @@ type FeedItem = {
     viewsCount?: number;
     isPaid?: boolean;
     serviceId?: number;
+    productIndex?: number;
     sellerName?: string;
     sellerAvatar?: string;
     category?: string;
@@ -134,7 +137,8 @@ const normalizeFeed = (raw: any[]): FeedItem[] => {
                 viewsCount: Number(item?.views ?? item?.data?.views ?? item?.stats?.views ?? 0),
                 isPaid: item?.is_paid || item?.content_type === 'paid' || false,
                 serviceId: item?.service_id || item?.data?.service_id,
-                sellerName: item?.seller_name || item?.data?.seller_name || item?.data?.titre_service || item?.data?.titre?.valeur,
+                productIndex: item?.product_index ?? item?.data?.product_index ?? 0,
+                sellerName: item?.seller_name || item?.data?.seller_name || item?.data?.titre_service?.valeur || item?.data?.titre_service || item?.data?.prestataire_name,
                 sellerAvatar: item?.seller_avatar || item?.data?.seller_avatar,
                 category: item?.category || item?.data?.category,
                 hashtags: item?.hashtags || item?.data?.hashtags || [],
@@ -142,6 +146,15 @@ const normalizeFeed = (raw: any[]): FeedItem[] => {
         })
         .filter((item): item is FeedItem => item !== null && item !== undefined) as FeedItem[];
 };
+
+const REACTIONS = [
+    { type: 'love', emoji: '❤️', label: "J'adore" },
+    { type: 'like', emoji: '👍', label: "J'aime" },
+    { type: 'wow', emoji: '😮', label: 'Impressionnant' },
+    { type: 'interested', emoji: '🎯', label: 'Intéressant' },
+    { type: 'thinking', emoji: '🤔', label: 'À réfléchir' },
+    { type: 'disappointed', emoji: '😕', label: 'Déçu' },
+];
 
 const viewabilityConfig = {
     itemVisiblePercentThreshold: 80,
@@ -151,6 +164,7 @@ const viewabilityConfig = {
 const VideoFeedScreen: React.FC = ({ route }: any) => {
     const navigation = useNavigation();
     const { user } = useAuth();
+    const isFocused = useIsFocused();
     const showOnlyMyVideos = route?.params?.showOnlyMyVideos || false;
 
     const [loading, setLoading] = useState(true);
@@ -163,18 +177,28 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
     const [mutedMap, setMutedMap] = useState<Record<string, boolean>>({});
     const [progressMap, setProgressMap] = useState<Record<string, number>>({});
     const [doubleTapHeart, setDoubleTapHeart] = useState<string | null>(null);
+    const [commentsModalItem, setCommentsModalItem] = useState<FeedItem | null>(null);
+    const [reactionsMap, setReactionsMap] = useState<Record<string, Record<string, { count: number; hasReacted: boolean }>>>({});
+    const [showReactionPicker, setShowReactionPicker] = useState<string | null>(null);
+    const [pendingReaction, setPendingReaction] = useState<string | null>(null);
+    const [bufferingMap, setBufferingMap] = useState<Record<string, boolean>>({});
+    const [followMap, setFollowMap] = useState<Record<string, boolean>>({});
+    const [page, setPage] = useState(1);
+    const [hasMore, setHasMore] = useState(true);
+    const viewedSet = useRef<Set<string>>(new Set());
+    const spinAnim = useRef(new Animated.Value(0)).current;
     const videoRefs = useRef<Map<number, Video | null>>(new Map());
+    const flatListRef = useRef<FlatList>(null);
     const lastTapRef = useRef<Record<string, number>>({});
     const heartAnim = useRef(new Animated.Value(0)).current;
 
-    const fetchFeed = useCallback(async (isRefresh = false) => {
-        if (!isRefresh) setLoading(true);
+    const fetchFeed = useCallback(async (isRefresh = false, pageNum = 1) => {
+        if (!isRefresh && pageNum === 1) setLoading(true);
         try {
-            // ✅ CORRIGÉ 2026-03-04: Passer user_id pour recommandations ML personnalisées
             const userIdParam = user?.id ? `&user_id=${user.id}` : '';
             const endpoint = showOnlyMyVideos
                 ? '/api/videos/my-videos'
-                : `/api/content/mixed?limit=30&format=video${userIdParam}`;
+                : `/api/content/mixed?limit=20&page=${pageNum}&format=video${userIdParam}`;
             const response = await apiGet(endpoint);
             let data = response?.data;
             if (data && typeof data === 'object' && !Array.isArray(data)) {
@@ -183,15 +207,29 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                 data = response?.items || [];
             }
             const normalized = normalizeFeed(data);
-            console.log(`[VideoFeedScreen] Feed chargé: ${normalized.length} vidéos`);
-            setFeed(normalized);
-            setLikedMap({});
-            setSavedMap({});
-            setPausedMap({});
-            setProgressMap({});
+            console.log(`[VideoFeedScreen] Feed chargé: ${normalized.length} vidéos (page ${pageNum})`);
+
+            if (pageNum === 1 || isRefresh) {
+                setFeed(normalized);
+                setLikedMap({});
+                setSavedMap({});
+                setPausedMap({});
+                setProgressMap({});
+                setBufferingMap({});
+                viewedSet.current.clear();
+                setPage(1);
+            } else {
+                // Append sans doublons
+                setFeed((prev) => {
+                    const existingIds = new Set(prev.map((f) => f.id));
+                    const newItems = normalized.filter((f) => !existingIds.has(f.id));
+                    return [...prev, ...newItems];
+                });
+            }
+            setHasMore(normalized.length >= 10);
         } catch (error) {
             console.error('[VideoFeedScreen] Erreur chargement feed', error);
-            if (!isRefresh) {
+            if (!isRefresh && pageNum === 1) {
                 Alert.alert('Vidéos indisponibles', "Impossible de charger les vidéos pour l'instant.");
             }
         } finally {
@@ -204,8 +242,87 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
 
     const onRefresh = useCallback(() => {
         setRefreshing(true);
-        fetchFeed(true);
+        fetchFeed(true, 1);
     }, [fetchFeed]);
+
+    // ✅ Infinite scroll: charger la page suivante
+    const loadMore = useCallback(() => {
+        if (!hasMore || loading || refreshing) return;
+        const nextPage = page + 1;
+        setPage(nextPage);
+        fetchFeed(false, nextPage);
+    }, [hasMore, loading, refreshing, page, fetchFeed]);
+
+    // ✅ Vérifier le statut de suivi pour les vidéos visibles
+    const checkedFollowRef = useRef<Set<string>>(new Set());
+    const checkFollowStatus = useCallback(async (serviceId: string | number) => {
+        if (!serviceId || !user?.id) return;
+        const key = String(serviceId);
+        if (checkedFollowRef.current.has(key)) return;
+        checkedFollowRef.current.add(key);
+        try {
+            const res = await apiGet(`/api/services/${key}/follow-status`);
+            const data = res?.data as any;
+            if (data?.success) {
+                setFollowMap((prev) => ({ ...prev, [key]: data.is_following }));
+            }
+        } catch { /* silent */ }
+    }, [user?.id]);
+
+    useEffect(() => {
+        const item = feed[currentIndex];
+        if (item?.serviceId) {
+            checkFollowStatus(item.serviceId);
+        }
+    }, [currentIndex, feed, checkFollowStatus]);
+
+    const handleToggleFollow = useCallback(async (serviceId: string | number) => {
+        if (!serviceId || !user?.id) {
+            Alert.alert('Connexion requise', 'Connectez-vous pour suivre ce vendeur.');
+            return;
+        }
+        const key = String(serviceId);
+        const wasFollowing = followMap[key] || false;
+        // Optimistic update
+        setFollowMap((prev) => ({ ...prev, [key]: !wasFollowing }));
+        try {
+            const res = await apiPost(`/api/services/${key}/follow`, {});
+            const data = res?.data as any;
+            if (data?.success) {
+                setFollowMap((prev) => ({ ...prev, [key]: data.is_following }));
+            }
+        } catch {
+            // Revert on error
+            setFollowMap((prev) => ({ ...prev, [key]: wasFollowing }));
+        }
+    }, [user?.id, followMap]);
+
+    // ✅ View tracking: comptabiliser la vue quand vidéo active pendant >2s
+    useEffect(() => {
+        const currentItem = feed[currentIndex];
+        if (!currentItem || !isFocused) return;
+        const contentId = currentItem.contentId || currentItem.id;
+        if (viewedSet.current.has(contentId)) return;
+
+        const timer = setTimeout(() => {
+            viewedSet.current.add(contentId);
+            apiPost(`/api/content/${contentId}/engagement`, { action: 'view' }).catch(() => undefined);
+        }, 2000);
+        return () => clearTimeout(timer);
+    }, [currentIndex, feed, isFocused]);
+
+    // ✅ Spinning disc animation (comme TikTok)
+    useEffect(() => {
+        const spin = Animated.loop(
+            Animated.timing(spinAnim, {
+                toValue: 1,
+                duration: 4000,
+                useNativeDriver: true,
+            })
+        );
+        spin.start();
+        return () => spin.stop();
+    }, [spinAnim]);
 
     const registerRef = useCallback((index: number, ref: Video | null) => {
         videoRefs.current.set(index, ref);
@@ -220,19 +337,35 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
         [currentIndex],
     );
 
+    // ✅ CORRIGÉ: Pause/play basé sur currentIndex ET focus de l'écran
     useEffect(() => {
         videoRefs.current.forEach((ref, index) => {
             if (!ref) return;
             const item = feed[index];
             const contentId = item?.contentId || item?.id;
             const isPaused = contentId ? (pausedMap[contentId] ?? false) : false;
-            if (index === currentIndex && !isPaused) {
+            if (index === currentIndex && !isPaused && isFocused) {
                 ref.playAsync().catch(() => undefined);
             } else {
                 ref.pauseAsync().catch(() => undefined);
             }
         });
-    }, [currentIndex, pausedMap, feed]);
+    }, [currentIndex, pausedMap, feed, isFocused]);
+
+    // ✅ CORRIGÉ: Arrêter toutes les vidéos quand on quitte l'écran
+    useFocusEffect(
+        useCallback(() => {
+            return () => {
+                // Cleanup: pause toutes les vidéos en quittant
+                videoRefs.current.forEach((ref) => {
+                    if (ref) {
+                        ref.pauseAsync().catch(() => undefined);
+                        ref.setStatusAsync({ shouldPlay: false }).catch(() => undefined);
+                    }
+                });
+            };
+        }, [])
+    );
 
     const animateHeart = useCallback((contentId: string) => {
         setDoubleTapHeart(contentId);
@@ -243,18 +376,81 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
         ]).start(() => setDoubleTapHeart(null));
     }, [heartAnim]);
 
+    // ✅ CORRIGÉ: Charger les réactions depuis la même API que ProductCard
+    const loadReactionsForItem = useCallback(async (item: FeedItem) => {
+        if (!item.serviceId) return;
+        const key = `${item.serviceId}_${item.productIndex ?? 0}`;
+        try {
+            const response = await apiGet(`/api/products/${item.serviceId}/${item.productIndex ?? 0}/reactions`);
+            if (response && response.success && response.data) {
+                const reactionsData: Record<string, { count: number; hasReacted: boolean }> = {};
+                const reactionsArray = Array.isArray(response.data) ? response.data : [];
+                reactionsArray.forEach((r: any) => {
+                    if (r && r.reaction_type) {
+                        reactionsData[r.reaction_type] = {
+                            count: r.count || 0,
+                            hasReacted: r.has_reacted || false,
+                        };
+                    }
+                });
+                setReactionsMap((prev) => ({ ...prev, [key]: reactionsData }));
+                // Sync likedMap avec l'état serveur
+                const contentId = item.contentId || item.id;
+                if (reactionsData.love?.hasReacted) {
+                    setLikedMap((prev) => ({ ...prev, [contentId]: true }));
+                }
+            }
+        } catch (error) {
+            console.warn('[VideoFeedScreen] loadReactions error', error);
+        }
+    }, []);
+
+    // ✅ Charger les réactions quand la vidéo visible change
+    useEffect(() => {
+        const currentItem = feed[currentIndex];
+        if (currentItem?.serviceId) {
+            loadReactionsForItem(currentItem);
+        }
+    }, [currentIndex, feed, loadReactionsForItem]);
+
+    // ✅ CORRIGÉ: handleReaction utilise la même API que ProductCard
+    const handleReaction = useCallback(async (item: FeedItem, reactionType: string) => {
+        if (!item.serviceId) {
+            // Fallback: engagement API pour vidéos sans serviceId
+            const contentId = item.contentId || item.id;
+            const newState = !likedMap[contentId];
+            setLikedMap((prev) => ({ ...prev, [contentId]: newState }));
+            apiPost(`/api/content/${contentId}/engagement`, { action: 'like', set: newState }).catch(() => undefined);
+            return;
+        }
+
+        const key = `${item.serviceId}_${item.productIndex ?? 0}`;
+        setPendingReaction(reactionType);
+        try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch (_) { }
+
+        try {
+            const response = await apiPost(`/api/products/${item.serviceId}/${item.productIndex ?? 0}/react`, {
+                reaction_type: reactionType,
+            });
+            if (response.success) {
+                await loadReactionsForItem(item);
+            }
+        } catch (error) {
+            console.warn('[VideoFeedScreen] Reaction error', error);
+        } finally {
+            setPendingReaction(null);
+            setShowReactionPicker(null);
+        }
+    }, [likedMap, loadReactionsForItem]);
+
     const handleTap = useCallback((item: FeedItem) => {
         const contentId = item.contentId || item.id;
         const now = Date.now();
         const lastTap = lastTapRef.current[contentId] || 0;
 
         if (now - lastTap < 300) {
-            // Double-tap → Like
-            if (!likedMap[contentId]) {
-                setLikedMap((prev) => ({ ...prev, [contentId]: true }));
-                apiPost(`/api/content/${contentId}/engagement`, { action: 'like', set: true }).catch(() => undefined);
-                try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); } catch (_) { }
-            }
+            // Double-tap → Love reaction (même API que ProductCard)
+            handleReaction(item, 'love');
             animateHeart(contentId);
             lastTapRef.current[contentId] = 0;
         } else {
@@ -267,19 +463,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                 }
             }, 320);
         }
-    }, [likedMap, animateHeart]);
-
-    const toggleLike = useCallback(async (item: FeedItem) => {
-        const contentId = item.contentId || item.id;
-        const newState = !likedMap[contentId];
-        setLikedMap((prev) => ({ ...prev, [contentId]: newState }));
-        try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch (_) { }
-        try {
-            await apiPost(`/api/content/${contentId}/engagement`, { action: 'like', set: newState });
-        } catch (error) {
-            console.warn('[VideoFeedScreen] Like error', error);
-        }
-    }, [likedMap]);
+    }, [animateHeart, handleReaction]);
 
     const toggleSave = useCallback(async (item: FeedItem) => {
         const contentId = item.contentId || item.id;
@@ -302,7 +486,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
         try {
             const SHARE_BASE_URL = process.env.EXPO_PUBLIC_SHARE_URL || 'https://yukpo-backend-376093909298.europe-west1.run.app';
             const shareUrl = item.serviceId
-                ? `${SHARE_BASE_URL}/service/${item.serviceId}`
+                ? `${SHARE_BASE_URL}/product/${item.serviceId}_${item.productIndex ?? 0}`
                 : item.videoUrl;
 
             let shareText = `🎬 ${item.titre}`;
@@ -318,20 +502,53 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
 
     const handleViewProduct = useCallback((item: FeedItem) => {
         if (item.serviceId) {
-            (navigation as any).navigate('ServiceDetail', { serviceId: item.serviceId });
+            (navigation as any).navigate('ServiceDetailShared', { serviceId: item.serviceId });
+        } else {
+            Alert.alert('Information', 'Aucun produit associé à cette vidéo.');
         }
     }, [navigation]);
 
-    const handlePlaybackStatus = useCallback((contentId: string, status: AVPlaybackStatus) => {
-        if (!status.isLoaded) return;
+    const handleOpenComments = useCallback((item: FeedItem) => {
+        if (item.serviceId) {
+            setCommentsModalItem(item);
+        } else {
+            Alert.alert('Commentaires', 'Les commentaires ne sont pas disponibles pour cette vidéo.');
+        }
+    }, []);
+
+    const handlePlaybackStatus = useCallback((contentId: string, index: number, status: AVPlaybackStatus) => {
+        if (!status.isLoaded) {
+            // ✅ Détecter le buffering avant le chargement
+            setBufferingMap((prev) => {
+                if (prev[contentId] === true) return prev;
+                return { ...prev, [contentId]: true };
+            });
+            return;
+        }
+
+        // ✅ Tracker l'état de buffering
+        const isBuffering = status.isBuffering || false;
+        setBufferingMap((prev) => {
+            if (prev[contentId] === isBuffering) return prev;
+            return { ...prev, [contentId]: isBuffering };
+        });
+
         if (status.durationMillis && status.durationMillis > 0) {
             const progress = status.positionMillis / status.durationMillis;
             setProgressMap((prev) => {
                 if (Math.abs((prev[contentId] || 0) - progress) < 0.01) return prev;
                 return { ...prev, [contentId]: progress };
             });
+
+            // ✅ Auto-scroll vers la vidéo suivante quand la vidéo se termine
+            if (status.didJustFinish && !status.isLooping) {
+                const nextIndex = index + 1;
+                if (nextIndex < feed.length) {
+                    flatListRef.current?.scrollToIndex({ index: nextIndex, animated: true });
+                }
+            }
         }
-    }, []);
+    }, [feed.length]);
 
     const renderItem = useCallback(({ item, index }: { item: FeedItem; index: number }) => {
         const contentId = item.contentId || item.id;
@@ -341,6 +558,8 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
         const muted = mutedMap[contentId] ?? false;
         const progress = progressMap[contentId] ?? 0;
         const isActive = index === currentIndex;
+        const isBuffering = bufferingMap[contentId] ?? false;
+        const spinRotation = spinAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
 
         return (
             <View style={styles.card}>
@@ -353,15 +572,22 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                         posterStyle={styles.poster}
                         usePoster={!!item.thumbnail}
                         resizeMode={ResizeMode.COVER}
-                        shouldPlay={isActive && !paused}
-                        isLooping
+                        shouldPlay={isActive && !paused && isFocused}
+                        isLooping={false}
                         isMuted={muted}
                         useNativeControls={false}
-                        onPlaybackStatusUpdate={(status) => handlePlaybackStatus(contentId, status)}
+                        onPlaybackStatusUpdate={(status) => handlePlaybackStatus(contentId, index, status)}
                         onError={(error) => console.error(`[VideoFeedScreen] Erreur vidéo ${index}:`, error)}
                     />
 
-                    {paused && isActive && (
+                    {/* ✅ Buffering spinner (comme TikTok) */}
+                    {isBuffering && isActive && (
+                        <View style={styles.bufferingOverlay}>
+                            <ActivityIndicator size="large" color="#fff" />
+                        </View>
+                    )}
+
+                    {paused && isActive && !isBuffering && (
                         <View style={styles.pauseOverlay}>
                             <View style={styles.pauseIcon}>
                                 <SafeIcon name="play" size={48} color="#fff" type="lucide" />
@@ -394,11 +620,24 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                     pointerEvents="none"
                 />
 
-                {item.isPaid && (
-                    <View style={styles.sponsoredBadge}>
-                        <Text style={styles.sponsoredText}>Sponsorisé</Text>
+                {/* ✅ Header: bouton retour + compteur vidéo (comme TikTok) */}
+                <View style={styles.topBar}>
+                    <TouchableOpacity
+                        style={styles.backButton}
+                        onPress={() => (navigation as any).goBack()}
+                        activeOpacity={0.7}
+                    >
+                        <SafeIcon name="arrow-left" size={22} color="#fff" type="lucide" />
+                    </TouchableOpacity>
+                    <View style={styles.videoCounter}>
+                        <Text style={styles.videoCounterText}>{index + 1}/{feed.length}</Text>
                     </View>
-                )}
+                    {item.isPaid && (
+                        <View style={styles.sponsoredBadgeInline}>
+                            <Text style={styles.sponsoredText}>Sponsorisé</Text>
+                        </View>
+                    )}
+                </View>
 
                 <TouchableOpacity
                     style={styles.muteButton}
@@ -434,6 +673,21 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                                 </Text>
                             )}
                         </View>
+                        {item.serviceId && (
+                            <TouchableOpacity
+                                style={[styles.followButton, followMap[String(item.serviceId)] && styles.followButtonActive]}
+                                onPress={() => handleToggleFollow(item.serviceId!)}
+                                activeOpacity={0.7}
+                                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                            >
+                                <SafeIcon
+                                    name={followMap[String(item.serviceId)] ? 'check' : 'plus'}
+                                    size={12}
+                                    color="#fff"
+                                    type="lucide"
+                                />
+                            </TouchableOpacity>
+                        )}
                     </TouchableOpacity>
 
                     <Text numberOfLines={2} style={styles.title}>
@@ -464,14 +718,26 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                 </View>
 
                 <View style={styles.actions}>
-                    <TouchableOpacity style={styles.actionButton} onPress={() => toggleLike(item)} activeOpacity={0.7}>
+                    {/* ✅ Réaction coeur: tap = love, long-press = picker multi-réactions */}
+                    <TouchableOpacity
+                        style={styles.actionButton}
+                        onPress={() => handleReaction(item, 'love')}
+                        onLongPress={() => setShowReactionPicker(contentId)}
+                        activeOpacity={0.7}
+                        disabled={pendingReaction !== null}
+                    >
                         <View style={[styles.actionIconBg, liked && styles.actionIconBgActive]}>
                             <SafeIcon name="heart" size={28} color={liked ? '#FF2D55' : '#fff'} type="lucide" />
                         </View>
-                        <Text style={styles.actionLabel}>{formatCount((item.likesCount ?? 0) + (liked ? 1 : 0))}</Text>
+                        <Text style={styles.actionLabel}>
+                            {formatCount(
+                                Object.values(reactionsMap[`${item.serviceId}_${item.productIndex ?? 0}`] || {}).reduce((sum, r) => sum + (r?.count || 0), 0)
+                                || (item.likesCount ?? 0)
+                            )}
+                        </Text>
                     </TouchableOpacity>
 
-                    <TouchableOpacity style={styles.actionButton} onPress={() => { }} activeOpacity={0.7}>
+                    <TouchableOpacity style={styles.actionButton} onPress={() => handleOpenComments(item)} activeOpacity={0.7}>
                         <View style={styles.actionIconBg}>
                             <SafeIcon name="message-circle" size={28} color="#fff" type="lucide" />
                         </View>
@@ -492,9 +758,49 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                         <Text style={styles.actionLabel}>Partager</Text>
                     </TouchableOpacity>
                 </View>
+
+                {/* ✅ Disque tournant vendeur (comme TikTok) */}
+                <Animated.View style={[styles.spinningDisc, { transform: [{ rotate: isActive && !paused ? spinRotation : '0deg' }] }]}>
+                    <View style={styles.spinningDiscInner}>
+                        <Text style={styles.spinningDiscText}>
+                            {(item.sellerName || 'Y')[0].toUpperCase()}
+                        </Text>
+                    </View>
+                </Animated.View>
+
+                {/* ✅ Picker multi-réactions (apparaît au long-press sur coeur) */}
+                {showReactionPicker === contentId && (
+                    <View style={styles.reactionPickerContainer}>
+                        <View style={styles.reactionPicker}>
+                            {REACTIONS.map((reaction) => {
+                                const itemReactions = reactionsMap[`${item.serviceId}_${item.productIndex ?? 0}`] || {};
+                                const hasReacted = itemReactions[reaction.type]?.hasReacted || false;
+                                return (
+                                    <TouchableOpacity
+                                        key={reaction.type}
+                                        style={[styles.reactionPickerItem, hasReacted && styles.reactionPickerItemActive]}
+                                        onPress={() => handleReaction(item, reaction.type)}
+                                        activeOpacity={0.7}
+                                    >
+                                        <Text style={styles.reactionPickerEmoji}>{reaction.emoji}</Text>
+                                        {itemReactions[reaction.type]?.count > 0 && (
+                                            <Text style={styles.reactionPickerCount}>{itemReactions[reaction.type].count}</Text>
+                                        )}
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </View>
+                        <TouchableOpacity
+                            style={styles.reactionPickerClose}
+                            onPress={() => setShowReactionPicker(null)}
+                        >
+                            <SafeIcon name="x" size={16} color="#fff" type="lucide" />
+                        </TouchableOpacity>
+                    </View>
+                )}
             </View>
         );
-    }, [likedMap, savedMap, pausedMap, mutedMap, progressMap, currentIndex, doubleTapHeart, heartAnim, handleTap, toggleLike, toggleSave, toggleMute, handleShare, handleViewProduct, registerRef, handlePlaybackStatus]);
+    }, [likedMap, savedMap, pausedMap, mutedMap, progressMap, currentIndex, doubleTapHeart, heartAnim, handleTap, handleReaction, toggleSave, toggleMute, handleShare, handleViewProduct, handleOpenComments, registerRef, handlePlaybackStatus, isFocused, reactionsMap, showReactionPicker, pendingReaction, bufferingMap, spinAnim, feed.length, navigation, followMap, handleToggleFollow]);
 
     if (loading) {
         return (
@@ -515,7 +821,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                 <Text style={styles.emptySubtitle}>
                     Revenez plus tard ou créez votre première vidéo.
                 </Text>
-                <TouchableOpacity style={styles.reloadButton} onPress={fetchFeed}>
+                <TouchableOpacity style={styles.reloadButton} onPress={() => fetchFeed()}>
                     <SafeIcon name="refresh-cw" size={18} color="#fff" type="lucide" />
                     <Text style={styles.reloadText}>Recharger</Text>
                 </TouchableOpacity>
@@ -527,6 +833,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
         <SafeNativeView style={styles.container}>
             <StatusBar barStyle="light-content" backgroundColor="#000" translucent />
             <FlatList
+                ref={flatListRef}
                 data={feed}
                 keyExtractor={(item) => item.id}
                 renderItem={renderItem}
@@ -543,6 +850,14 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                 maxToRenderPerBatch={2}
                 removeClippedSubviews={Platform.OS === 'android'}
                 initialNumToRender={1}
+                decelerationRate="fast"
+                onEndReached={loadMore}
+                onEndReachedThreshold={0.5}
+                onScrollToIndexFailed={(info) => {
+                    setTimeout(() => {
+                        flatListRef.current?.scrollToIndex({ index: info.index, animated: true });
+                    }, 200);
+                }}
                 refreshControl={
                     <RefreshControl
                         refreshing={refreshing}
@@ -553,6 +868,38 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                     />
                 }
             />
+
+            {/* ✅ NOUVEAU: Modal commentaires utilisant ProductCommentsSection */}
+            <Modal
+                visible={!!commentsModalItem}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={() => setCommentsModalItem(null)}
+            >
+                <View style={styles.commentsModalOverlay}>
+                    <View style={styles.commentsModalContainer}>
+                        <View style={styles.commentsModalHeader}>
+                            <Text style={styles.commentsModalTitle}>Commentaires</Text>
+                            <TouchableOpacity
+                                onPress={() => setCommentsModalItem(null)}
+                                style={styles.commentsModalClose}
+                                activeOpacity={0.7}
+                            >
+                                <SafeIcon name="x" size={22} color="#374151" type="lucide" />
+                            </TouchableOpacity>
+                        </View>
+                        {commentsModalItem?.serviceId && (
+                            <ProductCommentsSection
+                                serviceId={commentsModalItem.serviceId}
+                                productIndex={commentsModalItem.productIndex ?? 0}
+                                serviceTitle={commentsModalItem.titre}
+                                mode="full"
+                                compact={false}
+                            />
+                        )}
+                    </View>
+                </View>
+            </Modal>
         </SafeNativeView>
     );
 };
@@ -635,6 +982,12 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
     },
+    bufferingOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'rgba(0,0,0,0.15)',
+    },
     heartAnimation: {
         position: 'absolute',
         top: '50%',
@@ -662,14 +1015,41 @@ const styles = StyleSheet.create({
         right: 0,
         height: 300,
     },
-    sponsoredBadge: {
+    topBar: {
         position: 'absolute',
-        top: Platform.OS === 'ios' ? 60 : 40,
-        left: 16,
+        top: Platform.OS === 'ios' ? 50 : 30,
+        left: 0,
+        right: 0,
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        zIndex: 30,
+        gap: 10,
+    },
+    backButton: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: 'rgba(0,0,0,0.4)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    videoCounter: {
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 12,
+        backgroundColor: 'rgba(0,0,0,0.4)',
+    },
+    videoCounterText: {
+        color: '#fff',
+        fontSize: 12,
+        fontWeight: '700',
+    },
+    sponsoredBadgeInline: {
         paddingHorizontal: 10,
         paddingVertical: 4,
         borderRadius: 6,
-        backgroundColor: 'rgba(255,255,255,0.2)',
+        backgroundColor: 'rgba(255,165,0,0.6)',
     },
     sponsoredText: {
         color: '#fff',
@@ -679,7 +1059,7 @@ const styles = StyleSheet.create({
     },
     muteButton: {
         position: 'absolute',
-        top: Platform.OS === 'ios' ? 60 : 40,
+        top: Platform.OS === 'ios' ? 52 : 32,
         right: 16,
         width: 36,
         height: 36,
@@ -687,13 +1067,14 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(0,0,0,0.4)',
         alignItems: 'center',
         justifyContent: 'center',
+        zIndex: 30,
     },
     bottomInfo: {
         position: 'absolute',
-        bottom: 24,
+        bottom: 40,
         left: 16,
-        right: 80,
-        gap: 8,
+        right: 72,
+        gap: 6,
     },
     sellerRow: {
         flexDirection: 'row',
@@ -721,19 +1102,34 @@ const styles = StyleSheet.create({
     },
     sellerName: {
         color: '#fff',
-        fontSize: 15,
+        fontSize: 14,
         fontWeight: '700',
+        textShadowColor: 'rgba(0,0,0,0.6)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 4,
     },
     sellerCategory: {
         color: 'rgba(255,255,255,0.6)',
-        fontSize: 12,
-        fontWeight: '500',
+        fontSize: 11,
+    },
+    followButton: {
+        width: 22,
+        height: 22,
+        borderRadius: 11,
+        backgroundColor: '#FF2D55',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginLeft: 4,
+        borderWidth: 1.5,
+        borderColor: '#fff',
+    },
+    followButtonActive: {
+        backgroundColor: '#34C759',
     },
     title: {
         color: '#fff',
         fontSize: 15,
-        fontWeight: '600',
-        lineHeight: 20,
+        fontWeight: '700',
         textShadowColor: 'rgba(0,0,0,0.6)',
         textShadowOffset: { width: 0, height: 1 },
         textShadowRadius: 4,
@@ -769,9 +1165,9 @@ const styles = StyleSheet.create({
     },
     actions: {
         position: 'absolute',
-        right: 12,
-        bottom: 100,
-        gap: 20,
+        right: 8,
+        bottom: 60,
+        gap: 16,
         alignItems: 'center',
     },
     actionButton: {
@@ -779,9 +1175,9 @@ const styles = StyleSheet.create({
         gap: 4,
     },
     actionIconBg: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
         backgroundColor: 'rgba(0,0,0,0.3)',
         alignItems: 'center',
         justifyContent: 'center',
@@ -796,6 +1192,112 @@ const styles = StyleSheet.create({
         textShadowColor: 'rgba(0,0,0,0.5)',
         textShadowOffset: { width: 0, height: 1 },
         textShadowRadius: 2,
+    },
+    brandYuk: {
+        color: '#3B82F6',
+    },
+    brandPo: {
+        color: '#7C3AED',
+    },
+    commentsModalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'flex-end',
+    },
+    commentsModalContainer: {
+        backgroundColor: '#fff',
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        maxHeight: SCREEN_HEIGHT * 0.7,
+        minHeight: SCREEN_HEIGHT * 0.45,
+        paddingBottom: Platform.OS === 'ios' ? 34 : 16,
+    },
+    commentsModalHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 20,
+        paddingVertical: 14,
+        borderBottomWidth: 1,
+        borderBottomColor: '#E5E7EB',
+    },
+    commentsModalTitle: {
+        fontSize: 17,
+        fontWeight: '700',
+        color: '#111827',
+    },
+    commentsModalClose: {
+        padding: 4,
+        borderRadius: 20,
+        backgroundColor: '#F3F4F6',
+    },
+    reactionPickerContainer: {
+        position: 'absolute',
+        right: 64,
+        bottom: 160,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    reactionPicker: {
+        flexDirection: 'row',
+        backgroundColor: 'rgba(0,0,0,0.85)',
+        borderRadius: 30,
+        paddingHorizontal: 8,
+        paddingVertical: 6,
+        gap: 4,
+    },
+    reactionPickerItem: {
+        alignItems: 'center',
+        paddingHorizontal: 6,
+        paddingVertical: 4,
+        borderRadius: 20,
+    },
+    reactionPickerItemActive: {
+        backgroundColor: 'rgba(255,255,255,0.2)',
+    },
+    reactionPickerEmoji: {
+        fontSize: 24,
+    },
+    reactionPickerCount: {
+        color: '#fff',
+        fontSize: 9,
+        fontWeight: '700',
+        marginTop: 1,
+    },
+    reactionPickerClose: {
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        backgroundColor: 'rgba(0,0,0,0.6)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    spinningDisc: {
+        position: 'absolute',
+        right: 10,
+        bottom: 20,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        borderWidth: 2,
+        borderColor: 'rgba(255,255,255,0.3)',
+        backgroundColor: '#1a1a1a',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    spinningDiscInner: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: '#333',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    spinningDiscText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: '800',
     },
 });
 

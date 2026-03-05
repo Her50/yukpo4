@@ -133,6 +133,8 @@ export interface VideoGenerationPayload {
     style_overlay_tips?: string[] | null;
     style_music_hint?: string | null;
     voice_profile_id?: number | null;
+    creation_source?: 'media' | 'ai_virtual' | null;
+    ai_video_prompt?: string | null;
     media_scene_overrides?: Array<{
         media_id: number;
         scene_index: number;

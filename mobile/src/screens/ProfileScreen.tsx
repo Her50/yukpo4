@@ -25,7 +25,7 @@ const cleanUserName = (name: string | undefined | null): string => {
 
   // ✅ CORRECTION : Détecter et supprimer les doublons (ex: "LELE Hernandez LELE Hernandez" -> "LELE Hernandez")
   const words = trimmed.split(/\s+/);
-  
+
   // Méthode 1: Vérifier si la première moitié = deuxième moitié (ex: "LELE Hernandez LELE Hernandez")
   if (words.length >= 4) {
     const firstHalf = words.slice(0, Math.floor(words.length / 2)).join(' ');
@@ -293,6 +293,13 @@ const ProfileScreen: React.FC = () => {
       description: 'Ajouter des tokens à votre compte'
     },
     {
+      title: 'Mes Suivis',
+      icon: 'heart',
+      color: '#FF2D55',
+      route: 'MesSuivis',
+      description: 'Vendeurs et prestataires que vous suivez'
+    },
+    {
       title: 'Mes Vidéos',
       icon: 'video', // ✅ NOUVEAU: Accès aux vidéos créées
       color: '#EC4899',
@@ -307,14 +314,8 @@ const ProfileScreen: React.FC = () => {
       route: 'VideoAnalytics',
       description: 'Statistiques et performances de vos vidéos'
     },
-    // ✅ Masqué pour non-partenaires - Les partenaires sont redirigés automatiquement vers leur écran
-    ...(user?.role === 'partenaire' ? [{
-      title: 'Mes Services Spécialisés',
-      icon: 'layout-grid', // ✅ CORRIGÉ: Icône Lucide pour interface de gestion (tablette/grille)
-      color: '#6366F1',
-      route: 'SpecializedServicesHub',
-      description: 'Gérer vos services de santé et transport'
-    }] : []),
+    // ✅ SUPPRIMÉ 2026-03-05: Accès services spécialisés retiré de "Mon compte"
+    // Les partenaires sont redirigés automatiquement vers leur écran après connexion
     {
       title: 'Mes tickets de voyage',
       icon: 'ticket', // ✅ CORRIGÉ: Icône Lucide pour tickets
@@ -386,136 +387,136 @@ const ProfileScreen: React.FC = () => {
 
   return (
     <SafeNativeView style={styles.container}>
-      <ScrollView 
-        style={styles.scrollView} 
+      <ScrollView
+        style={styles.scrollView}
         contentContainerStyle={{ paddingBottom: 120 }}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
       >
-      {/* Header avec photo de profil */}
-      <View style={styles.header}>
-        <View style={styles.profileSection}>
-          <TouchableOpacity
-            style={styles.avatarContainer}
-            onPress={handleChangePhoto}
-            disabled={uploadingPhoto}
-          >
-            {uploadingPhoto ? (
-              <View style={styles.avatar}>
-                <ActivityIndicator size="small" color={theme.colors.primary} />
-              </View>
-            ) : user?.photo || user?.avatar ? (
-              <Image
-                source={{ uri: user.photo || user.avatar }}
-                style={styles.avatarImage}
-              />
-            ) : (
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>
-                  {(() => {
-                    const cleanedName = cleanUserName(user?.name || user?.nom_complet);
-                    if (cleanedName && cleanedName !== 'Utilisateur') {
-                      return cleanedName
-                        .split(' ')
-                        .map(word => word.charAt(0))
-                        .join('')
-                        .toUpperCase()
-                        .slice(0, 2);
-                    }
-                    return 'U';
-                  })()}
-                </Text>
-              </View>
-            )}
-            <View style={styles.avatarEditBadge}>
-              <Text style={styles.avatarEditIcon}>📷</Text>
-            </View>
-          </TouchableOpacity>
-          <Text style={styles.userName}>{cleanUserName(user?.name || user?.nom_complet)}</Text>
-          <Text style={styles.userEmail}>{user?.email || 'email@example.com'}</Text>
-          <View style={styles.verificationBadge}>
-            <Text style={styles.verificationIcon}>✓</Text>
-            <Text style={styles.verificationText}>Compte vérifié</Text>
-          </View>
-        </View>
-      </View>
-
-      {/* Statistiques */}
-      <View style={styles.statsContainer}>
-        {stats.map((stat, index) => (
-          <View key={index} style={styles.statItem}>
-            <Text style={styles.statValue}>{stat.value}</Text>
-            <Text style={styles.statLabel}>{stat.label}</Text>
-          </View>
-        ))}
-      </View>
-
-      {/* Actions du profil */}
-      <View style={styles.actionsContainer}>
-        {profileActions.map((action, index) => (
-          <TouchableOpacity
-            key={index}
-            style={styles.actionItem}
-            onPress={() => {
-              if (action.route) {
-                (navigation as any).navigate(action.route);
-              } else {
-                Alert.alert('Information', 'Fonctionnalité en cours de développement');
-              }
-            }}
-          >
-            <View style={styles.actionLeft}>
-              <View style={[styles.actionIcon, { backgroundColor: action.color + '20' }]}>
-                <SafeIcon
-                  name={action.icon}
-                  size={20}
-                  color={action.color}
-                  type="lucide"
+        {/* Header avec photo de profil */}
+        <View style={styles.header}>
+          <View style={styles.profileSection}>
+            <TouchableOpacity
+              style={styles.avatarContainer}
+              onPress={handleChangePhoto}
+              disabled={uploadingPhoto}
+            >
+              {uploadingPhoto ? (
+                <View style={styles.avatar}>
+                  <ActivityIndicator size="small" color={theme.colors.primary} />
+                </View>
+              ) : user?.photo || user?.avatar ? (
+                <Image
+                  source={{ uri: user.photo || user.avatar }}
+                  style={styles.avatarImage}
                 />
+              ) : (
+                <View style={styles.avatar}>
+                  <Text style={styles.avatarText}>
+                    {(() => {
+                      const cleanedName = cleanUserName(user?.name || user?.nom_complet);
+                      if (cleanedName && cleanedName !== 'Utilisateur') {
+                        return cleanedName
+                          .split(' ')
+                          .map(word => word.charAt(0))
+                          .join('')
+                          .toUpperCase()
+                          .slice(0, 2);
+                      }
+                      return 'U';
+                    })()}
+                  </Text>
+                </View>
+              )}
+              <View style={styles.avatarEditBadge}>
+                <Text style={styles.avatarEditIcon}>📷</Text>
               </View>
-              <View>
-                <Text style={styles.actionTitle}>{action.title}</Text>
-                {action.description && (
-                  <Text style={styles.actionDescription}>{action.description}</Text>
-                )}
-              </View>
+            </TouchableOpacity>
+            <Text style={styles.userName}>{cleanUserName(user?.name || user?.nom_complet)}</Text>
+            <Text style={styles.userEmail}>{user?.email || 'email@example.com'}</Text>
+            <View style={styles.verificationBadge}>
+              <Text style={styles.verificationIcon}>✓</Text>
+              <Text style={styles.verificationText}>Compte vérifié</Text>
             </View>
-            <Text style={styles.chevronIcon}>›</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      {/* Informations du compte */}
-      <View style={styles.infoCard}>
-        <View style={styles.infoCardContent}>
-          <Text style={styles.cardTitle}>Informations du Compte</Text>
-          <View style={styles.infoItem}>
-            <Text style={styles.infoLabel}>Membre depuis</Text>
-            <Text style={styles.infoValue}>{accountInfo.memberSince}</Text>
-          </View>
-          <View style={styles.infoItem}>
-            <Text style={styles.infoLabel}>Type de compte</Text>
-            <Text style={styles.infoValue}>{accountInfo.accountType}</Text>
-          </View>
-          <View style={styles.infoItem}>
-            <Text style={styles.infoLabel}>Statut</Text>
-            <Text style={[styles.infoValue, { color: accountInfo.status === 'Actif' ? '#4CAF50' : '#F44336' }]}>
-              {accountInfo.status}
-            </Text>
           </View>
         </View>
-      </View>
 
-      {/* Bouton de déconnexion */}
-      <View style={styles.logoutContainer}>
-        <TouchableOpacity
-          onPress={handleLogout}
-          style={styles.logoutButton}
-        >
-          <Text style={styles.logoutIcon}>🚪</Text>
-          <Text style={{ color: "#DC2626" }}>Se déconnecter</Text>
-        </TouchableOpacity>
-      </View>
+        {/* Statistiques */}
+        <View style={styles.statsContainer}>
+          {stats.map((stat, index) => (
+            <View key={index} style={styles.statItem}>
+              <Text style={styles.statValue}>{stat.value}</Text>
+              <Text style={styles.statLabel}>{stat.label}</Text>
+            </View>
+          ))}
+        </View>
+
+        {/* Actions du profil */}
+        <View style={styles.actionsContainer}>
+          {profileActions.map((action, index) => (
+            <TouchableOpacity
+              key={index}
+              style={styles.actionItem}
+              onPress={() => {
+                if (action.route) {
+                  (navigation as any).navigate(action.route);
+                } else {
+                  Alert.alert('Information', 'Fonctionnalité en cours de développement');
+                }
+              }}
+            >
+              <View style={styles.actionLeft}>
+                <View style={[styles.actionIcon, { backgroundColor: action.color + '20' }]}>
+                  <SafeIcon
+                    name={action.icon}
+                    size={20}
+                    color={action.color}
+                    type="lucide"
+                  />
+                </View>
+                <View>
+                  <Text style={styles.actionTitle}>{action.title}</Text>
+                  {action.description && (
+                    <Text style={styles.actionDescription}>{action.description}</Text>
+                  )}
+                </View>
+              </View>
+              <Text style={styles.chevronIcon}>›</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Informations du compte */}
+        <View style={styles.infoCard}>
+          <View style={styles.infoCardContent}>
+            <Text style={styles.cardTitle}>Informations du Compte</Text>
+            <View style={styles.infoItem}>
+              <Text style={styles.infoLabel}>Membre depuis</Text>
+              <Text style={styles.infoValue}>{accountInfo.memberSince}</Text>
+            </View>
+            <View style={styles.infoItem}>
+              <Text style={styles.infoLabel}>Type de compte</Text>
+              <Text style={styles.infoValue}>{accountInfo.accountType}</Text>
+            </View>
+            <View style={styles.infoItem}>
+              <Text style={styles.infoLabel}>Statut</Text>
+              <Text style={[styles.infoValue, { color: accountInfo.status === 'Actif' ? '#4CAF50' : '#F44336' }]}>
+                {accountInfo.status}
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Bouton de déconnexion */}
+        <View style={styles.logoutContainer}>
+          <TouchableOpacity
+            onPress={handleLogout}
+            style={styles.logoutButton}
+          >
+            <Text style={styles.logoutIcon}>🚪</Text>
+            <Text style={{ color: "#DC2626" }}>Se déconnecter</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </SafeNativeView>
   );

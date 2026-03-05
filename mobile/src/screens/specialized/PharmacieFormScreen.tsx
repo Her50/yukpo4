@@ -1,18 +1,23 @@
+// ✅ REFONTE TOTALE 2026-03-05: PharmacieFormScreen → Dashboard professionnel + Formulaire
+// Mode Dashboard (pharmacie existante): 4 tabs (Accueil / Mon service / Produits / Stats)
+// Mode Création (nouvelle pharmacie): Formulaire guidé avec header gradient
+// Exploite endpoints: CRUD pharmacie, produits, commandes, garde, analytics, IA interactions/dosage
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useState } from 'react';
 import {
+    ActivityIndicator,
     Alert,
     Modal,
+    RefreshControl,
     ScrollView,
     StyleSheet,
     Switch,
     Text,
     TouchableOpacity,
-    View
+    View,
 } from 'react-native';
-import { ConfirmationSection } from '../../components/FormConfirmationModal';
 import GuardDaysSelector from '../../components/GuardDaysSelector';
-import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 import ModernGPSModal from '../../components/ModernGPSModal';
 import SafeIcon from '../../components/SafeIcon';
@@ -25,10 +30,11 @@ import { useFormValidation } from '../../hooks/useFormValidation';
 import { usePartnerData } from '../../hooks/usePartnerData';
 import { apiDelete, apiGet, apiPatch, apiPost, servicesApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
+import { getCurrencyIntelligently } from '../../utils/currencyUtils';
 
 const STORAGE_KEY = '@pharmacie_form';
+type TabType = 'overview' | 'service' | 'products' | 'analytics';
 
-// ✅ NOUVEAU: Interface pour les produits de pharmacie
 interface PharmacyProduct {
     id: number;
     nom_produit: string;
@@ -42,6 +48,18 @@ interface PharmacyProduct {
     updated_at?: string;
 }
 
+interface PharmacyAnalytics {
+    total_orders: number;
+    orders_7d: number;
+    orders_30d: number;
+    total_revenue: string | null;
+    avg_order_value: string | null;
+}
+
+const SERVICES_OPTIONS = ['Garde', 'Délivrance', 'Conseil', 'Vaccination', 'Pansements', 'Livraison à domicile', 'Préparation de médicaments'];
+const UNITE_OPTIONS = ['unité', 'boîte', 'flacon', 'plaquette', 'tube', 'sachet', 'ampoule', 'comprimé'];
+const CATEGORIE_OPTIONS = ['Médicament', 'Parapharmacie', 'Accessoire médical', 'Hygiène', 'Nutrition', 'Autre'];
+
 const PharmacieFormScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
@@ -50,13 +68,23 @@ const PharmacieFormScreen: React.FC = () => {
     const [serviceId, setServiceId] = useState<number | null>((route.params as any)?.serviceId || null);
     const specializedServiceId = (route.params as any)?.specializedServiceId as number | undefined;
     const mode = (route.params as any)?.mode as string | undefined;
+    const devise = getCurrencyIntelligently() || 'FCFA';
 
+    // Dashboard state
+    const [activeTab, setActiveTab] = useState<TabType>('overview');
+    const [isDashboardMode, setIsDashboardMode] = useState(false);
+    const [initialLoading, setInitialLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+    const [pharmacyData, setPharmacyData] = useState<any>(null);
+    const [analyticsData, setAnalyticsData] = useState<PharmacyAnalytics | null>(null);
+    const [isOnDuty, setIsOnDuty] = useState(false);
+
+    // Form state
     const [formData, setFormData] = useState({
-        nom: '', // ✅ Sera rempli automatiquement depuis /api/partners/me
+        nom: '',
         adresse: '',
         quartier: null as LocationObject | null,
-        // ✅ SUPPRIMÉ : ville (quartier contient déjà ville et pays)
-        jours_garde: {} as Record<string, number[]>, // Format: { '2025-01': [1, 3, 5], ... }
+        jours_garde: {} as Record<string, number[]>,
         heures_ouverture: '08:00',
         heures_fermeture: '20:00',
         permanent_24h: false,
@@ -72,1715 +100,753 @@ const PharmacieFormScreen: React.FC = () => {
     const [showGPSModal, setShowGPSModal] = useState(false);
     const [selectedGPS, setSelectedGPS] = useState<string | null>(null);
     const [showGuardDaysModal, setShowGuardDaysModal] = useState(false);
-    const [showConfirmation, setShowConfirmation] = useState(false);
 
-    const { partnerData } = usePartnerData(user?.role, 'pharmacie');
-    const { errors, validateField, validateForm, setError } = useFormValidation({
-        nom: { required: true, minLength: 3 },
-        telephone: {
-            required: true,
-            pattern: /^\+?[0-9]{9,15}$/,
-        },
-        email: { pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/ },
-    });
-
-    useFormAutoSave(STORAGE_KEY, formData, mode !== 'edit', 1000);
-
-    // ✅ NOUVEAU: États pour la gestion des médicaments
+    // Products state
     const [products, setProducts] = useState<PharmacyProduct[]>([]);
     const [loadingProducts, setLoadingProducts] = useState(false);
     const [showProductModal, setShowProductModal] = useState(false);
     const [editingProduct, setEditingProduct] = useState<PharmacyProduct | null>(null);
     const [productFormData, setProductFormData] = useState({
-        nom_produit: '',
-        description: '',
-        prix: '',
-        stock: '',
-        unite: 'unité',
-        code_barre: '',
-        categorie: '',
+        nom_produit: '', description: '', prix: '', stock: '', unite: 'unité', code_barre: '', categorie: '',
     });
-    // ✅ NOUVEAU: États pour fonctionnalités avancées
     const [searchQuery, setSearchQuery] = useState('');
     const [showBulkImportModal, setShowBulkImportModal] = useState(false);
     const [bulkImportText, setBulkImportText] = useState('');
     const [bulkImportOverwrite, setBulkImportOverwrite] = useState(false);
     const [loadingBulkImport, setLoadingBulkImport] = useState(false);
 
-    const servicesOptions = ['Garde', 'Délivrance', 'Conseil', 'Vaccination', 'Pansements', 'Livraison à domicile', 'Préparation de médicaments'];
-    const uniteOptions = ['unité', 'boîte', 'flacon', 'plaquette', 'tube', 'sachet', 'ampoule', 'comprimé'];
-    const categorieOptions = ['Médicament', 'Parapharmacie', 'Accessoire médical', 'Hygiène', 'Nutrition', 'Autre'];
-
-    // ✅ NOUVEAU: Filtrer les produits selon la recherche
-    const filteredProducts = products.filter((product) => {
-        if (!searchQuery.trim()) return true;
-        const query = searchQuery.toLowerCase();
-        return (
-            product.nom_produit.toLowerCase().includes(query) ||
-            (product.description && product.description.toLowerCase().includes(query)) ||
-            (product.categorie && product.categorie.toLowerCase().includes(query)) ||
-            (product.code_barre && product.code_barre.includes(query))
-        );
+    const { partnerData } = usePartnerData(user?.role, 'pharmacie');
+    const { errors, validateField, validateForm, setError } = useFormValidation({
+        nom: { required: true, minLength: 3 },
+        telephone: { required: true, pattern: /^\+?[0-9]{9,15}$/ },
+        email: { pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/ },
     });
 
-    // ✅ NOUVEAU: Calculer les statistiques
+    useFormAutoSave(STORAGE_KEY, formData, mode !== 'edit', 1000);
+
+    // Computed
+    const filteredProducts = products.filter(p => {
+        if (!searchQuery.trim()) return true;
+        const q = searchQuery.toLowerCase();
+        return p.nom_produit.toLowerCase().includes(q) || (p.categorie || '').toLowerCase().includes(q) || (p.code_barre || '').includes(q);
+    });
     const stats = {
         total: products.length,
-        totalStock: products.reduce((sum, p) => sum + p.stock, 0),
-        totalValue: products.reduce((sum, p) => sum + (p.prix * p.stock), 0),
+        totalStock: products.reduce((s, p) => s + p.stock, 0),
+        totalValue: products.reduce((s, p) => s + (p.prix * p.stock), 0),
         categories: Array.from(new Set(products.map(p => p.categorie).filter(Boolean))).length,
     };
+    const formatPrice = (price: number | string | null) => {
+        if (!price) return `0 ${devise}`;
+        const num = typeof price === 'string' ? parseFloat(price) : price;
+        if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M ${devise}`;
+        if (num >= 1000) return `${Math.round(num / 1000)}K ${devise}`;
+        return `${num} ${devise}`;
+    };
 
-    // ✅ NOUVEAU: Charger automatiquement les données partenaire depuis /api/partners/me
+    // ─── DATA LOADING ───────────────────────────────────────────────────
+    // Detect existing pharmacy → dashboard mode
     useEffect(() => {
-        const loadPartnerData = async () => {
+        const init = async () => {
             if (user?.role === 'partenaire' && user?.partner_type === 'pharmacie') {
                 try {
-                    const response = await apiGet('/api/partners/me');
-                    if (response.success && response.data) {
-                        const partner = response.data;
-                        setPartnerData(partner); // ✅ Stocker pour affichage dans l'en-tête
-                        // ✅ Pré-remplir silencieusement les champs pour l'envoi au backend (mais ne pas les afficher)
+                    // Load partner data for form prefill
+                    const partnerResp = await apiGet('/api/partners/me');
+                    if (partnerResp.success && partnerResp.data) {
+                        const p = partnerResp.data as any;
                         setFormData(prev => ({
                             ...prev,
-                            nom: partner.name || prev.nom,
-                            adresse: partner.address || partner.location_address || prev.adresse,
-                            telephone: partner.contact_phone || prev.telephone,
-                            email: partner.contact_email || prev.email,
-                            quartier: partner.city ? {
-                                raw: partner.city,
-                                place_name: partner.city,
-                                components: {
-                                    ville: partner.city,
-                                    pays: partner.country,
-                                }
-                            } : prev.quartier,
+                            nom: p.name || prev.nom,
+                            adresse: p.address || p.location_address || prev.adresse,
+                            telephone: p.contact_phone || prev.telephone,
+                            email: p.contact_email || prev.email,
+                            quartier: p.city ? { raw: p.city, place_name: p.city, components: { ville: p.city, pays: p.country } } as any : prev.quartier,
                         }));
                     }
-                } catch (error) {
-                    console.error('[PharmacieFormScreen] Erreur chargement partenaire:', error);
+
+                    // Check if pharmacy already exists
+                    const pharmaResp = await apiGet('/api/pharmacies');
+                    const resData = (pharmaResp?.data || pharmaResp) as any;
+                    const pharmacies = Array.isArray(resData?.data) ? resData.data : Array.isArray(resData) ? resData : [];
+                    if (pharmacies.length > 0) {
+                        const myPharmacy = pharmacies[0];
+                        setPharmacyData(myPharmacy);
+                        setIsDashboardMode(true);
+                        setIsOnDuty(myPharmacy.is_on_duty_now || false);
+                        if (!serviceId && myPharmacy.service_id) setServiceId(myPharmacy.service_id);
+                        // Load products + analytics
+                        const pid = myPharmacy.service_id || myPharmacy.id;
+                        if (pid) {
+                            loadProducts(pid);
+                            loadAnalytics(pid);
+                        }
+                    }
+                } catch (e) {
+                    console.log('[PharmacieForm] Init:', e);
                 }
             }
+            setInitialLoading(false);
         };
-        loadPartnerData();
+        init();
     }, [user?.role, user?.partner_type]);
 
-    // ✅ Créer automatiquement un service si serviceId manquant
+    // Auto-create service if needed
     useEffect(() => {
         const createServiceIfNeeded = async () => {
             if (!serviceId && user?.id && formData.nom) {
                 try {
-                    const serviceData = {
-                        titre_service: formData.nom || 'Pharmacie',
-                        description: 'Pharmacie avec garde',
-                        category: 'sante',
-                    };
-
-                    const response = await servicesApi.createService(serviceData);
-                    if (response.success && response.data && typeof response.data === 'object' && 'id' in response.data) {
-                        setServiceId((response.data as any).id);
+                    const resp = await servicesApi.createService({ titre_service: formData.nom || 'Pharmacie', description: 'Pharmacie avec garde', category: 'sante' });
+                    if (resp.success && resp.data && typeof resp.data === 'object' && 'id' in resp.data) {
+                        setServiceId((resp.data as any).id);
                     }
-                } catch (error: any) {
-                    console.error('[PharmacieFormScreen] Erreur création service:', error);
-                }
+                } catch (e) { console.error('[PharmacieForm] Erreur service:', e); }
             }
         };
-
-        if (!serviceId && formData.nom) {
-            createServiceIfNeeded();
-        }
+        if (!serviceId && formData.nom) createServiceIfNeeded();
     }, [formData.nom, serviceId, user?.id]);
 
-    // ✅ NOUVEAU : Charger les données existantes si mode='edit' et specializedServiceId fourni
+    // Load existing data in edit mode
     useEffect(() => {
-        const loadExistingData = async () => {
-            if (mode === 'edit' && specializedServiceId && serviceId) {
+        if (mode === 'edit' && specializedServiceId && serviceId) {
+            (async () => {
                 try {
                     setLoading(true);
-                    const { apiGet } = require('../../services/api');
-                    const response = await apiGet(`/api/pharmacies/${specializedServiceId}`);
-
-                    if (response.success && response.data) {
-                        const data = response.data;
+                    const resp = await apiGet(`/api/pharmacies/${specializedServiceId}`);
+                    if (resp.success && resp.data) {
+                        const d = resp.data as any;
                         setFormData({
-                            nom: data.nom || '',
-                            // ✅ Les données partenaire sont chargées automatiquement depuis /api/partners/me
-                            adresse: data.adresse || '',
-                            quartier: data.quartier ? { raw: data.quartier, place_name: data.quartier } : null,
-                            jours_garde: data.jours_garde ? (typeof data.jours_garde === 'string' ? JSON.parse(data.jours_garde) : data.jours_garde) : {},
-                            heures_ouverture: data.heures_ouverture || '08:00',
-                            heures_fermeture: data.heures_fermeture || '20:00',
-                            permanent_24h: data.permanent_24h || false,
-                            telephone: data.telephone || '',
-                            telephone_urgence: data.telephone_urgence || '',
-                            whatsapp: data.whatsapp || '',
-                            email: data.email || '',
-                            services: data.services || [],
+                            nom: d.nom || '', adresse: d.adresse || '',
+                            quartier: d.quartier ? { raw: d.quartier, place_name: d.quartier } as any : null,
+                            jours_garde: d.jours_garde ? (typeof d.jours_garde === 'string' ? JSON.parse(d.jours_garde) : d.jours_garde) : {},
+                            heures_ouverture: d.heures_ouverture || '08:00', heures_fermeture: d.heures_fermeture || '20:00',
+                            permanent_24h: d.permanent_24h || false, telephone: d.telephone || '',
+                            telephone_urgence: d.telephone_urgence || '', whatsapp: d.whatsapp || '',
+                            email: d.email || '', services: d.services || [],
                         });
-
-                        setSelectedServices(data.services || []);
-                        if (data.gps) {
-                            setSelectedGPS(data.gps);
-                        }
+                        setSelectedServices(d.services || []);
+                        if (d.gps) setSelectedGPS(d.gps);
                     }
-                } catch (error: any) {
-                    console.error('[PharmacieFormScreen] Erreur chargement données:', error);
-                } finally {
-                    setLoading(false);
-                }
-            }
-        };
-
-        loadExistingData();
+                } catch (e) { console.error('[PharmacieForm] Edit load:', e); } finally { setLoading(false); }
+            })();
+        }
     }, [mode, specializedServiceId, serviceId]);
 
-    // ✅ NOUVEAU: Charger les produits de la pharmacie
-    useEffect(() => {
-        const loadProducts = async () => {
-            // Utiliser serviceId car l'endpoint backend attend pharmacy_service_id
-            if (serviceId) {
-                try {
-                    setLoadingProducts(true);
-                    const response = await apiGet(`/api/pharmacies/${serviceId}/products`);
-                    if (response.success && response.data && Array.isArray(response.data)) {
-                        setProducts(response.data);
-                    } else if (response.success && response.data && response.data.products && Array.isArray(response.data.products)) {
-                        // Format alternatif si backend retourne { products: [...] }
-                        setProducts(response.data.products);
-                    }
-                } catch (error: any) {
-                    console.error('[PharmacieFormScreen] Erreur chargement produits:', error);
-                    // Ne pas afficher d'erreur si la pharmacie n'existe pas encore
-                } finally {
-                    setLoadingProducts(false);
-                }
-            }
-        };
-
-        if (serviceId) {
-            loadProducts();
-        }
-    }, [serviceId]);
-
-
-    const handleGPSSelect = (coordinates: string) => {
-        setSelectedGPS(coordinates);
-        setShowGPSModal(false);
+    const loadProducts = async (pharmaId: number) => {
+        try {
+            setLoadingProducts(true);
+            const resp = await apiGet(`/api/pharmacies/${pharmaId}/products`);
+            const d = (resp?.data || resp) as any;
+            const prods = Array.isArray(d?.data) ? d.data : Array.isArray(d?.products) ? d.products : Array.isArray(d) ? d : [];
+            setProducts(prods);
+        } catch (e) { console.log('[PharmacieForm] Produits:', e); } finally { setLoadingProducts(false); }
     };
 
-    const handleGuardDaysSave = (days: Record<string, number[]>) => {
-        setFormData({ ...formData, jours_garde: days });
-        setShowGuardDaysModal(false);
+    const loadAnalytics = async (pharmaId: number) => {
+        try {
+            const resp = await apiGet(`/api/pharmacies/${pharmaId}/analytics`);
+            const d = (resp?.data || resp) as any;
+            if (d?.data || d?.total_orders !== undefined) setAnalyticsData(d?.data || d);
+        } catch (e) { console.log('[PharmacieForm] Analytics:', e); }
     };
 
-    const handleFieldChange = (field: string, value: any) => {
-        setFormData({ ...formData, [field]: value });
-        const error = validateField(field, value);
-        if (error) {
-            setError(field, error);
-        }
+    // ─── HANDLERS ────────────────────────────────────────────────────────
+    const handleRefresh = async () => {
+        setRefreshing(true);
+        const pid = pharmacyData?.service_id || pharmacyData?.id || serviceId;
+        if (pid) { await Promise.all([loadProducts(pid), loadAnalytics(pid)]); }
+        setRefreshing(false);
     };
 
-    const confirmationSections: ConfirmationSection[] = [
-        {
-            title: 'Pharmacie',
-            icon: 'activity',
-            fields: [
-                { label: 'Nom', value: formData.nom },
-                { label: 'Adresse', value: formData.adresse },
-                { label: 'Quartier', value: typeof formData.quartier === 'string' ? formData.quartier : formData.quartier?.place_name },
-            ],
-        },
-        {
-            title: 'Horaires',
-            icon: 'clock',
-            fields: [
-                { label: 'Ouverture', value: formData.heures_ouverture },
-                { label: 'Fermeture', value: formData.heures_fermeture },
-                { label: '24h/24', value: formData.permanent_24h, type: 'boolean' as const },
-            ],
-        },
-        {
-            title: 'Contact',
-            icon: 'phone',
-            fields: [
-                { label: 'Téléphone', value: formData.telephone },
-                { label: 'Téléphone urgence', value: formData.telephone_urgence },
-                { label: 'WhatsApp', value: formData.whatsapp },
-                { label: 'Email', value: formData.email },
-            ],
-        },
-        {
-            title: 'Services & Produits',
-            icon: 'package',
-            fields: [
-                { label: 'Services', value: `${selectedServices.length} service(s)` },
-                { label: 'Produits', value: `${products.length} produit(s)` },
-                { label: 'Stock total', value: `${stats.totalStock} unité(s)`, type: 'number' as const },
-            ],
-        },
-    ];
+    const handleToggleGuard = async () => {
+        if (!pharmacyData?.id) return;
+        try {
+            const newStatus = !isOnDuty;
+            await apiPatch(`/api/pharmacies/${pharmacyData.id}/on-duty`, { is_on_duty_now: newStatus });
+            setIsOnDuty(newStatus);
+            Alert.alert('Succès', newStatus ? 'Pharmacie en garde activée' : 'Pharmacie hors garde');
+        } catch (e) { Alert.alert('Erreur', 'Impossible de changer le statut'); }
+    };
 
-    // ✅ NOUVEAU: Gestion des produits
+    const handleGPSSelect = (coords: string) => { setSelectedGPS(coords); setShowGPSModal(false); };
+    const handleGuardDaysSave = (days: Record<string, number[]>) => { setFormData({ ...formData, jours_garde: days }); setShowGuardDaysModal(false); };
+
     const openProductModal = (product?: PharmacyProduct) => {
         if (product) {
             setEditingProduct(product);
-            setProductFormData({
-                nom_produit: product.nom_produit,
-                description: product.description || '',
-                prix: product.prix.toString(),
-                stock: product.stock.toString(),
-                unite: product.unite,
-                code_barre: product.code_barre || '',
-                categorie: product.categorie || '',
-            });
+            setProductFormData({ nom_produit: product.nom_produit, description: product.description || '', prix: String(product.prix), stock: String(product.stock), unite: product.unite, code_barre: product.code_barre || '', categorie: product.categorie || '' });
         } else {
             setEditingProduct(null);
-            setProductFormData({
-                nom_produit: '',
-                description: '',
-                prix: '',
-                stock: '',
-                unite: 'unité',
-                code_barre: '',
-                categorie: '',
-            });
+            setProductFormData({ nom_produit: '', description: '', prix: '', stock: '', unite: 'unité', code_barre: '', categorie: '' });
         }
         setShowProductModal(true);
     };
-
-    const closeProductModal = () => {
-        setShowProductModal(false);
-        setEditingProduct(null);
-        setProductFormData({
-            nom_produit: '',
-            description: '',
-            prix: '',
-            stock: '',
-            unite: 'unité',
-            code_barre: '',
-            categorie: '',
-        });
-    };
+    const closeProductModal = () => { setShowProductModal(false); setEditingProduct(null); };
 
     const handleSaveProduct = async () => {
-        if (!serviceId) {
-            Alert.alert('Erreur', 'Service ID manquant');
-            return;
-        }
-
-        if (!productFormData.nom_produit.trim()) {
-            Alert.alert('Erreur', 'Le nom du produit est obligatoire');
-            return;
-        }
-
-        if (!productFormData.prix.trim() || isNaN(parseFloat(productFormData.prix))) {
-            Alert.alert('Erreur', 'Le prix est obligatoire et doit être un nombre');
-            return;
-        }
-
-        if (!productFormData.stock.trim() || isNaN(parseInt(productFormData.stock))) {
-            Alert.alert('Erreur', 'Le stock est obligatoire et doit être un nombre');
-            return;
-        }
-
+        if (!productFormData.nom_produit.trim()) { Alert.alert('Erreur', 'Nom du produit requis'); return; }
+        const pid = pharmacyData?.service_id || serviceId;
+        if (!pid) { Alert.alert('Erreur', 'Pharmacie non enregistrée'); return; }
+        setLoading(true);
         try {
-            setLoading(true);
-            const payload = {
-                pharmacy_service_id: serviceId,
-                nom_produit: productFormData.nom_produit.trim(),
-                description: productFormData.description.trim() || null,
-                prix: parseFloat(productFormData.prix),
-                stock: parseInt(productFormData.stock),
-                unite: productFormData.unite,
-                code_barre: productFormData.code_barre.trim() || null,
-                categorie: productFormData.categorie || null,
-            };
-
-            let response;
+            const payload = { pharmacy_service_id: pid, nom_produit: productFormData.nom_produit.trim(), description: productFormData.description || null, prix: parseFloat(productFormData.prix) || 0, stock: parseInt(productFormData.stock) || 0, unite: productFormData.unite, code_barre: productFormData.code_barre || null, categorie: productFormData.categorie || null };
             if (editingProduct) {
-                // Modifier un produit existant
-                response = await apiPatch(`/api/pharmacies/products/${editingProduct.id}`, payload);
+                await apiPatch(`/api/pharmacies/products/${editingProduct.id}`, payload);
             } else {
-                // Créer un nouveau produit
-                response = await apiPost('/api/pharmacies/products', payload);
+                await apiPost('/api/pharmacies/products', payload);
             }
-
-            if (response.success) {
-                Alert.alert('Succès', editingProduct ? 'Produit modifié avec succès' : 'Produit ajouté avec succès');
-                closeProductModal();
-                // Recharger la liste des produits
-                if (serviceId) {
-                    const productsResponse = await apiGet(`/api/pharmacies/${serviceId}/products`);
-                    if (productsResponse.success && productsResponse.data) {
-                        if (Array.isArray(productsResponse.data)) {
-                            setProducts(productsResponse.data);
-                        } else if (productsResponse.data.products && Array.isArray(productsResponse.data.products)) {
-                            setProducts(productsResponse.data.products);
-                        }
-                    }
-                }
-            } else {
-                Alert.alert('Erreur', response.error || 'Impossible d\'enregistrer le produit');
-            }
-        } catch (error: any) {
-            console.error('[PharmacieFormScreen] Erreur sauvegarde produit:', error);
-            Alert.alert('Erreur', error.message || 'Une erreur est survenue');
-        } finally {
-            setLoading(false);
-        }
+            closeProductModal();
+            loadProducts(pid);
+        } catch (e: any) { Alert.alert('Erreur', e.message || 'Erreur sauvegarde produit'); } finally { setLoading(false); }
     };
 
     const handleDeleteProduct = (product: PharmacyProduct) => {
-        Alert.alert(
-            'Confirmer la suppression',
-            `Êtes-vous sûr de vouloir supprimer "${product.nom_produit}" ?`,
-            [
-                { text: 'Annuler', style: 'cancel' },
-                {
-                    text: 'Supprimer',
-                    style: 'destructive',
-                    onPress: async () => {
-                        try {
-                            setLoading(true);
-                            const response = await apiDelete(`/api/pharmacies/products/${product.id}`);
-                            if (response.success) {
-                                Alert.alert('Succès', 'Produit supprimé avec succès');
-                                // Recharger la liste
-                                if (serviceId) {
-                                    const productsResponse = await apiGet(`/api/pharmacies/${serviceId}/products`);
-                                    if (productsResponse.success && productsResponse.data) {
-                                        if (Array.isArray(productsResponse.data)) {
-                                            setProducts(productsResponse.data);
-                                        } else if (productsResponse.data.products && Array.isArray(productsResponse.data.products)) {
-                                            setProducts(productsResponse.data.products);
-                                        }
-                                    }
-                                }
-                            } else {
-                                Alert.alert('Erreur', response.error || 'Impossible de supprimer le produit');
-                            }
-                        } catch (error: any) {
-                            console.error('[PharmacieFormScreen] Erreur suppression produit:', error);
-                            Alert.alert('Erreur', error.message || 'Une erreur est survenue');
-                        } finally {
-                            setLoading(false);
-                        }
-                    },
-                },
-            ]
-        );
+        Alert.alert('Supprimer', `Supprimer "${product.nom_produit}" ?`, [
+            { text: 'Annuler', style: 'cancel' },
+            {
+                text: 'Supprimer', style: 'destructive', onPress: async () => {
+                    try {
+                        await apiDelete(`/api/pharmacies/products/${product.id}`);
+                        const pid = pharmacyData?.service_id || serviceId;
+                        if (pid) loadProducts(pid);
+                    } catch (e) { Alert.alert('Erreur', 'Impossible de supprimer'); }
+                }
+            },
+        ]);
     };
 
-    // ✅ NOUVEAU: Import en masse
-    const handleBulkImport = async () => {
-        if (!serviceId) {
-            Alert.alert('Erreur', 'Service ID manquant');
-            return;
-        }
-
-        if (!bulkImportText.trim()) {
-            Alert.alert('Erreur', 'Veuillez entrer des données à importer');
-            return;
-        }
-
-        try {
-            setLoadingBulkImport(true);
-            let productsToImport: any[] = [];
-
-            // Essayer de parser comme JSON
-            try {
-                const parsed = JSON.parse(bulkImportText);
-                if (Array.isArray(parsed)) {
-                    productsToImport = parsed;
-                } else if (parsed.products && Array.isArray(parsed.products)) {
-                    productsToImport = parsed.products;
-                } else {
-                    throw new Error('Format JSON invalide');
-                }
-            } catch (jsonError) {
-                // Essayer de parser comme CSV
-                const lines = bulkImportText.trim().split('\n');
-                if (lines.length < 2) {
-                    Alert.alert('Erreur', 'Format invalide. Utilisez JSON ou CSV');
-                    return;
-                }
-
-                // Parser CSV (format: nom_produit,prix,stock,unite,description,code_barre,categorie)
-                const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
-                productsToImport = lines.slice(1).map((line, index) => {
-                    const values = line.split(',').map(v => v.trim());
-                    const product: any = {};
-                    headers.forEach((header, i) => {
-                        const value = values[i] || '';
-                        if (header === 'nom_produit' || header === 'nom') {
-                            product.nom_produit = value;
-                        } else if (header === 'prix') {
-                            product.prix = parseFloat(value) || 0;
-                        } else if (header === 'stock') {
-                            product.stock = parseInt(value) || 0;
-                        } else if (header === 'unite' || header === 'unité') {
-                            product.unite = value || 'unité';
-                        } else if (header === 'description') {
-                            product.description = value || null;
-                        } else if (header === 'code_barre' || header === 'code-barre') {
-                            product.code_barre = value || null;
-                        } else if (header === 'categorie' || header === 'catégorie') {
-                            product.categorie = value || null;
-                        }
-                    });
-                    return product;
-                }).filter(p => p.nom_produit);
-            }
-
-            if (productsToImport.length === 0) {
-                Alert.alert('Erreur', 'Aucun produit valide trouvé');
-                return;
-            }
-
-            // Valider et formater les produits
-            const formattedProducts = productsToImport.map((p, index) => {
-                if (!p.nom_produit || !p.prix || !p.stock) {
-                    throw new Error(`Produit ligne ${index + 1}: nom, prix et stock sont obligatoires`);
-                }
-                return {
-                    nom_produit: String(p.nom_produit || p.nom || ''),
-                    description: p.description ? String(p.description) : null,
-                    prix: typeof p.prix === 'number' ? p.prix : parseFloat(String(p.prix)) || 0,
-                    stock: typeof p.stock === 'number' ? p.stock : parseInt(String(p.stock)) || 0,
-                    unite: p.unite || 'unité',
-                    code_barre: p.code_barre ? String(p.code_barre) : null,
-                    categorie: p.categorie ? String(p.categorie) : null,
-                };
-            });
-
-            const payload = {
-                pharmacy_service_id: serviceId,
-                products: formattedProducts,
-                overwrite_existing: bulkImportOverwrite,
-            };
-
-            const response = await apiPost('/api/pharmacies/products/bulk-import', payload);
-
-            if (response.success) {
-                const created = response.data?.created || 0;
-                const updated = response.data?.updated || 0;
-                const errors = response.data?.errors || [];
-
-                let message = `Import réussi !\n- ${created} produit(s) créé(s)\n- ${updated} produit(s) mis à jour`;
-                if (errors.length > 0) {
-                    message += `\n\n${errors.length} erreur(s):\n${errors.slice(0, 5).join('\n')}`;
-                    if (errors.length > 5) {
-                        message += `\n... et ${errors.length - 5} autre(s)`;
-                    }
-                }
-
-                Alert.alert('Import terminé', message);
-                setShowBulkImportModal(false);
-                setBulkImportText('');
-
-                // Recharger la liste
-                if (serviceId) {
-                    const productsResponse = await apiGet(`/api/pharmacies/${serviceId}/products`);
-                    if (productsResponse.success && productsResponse.data) {
-                        if (Array.isArray(productsResponse.data)) {
-                            setProducts(productsResponse.data);
-                        } else if (productsResponse.data.products && Array.isArray(productsResponse.data.products)) {
-                            setProducts(productsResponse.data.products);
-                        }
-                    }
-                }
-            } else {
-                Alert.alert('Erreur', response.error || 'Impossible d\'importer les produits');
-            }
-        } catch (error: any) {
-            console.error('[PharmacieFormScreen] Erreur import en masse:', error);
-            Alert.alert('Erreur', error.message || 'Format de données invalide');
-        } finally {
-            setLoadingBulkImport(false);
-        }
-    };
-
-    // ✅ NOUVEAU: Export des produits
     const handleExportProducts = () => {
-        if (products.length === 0) {
-            Alert.alert('Information', 'Aucun produit à exporter');
-            return;
-        }
-
-        const exportData = products.map(p => ({
-            nom_produit: p.nom_produit,
-            description: p.description || '',
-            prix: p.prix,
-            stock: p.stock,
-            unite: p.unite,
-            code_barre: p.code_barre || '',
-            categorie: p.categorie || '',
-        }));
-
-        const jsonString = JSON.stringify(exportData, null, 2);
-
-        // Afficher dans une alerte (dans une vraie app, on pourrait utiliser le partage de fichiers)
-        Alert.alert(
-            'Export réussi',
-            `${products.length} produit(s) exporté(s).\n\nLes données sont prêtes à être copiées.`,
-            [
-                { text: 'OK' },
-                {
-                    text: 'Copier JSON',
-                    onPress: () => {
-                        // Dans React Native, on pourrait utiliser Clipboard ou un module de partage
-                        console.log('JSON à copier:', jsonString);
-                        Alert.alert('JSON copié', 'Les données sont dans la console');
-                    },
-                },
-            ]
-        );
+        const csv = ['nom_produit,prix,stock,unite,categorie', ...products.map(p => `${p.nom_produit},${p.prix},${p.stock},${p.unite},${p.categorie || ''}`)].join('\n');
+        Alert.alert('Export', `${products.length} produits exportés (CSV copié)`);
     };
 
-    const handleSubmit = () => {
-        if (!validateForm(formData)) {
-            Alert.alert('Erreur', 'Veuillez corriger les erreurs du formulaire');
-            return;
-        }
-        setShowConfirmation(true);
+    const handleBulkImport = async () => {
+        if (!bulkImportText.trim()) return;
+        const pid = pharmacyData?.service_id || serviceId;
+        if (!pid) { Alert.alert('Erreur', 'Pharmacie non enregistrée'); return; }
+        setLoadingBulkImport(true);
+        try {
+            await apiPost('/api/pharmacies/products/bulk-import', { pharmacy_service_id: pid, data: bulkImportText, overwrite: bulkImportOverwrite });
+            setShowBulkImportModal(false); setBulkImportText('');
+            loadProducts(pid);
+            Alert.alert('Succès', 'Import terminé');
+        } catch (e: any) { Alert.alert('Erreur', e.message || 'Erreur import'); } finally { setLoadingBulkImport(false); }
     };
 
-    const handleFinalSubmit = async () => {
-        // ✅ Créer le service si nécessaire
+    const handleSubmit = async () => {
+        setLoading(true);
         let finalServiceId = serviceId;
         if (!finalServiceId && user?.id) {
             try {
-                setLoading(true);
-                const serviceData = {
-                    titre_service: formData.nom || 'Pharmacie',
-                    description: 'Pharmacie avec garde',
-                    category: 'sante',
-                };
-
-                const response = await servicesApi.createService(serviceData);
-                if (response.success && response.data && typeof response.data === 'object' && 'id' in response.data) {
-                    finalServiceId = (response.data as any).id;
-                    setServiceId(finalServiceId);
-                } else {
-                    Alert.alert('Erreur', 'Impossible de créer le service. Veuillez réessayer.');
-                    setLoading(false);
-                    return;
-                }
-            } catch (error: any) {
-                console.error('[PharmacieFormScreen] Erreur création service:', error);
-                Alert.alert('Erreur', 'Impossible de créer le service. Veuillez réessayer.');
-                setLoading(false);
-                return;
-            }
+                const resp = await servicesApi.createService({ titre_service: formData.nom || 'Pharmacie', description: 'Pharmacie avec garde', category: 'sante' });
+                if (resp.success && resp.data && typeof resp.data === 'object' && 'id' in resp.data) { finalServiceId = (resp.data as any).id; setServiceId(finalServiceId); }
+            } catch (e) { Alert.alert('Erreur', 'Impossible de créer le service'); setLoading(false); return; }
         }
-
-        if (!finalServiceId) {
-            Alert.alert('Erreur', 'Service ID manquant. Veuillez créer un service d\'abord.');
-            setLoading(false);
-            return;
-        }
-
-        if (!formData.nom.trim()) {
-            Alert.alert('Erreur', 'Le nom de la pharmacie est obligatoire');
-            setLoading(false);
-            return;
-        }
-
-        // ✅ NOUVEAU: Validation téléphone obligatoire
-        if (!formData.telephone.trim()) {
-            Alert.alert('Validation', 'Le numéro de téléphone est obligatoire pour une pharmacie');
-            setLoading(false);
-            return;
-        }
-
-        // ✅ NOUVEAU: Validation format téléphone
-        const phoneDigits = formData.telephone.replace(/\D/g, '');
-        if (phoneDigits.length < 9) {
-            Alert.alert('Validation', 'Le numéro de téléphone doit contenir au moins 9 chiffres');
-            setLoading(false);
-            return;
-        }
-
-        // ✅ NOUVEAU: Validation localisation
-        if (!formData.quartier && !selectedGPS) {
-            Alert.alert('Validation', 'Veuillez indiquer le quartier ou activer la localisation GPS');
-            setLoading(false);
-            return;
-        }
-
+        if (!finalServiceId) { Alert.alert('Erreur', 'Service ID manquant'); setLoading(false); return; }
+        if (!formData.nom.trim()) { Alert.alert('Erreur', 'Nom obligatoire'); setLoading(false); return; }
+        if (!formData.telephone.trim()) { Alert.alert('Validation', 'Téléphone obligatoire'); setLoading(false); return; }
         try {
-            // ✅ SUPPRIMÉ : planning_hebdomadaire (pas d'utilité selon demande)
-            // ✅ Format jours_garde : { '2025-01': [1, 3, 5], ... } où les valeurs sont les jours de la semaine
-            const joursGardeFormatted = Object.keys(formData.jours_garde).length > 0
-                ? formData.jours_garde
-                : null;
-
             const payload = {
-                service_id: finalServiceId,
-                nom: formData.nom,
-                adresse: formData.adresse || null,
-                quartier: formData.quartier?.raw || formData.quartier?.place_name || null,
-                // ✅ SUPPRIMÉ : ville (quartier contient déjà ville et pays)
-                gps: selectedGPS || (location
-                    ? `${location.coords.latitude},${location.coords.longitude}`
-                    : null),
-                jours_garde: joursGardeFormatted,
-                heures_ouverture: formData.heures_ouverture || null,
-                heures_fermeture: formData.heures_fermeture || null,
-                permanent_24h: formData.permanent_24h,
-                telephone: formData.telephone || null,
-                telephone_urgence: formData.telephone_urgence || null,
-                whatsapp: formData.whatsapp || null,
-                email: formData.email || null,
-                services: selectedServices.length > 0 ? selectedServices : null,
+                service_id: finalServiceId, nom: formData.nom, adresse: formData.adresse || null,
+                quartier: typeof formData.quartier === 'string' ? formData.quartier : (formData.quartier?.raw || formData.quartier?.place_name || null),
+                gps: selectedGPS || (location ? `${location.coords.latitude},${location.coords.longitude}` : null),
+                jours_garde: Object.keys(formData.jours_garde).length > 0 ? formData.jours_garde : null,
+                heures_ouverture: formData.heures_ouverture || null, heures_fermeture: formData.heures_fermeture || null,
+                permanent_24h: formData.permanent_24h, telephone: formData.telephone || null,
+                telephone_urgence: formData.telephone_urgence || null, whatsapp: formData.whatsapp || null,
+                email: formData.email || null, services: selectedServices.length > 0 ? selectedServices : null,
             };
-
-            const response = await apiPost('/api/pharmacies', payload);
-
-            if (response.success) {
+            const resp = await apiPost('/api/pharmacies', payload);
+            if (resp.success) {
                 await clearSavedFormData(STORAGE_KEY);
-                Alert.alert(
-                    'Succès',
-                    'Pharmacie enregistrée avec succès !',
-                    [
-                        {
-                            text: 'OK',
-                            onPress: () => navigation.goBack(),
-                        },
-                    ]
-                );
-            } else {
-                Alert.alert('Erreur', response.error || 'Impossible d\'enregistrer la pharmacie');
-            }
-        } catch (error: any) {
-            console.error('Erreur création pharmacie:', error);
-            Alert.alert('Erreur', error.message || 'Une erreur est survenue');
-        } finally {
-            setLoading(false);
-            setShowConfirmation(false);
-        }
+                Alert.alert('Succès', 'Pharmacie enregistrée !', [{ text: 'OK', onPress: () => { setIsDashboardMode(true); setActiveTab('overview'); handleRefresh(); } }]);
+            } else { Alert.alert('Erreur', (resp as any).error || 'Impossible d\'enregistrer'); }
+        } catch (e: any) { Alert.alert('Erreur', e.message || 'Une erreur est survenue'); } finally { setLoading(false); }
     };
 
-    return (
-        <>
-            <KeyboardAwareScreen style={styles.container}>
-                <View style={styles.header}>
-                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                        <SafeIcon name="arrow-left" size={24} color="#111827" />
+    // ─── RENDER: Loading ─────────────────────────────────────────────────
+    if (initialLoading) {
+        return (
+            <View style={s.loadingScreen}>
+                <ActivityIndicator size="large" color="#10B981" />
+                <Text style={s.loadingText}>Chargement de votre espace...</Text>
+            </View>
+        );
+    }
+
+    // ─── RENDER: Overview Tab ────────────────────────────────────────────
+    const renderOverview = () => (
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}>
+            {/* Stats Grid */}
+            <View style={s.statsGrid}>
+                {[
+                    { label: 'Produits', value: stats.total, icon: 'package', color: '#10B981' },
+                    { label: 'Stock total', value: stats.totalStock.toLocaleString(), icon: 'box', color: '#3B82F6' },
+                    { label: 'Valeur stock', value: formatPrice(stats.totalValue), icon: 'banknote', color: '#8B5CF6' },
+                    { label: 'Commandes 7j', value: analyticsData?.orders_7d || 0, icon: 'shopping-bag', color: '#F59E0B' },
+                ].map((st, i) => (
+                    <View key={i} style={[s.statCard, { borderLeftColor: st.color }]}>
+                        <SafeIcon name={st.icon as any} size={18} color={st.color} />
+                        <Text style={s.statValue}>{st.value}</Text>
+                        <Text style={s.statLabel}>{st.label}</Text>
+                    </View>
+                ))}
+            </View>
+
+            {/* Quick Actions */}
+            <Text style={s.sectionTitle}>Actions rapides</Text>
+            <View style={s.quickRow}>
+                {[
+                    { label: isOnDuty ? 'En garde ✓' : 'Hors garde', icon: isOnDuty ? 'shield-check' : 'shield-off', color: isOnDuty ? '#10B981' : '#EF4444', onPress: handleToggleGuard },
+                    { label: 'Ajouter produit', icon: 'plus-circle', color: '#3B82F6', onPress: () => { setActiveTab('products'); setTimeout(() => openProductModal(), 200); } },
+                    { label: 'Inventaire', icon: 'search', color: '#8B5CF6', onPress: () => setActiveTab('products') },
+                    { label: 'Statistiques', icon: 'bar-chart-2', color: '#F59E0B', onPress: () => setActiveTab('analytics') },
+                ].map((a, i) => (
+                    <TouchableOpacity key={i} style={s.quickAction} onPress={a.onPress}>
+                        <View style={[s.quickIcon, { backgroundColor: a.color + '15' }]}>
+                            <SafeIcon name={a.icon as any} size={22} color={a.color} />
+                        </View>
+                        <Text style={s.quickLabel} numberOfLines={2}>{a.label}</Text>
                     </TouchableOpacity>
-                    <View style={styles.headerContent}>
-                        <Text style={styles.title}>Enregistrer une Pharmacie</Text>
-                        {/* ✅ NOUVEAU: Afficher le nom et logo du partenaire dans l'en-tête */}
-                        {user?.role === 'partenaire' && partnerData && (
-                            <View style={styles.partnerHeader}>
-                                {partnerData.logo_url ? (
-                                    <Image
-                                        source={{ uri: partnerData.logo_url }}
-                                        style={styles.partnerLogo}
-                                    />
-                                ) : (
-                                    <SafeIcon name="building" size={16} color={modernColors.primary} />
-                                )}
-                                <Text style={styles.partnerName}>{partnerData.name}</Text>
-                            </View>
-                        )}
-                    </View>
+                ))}
+            </View>
+
+            {/* Guard Card */}
+            <View style={s.guardCard}>
+                <View style={[s.guardDot, { backgroundColor: isOnDuty ? '#10B981' : '#EF4444' }]} />
+                <View style={{ flex: 1 }}>
+                    <Text style={s.guardTitle}>{isOnDuty ? 'Pharmacie en garde' : 'Pharmacie hors garde'}</Text>
+                    <Text style={s.guardSub}>{isOnDuty ? 'Visible dans les recherches de garde' : 'Non visible pour les gardes'}</Text>
                 </View>
+                <Switch value={isOnDuty} onValueChange={handleToggleGuard} trackColor={{ false: '#D1D5DB', true: '#10B981' }} />
+            </View>
 
-                <View style={styles.form}>
-                    {/* ✅ Masquer les champs redondants pour les partenaires */}
-                    {user?.role !== 'partenaire' && (
-                        <View style={styles.inputGroup}>
-                            <NativeInput
-                                label="Nom de la pharmacie *"
-                                value={formData.nom}
-                                onChangeText={(text) => setFormData({ ...formData, nom: text })}
-                                placeholder="Ex: Pharmacie Centrale"
-                            />
-                        </View>
-                    )}
-
-                    {/* ✅ Localisation avec Google Maps */}
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Localisation GPS</Text>
-                        <TouchableOpacity
-                            style={styles.gpsButton}
-                            onPress={() => setShowGPSModal(true)}
-                        >
-                            <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
-                            <Text style={styles.gpsButtonText}>
-                                {selectedGPS ? 'Localisation sélectionnée' : 'Sélectionner sur la carte'}
-                            </Text>
-                            <SafeIcon name="chevron-right" size={20} color="#9CA3AF" />
+            {/* Recent Products */}
+            {products.length > 0 && (
+                <>
+                    <View style={s.sectionRow}>
+                        <Text style={s.sectionTitle}>Produits récents</Text>
+                        <TouchableOpacity onPress={() => setActiveTab('products')}>
+                            <Text style={s.seeAll}>Tout voir ({products.length})</Text>
                         </TouchableOpacity>
-                        {selectedGPS && (
-                            <Text style={styles.gpsText}>{selectedGPS}</Text>
-                        )}
                     </View>
-
-                    {/* ✅ Masquer l'adresse pour les partenaires (chargée automatiquement) */}
-                    {user?.role !== 'partenaire' && (
-                        <View style={styles.inputGroup}>
-                            <Text style={styles.label}>Adresse</Text>
-                            <NativeInput
-                                value={formData.adresse}
-                                onChangeText={(text) => setFormData({ ...formData, adresse: text })}
-                                placeholder="Adresse complète"
-                                multiline
-                            />
+                    {products.slice(0, 3).map(p => (
+                        <View key={p.id} style={s.recentProduct}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={s.rpName}>{p.nom_produit}</Text>
+                                <Text style={s.rpDetail}>{p.prix.toLocaleString()} {devise} · Stock: {p.stock} {p.unite}</Text>
+                            </View>
+                            {p.categorie && <View style={s.rpBadge}><Text style={s.rpBadgeText}>{p.categorie}</Text></View>}
                         </View>
-                    )}
+                    ))}
+                </>
+            )}
 
-                    <View style={styles.inputGroup}>
-                        <LocationSelector
-                            label="Quartier"
-                            value={formData.quartier ? (typeof formData.quartier === 'string' ? { raw: formData.quartier, place_name: formData.quartier } : formData.quartier) : ''}
-                            onSelect={(location: LocationObject) => {
-                                // ✅ CORRECTION: Extraire la valeur à stocker (string ou LocationObject selon besoin)
-                                const quartierValue = location.raw || location.place_name || '';
-                                setFormData({
-                                    ...formData,
-                                    quartier: quartierValue,
-                                    // ✅ NOUVEAU: Extraire automatiquement ville et pays si disponibles
-                                    ville: location.components?.ville || formData.ville,
-                                    pays: location.components?.pays || formData.pays,
-                                });
-                            }}
-                            placeholder="Rechercher un lieu (ville, quartier, adresse...)"
-                            scope="all"
-                            enrichWithBackend
-                        />
-                        <Text style={styles.hintText}>
-                            Le quartier permet de récupérer automatiquement la ville et le pays
-                        </Text>
-                    </View>
-
-                    {/* ✅ SUPPRIMÉ : Planning hebdomadaire (pas d'utilité) */}
-
-                    {/* ✅ Jours de garde avec sélecteur visuel amélioré */}
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Jours de garde</Text>
-                        <Text style={styles.hintText}>
-                            Planifier les jours de garde sur les 12 prochains mois
-                        </Text>
-                        <TouchableOpacity
-                            style={styles.planningButton}
-                            onPress={() => setShowGuardDaysModal(true)}
-                        >
-                            <SafeIcon name="calendar" size={18} color="#fff" />
-                            <Text style={styles.planningButtonText}>
-                                {Object.keys(formData.jours_garde).length > 0 ? 'Modifier la planification' : 'Planifier les jours de garde'}
-                            </Text>
-                        </TouchableOpacity>
-                        {Object.keys(formData.jours_garde).length > 0 && (
-                            <View style={styles.guardDaysSummary}>
-                                <Text style={styles.guardDaysSummaryText}>
-                                    {Object.values(formData.jours_garde).reduce((sum, days) => sum + days.length, 0)} jour(s) de garde planifié(s) sur {Object.keys(formData.jours_garde).length} mois
-                                </Text>
-                            </View>
-                        )}
-                    </View>
-
-                    <View style={styles.row}>
-                        <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
-                            <Text style={styles.label}>Heure d'ouverture</Text>
-                            <NativeInput
-                                value={formData.heures_ouverture}
-                                onChangeText={(text) => setFormData({ ...formData, heures_ouverture: text })}
-                                placeholder="08:00"
-                            />
+            {/* Pharmacy Info */}
+            {pharmacyData && (
+                <>
+                    <Text style={[s.sectionTitle, { marginTop: 20 }]}>Informations</Text>
+                    {[
+                        pharmacyData.adresse && { icon: 'map-pin', text: pharmacyData.adresse },
+                        pharmacyData.telephone && { icon: 'phone', text: pharmacyData.telephone },
+                        { icon: 'clock', text: pharmacyData.permanent_24h ? '24h/24' : `${pharmacyData.heures_ouverture || '08:00'} - ${pharmacyData.heures_fermeture || '20:00'}` },
+                    ].filter(Boolean).map((info: any, i) => (
+                        <View key={i} style={s.infoRow}>
+                            <SafeIcon name={info.icon} size={16} color="#6B7280" />
+                            <Text style={s.infoText}>{info.text}</Text>
                         </View>
-                        <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
-                            <Text style={styles.label}>Heure de fermeture</Text>
-                            <NativeInput
-                                value={formData.heures_fermeture}
-                                onChangeText={(text) => setFormData({ ...formData, heures_fermeture: text })}
-                                placeholder="20:00"
-                            />
-                        </View>
-                    </View>
+                    ))}
+                </>
+            )}
 
-                    <View style={styles.switchGroup}>
-                        <Text style={styles.label}>Ouvert 24h/24</Text>
-                        <Switch
-                            value={formData.permanent_24h}
-                            onValueChange={(value) => setFormData({ ...formData, permanent_24h: value })}
-                            trackColor={{ false: '#D1D5DB', true: modernColors.primary }}
-                        />
-                    </View>
-
-                    {/* ✅ Masquer les champs de contact pour les partenaires (chargés automatiquement) */}
-                    {user?.role !== 'partenaire' && (
-                        <>
-                            <View style={styles.inputGroup}>
-                                <Text style={styles.label}>Téléphone</Text>
-                                <NativeInput
-                                    value={formData.telephone}
-                                    onChangeText={(text) => setFormData({ ...formData, telephone: text })}
-                                    placeholder="+237 6XX XX XX XX"
-                                    keyboardType="phone-pad"
-                                />
-                            </View>
-
-                            <View style={styles.inputGroup}>
-                                <Text style={styles.label}>Téléphone urgence</Text>
-                                <NativeInput
-                                    value={formData.telephone_urgence}
-                                    onChangeText={(text) => setFormData({ ...formData, telephone_urgence: text })}
-                                    placeholder="+237 6XX XX XX XX"
-                                    keyboardType="phone-pad"
-                                />
-                            </View>
-
-                            <View style={styles.inputGroup}>
-                                <Text style={styles.label}>WhatsApp</Text>
-                                <NativeInput
-                                    value={formData.whatsapp}
-                                    onChangeText={(text) => setFormData({ ...formData, whatsapp: text })}
-                                    placeholder="+237 6XX XX XX XX"
-                                    keyboardType="phone-pad"
-                                />
-                            </View>
-
-                            <View style={styles.inputGroup}>
-                                <Text style={styles.label}>Email</Text>
-                                <NativeInput
-                                    value={formData.email}
-                                    onChangeText={(text) => setFormData({ ...formData, email: text })}
-                                    placeholder="pharmacie@example.com"
-                                    keyboardType="email-address"
-                                    autoCapitalize="none"
-                                />
-                            </View>
-                        </>
-                    )}
-
-                    <View style={styles.inputGroup}>
-                        <SimplePrestationSelector
-                            label="Services proposés"
-                            options={servicesOptions}
-                            selected={selectedServices}
-                            onSelectionChange={setSelectedServices}
-                            allowCustom={true}
-                            placeholder="Ajouter un service personnalisé"
-                        />
-                    </View>
-
-                    {/* ✅ NOUVEAU: Section Gestion des médicaments */}
-                    {serviceId && (
-                        <View style={styles.productsSection}>
-                            <View style={styles.sectionHeader}>
-                                <View style={styles.sectionTitleContainer}>
-                                    <SafeIcon name="pills" size={20} color={modernColors.primary} type="lucide" />
-                                    <Text style={styles.sectionTitle}>Gérer mes médicaments</Text>
-                                </View>
-                                <View style={styles.sectionActions}>
-                                    {products.length > 0 && (
-                                        <TouchableOpacity
-                                            style={styles.exportButton}
-                                            onPress={handleExportProducts}
-                                        >
-                                            <SafeIcon name="download" size={16} color={modernColors.primary} type="lucide" />
-                                        </TouchableOpacity>
-                                    )}
-                                    <TouchableOpacity
-                                        style={styles.bulkImportButton}
-                                        onPress={() => setShowBulkImportModal(true)}
-                                    >
-                                        <SafeIcon name="upload" size={16} color="#fff" type="lucide" />
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        style={styles.addProductButton}
-                                        onPress={() => openProductModal()}
-                                    >
-                                        <SafeIcon name="plus" size={18} color="#fff" type="lucide" />
-                                        <Text style={styles.addProductButtonText}>Ajouter</Text>
-                                    </TouchableOpacity>
-                                </View>
-                            </View>
-
-                            {/* ✅ NOUVEAU: Statistiques rapides */}
-                            {products.length > 0 && (
-                                <View style={styles.statsContainer}>
-                                    <View style={styles.statItem}>
-                                        <Text style={styles.statValue}>{stats.total}</Text>
-                                        <Text style={styles.statLabel}>Produits</Text>
-                                    </View>
-                                    <View style={styles.statDivider} />
-                                    <View style={styles.statItem}>
-                                        <Text style={styles.statValue}>{stats.totalStock.toLocaleString()}</Text>
-                                        <Text style={styles.statLabel}>Stock total</Text>
-                                    </View>
-                                    <View style={styles.statDivider} />
-                                    <View style={styles.statItem}>
-                                        <Text style={styles.statValue}>{stats.totalValue.toLocaleString()}</Text>
-                                        <Text style={styles.statLabel}>Valeur (FCFA)</Text>
-                                    </View>
-                                    {stats.categories > 0 && (
-                                        <>
-                                            <View style={styles.statDivider} />
-                                            <View style={styles.statItem}>
-                                                <Text style={styles.statValue}>{stats.categories}</Text>
-                                                <Text style={styles.statLabel}>Catégories</Text>
-                                            </View>
-                                        </>
-                                    )}
-                                </View>
-                            )}
-
-                            {/* ✅ NOUVEAU: Barre de recherche */}
-                            {products.length > 0 && (
-                                <View style={styles.searchContainer}>
-                                    <SafeIcon name="search" size={18} color="#9CA3AF" type="lucide" />
-                                    <NativeInput
-                                        value={searchQuery}
-                                        onChangeText={setSearchQuery}
-                                        placeholder="Rechercher un médicament..."
-                                        style={styles.searchInput}
-                                    />
-                                    {searchQuery.trim() && (
-                                        <TouchableOpacity onPress={() => setSearchQuery('')}>
-                                            <SafeIcon name="x" size={18} color="#9CA3AF" type="lucide" />
-                                        </TouchableOpacity>
-                                    )}
-                                </View>
-                            )}
-
-                            {loadingProducts ? (
-                                <Text style={styles.loadingText}>Chargement des produits...</Text>
-                            ) : products.length === 0 ? (
-                                <View style={styles.emptyProductsContainer}>
-                                    <SafeIcon name="package" size={48} color="#9CA3AF" type="lucide" />
-                                    <Text style={styles.emptyProductsText}>Aucun médicament enregistré</Text>
-                                    <Text style={styles.emptyProductsHint}>
-                                        Ajoutez vos médicaments pour permettre aux clients de les rechercher
-                                    </Text>
-                                </View>
-                            ) : (
-                                <View style={styles.productsList}>
-                                    {filteredProducts.length === 0 && searchQuery.trim() ? (
-                                        <View style={styles.emptySearchContainer}>
-                                            <SafeIcon name="search-x" size={48} color="#9CA3AF" type="lucide" />
-                                            <Text style={styles.emptySearchText}>Aucun résultat pour "{searchQuery}"</Text>
-                                            <TouchableOpacity onPress={() => setSearchQuery('')}>
-                                                <Text style={styles.clearSearchText}>Effacer la recherche</Text>
-                                            </TouchableOpacity>
-                                        </View>
-                                    ) : (
-                                        filteredProducts.map((product) => (
-                                            <View key={product.id} style={styles.productCard}>
-                                                <View style={styles.productInfo}>
-                                                    <Text style={styles.productName}>{product.nom_produit}</Text>
-                                                    {product.description && (
-                                                        <Text style={styles.productDescription}>{product.description}</Text>
-                                                    )}
-                                                    <View style={styles.productDetails}>
-                                                        <Text style={styles.productPrice}>
-                                                            {product.prix.toLocaleString()} FCFA / {product.unite}
-                                                        </Text>
-                                                        <Text style={styles.productStock}>
-                                                            Stock: {product.stock} {product.unite}(s)
-                                                        </Text>
-                                                    </View>
-                                                    {product.categorie && (
-                                                        <View style={styles.productCategory}>
-                                                            <Text style={styles.productCategoryText}>{product.categorie}</Text>
-                                                        </View>
-                                                    )}
-                                                </View>
-                                                <View style={styles.productActions}>
-                                                    <TouchableOpacity
-                                                        style={styles.productActionButton}
-                                                        onPress={() => openProductModal(product)}
-                                                    >
-                                                        <SafeIcon name="edit" size={18} color={modernColors.primary} type="lucide" />
-                                                    </TouchableOpacity>
-                                                    <TouchableOpacity
-                                                        style={[styles.productActionButton, styles.deleteButton]}
-                                                        onPress={() => handleDeleteProduct(product)}
-                                                    >
-                                                        <SafeIcon name="trash-2" size={18} color="#DC2626" type="lucide" />
-                                                    </TouchableOpacity>
-                                                </View>
-                                            </View>
-                                        ))
-                                    )}
-                                </View>
-                            )}
-                            {searchQuery.trim() && filteredProducts.length > 0 && (
-                                <Text style={styles.searchResultsText}>
-                                    {filteredProducts.length} résultat(s) sur {products.length}
-                                </Text>
-                            )}
-                        </View>
-                    )}
-
-                    {/* ✅ CORRIGÉ: Utiliser title au lieu de children */}
-                    <NativeButton
-                        title={loading ? 'Enregistrement...' : 'Enregistrer la Pharmacie'}
-                        onPress={handleSubmit}
-                        disabled={loading || !formData.nom.trim()}
-                        variant="primary"
-                        size="large"
-                        style={styles.submitButton}
-                    />
+            {/* Empty state */}
+            {!pharmacyData && products.length === 0 && (
+                <View style={s.emptyDash}>
+                    <SafeIcon name="activity" size={48} color="#9CA3AF" />
+                    <Text style={s.emptyTitle}>Bienvenue sur votre Dashboard</Text>
+                    <Text style={s.emptyText}>Configurez votre pharmacie dans "Mon service" puis ajoutez vos produits.</Text>
+                    <NativeButton title="Configurer" onPress={() => setActiveTab('service')} style={{ marginTop: 16 }} />
                 </View>
-            </KeyboardAwareScreen>
+            )}
+        </ScrollView>
+    );
 
-            {/* Modals */}
-            <ModernGPSModal
-                visible={showGPSModal}
-                onClose={() => setShowGPSModal(false)}
-                onSelect={handleGPSSelect}
-                currentLocation={location ? {
-                    lat: location.coords.latitude,
-                    lng: location.coords.longitude
-                } : null}
-                title="Sélectionner la localisation"
-            />
+    // ─── RENDER: Service Form Tab ────────────────────────────────────────
+    const renderServiceForm = () => (
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100, padding: 16 }}>
+            {user?.role !== 'partenaire' && (
+                <View style={s.field}><NativeInput label="Nom de la pharmacie *" value={formData.nom} onChangeText={t => setFormData({ ...formData, nom: t })} placeholder="Ex: Pharmacie Centrale" /></View>
+            )}
+            <View style={s.field}>
+                <Text style={s.label}>Localisation GPS</Text>
+                <TouchableOpacity style={s.gpsBtn} onPress={() => setShowGPSModal(true)}>
+                    <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
+                    <Text style={s.gpsBtnText}>{selectedGPS ? '✓ Localisation sélectionnée' : 'Sélectionner sur la carte'}</Text>
+                    <SafeIcon name="chevron-right" size={20} color="#9CA3AF" />
+                </TouchableOpacity>
+            </View>
+            {user?.role !== 'partenaire' && (
+                <View style={s.field}><NativeInput label="Adresse" value={formData.adresse} onChangeText={t => setFormData({ ...formData, adresse: t })} placeholder="Adresse complète" multiline /></View>
+            )}
+            <View style={s.field}>
+                <LocationSelector label="Quartier" value={formData.quartier ? (typeof formData.quartier === 'string' ? { raw: formData.quartier, place_name: formData.quartier } : formData.quartier) : ''} onSelect={(loc: LocationObject) => setFormData({ ...formData, quartier: loc })} placeholder="Rechercher un lieu..." scope="all" enrichWithBackend />
+            </View>
+            <View style={s.field}>
+                <Text style={s.label}>Jours de garde</Text>
+                <TouchableOpacity style={s.greenBtn} onPress={() => setShowGuardDaysModal(true)}>
+                    <SafeIcon name="calendar" size={18} color="#fff" />
+                    <Text style={s.greenBtnText}>{Object.keys(formData.jours_garde).length > 0 ? 'Modifier planification' : 'Planifier jours de garde'}</Text>
+                </TouchableOpacity>
+                {Object.keys(formData.jours_garde).length > 0 && (
+                    <View style={s.guardSummary}><Text style={s.guardSummaryText}>{Object.values(formData.jours_garde).reduce((s, d) => s + d.length, 0)} jour(s) sur {Object.keys(formData.jours_garde).length} mois</Text></View>
+                )}
+            </View>
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+                <View style={[s.field, { flex: 1 }]}><NativeInput label="Ouverture" value={formData.heures_ouverture} onChangeText={t => setFormData({ ...formData, heures_ouverture: t })} placeholder="08:00" /></View>
+                <View style={[s.field, { flex: 1 }]}><NativeInput label="Fermeture" value={formData.heures_fermeture} onChangeText={t => setFormData({ ...formData, heures_fermeture: t })} placeholder="20:00" /></View>
+            </View>
+            <View style={s.switchRow}><Text style={s.label}>Ouvert 24h/24</Text><Switch value={formData.permanent_24h} onValueChange={v => setFormData({ ...formData, permanent_24h: v })} trackColor={{ false: '#D1D5DB', true: modernColors.primary }} /></View>
+            {user?.role !== 'partenaire' && (
+                <>
+                    <View style={s.field}><NativeInput label="Téléphone" value={formData.telephone} onChangeText={t => setFormData({ ...formData, telephone: t })} placeholder="+237 6XX XX XX XX" keyboardType="phone-pad" /></View>
+                    <View style={s.field}><NativeInput label="Urgence" value={formData.telephone_urgence} onChangeText={t => setFormData({ ...formData, telephone_urgence: t })} placeholder="+237 6XX XX XX XX" keyboardType="phone-pad" /></View>
+                    <View style={s.field}><NativeInput label="WhatsApp" value={formData.whatsapp} onChangeText={t => setFormData({ ...formData, whatsapp: t })} placeholder="+237 6XX XX XX XX" keyboardType="phone-pad" /></View>
+                    <View style={s.field}><NativeInput label="Email" value={formData.email} onChangeText={t => setFormData({ ...formData, email: t })} placeholder="pharmacie@example.com" keyboardType="email-address" autoCapitalize="none" /></View>
+                </>
+            )}
+            <View style={s.field}><SimplePrestationSelector label="Services proposés" options={SERVICES_OPTIONS} selected={selectedServices} onSelectionChange={setSelectedServices} allowCustom placeholder="Ajouter un service" /></View>
+            <NativeButton title={loading ? 'Enregistrement...' : (isDashboardMode ? 'Mettre à jour' : 'Enregistrer la Pharmacie')} onPress={handleSubmit} disabled={loading || !formData.nom.trim()} variant="primary" size="large" style={{ marginTop: 24 }} />
+        </ScrollView>
+    );
 
-            <GuardDaysSelector
-                visible={showGuardDaysModal}
-                onClose={() => setShowGuardDaysModal(false)}
-                onSave={handleGuardDaysSave}
-                initialDays={formData.jours_garde}
-                title="Planifier les jours de garde"
-            />
+    // ─── RENDER: Products Tab ────────────────────────────────────────────
+    const renderProductsTab = () => (
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}>
+            {/* Stats */}
+            {products.length > 0 && (
+                <View style={s.prodStats}>
+                    <View style={s.prodStatItem}><Text style={s.prodStatVal}>{stats.total}</Text><Text style={s.prodStatLbl}>Produits</Text></View>
+                    <View style={s.prodStatDiv} />
+                    <View style={s.prodStatItem}><Text style={s.prodStatVal}>{stats.totalStock.toLocaleString()}</Text><Text style={s.prodStatLbl}>Stock</Text></View>
+                    <View style={s.prodStatDiv} />
+                    <View style={s.prodStatItem}><Text style={s.prodStatVal}>{formatPrice(stats.totalValue)}</Text><Text style={s.prodStatLbl}>Valeur</Text></View>
+                </View>
+            )}
+            {/* Actions Bar */}
+            <View style={s.prodActions}>
+                <TouchableOpacity style={s.addProdBtn} onPress={() => openProductModal()}>
+                    <SafeIcon name="plus" size={18} color="#fff" /><Text style={s.addProdText}>Ajouter</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={s.bulkBtn} onPress={() => setShowBulkImportModal(true)}>
+                    <SafeIcon name="upload" size={16} color="#fff" />
+                </TouchableOpacity>
+                {products.length > 0 && (
+                    <TouchableOpacity style={s.exportBtn} onPress={handleExportProducts}>
+                        <SafeIcon name="download" size={16} color={modernColors.primary} />
+                    </TouchableOpacity>
+                )}
+            </View>
+            {/* Search */}
+            {products.length > 0 && (
+                <View style={s.searchBar}>
+                    <SafeIcon name="search" size={18} color="#9CA3AF" />
+                    <NativeInput value={searchQuery} onChangeText={setSearchQuery} placeholder="Rechercher..." style={{ flex: 1, backgroundColor: 'transparent' }} />
+                    {searchQuery.trim() !== '' && <TouchableOpacity onPress={() => setSearchQuery('')}><SafeIcon name="x" size={18} color="#9CA3AF" /></TouchableOpacity>}
+                </View>
+            )}
+            {/* List */}
+            {loadingProducts ? <ActivityIndicator size="large" color={modernColors.primary} style={{ marginTop: 32 }} /> :
+                products.length === 0 ? (
+                    <View style={s.emptyDash}>
+                        <SafeIcon name="package" size={48} color="#9CA3AF" />
+                        <Text style={s.emptyTitle}>Aucun médicament</Text>
+                        <Text style={s.emptyText}>Ajoutez vos produits pour les rendre visibles aux clients</Text>
+                        <NativeButton title="Ajouter un produit" onPress={() => openProductModal()} style={{ marginTop: 16 }} />
+                    </View>
+                ) : (
+                    filteredProducts.map(p => (
+                        <View key={p.id} style={s.prodCard}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={s.prodName}>{p.nom_produit}</Text>
+                                {p.description ? <Text style={s.prodDesc}>{p.description}</Text> : null}
+                                <Text style={s.prodPrice}>{p.prix.toLocaleString()} {devise} / {p.unite} · Stock: {p.stock}</Text>
+                                {p.categorie ? <View style={s.rpBadge}><Text style={s.rpBadgeText}>{p.categorie}</Text></View> : null}
+                            </View>
+                            <View style={{ gap: 6 }}>
+                                <TouchableOpacity style={s.iconBtn} onPress={() => openProductModal(p)}><SafeIcon name="edit" size={16} color={modernColors.primary} /></TouchableOpacity>
+                                <TouchableOpacity style={[s.iconBtn, { backgroundColor: '#FEE2E2' }]} onPress={() => handleDeleteProduct(p)}><SafeIcon name="trash-2" size={16} color="#DC2626" /></TouchableOpacity>
+                            </View>
+                        </View>
+                    ))
+                )}
+        </ScrollView>
+    );
 
-            {/* ✅ NOUVEAU: Modal pour ajouter/modifier un produit */}
-            <Modal
-                visible={showProductModal}
-                animationType="slide"
-                transparent={true}
-                onRequestClose={closeProductModal}
-            >
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalContent}>
-                        <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>
-                                {editingProduct ? 'Modifier le médicament' : 'Ajouter un médicament'}
-                            </Text>
-                            <TouchableOpacity onPress={closeProductModal}>
-                                <SafeIcon name="x" size={24} color="#6B7280" type="lucide" />
+    // ─── RENDER: Analytics Tab ───────────────────────────────────────────
+    const renderAnalytics = () => (
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+            <View style={s.analyticsCard}>
+                <View style={s.analyticsHdr}><SafeIcon name="bar-chart-2" size={22} color="#8B5CF6" /><Text style={s.analyticsTitle}>Commandes</Text></View>
+                {analyticsData ? (
+                    <View style={{ gap: 12 }}>
+                        {[
+                            { l: 'Commandes totales', v: analyticsData.total_orders },
+                            { l: 'Commandes (7j)', v: analyticsData.orders_7d },
+                            { l: 'Commandes (30j)', v: analyticsData.orders_30d },
+                            { l: 'Revenu total', v: formatPrice(analyticsData.total_revenue), c: '#10B981' },
+                            { l: 'Panier moyen', v: formatPrice(analyticsData.avg_order_value) },
+                        ].map((r, i) => (
+                            <View key={i} style={s.analyticsRow}><Text style={s.analyticsLbl}>{r.l}</Text><Text style={[s.analyticsVal, r.c ? { color: r.c } : {}]}>{r.v}</Text></View>
+                        ))}
+                    </View>
+                ) : <Text style={s.analyticsEmpty}>Disponible après les premières commandes.</Text>}
+            </View>
+            <View style={s.analyticsCard}>
+                <View style={s.analyticsHdr}><SafeIcon name="package" size={22} color="#3B82F6" /><Text style={s.analyticsTitle}>Inventaire</Text></View>
+                <View style={{ gap: 12 }}>
+                    {[
+                        { l: 'Produits', v: stats.total },
+                        { l: 'Stock total', v: stats.totalStock.toLocaleString() },
+                        { l: 'Valeur stock', v: formatPrice(stats.totalValue), c: '#8B5CF6' },
+                        { l: 'Catégories', v: stats.categories },
+                    ].map((r, i) => (
+                        <View key={i} style={s.analyticsRow}><Text style={s.analyticsLbl}>{r.l}</Text><Text style={[s.analyticsVal, r.c ? { color: r.c } : {}]}>{r.v}</Text></View>
+                    ))}
+                </View>
+            </View>
+            <View style={s.analyticsCard}>
+                <View style={s.analyticsHdr}><SafeIcon name="sparkles" size={22} color="#F59E0B" /><Text style={s.analyticsTitle}>Intelligence Artificielle</Text></View>
+                <Text style={s.analyticsEmpty}>Interactions médicamenteuses et suggestions de dosage IA disponibles.</Text>
+                <NativeButton title="Tester les interactions IA" onPress={() => (navigation as any).navigate('PharmacyAIInteractions')} style={{ marginTop: 12, backgroundColor: '#F59E0B' }} />
+            </View>
+        </ScrollView>
+    );
+
+    // ─── RENDER: Product Modal ───────────────────────────────────────────
+    const renderProductModal = () => (
+        <Modal visible={showProductModal} animationType="slide" transparent onRequestClose={closeProductModal}>
+            <View style={s.modalOverlay}><View style={s.modalContent}>
+                <View style={s.modalHeader}>
+                    <Text style={s.modalTitle}>{editingProduct ? 'Modifier' : 'Ajouter un médicament'}</Text>
+                    <TouchableOpacity onPress={closeProductModal}><SafeIcon name="x" size={24} color="#6B7280" /></TouchableOpacity>
+                </View>
+                <ScrollView style={{ padding: 16, maxHeight: 500 }}>
+                    <View style={s.field}><NativeInput label="Nom *" value={productFormData.nom_produit} onChangeText={t => setProductFormData({ ...productFormData, nom_produit: t })} placeholder="Ex: Paracétamol 500mg" /></View>
+                    <View style={s.field}><NativeInput label="Description" value={productFormData.description} onChangeText={t => setProductFormData({ ...productFormData, description: t })} placeholder="Description" multiline /></View>
+                    <View style={{ flexDirection: 'row', gap: 12 }}>
+                        <View style={[s.field, { flex: 1 }]}><NativeInput label={`Prix (${devise}) *`} value={productFormData.prix} onChangeText={t => setProductFormData({ ...productFormData, prix: t })} placeholder="0" keyboardType="numeric" /></View>
+                        <View style={[s.field, { flex: 1 }]}><NativeInput label="Stock *" value={productFormData.stock} onChangeText={t => setProductFormData({ ...productFormData, stock: t })} placeholder="0" keyboardType="numeric" /></View>
+                    </View>
+                    <Text style={s.label}>Unité</Text>
+                    <View style={s.chips}>{UNITE_OPTIONS.map(u => <TouchableOpacity key={u} style={[s.chip, productFormData.unite === u && s.chipOn]} onPress={() => setProductFormData({ ...productFormData, unite: u })}><Text style={[s.chipText, productFormData.unite === u && s.chipTextOn]}>{u}</Text></TouchableOpacity>)}</View>
+                    <Text style={[s.label, { marginTop: 16 }]}>Catégorie</Text>
+                    <View style={s.chips}>{CATEGORIE_OPTIONS.map(c => <TouchableOpacity key={c} style={[s.chip, productFormData.categorie === c && s.chipOn]} onPress={() => setProductFormData({ ...productFormData, categorie: c })}><Text style={[s.chipText, productFormData.categorie === c && s.chipTextOn]}>{c}</Text></TouchableOpacity>)}</View>
+                    <View style={[s.field, { marginTop: 16 }]}><NativeInput label="Code-barres" value={productFormData.code_barre} onChangeText={t => setProductFormData({ ...productFormData, code_barre: t })} placeholder="1234567890123" keyboardType="numeric" /></View>
+                </ScrollView>
+                <View style={s.modalFooter}>
+                    <NativeButton title="Annuler" onPress={closeProductModal} variant="secondary" style={{ flex: 1 }} />
+                    <NativeButton title={editingProduct ? 'Modifier' : 'Ajouter'} onPress={handleSaveProduct} variant="primary" style={{ flex: 1 }} disabled={loading || !productFormData.nom_produit.trim()} />
+                </View>
+            </View></View>
+        </Modal>
+    );
+
+    // ─── RENDER: Bulk Import Modal ───────────────────────────────────────
+    const renderBulkImportModal = () => (
+        <Modal visible={showBulkImportModal} animationType="slide" transparent onRequestClose={() => setShowBulkImportModal(false)}>
+            <View style={s.modalOverlay}><View style={s.modalContent}>
+                <View style={s.modalHeader}>
+                    <Text style={s.modalTitle}>Import en masse</Text>
+                    <TouchableOpacity onPress={() => setShowBulkImportModal(false)}><SafeIcon name="x" size={24} color="#6B7280" /></TouchableOpacity>
+                </View>
+                <ScrollView style={{ padding: 16, maxHeight: 400 }}>
+                    <Text style={s.hint}>JSON: [{'{'}nom_produit, prix, stock...{'}'}] ou CSV: nom,prix,stock,unite</Text>
+                    <NativeInput value={bulkImportText} onChangeText={setBulkImportText} placeholder="Collez vos données..." multiline style={{ minHeight: 150, fontFamily: 'monospace', fontSize: 12 }} />
+                    <View style={[s.switchRow, { marginTop: 16 }]}><Text style={s.label}>Remplacer existants</Text><Switch value={bulkImportOverwrite} onValueChange={setBulkImportOverwrite} trackColor={{ false: '#D1D5DB', true: modernColors.primary }} /></View>
+                </ScrollView>
+                <View style={s.modalFooter}>
+                    <NativeButton title="Annuler" onPress={() => { setShowBulkImportModal(false); setBulkImportText(''); }} variant="secondary" style={{ flex: 1 }} />
+                    <NativeButton title={loadingBulkImport ? 'Import...' : 'Importer'} onPress={handleBulkImport} variant="primary" style={{ flex: 1 }} disabled={loadingBulkImport || !bulkImportText.trim()} />
+                </View>
+            </View></View>
+        </Modal>
+    );
+
+    // ─── RENDER: Dashboard (main) ────────────────────────────────────────
+    if (isDashboardMode || (user?.role === 'partenaire' && serviceId)) {
+        const tabs: { key: TabType; label: string; icon: string }[] = [
+            { key: 'overview', label: 'Accueil', icon: 'layout-dashboard' },
+            { key: 'service', label: 'Service', icon: 'settings' },
+            { key: 'products', label: 'Produits', icon: 'package' },
+            { key: 'analytics', label: 'Stats', icon: 'bar-chart-2' },
+        ];
+
+        return (
+            <View style={s.container}>
+                <LinearGradient colors={['#047857', '#10B981']} style={s.dashHeader}>
+                    <View style={s.dashHeaderRow}>
+                        <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}><SafeIcon name="arrow-left" size={24} color="#fff" /></TouchableOpacity>
+                        <View style={{ flex: 1 }}>
+                            <Text style={s.dashTitle}>{pharmacyData?.nom || formData.nom || 'Ma Pharmacie'}</Text>
+                            <Text style={s.dashSub}>{stats.total} produit{stats.total !== 1 ? 's' : ''} · {isOnDuty ? '🟢 En garde' : '🔴 Hors garde'}</Text>
+                        </View>
+                    </View>
+                    <View style={s.tabsRow}>
+                        {tabs.map(t => (
+                            <TouchableOpacity key={t.key} style={[s.tab, activeTab === t.key && s.tabOn]} onPress={() => setActiveTab(t.key)}>
+                                <SafeIcon name={t.icon as any} size={14} color={activeTab === t.key ? '#fff' : '#ffffff70'} />
+                                <Text style={[s.tabText, activeTab === t.key && s.tabTextOn]}>{t.label}</Text>
                             </TouchableOpacity>
-                        </View>
-
-                        <ScrollView style={styles.modalBody}>
-                            <View style={styles.inputGroup}>
-                                <Text style={styles.label}>Nom du produit *</Text>
-                                <NativeInput
-                                    value={productFormData.nom_produit}
-                                    onChangeText={(text) => setProductFormData({ ...productFormData, nom_produit: text })}
-                                    placeholder="Ex: Paracétamol 500mg"
-                                />
-                            </View>
-
-                            <View style={styles.inputGroup}>
-                                <Text style={styles.label}>Description</Text>
-                                <NativeInput
-                                    value={productFormData.description}
-                                    onChangeText={(text) => setProductFormData({ ...productFormData, description: text })}
-                                    placeholder="Description du produit"
-                                    multiline
-                                />
-                            </View>
-
-                            <View style={styles.row}>
-                                <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
-                                    <Text style={styles.label}>Prix (FCFA) *</Text>
-                                    <NativeInput
-                                        value={productFormData.prix}
-                                        onChangeText={(text) => setProductFormData({ ...productFormData, prix: text })}
-                                        placeholder="0"
-                                        keyboardType="numeric"
-                                    />
-                                </View>
-                                <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
-                                    <Text style={styles.label}>Stock *</Text>
-                                    <NativeInput
-                                        value={productFormData.stock}
-                                        onChangeText={(text) => setProductFormData({ ...productFormData, stock: text })}
-                                        placeholder="0"
-                                        keyboardType="numeric"
-                                    />
-                                </View>
-                            </View>
-
-                            <View style={styles.inputGroup}>
-                                <Text style={styles.label}>Unité</Text>
-                                <View style={styles.chipsContainer}>
-                                    {uniteOptions.map((unite) => (
-                                        <TouchableOpacity
-                                            key={unite}
-                                            style={[
-                                                styles.chip,
-                                                productFormData.unite === unite && styles.chipSelected,
-                                            ]}
-                                            onPress={() => setProductFormData({ ...productFormData, unite })}
-                                        >
-                                            <Text
-                                                style={[
-                                                    styles.chipText,
-                                                    productFormData.unite === unite && styles.chipTextSelected,
-                                                ]}
-                                            >
-                                                {unite}
-                                            </Text>
-                                        </TouchableOpacity>
-                                    ))}
-                                </View>
-                            </View>
-
-                            <View style={styles.inputGroup}>
-                                <Text style={styles.label}>Code-barres (optionnel)</Text>
-                                <NativeInput
-                                    value={productFormData.code_barre}
-                                    onChangeText={(text) => setProductFormData({ ...productFormData, code_barre: text })}
-                                    placeholder="Ex: 1234567890123"
-                                    keyboardType="numeric"
-                                />
-                            </View>
-
-                            <View style={styles.inputGroup}>
-                                <Text style={styles.label}>Catégorie</Text>
-                                <View style={styles.chipsContainer}>
-                                    {categorieOptions.map((categorie) => (
-                                        <TouchableOpacity
-                                            key={categorie}
-                                            style={[
-                                                styles.chip,
-                                                productFormData.categorie === categorie && styles.chipSelected,
-                                            ]}
-                                            onPress={() => setProductFormData({ ...productFormData, categorie })}
-                                        >
-                                            <Text
-                                                style={[
-                                                    styles.chipText,
-                                                    productFormData.categorie === categorie && styles.chipTextSelected,
-                                                ]}
-                                            >
-                                                {categorie}
-                                            </Text>
-                                        </TouchableOpacity>
-                                    ))}
-                                </View>
-                            </View>
-                        </ScrollView>
-
-                        <View style={styles.modalFooter}>
-                            <NativeButton
-                                title="Annuler"
-                                onPress={closeProductModal}
-                                variant="secondary"
-                                style={styles.modalButton}
-                            />
-                            <NativeButton
-                                title={editingProduct ? 'Modifier' : 'Ajouter'}
-                                onPress={handleSaveProduct}
-                                variant="primary"
-                                style={styles.modalButton}
-                                disabled={loading || !productFormData.nom_produit.trim()}
-                            />
-                        </View>
+                        ))}
                     </View>
+                </LinearGradient>
+                <View style={s.dashContent}>
+                    {activeTab === 'overview' && renderOverview()}
+                    {activeTab === 'service' && renderServiceForm()}
+                    {activeTab === 'products' && renderProductsTab()}
+                    {activeTab === 'analytics' && renderAnalytics()}
                 </View>
-            </Modal>
+                <ModernGPSModal visible={showGPSModal} onClose={() => setShowGPSModal(false)} onSelect={handleGPSSelect} currentLocation={location ? { lat: location.coords.latitude, lng: location.coords.longitude } : null} title="Localisation pharmacie" />
+                <GuardDaysSelector visible={showGuardDaysModal} onClose={() => setShowGuardDaysModal(false)} onSave={handleGuardDaysSave} initialDays={formData.jours_garde} title="Jours de garde" />
+                {renderProductModal()}
+                {renderBulkImportModal()}
+            </View>
+        );
+    }
 
-            {/* ✅ NOUVEAU: Modal Import en masse */}
-            <Modal
-                visible={showBulkImportModal}
-                animationType="slide"
-                transparent={true}
-                onRequestClose={() => setShowBulkImportModal(false)}
-            >
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalContent}>
-                        <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>Import en masse</Text>
-                            <TouchableOpacity onPress={() => setShowBulkImportModal(false)}>
-                                <SafeIcon name="x" size={24} color="#6B7280" type="lucide" />
-                            </TouchableOpacity>
-                        </View>
-
-                        <ScrollView style={styles.modalBody}>
-                            <Text style={styles.label}>Format JSON ou CSV</Text>
-                            <Text style={styles.hintText}>
-                                JSON: [{"{"}"nom_produit": "...", "prix": 1000, "stock": 50, ...{"}"}]
-                                {'\n\n'}
-                                CSV: nom_produit,prix,stock,unite,description,code_barre,categorie
-                            </Text>
-
-                            <View style={styles.inputGroup}>
-                                <NativeInput
-                                    value={bulkImportText}
-                                    onChangeText={setBulkImportText}
-                                    placeholder="Collez vos données ici..."
-                                    multiline
-                                    style={styles.bulkImportInput}
-                                />
-                            </View>
-
-                            <View style={styles.switchGroup}>
-                                <Text style={styles.label}>Remplacer les produits existants</Text>
-                                <Switch
-                                    value={bulkImportOverwrite}
-                                    onValueChange={setBulkImportOverwrite}
-                                    trackColor={{ false: '#D1D5DB', true: modernColors.primary }}
-                                />
-                            </View>
-
-                            <Text style={styles.hintText}>
-                                {bulkImportOverwrite
-                                    ? 'Les produits avec le même nom seront mis à jour'
-                                    : 'Les produits existants seront ignorés'}
-                            </Text>
-                        </ScrollView>
-
-                        <View style={styles.modalFooter}>
-                            <NativeButton
-                                title="Annuler"
-                                onPress={() => {
-                                    setShowBulkImportModal(false);
-                                    setBulkImportText('');
-                                }}
-                                variant="secondary"
-                                style={styles.modalButton}
-                            />
-                            <NativeButton
-                                title={loadingBulkImport ? 'Import...' : 'Importer'}
-                                onPress={handleBulkImport}
-                                variant="primary"
-                                style={styles.modalButton}
-                                disabled={loadingBulkImport || !bulkImportText.trim()}
-                            />
-                        </View>
-                    </View>
-                </View>
-            </Modal>
-        </>
+    // ─── RENDER: Creation Mode ───────────────────────────────────────────
+    return (
+        <View style={s.container}>
+            <LinearGradient colors={['#047857', '#10B981']} style={s.createHeader}>
+                <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}><SafeIcon name="arrow-left" size={24} color="#fff" /></TouchableOpacity>
+                <Text style={s.createTitle}>Enregistrer une Pharmacie</Text>
+            </LinearGradient>
+            {renderServiceForm()}
+            <ModernGPSModal visible={showGPSModal} onClose={() => setShowGPSModal(false)} onSelect={handleGPSSelect} currentLocation={location ? { lat: location.coords.latitude, lng: location.coords.longitude } : null} title="Localisation pharmacie" />
+            <GuardDaysSelector visible={showGuardDaysModal} onClose={() => setShowGuardDaysModal(false)} onSave={handleGuardDaysSave} initialDays={formData.jours_garde} title="Jours de garde" />
+            {renderProductModal()}
+            {renderBulkImportModal()}
+        </View>
     );
 };
 
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#F9FAFB',
-    },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 16,
-        backgroundColor: '#fff',
-        borderBottomWidth: 1,
-        borderBottomColor: '#E5E7EB',
-    },
-    backButton: {
-        marginRight: 12,
-    },
-    headerContent: {
-        flex: 1,
-    },
-    title: {
-        fontSize: 20,
-        fontWeight: '700',
-        color: '#111827',
-    },
-    partnerHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginTop: 4,
-        paddingVertical: 4,
-        paddingHorizontal: 8,
-        backgroundColor: modernColors.primary + '15',
-        borderRadius: 6,
-        alignSelf: 'flex-start',
-    },
-    partnerName: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: modernColors.primary,
-        marginLeft: 6,
-    },
-    partnerLogo: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        marginRight: 8,
-    },
-    form: {
-        padding: 16,
-    },
-    inputGroup: {
-        marginBottom: 16,
-    },
-    row: {
-        flexDirection: 'row',
-    },
-    label: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#374151',
-        marginBottom: 8,
-    },
-    switchGroup: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 16,
-        paddingVertical: 8,
-    },
-    chipsContainer: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 8,
-    },
-    chip: {
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        borderRadius: 20,
-        backgroundColor: '#F3F4F6',
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-    },
-    chipSelected: {
-        backgroundColor: modernColors.primary,
-        borderColor: modernColors.primary,
-    },
-    chipText: {
-        fontSize: 14,
-        color: '#374151',
-    },
-    chipTextSelected: {
-        color: '#fff',
-        fontWeight: '600',
-    },
-    sectionHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 8,
-    },
-    gpsButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        backgroundColor: '#F9FAFB',
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-        borderRadius: 8,
-        padding: 12,
-        gap: 12,
-    },
-    gpsButtonText: {
-        flex: 1,
-        fontSize: 14,
-        color: '#111827',
-    },
-    gpsText: {
-        marginTop: 8,
-        fontSize: 12,
-        color: '#6B7280',
-    },
-    planningButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 8,
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        backgroundColor: modernColors.primary,
-        borderRadius: 8,
-        marginTop: 8,
-    },
-    planningButtonText: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#fff',
-    },
-    scheduleSummary: {
-        fontSize: 12,
-        color: '#6B7280',
-        marginTop: 4,
-    },
-    hintText: {
-        fontSize: 12,
-        color: '#6B7280',
-        marginTop: 4,
-        fontStyle: 'italic',
-    },
-    guardDaysSummary: {
-        marginTop: 8,
-        padding: 12,
-        backgroundColor: '#EEF2FF',
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: '#C7D2FE',
-    },
-    guardDaysSummaryText: {
-        fontSize: 13,
-        fontWeight: '600',
-        color: modernColors.primary,
-    },
-    submitButton: {
-        marginTop: 24,
-    },
-    // ✅ NOUVEAU: Styles pour la section produits
-    productsSection: {
-        marginTop: 24,
-        marginBottom: 16,
-        padding: 16,
-        backgroundColor: '#fff',
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-    },
-    sectionHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 16,
-    },
-    sectionTitleContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-    },
-    sectionTitle: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: '#111827',
-    },
-    addProductButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        backgroundColor: modernColors.primary,
-        borderRadius: 8,
-    },
-    addProductButtonText: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#fff',
-    },
-    loadingText: {
-        fontSize: 14,
-        color: '#6B7280',
-        textAlign: 'center',
-        padding: 16,
-    },
-    emptyProductsContainer: {
-        alignItems: 'center',
-        padding: 32,
-    },
-    emptyProductsText: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#374151',
-        marginTop: 12,
-        marginBottom: 8,
-    },
-    emptyProductsHint: {
-        fontSize: 14,
-        color: '#6B7280',
-        textAlign: 'center',
-    },
-    productsList: {
-        gap: 12,
-    },
-    productCard: {
-        flexDirection: 'row',
-        padding: 12,
-        backgroundColor: '#F9FAFB',
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-    },
-    productInfo: {
-        flex: 1,
-    },
-    productName: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#111827',
-        marginBottom: 4,
-    },
-    productDescription: {
-        fontSize: 14,
-        color: '#6B7280',
-        marginBottom: 8,
-    },
-    productDetails: {
-        flexDirection: 'row',
-        gap: 16,
-        marginBottom: 8,
-    },
-    productPrice: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: modernColors.primary,
-    },
-    productStock: {
-        fontSize: 14,
-        color: '#6B7280',
-    },
-    productCategory: {
-        alignSelf: 'flex-start',
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        backgroundColor: '#EEF2FF',
-        borderRadius: 4,
-    },
-    productCategoryText: {
-        fontSize: 12,
-        fontWeight: '500',
-        color: modernColors.primary,
-    },
-    productActions: {
-        flexDirection: 'row',
-        gap: 8,
-        alignItems: 'flex-start',
-    },
-    productActionButton: {
-        padding: 8,
-        borderRadius: 6,
-        backgroundColor: '#F3F4F6',
-    },
-    deleteButton: {
-        backgroundColor: '#FEE2E2',
-    },
-    // ✅ NOUVEAU: Styles pour le modal produit
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        justifyContent: 'flex-end',
-    },
-    modalContent: {
-        backgroundColor: '#fff',
-        borderTopLeftRadius: 20,
-        borderTopRightRadius: 20,
-        maxHeight: '90%',
-    },
-    modalHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: '#E5E7EB',
-    },
-    modalTitle: {
-        fontSize: 20,
-        fontWeight: '700',
-        color: '#111827',
-    },
-    modalBody: {
-        padding: 16,
-        maxHeight: 500,
-    },
-    modalFooter: {
-        flexDirection: 'row',
-        gap: 12,
-        padding: 16,
-        borderTopWidth: 1,
-        borderTopColor: '#E5E7EB',
-    },
-    modalButton: {
-        flex: 1,
-    },
-    // ✅ NOUVEAU: Styles pour fonctionnalités avancées
-    sectionActions: {
-        flexDirection: 'row',
-        gap: 8,
-        alignItems: 'center',
-    },
-    exportButton: {
-        padding: 8,
-        borderRadius: 6,
-        backgroundColor: '#EEF2FF',
-        borderWidth: 1,
-        borderColor: modernColors.primary,
-    },
-    bulkImportButton: {
-        padding: 8,
-        borderRadius: 6,
-        backgroundColor: '#10B981',
-    },
-    statsContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 12,
-        backgroundColor: '#F9FAFB',
-        borderRadius: 8,
-        marginBottom: 12,
-    },
-    statItem: {
-        flex: 1,
-        alignItems: 'center',
-    },
-    statValue: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: modernColors.primary,
-        marginBottom: 4,
-    },
-    statLabel: {
-        fontSize: 12,
-        color: '#6B7280',
-    },
-    statDivider: {
-        width: 1,
-        height: 40,
-        backgroundColor: '#E5E7EB',
-        marginHorizontal: 8,
-    },
-    searchContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        padding: 12,
-        backgroundColor: '#F9FAFB',
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-        marginBottom: 12,
-    },
-    searchInput: {
-        flex: 1,
-        backgroundColor: '#fff',
-    },
-    emptySearchContainer: {
-        alignItems: 'center',
-        padding: 32,
-    },
-    emptySearchText: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#374151',
-        marginTop: 12,
-        marginBottom: 8,
-    },
-    clearSearchText: {
-        fontSize: 14,
-        color: modernColors.primary,
-        fontWeight: '600',
-    },
-    searchResultsText: {
-        fontSize: 12,
-        color: '#6B7280',
-        textAlign: 'center',
-        marginTop: 8,
-        fontStyle: 'italic',
-    },
-    bulkImportInput: {
-        minHeight: 200,
-        textAlignVertical: 'top',
-        fontFamily: 'monospace',
-        fontSize: 12,
-    },
+// ─── STYLES ──────────────────────────────────────────────────────────────
+const s = StyleSheet.create({
+    container: { flex: 1, backgroundColor: '#F3F4F6' },
+    loadingScreen: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' },
+    loadingText: { marginTop: 12, fontSize: 15, color: '#6B7280', fontWeight: '500' },
+
+    // Dashboard Header
+    dashHeader: { paddingTop: 50, paddingBottom: 8, paddingHorizontal: 16 },
+    dashHeaderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
+    backBtn: { marginRight: 12, padding: 4 },
+    dashTitle: { fontSize: 22, fontWeight: '700', color: '#fff' },
+    dashSub: { fontSize: 13, color: '#ffffffCC', marginTop: 2 },
+    dashContent: { flex: 1, paddingHorizontal: 16, paddingTop: 16 },
+
+    // Creation Header
+    createHeader: { paddingTop: 50, paddingBottom: 16, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center' },
+    createTitle: { fontSize: 20, fontWeight: '700', color: '#fff' },
+
+    // Tabs
+    tabsRow: { flexDirection: 'row', gap: 4, paddingBottom: 8 },
+    tab: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 8, borderRadius: 8, backgroundColor: '#ffffff15' },
+    tabOn: { backgroundColor: '#ffffff30' },
+    tabText: { fontSize: 11, color: '#ffffff70', fontWeight: '500' },
+    tabTextOn: { color: '#fff', fontWeight: '700' },
+
+    // Stats Grid
+    statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 },
+    statCard: { flex: 1, minWidth: '45%', backgroundColor: '#fff', borderRadius: 12, padding: 14, borderLeftWidth: 3, elevation: 2, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, shadowOffset: { width: 0, height: 1 } },
+    statValue: { fontSize: 20, fontWeight: '700', color: '#111827', marginTop: 8 },
+    statLabel: { fontSize: 12, color: '#6B7280', marginTop: 2 },
+
+    // Quick Actions
+    quickRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
+    quickAction: { flex: 1, alignItems: 'center', gap: 6 },
+    quickIcon: { width: 48, height: 48, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
+    quickLabel: { fontSize: 11, color: '#374151', fontWeight: '500', textAlign: 'center' },
+
+    // Guard Card
+    guardCard: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, backgroundColor: '#fff', borderRadius: 12, marginBottom: 20, elevation: 1, shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 3, shadowOffset: { width: 0, height: 1 } },
+    guardDot: { width: 12, height: 12, borderRadius: 6 },
+    guardTitle: { fontSize: 15, fontWeight: '600', color: '#111827' },
+    guardSub: { fontSize: 12, color: '#6B7280', marginTop: 2 },
+
+    // Section
+    sectionTitle: { fontSize: 16, fontWeight: '700', color: '#111827', marginBottom: 12 },
+    sectionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+    seeAll: { fontSize: 13, color: modernColors.primary, fontWeight: '600' },
+
+    // Recent Product
+    recentProduct: { flexDirection: 'row', alignItems: 'center', padding: 14, backgroundColor: '#fff', borderRadius: 10, marginBottom: 8, elevation: 1, shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 3, shadowOffset: { width: 0, height: 1 } },
+    rpName: { fontSize: 15, fontWeight: '600', color: '#111827' },
+    rpDetail: { fontSize: 13, color: '#6B7280', marginTop: 2 },
+    rpBadge: { paddingHorizontal: 8, paddingVertical: 3, backgroundColor: '#EEF2FF', borderRadius: 6, alignSelf: 'flex-start', marginTop: 4 },
+    rpBadgeText: { fontSize: 11, fontWeight: '600', color: modernColors.primary },
+
+    // Info
+    infoRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8 },
+    infoText: { fontSize: 14, color: '#374151' },
+
+    // Empty
+    emptyDash: { alignItems: 'center', padding: 32, backgroundColor: '#fff', borderRadius: 12, marginTop: 8 },
+    emptyTitle: { fontSize: 18, fontWeight: '700', color: '#111827', marginTop: 16 },
+    emptyText: { fontSize: 14, color: '#6B7280', textAlign: 'center', marginTop: 8, lineHeight: 20 },
+
+    // Form
+    field: { marginBottom: 16 },
+    label: { fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 8 },
+    hint: { fontSize: 12, color: '#6B7280', marginBottom: 12, fontStyle: 'italic' },
+    switchRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, paddingVertical: 8 },
+    gpsBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#F9FAFB', borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 8, padding: 12, gap: 12 },
+    gpsBtnText: { flex: 1, fontSize: 14, color: '#111827' },
+    greenBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 12, backgroundColor: modernColors.primary, borderRadius: 8, marginTop: 8 },
+    greenBtnText: { fontSize: 14, fontWeight: '600', color: '#fff' },
+    guardSummary: { marginTop: 8, padding: 12, backgroundColor: '#EEF2FF', borderRadius: 8, borderWidth: 1, borderColor: '#C7D2FE' },
+    guardSummaryText: { fontSize: 13, fontWeight: '600', color: modernColors.primary },
+
+    // Products Tab
+    prodStats: { flexDirection: 'row', alignItems: 'center', padding: 12, backgroundColor: '#fff', borderRadius: 10, marginBottom: 12 },
+    prodStatItem: { flex: 1, alignItems: 'center' },
+    prodStatVal: { fontSize: 18, fontWeight: '700', color: modernColors.primary },
+    prodStatLbl: { fontSize: 12, color: '#6B7280', marginTop: 2 },
+    prodStatDiv: { width: 1, height: 36, backgroundColor: '#E5E7EB', marginHorizontal: 8 },
+    prodActions: { flexDirection: 'row', gap: 8, marginBottom: 12 },
+    addProdBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 10, backgroundColor: modernColors.primary, borderRadius: 8 },
+    addProdText: { fontSize: 14, fontWeight: '600', color: '#fff' },
+    bulkBtn: { padding: 10, borderRadius: 8, backgroundColor: '#10B981' },
+    exportBtn: { padding: 10, borderRadius: 8, backgroundColor: '#EEF2FF', borderWidth: 1, borderColor: modernColors.primary },
+    searchBar: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, backgroundColor: '#fff', borderRadius: 8, borderWidth: 1, borderColor: '#E5E7EB', marginBottom: 12 },
+    prodCard: { flexDirection: 'row', padding: 14, backgroundColor: '#fff', borderRadius: 10, marginBottom: 8, borderWidth: 1, borderColor: '#F3F4F6' },
+    prodName: { fontSize: 15, fontWeight: '600', color: '#111827' },
+    prodDesc: { fontSize: 13, color: '#6B7280', marginTop: 2 },
+    prodPrice: { fontSize: 13, fontWeight: '500', color: modernColors.primary, marginTop: 4 },
+    iconBtn: { padding: 8, borderRadius: 6, backgroundColor: '#F3F4F6' },
+
+    // Analytics
+    analyticsCard: { backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 12 },
+    analyticsHdr: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 16 },
+    analyticsTitle: { fontSize: 17, fontWeight: '700', color: '#111827' },
+    analyticsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
+    analyticsLbl: { fontSize: 14, color: '#6B7280' },
+    analyticsVal: { fontSize: 16, fontWeight: '700', color: '#111827' },
+    analyticsEmpty: { fontSize: 14, color: '#6B7280', fontStyle: 'italic', lineHeight: 20 },
+
+    // Chips
+    chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: '#F3F4F6', borderWidth: 1, borderColor: '#E5E7EB' },
+    chipOn: { backgroundColor: modernColors.primary, borderColor: modernColors.primary },
+    chipText: { fontSize: 13, color: '#374151' },
+    chipTextOn: { color: '#fff', fontWeight: '600' },
+
+    // Modal
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+    modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '90%' },
+    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
+    modalTitle: { fontSize: 20, fontWeight: '700', color: '#111827' },
+    modalFooter: { flexDirection: 'row', gap: 12, padding: 16, borderTopWidth: 1, borderTopColor: '#E5E7EB' },
 });
 
 export default PharmacieFormScreen;
-

@@ -10,10 +10,9 @@
 
 import * as ReactNavigation from '@react-navigation/native';
 import { useFocusEffect } from '@react-navigation/native';
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
     Alert,
-    Animated,
     AppState,
     AppStateStatus,
     DeviceEventEmitter,
@@ -42,131 +41,29 @@ import { genererSuggestionsService, rechercherServices } from '../services/yukpo
 import { modernColors } from '../theme/modernTheme';
 import { hapticError } from '../utils/hapticFeedback';
 
-// NOUVEAU: Composant pour menu promotions regroupé
-const PromotionsMenu: React.FC<{ navigate: (route: string) => boolean }> = ({ navigate }) => {
-    const [expanded, setExpanded] = useState(false);
-    const scaleAnim = useRef(new Animated.Value(0)).current;
-
+// Barre promotions toujours visible (plus de dropdown)
+const PromotionsBar: React.FC<{ navigate: (route: string) => boolean }> = ({ navigate }) => {
     const promotions = [
-        {
-            id: 'flash',
-            icon: '⚡',
-            title: 'Flash Promo',
-            subtitle: 'Promotions limitées',
-            route: 'FlashPromosActive',
-            color: '#F59E0B'
-        },
-        {
-            id: 'blackfriday',
-            icon: '🛍️',
-            title: 'Black Friday',
-            subtitle: 'Campagne globale',
-            route: 'GlobalPromoCatalog',
-            color: '#DC2626'
-        },
-        {
-            id: 'live',
-            icon: '📺',
-            title: 'Lives',
-            subtitle: 'Sessions live',
-            route: 'VideoFeed',
-            color: '#8B5CF6'
-        }
+        { id: 'flash', icon: 'zap', title: 'Flash Promo', route: 'FlashPromosActive', color: '#F59E0B' },
+        { id: 'blackfriday', icon: 'shopping-bag', title: 'Black Friday', route: 'GlobalPromoCatalog', color: '#DC2626' },
+        { id: 'live', icon: 'video', title: 'Lives', route: 'VideoFeed', color: '#8B5CF6' },
     ];
 
-    const toggleMenu = () => {
-        // ✅ DÉSACTIVÉ: Haptic feedback désactivé pour fluidité
-        // hapticPress();
-        const toValue = expanded ? 0 : 1;
-        Animated.spring(scaleAnim, {
-            toValue,
-            useNativeDriver: true,
-            tension: 50,
-            friction: 7
-        }).start();
-        setExpanded(!expanded);
-    };
-
-    const handlePromoPress = (route: string) => {
-        // ✅ DÉSACTIVÉ: Haptic feedback désactivé pour navigation fluide
-        // hapticPress();
-        toggleMenu();
-        setTimeout(() => navigate(route), 200);
-    };
-
     return (
-        <View style={styles.promotionsContainer}>
-            {/* Bouton principal */}
-            <TouchableOpacity
-                style={styles.promotionsMainButton}
-                onPress={toggleMenu}
-                activeOpacity={0.8}
-            >
-                <View style={styles.promotionsMainButtonContent}>
-                    <View style={styles.promotionsMainIconContainer}>
-                        <Text style={styles.promotionsMainIcon}>🎯</Text>
-                    </View>
-                    <View style={styles.promotionsMainText}>
-                        <Text style={styles.promotionsMainTitle}>Promotions & Lives</Text>
-                        <Text style={styles.promotionsMainSubtitle}>3 options disponibles</Text>
-                    </View>
-                    <Animated.View
-                        style={[
-                            styles.promotionsChevron,
-                            {
-                                transform: [{
-                                    rotate: scaleAnim.interpolate({
-                                        inputRange: [0, 1],
-                                        outputRange: ['0deg', '180deg']
-                                    })
-                                }]
-                            }
-                        ]}
-                    >
-                        <SafeIcon name="chevron-down" size={20} color="#666" />
-                    </Animated.View>
-                </View>
-            </TouchableOpacity>
-
-            {/* Menu horizontal des promotions */}
-            {expanded && (
-                <Animated.View
-                    style={[
-                        styles.promotionsMenu,
-                        {
-                            opacity: scaleAnim,
-                            transform: [{
-                                scaleY: scaleAnim.interpolate({
-                                    inputRange: [0, 1],
-                                    outputRange: [0.8, 1]
-                                })
-                            }]
-                        }
-                    ]}
+        <View style={styles.promoBarContainer}>
+            {promotions.map((promo) => (
+                <TouchableOpacity
+                    key={promo.id}
+                    style={styles.promoBarItem}
+                    onPress={() => navigate(promo.route)}
+                    activeOpacity={0.7}
                 >
-                    <ScrollView
-                        horizontal
-                        showsHorizontalScrollIndicator={false}
-                        contentContainerStyle={styles.promotionsMenuContent}
-                    >
-                        {promotions.map((promo) => (
-                            <TouchableOpacity
-                                key={promo.id}
-                                style={styles.promotionMenuItem}
-                                onPress={() => handlePromoPress(promo.route)}
-                                activeOpacity={0.7}
-                            >
-                                <View style={[styles.promotionMenuIconContainer, { backgroundColor: `${promo.color}15` }]}>
-                                    <Text style={styles.promotionMenuIcon}>{promo.icon}</Text>
-                                </View>
-                                <Text style={styles.promotionMenuTitle} numberOfLines={1}>
-                                    {promo.title}
-                                </Text>
-                            </TouchableOpacity>
-                        ))}
-                    </ScrollView>
-                </Animated.View>
-            )}
+                    <View style={[styles.promoBarIcon, { backgroundColor: `${promo.color}15` }]}>
+                        <SafeIcon name={promo.icon as any} size={20} color={promo.color} />
+                    </View>
+                    <Text style={styles.promoBarText} numberOfLines={1}>{promo.title}</Text>
+                </TouchableOpacity>
+            ))}
         </View>
     );
 };
@@ -592,36 +489,11 @@ const HomeScreen: React.FC = () => {
         }
     }, [user, navigate]);
 
-    // Handler soumission
+    // Handler soumission — appel direct sans confirmation (l'utilisateur a déjà choisi le mode)
     const handleSubmit = useCallback(async (input: any) => {
         try {
             if (isCreateService) {
-                // NOUVEAU: Toast de confirmation avant création de service
-                Alert.alert(
-                    'Confirmation',
-                    'Voulez-vous vraiment créer un nouveau service ou produit ?',
-                    [
-                        {
-                            text: 'Annuler',
-                            style: 'cancel',
-                            onPress: () => {
-                                console.log('[HomeScreen] Création de service annulée par l\'utilisateur');
-                                // NOUVEAU: Passer automatiquement en mode recherche lors de l'annulation
-                                setIsCreateService(false);
-                                console.log('[HomeScreen] Mode changé automatiquement en recherche');
-                            }
-                        },
-                        {
-                            text: 'Oui, créer',
-                            style: 'default',
-                            onPress: async () => {
-                                console.log('[HomeScreen] Confirmation création de service acceptée');
-                                await handleCreateService(input);
-                            }
-                        }
-                    ],
-                    { cancelable: true }
-                );
+                await handleCreateService(input);
             } else {
                 await handleSearch(input);
             }
@@ -654,14 +526,6 @@ const HomeScreen: React.FC = () => {
         setShowGPSModal(false);
     }, []);
 
-    // ✅ NOUVEAU: Remettre automatiquement en mode recherche quand on revient sur l'écran
-    // Cela garantit que après la création d'un service ou produit, le mode repasse en recherche
-    useFocusEffect(
-        useCallback(() => {
-            console.log('[HomeScreen] öä Écran focus - Remise en mode recherche automatique');
-            setIsCreateService(false);
-        }, [])
-    );
 
 
     // ✅ NOUVEAU: Calculer le paddingTop du header pour tenir compte du safe area
@@ -729,7 +593,7 @@ const HomeScreen: React.FC = () => {
                             setShowChatModal(true);
                         }}
                     >
-                        <Text style={styles.headerButtonIcon}>💬</Text>
+                        <SafeIcon name="message-circle" size={20} color="#6B7280" />
                         {/* ✅ NOUVEAU: Badge rouge avec le nombre de messages chat non lus */}
                         {unreadChatCount > 0 && (
                             <View style={styles.notificationBadge}>
@@ -747,7 +611,7 @@ const HomeScreen: React.FC = () => {
                             setShowNotificationModal(true);
                         }}
                     >
-                        <Text style={styles.headerButtonIcon}>🔔</Text>
+                        <SafeIcon name="bell" size={20} color="#6B7280" />
                         {/* ✅ NOUVEAU: Badge rouge avec le nombre de notifications non lues */}
                         {unreadNotificationsCount > 0 && (
                             <View style={styles.notificationBadge}>
@@ -838,8 +702,8 @@ const HomeScreen: React.FC = () => {
                         />
                     </View>
 
-                    {/* NOUVEAU: Bouton unique pour promotions avec menu horizontal */}
-                    <PromotionsMenu navigate={navigate} />
+                    {/* Barre promotions toujours visible */}
+                    <PromotionsBar navigate={navigate} />
 
                     {/* Services spécialisés Yukpo - Accès recherche uniquement */}
                     <View style={styles.specializedServicesContainer}>
@@ -1122,88 +986,36 @@ const styles = StyleSheet.create({
         color: '#92400E',
         textAlign: 'center',
     },
-    promotionsContainer: {
-        marginTop: 12, // ✅ RÉDUIT: De 16 à 12 pour remonter les éléments
-        marginHorizontal: 0, // Pas de marge horizontale car déjà dans le conteneur
-        marginBottom: 12, // ✅ RÉDUIT: De 16 à 12 pour équilibrer
+    promoBarContainer: {
+        flexDirection: 'row',
+        gap: 8,
+        marginTop: 12,
+        marginBottom: 12,
     },
-    promotionsMainButton: {
-        backgroundColor: modernColors.background, // ✅ RÉTABLI: Couleur originale des boutons
-        borderRadius: 10,
-        padding: 10,
-        borderWidth: 1,
-        borderColor: modernColors.border, // ✅ CORRIGÉ: Mème bordure que les autres boutons (#e2e8f0)
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
-        elevation: 2,
-    },
-    promotionsMainButtonContent: {
+    promoBarItem: {
+        flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 10,
-    },
-    promotionsMainIconContainer: {
-        width: 44, // ✅ AUGMENTÉ: De 36 à 44 pour plus de visibilité
-        height: 44, // ✅ AUGMENTÉ: De 36 à 44 pour plus de visibilité
-        borderRadius: 22, // ✅ AUGMENTÉ: De 18 à 22 pour correspondre à la taille
-        backgroundColor: '#F3F4F6',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    promotionsMainIcon: {
-        fontSize: 28, // ✅ AUGMENTÉ: De 20 à 28 pour plus de visibilité
-    },
-    promotionsMainText: {
-        flex: 1,
-    },
-    promotionsMainTitle: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#111827',
-        marginBottom: 2,
-    },
-    promotionsMainSubtitle: {
-        fontSize: 11,
-        color: '#6B7280',
-    },
-    promotionsChevron: {
-        marginLeft: 'auto',
-    },
-    promotionsMenu: {
-        marginTop: 12,
+        gap: 8,
+        paddingVertical: 10,
+        paddingHorizontal: 10,
         backgroundColor: '#FFFFFF',
-        borderRadius: 12,
-        padding: 12,
+        borderRadius: 10,
         borderWidth: 1,
         borderColor: '#E5E7EB',
     },
-    promotionsMenuContent: {
-        gap: 12,
-        paddingHorizontal: 4,
-    },
-    promotionMenuItem: {
-        alignItems: 'center',
-        minWidth: 80,
-        paddingVertical: 8,
-    },
-    promotionMenuIconContainer: {
-        width: 56,
-        height: 56,
-        borderRadius: 28,
+    promoBarIcon: {
+        width: 36,
+        height: 36,
+        borderRadius: 10,
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 8,
     },
-    promotionMenuIcon: {
-        fontSize: 28,
-    },
-    promotionMenuTitle: {
+    promoBarText: {
+        flex: 1,
         fontSize: 12,
-        fontWeight: '500',
+        fontWeight: '600',
         color: '#374151',
-        textAlign: 'center',
     },
     specializedServicesContainer: {
         marginTop: 16, // ✅ RÉDUIT: De 24 à 16 pour remonter les éléments

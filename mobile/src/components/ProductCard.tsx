@@ -742,7 +742,7 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
   useEffect(() => {
     // ✅ AMÉLIORÉ: Toujours logger pour voir pourquoi les médias ne s'affichent pas
     const hasAnyMedia = rawImages.length > 0 || rawVideos.length > 0 || images.length > 0 || videos.length > 0;
-    if (hasAnyMedia || __DEV__) {
+    if (__DEV__) {
       console.log(`[ProductCard] 📸 Médias extraits pour service ${serviceId}, produit ${productIndex}:`, {
         rawImagesCount: rawImages.length,
         rawVideosCount: rawVideos.length,
@@ -794,7 +794,7 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
   }, [hasMedia, images.length, videos.length, rawImages.length, rawVideos.length, product.images, product.videos, productData.images, productData.videos, normalizedVariantImage]);
 
   // ✅ DEBUG 2026-01-13: Logger hasMedia pour diagnostiquer
-  if (rawImages.length > 0 || rawVideos.length > 0) {
+  if (__DEV__ && (rawImages.length > 0 || rawVideos.length > 0)) {
     console.log(`[ProductCard] hasMedia=${hasMedia}, images=${images.length}, videos=${videos.length}, variantImage=${!!normalizedVariantImage}`);
   }
 
@@ -1451,86 +1451,9 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
     loadReactions();
   }, [loadReactions]);
 
-  // ✅ CORRIGÉ 2026-01-23: Scroll automatique horizontal pour les variations de prix
-  // ✅ AMÉLIORÉ: Synchronisation avec l'état réel du scroll et gestion améliorée
-  useEffect(() => {
-    if (!hasVariant || variants.length <= 1 || isScrollingManually) return;
+  // ✅ SUPPRIMÉ 2026-03-XX: Auto-scroll des variations supprimé (UX Amazon-style: scroll manuel uniquement)
 
-    const cardWidth = 110 + 8; // width + marginRight = 118 (correspond à snapToInterval)
-
-    let autoScrollInterval: NodeJS.Timeout | null = null;
-
-    // ✅ CORRIGÉ: Démarrer immédiatement mais avec un léger délai pour éviter les conflits
-    const initialDelay = setTimeout(() => {
-      autoScrollInterval = setInterval(() => {
-        if (variantsScrollRef.current && !isScrollingManually) {
-          setCurrentVariantIndex((prevIndex) => {
-            const nextIndex = (prevIndex + 1) % variants.length;
-
-            // Scroll vers la prochaine variation
-            variantsScrollRef.current?.scrollTo({
-              x: nextIndex * cardWidth,
-              y: 0,
-              animated: true,
-            });
-
-            return nextIndex;
-          });
-        }
-      }, 3000); // ✅ Scroll automatique toutes les 3 secondes
-    }, 0);
-
-    return () => {
-      clearTimeout(initialDelay);
-      if (autoScrollInterval) {
-        clearInterval(autoScrollInterval);
-      }
-    };
-  }, [hasVariant, variants.length, isScrollingManually]);
-
-  // ✅ CORRIGÉ 2026-01-23: Scroll automatique horizontal pour les caractéristiques
-  // ✅ AMÉLIORÉ: Désynchronisé des variations de prix pour éviter les conflits
-  useEffect(() => {
-    if (productVector.length <= 1 || isScrollingCharacteristicsManually) return;
-
-    // ✅ AMÉLIORÉ: Calculer la largeur approximative basée sur la longueur moyenne du texte
-    // paddingHorizontal (8*2) + texte (11px * longueur moyenne) + gap (4)
-    const avgTextLength = productVector.reduce((sum: number, carac: string) => {
-      const displayValue = filterBooleanValue(carac, '');
-      return sum + (displayValue ? displayValue.length : 0);
-    }, 0) / productVector.length;
-    const chipWidth = Math.max(60, Math.min(150, (8 * 2) + (avgTextLength * 7) + 4)); // Min 60px, max 150px
-
-    let autoScrollInterval: NodeJS.Timeout | null = null;
-
-    // ✅ CORRIGÉ: Démarrer après un délai initial différent (1500ms) pour désynchroniser des variations
-    // Cela évite que les deux scrolls se déclenchent en même temps et se bloquent mutuellement
-    const initialDelay = setTimeout(() => {
-      autoScrollInterval = setInterval(() => {
-        if (characteristicsScrollRef.current && !isScrollingCharacteristicsManually) {
-          setCurrentCharacteristicIndex((prevIndex) => {
-            const nextIndex = (prevIndex + 1) % productVector.length;
-
-            // Scroll vers la prochaine caractéristique
-            characteristicsScrollRef.current?.scrollTo({
-              x: nextIndex * chipWidth,
-              y: 0,
-              animated: true,
-            });
-
-            return nextIndex;
-          });
-        }
-      }, 3000); // ✅ Scroll automatique toutes les 3 secondes
-    }, 1500); // ✅ DÉSYNCHRONISÉ: Démarrer 1.5s après les variations pour éviter les conflits
-
-    return () => {
-      clearTimeout(initialDelay);
-      if (autoScrollInterval) {
-        clearInterval(autoScrollInterval);
-      }
-    };
-  }, [productVector.length, isScrollingCharacteristicsManually, productVector]);
+  // ✅ SUPPRIMÉ 2026-03-XX: Auto-scroll des caractéristiques supprimé (UX Amazon-style: scroll manuel uniquement)
 
   // ✅ NOUVEAU 2026-01-14: Synchroniser currentVariantIndex avec le scroll réel
   const handleVariantsScroll = (event: any) => {
@@ -1726,14 +1649,36 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
                   </View>
                 )}
 
-                {/* Bouton partage à droite - Visuellement équilibré */}
-                <TouchableOpacity
-                  style={styles.shareButtonCompact}
-                  onPress={handleShare}
-                  activeOpacity={0.7}
-                >
-                  <SafeIcon name="share-2" size={14} color="#6B7280" />
-                </TouchableOpacity>
+                {/* Boutons réaction + partage à droite */}
+                <View style={styles.topHeaderActions}>
+                  <TouchableOpacity
+                    style={styles.heartButtonCompact}
+                    onPress={() => handleReaction('love')}
+                    activeOpacity={0.7}
+                    disabled={pendingReaction === 'love'}
+                  >
+                    <SafeIcon
+                      name={reactions.love?.hasReacted ? 'heart' : 'heart'}
+                      size={16}
+                      color={reactions.love?.hasReacted ? '#EF4444' : '#6B7280'}
+                    />
+                    {(reactions.love?.count || 0) > 0 && (
+                      <Text style={[
+                        styles.heartCountText,
+                        reactions.love?.hasReacted && { color: '#EF4444' }
+                      ]}>
+                        {formatCompactNumber(reactions.love?.count || 0)}
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.shareButtonCompact}
+                    onPress={handleShare}
+                    activeOpacity={0.7}
+                  >
+                    <SafeIcon name="share-2" size={14} color="#6B7280" />
+                  </TouchableOpacity>
+                </View>
               </View>
 
               {/* ✅ OPTIMISÉ 2026-01-14: Section produit - Titre en pleine largeur pour meilleure lisibilité */}
@@ -1747,13 +1692,32 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
                   )}
                 </Text>
 
+                {/* ✅ NOUVEAU 2026-03-XX: Prix affiché directement sous le nom (Amazon-style) */}
+                <View style={styles.priceInlineRow}>
+                  {hasVariant && variants.length > 0 && displayPrice > 0 && (
+                    <Text style={styles.priceInlineFrom}>À partir de </Text>
+                  )}
+                  <Text style={styles.priceInline}>
+                    {displayPrice > 0 ? `${displayPrice.toLocaleString()}` : 'Prix sur demande'}
+                  </Text>
+                  {displayPrice > 0 && (
+                    <Text style={styles.priceInlineDevise}> {devise}</Text>
+                  )}
+                  {reviewsCount > 0 && (
+                    <View style={styles.ratingInline}>
+                      <SafeIcon name="star" size={12} color="#f59e0b" />
+                      <Text style={styles.ratingCountInline}>{reviewsCount} avis</Text>
+                    </View>
+                  )}
+                </View>
+
                 {/* ✅ OPTIMISÉ 2026-01-14: Description juste sous le titre pour meilleure hiérarchie */}
                 {/* ✅ CORRIGÉ 2026-01-23: Utiliser UNIQUEMENT productData.description pour éviter confusion avec description du service */}
                 {/* ✅ CORRIGÉ 2026-02-06: Permettre l'affichage de la description sur plus de lignes (4 au lieu de 2) */}
                 {(productData.description || productData.description_produit || product.description || product.description_produit) && (
                   <Text
                     style={styles.productDescription}
-                    numberOfLines={4}
+                    numberOfLines={2}
                   >
                     {normalizeNewlines(filterBooleanValue(
                       // ✅ CORRIGÉ 2026-01-23: PRIORITÉ ABSOLUE à la description du produit depuis productData
@@ -1837,31 +1801,7 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
                 )}
               </View>
 
-              {/* ✅ OPTIMISÉ 2026-01-14: Statistiques intégrées de manière plus discrète et élégante */}
-              {(totalReactions > 0 || usageCount > 0) && (
-                <LinearGradient
-                  colors={['#EEF2FF', '#FFFFFF']}
-                  style={styles.metricsCardCompact}
-                >
-                  <View style={styles.compactStatsRow}>
-                    {totalReactions > 0 && (
-                      <View style={styles.compactStatPillMuted}>
-                        <Text style={styles.compactStatEmoji}>🎭</Text>
-                        <Text style={styles.compactStatValue}>{totalReactions}</Text>
-                        <Text style={styles.compactStatLabel}>réactions</Text>
-                      </View>
-                    )}
-
-                    {usageCount > 0 && (
-                      <View style={styles.compactStatPillMuted}>
-                        <Text style={styles.compactStatEmoji}>🔥</Text>
-                        <Text style={styles.compactStatValue}>{usageCount}</Text>
-                        <Text style={styles.compactStatLabel}>recherches</Text>
-                      </View>
-                    )}
-                  </View>
-                </LinearGradient>
-              )}
+              {/* ✅ SUPPRIMÉ 2026-03-XX: Metrics card supprimé (info déjà dans top stats - UX Amazon-style compact) */}
 
               {productVector.length > 0 && (
                 <View style={styles.characteristicsSection}>
@@ -1902,7 +1842,7 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
                 </View>
               )}
 
-              {hasVariant && variants.length > 0 ? (
+              {hasVariant && variants.length > 0 && (
                 <View style={styles.priceVariations}>
                   <View style={styles.sectionHeader}>
                     <SafeIcon name="dollar-sign" size={12} color="#6B7280" />
@@ -1970,22 +1910,6 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
                     ))}
                   </ScrollView>
 
-                  <View style={styles.priceFromContainer}>
-                    <Text style={styles.priceFromLabel}>À partir de</Text>
-                    <Text style={styles.priceFromValue}>
-                      {displayPrice.toLocaleString()} {devise}
-                    </Text>
-                  </View>
-                </View>
-              ) : (
-                <View style={styles.priceUniqueContainer}>
-                  <Text style={styles.priceLabel}>Prix</Text>
-                  <View style={styles.priceRow}>
-                    <Text style={styles.price}>
-                      {displayPrice.toLocaleString()}
-                    </Text>
-                    <Text style={styles.priceDevise}>{devise}</Text>
-                  </View>
                 </View>
               )}
 
@@ -2282,6 +2206,24 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: '700',
   },
+  topHeaderActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  heartButtonCompact: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 4,
+    borderRadius: 6,
+    backgroundColor: 'transparent',
+    gap: 2,
+  },
+  heartCountText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#6B7280',
+  },
   shareButtonCompact: {
     padding: 4,
     borderRadius: 6,
@@ -2459,6 +2401,40 @@ const styles = StyleSheet.create({
     color: '#111827',
     lineHeight: 18, // ✅ OPTIMISÉ 2026-03-04: 20 → 18
     letterSpacing: -0.2,
+  },
+  // ✅ NOUVEAU 2026-03-XX: Styles Amazon-style pour prix inline et rating
+  priceInlineRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    flexWrap: 'wrap',
+    marginTop: 2,
+    gap: 2,
+  },
+  priceInline: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#B12704', // Amazon price red
+    letterSpacing: -0.3,
+  },
+  priceInlineDevise: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#565959', // Amazon gray
+  },
+  priceInlineFrom: {
+    fontSize: 11,
+    color: '#565959',
+  },
+  ratingInline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    marginLeft: 8,
+  },
+  ratingCountInline: {
+    fontSize: 11,
+    color: '#007185', // Amazon teal link
+    fontWeight: '500',
   },
   // ✅ SUPPRIMÉ 2026-01-14: prestataireRow, avatar, avatarPlaceholder, prestataireName remplacés par prestataireNameCompact
   // ✅ SUPPRIMÉ 2026-01-14: locationRow, locationText, locationSection remplacés par addressRow

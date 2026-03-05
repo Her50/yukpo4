@@ -3,6 +3,7 @@
 
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useNavigation } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
@@ -336,26 +337,27 @@ const CovoiturageHomeScreen: React.FC = () => {
 
     return (
         <SafeNativeView style={styles.container}>
-            {/* ✅ REFONDU: Header avec fond blanc pour meilleur contraste */}
+            {/* Header avec gradient */}
             <View style={styles.headerContainer}>
-                <View style={styles.headerGradient}>
-                    {/* ✅ MODIFIÉ: Barre d'actions en haut avec boutons isolés gauche/droite */}
+                <LinearGradient colors={['#4338CA', '#6366F1']} style={styles.headerGradient}>
+                    {/* Barre d'actions en haut */}
                     <View style={styles.headerActionsBar}>
-                        <TouchableOpacity
-                            onPress={() => {
-                                hapticPress();
-                                // ✅ CORRIGÉ: Navigation vers l'écran d'enregistrement de chauffeur
-                                (navigation as any).navigate('CourierRegistration', {
-                                    applicationType: 'driver', // ✅ Indique que c'est pour un chauffeur (taxi/covoiturage)
-                                });
-                            }}
-                            style={styles.registerDriverButtonLeft}
-                        >
-                            <SafeIcon name="user" size={18} color="#3B82F6" type="lucide" />
-                            <Text style={styles.registerDriverTextLeft} numberOfLines={1} adjustsFontSizeToFit>
-                                Devenir chauffeur
-                            </Text>
-                        </TouchableOpacity>
+                        {!isDriverValidated && (
+                            <TouchableOpacity
+                                onPress={() => {
+                                    hapticPress();
+                                    (navigation as any).navigate('CourierRegistration', {
+                                        applicationType: 'driver',
+                                    });
+                                }}
+                                style={styles.registerDriverButtonLeft}
+                            >
+                                <SafeIcon name="user" size={18} color="#fff" type="lucide" />
+                                <Text style={styles.registerDriverTextLeft} numberOfLines={1} adjustsFontSizeToFit>
+                                    Devenir chauffeur
+                                </Text>
+                            </TouchableOpacity>
+                        )}
                         <TouchableOpacity
                             onPress={() => {
                                 hapticPress();
@@ -395,21 +397,21 @@ const CovoiturageHomeScreen: React.FC = () => {
                             }}
                             style={styles.backButton}
                         >
-                            <SafeIcon name="arrow-left" size={24} color="#111827" />
+                            <SafeIcon name="arrow-left" size={24} color="#FFFFFF" />
                         </TouchableOpacity>
                         <View style={styles.headerTitleContainer}>
-                            <Text style={styles.headerTitle}>
+                            <Text style={[styles.headerTitle, { color: '#FFFFFF' }]}>
                                 {viewMode === 'search' ? 'Rechercher un trajet' : 'Publier un trajet'}
                             </Text>
                             {viewMode === 'search' && totalResults > 0 && (
-                                <Text style={styles.headerSubtitle}>
+                                <Text style={[styles.headerSubtitle, { color: '#ffffffCC' }]}>
                                     {totalResults} trajet{totalResults > 1 ? 's' : ''} disponible{totalResults > 1 ? 's' : ''}
                                 </Text>
                             )}
                         </View>
                     </View>
 
-                    {/* ✅ REFONDU: Champs compacts mais visibles - style moderne */}
+                    {/* Champs compacts mais visibles - style moderne */}
                     {viewMode === 'search' && (
                         <View style={styles.searchContainer}>
                             {/* Départ - Compact */}
@@ -517,105 +519,109 @@ const CovoiturageHomeScreen: React.FC = () => {
                             </TouchableOpacity>
                         </View>
                     )}
-                </View>
+                </LinearGradient>
             </View>
 
             {/* Contenu selon le mode */}
-            {viewMode === 'search' ? (
-                // Mode recherche : Liste des trajets
-                !hasSearched && !loading ? (
-                    <View style={styles.centerContainer}>
-                        <SafeIcon name="map-pin" size={64} color="#9CA3AF" />
-                        <Text style={styles.emptyText}>Sélectionnez votre trajet</Text>
-                        <Text style={styles.emptySubtext} numberOfLines={3}>
-                            Choisissez une ville de départ et une ville de destination, puis cliquez sur "Rechercher"
-                        </Text>
-                    </View>
-                ) : loading && covoiturages.length === 0 ? (
-                    <View style={styles.centerContainer}>
-                        <ActivityIndicator size="large" color={modernColors.primary} />
-                        <Text style={styles.loadingText}>Recherche de trajets...</Text>
-                    </View>
-                ) : error && covoiturages.length === 0 ? (
-                    <View style={styles.centerContainer}>
-                        <SafeIcon name="car" size={64} color="#9CA3AF" />
-                        <Text style={styles.errorText}>{error}</Text>
-                        <TouchableOpacity
-                            style={styles.retryButton}
-                            onPress={loadNearbyTrips}
-                        >
-                            <Text style={styles.retryButtonText}>Réessayer</Text>
-                        </TouchableOpacity>
-                    </View>
+            {
+                viewMode === 'search' ? (
+                    // Mode recherche : Liste des trajets
+                    !hasSearched && !loading ? (
+                        <View style={styles.centerContainer}>
+                            <SafeIcon name="map-pin" size={64} color="#9CA3AF" />
+                            <Text style={styles.emptyText}>Sélectionnez votre trajet</Text>
+                            <Text style={styles.emptySubtext} numberOfLines={3}>
+                                Choisissez une ville de départ et une ville de destination, puis cliquez sur "Rechercher"
+                            </Text>
+                        </View>
+                    ) : loading && covoiturages.length === 0 ? (
+                        <View style={styles.centerContainer}>
+                            <ActivityIndicator size="large" color={modernColors.primary} />
+                            <Text style={styles.loadingText}>Recherche de trajets...</Text>
+                        </View>
+                    ) : error && covoiturages.length === 0 ? (
+                        <View style={styles.centerContainer}>
+                            <SafeIcon name="car" size={64} color="#9CA3AF" />
+                            <Text style={styles.errorText}>{error}</Text>
+                            <TouchableOpacity
+                                style={styles.retryButton}
+                                onPress={loadNearbyTrips}
+                            >
+                                <Text style={styles.retryButtonText}>Réessayer</Text>
+                            </TouchableOpacity>
+                        </View>
+                    ) : (
+                        <FlatList
+                            data={covoiturages}
+                            keyExtractor={(item) => item.id.toString()}
+                            renderItem={({ item }) => (
+                                <TrajetCard
+                                    trajet={item}
+                                    onPress={() => navigation.navigate('CovoiturageDetails' as never, { covoiturageId: item.id } as never)}
+                                    onReserve={() => {
+                                        hapticPress();
+                                        navigation.navigate('CovoiturageBooking' as never, { covoiturageId: item.id } as never);
+                                    }}
+                                    formatPrice={formatPrice}
+                                    formatTime={formatTime}
+                                />
+                            )}
+                            contentContainerStyle={styles.listContent}
+                            refreshControl={
+                                <RefreshControl
+                                    refreshing={refreshing}
+                                    onRefresh={() => {
+                                        setRefreshing(true);
+                                        loadNearbyTrips();
+                                    }}
+                                    colors={[modernColors.primary]}
+                                />
+                            }
+                            ListEmptyComponent={
+                                <View style={styles.emptyContainer}>
+                                    <SafeIcon name="car" size={64} color="#9CA3AF" />
+                                    <Text style={styles.emptyText}>Aucun trajet trouvé</Text>
+                                    <Text style={styles.emptySubtext} numberOfLines={2}>
+                                        Essayez de modifier vos critères de recherche
+                                    </Text>
+                                </View>
+                            }
+                        />
+                    )
                 ) : (
-                    <FlatList
-                        data={covoiturages}
-                        keyExtractor={(item) => item.id.toString()}
-                        renderItem={({ item }) => (
-                            <TrajetCard
-                                trajet={item}
-                                onPress={() => navigation.navigate('CovoiturageDetails' as never, { covoiturageId: item.id } as never)}
-                                onReserve={() => {
-                                    hapticPress();
-                                    navigation.navigate('CovoiturageBooking' as never, { covoiturageId: item.id } as never);
-                                }}
-                                formatPrice={formatPrice}
-                                formatTime={formatTime}
-                            />
-                        )}
-                        contentContainerStyle={styles.listContent}
-                        refreshControl={
-                            <RefreshControl
-                                refreshing={refreshing}
-                                onRefresh={() => {
-                                    setRefreshing(true);
-                                    loadNearbyTrips();
-                                }}
-                                colors={[modernColors.primary]}
-                            />
-                        }
-                        ListEmptyComponent={
-                            <View style={styles.emptyContainer}>
-                                <SafeIcon name="car" size={64} color="#9CA3AF" />
-                                <Text style={styles.emptyText}>Aucun trajet trouvé</Text>
-                                <Text style={styles.emptySubtext} numberOfLines={2}>
-                                    Essayez de modifier vos critères de recherche
-                                </Text>
-                            </View>
-                        }
+                    // Mode création : Formulaire
+                    <CreateTrajetForm
+                        trajetForm={trajetForm}
+                        onFormChange={setTrajetForm}
+                        onCreate={handleCreateTrajet}
+                        creating={creating}
+                        dateDepart={dateDepart}
+                        onDateChange={setDateDepart}
+                        showDatePicker={showDatePicker}
+                        onShowDatePicker={setShowDatePicker}
+                        location={location}
                     />
                 )
-            ) : (
-                // Mode création : Formulaire
-                <CreateTrajetForm
-                    trajetForm={trajetForm}
-                    onFormChange={setTrajetForm}
-                    onCreate={handleCreateTrajet}
-                    creating={creating}
-                    dateDepart={dateDepart}
-                    onDateChange={setDateDepart}
-                    showDatePicker={showDatePicker}
-                    onShowDatePicker={setShowDatePicker}
-                    location={location}
-                />
-            )}
+            }
 
             {/* Date Picker */}
-            {showDatePicker && (
-                <DateTimePicker
-                    value={dateDepart}
-                    mode="date"
-                    display="default"
-                    minimumDate={new Date()}
-                    onChange={(event, selectedDate) => {
-                        setShowDatePicker(false);
-                        if (selectedDate) {
-                            setDateDepart(selectedDate);
-                        }
-                    }}
-                />
-            )}
-        </SafeNativeView>
+            {
+                showDatePicker && (
+                    <DateTimePicker
+                        value={dateDepart}
+                        mode="date"
+                        display="default"
+                        minimumDate={new Date()}
+                        onChange={(event, selectedDate) => {
+                            setShowDatePicker(false);
+                            if (selectedDate) {
+                                setDateDepart(selectedDate);
+                            }
+                        }}
+                    />
+                )
+            }
+        </SafeNativeView >
     );
 };
 

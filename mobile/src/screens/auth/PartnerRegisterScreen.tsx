@@ -1,9 +1,10 @@
 // @ts-nocheck
 // ✅ AMÉLIORATION UX: Écran de création partenaire modernisé avec design similaire à RegisterScreen
-import { useNavigation, useRoute } from '@react-navigation/native';
 import { Picker } from '@react-native-picker/picker';
-import { CheckCircle, XCircle, WarningCircle, Building, Envelope, Lock, LockKey, Phone, MapPin, Image as ImageIcon } from 'phosphor-react-native';
-import React, { useState, useEffect } from 'react';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import * as ImagePicker from 'expo-image-picker';
+import { Building, CheckCircle, Envelope, Image as ImageIcon, Lock, LockKey, MapPin, Phone, WarningCircle, XCircle } from 'phosphor-react-native';
+import React, { useEffect, useState } from 'react';
 import {
   Alert,
   Image,
@@ -12,13 +13,11 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import { Card, Paragraph, TextInput, Title } from 'react-native-paper';
-import * as ImagePicker from 'expo-image-picker';
-import * as Location from 'expo-location';
+import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
+import ModernGPSModal from '../../components/ModernGPSModal';
 import { authApi } from '../../services/api';
 import { theme } from '../../theme/theme';
-import ModernGPSModal from '../../components/ModernGPSModal';
 
 const PartnerRegisterScreen: React.FC = () => {
   const navigation = useNavigation();
@@ -26,7 +25,7 @@ const PartnerRegisterScreen: React.FC = () => {
   // ✅ NOUVEAU: Lire le paramètre partner_type depuis la route
   const routeParams = (route.params as any) || {};
   const initialPartnerType = routeParams.partner_type || '';
-  
+
   const [form, setForm] = useState({
     partner_name: '',
     email: '',
@@ -95,7 +94,7 @@ const PartnerRegisterScreen: React.FC = () => {
       .toLowerCase()
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, ''); // Supprimer les accents
-    
+
     return normalize(a.label).localeCompare(normalize(b.label));
   });
 
@@ -117,7 +116,7 @@ const PartnerRegisterScreen: React.FC = () => {
     } else {
       setPasswordErrors({ length: false, uppercase: false, number: false });
     }
-    
+
     // ✅ Vérifier la correspondance avec le mot de passe de confirmation
     if (form.confirmPassword.length > 0) {
       setConfirmPasswordMatch(text === form.confirmPassword);
@@ -137,7 +136,7 @@ const PartnerRegisterScreen: React.FC = () => {
   const handlePickLogo = async () => {
     try {
       setUploadingLogo(true);
-      
+
       // Demander les permissions
       const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permissionResult.granted) {
@@ -285,10 +284,10 @@ const PartnerRegisterScreen: React.FC = () => {
       }
     } catch (error: any) {
       console.error('[PartnerRegisterScreen] Erreur inscription:', error);
-      
+
       // Détection des erreurs spécifiques
       let errorMessage = error.message || 'Erreur lors de l\'inscription';
-      
+
       if (error.message?.includes('409') || error.message?.includes('deja utilise') || error.message?.includes('already exists')) {
         errorMessage = '❌ Cet email est déjà utilisé. Essayez de vous connecter ou utilisez un autre email.';
       } else if (error.message?.includes('400') || error.message?.includes('validation')) {
@@ -296,7 +295,7 @@ const PartnerRegisterScreen: React.FC = () => {
       } else if (error.message?.includes('network') || error.message?.includes('fetch')) {
         errorMessage = '❌ Problème de connexion. Vérifiez votre internet.';
       }
-      
+
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -305,11 +304,11 @@ const PartnerRegisterScreen: React.FC = () => {
 
   return (
     <>
-    <KeyboardAwareScreen style={styles.container} contentContainerStyle={styles.scrollContent}>
+      <KeyboardAwareScreen style={styles.container} contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
           <Title style={styles.title}>
             Devenir partenaire{' '}
-            <Text style={styles.yukpoText}>Yukpo</Text>
+            <Text style={styles.brandYuk}>Yuk</Text><Text style={styles.brandPo}>po</Text>
           </Title>
           <Paragraph style={styles.subtitle}>
             Créez votre compte partenaire. Votre compte sera validé par un administrateur.
@@ -726,15 +725,15 @@ const PartnerRegisterScreen: React.FC = () => {
           onPress={handleSubmit}
           disabled={loading || !form.partner_type || form.partner_type.trim() === ''}
           style={[
-            styles.submitButton, 
+            styles.submitButton,
             (loading || !form.partner_type || form.partner_type.trim() === '') && styles.submitButtonDisabled
           ]}
         >
           <Text style={styles.submitButtonText}>
-            {loading ? 'Inscription en cours...' : 
-             (!form.partner_type || form.partner_type.trim() === '') ? 
-             'Sélectionnez un type d\'établissement' : 
-             "S'inscrire comme partenaire"}
+            {loading ? 'Inscription en cours...' :
+              (!form.partner_type || form.partner_type.trim() === '') ?
+                'Sélectionnez un type d\'établissement' :
+                "S'inscrire comme partenaire"}
           </Text>
         </TouchableOpacity>
 
@@ -744,7 +743,7 @@ const PartnerRegisterScreen: React.FC = () => {
             <Text style={styles.footerLink}>Connectez-vous</Text>
           </TouchableOpacity>
         </View>
-    </KeyboardAwareScreen>
+      </KeyboardAwareScreen>
 
       {/* Modal GPS moderne pour sélectionner l'adresse */}
       <ModernGPSModal
@@ -757,11 +756,11 @@ const PartnerRegisterScreen: React.FC = () => {
             if (firstPoint.length === 2) {
               const lat = parseFloat(firstPoint[0]);
               const lng = parseFloat(firstPoint[1]);
-              
+
               if (!isNaN(lat) && !isNaN(lng)) {
                 // Stocker les coordonnées GPS
                 setForm({ ...form, partner_gps: { lat, lng } });
-                
+
                 // ✅ CORRIGÉ 2026-01-12: Utiliser reverseGeocodeWithRetry avec retry et fallback
                 try {
                   const { reverseGeocodeWithRetry } = await import('../../utils/reverseGeocoding');
@@ -818,8 +817,11 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     color: theme.colors.text,
   },
-  yukpoText: {
-    color: '#FF8C00', // ✅ Orange comme RegisterScreen
+  brandYuk: {
+    color: '#3B82F6', // Bleu (cohérent avec le logo officiel)
+  },
+  brandPo: {
+    color: '#7C3AED', // Violet (cohérent avec le logo officiel)
   },
   subtitle: {
     textAlign: 'center',

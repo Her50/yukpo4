@@ -80,8 +80,8 @@ const BusBoardingManagementScreen: React.FC = () => {
         try {
             setLoading(true);
             const [summaryRes, passengersRes] = await Promise.all([
-                apiGet(`/api/bus-tickets/boarding/${productId}/summary`),
-                apiGet(`/api/bus-tickets/boarding/${productId}/passengers`),
+                apiGet(`/api/bus-tickets/${productId}/boarding-summary`),
+                apiGet(`/api/bus-tickets/${productId}/passengers`),
             ]);
 
             const sumData = (summaryRes?.data || summaryRes) as any;
@@ -136,7 +136,7 @@ const BusBoardingManagementScreen: React.FC = () => {
             }
 
             // Valider le ticket
-            const response = await apiPost('/api/bus-tickets/validate', {
+            const response = await apiPost('/api/bus-tickets/validate/qr', {
                 qr_code_data: qrJson,
                 product_id: productId,
             });

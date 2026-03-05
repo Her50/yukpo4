@@ -33,12 +33,13 @@ pub struct Storyboard {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GenerateVideoRequest {
     pub description: String,
-    pub duration_seconds: Option<f32>, // Durée cible (défaut: 30s)
+    pub duration_seconds: Option<f64>, // Durée cible (défaut: 30s)
     pub style: Option<String>,
     pub mood: Option<String>,
     pub aspect_ratio: Option<String>, // "16:9", "9:16", "1:1", etc.
     pub provider: Option<GenerativeProvider>,
     pub music_style: Option<String>,
+    pub resolution: Option<String>, // "720p", "1080p", "4k"
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

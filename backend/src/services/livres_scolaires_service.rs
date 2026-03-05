@@ -124,8 +124,12 @@ impl LivresScolairesService {
         }
 
         // Gestion de la distance GPS si coordonnées fournies
-        let distance_select = if request.gps_lat.is_some() && request.gps_lon.is_some() {
-            // Utiliser la formule Haversine pour calculer la distance
+        let has_gps = request.gps_lat.is_some() && request.gps_lon.is_some();
+        let distance_select = if has_gps {
+            let lat_idx = param_index;
+            let lon_idx = param_index + 1;
+            param_index += 2; // ✅ FIX: avancer param_index pour GPS (lat + lon)
+                              // Utiliser la formule Haversine pour calculer la distance
             format!(
                 r#"
                 6371.0 * acos(
@@ -136,15 +140,17 @@ impl LivresScolairesService {
                     sin(radians(CAST(SPLIT_PART(gps, ',', 1) AS FLOAT)))
                 ) as distance_km
                 "#,
-                param_index,
-                param_index + 1,
-                param_index
+                lat_idx, lon_idx, lat_idx
             )
         } else {
             "NULL::FLOAT as distance_km".to_string()
         };
 
         let where_clause = conditions.join(" AND ");
+
+        // ✅ FIX: LIMIT/OFFSET utilisent param_index (correct que GPS soit présent ou non)
+        let limit_idx = param_index;
+        let offset_idx = param_index + 1;
 
         let sql = format!(
             r#"
@@ -156,10 +162,7 @@ impl LivresScolairesService {
             ORDER BY distance_km ASC NULLS LAST, created_at DESC
             LIMIT ${} OFFSET ${}
             "#,
-            distance_select,
-            where_clause,
-            param_index + 2,
-            param_index + 3
+            distance_select, where_clause, limit_idx, offset_idx
         );
 
         // Exécuter la requête avec les paramètres - utiliser query au lieu de query_as pour gérer images_urls
@@ -356,9 +359,8 @@ impl LivresScolairesService {
             param_index += 1;
         }
 
-        if updates.is_empty() {
-            return self.get_livre_details(livre_id).await;
-        }
+        // ✅ FIX: Toujours mettre à jour updated_at
+        updates.push("updated_at = NOW()".to_string());
 
         let sql = format!(
             "UPDATE livres_scolaires SET {} WHERE id = ${} AND user_id = ${} RETURNING *",

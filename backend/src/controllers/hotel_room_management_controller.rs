@@ -22,6 +22,46 @@ use serde_json::json;
 use sqlx::Row;
 use std::sync::Arc;
 
+/// Corps de la requête de paiement d'une réservation hôtel/meublé
+#[derive(Debug, Deserialize)]
+pub struct PayHotelReservationRequest {
+    pub payment_type: String,        // "advance" ou "full"
+    pub payment_method: String,      // "mobile_money", "cash", "card", etc.
+    pub montant_avance: Option<f64>, // Montant de l'avance (si payment_type == "advance")
+}
+
+/// POST /api/hotel/reservations/{reservation_id}/pay
+/// Traiter un paiement (avance ou solde complet) pour une réservation hôtel/meublé
+pub async fn pay_hotel_reservation(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Path(reservation_id): Path<i32>,
+    Json(payload): Json<PayHotelReservationRequest>,
+) -> AppResult<impl IntoResponse> {
+    info!(
+        "[pay_hotel_reservation] user_id={}, reservation_id={}, type={}, method={}",
+        user_id, reservation_id, payload.payment_type, payload.payment_method
+    );
+
+    let result = HotelRoomManagementService::pay_hotel_reservation(
+        &state.pg,
+        user_id,
+        reservation_id,
+        &payload.payment_type,
+        &payload.payment_method,
+        payload.montant_avance,
+    )
+    .await?;
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "data": result
+        })),
+    ))
+}
+
 /// Corps optionnel pour affiner le contexte de tarification IA
 #[derive(Debug, Deserialize)]
 pub struct AIUnitPricingRequest {

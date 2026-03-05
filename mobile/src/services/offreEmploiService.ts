@@ -199,12 +199,13 @@ export const offreEmploiService = {
     },
 
     // ✅ Analyse CV IA
-    analyzeCV: async (cvUrl: string, offreId?: number) => {
+    analyzeCV: async (candidatId: number, cvText: string, cvUrl?: string) => {
         const response = await apiPost<{ success: boolean; analysis: CVAnalysis }>(
             '/api/offres-emploi/ai/analyze-cv',
             {
-                cv_url: cvUrl,
-                offre_id: offreId,
+                candidat_id: candidatId,
+                cv_text: cvText,
+                cv_url: cvUrl || null,
             }
         );
         return response;
@@ -235,24 +236,39 @@ export const offreEmploiService = {
     },
 
     // ✅ Suggestions formations IA
-    suggestFormations: async (competencesManquantes: string[], objectifCarriere?: string) => {
-        const response = await apiPost<{ success: boolean; suggestions: FormationSuggestion[] }>(
+    suggestFormations: async (candidatId: number, competencesActuelles: string[], competencesManquantes?: string[], objectifCarriere?: string) => {
+        const response = await apiPost<{ success: boolean; data: { suggestions: FormationSuggestion[] } }>(
             '/api/offres-emploi/ai/suggest-formations',
             {
-                competences_manquantes: competencesManquantes,
-                objectif_carriere: objectifCarriere,
+                candidat_id: candidatId,
+                competences_actuelles: competencesActuelles,
+                competences_manquantes: competencesManquantes || [],
+                objectif_carriere: objectifCarriere || null,
             }
         );
         return response;
     },
 
     // ✅ Matching IA amélioré
-    aiMatching: async (offreId: number, candidatId: number) => {
-        const response = await apiPost<{ success: boolean; matching: any }>(
+    aiMatching: async (
+        offreId: number,
+        candidatId: number,
+        titrePoste: string,
+        competencesRequises: string[],
+        competencesCandidat: string[],
+        experienceRequise: number,
+        experienceCandidat: number
+    ) => {
+        const response = await apiPost<{ success: boolean; data: any }>(
             '/api/offres-emploi/ai/matching',
             {
                 offre_id: offreId,
                 candidat_id: candidatId,
+                titre_poste: titrePoste,
+                competences_requises: competencesRequises,
+                competences_candidat: competencesCandidat,
+                experience_requise: experienceRequise,
+                experience_candidat: experienceCandidat,
             }
         );
         return response;
@@ -353,10 +369,10 @@ export const offreEmploiService = {
     },
 
     // ✅ Fermer une offre (employeur)
-    closeOffre: async (offreId: number) => {
+    closeOffre: async (offreId: number, statut: 'fermee' | 'pourvue' = 'fermee') => {
         const response = await apiPatch<{ success: boolean; message: string }>(
             `/api/offres-emploi/${offreId}/close`,
-            {}
+            { statut }
         );
         return response;
     },

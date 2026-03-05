@@ -8,9 +8,9 @@ import Animated, {
     useSharedValue,
     withSpring,
 } from 'react-native-reanimated';
-import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import ProductVideoCreationModal from '../../components/ProductVideoCreationModal';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import ServiceProductSelector from '../../components/ServiceProductSelector';
 import VideoCreationTutorial from '../../components/VideoCreationTutorial';
@@ -46,7 +46,7 @@ const VideoCreationIntroScreen: React.FC = () => {
     const [loadingServices, setLoadingServices] = useState(true);
     const [imageError, setImageError] = useState(false);
     const [showProductSelector, setShowProductSelector] = useState(false);
-    const [availableProducts, setAvailableProducts] = useState<Array<{ serviceId: number; productIndex: number; productName: string; serviceName: string }>>([]);
+    const [availableProducts, setAvailableProducts] = useState<Array<{ serviceId: number; productIndex: number; productName: string; serviceName: string; productImage?: string | null }>>([]);
     const [showExampleModal, setShowExampleModal] = useState(false);
     const [showTutorial, setShowTutorial] = useState(false);
     // ✅ NOUVEAU: État pour le modal de création vidéo unifié
@@ -56,15 +56,16 @@ const VideoCreationIntroScreen: React.FC = () => {
     // ✅ MIGRÉ: Animations avec Reanimated (60fps garanti, pas de conflit)
     // Simule Animated.stagger avec des délais
     useEffect(() => {
-        headerAnim.value = withSpring(1, { tension: 50, friction: 8 });
+        const springConfig = { damping: 14, stiffness: 100 };
+        headerAnim.value = withSpring(1, springConfig);
         setTimeout(() => {
-            heroAnim.value = withSpring(1, { tension: 50, friction: 8 });
+            heroAnim.value = withSpring(1, springConfig);
         }, 100);
         setTimeout(() => {
-            contentAnim.value = withSpring(1, { tension: 50, friction: 8 });
+            contentAnim.value = withSpring(1, springConfig);
         }, 200);
         setTimeout(() => {
-            actionsAnim.value = withSpring(1, { tension: 50, friction: 8 });
+            actionsAnim.value = withSpring(1, springConfig);
         }, 300);
     }, []);
 
@@ -297,7 +298,7 @@ const VideoCreationIntroScreen: React.FC = () => {
     };
 
     // ✅ NOUVEAU: Fonction pour charger les produits et ouvrir le modal
-    const openVideoCreationModal = async (selectedProduct: { serviceId: number; productIndex: number; productName: string; serviceName: string }) => {
+    const openVideoCreationModal = async (selectedProduct: { serviceId: number; productIndex: number; productName: string; serviceName: string; productImage?: string | null }) => {
         try {
             // Trouver le service correspondant
             const service = userServices.find(
@@ -332,7 +333,7 @@ const VideoCreationIntroScreen: React.FC = () => {
             const primaryProductIndex = managedProducts.findIndex(
                 (p) => p.product_index === selectedProduct.productIndex
             );
-            
+
             // Réorganiser le tableau pour que le produit sélectionné soit en premier
             const reorderedProducts = primaryProductIndex >= 0
                 ? [
@@ -372,7 +373,7 @@ const VideoCreationIntroScreen: React.FC = () => {
 
         // Si l'utilisateur a des services → Extraire les produits
         if (userServices.length > 0) {
-            const allProducts: Array<{ serviceId: number; productIndex: number; productName: string; serviceName: string }> = [];
+            const allProducts: Array<{ serviceId: number; productIndex: number; productName: string; serviceName: string; productImage?: string | null }> = [];
 
             console.log('[VideoCreationIntroScreen] 🔍 Analyse des services:', {
                 servicesCount: userServices.length,
@@ -429,7 +430,7 @@ const VideoCreationIntroScreen: React.FC = () => {
                                 const extractFirstImage = (productData: any): string | null => {
                                     // Essayer plusieurs sources possibles pour les images
                                     let productImages = productData?.images || productData?.data?.images || productData?.image || [];
-                                    
+
                                     // Si c'est un objet avec valeur (format normalisé)
                                     if (productImages && typeof productImages === 'object' && !Array.isArray(productImages)) {
                                         if (productImages.valeur && Array.isArray(productImages.valeur)) {
@@ -438,7 +439,7 @@ const VideoCreationIntroScreen: React.FC = () => {
                                             return productImages.valeur;
                                         }
                                     }
-                                    
+
                                     if (Array.isArray(productImages) && productImages.length > 0) {
                                         // Prendre la première image
                                         const firstImg = productImages[0];
@@ -450,13 +451,13 @@ const VideoCreationIntroScreen: React.FC = () => {
                                             return firstImg.valeur || firstImg.url || firstImg.path || firstImg.uri || firstImg.image_url || null;
                                         }
                                     }
-                                    
+
                                     // Essayer aussi les formats base64
                                     const base64Image = productData?.base64_image || productData?.image_base64 || productData?.data?.base64_image;
                                     if (base64Image && typeof base64Image === 'string') {
                                         return base64Image;
                                     }
-                                    
+
                                     return null;
                                 };
 
@@ -589,7 +590,7 @@ const VideoCreationIntroScreen: React.FC = () => {
                         {!imageError ? (
                             <Image
                                 source={{
-                                    uri: 'https://cdn.yukpo.com/illustrations/video-immersive-hero.png',
+                                    uri: 'https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?w=800&q=80',
                                 }}
                                 style={styles.heroImage}
                                 resizeMode="cover"

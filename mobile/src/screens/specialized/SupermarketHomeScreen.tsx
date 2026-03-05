@@ -1,38 +1,43 @@
 // ✅ Écran Supermarché MODERNE - Refonte complète avec UX professionnelle
 // Structure : Sélection supermarché → Produits → Comparaison → Promotions
 
-import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import React, { useCallback, useEffect, useState } from 'react';
+import { LinearGradient } from 'expo-linear-gradient';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
+    Animated, Dimensions,
     FlatList,
-    Modal,
     RefreshControl,
     ScrollView,
     StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
-    View,
+    View
 } from 'react-native';
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useLocation } from '../../contexts/LocationContext';
-import { supermarketService, Supermarket, SupermarketProduct, PriceComparison, SupermarketPromotion } from '../../services/supermarketService';
-import { modernColors } from '../../theme/modernTheme';
-import { hapticPress } from '../../utils/hapticFeedback';
-import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import { useCurrencyDetection } from '../../hooks/useCurrencyDetection';
+import { PriceComparison, Supermarket, SupermarketProduct, SupermarketPromotion, supermarketService } from '../../services/supermarketService';
+import { hapticPress } from '../../utils/hapticFeedback';
 
 type ViewMode = 'select' | 'products' | 'compare' | 'promotions';
+
+const TAB_ITEMS: { key: ViewMode; label: string; icon: string }[] = [
+    { key: 'select', label: 'Magasins', icon: 'store' },
+    { key: 'products', label: 'Produits', icon: 'shopping-bag' },
+    { key: 'compare', label: 'Comparer', icon: 'git-compare' },
+    { key: 'promotions', label: 'Promos', icon: 'tag' },
+];
 
 const SupermarketHomeScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
     const { location } = useLocation();
-    
+
     // ✅ Détecter si on vient de BayamSelam ou du flux de livraison
     const isBayamSelam = route.name === 'BayamSelamSearch' || (route.params as any)?.fromBayamSelam;
 
@@ -62,6 +67,10 @@ const SupermarketHomeScreen: React.FC = () => {
     // États pour promotions
     const [promotions, setPromotions] = useState<SupermarketPromotion[]>([]);
     const [loadingPromotions, setLoadingPromotions] = useState(false);
+
+    // Animation pour l'indicateur de tab
+    const tabIndicatorAnim = useRef(new Animated.Value(0)).current;
+    const screenWidth = Dimensions.get('window').width;
 
     // Charger les supermarchés à l'ouverture
     useEffect(() => {
@@ -113,16 +122,18 @@ const SupermarketHomeScreen: React.FC = () => {
                 limit: 50,
             };
             const response = await supermarketService.getSupermarketProducts(supermarketId, filters);
-            if (response.success && response.data?.products) {
-                setProducts(response.data.products);
+            const r = response.data as any;
+            if (response.success && r?.products) {
+                setProducts(r.products);
             } else {
                 setProducts([]);
             }
 
             // Charger les catégories
             const categoriesResponse = await supermarketService.getSupermarketCategories(supermarketId);
-            if (categoriesResponse.success && categoriesResponse.data?.categories) {
-                setCategories(categoriesResponse.data.categories);
+            const catR = categoriesResponse.data as any;
+            if (categoriesResponse.success && catR?.categories) {
+                setCategories(catR.categories);
             }
         } catch (err: any) {
             console.error('[SupermarketHomeScreen] Erreur chargement produits:', err);
@@ -212,12 +223,57 @@ const SupermarketHomeScreen: React.FC = () => {
         return `${distance.toFixed(1)} km`;
     };
 
+    // Animer l'indicateur de tab quand le mode change
+    useEffect(() => {
+        const currentTabs = selectedSupermarket ? TAB_ITEMS : TAB_ITEMS.filter(t => t.key === 'select');
+        const tabIndex = currentTabs.findIndex(t => t.key === viewMode);
+        Animated.spring(tabIndicatorAnim, {
+            toValue: Math.max(tabIndex, 0),
+            useNativeDriver: true,
+            tension: 68,
+            friction: 10,
+        }).start();
+    }, [viewMode, selectedSupermarket]);
+
+    const switchMode = (mode: ViewMode) => {
+        hapticPress();
+        if (mode === 'select') {
+            setViewMode('select');
+        } else if (mode === 'products') {
+            setViewMode('products');
+            if (selectedSupermarket) loadProducts(selectedSupermarket.id);
+        } else if (mode === 'compare') {
+            setViewMode('compare');
+            setCompareProductQuery('');
+            setPriceComparison(null);
+        } else if (mode === 'promotions') {
+            setViewMode('promotions');
+            loadPromotions();
+        }
+    };
+
     // Filtrer les supermarchés
     const filteredSupermarkets = supermarkets.filter(sm =>
         searchSupermarketQuery.trim() === '' ||
         sm.name.toLowerCase().includes(searchSupermarketQuery.toLowerCase()) ||
         sm.address.toLowerCase().includes(searchSupermarketQuery.toLowerCase())
     );
+
+    // Les tabs disponibles (products/compare/promotions nécessitent un supermarché sélectionné)
+    const availableTabs = selectedSupermarket ? TAB_ITEMS : TAB_ITEMS.filter(t => t.key === 'select');
+    const tabWidth = screenWidth / Math.max(availableTabs.length, 1);
+    // interpolate nécessite au minimum 2 valeurs dans inputRange
+    const safeInputRange = availableTabs.length >= 2
+        ? availableTabs.map((_, i) => i)
+        : [0, 1];
+    const safeOutputRange = availableTabs.length >= 2
+        ? availableTabs.map((_, i) => i * tabWidth)
+        : [0, tabWidth];
+    const indicatorTranslateX = tabIndicatorAnim.interpolate({
+        inputRange: safeInputRange,
+        outputRange: safeOutputRange,
+        extrapolate: 'clamp',
+    });
 
     return (
         <SafeNativeView style={styles.container}>
@@ -245,9 +301,9 @@ const SupermarketHomeScreen: React.FC = () => {
                         <View style={styles.headerTitleContainer}>
                             <Text style={styles.headerTitle}>
                                 {viewMode === 'select' ? (isBayamSelam ? 'BayamSelam' : 'Supermarchés') :
-                                 viewMode === 'products' ? selectedSupermarket?.name || 'Produits' :
-                                 viewMode === 'compare' ? 'Comparaison de prix' :
-                                 'Promotions'}
+                                    viewMode === 'products' ? selectedSupermarket?.name || 'Produits' :
+                                        viewMode === 'compare' ? 'Comparaison de prix' :
+                                            'Promotions'}
                             </Text>
                             {viewMode === 'products' && selectedSupermarket && (
                                 <Text style={styles.headerSubtitle}>
@@ -255,16 +311,12 @@ const SupermarketHomeScreen: React.FC = () => {
                                 </Text>
                             )}
                         </View>
-                        {viewMode === 'products' && selectedSupermarket && (
+                        {selectedSupermarket && (
                             <TouchableOpacity
-                                onPress={() => {
-                                    hapticPress();
-                                    setViewMode('promotions');
-                                    loadPromotions();
-                                }}
-                                style={styles.promotionsButton}
+                                onPress={() => switchMode('select')}
+                                style={styles.changeSupermarketButton}
                             >
-                                <SafeIcon name="tag" size={20} color="#FFFFFF" type="lucide" />
+                                <SafeIcon name="repeat" size={18} color="#FFFFFF" type="lucide" />
                             </TouchableOpacity>
                         )}
                     </View>
@@ -357,6 +409,53 @@ const SupermarketHomeScreen: React.FC = () => {
                             </View>
                         </View>
                     )}
+                    {/* ✅ Tabs de navigation intégrés dans le header */}
+                    {availableTabs.length > 1 && (
+                        <View style={styles.tabBarContainer}>
+                            <View style={styles.tabBar}>
+                                <Animated.View
+                                    style={[
+                                        styles.tabIndicator,
+                                        {
+                                            width: tabWidth - 8,
+                                            transform: [{ translateX: indicatorTranslateX }],
+                                        },
+                                    ]}
+                                />
+                                {availableTabs.map((tab) => {
+                                    const isActive = viewMode === tab.key;
+                                    const badgeCount = tab.key === 'promotions' ? promotions.length :
+                                        tab.key === 'products' ? products.length :
+                                            tab.key === 'select' ? supermarkets.length : 0;
+                                    return (
+                                        <TouchableOpacity
+                                            key={tab.key}
+                                            style={styles.tabItem}
+                                            onPress={() => switchMode(tab.key)}
+                                            activeOpacity={0.7}
+                                        >
+                                            <SafeIcon
+                                                name={tab.icon}
+                                                size={18}
+                                                color={isActive ? '#FFFFFF' : 'rgba(255,255,255,0.6)'}
+                                                type="lucide"
+                                            />
+                                            <Text style={[styles.tabLabel, isActive && styles.tabLabelActive]}>
+                                                {tab.label}
+                                            </Text>
+                                            {badgeCount > 0 && !isActive && (
+                                                <View style={styles.tabBadge}>
+                                                    <Text style={styles.tabBadgeText}>
+                                                        {badgeCount > 99 ? '99+' : badgeCount}
+                                                    </Text>
+                                                </View>
+                                            )}
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                            </View>
+                        </View>
+                    )}
                 </LinearGradient>
             </View>
 
@@ -425,52 +524,6 @@ const SupermarketHomeScreen: React.FC = () => {
                     }}
                     formatPrice={formatPrice}
                 />
-            )}
-
-            {/* Onglets de navigation */}
-            {selectedSupermarket && viewMode !== 'select' && (
-                <View style={styles.tabsContainer}>
-                    <TouchableOpacity
-                        style={[styles.tab, viewMode === 'products' && styles.tabActive]}
-                        onPress={() => {
-                            hapticPress();
-                            setViewMode('products');
-                            loadProducts(selectedSupermarket.id);
-                        }}
-                    >
-                        <SafeIcon name="shopping-bag" size={18} color={viewMode === 'products' ? '#10B981' : '#6B7280'} type="lucide" />
-                        <Text style={[styles.tabLabel, viewMode === 'products' && styles.tabLabelActive]}>
-                            Produits
-                        </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={[styles.tab, viewMode === 'compare' && styles.tabActive]}
-                        onPress={() => {
-                            hapticPress();
-                            setViewMode('compare');
-                            setCompareProductQuery('');
-                            setPriceComparison(null);
-                        }}
-                    >
-                        <SafeIcon name="git-compare" size={18} color={viewMode === 'compare' ? '#10B981' : '#6B7280'} type="lucide" />
-                        <Text style={[styles.tabLabel, viewMode === 'compare' && styles.tabLabelActive]}>
-                            Comparer
-                        </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={[styles.tab, viewMode === 'promotions' && styles.tabActive]}
-                        onPress={() => {
-                            hapticPress();
-                            setViewMode('promotions');
-                            loadPromotions();
-                        }}
-                    >
-                        <SafeIcon name="tag" size={18} color={viewMode === 'promotions' ? '#10B981' : '#6B7280'} type="lucide" />
-                        <Text style={[styles.tabLabel, viewMode === 'promotions' && styles.tabLabelActive]}>
-                            Promos
-                        </Text>
-                    </TouchableOpacity>
-                </View>
             )}
         </SafeNativeView>
     );
@@ -1032,13 +1085,55 @@ const styles = StyleSheet.create({
         color: 'rgba(255, 255, 255, 0.9)',
         marginTop: 2,
     },
-    promotionsButton: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
+    changeSupermarketButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
         backgroundColor: 'rgba(255, 255, 255, 0.2)',
         justifyContent: 'center',
         alignItems: 'center',
+    },
+    tabBarContainer: {
+        marginTop: 12,
+    },
+    tabBar: {
+        flexDirection: 'row',
+        backgroundColor: 'rgba(0, 0, 0, 0.15)',
+        borderRadius: 14,
+        padding: 4,
+        position: 'relative',
+    },
+    tabIndicator: {
+        position: 'absolute',
+        top: 4,
+        left: 4,
+        height: '100%',
+        backgroundColor: 'rgba(255, 255, 255, 0.25)',
+        borderRadius: 10,
+    },
+    tabItem: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 10,
+        gap: 5,
+        zIndex: 1,
+    },
+    tabBadge: {
+        backgroundColor: '#FBBF24',
+        borderRadius: 10,
+        minWidth: 18,
+        height: 18,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 4,
+        marginLeft: 2,
+    },
+    tabBadgeText: {
+        fontSize: 10,
+        fontWeight: '700',
+        color: '#111827',
     },
     searchContainer: {
         marginTop: 8,
@@ -1520,35 +1615,15 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         color: '#EF4444',
     },
-    // Tabs
-    tabsContainer: {
-        flexDirection: 'row',
-        backgroundColor: '#FFFFFF',
-        borderTopWidth: 1,
-        borderTopColor: '#E5E7EB',
-        paddingVertical: 8,
-        paddingHorizontal: 16,
-        gap: 8,
-    },
-    tab: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: 10,
-        borderRadius: 12,
-        gap: 6,
-    },
-    tabActive: {
-        backgroundColor: '#D1FAE5',
-    },
+    // Tab labels (in header)
     tabLabel: {
-        fontSize: 14,
+        fontSize: 12,
         fontWeight: '600',
-        color: '#6B7280',
+        color: 'rgba(255, 255, 255, 0.6)',
     },
     tabLabelActive: {
-        color: '#10B981',
+        color: '#FFFFFF',
+        fontWeight: '700',
     },
 });
 

@@ -910,6 +910,18 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             post(menu_planning_controller::generate_intelligent_shopping_list),
         )
         .route(
+            "/api/menus/ai/suggest-recipes",
+            post(menu_planning_controller::suggest_recipes),
+        )
+        .route(
+            "/api/menus/shopping-list",
+            get(menu_planning_controller::get_shopping_list),
+        )
+        .route(
+            "/api/menus/shopping-list",
+            post(menu_planning_controller::create_shopping_list),
+        )
+        .route(
             "/api/menus/history",
             get(menu_planning_controller::get_menu_history),
         )

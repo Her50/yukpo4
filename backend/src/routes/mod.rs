@@ -27,6 +27,7 @@ pub mod export_routes;
 pub mod extended_audio_routes;
 pub mod feature_flags_routes;
 pub mod flash_promo_routes;
+pub mod followers_routes; // ✅ NOUVEAU 2026-03-05: Routes pour système de suivi vendeurs
 pub mod fournitures_routes;
 pub mod generative_routes;
 pub mod global_promo_routes;

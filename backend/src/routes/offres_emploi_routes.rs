@@ -1,6 +1,6 @@
 use axum::{
     middleware,
-    routing::{get, patch, post},
+    routing::{get, patch, post, put},
     Router,
 };
 use std::sync::Arc;
@@ -73,6 +73,10 @@ pub fn offres_emploi_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             "/api/offres-emploi",
             post(offres_emploi_controller::create_offre)
                 .get(offres_emploi_controller::list_my_offres),
+        )
+        .route(
+            "/api/offres-emploi/{id}",
+            put(offres_emploi_controller::update_offre),
         )
         .route(
             "/api/offres-emploi/{id}/close",

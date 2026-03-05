@@ -15,12 +15,11 @@ import {
 } from 'react-native';
 import { ENVIRONMENT } from '../../config/environment';
 import { deliveryApi } from '../../services/api';
-import { mediaService } from '../../services/mediaService';
 import { modernColors } from '../../theme/modernTheme';
 import { DeliveryProofMedia } from '../../types/delivery';
 import SafeStorage from '../../utils/safeStorage';
-import { NativeCard } from '../SafeNativeDesign';
 import SafeIcon from '../SafeIcon';
+import { NativeCard } from '../SafeNativeDesign';
 import DeliveryProofVideoRecorder from './DeliveryProofVideoRecorder';
 
 interface ProofMediaUploadProps {
@@ -29,6 +28,21 @@ interface ProofMediaUploadProps {
     isCourier: boolean;
     onMediaUpdated?: () => void;
 }
+
+// Helper: résoudre l'URL d'un média de preuve (presigned URL, chemin /api/, ou CDN)
+const resolveProofMediaUrl = (url: string): string => {
+    if (!url) return '';
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    // Chemins /api/media/proof/... → backend direct
+    if (url.startsWith('/api/')) {
+        const base = (ENVIRONMENT.API_URL || '').replace(/\/$/, '');
+        return base ? `${base}${url}` : url;
+    }
+    // Chemins uploads/ ou relatifs → /api/media/files/
+    const cleanPath = url.replace(/^\//, '');
+    const base = (ENVIRONMENT.API_URL || '').replace(/\/$/, '');
+    return base ? `${base}/api/media/files/${cleanPath}` : url;
+};
 
 const ProofMediaUpload: React.FC<ProofMediaUploadProps> = ({
     deliveryId,
@@ -40,13 +54,6 @@ const ProofMediaUpload: React.FC<ProofMediaUploadProps> = ({
     const [loading, setLoading] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [showVideoRecorder, setShowVideoRecorder] = useState(false);
-
-    // ✅ NOUVEAU 2025-12-03: Initialiser mediaService pour CDN avec fallback
-    useEffect(() => {
-        mediaService.initialize(ENVIRONMENT.API_URL).catch(() => {
-            // Ignorer erreurs d'initialisation
-        });
-    }, []);
 
     useEffect(() => {
         loadMedia();
@@ -154,7 +161,7 @@ const ProofMediaUpload: React.FC<ProofMediaUploadProps> = ({
 
             // Récupérer le token depuis AsyncStorage
             const token = await SafeStorage.getItem('token');
-            const baseUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
+            const baseUrl = ENVIRONMENT.API_URL || process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
 
             const response = await fetch(`${baseUrl}/api/media/upload-proof`, {
                 method: 'POST',
@@ -258,44 +265,39 @@ const ProofMediaUpload: React.FC<ProofMediaUploadProps> = ({
                     horizontal
                     showsHorizontalScrollIndicator={false}
                     keyExtractor={(item) => String(item.id)}
-                    renderItem={({ item }) => (
-                        <View style={styles.mediaItem}>
-                            {item.media_type === 'image' ? (
-                                <Image
-                                    source={{
-                                        uri: item.media_url.startsWith('http')
-                                            ? item.media_url
-                                            : mediaService.getImageUrl(item.media_url)
-                                    }}
-                                    style={styles.mediaImage}
-                                />
-                            ) : (
-                                <Video
-                                    source={{
-                                        uri: item.media_url.startsWith('http')
-                                            ? item.media_url
-                                            : mediaService.getVideoUrl(item.media_url)
-                                    }}
-                                    style={styles.mediaVideo}
-                                    useNativeControls
-                                    resizeMode={ResizeMode.COVER}
-                                />
-                            )}
-                            {isCourier && (
-                                <TouchableOpacity
-                                    onPress={() => handleDelete(item.id)}
-                                    style={styles.deleteButton}
-                                >
-                                    <SafeIcon name="trash-2" size={16} color={modernColors.error} />
-                                </TouchableOpacity>
-                            )}
-                            <View style={styles.mediaInfo}>
-                                <Text style={styles.mediaDate}>
-                                    {new Date(item.uploaded_at).toLocaleDateString('fr-FR')}
-                                </Text>
+                    renderItem={({ item }) => {
+                        const resolvedUrl = resolveProofMediaUrl(item.media_url);
+                        return (
+                            <View style={styles.mediaItem}>
+                                {item.media_type === 'image' ? (
+                                    <Image
+                                        source={{ uri: resolvedUrl }}
+                                        style={styles.mediaImage}
+                                    />
+                                ) : (
+                                    <Video
+                                        source={{ uri: resolvedUrl }}
+                                        style={styles.mediaVideo}
+                                        useNativeControls
+                                        resizeMode={ResizeMode.COVER}
+                                    />
+                                )}
+                                {isCourier && (
+                                    <TouchableOpacity
+                                        onPress={() => handleDelete(item.id)}
+                                        style={styles.deleteButton}
+                                    >
+                                        <SafeIcon name="trash-2" size={16} color={modernColors.error} />
+                                    </TouchableOpacity>
+                                )}
+                                <View style={styles.mediaInfo}>
+                                    <Text style={styles.mediaDate}>
+                                        {new Date(item.uploaded_at).toLocaleDateString('fr-FR')}
+                                    </Text>
+                                </View>
                             </View>
-                        </View>
-                    )}
+                        );
+                    }}
                 />
             )}
 
@@ -308,20 +310,12 @@ const ProofMediaUpload: React.FC<ProofMediaUploadProps> = ({
                             <Text style={styles.comparisonLabel}>État initial (récupération)</Text>
                             {pickupMedia[0].media_type === 'image' ? (
                                 <Image
-                                    source={{
-                                        uri: pickupMedia[0].media_url.startsWith('http')
-                                            ? pickupMedia[0].media_url
-                                            : mediaService.getImageUrl(pickupMedia[0].media_url)
-                                    }}
+                                    source={{ uri: resolveProofMediaUrl(pickupMedia[0].media_url) }}
                                     style={styles.comparisonImage}
                                 />
                             ) : (
                                 <Video
-                                    source={{
-                                        uri: pickupMedia[0].media_url.startsWith('http')
-                                            ? pickupMedia[0].media_url
-                                            : mediaService.getVideoUrl(pickupMedia[0].media_url)
-                                    }}
+                                    source={{ uri: resolveProofMediaUrl(pickupMedia[0].media_url) }}
                                     style={styles.comparisonVideo}
                                     useNativeControls
                                     resizeMode={ResizeMode.COVER}
@@ -332,20 +326,12 @@ const ProofMediaUpload: React.FC<ProofMediaUploadProps> = ({
                             <Text style={styles.comparisonLabel}>État final (livraison)</Text>
                             {deliveryMedia[0].media_type === 'image' ? (
                                 <Image
-                                    source={{
-                                        uri: deliveryMedia[0].media_url.startsWith('http')
-                                            ? deliveryMedia[0].media_url
-                                            : mediaService.getImageUrl(deliveryMedia[0].media_url)
-                                    }}
+                                    source={{ uri: resolveProofMediaUrl(deliveryMedia[0].media_url) }}
                                     style={styles.comparisonImage}
                                 />
                             ) : (
                                 <Video
-                                    source={{
-                                        uri: deliveryMedia[0].media_url.startsWith('http')
-                                            ? deliveryMedia[0].media_url
-                                            : mediaService.getVideoUrl(deliveryMedia[0].media_url)
-                                    }}
+                                    source={{ uri: resolveProofMediaUrl(deliveryMedia[0].media_url) }}
                                     style={styles.comparisonVideo}
                                     useNativeControls
                                     resizeMode={ResizeMode.COVER}

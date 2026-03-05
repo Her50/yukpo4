@@ -335,8 +335,69 @@ const CreatePubliciteScreen: React.FC = () => {
                 setZoneGeographique(pub.zone_geographique || 'local');
                 setSelectedProduits(pub.produits_indexes || []);
 
-                // Pour les vidéos, on ne peut pas les recharger depuis base64,
-                // l'utilisateur devra les ajouter à nouveau si nécessaire
+                // Restaurer le ciblage avancé
+                if (pub.targeting && typeof pub.targeting === 'object') {
+                    setTargeting(prev => ({
+                        ...prev,
+                        ageRange: pub.targeting.age_range || prev.ageRange,
+                        gender: pub.targeting.gender || prev.gender,
+                        interests: Array.isArray(pub.targeting.interests) ? pub.targeting.interests : prev.interests,
+                        behaviors: Array.isArray(pub.targeting.behaviors) ? pub.targeting.behaviors : prev.behaviors,
+                        locations: Array.isArray(pub.targeting.locations) ? pub.targeting.locations : prev.locations,
+                    }));
+                }
+
+                // Restaurer les variantes A/B
+                if (pub.ab_testing && typeof pub.ab_testing === 'object') {
+                    const variants = Array.isArray(pub.ab_testing.variants) ? pub.ab_testing.variants : [];
+                    if (variants.length > 0) {
+                        setAbVariants(variants.map((v: any, i: number) => ({
+                            id: String(i + 1),
+                            titre: v.titre || '',
+                            description: v.description || '',
+                            isActive: v.isActive !== false,
+                        })));
+                    }
+                }
+
+                // Restaurer le planning
+                if (pub.schedule && typeof pub.schedule === 'object') {
+                    setSchedule(prev => ({
+                        ...prev,
+                        startDate: pub.schedule.start_date ? new Date(pub.schedule.start_date) : prev.startDate,
+                        endDate: pub.schedule.end_date ? new Date(pub.schedule.end_date) : prev.endDate,
+                        timezone: pub.schedule.timezone || prev.timezone,
+                        pauseOnWeekends: pub.schedule.pause_weekends || false,
+                    }));
+                }
+
+                // Restaurer les placements
+                if (Array.isArray(pub.placements) && pub.placements.length > 0) {
+                    setPlacements(prev => prev.map(p => {
+                        const saved = pub.placements.find((sp: any) => sp.type === p.type);
+                        return saved ? { ...p, enabled: saved.enabled !== false, budget: saved.budget || 0 } : p;
+                    }));
+                }
+
+                // Restaurer la stratégie d'enchères
+                if (pub.bid_strategy && typeof pub.bid_strategy === 'object' && pub.bid_strategy.type) {
+                    setBidStrategy(prev => ({
+                        ...prev,
+                        type: pub.bid_strategy.type || prev.type,
+                        bidAmount: pub.bid_strategy.bid_amount || prev.bidAmount,
+                    }));
+                }
+
+                // Restaurer le retargeting
+                if (pub.retargeting && typeof pub.retargeting === 'object') {
+                    const rules = Array.isArray(pub.retargeting.rules) ? pub.retargeting.rules : [];
+                    if (rules.length > 0) {
+                        setRetargetingRules(prev => prev.map(r => {
+                            const saved = rules.find((sr: any) => sr.type === r.type);
+                            return saved ? { ...r, enabled: saved.enabled !== false, daysSince: saved.days_since || r.daysSince } : r;
+                        }));
+                    }
+                }
             }
             setLoading(false);
         } catch (error) {

@@ -11,7 +11,7 @@ import {
     Text,
     TextInput,
     TouchableOpacity,
-    View,
+    View
 } from 'react-native';
 import { UserSavedAddress } from '../../hooks/useSavedAddresses';
 import { apiGet, apiPost, userApi } from '../../services/api';
@@ -69,6 +69,7 @@ interface Product {
     hasPromotion?: boolean;
     promotionType?: string;
     promotionValeur?: string;
+    thumbnail?: string;
 }
 
 interface ApiResponse<T = any> {
@@ -530,6 +531,26 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                         const realPrice = getRealPrice(p);
                         const hasPromotion = realPrice < basePrice && basePrice > 0;
 
+                        // Extraire la première image pour thumbnail
+                        let thumbnail: string | undefined;
+                        const rawImages = p.images;
+                        if (rawImages) {
+                            let imgArr: string[] = [];
+                            if (Array.isArray(rawImages)) imgArr = rawImages;
+                            else if (rawImages.valeur && Array.isArray(rawImages.valeur)) imgArr = rawImages.valeur;
+                            else if (typeof rawImages === 'string') imgArr = [rawImages];
+                            const firstImg = imgArr[0];
+                            if (firstImg && typeof firstImg === 'string' && firstImg.trim()) {
+                                const img = firstImg.trim();
+                                if (img.startsWith('http://') || img.startsWith('https://') || img.startsWith('data:')) {
+                                    thumbnail = img;
+                                } else {
+                                    const base = (config.API_URL || '').replace(/\/$/, '');
+                                    thumbnail = base ? `${base}/api/media/files/${img.replace(/^\//, '')}` : undefined;
+                                }
+                            }
+                        }
+
                         return {
                             index,
                             name: p.nom || p.name || p.title || `Produit ${index + 1}`,
@@ -538,6 +559,7 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                             hasPromotion,
                             promotionType: p.promotionType,
                             promotionValeur: p.promotionValeur,
+                            thumbnail,
                         };
                     })
                     .filter((p: any) => p.name && p.price > 0); // Filtrer les produits valides
@@ -1096,6 +1118,13 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                                                         )}
                                                     </View>
                                                 </View>
+                                                {product.thumbnail ? (
+                                                    <Image source={{ uri: product.thumbnail }} style={styles.productThumb} />
+                                                ) : (
+                                                    <View style={[styles.productThumb, styles.productThumbPlaceholder]}>
+                                                        <SafeIcon name="package" size={18} color="#9CA3AF" />
+                                                    </View>
+                                                )}
                                                 <View style={styles.productInfo}>
                                                     <View style={styles.productNameRow}>
                                                         <Text style={styles.productName}>{product.name}</Text>
@@ -1129,6 +1158,13 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                                         const product = availableProducts.find(p => p.index === idx);
                                         return product ? (
                                             <View key={idx} style={styles.selectedProductCard}>
+                                                {product.thumbnail ? (
+                                                    <Image source={{ uri: product.thumbnail }} style={styles.selectedProductThumb} />
+                                                ) : (
+                                                    <View style={[styles.selectedProductThumb, styles.productThumbPlaceholder]}>
+                                                        <SafeIcon name="package" size={14} color="#9CA3AF" />
+                                                    </View>
+                                                )}
                                                 <View style={styles.selectedProductInfo}>
                                                     <View style={styles.productNameRow}>
                                                         <Text style={styles.selectedProductName}>{product.name}</Text>
@@ -2048,6 +2084,17 @@ const styles = StyleSheet.create({
         borderWidth: 2,
         backgroundColor: '#EFF6FF',
     },
+    productThumb: {
+        width: 44,
+        height: 44,
+        borderRadius: 8,
+        marginRight: 10,
+        backgroundColor: '#F3F4F6',
+    },
+    productThumbPlaceholder: {
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
     checkboxContainer: {
         marginRight: 12,
     },
@@ -2078,6 +2125,13 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         borderWidth: 1,
         borderColor: '#E5E7EB',
+    },
+    selectedProductThumb: {
+        width: 36,
+        height: 36,
+        borderRadius: 6,
+        marginRight: 8,
+        backgroundColor: '#F3F4F6',
     },
     selectedProductInfo: {
         flex: 1,

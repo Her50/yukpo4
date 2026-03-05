@@ -132,6 +132,7 @@ pub struct PredictSalaryRequest {
 pub struct SuggestFormationsRequest {
     pub candidat_id: i32,
     pub offre_id: Option<i32>,
+    pub competences_actuelles: Option<Vec<String>>,
     pub competences_manquantes: Option<Vec<String>>,
     pub objectif_carriere: Option<String>,
 }

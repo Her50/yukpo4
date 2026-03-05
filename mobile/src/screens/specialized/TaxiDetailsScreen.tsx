@@ -10,8 +10,8 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import { InsuranceSelector } from '../../components/covoiturage/InsuranceSelector';
 import { QRCodeDisplay } from '../../components/covoiturage/QRCodeDisplay';
 import { useAuth } from '../../contexts/AuthContext';
@@ -78,8 +78,9 @@ const TaxiDetailsScreen: React.FC = () => {
             const response = await apiGet(`/api/taxis/${params.taxiId}/details-enhanced`)
                 .catch(() => apiGet(`/api/taxis/${params.taxiId}`));
 
-            if (response.success && response.data) {
-                setTaxi(response.data);
+            const r = response.data as any;
+            if (response.success && r) {
+                setTaxi(r);
             } else {
                 Alert.alert('Erreur', 'Impossible de charger les détails du taxi');
                 navigation.goBack();
@@ -112,8 +113,9 @@ const TaxiDetailsScreen: React.FC = () => {
                 notes: 'Réservation depuis l\'application mobile',
             });
 
-            if (response.success && response.reservation) {
-                const resId = response.reservation.id;
+            const r = response.data as any;
+            if (response.success && r?.reservation) {
+                const resId = r.reservation.id;
                 setReservationId(resId);
                 setBookingSuccess(true);
 

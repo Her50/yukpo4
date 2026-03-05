@@ -429,6 +429,90 @@ pub async fn ensure_premium_audio_tables(pool: &PgPool) -> Result<(), sqlx::Erro
     Ok(())
 }
 
+pub async fn ensure_audio_transcription_cache_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification de la table audio_transcription_cache...");
+
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS audio_transcription_cache (
+            id SERIAL PRIMARY KEY,
+            audio_hash TEXT NOT NULL UNIQUE,
+            transcribed_text TEXT NOT NULL,
+            language TEXT,
+            confidence REAL,
+            duration REAL,
+            model_used TEXT NOT NULL DEFAULT 'whisper-1',
+            usage_count INTEGER NOT NULL DEFAULT 1,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            last_used_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_audio_transcription_cache_hash ON audio_transcription_cache(audio_hash)",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_audio_transcription_cache_last_used ON audio_transcription_cache(last_used_at)",
+    )
+    .execute(pool)
+    .await?;
+
+    // Fonction de correction des erreurs de transcription courantes
+    sqlx::query(
+        r#"
+        CREATE OR REPLACE FUNCTION correct_transcription_errors(input_text TEXT)
+        RETURNS TEXT AS $$
+        DECLARE
+            result TEXT := input_text;
+        BEGIN
+            -- Corrections courantes pour le français africain
+            result := REGEXP_REPLACE(result, '\s+', ' ', 'g');
+            result := TRIM(result);
+            RETURN result;
+        END;
+        $$ LANGUAGE plpgsql IMMUTABLE
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    // Fonction de nettoyage des anciennes transcriptions (garde les 30 derniers jours)
+    sqlx::query(
+        r#"
+        CREATE OR REPLACE FUNCTION cleanup_old_audio_transcriptions()
+        RETURNS TABLE(deleted_count BIGINT, kept_count BIGINT, total_before BIGINT, total_after BIGINT) AS $$
+        DECLARE
+            total_before_val BIGINT;
+            deleted_val BIGINT;
+            total_after_val BIGINT;
+        BEGIN
+            SELECT COUNT(*) INTO total_before_val FROM audio_transcription_cache;
+            
+            DELETE FROM audio_transcription_cache
+            WHERE last_used_at < NOW() - INTERVAL '30 days'
+            AND usage_count <= 1;
+            
+            GET DIAGNOSTICS deleted_val = ROW_COUNT;
+            SELECT COUNT(*) INTO total_after_val FROM audio_transcription_cache;
+            
+            RETURN QUERY SELECT deleted_val, total_after_val, total_before_val, total_after_val;
+        END;
+        $$ LANGUAGE plpgsql
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    info!("✅ Table audio_transcription_cache et fonctions associées créées/vérifiées");
+    Ok(())
+}
+
 pub async fn ensure_voice_profiles_table(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification de la table voice_profiles...");
 
@@ -7733,6 +7817,11 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Err(e) => error!("❌ Erreur migration auto premium audio: {}", e),
     }
 
+    match ensure_audio_transcription_cache_table(pool).await {
+        Ok(_) => info!("✅ Migration auto: audio_transcription_cache OK"),
+        Err(e) => error!("❌ Erreur migration auto audio_transcription_cache: {}", e),
+    }
+
     match ensure_voice_profiles_table(pool).await {
         Ok(_) => info!("✅ Migration auto: voice_profiles OK"),
         Err(e) => error!("❌ Erreur migration auto voice_profiles: {}", e),
@@ -8778,6 +8867,18 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Err(e) => error!("❌ Erreur migration auto phone_verification_tables: {}", e),
     }
 
+    // ✅ NOUVEAU 2026-03-05 : Table user_follows (système de suivi vendeurs)
+    match ensure_user_follows_table(pool).await {
+        Ok(_) => info!("✅ Migration auto: user_follows OK"),
+        Err(e) => error!("❌ Erreur migration auto user_follows: {}", e),
+    }
+
+    // ✅ NOUVEAU 2026-03-05 : Table generative_video_jobs (pipeline vidéo IA Runway/Sora/Pika)
+    match ensure_generative_video_jobs_table(pool).await {
+        Ok(_) => info!("✅ Migration auto: generative_video_jobs OK"),
+        Err(e) => error!("❌ Erreur migration auto generative_video_jobs: {}", e),
+    }
+
     info!("✅ Migrations automatiques terminées");
 }
 
@@ -9678,6 +9779,193 @@ pub async fn ensure_navigation_trips_table(pool: &PgPool) -> Result<(), sqlx::Er
     .await?;
 
     info!("✅ Table navigation_trips créée/vérifiée avec succès");
+    Ok(())
+}
+
+/// ✅ NOUVEAU 2026-03-05: Table pour radars, contrôles de police et dangers signalés par la communauté
+pub async fn ensure_navigation_checkpoints_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification de la table navigation_checkpoints...");
+
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS navigation_checkpoints (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            reported_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            checkpoint_type VARCHAR(50) NOT NULL,
+            latitude DOUBLE PRECISION NOT NULL,
+            longitude DOUBLE PRECISION NOT NULL,
+            description TEXT,
+            speed_limit INTEGER,
+            is_permanent BOOLEAN DEFAULT false,
+            upvotes INTEGER DEFAULT 1,
+            downvotes INTEGER DEFAULT 0,
+            is_active BOOLEAN DEFAULT true,
+            expires_at TIMESTAMP WITH TIME ZONE,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        )
+    "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_nav_checkpoints_location ON navigation_checkpoints(latitude, longitude) WHERE is_active = true",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_nav_checkpoints_type ON navigation_checkpoints(checkpoint_type) WHERE is_active = true",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_nav_checkpoints_expires ON navigation_checkpoints(expires_at) WHERE expires_at IS NOT NULL AND is_active = true",
+    )
+    .execute(pool)
+    .await?;
+
+    info!("✅ Table navigation_checkpoints créée/vérifiée avec succès");
+    Ok(())
+}
+
+/// ✅ NOUVEAU 2026-03-05: Table des votes utilisateurs sur les checkpoints (éviter les doublons)
+pub async fn ensure_navigation_checkpoint_votes_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification de la table navigation_checkpoint_votes...");
+
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS navigation_checkpoint_votes (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            checkpoint_id UUID NOT NULL REFERENCES navigation_checkpoints(id) ON DELETE CASCADE,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            vote VARCHAR(10) NOT NULL,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+            CONSTRAINT nav_checkpoint_vote_unique UNIQUE(checkpoint_id, user_id)
+        )
+    "#,
+    )
+    .execute(pool)
+    .await?;
+
+    info!("✅ Table navigation_checkpoint_votes créée/vérifiée avec succès");
+    Ok(())
+}
+
+/// ✅ NOUVEAU 2026-03-05: Table d'activité de navigation (sessions de marche/conduite avec métriques de qualité)
+pub async fn ensure_navigation_activity_log_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification de la table navigation_activity_log...");
+
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS navigation_activity_log (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            user_id INTEGER NOT NULL,
+            travel_mode VARCHAR(20) NOT NULL DEFAULT 'driving',
+            origin_address TEXT,
+            destination_address TEXT,
+            origin_lat DOUBLE PRECISION,
+            origin_lng DOUBLE PRECISION,
+            dest_lat DOUBLE PRECISION,
+            dest_lng DOUBLE PRECISION,
+            distance_meters DOUBLE PRECISION NOT NULL DEFAULT 0,
+            duration_seconds INTEGER NOT NULL DEFAULT 0,
+            avg_speed_kmh DOUBLE PRECISION DEFAULT 0,
+            max_speed_kmh DOUBLE PRECISION DEFAULT 0,
+            calories_burned DOUBLE PRECISION DEFAULT 0,
+            quality_score DOUBLE PRECISION DEFAULT 0,
+            speed_consistency DOUBLE PRECISION DEFAULT 0,
+            pace_per_km_seconds DOUBLE PRECISION DEFAULT 0,
+            checkpoints_reported INTEGER DEFAULT 0,
+            checkpoints_encountered INTEGER DEFAULT 0,
+            was_off_route BOOLEAN DEFAULT false,
+            started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            ended_at TIMESTAMPTZ,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+    "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_nav_activity_user ON navigation_activity_log(user_id)",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_nav_activity_started ON navigation_activity_log(started_at)",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_nav_activity_mode ON navigation_activity_log(travel_mode)",
+    )
+    .execute(pool)
+    .await?;
+
+    info!("✅ Table navigation_activity_log créée/vérifiée avec succès");
+    Ok(())
+}
+
+/// ✅ NOUVEAU 2026-03-05: Table de gamification & achievements navigation
+pub async fn ensure_navigation_achievements_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification des tables navigation achievements...");
+
+    // Table des achievements/badges utilisateur
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS navigation_user_achievements (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            user_id INTEGER NOT NULL,
+            badge_type VARCHAR(50) NOT NULL,
+            badge_level INTEGER NOT NULL DEFAULT 1,
+            earned_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            metadata JSONB DEFAULT '{}',
+            UNIQUE(user_id, badge_type, badge_level)
+        )
+    "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_nav_achievements_user ON navigation_user_achievements(user_id)",
+    )
+    .execute(pool)
+    .await?;
+
+    // Table des défis hebdomadaires/mensuels
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS navigation_challenges (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            user_id INTEGER NOT NULL,
+            challenge_type VARCHAR(50) NOT NULL,
+            target_value DOUBLE PRECISION NOT NULL,
+            current_value DOUBLE PRECISION NOT NULL DEFAULT 0,
+            period_start TIMESTAMPTZ NOT NULL,
+            period_end TIMESTAMPTZ NOT NULL,
+            completed BOOLEAN DEFAULT false,
+            completed_at TIMESTAMPTZ,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+    "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_nav_challenges_user ON navigation_challenges(user_id, period_end)",
+    )
+    .execute(pool)
+    .await?;
+
+    info!("✅ Tables navigation achievements & challenges créées/vérifiées");
     Ok(())
 }
 
@@ -17813,5 +18101,173 @@ pub async fn ensure_delivery_config_columns(pool: &PgPool) -> Result<(), sqlx::E
     ).execute(pool).await?;
 
     info!("✅ Colonnes product_delivery_config + tables delivery_engine_pricing/insurance_fees vérifiées");
+    Ok(())
+}
+
+/// ✅ NOUVEAU 2026-03-05: Table user_follows pour système de suivi vendeurs
+pub async fn ensure_user_follows_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification de la table user_follows...");
+
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS user_follows (
+            id SERIAL PRIMARY KEY,
+            follower_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            followed_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            UNIQUE(follower_id, followed_id)
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_user_follows_follower ON user_follows(follower_id)",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_user_follows_followed ON user_follows(followed_id)",
+    )
+    .execute(pool)
+    .await?;
+
+    info!("✅ Table user_follows vérifiée/créée avec succès");
+    Ok(())
+}
+
+/// ✅ NOUVEAU 2026-03-05: Table generative_video_jobs pour pipeline vidéo IA (Runway/Sora/Pika)
+pub async fn ensure_generative_video_jobs_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification de la table generative_video_jobs...");
+
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS generative_video_jobs (
+            job_id TEXT PRIMARY KEY,
+            user_id BIGINT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'queued',
+            error_message TEXT,
+            result_payload JSONB,
+            request_payload JSONB,
+            provider TEXT,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_generative_video_jobs_user_id ON generative_video_jobs(user_id)")
+        .execute(pool)
+        .await?;
+
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_generative_video_jobs_status ON generative_video_jobs(status, created_at DESC)")
+        .execute(pool)
+        .await?;
+
+    // Trigger pour auto-update updated_at
+    sqlx::query(
+        r#"
+        CREATE OR REPLACE FUNCTION set_generative_video_jobs_updated_at()
+        RETURNS TRIGGER AS $$
+        BEGIN
+            NEW.updated_at = NOW();
+            RETURN NEW;
+        END;
+        $$ LANGUAGE plpgsql
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        DO $$ BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trigger_generative_video_jobs_updated_at') THEN
+                CREATE TRIGGER trigger_generative_video_jobs_updated_at
+                    BEFORE UPDATE ON generative_video_jobs
+                    FOR EACH ROW
+                    EXECUTE FUNCTION set_generative_video_jobs_updated_at();
+            END IF;
+        END $$
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    info!("✅ Table generative_video_jobs vérifiée/créée avec succès");
+    Ok(())
+}
+
+/// ✅ NOUVEAU 2026-03-05: Table de configuration régionale dynamique
+/// Stocke les prix carburant, CO2/km, et contexte culturel par pays — modifiable sans redéploiement
+pub async fn ensure_geo_regional_config_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🌍 Vérification de la table geo_regional_config...");
+
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS geo_regional_config (
+            country_code VARCHAR(5) PRIMARY KEY,
+            country_name VARCHAR(100) NOT NULL,
+            region_name VARCHAR(100) NOT NULL,
+            currency_code VARCHAR(10) NOT NULL,
+            currency_symbol VARCHAR(10) NOT NULL,
+            fuel_price_per_liter DOUBLE PRECISION NOT NULL,
+            fuel_consumption_l_100km DOUBLE PRECISION NOT NULL DEFAULT 8.0,
+            co2_car_g_per_km DOUBLE PRECISION NOT NULL DEFAULT 120.0,
+            co2_transit_g_per_km DOUBLE PRECISION NOT NULL DEFAULT 50.0,
+            cultural_context TEXT,
+            language_hint VARCHAR(5) NOT NULL DEFAULT 'fr',
+            source VARCHAR(100) DEFAULT 'manual',
+            updated_by VARCHAR(100) DEFAULT 'system',
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    // Seed avec les données de référence (n'écrase pas si déjà présent)
+    sqlx::query(
+        r#"
+        INSERT INTO geo_regional_config (country_code, country_name, region_name, currency_code, currency_symbol, fuel_price_per_liter, fuel_consumption_l_100km, co2_car_g_per_km, co2_transit_g_per_km, cultural_context, language_hint, source)
+        VALUES
+            ('CM', 'Cameroun', 'Afrique centrale (CEMAC)', 'XAF', 'FCFA', 850.0, 8.0, 120.0, 50.0, 'Motos-taxis fréquents, routes mixtes goudron/terre, climat tropical, minibus/bus', 'fr', 'seed'),
+            ('GA', 'Gabon', 'Afrique centrale (CEMAC)', 'XAF', 'FCFA', 850.0, 8.0, 120.0, 50.0, 'Routes bitumées principales, taxis collectifs, climat équatorial', 'fr', 'seed'),
+            ('CG', 'Congo-Brazzaville', 'Afrique centrale (CEMAC)', 'XAF', 'FCFA', 850.0, 8.0, 120.0, 50.0, 'Transport mixte, routes variées', 'fr', 'seed'),
+            ('CF', 'République centrafricaine', 'Afrique centrale (CEMAC)', 'XAF', 'FCFA', 900.0, 9.0, 130.0, 55.0, 'Routes souvent dégradées, motos prédominantes', 'fr', 'seed'),
+            ('TD', 'Tchad', 'Afrique centrale (CEMAC)', 'XAF', 'FCFA', 870.0, 9.0, 130.0, 55.0, 'Grandes distances, routes désertiques au nord', 'fr', 'seed'),
+            ('GQ', 'Guinée équatoriale', 'Afrique centrale (CEMAC)', 'XAF', 'FCFA', 800.0, 8.0, 120.0, 50.0, 'Réseau routier en développement', 'fr', 'seed'),
+            ('SN', 'Sénégal', 'Afrique de l''Ouest (CEDEAO/UEMOA)', 'XOF', 'FCFA', 750.0, 8.5, 125.0, 50.0, 'Cars rapides, Ndiaga Ndiaye, DDD à Dakar', 'fr', 'seed'),
+            ('CI', 'Côte d''Ivoire', 'Afrique de l''Ouest (CEDEAO/UEMOA)', 'XOF', 'FCFA', 735.0, 8.5, 125.0, 50.0, 'Gbakas, wôrô-wôrô, SOTRA à Abidjan', 'fr', 'seed'),
+            ('NG', 'Nigeria', 'Afrique de l''Ouest', 'NGN', '₦', 700.0, 10.0, 140.0, 60.0, 'Okada, danfo, BRT à Lagos, carburant subventionné', 'en', 'seed'),
+            ('GH', 'Ghana', 'Afrique de l''Ouest', 'GHS', 'GH₵', 15.0, 9.0, 130.0, 55.0, 'Trotros, trafic Accra', 'en', 'seed'),
+            ('KE', 'Kenya', 'Afrique de l''Est', 'KES', 'KSh', 180.0, 8.5, 125.0, 50.0, 'Matatus, boda-bodas, SGR Nairobi-Mombasa', 'en', 'seed'),
+            ('RW', 'Rwanda', 'Afrique de l''Est', 'RWF', 'FRw', 1350.0, 8.5, 125.0, 50.0, 'Motos-taxis, bus Kigali bien organisé', 'en', 'seed'),
+            ('CD', 'RD Congo', 'Afrique centrale', 'CDF', 'FC', 3500.0, 10.0, 140.0, 60.0, 'Routes dégradées, motos-taxis Kinshasa', 'fr', 'seed'),
+            ('ZA', 'Afrique du Sud', 'Afrique australe', 'ZAR', 'R', 24.0, 8.5, 120.0, 45.0, 'Réseau routier développé, minibus-taxis, Gautrain', 'en', 'seed'),
+            ('MA', 'Maroc', 'Afrique du Nord (Maghreb)', 'MAD', 'DH', 14.0, 7.5, 115.0, 45.0, 'Tramway Casablanca/Rabat, taxis, réseau autoroutier', 'fr', 'seed'),
+            ('DZ', 'Algérie', 'Afrique du Nord (Maghreb)', 'DZD', 'DA', 45.0, 7.5, 115.0, 45.0, 'Carburant subventionné, métro Alger', 'fr', 'seed'),
+            ('TN', 'Tunisie', 'Afrique du Nord (Maghreb)', 'TND', 'DT', 2.1, 7.5, 115.0, 45.0, 'Métro léger Tunis, louages', 'fr', 'seed'),
+            ('FR', 'France', 'Europe', 'EUR', '€', 1.75, 6.5, 95.0, 35.0, 'TGV, métro, vélib, pistes cyclables développées', 'fr', 'seed'),
+            ('BE', 'Belgique', 'Europe', 'EUR', '€', 1.70, 6.5, 95.0, 35.0, 'Réseau ferroviaire dense, embouteillages Bruxelles', 'fr', 'seed'),
+            ('DE', 'Allemagne', 'Europe', 'EUR', '€', 1.80, 6.5, 95.0, 35.0, 'Autobahn, S-Bahn/U-Bahn, 49€ ticket', 'fr', 'seed'),
+            ('GB', 'Royaume-Uni', 'Europe', 'GBP', '£', 1.50, 7.0, 100.0, 40.0, 'Tube Londres, conduite à gauche, vélo populaire', 'en', 'seed'),
+            ('US', 'États-Unis', 'Amérique du Nord', 'USD', '$', 0.95, 9.5, 130.0, 50.0, 'Auto-dépendant, distances longues, Uber/Lyft', 'en', 'seed'),
+            ('CA', 'Canada', 'Amérique du Nord', 'CAD', 'CA$', 1.70, 8.5, 120.0, 45.0, 'Hivers rigoureux, grandes distances, TransLink/TTC', 'en', 'seed'),
+            ('BR', 'Brésil', 'Amérique du Sud', 'BRL', 'R$', 6.0, 9.0, 125.0, 50.0, 'Mégalopoles, motos, Uber/99', 'pt', 'seed'),
+            ('IN', 'Inde', 'Asie du Sud', 'INR', '₹', 100.0, 8.0, 130.0, 45.0, 'Auto-rickshaws, deux-roues, métro Delhi/Mumbai', 'en', 'seed'),
+            ('AE', 'Émirats arabes unis', 'Moyen-Orient', 'AED', 'AED', 3.2, 10.0, 140.0, 50.0, 'Ville auto-centrée, métro Dubaï, climat très chaud', 'en', 'seed')
+        ON CONFLICT (country_code) DO NOTHING
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    info!("✅ Table geo_regional_config créée/vérifiée avec données de seed");
     Ok(())
 }

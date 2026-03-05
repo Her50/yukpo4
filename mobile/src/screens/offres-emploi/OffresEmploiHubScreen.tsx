@@ -47,8 +47,12 @@ const OffresEmploiHubScreen: React.FC = () => {
 
             if (user) {
                 const response = await offreEmploiService.getDashboardCandidat();
-                if (response.success) {
-                    setStats(response.data);
+                const resData = (response?.data || response) as any;
+                if (resData?.success && resData?.data) {
+                    setStats(resData.data);
+                } else if (resData?.total_candidatures !== undefined) {
+                    // Fallback: données directement dans resData
+                    setStats(resData);
                 }
             }
         } catch (error) {

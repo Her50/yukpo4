@@ -36,14 +36,15 @@ export const useDeepLinkRedirect = () => {
                 if (user.partner_type) {
                     console.log(`[useDeepLinkRedirect] 🏢 Partenaire identifié: type="${user.partner_type}"`);
                     // ✅ NOUVEAU: Mapping complet de tous les types de partenaires vers leurs écrans
+                    // ✅ CORRIGÉ 2026-03-05: hotel/meuble → HotelDashboard au lieu de ImmobilierForm
                     const partnerTypeToScreen: Record<string, string> = {
                         'banquesang': 'BanqueSangForm',
                         'pharmacie': 'PharmacieForm',
                         'hopital': 'HopitalForm',
                         'laboratoire': 'LaboratoireForm',
                         'agence de voyage': 'AgenceVoyageForm',
-                        'hotel': 'ImmobilierForm',
-                        'meuble': 'ImmobilierForm',
+                        'hotel': 'HotelDashboard',
+                        'meuble': 'HotelDashboard',
                         'chauffeur': 'TaxiForm',
                         'supermarche': 'SupermarketHome',
                         'livraison_courses_marche': 'MesServicesSpecialises',

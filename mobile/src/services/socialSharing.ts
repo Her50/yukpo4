@@ -114,6 +114,66 @@ class SocialSharingService {
     }
 
     /**
+     * Partager ses performances de navigation (stats, badges, CO2, records)
+     */
+    async shareNavigationPerformance(stats: {
+        period: string;
+        distanceKm: number;
+        sessions: number;
+        calories: number;
+        healthScore: number;
+        healthLabel: string;
+        co2SavedKg: number;
+        vo2max: number;
+        fitnessLevel: string;
+        streak: number;
+        badgeCount: number;
+        points: number;
+        bestDistanceKm?: number;
+        bestSpeedKmh?: number;
+    }): Promise<boolean> {
+        try {
+            const lines = [
+                `🏃 Mes performances Yukpo Navigation (${stats.period === 'week' ? 'cette semaine' : stats.period === 'month' ? 'ce mois' : 'cette année'})`,
+                ``,
+                `🫀 Score santé: ${stats.healthScore}/100 (${stats.healthLabel})`,
+                `📏 Distance: ${stats.distanceKm.toFixed(1)} km · ${stats.sessions} session${stats.sessions > 1 ? 's' : ''}`,
+                `🔥 Calories: ${Math.round(stats.calories)} kcal`,
+                `🌱 CO₂ économisé: ${stats.co2SavedKg.toFixed(1)} kg`,
+                `💪 VO₂max: ${Math.round(stats.vo2max)} ml/kg/min (${stats.fitnessLevel})`,
+                `⚡ Série: ${stats.streak} jour${stats.streak > 1 ? 's' : ''} consécutif${stats.streak > 1 ? 's' : ''}`,
+                `🏅 ${stats.badgeCount} badge${stats.badgeCount > 1 ? 's' : ''} · ${stats.points} points`,
+            ];
+            if (stats.bestDistanceKm) lines.push(`🏆 Record distance: ${stats.bestDistanceKm.toFixed(1)} km`);
+            if (stats.bestSpeedKmh) lines.push(`⚡ Record vitesse: ${stats.bestSpeedKmh.toFixed(1)} km/h`);
+            lines.push(``);
+            lines.push(`Rejoins-moi sur Yukpo ! 🚀`);
+            lines.push(Platform.OS === 'ios'
+                ? 'https://apps.apple.com/app/yukpomnang'
+                : 'https://play.google.com/store/apps/details?id=com.yukpomnang');
+
+            const message = lines.join('\n');
+            const result = await Share.share({
+                message,
+                title: 'Mes performances Yukpo Navigation',
+            });
+
+            if (result.action === Share.sharedAction) {
+                analytics.track('navigation_performance_shared', {
+                    health_score: stats.healthScore,
+                    distance_km: stats.distanceKm,
+                    platform: result.activityType || 'unknown',
+                });
+                return true;
+            }
+            return false;
+        } catch (error) {
+            console.error('[SocialSharing] Erreur partage performances navigation:', error);
+            return false;
+        }
+    }
+
+    /**
      * Partager l'application
      */
     async shareApp(): Promise<boolean> {

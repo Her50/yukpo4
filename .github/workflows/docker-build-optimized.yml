@@ -527,6 +527,8 @@ jobs:
                 "MAX_AUDIO_SIZE_MB": "10",
                 "MAX_IMAGE_SIZE_MB": "10",
 
+                "SORA_API_URL": "https://api.openai.com/v1/video/generations",
+
                 "UPLOAD_BASE_URL": "https://storage.googleapis.com/yukpo-project-yukpo-backend-media",
                 "PUBLIC_BASE_URL": "https://storage.googleapis.com/yukpo-project-yukpo-backend-media",
                 "SHARE_BASE_URL": "https://yukpo-backend-376093909298.europe-west1.run.app",
@@ -660,7 +662,7 @@ jobs:
             --port 8080 \
             --startup-probe=httpGet.path=/health,httpGet.port=8080,initialDelaySeconds=0,periodSeconds=10,failureThreshold=30,timeoutSeconds=5 \
             --update-env-vars="^;^$ENV_VARS" \
-            --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,MONGODB_URL=mongodb-url:latest,OPENAI_API_KEY=openai-api-key:latest,S3_ACCESS_KEY=s3-access-key:latest,S3_SECRET_KEY=s3-secret-key:latest,LIVEKIT_API_KEY=livekit-api-key:latest,LIVEKIT_API_SECRET=livekit-api-secret:latest,GOOGLE_MAPS_API_KEY=google-maps-api-key:latest" \
+            --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,MONGODB_URL=mongodb-url:latest,OPENAI_API_KEY=openai-api-key:latest,SORA_API_KEY=sora-api-key:latest,S3_ACCESS_KEY=s3-access-key:latest,S3_SECRET_KEY=s3-secret-key:latest,LIVEKIT_API_KEY=livekit-api-key:latest,LIVEKIT_API_SECRET=livekit-api-secret:latest,GOOGLE_MAPS_API_KEY=google-maps-api-key:latest" \
             --set-cloudsql-instances=${{ secrets.GCP_PROJECT_ID }}:${{ env.GCP_REGION }}:yukpo-postgres \
             --memory 2Gi \
             --cpu 2 \

@@ -48,6 +48,11 @@ pub fn hotel_room_management_routes(_state: Arc<AppState>) -> Router<Arc<AppStat
             "/api/hotel/reservations/{reservation_id}/guest-qr",
             post(hotel_room_management_controller::generate_guest_qr),
         )
+        // Paiement réservation (avance ou solde complet)
+        .route(
+            "/api/hotel/reservations/{reservation_id}/pay",
+            post(hotel_room_management_controller::pay_hotel_reservation),
+        )
         // Blocages manuels
         .route(
             "/api/hotel/blockages/manual",

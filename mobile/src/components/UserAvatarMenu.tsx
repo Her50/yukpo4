@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { Image, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Dimensions, Image, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { theme } from '../theme/theme';
-import WeatherWidget from './WeatherWidget';
 import { isAdminUser } from '../utils/roleHelpers'; // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
+import WeatherWidget from './WeatherWidget';
 
 interface UserAvatarMenuProps {
     onNavigate: (route: string) => void;
@@ -19,7 +19,7 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0
     // Prioriser les liens d'administration et retirer les éléments inutiles
     // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
     const isAdmin = isAdminUser(user);
-    
+
     const menuItems = isAdmin ? [
         // ✅ SECTION ADMIN: Liens d'administration en priorité
         {
@@ -78,6 +78,12 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0
             icon: '🕐',
             route: 'HistoriqueProduitsConsultes',
             description: 'Voir les produits que vous avez consultés'
+        },
+        {
+            title: 'Mes Suivis',
+            icon: '❤️',
+            route: 'MesSuivis',
+            description: 'Vendeurs et prestataires que vous suivez'
         },
         {
             title: 'Mon historique',
@@ -200,30 +206,30 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0
                                             // Supprimer les espaces multiples
                                             const cleaned = userName.trim().replace(/\s+/g, ' ');
                                             const words = cleaned.split(' ').filter(w => w.length > 0);
-                                            
+
                                             if (words.length === 0) return 'Utilisateur';
-                                            
+
                                             // ✅ Cas 1: Vérifier si la première moitié = deuxième moitié (ex: "LELE Hernandez LELE Hernandez")
                                             if (words.length >= 4 && words.length % 2 === 0) {
                                                 const midPoint = words.length / 2;
                                                 const firstHalf = words.slice(0, midPoint).join(' ');
                                                 const secondHalf = words.slice(midPoint).join(' ');
-                                                
+
                                                 if (firstHalf === secondHalf) {
                                                     return firstHalf;
                                                 }
                                             }
-                                            
+
                                             // ✅ Cas 2: Vérifier si les 2 premiers mots se répètent (ex: "LELE Hernandez LELE Hernandez")
                                             if (words.length >= 4) {
                                                 const firstTwo = words.slice(0, 2).join(' ');
                                                 const nextTwo = words.slice(2, 4).join(' ');
-                                                
+
                                                 if (firstTwo === nextTwo) {
                                                     return firstTwo; // Retourner seulement les 2 premiers mots
                                                 }
                                             }
-                                            
+
                                             // ✅ Cas 3: Détecter les répétitions de patterns plus complexes
                                             // Si on a un nombre pair de mots >= 4, vérifier les patterns
                                             if (words.length >= 4) {
@@ -231,7 +237,7 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0
                                                 for (let patternLength = 2; patternLength <= Math.floor(words.length / 2); patternLength++) {
                                                     const pattern = words.slice(0, patternLength).join(' ');
                                                     const nextPattern = words.slice(patternLength, patternLength * 2).join(' ');
-                                                    
+
                                                     if (pattern === nextPattern) {
                                                         // Vérifier si le reste correspond aussi au pattern
                                                         const remainingWords = words.slice(patternLength * 2);
@@ -241,7 +247,7 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0
                                                     }
                                                 }
                                             }
-                                            
+
                                             return cleaned;
                                         }
                                         return userName;
@@ -276,11 +282,11 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0
                         </View>
 
                         {/* Items du menu */}
-                        <View style={styles.menuItems}>
+                        <ScrollView style={styles.menuItemsScroll} showsVerticalScrollIndicator={true} bounces={false}>
                             {menuItems.map((item, index) => {
                                 // ✅ SÉPARATEUR VISUEL: Ajouter un séparateur avant la déconnexion pour les admins
                                 const showSeparator = item.isSeparator && isAdmin && index > 0;
-                                
+
                                 return (
                                     <React.Fragment key={index}>
                                         {showSeparator && (
@@ -314,7 +320,7 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0
                                     </React.Fragment>
                                 );
                             })}
-                        </View>
+                        </ScrollView>
                     </View>
                 </TouchableOpacity>
             </Modal>
@@ -361,6 +367,7 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.3,
         shadowRadius: 8,
         elevation: 8,
+        maxHeight: Dimensions.get('window').height * 0.75,
     },
     menuHeader: {
         flexDirection: 'row',
@@ -403,7 +410,7 @@ const styles = StyleSheet.create({
         color: theme.colors.textSecondary,
         marginTop: 2,
     },
-    menuItems: {
+    menuItemsScroll: {
         paddingVertical: 8,
     },
     menuItem: {

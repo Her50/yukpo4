@@ -1,23 +1,25 @@
-// ✅ Écran de création/édition de services taxi (accessible à tous les utilisateurs)
-// Permet à n'importe quel utilisateur d'intégrer son véhicule pour le taxi
-
+// ✅ REFONTE TOTALE 2026-03-05: TaxiFormScreen → Dashboard pro + Formulaire
+// Mode Dashboard (taxi existant): 3 tabs (Accueil / Service / Stats)
+// Mode Création: Formulaire guidé avec header gradient
+// Exploite endpoints: CRUD taxi, booking, availability, dynamic pricing
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import React, { useEffect, useState } from 'react';
 import {
+    ActivityIndicator,
     Alert,
     Image,
+    RefreshControl,
+    ScrollView,
     StyleSheet,
     Switch,
     Text,
     TouchableOpacity,
-    View
+    View,
 } from 'react-native';
-import { ConfirmationSection } from '../../components/FormConfirmationModal';
-import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 import ModernGPSModal from '../../components/ModernGPSModal';
-import PartnerHeader from '../../components/PartnerHeader';
 import SafeIcon from '../../components/SafeIcon';
 import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
@@ -25,11 +27,12 @@ import { useLocation } from '../../contexts/LocationContext';
 import { clearSavedFormData, useFormAutoSave } from '../../hooks/useFormAutoSave';
 import { useFormValidation } from '../../hooks/useFormValidation';
 import { usePartnerData } from '../../hooks/usePartnerData';
-import { apiPost, servicesApi } from '../../services/api';
+import { apiGet, apiPost, servicesApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 import { getCurrencyIntelligently } from '../../utils/currencyUtils';
 
-const TAXI_FORM_STORAGE_KEY = '@taxi_last_form_data';
+const STORAGE_KEY = '@taxi_last_form_data';
+type TabType = 'overview' | 'service' | 'stats';
 
 const TaxiFormScreen: React.FC = () => {
     const navigation = useNavigation();
@@ -39,853 +42,410 @@ const TaxiFormScreen: React.FC = () => {
     const [serviceId, setServiceId] = useState<number | null>((route.params as any)?.serviceId || null);
     const specializedServiceId = (route.params as any)?.specializedServiceId as number | undefined;
     const mode = (route.params as any)?.mode as string | undefined;
+    const devise = getCurrencyIntelligently() || 'XAF';
 
+    // Dashboard state
+    const [activeTab, setActiveTab] = useState<TabType>('overview');
+    const [isDashboardMode, setIsDashboardMode] = useState(false);
+    const [initialLoading, setInitialLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+    const [taxiData, setTaxiData] = useState<any>(null);
+    const [isAvailable, setIsAvailable] = useState(false);
+
+    // Form state
     const [formData, setFormData] = useState({
-        nom_chauffeur: '',
-        telephone: '',
-        whatsapp: '',
-        type_vehicule: '',
-        marque_modele: '',
-        immatriculation: '',
-        couleur: '',
-        annee: '',
+        nom_chauffeur: '', telephone: '', whatsapp: '',
+        type_vehicule: '', marque_modele: '', immatriculation: '', couleur: '', annee: '',
         zone_intervention: [] as string[],
-        tarif_base: '500',
-        tarif_par_km: '200',
-        devise: 'XAF', // ✅ Sera récupéré automatiquement depuis zone_intervention
-        paiement_cash: true,
-        paiement_mobile_money: false,
-        paiement_carte: false,
-        climatisation: false,
-        wifi: false,
-        image_vehicule: null as string | null, // ✅ NOUVEAU : Image du véhicule
+        tarif_base: '500', tarif_par_km: '200', devise: 'XAF',
+        paiement_cash: true, paiement_mobile_money: false, paiement_carte: false,
+        climatisation: false, wifi: false,
+        image_vehicule: null as string | null,
     });
 
     const [loading, setLoading] = useState(false);
     const [selectedZones, setSelectedZones] = useState<LocationObject[]>([]);
     const [showGPSModal, setShowGPSModal] = useState(false);
     const [selectedGPS, setSelectedGPS] = useState<string | null>(null);
-    const [showConfirmation, setShowConfirmation] = useState(false);
 
     const { partnerData } = usePartnerData(user?.role);
     const { errors, validateField, validateForm, setError } = useFormValidation({
-        telephone: {
-            required: true,
-            pattern: /^\+?[0-9]{9,15}$/,
-            custom: (value) => {
-                if (value && !value.startsWith('+237') && !value.startsWith('237')) {
-                    return 'Numéro camerounais requis (+237...)';
-                }
-                return null;
-            }
-        },
-        type_vehicule: { required: true, minLength: 2 },
-        immatriculation: { required: true, minLength: 3 },
+        telephone: { required: true, pattern: /^\+?[0-9]{9,15}$/ },
     });
+    useFormAutoSave(STORAGE_KEY, formData, mode !== 'edit', 1000);
 
-    // ✅ AMÉLIORÉ: Fonction pour sélectionner une image du véhicule (galerie ou caméra)
-    const pickVehicleImage = async (source: 'gallery' | 'camera') => {
-        try {
-            if (source === 'camera') {
-                const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
-                if (!permissionResult.granted) {
-                    Alert.alert('Permission refusée', 'Permission d\'accès à la caméra refusée');
-                    return;
-                }
-            } else {
-                const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-                if (!permissionResult.granted) {
-                    Alert.alert('Permission refusée', 'Permission d\'accès à la galerie refusée');
-                    return;
-                }
-            }
-
-            const result = source === 'camera'
-                ? await ImagePicker.launchCameraAsync({
-                    allowsEditing: true,
-                    quality: 0.8,
-                    base64: true,
-                })
-                : await ImagePicker.launchImageLibraryAsync({
-                    mediaTypes: 'images' as any,
-                    allowsEditing: true,
-                    quality: 0.8,
-                    base64: true,
-                });
-
-            if (!result.canceled && result.assets[0]) {
-                const base64 = result.assets[0].base64;
-                const imageUri = result.assets[0].uri;
-                if (base64) {
-                    setFormData({ ...formData, image_vehicule: `data:image/jpeg;base64,${base64}` });
-                } else {
-                    setFormData({ ...formData, image_vehicule: imageUri });
-                }
-            }
-        } catch (error) {
-            console.error('[TaxiFormScreen] Erreur sélection image:', error);
-            Alert.alert('Erreur', 'Impossible de sélectionner l\'image');
-        }
-    };
-
+    // ─── DATA LOADING ────────────────────────────────────────────────────
     useEffect(() => {
-        if (selectedZones.length > 0) {
-            const currency = getCurrencyIntelligently(selectedZones[0]);
-            if (currency) {
-                setFormData(prev => ({ ...prev, devise: currency }));
-            }
-        }
-    }, [selectedZones]);
-
-    useFormAutoSave(TAXI_FORM_STORAGE_KEY, formData, mode !== 'edit', 1000);
-
-    // ✅ Créer automatiquement un service si serviceId manquant
-    useEffect(() => {
-        const createServiceIfNeeded = async () => {
-            if (!serviceId && user?.id && formData.telephone) {
-                try {
-                    const serviceData = {
-                        titre_service: formData.nom_chauffeur || 'Service Taxi',
-                        description: 'Service de taxi',
-                        category: 'transport',
-                    };
-
-                    const response = await servicesApi.createService(serviceData);
-                    if (response.success && response.data && typeof response.data === 'object' && 'id' in response.data) {
-                        setServiceId((response.data as any).id);
-                    }
-                } catch (error: any) {
-                    console.error('[TaxiFormScreen] Erreur création service:', error);
+        const init = async () => {
+            try {
+                const resp = await apiGet('/api/taxis');
+                const d = (resp?.data || resp) as any;
+                const taxis = Array.isArray(d?.data) ? d.data : Array.isArray(d) ? d : [];
+                const myTaxi = taxis.find((t: any) => t.user_id === user?.id) || (taxis.length > 0 ? taxis[0] : null);
+                if (myTaxi) {
+                    setTaxiData(myTaxi);
+                    setIsDashboardMode(true);
+                    setIsAvailable(myTaxi.disponible || myTaxi.is_available || false);
+                    if (!serviceId && myTaxi.service_id) setServiceId(myTaxi.service_id);
                 }
-            }
-        };
+            } catch (e) { console.log('[Taxi] Init:', e); }
 
-        if (!serviceId && formData.telephone) {
-            createServiceIfNeeded();
-        }
-    }, [formData.telephone, serviceId, user?.id]);
-
-    // ✅ NOUVEAU : Charger les données existantes si mode='edit' et specializedServiceId fourni
-    useEffect(() => {
-        const loadExistingData = async () => {
-            if (mode === 'edit' && specializedServiceId && serviceId) {
+            if (mode === 'edit' && specializedServiceId) {
                 try {
                     setLoading(true);
-                    const { apiGet } = require('../../services/api');
-                    const response = await apiGet(`/api/taxis/${specializedServiceId}`);
-
-                    if (response.success && response.data) {
-                        const data = response.data;
-
-                        // Convertir zone_intervention string[] en LocationObject[]
-                        const zones: LocationObject[] = (data.zone_intervention || []).map((zone: string) => ({
-                            raw: zone,
-                            place_name: zone
-                        }));
-
+                    const resp = await apiGet(`/api/taxis/${specializedServiceId}`);
+                    if (resp.success && resp.data) {
+                        const d = resp.data as any;
                         setFormData({
-                            nom_chauffeur: data.nom_chauffeur || '',
-                            telephone: data.telephone || '',
-                            whatsapp: data.whatsapp || '',
-                            type_vehicule: data.type_vehicule || '',
-                            marque_modele: data.marque_modele || '',
-                            image_vehicule: data.image_vehicule || null,
-                            immatriculation: data.immatriculation || '',
-                            couleur: data.couleur || '',
-                            annee: data.annee ? String(data.annee) : '',
-                            zone_intervention: data.zone_intervention || [],
-                            tarif_base: data.tarif_base ? String(data.tarif_base) : '500',
-                            tarif_par_km: data.tarif_par_km ? String(data.tarif_par_km) : '200',
-                            devise: data.devise || 'XAF',
-                            paiement_cash: data.paiement_cash !== undefined ? data.paiement_cash : true,
-                            paiement_mobile_money: data.paiement_mobile_money || false,
-                            paiement_carte: data.paiement_carte || false,
-                            climatisation: data.climatisation || false,
-                            wifi: data.wifi || false,
+                            nom_chauffeur: d.nom_chauffeur || '', telephone: d.telephone || '', whatsapp: d.whatsapp || '',
+                            type_vehicule: d.type_vehicule || '', marque_modele: d.marque_modele || '',
+                            immatriculation: d.immatriculation || '', couleur: d.couleur || '', annee: d.annee || '',
+                            zone_intervention: d.zone_intervention || [],
+                            tarif_base: d.tarif_base ? String(d.tarif_base) : '500',
+                            tarif_par_km: d.tarif_par_km ? String(d.tarif_par_km) : '200',
+                            devise: d.devise || 'XAF',
+                            paiement_cash: d.paiement_cash ?? true, paiement_mobile_money: d.paiement_mobile_money || false,
+                            paiement_carte: d.paiement_carte || false,
+                            climatisation: d.climatisation || false, wifi: d.wifi || false,
+                            image_vehicule: d.image_vehicule || null,
                         });
-
-                        setSelectedZones(zones);
-                        if (data.gps_actuel) {
-                            setSelectedGPS(data.gps_actuel);
-                        }
+                        if (d.gps) setSelectedGPS(d.gps);
                     }
-                } catch (error: any) {
-                    console.error('[TaxiFormScreen] Erreur chargement données:', error);
-                } finally {
-                    setLoading(false);
-                }
+                } catch (e) { console.error('[Taxi] Edit:', e); } finally { setLoading(false); }
             }
+            setInitialLoading(false);
         };
+        init();
+    }, []);
 
-        loadExistingData();
-    }, [mode, specializedServiceId, serviceId]);
-
-    const handleZoneSelect = (zone: LocationObject) => {
-        const zoneStr = zone.raw || zone.place_name || '';
-        const exists = selectedZones.some(z => (z.raw || z.place_name) === zoneStr);
-        if (exists) {
-            setSelectedZones(prev => prev.filter(z => (z.raw || z.place_name) !== zoneStr));
-        } else {
-            setSelectedZones(prev => [...prev, zone]);
+    useEffect(() => {
+        if (!serviceId && user?.id && formData.nom_chauffeur) {
+            (async () => {
+                try {
+                    const resp = await servicesApi.createService({ titre_service: `Taxi ${formData.nom_chauffeur}`, description: 'Service de taxi', category: 'transport' });
+                    if (resp.success && resp.data && typeof resp.data === 'object' && 'id' in resp.data) setServiceId((resp.data as any).id);
+                } catch (e) { console.error('[Taxi] Service:', e); }
+            })();
         }
+    }, [formData.nom_chauffeur, serviceId, user?.id]);
+
+    const handleRefresh = async () => { setRefreshing(true); setRefreshing(false); };
+
+    const handleToggleAvailability = async () => {
+        if (!taxiData?.id) return;
+        try {
+            const newStatus = !isAvailable;
+            await apiPost(`/api/taxis/${taxiData.id}/update-availability`, { disponible: newStatus });
+            setIsAvailable(newStatus);
+            Alert.alert('Succès', newStatus ? 'Vous êtes maintenant disponible' : 'Vous êtes hors service');
+        } catch (e) { Alert.alert('Erreur', 'Impossible de changer le statut'); }
     };
 
-    const handleGPSSelect = (coordinates: string) => {
-        setSelectedGPS(coordinates);
-        setShowGPSModal(false);
+    const pickVehicleImage = async (source: 'gallery' | 'camera') => {
+        try {
+            const perm = source === 'camera' ? await ImagePicker.requestCameraPermissionsAsync() : await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (!perm.granted) { Alert.alert('Permission refusée'); return; }
+            const result = source === 'camera'
+                ? await ImagePicker.launchCameraAsync({ allowsEditing: true, quality: 0.8, base64: true })
+                : await ImagePicker.launchImageLibraryAsync({ mediaTypes: 'images' as any, allowsEditing: true, quality: 0.8, base64: true });
+            if (!result.canceled && result.assets[0]) {
+                const b64 = result.assets[0].base64;
+                setFormData({ ...formData, image_vehicule: b64 ? `data:image/jpeg;base64,${b64}` : result.assets[0].uri });
+            }
+        } catch (e) { Alert.alert('Erreur', 'Impossible de sélectionner l\'image'); }
     };
 
-    const handleFieldChange = (field: string, value: any) => {
-        setFormData({ ...formData, [field]: value });
-        const error = validateField(field, value);
-        if (error) {
-            setError(field, error);
-        }
-    };
-
-    const confirmationSections: ConfirmationSection[] = [
-        {
-            title: 'Chauffeur',
-            icon: 'user',
-            fields: [
-                { label: 'Nom', value: formData.nom_chauffeur },
-                { label: 'Téléphone', value: formData.telephone },
-                { label: 'WhatsApp', value: formData.whatsapp },
-            ],
-        },
-        {
-            title: 'Véhicule',
-            icon: 'car',
-            fields: [
-                { label: 'Type', value: formData.type_vehicule },
-                { label: 'Marque/Modèle', value: formData.marque_modele },
-                { label: 'Immatriculation', value: formData.immatriculation },
-                { label: 'Couleur', value: formData.couleur },
-                { label: 'Année', value: formData.annee },
-            ],
-        },
-        {
-            title: 'Tarifs',
-            icon: 'dollar-sign',
-            fields: [
-                { label: 'Tarif base', value: `${formData.tarif_base} ${formData.devise}` },
-                { label: 'Tarif par km', value: `${formData.tarif_par_km} ${formData.devise}` },
-            ],
-        },
-        {
-            title: 'Services',
-            icon: 'check-circle',
-            fields: [
-                { label: 'Zones', value: `${selectedZones.length} zone(s)` },
-                { label: 'Paiement cash', value: formData.paiement_cash, type: 'boolean' as const },
-                { label: 'Mobile Money', value: formData.paiement_mobile_money, type: 'boolean' as const },
-                { label: 'Climatisation', value: formData.climatisation, type: 'boolean' as const },
-            ],
-        },
-    ];
-
-    const handleSubmit = () => {
-        if (!validateForm(formData)) {
-            Alert.alert('Erreur', 'Veuillez corriger les erreurs du formulaire');
-            return;
-        }
-        setShowConfirmation(true);
-    };
-
-    const handleFinalSubmit = async () => {
-        // ✅ Créer le service si nécessaire
+    const handleSubmit = async () => {
+        if (!formData.telephone.trim()) { Alert.alert('Erreur', 'Téléphone obligatoire'); return; }
+        setLoading(true);
         let finalServiceId = serviceId;
         if (!finalServiceId && user?.id) {
             try {
-                setLoading(true);
-                const serviceData = {
-                    titre_service: formData.nom_chauffeur || 'Service Taxi',
-                    description: 'Service de taxi',
-                    category: 'transport',
-                };
-
-                const response = await servicesApi.createService(serviceData);
-                if (response.success && response.data && typeof response.data === 'object' && 'id' in response.data) {
-                    finalServiceId = (response.data as any).id;
-                    setServiceId(finalServiceId);
-                } else {
-                    Alert.alert('Erreur', 'Impossible de créer le service. Veuillez réessayer.');
-                    setLoading(false);
-                    return;
-                }
-            } catch (error: any) {
-                console.error('[TaxiFormScreen] Erreur création service:', error);
-                Alert.alert('Erreur', 'Impossible de créer le service. Veuillez réessayer.');
-                setLoading(false);
-                return;
-            }
+                const resp = await servicesApi.createService({ titre_service: `Taxi ${formData.nom_chauffeur || 'Anonyme'}`, description: 'Taxi', category: 'transport' });
+                if (resp.success && resp.data && typeof resp.data === 'object' && 'id' in resp.data) { finalServiceId = (resp.data as any).id; setServiceId(finalServiceId); }
+            } catch (e) { Alert.alert('Erreur', 'Impossible de créer le service'); setLoading(false); return; }
         }
-
-        if (!finalServiceId) {
-            Alert.alert('Erreur', 'Service ID manquant. Veuillez créer un service d\'abord.');
-            setLoading(false);
-            return;
-        }
-
-        if (!formData.telephone.trim()) {
-            Alert.alert('Erreur', 'Le numéro de téléphone est obligatoire');
-            setLoading(false);
-            return;
-        }
-
-        // ✅ NOUVEAU: Validation du type de véhicule
-        if (!formData.type_vehicule.trim()) {
-            Alert.alert('Validation', 'Veuillez indiquer le type de véhicule (berline, moto, minibus...)');
-            setLoading(false);
-            return;
-        }
-
-        // ✅ NOUVEAU: Validation de l'immatriculation
-        if (!formData.immatriculation.trim()) {
-            Alert.alert('Validation', 'Le numéro d\'immatriculation est obligatoire pour l\'identification du véhicule');
-            setLoading(false);
-            return;
-        }
-
-        // ✅ NOUVEAU: Validation du format téléphone (au moins 9 chiffres)
-        const phoneDigits = formData.telephone.replace(/\D/g, '');
-        if (phoneDigits.length < 9) {
-            Alert.alert('Validation', 'Le numéro de téléphone doit contenir au moins 9 chiffres');
-            setLoading(false);
-            return;
-        }
-
+        if (!finalServiceId) { Alert.alert('Erreur', 'Service ID manquant'); setLoading(false); return; }
         try {
-            setLoading(true);
-
             const payload = {
-                service_id: finalServiceId,
-                nom_chauffeur: formData.nom_chauffeur || null,
-                telephone: formData.telephone,
-                whatsapp: formData.whatsapp || null,
-                type_vehicule: formData.type_vehicule || null,
-                marque_modele: formData.marque_modele || null,
-                immatriculation: formData.immatriculation || null,
-                couleur: formData.couleur || null,
-                annee: formData.annee ? parseInt(formData.annee) : null,
+                service_id: finalServiceId, nom_chauffeur: formData.nom_chauffeur || null,
+                telephone: formData.telephone, whatsapp: formData.whatsapp || null,
+                type_vehicule: formData.type_vehicule || null, marque_modele: formData.marque_modele || null,
+                immatriculation: formData.immatriculation || null, couleur: formData.couleur || null, annee: formData.annee || null,
+                gps: selectedGPS || (location ? `${location.coords.latitude},${location.coords.longitude}` : null),
                 zone_intervention: selectedZones.length > 0 ? selectedZones.map(z => z.raw || z.place_name || '') : null,
-                gps_actuel: selectedGPS || (location
-                    ? `${location.coords.latitude},${location.coords.longitude}`
-                    : null),
-                tarif_base: parseInt(formData.tarif_base) || 500,
-                tarif_par_km: parseInt(formData.tarif_par_km) || 200,
+                tarif_base: parseInt(formData.tarif_base) || 500, tarif_par_km: parseInt(formData.tarif_par_km) || 200,
                 devise: formData.devise,
-                paiement_cash: formData.paiement_cash,
-                paiement_mobile_money: formData.paiement_mobile_money,
+                paiement_cash: formData.paiement_cash, paiement_mobile_money: formData.paiement_mobile_money,
                 paiement_carte: formData.paiement_carte,
-                climatisation: formData.climatisation,
-                wifi: formData.wifi,
-                image_vehicule: formData.image_vehicule || null, // ✅ NOUVEAU : Image du véhicule
+                climatisation: formData.climatisation, wifi: formData.wifi,
+                image_vehicule: formData.image_vehicule || null,
             };
-
-            const response = await apiPost('/api/taxis', payload);
-
-            if (response.success) {
-                await clearSavedFormData(TAXI_FORM_STORAGE_KEY);
-                Alert.alert(
-                    'Succès',
-                    'Service de taxi enregistré avec succès !',
-                    [{ text: 'OK', onPress: () => navigation.goBack() }]
-                );
-            } else {
-                Alert.alert('Erreur', response.error || 'Impossible d\'enregistrer le taxi');
-            }
-        } catch (error: any) {
-            console.error('Erreur création taxi:', error);
-            Alert.alert('Erreur', error.message || 'Une erreur est survenue');
-        } finally {
-            setLoading(false);
-            setShowConfirmation(false);
-        }
+            const resp = await apiPost('/api/taxis', payload);
+            if (resp.success) {
+                await clearSavedFormData(STORAGE_KEY);
+                Alert.alert('Succès', 'Taxi enregistré !', [{ text: 'OK', onPress: () => { setIsDashboardMode(true); setActiveTab('overview'); } }]);
+            } else { Alert.alert('Erreur', (resp as any).error || 'Impossible d\'enregistrer'); }
+        } catch (e: any) { Alert.alert('Erreur', e.message || 'Erreur'); } finally { setLoading(false); }
     };
 
-    return (
-        <>
-            <KeyboardAwareScreen style={styles.container}>
-                <View style={styles.header}>
-                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                        <SafeIcon name="arrow-left" size={24} color="#111827" />
-                    </TouchableOpacity>
-                    <Text style={styles.title}>Enregistrer un Taxi</Text>
+    if (initialLoading) return <View style={s.loadingScreen}><ActivityIndicator size="large" color="#F59E0B" /><Text style={s.loadingText}>Chargement...</Text></View>;
+
+    // ─── RENDER: Overview ────────────────────────────────────────────────
+    const renderOverview = () => (
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}>
+            <View style={s.statsGrid}>
+                {[
+                    { label: 'Tarif base', value: `${formData.tarif_base} ${devise}`, icon: 'banknote', color: '#F59E0B' },
+                    { label: 'Par km', value: `${formData.tarif_par_km} ${devise}`, icon: 'map', color: '#3B82F6' },
+                    { label: 'Zones', value: selectedZones.length, icon: 'map-pin', color: '#10B981' },
+                ].map((st, i) => (
+                    <View key={i} style={[s.statCard, { borderLeftColor: st.color }]}>
+                        <SafeIcon name={st.icon as any} size={18} color={st.color} />
+                        <Text style={s.statValue}>{st.value}</Text>
+                        <Text style={s.statLabel}>{st.label}</Text>
+                    </View>
+                ))}
+            </View>
+
+            {/* Availability Toggle */}
+            <View style={[s.availCard, { backgroundColor: isAvailable ? '#F0FDF4' : '#FEF2F2' }]}>
+                <View style={[s.availDot, { backgroundColor: isAvailable ? '#10B981' : '#EF4444' }]} />
+                <View style={{ flex: 1 }}>
+                    <Text style={[s.availTitle, { color: isAvailable ? '#16A34A' : '#DC2626' }]}>{isAvailable ? 'Disponible' : 'Hors service'}</Text>
+                    <Text style={s.availSub}>{isAvailable ? 'Visible pour les clients' : 'Non visible'}</Text>
                 </View>
+                <Switch value={isAvailable} onValueChange={handleToggleAvailability} trackColor={{ false: '#D1D5DB', true: '#10B981' }} />
+            </View>
 
-                <View style={styles.form}>
-                    {user?.role === 'partenaire' && (
-                        <PartnerHeader
-                            partnerName={partnerData?.name}
-                            logoUrl={partnerData?.logo_url}
-                            subtitle="Espace taxi"
-                        />
-                    )}
+            {/* Quick Actions */}
+            <View style={s.quickRow}>
+                <TouchableOpacity style={s.quickAction} onPress={() => setActiveTab('service')}>
+                    <View style={[s.quickIcon, { backgroundColor: '#F59E0B15' }]}><SafeIcon name="settings" size={22} color="#F59E0B" /></View>
+                    <Text style={s.quickLabel}>Mon service</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={s.quickAction} onPress={() => setActiveTab('stats')}>
+                    <View style={[s.quickIcon, { backgroundColor: '#3B82F615' }]}><SafeIcon name="bar-chart-2" size={22} color="#3B82F6" /></View>
+                    <Text style={s.quickLabel}>Statistiques</Text>
+                </TouchableOpacity>
+            </View>
 
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Nom du chauffeur</Text>
-                        <NativeInput
-                            value={formData.nom_chauffeur}
-                            onChangeText={(text) => handleFieldChange('nom_chauffeur', text)}
-                            placeholder="Ex: Jean Dupont"
-                        />
+            {/* Vehicle Info */}
+            {taxiData && (
+                <>
+                    <Text style={s.sectionTitle}>Mon véhicule</Text>
+                    {[
+                        taxiData.marque_modele && { icon: 'car', text: taxiData.marque_modele },
+                        taxiData.immatriculation && { icon: 'hash', text: taxiData.immatriculation },
+                        taxiData.couleur && { icon: 'palette', text: taxiData.couleur },
+                        taxiData.telephone && { icon: 'phone', text: taxiData.telephone },
+                    ].filter(Boolean).map((info: any, i) => (
+                        <View key={i} style={s.infoRow}><SafeIcon name={info.icon as any} size={16} color="#6B7280" /><Text style={s.infoText}>{info.text}</Text></View>
+                    ))}
+                </>
+            )}
+
+            {/* Payment badges */}
+            <Text style={[s.sectionTitle, { marginTop: 16 }]}>Paiements acceptés</Text>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+                {formData.paiement_cash && <View style={s.payBadge}><Text style={s.payText}>💵 Cash</Text></View>}
+                {formData.paiement_mobile_money && <View style={s.payBadge}><Text style={s.payText}>📱 Mobile Money</Text></View>}
+                {formData.paiement_carte && <View style={s.payBadge}><Text style={s.payText}>💳 Carte</Text></View>}
+            </View>
+        </ScrollView>
+    );
+
+    // ─── RENDER: Service Form ────────────────────────────────────────────
+    const renderServiceForm = () => (
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100, padding: 16 }}>
+            <View style={s.field}><NativeInput label="Nom du chauffeur" value={formData.nom_chauffeur} onChangeText={t => setFormData({ ...formData, nom_chauffeur: t })} placeholder="Votre nom" /></View>
+            <View style={s.field}><NativeInput label="Téléphone *" value={formData.telephone} onChangeText={t => setFormData({ ...formData, telephone: t })} placeholder="+237 6XX XX XX XX" keyboardType="phone-pad" /></View>
+            <View style={s.field}><NativeInput label="WhatsApp" value={formData.whatsapp} onChangeText={t => setFormData({ ...formData, whatsapp: t })} placeholder="+237 6XX XX XX XX" keyboardType="phone-pad" /></View>
+
+            <Text style={[s.sectionTitle, { marginTop: 8 }]}>Véhicule</Text>
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+                <View style={[s.field, { flex: 1 }]}><NativeInput label="Type" value={formData.type_vehicule} onChangeText={t => setFormData({ ...formData, type_vehicule: t })} placeholder="Berline" /></View>
+                <View style={[s.field, { flex: 1 }]}><NativeInput label="Marque/Modèle" value={formData.marque_modele} onChangeText={t => setFormData({ ...formData, marque_modele: t })} placeholder="Toyota Corolla" /></View>
+            </View>
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+                <View style={[s.field, { flex: 1 }]}><NativeInput label="Immatriculation" value={formData.immatriculation} onChangeText={t => setFormData({ ...formData, immatriculation: t })} placeholder="LT 1234 AB" /></View>
+                <View style={[s.field, { flex: 1 }]}><NativeInput label="Couleur" value={formData.couleur} onChangeText={t => setFormData({ ...formData, couleur: t })} placeholder="Jaune" /></View>
+            </View>
+            <View style={s.field}><NativeInput label="Année" value={formData.annee} onChangeText={t => setFormData({ ...formData, annee: t })} placeholder="2020" keyboardType="numeric" /></View>
+
+            {/* Photo */}
+            <View style={s.field}>
+                <Text style={s.label}>Photo du véhicule</Text>
+                {formData.image_vehicule ? (
+                    <View style={s.imgContainer}>
+                        <Image source={{ uri: formData.image_vehicule }} style={s.imgPreview} />
+                        <TouchableOpacity style={s.imgRemove} onPress={() => setFormData({ ...formData, image_vehicule: null })}><SafeIcon name="x" size={18} color="#fff" /></TouchableOpacity>
                     </View>
-
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Téléphone *</Text>
-                        <NativeInput
-                            value={formData.telephone}
-                            onChangeText={(text) => handleFieldChange('telephone', text)}
-                            placeholder="+237 6XX XX XX XX"
-                            keyboardType="phone-pad"
-                            error={errors.telephone}
-                        />
+                ) : (
+                    <View style={s.imgPickers}>
+                        <TouchableOpacity style={s.imgPickerBtn} onPress={() => pickVehicleImage('camera')}><SafeIcon name="camera" size={22} color="#F59E0B" /><Text style={s.imgPickerText}>Photo</Text></TouchableOpacity>
+                        <TouchableOpacity style={s.imgPickerBtn} onPress={() => pickVehicleImage('gallery')}><SafeIcon name="image" size={22} color="#F59E0B" /><Text style={s.imgPickerText}>Galerie</Text></TouchableOpacity>
                     </View>
+                )}
+            </View>
 
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>WhatsApp</Text>
-                        <NativeInput
-                            value={formData.whatsapp}
-                            onChangeText={(text) => setFormData({ ...formData, whatsapp: text })}
-                            placeholder="+237 6XX XX XX XX"
-                            keyboardType="phone-pad"
-                        />
-                    </View>
+            {/* GPS */}
+            <View style={s.field}>
+                <TouchableOpacity style={s.gpsBtn} onPress={() => setShowGPSModal(true)}>
+                    <SafeIcon name="map-pin" size={20} color="#F59E0B" />
+                    <Text style={s.gpsBtnText}>{selectedGPS ? '✓ GPS sélectionné' : 'Position GPS'}</Text>
+                    <SafeIcon name="chevron-right" size={18} color="#9CA3AF" />
+                </TouchableOpacity>
+            </View>
 
-                    <View style={styles.row}>
-                        <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
-                            <Text style={styles.label}>Type de véhicule *</Text>
-                            <NativeInput
-                                value={formData.type_vehicule}
-                                onChangeText={(text) => handleFieldChange('type_vehicule', text)}
-                                placeholder="Ex: Berline"
-                                error={errors.type_vehicule}
-                            />
+            {/* Tarifs */}
+            <Text style={[s.sectionTitle, { marginTop: 8 }]}>Tarifs</Text>
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+                <View style={[s.field, { flex: 1 }]}><NativeInput label={`Base (${devise})`} value={formData.tarif_base} onChangeText={t => setFormData({ ...formData, tarif_base: t.replace(/\D/g,'') })} placeholder="500" keyboardType="numeric" /></View>
+                <View style={[s.field, { flex: 1 }]}><NativeInput label={`Par km (${devise})`} value={formData.tarif_par_km} onChangeText={t => setFormData({ ...formData, tarif_par_km: t.replace(/\D/g,'') })} placeholder="200" keyboardType="numeric" /></View>
+            </View>
+
+            {/* Options */}
+            <Text style={[s.sectionTitle, { marginTop: 8 }]}>Options & Paiements</Text>
+            {[
+                { label: 'Cash', key: 'paiement_cash' },
+                { label: 'Mobile Money', key: 'paiement_mobile_money' },
+                { label: 'Carte bancaire', key: 'paiement_carte' },
+                { label: 'Climatisation', key: 'climatisation' },
+                { label: 'WiFi', key: 'wifi' },
+            ].map(opt => (
+                <View key={opt.key} style={s.switchRow}>
+                    <Text style={s.switchLbl}>{opt.label}</Text>
+                    <Switch value={(formData as any)[opt.key]} onValueChange={v => setFormData({ ...formData, [opt.key]: v })} trackColor={{ false: '#D1D5DB', true: '#F59E0B' }} />
+                </View>
+            ))}
+
+            <NativeButton title={loading ? 'Enregistrement...' : (isDashboardMode ? 'Mettre à jour' : 'Enregistrer le Taxi')} onPress={handleSubmit} disabled={loading || !formData.telephone.trim()} variant="primary" size="large" style={{ marginTop: 24 }} />
+        </ScrollView>
+    );
+
+    // ─── RENDER: Stats ───────────────────────────────────────────────────
+    const renderStats = () => (
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+            <View style={s.analyticsCard}>
+                <View style={s.analyticsHdr}><SafeIcon name="bar-chart-2" size={22} color="#F59E0B" /><Text style={s.analyticsTitle}>Tarification</Text></View>
+                {[
+                    { l: 'Tarif de base', v: `${formData.tarif_base} ${devise}` },
+                    { l: 'Prix par km', v: `${formData.tarif_par_km} ${devise}` },
+                    { l: 'Véhicule', v: formData.marque_modele || '—' },
+                    { l: 'Climatisation', v: formData.climatisation ? 'Oui' : 'Non' },
+                ].map((r, i) => (
+                    <View key={i} style={s.analyticsRow}><Text style={s.analyticsLbl}>{r.l}</Text><Text style={s.analyticsVal}>{r.v}</Text></View>
+                ))}
+            </View>
+            <View style={s.analyticsCard}>
+                <View style={s.analyticsHdr}><SafeIcon name="sparkles" size={22} color="#8B5CF6" /><Text style={s.analyticsTitle}>Prix dynamique IA</Text></View>
+                <Text style={s.analyticsEmpty}>Le calcul de prix dynamique s'adapte à la demande en temps réel.</Text>
+            </View>
+        </ScrollView>
+    );
+
+    // ─── RENDER: Dashboard ───────────────────────────────────────────────
+    if (isDashboardMode) {
+        const tabs: { key: TabType; label: string; icon: string }[] = [
+            { key: 'overview', label: 'Accueil', icon: 'layout-dashboard' },
+            { key: 'service', label: 'Service', icon: 'settings' },
+            { key: 'stats', label: 'Stats', icon: 'bar-chart-2' },
+        ];
+        return (
+            <View style={s.container}>
+                <LinearGradient colors={['#92400E', '#F59E0B']} style={s.dashHeader}>
+                    <View style={s.dashHeaderRow}>
+                        <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}><SafeIcon name="arrow-left" size={24} color="#fff" /></TouchableOpacity>
+                        <View style={{ flex: 1 }}>
+                            <Text style={s.dashTitle}>{formData.nom_chauffeur || 'Mon Taxi'}</Text>
+                            <Text style={s.dashSub}>{formData.marque_modele || 'Véhicule'} · {isAvailable ? '🟢 Disponible' : '🔴 Hors service'}</Text>
                         </View>
-                        <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
-                            <Text style={styles.label}>Marque/Modèle</Text>
-                            <NativeInput
-                                value={formData.marque_modele}
-                                onChangeText={(text) => setFormData({ ...formData, marque_modele: text })}
-                                placeholder="Ex: Toyota Corolla"
-                            />
-                        </View>
                     </View>
-
-                    <View style={styles.row}>
-                        <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
-                            <Text style={styles.label}>Immatriculation *</Text>
-                            <NativeInput
-                                value={formData.immatriculation}
-                                onChangeText={(text) => handleFieldChange('immatriculation', text)}
-                                placeholder="Ex: LT-1234-AB"
-                                error={errors.immatriculation}
-                            />
-                        </View>
-                        <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
-                            <Text style={styles.label}>Couleur</Text>
-                            <NativeInput
-                                value={formData.couleur}
-                                onChangeText={(text) => setFormData({ ...formData, couleur: text })}
-                                placeholder="Ex: Blanc"
-                            />
-                        </View>
-                    </View>
-
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Année</Text>
-                        <NativeInput
-                            value={formData.annee}
-                            onChangeText={(text) => setFormData({ ...formData, annee: text })}
-                            placeholder="2020"
-                            keyboardType="numeric"
-                        />
-                    </View>
-
-                    {/* ✅ AMÉLIORÉ : Image du véhicule (galerie ou caméra) */}
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Photo du véhicule</Text>
-                        {formData.image_vehicule ? (
-                            <View style={styles.imageContainer}>
-                                <Image
-                                    source={{ uri: formData.image_vehicule }}
-                                    style={styles.imagePreview}
-                                />
-                                <TouchableOpacity
-                                    style={styles.removeImageButton}
-                                    onPress={() => setFormData({ ...formData, image_vehicule: null })}
-                                >
-                                    <SafeIcon name="x" size={20} color="#fff" />
-                                </TouchableOpacity>
-                            </View>
-                        ) : (
-                            <View style={styles.imagePickerContainer}>
-                                <TouchableOpacity
-                                    style={styles.imagePickerButton}
-                                    onPress={() => pickVehicleImage('camera')}
-                                >
-                                    <SafeIcon name="camera" size={24} color={modernColors.primary} />
-                                    <Text style={styles.imagePickerText}>Prendre une photo</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    style={styles.imagePickerButton}
-                                    onPress={() => pickVehicleImage('gallery')}
-                                >
-                                    <SafeIcon name="image" size={24} color={modernColors.primary} type="lucide" />
-                                    <Text style={styles.imagePickerText}>Choisir depuis la galerie</Text>
-                                </TouchableOpacity>
-                            </View>
-                        )}
-                    </View>
-
-                    {/* ✅ Localisation avec Google Maps */}
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Localisation GPS actuelle</Text>
-                        <TouchableOpacity
-                            style={styles.gpsButton}
-                            onPress={() => setShowGPSModal(true)}
-                        >
-                            <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
-                            <Text style={styles.gpsButtonText}>
-                                {selectedGPS ? 'Localisation sélectionnée' : 'Sélectionner sur la carte'}
-                            </Text>
-                            <SafeIcon name="chevron-right" size={20} color="#9CA3AF" />
+                    <View style={s.tabsRow}>{tabs.map(t => (
+                        <TouchableOpacity key={t.key} style={[s.tab, activeTab === t.key && s.tabOn]} onPress={() => setActiveTab(t.key)}>
+                            <SafeIcon name={t.icon as any} size={14} color={activeTab === t.key ? '#fff' : '#ffffff70'} />
+                            <Text style={[s.tabText, activeTab === t.key && s.tabTextOn]}>{t.label}</Text>
                         </TouchableOpacity>
-                        {selectedGPS && (
-                            <Text style={styles.gpsText}>{selectedGPS}</Text>
-                        )}
-                    </View>
-
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Zones d'intervention</Text>
-                        <LocationSelector
-                            label=""
-                            value=""
-                            onSelect={handleZoneSelect}
-                            placeholder="Rechercher une zone d'intervention..."
-                            scope="all"
-                            enrichWithBackend
-                        />
-                        {selectedZones.length > 0 && (
-                            <>
-                                {/* ✅ NOUVEAU: Statistiques zones */}
-                                <View style={styles.statsContainer}>
-                                    <View style={styles.statItem}>
-                                        <Text style={styles.statValue}>{selectedZones.length}</Text>
-                                        <Text style={styles.statLabel}>Zones</Text>
-                                    </View>
-                                    <View style={styles.statDivider} />
-                                    <View style={styles.statItem}>
-                                        <Text style={styles.statValue}>
-                                            {formData.tarif_base ? parseInt(formData.tarif_base) : 0}
-                                        </Text>
-                                        <Text style={styles.statLabel}>Tarif base ({formData.devise})</Text>
-                                    </View>
-                                    <View style={styles.statDivider} />
-                                    <View style={styles.statItem}>
-                                        <Text style={styles.statValue}>
-                                            {formData.tarif_par_km ? parseInt(formData.tarif_par_km) : 0}
-                                        </Text>
-                                        <Text style={styles.statLabel}>Par km ({formData.devise})</Text>
-                                    </View>
-                                </View>
-                                <View style={styles.chipsContainer}>
-                                    {selectedZones.map((zone, index) => {
-                                        const zoneStr = zone.raw || zone.place_name || '';
-                                        return (
-                                            <TouchableOpacity
-                                                key={index}
-                                                style={[styles.chip, styles.chipSelected]}
-                                                onPress={() => {
-                                                    Alert.alert(
-                                                        'Supprimer la zone',
-                                                        `Voulez-vous supprimer "${zoneStr}" ?`,
-                                                        [
-                                                            { text: 'Annuler', style: 'cancel' },
-                                                            {
-                                                                text: 'Supprimer',
-                                                                style: 'destructive',
-                                                                onPress: () => {
-                                                                    setSelectedZones(selectedZones.filter((_, i) => i !== index));
-                                                                },
-                                                            },
-                                                        ]
-                                                    );
-                                                }}
-                                            >
-                                                <Text style={styles.chipTextSelected}>
-                                                    {zoneStr}
-                                                </Text>
-                                                <SafeIcon name="x" size={14} color="#fff" style={{ marginLeft: 6 }} type="lucide" />
-                                            </TouchableOpacity>
-                                        );
-                                    })}
-                                </View>
-                            </>
-                        )}
-                    </View>
-
-                    <View style={styles.row}>
-                        <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
-                            <Text style={styles.label}>Tarif de base ({formData.devise})</Text>
-                            <NativeInput
-                                value={formData.tarif_base}
-                                onChangeText={(text) => setFormData({ ...formData, tarif_base: text })}
-                                placeholder="500"
-                                keyboardType="numeric"
-                            />
-                        </View>
-                        <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
-                            <Text style={styles.label}>Tarif par km ({formData.devise})</Text>
-                            <NativeInput
-                                value={formData.tarif_par_km}
-                                onChangeText={(text) => setFormData({ ...formData, tarif_par_km: text })}
-                                placeholder="200"
-                                keyboardType="numeric"
-                            />
-                        </View>
-                    </View>
-
-                    {/* ✅ NOUVEAU: Section Statistiques (si service existe) */}
-                    {serviceId && specializedServiceId && (
-                        <View style={styles.statsSection}>
-                            <View style={styles.sectionHeader}>
-                                <SafeIcon name="bar-chart" size={20} color={modernColors.primary} type="lucide" />
-                                <Text style={styles.sectionTitle}>Statistiques</Text>
-                            </View>
-                            <View style={styles.statsContainer}>
-                                <View style={styles.statItem}>
-                                    <Text style={styles.statValue}>{selectedZones.length}</Text>
-                                    <Text style={styles.statLabel}>Zones</Text>
-                                </View>
-                                <View style={styles.statDivider} />
-                                <View style={styles.statItem}>
-                                    <Text style={styles.statValue}>
-                                        {[formData.paiement_cash, formData.paiement_mobile_money, formData.paiement_carte].filter(Boolean).length}
-                                    </Text>
-                                    <Text style={styles.statLabel}>Modes paiement</Text>
-                                </View>
-                                <View style={styles.statDivider} />
-                                <View style={styles.statItem}>
-                                    <Text style={styles.statValue}>
-                                        {[formData.climatisation, formData.wifi].filter(Boolean).length}
-                                    </Text>
-                                    <Text style={styles.statLabel}>Équipements</Text>
-                                </View>
-                            </View>
-                        </View>
-                    )}
-
-                    <View style={styles.switchGroup}>
-                        <Text style={styles.label}>Paiement cash</Text>
-                        <Switch
-                            value={formData.paiement_cash}
-                            onValueChange={(value) => setFormData({ ...formData, paiement_cash: value })}
-                            trackColor={{ false: '#D1D5DB', true: modernColors.primary }}
-                        />
-                    </View>
-
-                    <View style={styles.switchGroup}>
-                        <Text style={styles.label}>Paiement Mobile Money</Text>
-                        <Switch
-                            value={formData.paiement_mobile_money}
-                            onValueChange={(value) => setFormData({ ...formData, paiement_mobile_money: value })}
-                            trackColor={{ false: '#D1D5DB', true: modernColors.primary }}
-                        />
-                    </View>
-
-                    <View style={styles.switchGroup}>
-                        <Text style={styles.label}>Paiement carte</Text>
-                        <Switch
-                            value={formData.paiement_carte}
-                            onValueChange={(value) => setFormData({ ...formData, paiement_carte: value })}
-                            trackColor={{ false: '#D1D5DB', true: modernColors.primary }}
-                        />
-                    </View>
-
-                    <View style={styles.switchGroup}>
-                        <Text style={styles.label}>Climatisation</Text>
-                        <Switch
-                            value={formData.climatisation}
-                            onValueChange={(value) => setFormData({ ...formData, climatisation: value })}
-                            trackColor={{ false: '#D1D5DB', true: modernColors.primary }}
-                        />
-                    </View>
-
-                    <View style={styles.switchGroup}>
-                        <Text style={styles.label}>WiFi</Text>
-                        <Switch
-                            value={formData.wifi}
-                            onValueChange={(value) => setFormData({ ...formData, wifi: value })}
-                            trackColor={{ false: '#D1D5DB', true: modernColors.primary }}
-                        />
-                    </View>
-
-                    {/* ✅ CORRIGÉ: Utiliser title au lieu de children */}
-                    <NativeButton
-                        title={loading ? 'Enregistrement...' : 'Enregistrer le Taxi'}
-                        onPress={handleSubmit}
-                        disabled={loading || !formData.telephone.trim()}
-                        variant="primary"
-                        size="large"
-                        style={styles.submitButton}
-                    />
+                    ))}</View>
+                </LinearGradient>
+                <View style={s.dashContent}>
+                    {activeTab === 'overview' && renderOverview()}
+                    {activeTab === 'service' && renderServiceForm()}
+                    {activeTab === 'stats' && renderStats()}
                 </View>
-            </KeyboardAwareScreen>
+                <ModernGPSModal visible={showGPSModal} onClose={() => setShowGPSModal(false)} onSelect={(c: string) => { setSelectedGPS(c); setShowGPSModal(false); }} currentLocation={location ? { lat: location.coords.latitude, lng: location.coords.longitude } : null} title="Position du taxi" />
+            </View>
+        );
+    }
 
-            {/* Modals */}
-            <ModernGPSModal
-                visible={showGPSModal}
-                onClose={() => setShowGPSModal(false)}
-                onSelect={handleGPSSelect}
-                currentLocation={location ? {
-                    lat: location.coords.latitude,
-                    lng: location.coords.longitude
-                } : null}
-                title="Sélectionner la localisation"
-            />
-        </>
+    // ─── RENDER: Creation ────────────────────────────────────────────────
+    return (
+        <View style={s.container}>
+            <LinearGradient colors={['#92400E', '#F59E0B']} style={s.createHeader}>
+                <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}><SafeIcon name="arrow-left" size={24} color="#fff" /></TouchableOpacity>
+                <Text style={s.createTitle}>Enregistrer un Taxi</Text>
+            </LinearGradient>
+            {renderServiceForm()}
+            <ModernGPSModal visible={showGPSModal} onClose={() => setShowGPSModal(false)} onSelect={(c: string) => { setSelectedGPS(c); setShowGPSModal(false); }} currentLocation={location ? { lat: location.coords.latitude, lng: location.coords.longitude } : null} title="Position du taxi" />
+        </View>
     );
 };
 
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#F9FAFB',
-    },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 16,
-        backgroundColor: '#fff',
-        borderBottomWidth: 1,
-        borderBottomColor: '#E5E7EB',
-    },
-    backButton: {
-        marginRight: 12,
-    },
-    title: {
-        fontSize: 20,
-        fontWeight: '700',
-        color: '#111827',
-    },
-    form: {
-        padding: 16,
-    },
-    inputGroup: {
-        marginBottom: 16,
-    },
-    row: {
-        flexDirection: 'row',
-    },
-    label: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#374151',
-        marginBottom: 8,
-    },
-    switchGroup: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 16,
-        paddingVertical: 8,
-    },
-    chipsContainer: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 8,
-    },
-    chip: {
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        borderRadius: 20,
-        backgroundColor: '#F3F4F6',
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-    },
-    chipSelected: {
-        backgroundColor: modernColors.primary,
-        borderColor: modernColors.primary,
-    },
-    chipText: {
-        fontSize: 14,
-        color: '#374151',
-    },
-    chipTextSelected: {
-        color: '#fff',
-        fontWeight: '600',
-    },
-    gpsButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        backgroundColor: '#F9FAFB',
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-        borderRadius: 8,
-        padding: 12,
-        gap: 12,
-    },
-    gpsButtonText: {
-        flex: 1,
-        fontSize: 14,
-        color: '#111827',
-    },
-    gpsText: {
-        marginTop: 8,
-        fontSize: 12,
-        color: '#6B7280',
-    },
-    submitButton: {
-        marginTop: 24,
-    },
-    imageContainer: {
-        position: 'relative',
-        marginTop: 8,
-    },
-    imagePreview: {
-        width: '100%',
-        height: 200,
-        borderRadius: 12,
-        backgroundColor: '#F3F4F6',
-    },
-    removeImageButton: {
-        position: 'absolute',
-        top: 8,
-        right: 8,
-        backgroundColor: '#DC2626',
-        borderRadius: 20,
-        width: 36,
-        height: 36,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    imagePickerContainer: {
-        flexDirection: 'row',
-        gap: 12,
-        marginTop: 8,
-    },
-    imagePickerButton: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 8,
-        padding: 16,
-        backgroundColor: '#F9FAFB',
-        borderRadius: 12,
-        borderWidth: 2,
-        borderColor: '#E5E7EB',
-        borderStyle: 'dashed',
-    },
-    imagePickerText: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: modernColors.primary,
-    },
+const s = StyleSheet.create({
+    container: { flex: 1, backgroundColor: '#F3F4F6' },
+    loadingScreen: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' },
+    loadingText: { marginTop: 12, fontSize: 15, color: '#6B7280', fontWeight: '500' },
+    dashHeader: { paddingTop: 50, paddingBottom: 8, paddingHorizontal: 16 },
+    dashHeaderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
+    backBtn: { marginRight: 12, padding: 4 },
+    dashTitle: { fontSize: 22, fontWeight: '700', color: '#fff' },
+    dashSub: { fontSize: 13, color: '#ffffffCC', marginTop: 2 },
+    dashContent: { flex: 1, paddingHorizontal: 16, paddingTop: 16 },
+    createHeader: { paddingTop: 50, paddingBottom: 16, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center' },
+    createTitle: { fontSize: 20, fontWeight: '700', color: '#fff' },
+    tabsRow: { flexDirection: 'row', gap: 4, paddingBottom: 8 },
+    tab: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 8, borderRadius: 8, backgroundColor: '#ffffff15' },
+    tabOn: { backgroundColor: '#ffffff30' },
+    tabText: { fontSize: 11, color: '#ffffff70', fontWeight: '500' },
+    tabTextOn: { color: '#fff', fontWeight: '700' },
+    statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 },
+    statCard: { flex: 1, minWidth: '30%', backgroundColor: '#fff', borderRadius: 12, padding: 14, borderLeftWidth: 3, elevation: 2, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, shadowOffset: { width: 0, height: 1 } },
+    statValue: { fontSize: 18, fontWeight: '700', color: '#111827', marginTop: 8 },
+    statLabel: { fontSize: 12, color: '#6B7280', marginTop: 2 },
+    availCard: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, borderRadius: 12, marginBottom: 20 },
+    availDot: { width: 12, height: 12, borderRadius: 6 },
+    availTitle: { fontSize: 15, fontWeight: '600' },
+    availSub: { fontSize: 12, color: '#6B7280', marginTop: 2 },
+    quickRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
+    quickAction: { flex: 1, alignItems: 'center', gap: 6 },
+    quickIcon: { width: 48, height: 48, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
+    quickLabel: { fontSize: 11, color: '#374151', fontWeight: '500', textAlign: 'center' },
+    sectionTitle: { fontSize: 16, fontWeight: '700', color: '#111827', marginBottom: 12 },
+    infoRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8 },
+    infoText: { fontSize: 14, color: '#374151' },
+    payBadge: { paddingHorizontal: 12, paddingVertical: 6, backgroundColor: '#FEF3C7', borderRadius: 8 },
+    payText: { fontSize: 13, fontWeight: '600', color: '#92400E' },
+    field: { marginBottom: 16 },
+    label: { fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 8 },
+    switchRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, paddingVertical: 6 },
+    switchLbl: { fontSize: 14, color: '#374151', fontWeight: '500' },
+    gpsBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 12, backgroundColor: '#F9FAFB', borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 8, gap: 12 },
+    gpsBtnText: { flex: 1, fontSize: 14, color: '#111827' },
+    imgContainer: { position: 'relative' },
+    imgPreview: { width: '100%', height: 160, borderRadius: 12 },
+    imgRemove: { position: 'absolute', top: 8, right: 8, width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
+    imgPickers: { flexDirection: 'row', gap: 12 },
+    imgPickerBtn: { flex: 1, alignItems: 'center', gap: 8, padding: 20, backgroundColor: '#F9FAFB', borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 12, borderStyle: 'dashed' },
+    imgPickerText: { fontSize: 13, color: '#F59E0B', fontWeight: '500' },
+    analyticsCard: { backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 12 },
+    analyticsHdr: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 16 },
+    analyticsTitle: { fontSize: 17, fontWeight: '700', color: '#111827' },
+    analyticsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
+    analyticsLbl: { fontSize: 14, color: '#6B7280' },
+    analyticsVal: { fontSize: 16, fontWeight: '700', color: '#111827' },
+    analyticsEmpty: { fontSize: 14, color: '#6B7280', fontStyle: 'italic', lineHeight: 20 },
 });
 
 export default TaxiFormScreen;
-

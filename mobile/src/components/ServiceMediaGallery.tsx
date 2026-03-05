@@ -9,6 +9,7 @@ import {
     Image,
     Modal,
     Platform,
+    Share,
     StatusBar,
     StyleSheet,
     Text,
@@ -16,7 +17,7 @@ import {
     View
 } from 'react-native';
 import { config } from '../config/environment';
-import { mediaApi } from '../services/api';
+import { apiGet, mediaApi } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
 
@@ -119,6 +120,33 @@ const ServiceMediaGallery: React.FC<ServiceMediaGalleryProps> = ({
             // Vidéos du service
             extractMediaArray(service.data?.videos).forEach((vid: any) => addMedia('video', vid, 'Vidéo du service'));
 
+            // ✅ Charger les produits depuis service_products (noms + product_data media)
+            let productNameMap: Record<number, string> = {};
+            if (serviceId) {
+                try {
+                    const productsResp = await apiGet<any[]>(`/api/services/${serviceId}/products`);
+                    const productsData = (productsResp as any)?.data;
+                    const productsList = Array.isArray(productsData) ? productsData
+                        : Array.isArray((productsData as any)?.data) ? (productsData as any).data : [];
+                    productsList.forEach((p: any) => {
+                        const idx = p.product_index ?? p.productIndex;
+                        const name = p.product_name || p.productName
+                            || p.product_data?.nom?.valeur || p.product_data?.nom
+                            || p.product_data?.title || `Produit ${(idx ?? 0) + 1}`;
+                        if (idx !== undefined && idx !== null) {
+                            productNameMap[idx] = name;
+                        }
+                        const pd = p.product_data || {};
+                        const cat = pd.categorie || pd.type || 'produit';
+                        extractMediaArray(pd.images).forEach((img: any) => addMedia('image', img, name, cat, 'service_products'));
+                        extractMediaArray(pd.videos).forEach((vid: any) => addMedia('video', vid, name, cat, 'service_products'));
+                    });
+                    console.log(`[ServiceMediaGallery] ✅ ${productsList.length} produits depuis API`);
+                } catch (e) {
+                    console.warn('[ServiceMediaGallery] ⚠️ Produits API non disponible:', e);
+                }
+            }
+
             // ✅ Charger depuis l'API media table (nouveau système)
             if (serviceId) {
                 try {
@@ -129,8 +157,9 @@ const ServiceMediaGallery: React.FC<ServiceMediaGalleryProps> = ({
                             : respData?.media || respData?.data || [];
                         apiMedia.forEach((m: any) => {
                             const path = m.path || m.url || m.file_path;
-                            const desc = m.product_index !== null && m.product_index !== undefined
-                                ? `Produit ${m.product_index + 1}`
+                            const idx = m.product_index;
+                            const desc = (idx !== null && idx !== undefined)
+                                ? (productNameMap[idx] || `Produit ${idx + 1}`)
                                 : (m.type === 'video' ? 'Vidéo' : 'Image');
                             addMedia(m.type === 'video' ? 'video' : 'image', path, desc, undefined, 'media_table');
                         });
@@ -141,7 +170,7 @@ const ServiceMediaGallery: React.FC<ServiceMediaGalleryProps> = ({
                 }
             }
 
-            // Fallback: produits dans service.data
+            // Fallback: produits dans service.data (ancien systeme embedded)
             const products = service.data?.produits || [];
             if (Array.isArray(products)) {
                 products.forEach((product: any, index: number) => {
@@ -151,6 +180,15 @@ const ServiceMediaGallery: React.FC<ServiceMediaGalleryProps> = ({
                     extractMediaArray(product.videos).forEach((vid: any) => addMedia('video', vid, name, type, 'services_data'));
                 });
             }
+
+            // Trier: branding d'abord (Logo, Bannière), puis produits groupés par nom, puis génériques
+            mediaList.sort((a, b) => {
+                const isBrandingA = ['Logo', 'Bannière', 'Image du service', 'Vidéo du service'].includes(a.description);
+                const isBrandingB = ['Logo', 'Bannière', 'Image du service', 'Vidéo du service'].includes(b.description);
+                if (isBrandingA && !isBrandingB) return -1;
+                if (!isBrandingA && isBrandingB) return 1;
+                return (a.description || '').localeCompare(b.description || '');
+            });
 
             console.log(`[ServiceMediaGallery] Total: ${mediaList.length} médias (${mediaList.filter(m => m.type === 'image').length} images, ${mediaList.filter(m => m.type === 'video').length} vidéos)`);
             setMedia(mediaList);
@@ -186,6 +224,19 @@ const ServiceMediaGallery: React.FC<ServiceMediaGalleryProps> = ({
             : Math.max(selectedIndex - 1, 0);
         setSelectedIndex(newIndex);
     }, [selectedIndex, filteredMedia.length]);
+
+    const handleShareMedia = useCallback(async (item: MediaItem) => {
+        try {
+            const serviceName = service?.data?.titre_service?.valeur || service?.data?.titre_service || service?.titre || 'Yukpo';
+            const emoji = item.type === 'video' ? '🎬' : '📸';
+            const typeLabel = item.type === 'video' ? 'vidéo' : 'photo';
+            let shareText = `${emoji} ${item.description || typeLabel} — ${serviceName}`;
+            shareText += `\n\n🔗 Voir sur Yukpo:\n${item.url}`;
+            await Share.share({ message: shareText, url: item.url, title: `${item.description || typeLabel} — ${serviceName}` });
+        } catch (error) {
+            console.warn('[ServiceMediaGallery] Share error:', error);
+        }
+    }, [service]);
 
     // ✅ Rendu d'un item dans la grille
     const renderGridItem = useCallback(({ item, index }: { item: MediaItem; index: number }) => {
@@ -365,6 +416,15 @@ const ServiceMediaGallery: React.FC<ServiceMediaGalleryProps> = ({
                                     }}
                                 />
                             )}
+
+                            {/* Bouton partage */}
+                            <TouchableOpacity
+                                style={styles.shareButton}
+                                onPress={() => handleShareMedia(selectedMedia)}
+                                activeOpacity={0.7}
+                            >
+                                <SafeIcon name="share-2" size={22} color="#FFFFFF" />
+                            </TouchableOpacity>
 
                             {/* Navigation précédent/suivant */}
                             {selectedIndex > 0 && (
@@ -669,6 +729,17 @@ const styles = StyleSheet.create({
     },
     navButtonRight: {
         right: 12,
+    },
+    shareButton: {
+        position: 'absolute',
+        bottom: Platform.OS === 'ios' ? 50 : 30,
+        alignSelf: 'center',
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: 'rgba(99,102,241,0.85)',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
 });
 

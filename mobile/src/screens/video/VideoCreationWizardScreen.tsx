@@ -5,6 +5,7 @@ import {
     Alert,
     Animated,
     FlatList,
+    Image,
     Linking,
     Platform,
     ScrollView,
@@ -17,11 +18,12 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CreatorStudioCard } from '../../components/CreatorStudioCard';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
-import { NativeButton, NativeCard, NativeInput } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeButton, NativeCard, NativeInput } from '../../components/SafeNativeDesign';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { StudioAudioPanel } from '../../components/StudioAudioPanel';
-import VideoProgressModal from '../../components/VideoProgressModal';
+import { VideoProgressModal } from '../../components/VideoProgressModal';
+import { config } from '../../config/environment';
 import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { useVideoGenerationProgress } from '../../hooks/useVideoGenerationProgress';
 import { useVoiceProfiles } from '../../hooks/useVoiceProfiles';
@@ -43,6 +45,14 @@ import { normalizeServiceProducts } from '../../utils/productNormalizer';
 import { apiCallWithRetry } from '../../utils/retryWithBackoff';
 import { clearVideoDraft, loadVideoDraft, saveVideoDraft } from '../../utils/videoDraftStorage';
 
+const buildMediaUrl = (path: string | undefined | null): string => {
+    if (!path) return '';
+    if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:image')) return path;
+    const cleanPath = path.startsWith('/') ? path.slice(1) : path;
+    const base = (config.API_BASE_URL || '').replace(/\/$/, '');
+    return base ? `${base}/api/media/files/${cleanPath}` : cleanPath;
+};
+
 interface WizardParams {
     serviceId: number;
     productId?: number;
@@ -60,6 +70,7 @@ interface ServiceMediaItem {
 type WizardStep = 1 | 2 | 3;
 
 type ModePreset = 'standard' | 'expert';
+type CreationSource = 'media' | 'ai_virtual';
 
 const FALLBACK_STORY_TEMPLATES: StoryTemplateSpec[] = [
     {
@@ -156,6 +167,7 @@ const VideoCreationWizardScreen: React.FC = () => {
         3: null,
     });
 
+    const [creationSource, setCreationSource] = useState<CreationSource>('media');
     const [brief, setBrief] = useState('');
     const [headline, setHeadline] = useState('');
     const [callToAction, setCallToAction] = useState('');
@@ -565,17 +577,23 @@ const VideoCreationWizardScreen: React.FC = () => {
             });
 
             if (productResponse.success) {
-                if (Array.isArray(productResponse.data)) {
-                    allMediaItems.push(...productResponse.data);
-                    console.log('[VideoCreationWizard] ✅ Médias produits chargés:', productResponse.data.length);
-                } else if (productResponse.data && Array.isArray((productResponse.data as any).items)) {
-                    allMediaItems.push(...(productResponse.data as any).items);
-                    console.log('[VideoCreationWizard] ✅ Médias produits chargés (items):', (productResponse.data as any).items.length);
-                } else if (productResponse.data && Array.isArray((productResponse.data as any).media)) {
-                    allMediaItems.push(...(productResponse.data as any).media);
-                    console.log('[VideoCreationWizard] ✅ Médias produits chargés (media):', (productResponse.data as any).media.length);
+                // ✅ CORRIGÉ: Gérer toutes les structures de réponse possibles
+                const rawData = productResponse.data as any;
+                let extractedMedia: any[] = [];
+                if (Array.isArray(rawData)) {
+                    extractedMedia = rawData;
+                } else if (rawData && Array.isArray(rawData.data)) {
+                    extractedMedia = rawData.data;
+                } else if (rawData && Array.isArray(rawData.items)) {
+                    extractedMedia = rawData.items;
+                } else if (rawData && Array.isArray(rawData.media)) {
+                    extractedMedia = rawData.media;
                 } else {
-                    console.warn('[VideoCreationWizard] ⚠️ Format de réponse getProductMedia inattendu:', productResponse.data);
+                    console.warn('[VideoCreationWizard] ⚠️ Format de réponse getProductMedia inattendu:', rawData);
+                }
+                if (extractedMedia.length > 0) {
+                    allMediaItems.push(...extractedMedia);
+                    console.log('[VideoCreationWizard] ✅ Médias produits chargés:', extractedMedia.length);
                 }
             } else {
                 console.warn('[VideoCreationWizard] ⚠️ getProductMedia a échoué:', productResponse);
@@ -595,10 +613,15 @@ const VideoCreationWizardScreen: React.FC = () => {
 
                 if (serviceResponse.success) {
                     let serviceMedia: ServiceMediaItem[] = [];
-                    if (Array.isArray(serviceResponse.data)) {
-                        serviceMedia = serviceResponse.data;
-                    } else if (serviceResponse.data && Array.isArray((serviceResponse.data as any).items)) {
-                        serviceMedia = (serviceResponse.data as any).items;
+                    const svcRaw = serviceResponse.data as any;
+                    if (Array.isArray(svcRaw)) {
+                        serviceMedia = svcRaw;
+                    } else if (svcRaw && Array.isArray(svcRaw.data)) {
+                        serviceMedia = svcRaw.data;
+                    } else if (svcRaw && Array.isArray(svcRaw.items)) {
+                        serviceMedia = svcRaw.items;
+                    } else if (svcRaw && Array.isArray(svcRaw.media)) {
+                        serviceMedia = svcRaw.media;
                     }
 
                     // ✅ Fusionner en évitant les doublons (par id)
@@ -613,6 +636,10 @@ const VideoCreationWizardScreen: React.FC = () => {
 
             console.log('[VideoCreationWizard] ✅ Total médias chargés:', allMediaItems.length);
             setMediaItems(allMediaItems);
+            // ✅ CORRIGÉ: Auto-sélectionner tous les médias chargés pour réduire les gestes utilisateur
+            if (allMediaItems.length > 0 && selectedMediaIds.length === 0) {
+                setSelectedMediaIds(allMediaItems.map(m => m.id).filter((id): id is number => typeof id === 'number' && id > 0));
+            }
         } catch (error: any) {
             console.error('[VideoCreationWizard] ❌ Erreur chargement médias:', {
                 error: error?.message || String(error),
@@ -686,33 +713,36 @@ const VideoCreationWizardScreen: React.FC = () => {
         fetchServiceDetails();
     }, [fetchServiceDetails]);
 
-    // ✅ PHASE 1: Sauvegarde automatique du brouillon avec debounce
+    // ✅ PHASE 1: Sauvegarde automatique du brouillon avec debounce réel
     useEffect(() => {
-        const draft = {
-            serviceId,
-            productIndex,
-            productName,
-            serviceName,
-            brief,
-            headline,
-            callToAction,
-            selectedMediaIds,
-            sceneAssignments,
-            scenesDraft,
-            storyTemplateId,
-            stylePack,
-            musicMode,
-            voiceoverEnabled,
-            voiceoverLang,
-            selectedVoiceProfileId,
-            autoStoryboard,
-            mode,
-            selectedStyle,
-            publishChat,
-            publishCard,
-            publishSocial,
-        };
-        saveVideoDraft(draft);
+        const timer = setTimeout(() => {
+            const draft = {
+                serviceId,
+                productIndex,
+                productName,
+                serviceName,
+                brief,
+                headline,
+                callToAction,
+                selectedMediaIds,
+                sceneAssignments,
+                scenesDraft,
+                storyTemplateId,
+                stylePack,
+                musicMode,
+                voiceoverEnabled,
+                voiceoverLang,
+                selectedVoiceProfileId,
+                autoStoryboard,
+                mode,
+                selectedStyle,
+                publishChat,
+                publishCard,
+                publishSocial,
+            };
+            saveVideoDraft(draft);
+        }, 1500); // 1.5s debounce
+        return () => clearTimeout(timer);
     }, [
         serviceId,
         productIndex,
@@ -738,11 +768,12 @@ const VideoCreationWizardScreen: React.FC = () => {
         publishSocial,
     ]);
 
+    // ✅ CORRIGÉ: Précharger les médias dès le chargement (pas attendre step 2)
     useEffect(() => {
-        if (step >= 2) {
+        if (serviceId && productIndex !== undefined) {
             fetchServiceMedia();
         }
-    }, [step, fetchServiceMedia]);
+    }, [fetchServiceMedia]);
 
     useEffect(() => {
         if (!isGenerating && step === 1) {
@@ -964,6 +995,8 @@ const VideoCreationWizardScreen: React.FC = () => {
                 voiceover_lang: voiceoverEnabled ? voiceoverLang : undefined,
                 voiceover_script: voiceoverEnabled ? brief : undefined,
                 voice_profile_id: voiceoverEnabled ? selectedVoiceProfileId ?? undefined : undefined,
+                creation_source: creationSource,
+                ai_video_prompt: creationSource === 'ai_virtual' ? brief : undefined,
                 media_scene_overrides: undefined,
             };
 
@@ -1373,11 +1406,13 @@ const VideoCreationWizardScreen: React.FC = () => {
             use_ai_templates: mode === 'expert',
             use_service_mediatech: mode === 'expert',
             include_publicite_assets: mode === 'expert',
-            selected_media_ids: selectedMediaIds,
+            selected_media_ids: creationSource === 'ai_virtual' ? [] : selectedMediaIds,
             music_mode: musicMode !== 'none' ? musicMode : undefined,
             voiceover_lang: voiceoverEnabled ? voiceoverLang : undefined,
             voiceover_script: voiceoverEnabled ? brief : undefined,
             voice_profile_id: voiceoverEnabled ? selectedVoiceProfileId ?? undefined : undefined,
+            creation_source: creationSource,
+            ai_video_prompt: creationSource === 'ai_virtual' ? brief : undefined,
             distribute_channels: distributionChannels
                 .filter((item) => item.value)
                 .map((item) => item.key),
@@ -1385,7 +1420,7 @@ const VideoCreationWizardScreen: React.FC = () => {
             style_transitions,
             style_color_palette,
             style_music_hint,
-            media_scene_overrides,
+            media_scene_overrides: creationSource === 'ai_virtual' ? undefined : media_scene_overrides,
         };
 
         try {
@@ -1537,22 +1572,42 @@ const VideoCreationWizardScreen: React.FC = () => {
 
     const renderMediaItem = ({ item }: { item: ServiceMediaItem }) => {
         const isSelected = selectedMediaIds.includes(item.id);
+        const mediaUrl = buildMediaUrl(item.path);
+        const isVideo = (item.media_type || '').toLowerCase().includes('video');
         return (
             <TouchableOpacity onPress={() => toggleMediaSelection(item.id)}>
                 <NativeCard style={[styles.mediaCard, isSelected && styles.mediaCardSelected]}>
-                    <View style={styles.mediaHeader}>
-                        <SafeIcon
-                            name={isSelected ? 'check-circle' : 'image'}
-                            size={22}
-                            color={isSelected ? modernColors.success : modernColors.textSecondary}
-                        />
+                    {mediaUrl ? (
+                        <View style={styles.mediaThumbnailContainer}>
+                            <Image
+                                source={{ uri: mediaUrl }}
+                                style={styles.mediaThumbnail}
+                                resizeMode="cover"
+                            />
+                            {isVideo && (
+                                <View style={styles.mediaVideoOverlay}>
+                                    <SafeIcon name="play-circle" size={28} color="#FFF" />
+                                </View>
+                            )}
+                            {isSelected && (
+                                <View style={styles.mediaCheckOverlay}>
+                                    <SafeIcon name="check-circle" size={24} color="#10B981" />
+                                </View>
+                            )}
+                        </View>
+                    ) : (
+                        <View style={[styles.mediaThumbnailContainer, styles.mediaThumbnailPlaceholder]}>
+                            <SafeIcon name={isVideo ? 'film' : 'image'} size={32} color={modernColors.textSecondary} />
+                        </View>
+                    )}
+                    <View style={styles.mediaInfoRow}>
                         <Text style={styles.mediaTitle} numberOfLines={1}>
                             {item.ai_description || `Média #${item.id}`}
                         </Text>
+                        <Text style={styles.mediaSubTitle}>
+                            {isVideo ? '🎬 Vidéo' : '📸 Image'}
+                        </Text>
                     </View>
-                    <Text style={styles.mediaSubTitle}>
-                        {item.media_type || 'image'}
-                    </Text>
                 </NativeCard>
             </TouchableOpacity>
         );
@@ -1598,6 +1653,28 @@ const VideoCreationWizardScreen: React.FC = () => {
                                 )}
                             </NativeCard>
                             <CreatorStudioCard serviceName={serviceName} productName={productName} />
+
+                            <NativeCard style={styles.sectionCard}>
+                                <Text style={styles.sectionTitle}>Mode de création</Text>
+                                <View style={styles.creationSourceRow}>
+                                    <TouchableOpacity
+                                        style={[styles.creationSourceOption, creationSource === 'media' && styles.creationSourceOptionActive]}
+                                        onPress={() => setCreationSource('media')}
+                                    >
+                                        <SafeIcon name="image" size={22} color={creationSource === 'media' ? '#FFFFFF' : modernColors.textSecondary} />
+                                        <Text style={[styles.creationSourceLabel, creationSource === 'media' && styles.creationSourceLabelActive]}>Mes photos & vidéos</Text>
+                                        <Text style={[styles.creationSourceHint, creationSource === 'media' && styles.creationSourceHintActive]}>Utilise tes propres médias</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={[styles.creationSourceOption, creationSource === 'ai_virtual' && styles.creationSourceOptionActive]}
+                                        onPress={() => setCreationSource('ai_virtual')}
+                                    >
+                                        <SafeIcon name="sparkles" size={22} color={creationSource === 'ai_virtual' ? '#FFFFFF' : modernColors.textSecondary} />
+                                        <Text style={[styles.creationSourceLabel, creationSource === 'ai_virtual' && styles.creationSourceLabelActive]}>Vidéo 100% IA</Text>
+                                        <Text style={[styles.creationSourceHint, creationSource === 'ai_virtual' && styles.creationSourceHintActive]}>L'IA génère tout pour toi</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </NativeCard>
 
                             <NativeCard style={styles.sectionCard}>
                                 <Text style={styles.sectionTitle}>{t('videoWizard.sections.describe')}</Text>
@@ -2469,6 +2546,41 @@ const styles = StyleSheet.create({
     sectionCard: {
         gap: 24, // ✅ AUGMENTÉ: De 16 à 24 pour plus d'espace entre les éléments
     },
+    creationSourceRow: {
+        flexDirection: 'row',
+        gap: 12,
+    },
+    creationSourceOption: {
+        flex: 1,
+        borderRadius: 16,
+        padding: 16,
+        alignItems: 'center',
+        gap: 8,
+        backgroundColor: modernColors.background,
+        borderWidth: 2,
+        borderColor: modernColors.border,
+    },
+    creationSourceOptionActive: {
+        backgroundColor: modernColors.primary,
+        borderColor: modernColors.primary,
+    },
+    creationSourceLabel: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: modernColors.text,
+        textAlign: 'center',
+    },
+    creationSourceLabelActive: {
+        color: '#FFFFFF',
+    },
+    creationSourceHint: {
+        fontSize: 11,
+        color: modernColors.textSecondary,
+        textAlign: 'center',
+    },
+    creationSourceHintActive: {
+        color: 'rgba(255,255,255,0.8)',
+    },
     sectionSubTitle: {
         fontSize: 15, // ✅ AUGMENTÉ: De 13 à 15 pour meilleure lisibilité
         color: modernColors.textSecondary,
@@ -2620,15 +2732,49 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
     },
     mediaCard: {
-        padding: 20, // ✅ AUGMENTÉ: De 16 à 20
-        borderRadius: 16,
+        borderRadius: 14,
         backgroundColor: modernColors.surface,
-        minHeight: 80, // ✅ AJOUTÉ: Hauteur minimale
+        overflow: 'hidden',
+        width: 150,
     },
     mediaCardSelected: {
-        borderWidth: 1,
+        borderWidth: 2,
         borderColor: modernColors.primary,
+    },
+    mediaThumbnailContainer: {
+        width: '100%',
+        height: 110,
+        position: 'relative',
+    },
+    mediaThumbnail: {
+        width: '100%',
+        height: '100%',
+    },
+    mediaThumbnailPlaceholder: {
         backgroundColor: modernColors.surfaceVariant,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    mediaVideoOverlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'rgba(0,0,0,0.25)',
+    },
+    mediaCheckOverlay: {
+        position: 'absolute',
+        top: 6,
+        right: 6,
+        backgroundColor: '#FFF',
+        borderRadius: 12,
+    },
+    mediaInfoRow: {
+        paddingHorizontal: 10,
+        paddingVertical: 8,
     },
     mediaHeader: {
         flexDirection: 'row',
@@ -2636,14 +2782,13 @@ const styles = StyleSheet.create({
         gap: 12,
     },
     mediaTitle: {
-        flex: 1,
-        fontSize: 17, // ✅ AUGMENTÉ: De 15 à 17
+        fontSize: 13,
         fontWeight: '600',
         color: modernColors.text,
     },
     mediaSubTitle: {
-        marginTop: 10, // ✅ AUGMENTÉ: De 8 à 10
-        fontSize: 15, // ✅ AUGMENTÉ: De 13 à 15
+        marginTop: 2,
+        fontSize: 11,
         color: modernColors.textSecondary,
         lineHeight: 20, // ✅ AJOUTÉ: Hauteur de ligne
     },
@@ -2939,6 +3084,12 @@ const styles = StyleSheet.create({
         color: modernColors.textSecondary,
         textAlign: 'center',
         marginTop: 4,
+    },
+    brandYuk: {
+        color: '#3B82F6', // Bleu (cohérent avec le logo officiel)
+    },
+    brandPo: {
+        color: '#7C3AED', // Violet (cohérent avec le logo officiel)
     },
 });
 

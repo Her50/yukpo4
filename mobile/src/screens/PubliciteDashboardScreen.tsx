@@ -1,9 +1,10 @@
 // @ts-nocheck
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
+    Alert,
     Dimensions,
     RefreshControl,
     ScrollView,
@@ -14,14 +15,14 @@ import {
 } from 'react-native';
 import AdvancedAnalyticsChart from '../components/AdvancedAnalyticsChart';
 import { ExportButton } from '../components/ExportButton';
-import { NativeCard } from '../components/SafeNativeDesign';
 import NavigatorToolbar from '../components/NavigatorToolbar';
 import OptimizationSuggestions from '../components/OptimizationSuggestions';
 import PubliciteVersionHistory from '../components/PubliciteVersionHistory';
 import SafeIcon from '../components/SafeIcon';
+import { NativeCard } from '../components/SafeNativeDesign';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguageSafe } from '../contexts/LanguageContext';
-import { apiGet } from '../services/api';
+import { apiGet, apiPost } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 
 const { width } = Dimensions.get('window');
@@ -29,7 +30,7 @@ const { width } = Dimensions.get('window');
 interface PubliciteStats {
     id: string | number;
     titre: string;
-    status: 'active' | 'expired' | 'pending';
+    status: 'active' | 'expired' | 'pending' | 'paused' | 'deleted';
     vues: number;
     clics: number;
     conversion_rate: number;
@@ -89,8 +90,8 @@ const PubliciteDashboardScreen: React.FC = () => {
     const loadDashboard = async () => {
         try {
             setLoading(true);
-
-            const response = await apiGet('/api/publicites/dashboard');
+            const userId = user?.id || '0';
+            const response = await apiGet(`/api/publicites/dashboard?user_id=${userId}`);
 
             if (response.success && response.data) {
                 const statsPayload = response.data.stats || {};
@@ -125,6 +126,57 @@ const PubliciteDashboardScreen: React.FC = () => {
         setRefreshing(false);
     };
 
+    const handlePause = useCallback(async (pubId: number | string) => {
+        Alert.alert('Mettre en pause', 'Voulez-vous mettre cette publicité en pause ?', [
+            { text: 'Annuler', style: 'cancel' },
+            {
+                text: 'Confirmer', onPress: async () => {
+                    try {
+                        const res = await apiPost(`/api/publicites/${pubId}/pause`, {});
+                        if (res?.success || res?.data?.success) {
+                            loadDashboard();
+                        } else {
+                            Alert.alert('Erreur', res?.data?.error || 'Impossible de mettre en pause');
+                        }
+                    } catch (e) { Alert.alert('Erreur', 'Erreur réseau'); }
+                }
+            }
+        ]);
+    }, []);
+
+    const handleResume = useCallback(async (pubId: number | string) => {
+        try {
+            const res = await apiPost(`/api/publicites/${pubId}/resume`, {});
+            if (res?.success || res?.data?.success) {
+                loadDashboard();
+            } else {
+                Alert.alert('Erreur', res?.data?.error || 'Impossible de reprendre');
+            }
+        } catch (e) { Alert.alert('Erreur', 'Erreur réseau'); }
+    }, []);
+
+    const handleDelete = useCallback(async (pubId: number | string) => {
+        Alert.alert(
+            'Supprimer la publicité',
+            'Cette action est irréversible. Un remboursement partiel (50%) sera effectué. Continuer ?',
+            [
+                { text: 'Annuler', style: 'cancel' },
+                {
+                    text: 'Supprimer', style: 'destructive', onPress: async () => {
+                        try {
+                            const res = await apiPost(`/api/publicites/${pubId}/delete`, {});
+                            if (res?.success || res?.data?.success) {
+                                loadDashboard();
+                            } else {
+                                Alert.alert('Erreur', res?.data?.error || 'Impossible de supprimer');
+                            }
+                        } catch (e) { Alert.alert('Erreur', 'Erreur réseau'); }
+                    }
+                }
+            ]
+        );
+    }, []);
+
     const getStatusColor = (status: string): string => {
         switch (status) {
             case 'active':
@@ -133,6 +185,8 @@ const PubliciteDashboardScreen: React.FC = () => {
                 return '#EF4444';
             case 'pending':
                 return '#F59E0B';
+            case 'paused':
+                return '#6B7280';
             default:
                 return modernColors.textSecondary;
         }
@@ -146,6 +200,8 @@ const PubliciteDashboardScreen: React.FC = () => {
                 return t('publicite.expired');
             case 'pending':
                 return 'En attente';
+            case 'paused':
+                return 'En pause';
             default:
                 return status;
         }
@@ -451,43 +507,83 @@ const PubliciteDashboardScreen: React.FC = () => {
                                 </View>
 
                                 {/* Barre de progression */}
-                                {pub.status === 'active' && (
-                                    <View style={styles.progressContainer}>
-                                        <View style={styles.progressBar}>
-                                            <View
-                                                style={[
-                                                    styles.progressFill,
-                                                    { width: `${(pub.jours_restants / parseInt(pub.date_fin.split(' ')[0])) * 100}%` }
-                                                ]}
-                                            />
+                                {(pub.status === 'active' || pub.status === 'paused') && pub.jours_restants > 0 && (() => {
+                                    // Calcul sûr: durée totale depuis date_debut à date_fin
+                                    let progressPct = 50;
+                                    try {
+                                        if (pub.date_debut && pub.date_fin) {
+                                            const start = new Date(pub.date_debut).getTime();
+                                            const end = new Date(pub.date_fin).getTime();
+                                            const now = Date.now();
+                                            const total = end - start;
+                                            if (total > 0) {
+                                                const remaining = Math.max(0, end - now);
+                                                progressPct = Math.min(100, Math.max(0, ((total - remaining) / total) * 100));
+                                            }
+                                        }
+                                    } catch { /* fallback */ }
+                                    return (
+                                        <View style={styles.progressContainer}>
+                                            <View style={styles.progressBar}>
+                                                <View style={[styles.progressFill, { width: `${progressPct}%` }]} />
+                                            </View>
                                         </View>
-                                    </View>
-                                )}
+                                    );
+                                })()}
 
-                                {/* ✅ Boutons d'action */}
+                                {/* Boutons d'action */}
                                 <View style={styles.publiciteActions}>
+                                    {/* Pause / Reprendre */}
+                                    {pub.status === 'active' && (
+                                        <TouchableOpacity
+                                            style={[styles.actionBtn, { backgroundColor: '#FEF3C7', borderColor: '#F59E0B' }]}
+                                            onPress={() => handlePause(pub.id)}
+                                        >
+                                            <SafeIcon name="pause" size={12} color="#F59E0B" />
+                                            <Text style={[styles.actionBtnText, { color: '#F59E0B' }]}>Pause</Text>
+                                        </TouchableOpacity>
+                                    )}
+                                    {pub.status === 'paused' && (
+                                        <TouchableOpacity
+                                            style={[styles.actionBtn, { backgroundColor: '#D1FAE5', borderColor: '#10B981' }]}
+                                            onPress={() => handleResume(pub.id)}
+                                        >
+                                            <SafeIcon name="play" size={12} color="#10B981" />
+                                            <Text style={[styles.actionBtnText, { color: '#10B981' }]}>Reprise</Text>
+                                        </TouchableOpacity>
+                                    )}
+                                    {/* Relancer si expiré */}
                                     {pub.status === 'expired' && (
                                         <TouchableOpacity
                                             style={styles.relanceButton}
                                             onPress={() => (navigation as any).navigate('CreatePublicite', { relanceId: pub.id })}
                                         >
-                                            <SafeIcon name="refresh-cw" size={16} color="#fff" />
+                                            <SafeIcon name="refresh-cw" size={12} color="#fff" />
                                             <Text style={styles.relanceButtonText}>Relancer</Text>
                                         </TouchableOpacity>
                                     )}
+                                    {/* Modifier */}
                                     <TouchableOpacity
                                         style={styles.modifyButton}
                                         onPress={() => (navigation as any).navigate('CreatePublicite', { publiciteId: pub.id })}
                                     >
-                                        <SafeIcon name="edit" size={16} color="#6366F1" />
-                                        <Text style={styles.modifyButtonText}>Modifier</Text>
+                                        <SafeIcon name="edit" size={12} color="#6366F1" />
+                                        <Text style={styles.modifyButtonText}>Éditer</Text>
                                     </TouchableOpacity>
+                                    {/* Historique */}
                                     <TouchableOpacity
                                         style={styles.historyButton}
-                                        onPress={() => setSelectedPubliciteForHistory(selectedPubliciteForHistory === parseInt(pub.id) ? null : parseInt(pub.id))}
+                                        onPress={() => setSelectedPubliciteForHistory(selectedPubliciteForHistory === parseInt(String(pub.id)) ? null : parseInt(String(pub.id)))}
                                     >
-                                        <SafeIcon name="history" size={16} color="#8B5CF6" />
-                                        <Text style={styles.historyButtonText}>Historique</Text>
+                                        <SafeIcon name="clock" size={12} color="#8B5CF6" />
+                                        <Text style={styles.historyButtonText}>Histo.</Text>
+                                    </TouchableOpacity>
+                                    {/* Supprimer */}
+                                    <TouchableOpacity
+                                        style={[styles.actionBtn, { backgroundColor: '#FEE2E2', borderColor: '#EF4444' }]}
+                                        onPress={() => handleDelete(pub.id)}
+                                    >
+                                        <SafeIcon name="trash-2" size={12} color="#EF4444" />
                                     </TouchableOpacity>
                                 </View>
 
@@ -825,58 +921,73 @@ const styles = StyleSheet.create({
     },
     publiciteActions: {
         flexDirection: 'row',
-        gap: 8,
+        gap: 6,
         marginTop: 12,
         paddingTop: 12,
         borderTopWidth: 1,
         borderTopColor: modernColors.border,
+        alignItems: 'center',
     },
-    relanceButton: {
-        flex: 1,
+    actionBtn: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 6,
-        paddingVertical: 10,
+        gap: 3,
+        paddingVertical: 7,
+        paddingHorizontal: 8,
+        borderRadius: 8,
+        borderWidth: 1,
+    },
+    actionBtnText: {
+        fontSize: 11,
+        fontWeight: '600',
+    },
+    relanceButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 3,
+        paddingVertical: 7,
+        paddingHorizontal: 10,
         borderRadius: 8,
         backgroundColor: modernColors.primary,
     },
     relanceButtonText: {
-        fontSize: 13,
+        fontSize: 11,
         fontWeight: '600',
         color: '#fff',
     },
     modifyButton: {
-        flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 6,
-        paddingVertical: 10,
+        gap: 3,
+        paddingVertical: 7,
+        paddingHorizontal: 10,
         borderRadius: 8,
         backgroundColor: modernColors.surface,
         borderWidth: 1,
         borderColor: modernColors.primary,
     },
     modifyButtonText: {
-        fontSize: 13,
+        fontSize: 11,
         fontWeight: '600',
         color: modernColors.primary,
     },
     historyButton: {
-        flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 6,
-        paddingVertical: 10,
+        gap: 3,
+        paddingVertical: 7,
+        paddingHorizontal: 10,
         borderRadius: 8,
         backgroundColor: '#F3F4F6',
         borderWidth: 1,
         borderColor: '#8B5CF6',
     },
     historyButtonText: {
-        fontSize: 13,
+        fontSize: 11,
         fontWeight: '600',
         color: '#8B5CF6',
     },

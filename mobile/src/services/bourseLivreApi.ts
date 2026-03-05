@@ -97,7 +97,8 @@ export const bourseLivreApi = {
             '/api/bourse-livre/ai/recommendations',
             request
         );
-        return response.recommendation || response;
+        const r = response.data as any;
+        return r?.recommendation || r;
     },
 
     // Matching IA
@@ -106,10 +107,12 @@ export const bourseLivreApi = {
             '/api/bourse-livre/ai/matching',
             request
         );
-        return response.matching || response;
+        const r = response.data as any;
+        return r?.matching || r;
     },
 
     // Suggestions prix
+    // ✅ FIX: URL corrigée /ai/price-suggestions (pas /price-suggestions)
     getPriceSuggestions: async (request: PriceSuggestionRequest): Promise<PriceSuggestionResponse> => {
         const params = new URLSearchParams();
         Object.entries(request).forEach(([key, value]) => {
@@ -118,9 +121,10 @@ export const bourseLivreApi = {
             }
         });
         const response = await apiGet<PriceSuggestionResponse>(
-            `/api/bourse-livre/price-suggestions?${params.toString()}`
+            `/api/bourse-livre/ai/price-suggestions?${params.toString()}`
         );
-        return response.suggestion || response;
+        const r = response.data as any;
+        return r?.suggestion || r;
     },
 
     // Mes échanges
@@ -129,7 +133,8 @@ export const bourseLivreApi = {
         const response = await apiGet<{ exchanges: BookExchange[] }>(
             `/api/bourse-livre/my-exchanges${params}`
         );
-        return response.exchanges || [];
+        const r = response.data as any;
+        return r?.exchanges || [];
     },
 
     // Analytics
@@ -138,7 +143,8 @@ export const bourseLivreApi = {
         const response = await apiGet<{ analytics: BookAnalytics | BookAnalytics[] }>(
             `/api/bourse-livre/analytics${params}`
         );
-        return response.analytics || [];
+        const r = response.data as any;
+        return r?.analytics || [];
     },
 };
 

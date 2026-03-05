@@ -30,7 +30,7 @@ interface ServiceType {
     color: string;
     count: number;
     route: string;
-    category: 'sante' | 'transport' | 'education' | 'emploi';
+    category: 'sante' | 'transport' | 'education' | 'emploi' | 'immobilier' | 'vie_pratique' | 'assurance';
 }
 
 interface ServicesStatistics {
@@ -160,6 +160,24 @@ const SpecializedServicesHubScreen: React.FC = () => {
             category: 'transport',
         },
         {
+            id: 'hotel',
+            name: 'Hôtel',
+            icon: 'Building',
+            color: '#1E3A5F',
+            count: statistics?.by_type?.hotel || 0,
+            route: 'HotelDashboard',
+            category: 'immobilier',
+        },
+        {
+            id: 'meuble',
+            name: 'Meublé',
+            icon: 'Home',
+            color: '#8B5CF6',
+            count: statistics?.by_type?.meuble || 0,
+            route: 'HotelDashboard',
+            category: 'immobilier',
+        },
+        {
             id: 'automobile',
             name: 'Automobile',
             icon: 'Car',
@@ -217,6 +235,7 @@ const SpecializedServicesHubScreen: React.FC = () => {
 
     const santeTypes = serviceTypes.filter((t) => t.category === 'sante');
     const transportTypes = serviceTypes.filter((t) => t.category === 'transport');
+    const immobilierTypes = serviceTypes.filter((t) => t.category === 'immobilier');
     const viePratiqueTypes = serviceTypes.filter((t) => t.category === 'vie_pratique' || t.category === 'education');
     const emploiTypes = serviceTypes.filter((t) => t.category === 'emploi');
     const assuranceTypes = serviceTypes.filter((t) => t.category === 'assurance');
@@ -358,6 +377,52 @@ const SpecializedServicesHubScreen: React.FC = () => {
                     })}
                 </View>
             </View>
+
+            {/* Accès rapide par type - Immobilier / Hébergement */}
+            {immobilierTypes.length > 0 && (
+                <View style={styles.section}>
+                    <View style={styles.sectionHeader}>
+                        <View style={styles.sectionHeaderLeft}>
+                            <SafeIcon name="Building" size={20} color="#1E3A5F" type="lucide" />
+                            <Text style={styles.sectionTitle}>Hébergement</Text>
+                        </View>
+                    </View>
+                    <View style={styles.quickAccessGrid}>
+                        {immobilierTypes.map((type) => {
+                            return (
+                                <View key={type.id} style={[styles.quickAccessCard, { borderLeftColor: type.color }]}>
+                                    <TouchableOpacity
+                                        style={styles.quickAccessCardContent}
+                                        onPress={() => {
+                                            (navigation as any).navigate(type.route);
+                                        }}
+                                    >
+                                        <View
+                                            style={[
+                                                styles.iconContainer,
+                                                { backgroundColor: type.color + '15' },
+                                            ]}
+                                        >
+                                            <SafeIcon
+                                                name={type.icon}
+                                                size={24}
+                                                color={type.color}
+                                                type="lucide"
+                                            />
+                                        </View>
+                                        <Text style={styles.quickAccessName}>{type.name}</Text>
+                                        {type.count > 0 && (
+                                            <Text style={styles.quickAccessCount}>
+                                                {String(type.count)} service{type.count > 1 ? 's' : ''}
+                                            </Text>
+                                        )}
+                                    </TouchableOpacity>
+                                </View>
+                            );
+                        })}
+                    </View>
+                </View>
+            )}
 
             {/* Accès rapide par type - Vie pratique */}
             {viePratiqueTypes.length > 0 && (

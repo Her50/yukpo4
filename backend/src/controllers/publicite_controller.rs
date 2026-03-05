@@ -216,11 +216,7 @@ pub async fn create_publicite(
         payload.user_id
     );
 
-    // Valider les données
-    if payload.produits_indexes.is_empty() {
-        return Err(StatusCode::BAD_REQUEST);
-    }
-
+    // Valider les données (produits_indexes est optionnel côté mobile)
     if payload.titre.is_empty() {
         return Err(StatusCode::BAD_REQUEST);
     }
@@ -855,7 +851,7 @@ pub async fn get_publicite_dashboard(
             COALESCE(SUM(cout), 0) as budget_total,
             COUNT(CASE WHEN status = 'active' THEN 1 END) as actives
         FROM publicites
-        WHERE user_id = $1
+        WHERE user_id = $1 AND status != 'deleted'
         "#,
     )
     .bind(user_id)
@@ -892,7 +888,7 @@ pub async fn get_publicite_dashboard(
             EXTRACT(DAY FROM (date_fin - NOW()))::integer as jours_restants,
             videos_meta, video_stats
         FROM publicites
-        WHERE user_id = $1
+        WHERE user_id = $1 AND status != 'deleted'
         ORDER BY created_at DESC
         "#,
     )
@@ -916,6 +912,10 @@ pub async fn get_publicite_dashboard(
             0.0
         };
 
+        let date_debut_val: Option<chrono::DateTime<chrono::Utc>> =
+            row.get::<Option<chrono::DateTime<chrono::Utc>>, _>("date_debut");
+        let date_fin_val: Option<chrono::DateTime<chrono::Utc>> =
+            row.get::<Option<chrono::DateTime<chrono::Utc>>, _>("date_fin");
         let produits_indexes: Vec<String> =
             row.get::<Option<Vec<String>>, _>("produits_indexes").unwrap_or_default();
         let video_stats_value: Value =
@@ -971,8 +971,8 @@ pub async fn get_publicite_dashboard(
             jours_restants: row.get::<Option<i32>, _>("jours_restants").unwrap_or(0) as i64,
             zone_geographique: row.get::<String, _>("zone_geographique"),
             produits_count: produits_indexes.len() as i32,
-            date_debut: "".to_string(),
-            date_fin: "".to_string(),
+            date_debut: date_debut_val.map(|d| d.to_rfc3339()).unwrap_or_default(),
+            date_fin: date_fin_val.map(|d| d.to_rfc3339()).unwrap_or_default(),
             produits: vec![],
             videos_meta,
             video_stats: video_stats_value,
@@ -1912,17 +1912,49 @@ pub async fn get_publicite_by_id(
     let pool = &state.pg;
     log::info!("🔍 [Publicité] Récupération publicité ID {}", id);
 
-    let row = sqlx::query("SELECT * FROM publicites WHERE id = $1")
-        .bind(id)
-        .fetch_optional(pool)
-        .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let row = sqlx::query(
+        r#"SELECT id, user_id, titre, description, produits_indexes, videos_meta, video_stats,
+           duree_jours, cout, zone_geographique, status, vues, clics, impressions,
+           targeting, ab_testing, schedule, placements, bid_strategy, retargeting,
+           date_debut, date_fin, created_at
+        FROM publicites WHERE id = $1"#,
+    )
+    .bind(id)
+    .fetch_optional(pool)
+    .await
+    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     match row {
-        Some(r) => Ok(Json(serde_json::json!({
-            "id": r.get::<i32, _>("id"),
-            "titre": r.get::<String, _>("titre"),
-        }))),
+        Some(r) => {
+            let date_debut: Option<chrono::DateTime<chrono::Utc>> = r.get("date_debut");
+            let date_fin: Option<chrono::DateTime<chrono::Utc>> = r.get("date_fin");
+            let created_at: Option<chrono::DateTime<chrono::Utc>> = r.get("created_at");
+            Ok(Json(serde_json::json!({
+                "id": r.get::<i32, _>("id"),
+                "user_id": r.get::<i32, _>("user_id"),
+                "titre": r.get::<String, _>("titre"),
+                "description": r.get::<Option<String>, _>("description"),
+                "produits_indexes": r.get::<Option<Vec<String>>, _>("produits_indexes").unwrap_or_default(),
+                "duree_jours": r.get::<Option<i32>, _>("duree_jours").unwrap_or(0),
+                "cout": r.get::<Option<i32>, _>("cout").unwrap_or(0),
+                "zone_geographique": r.get::<String, _>("zone_geographique"),
+                "status": r.get::<String, _>("status"),
+                "vues": r.get::<Option<i32>, _>("vues").unwrap_or(0),
+                "clics": r.get::<Option<i32>, _>("clics").unwrap_or(0),
+                "impressions": r.get::<Option<i32>, _>("impressions").unwrap_or(0),
+                "videos_meta": r.get::<Option<Value>, _>("videos_meta").unwrap_or_else(|| json!([])),
+                "video_stats": r.get::<Option<Value>, _>("video_stats").unwrap_or_else(|| json!({})),
+                "targeting": r.get::<Option<Value>, _>("targeting").unwrap_or_else(|| json!({})),
+                "ab_testing": r.get::<Option<Value>, _>("ab_testing").unwrap_or_else(|| json!({})),
+                "schedule": r.get::<Option<Value>, _>("schedule"),
+                "placements": r.get::<Option<Value>, _>("placements").unwrap_or_else(|| json!([])),
+                "bid_strategy": r.get::<Option<Value>, _>("bid_strategy").unwrap_or_else(|| json!({})),
+                "retargeting": r.get::<Option<Value>, _>("retargeting").unwrap_or_else(|| json!({})),
+                "date_debut": date_debut.map(|d| d.to_rfc3339()),
+                "date_fin": date_fin.map(|d| d.to_rfc3339()),
+                "created_at": created_at.map(|d| d.to_rfc3339()),
+            })))
+        }
         None => Err(StatusCode::NOT_FOUND),
     }
 }
@@ -1935,24 +1967,165 @@ pub async fn update_publicite(
     let pool = &state.pg;
     log::info!("✏️ [Publicité] Mise à jour publicité ID {}", id);
 
+    let videos_meta_json = serde_json::to_value(&payload.videos_meta).unwrap_or_else(|_| json!([]));
+    let targeting_json = serde_json::to_value(&payload.targeting).unwrap_or_else(|_| json!({}));
+    let ab_testing_json = serde_json::to_value(&payload.ab_testing).unwrap_or_else(|_| json!({}));
+    let schedule_json = serde_json::to_value(&payload.schedule).unwrap_or_else(|_| json!(null));
+    let placements_json = serde_json::to_value(&payload.placements).unwrap_or_else(|_| json!([]));
+    let bid_strategy_json =
+        serde_json::to_value(&payload.bid_strategy).unwrap_or_else(|_| json!({}));
+    let retargeting_json = serde_json::to_value(&payload.retargeting).unwrap_or_else(|_| json!({}));
+
+    // Sauvegarder une version avant la mise à jour
+    let _ = crate::services::publicite_versioning_service::create_manual_version(
+        pool,
+        id,
+        payload.user_id,
+        Some("Mise à jour manuelle".to_string()),
+    )
+    .await;
+
     sqlx::query(
         r#"
         UPDATE publicites
-        SET titre = $2, description = $3
+        SET titre = $2, description = $3, produits_indexes = $4,
+            duree_jours = $5, zone_geographique = $6,
+            videos_meta = $7, targeting = $8, ab_testing = $9,
+            schedule = $10, placements = $11, bid_strategy = $12, retargeting = $13,
+            date_fin = date_debut + ($5 || ' days')::interval,
+            updated_at = NOW()
         WHERE id = $1
         "#,
     )
     .bind(id)
     .bind(&payload.titre)
     .bind(&payload.description)
+    .bind(&payload.produits_indexes)
+    .bind(payload.duree_jours)
+    .bind(&payload.zone_geographique)
+    .bind(videos_meta_json)
+    .bind(targeting_json)
+    .bind(ab_testing_json)
+    .bind(schedule_json)
+    .bind(placements_json)
+    .bind(bid_strategy_json)
+    .bind(retargeting_json)
     .execute(pool)
     .await
-    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    .map_err(|e| {
+        log::error!("Erreur mise à jour publicité: {:?}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
 
     Ok(Json(serde_json::json!({
-            "success": true,
-        "message": "Publicité mise à jour"
+        "success": true,
+        "message": "Publicité mise à jour avec succès"
     })))
+}
+
+/// Mettre en pause une publicité
+pub async fn pause_publicite(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<i32>,
+) -> Result<Json<serde_json::Value>, StatusCode> {
+    let pool = &state.pg;
+    log::info!("⏸️ [Publicité] Pause publicité ID {}", id);
+
+    let result = sqlx::query(
+        "UPDATE publicites SET status = 'paused', updated_at = NOW() WHERE id = $1 AND status = 'active' RETURNING id"
+    )
+    .bind(id)
+    .fetch_optional(pool)
+    .await
+    .map_err(|e| {
+        log::error!("Erreur pause publicité: {:?}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    match result {
+        Some(_) => Ok(Json(
+            json!({ "success": true, "message": "Publicité mise en pause" }),
+        )),
+        None => Ok(Json(
+            json!({ "success": false, "error": "Publicité introuvable ou déjà en pause" }),
+        )),
+    }
+}
+
+/// Reprendre une publicité en pause
+pub async fn resume_publicite(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<i32>,
+) -> Result<Json<serde_json::Value>, StatusCode> {
+    let pool = &state.pg;
+    log::info!("▶️ [Publicité] Reprise publicité ID {}", id);
+
+    let result = sqlx::query(
+        "UPDATE publicites SET status = 'active', updated_at = NOW() WHERE id = $1 AND status = 'paused' RETURNING id"
+    )
+    .bind(id)
+    .fetch_optional(pool)
+    .await
+    .map_err(|e| {
+        log::error!("Erreur reprise publicité: {:?}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    match result {
+        Some(_) => Ok(Json(
+            json!({ "success": true, "message": "Publicité réactivée" }),
+        )),
+        None => Ok(Json(
+            json!({ "success": false, "error": "Publicité introuvable ou non en pause" }),
+        )),
+    }
+}
+
+/// Supprimer une publicité (soft delete via status = 'deleted')
+pub async fn delete_publicite(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<i32>,
+) -> Result<Json<serde_json::Value>, StatusCode> {
+    let pool = &state.pg;
+    log::info!("🗑️ [Publicité] Suppression publicité ID {}", id);
+
+    let result = sqlx::query(
+        "UPDATE publicites SET status = 'deleted', updated_at = NOW() WHERE id = $1 AND status != 'deleted' RETURNING id, cout"
+    )
+    .bind(id)
+    .fetch_optional(pool)
+    .await
+    .map_err(|e| {
+        log::error!("Erreur suppression publicité: {:?}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    match result {
+        Some(row) => {
+            // Rembourser le coût restant proportionnellement
+            let cout: i32 = row.get::<Option<i32>, _>("cout").unwrap_or(0);
+            if cout > 0 {
+                // Rembourser 50% du coût (politique de remboursement partiel)
+                let refund = cout / 2;
+                let _ = sqlx::query("UPDATE users SET tokens_balance = tokens_balance + $1 WHERE id = (SELECT user_id FROM publicites WHERE id = $2)")
+                    .bind(refund as i64)
+                    .bind(id)
+                    .execute(pool)
+                    .await;
+                log::info!(
+                    "💰 Remboursement partiel: {} FCFA pour publicité {}",
+                    refund,
+                    id
+                );
+            }
+            Ok(Json(
+                json!({ "success": true, "message": "Publicité supprimée" }),
+            ))
+        }
+        None => Ok(Json(
+            json!({ "success": false, "error": "Publicité introuvable ou déjà supprimée" }),
+        )),
+    }
 }
 
 fn bump_counter(stats: &mut Value, category: &str, key: &str) {

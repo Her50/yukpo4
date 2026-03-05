@@ -33,6 +33,9 @@ interface BusTicket {
     arrival_city: string;
     departure_date: string;
     departure_time: string;
+    return_date?: string;
+    return_time?: string;
+    is_round_trip?: boolean;
     ticket_price: number;
     number_of_tickets: number;
     total_amount: number;
@@ -198,11 +201,22 @@ const MyBusTicketsScreen: React.FC = () => {
                     </View>
                 </View>
 
-                {/* Date */}
+                {/* Date + round-trip badge */}
                 <View style={styles.dateRow}>
                     <SafeIcon name="calendar" size={14} color="#6B7280" />
                     <Text style={styles.dateText}>{formatDate(ticket.departure_date)}</Text>
+                    {(ticket.is_round_trip || ticket.return_date) && (
+                        <View style={{ backgroundColor: '#DBEAFE', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, marginLeft: 8 }}>
+                            <Text style={{ fontSize: 11, color: '#1D4ED8', fontWeight: '600' }}>Aller-Retour</Text>
+                        </View>
+                    )}
                 </View>
+                {ticket.return_date && (
+                    <View style={[styles.dateRow, { marginTop: 4 }]}>
+                        <SafeIcon name="rotate-ccw" size={14} color="#2563EB" type="lucide" />
+                        <Text style={[styles.dateText, { color: '#2563EB' }]}>Retour: {formatDate(ticket.return_date)}{ticket.return_time ? ` à ${ticket.return_time.substring(0, 5)}` : ''}</Text>
+                    </View>
+                )}
 
                 {/* Détails */}
                 <View style={styles.detailsRow}>
@@ -246,8 +260,27 @@ const MyBusTicketsScreen: React.FC = () => {
                         <TouchableOpacity
                             style={styles.actionButton}
                             onPress={() => {
-                                // TODO: Afficher QR code pour validation
-                                Alert.alert('QR Code', 'Fonctionnalité à venir');
+                                const qrData = JSON.stringify({
+                                    type: 'bus_ticket',
+                                    payment_id: ticket.payment_id,
+                                    product_id: ticket.product_id,
+                                    reservation_ids: ticket.reservation_ids,
+                                    departure_city: ticket.departure_city,
+                                    arrival_city: ticket.arrival_city,
+                                    departure_date: ticket.departure_date,
+                                    number_of_tickets: ticket.number_of_tickets,
+                                });
+                                (navigation as any).navigate('BusTicketQR', {
+                                    qrData,
+                                    ticketInfo: {
+                                        departure_city: ticket.departure_city,
+                                        arrival_city: ticket.arrival_city,
+                                        departure_date: ticket.departure_date,
+                                        departure_time: ticket.departure_time,
+                                        number_of_tickets: ticket.number_of_tickets,
+                                        bus_number: ticket.bus_number,
+                                    },
+                                });
                             }}
                         >
                             <SafeIcon name="qr-code" size={16} color={modernColors.primary} />

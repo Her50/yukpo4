@@ -26,6 +26,7 @@ interface SettingsSection {
 }
 
 const EnhancedSettingsScreen: React.FC = () => {
+    const navigation = useNavigation();
     const { user, updateUser } = useAuth();
     const [currentScreen, setCurrentScreen] = useState('main');
     const [loading, setLoading] = useState(false);
@@ -207,6 +208,23 @@ const EnhancedSettingsScreen: React.FC = () => {
             <View style={styles.header}>
                 <Text style={styles.headerTitle}>Paramètres</Text>
                 <Text style={styles.headerSubtitle}>Personnalisez votre expérience</Text>
+            </View>
+
+            {/* Raccourci Mes Suivis */}
+            <View style={styles.sectionsContainer}>
+                <TouchableOpacity
+                    style={[styles.sectionCard, { borderLeftWidth: 3, borderLeftColor: '#FF2D55' }]}
+                    onPress={() => (navigation as any).navigate('MesSuivis')}
+                >
+                    <View style={[styles.sectionIcon, { backgroundColor: '#FF2D55' }]}>
+                        <Text style={styles.sectionIconText}>❤️</Text>
+                    </View>
+                    <View style={styles.sectionContent}>
+                        <Text style={styles.sectionTitle}>Mes Suivis</Text>
+                        <Text style={styles.sectionDescription}>Vendeurs et prestataires que vous suivez</Text>
+                    </View>
+                    <Text style={styles.sectionArrow}>›</Text>
+                </TouchableOpacity>
             </View>
 
             {/* Sections */}

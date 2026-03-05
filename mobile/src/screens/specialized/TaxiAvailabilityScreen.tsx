@@ -12,8 +12,8 @@ import {
     View
 } from 'react-native';
 import ModernGPSModal from '../../components/ModernGPSModal';
-import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { apiGet, apiPost } from '../../services/api';
@@ -57,8 +57,9 @@ const TaxiAvailabilityScreen: React.FC = () => {
             setLoading(true);
             const response = await apiGet(`/api/taxis/${params.taxiId}`);
 
-            if (response.success && response.data) {
-                const taxiData = response.data;
+            const r = response.data as any;
+            if (response.success && r) {
+                const taxiData = r;
                 setTaxi(taxiData);
                 setIsAvailableNow(taxiData.is_available_now || false);
 

@@ -96,10 +96,11 @@ const LivreScolaireFormScreen: React.FC = () => {
     const loadLivreData = async () => {
         try {
             setLoading(true);
-            const response = await apiGet(`/api/livres-scolaires/${livreId}`);
+            const response = await apiGet(`/api/bourse-livre/${livreId}`);
 
-            if (response.success && response.data?.livre) {
-                const livre = response.data.livre;
+            const r = response.data as any;
+            if (response.success && r?.livre) {
+                const livre = r.livre;
                 setFormData({
                     titre: livre.titre || '',
                     auteur: livre.auteur || '',
@@ -283,8 +284,9 @@ const LivreScolaireFormScreen: React.FC = () => {
                     location?.coords?.latitude,
                     location?.coords?.longitude
                 );
-                if (response.success && response.data?.book_info) {
-                    return response.data.book_info as BookImageAnalysis;
+                const r = response.data as any;
+                if (response.success && r?.book_info) {
+                    return r.book_info as BookImageAnalysis;
                 }
                 return null;
             },
@@ -416,8 +418,9 @@ const LivreScolaireFormScreen: React.FC = () => {
                                 folder: 'livres-scolaires',
                             }
                         );
-                        if (uploadResponse.success && uploadResponse.data?.url) {
-                            imageUrls.push(uploadResponse.data.url);
+                        const ur = uploadResponse.data as any;
+                        if (uploadResponse.success && ur?.url) {
+                            imageUrls.push(ur.url);
                         }
                     }
                 } catch (uploadError: any) {
@@ -447,9 +450,9 @@ const LivreScolaireFormScreen: React.FC = () => {
 
             let response;
             if (mode === 'edit' && livreId) {
-                response = await apiPut(`/api/livres-scolaires/${livreId}`, payload);
+                response = await apiPut(`/api/bourse-livre/${livreId}`, payload);
             } else {
-                response = await apiPost('/api/livres-scolaires', payload);
+                response = await apiPost('/api/bourse-livre', payload);
             }
 
             if (response.success) {

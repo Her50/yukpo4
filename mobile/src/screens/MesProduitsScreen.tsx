@@ -1293,7 +1293,7 @@ const MesProduitsScreen: React.FC = () => {
             [
                 { text: 'Annuler', style: 'cancel' },
                 {
-                    text: 'Créer une publicité',
+                    text: 'Promouvoir ce produit',
                     onPress: () => {
                         navigation.navigate('CreatePublicite' as never, {
                             productId: product.id,
@@ -2190,39 +2190,39 @@ const MesProduitsScreen: React.FC = () => {
                         style={styles.iconButton}
                         onPress={() => handleShareProduct(product)}
                     >
-                        <SafeIcon name="share-2" size={20} color="#3B82F6" />
+                        <SafeIcon name="share-2" size={16} color="#3B82F6" />
                     </TouchableOpacity>
                     <TouchableOpacity
                         style={styles.iconButton}
                         onPress={() => handleDuplicateProduct(product)}
                     >
-                        <SafeIcon name="copy" size={20} color="#8B5CF6" />
+                        <SafeIcon name="copy" size={16} color="#8B5CF6" />
                     </TouchableOpacity>
                     <TouchableOpacity
                         style={styles.iconButton}
                         onPress={() => handleViewStats(product)}
                     >
-                        <SafeIcon name="bar-chart-2" size={20} color="#10B981" />
+                        <SafeIcon name="bar-chart-2" size={16} color="#10B981" />
                     </TouchableOpacity>
                     <TouchableOpacity
                         style={styles.iconButton}
                         onPress={() => handlePromoteProduct(product)}
                     >
-                        <SafeIcon name="trending-up" size={20} color="#F59E0B" />
+                        <SafeIcon name="trending-up" size={16} color="#F59E0B" />
                     </TouchableOpacity>
                     {/* ✅ NOUVEAU: Bouton configuration livraison par produit */}
                     <TouchableOpacity
                         style={styles.iconButton}
                         onPress={() => handleOpenDeliveryConfig(product)}
                     >
-                        <SafeIcon name="truck" size={20} color="#6366F1" />
+                        <SafeIcon name="truck" size={16} color="#6366F1" />
                     </TouchableOpacity>
                     {/* ✅ CORRECTION: Bouton suppression toujours visible */}
                     <TouchableOpacity
                         style={styles.iconButton}
                         onPress={() => handleDeleteProduct(product)}
                     >
-                        <SafeIcon name="trash-2" size={20} color="#EF4444" />
+                        <SafeIcon name="trash-2" size={16} color="#EF4444" />
                     </TouchableOpacity>
                 </View>
             </NativeCard>
@@ -2288,8 +2288,16 @@ const MesProduitsScreen: React.FC = () => {
             },
         },
         {
-            label: 'Créer une publicité',
+            label: 'Mes Publicités',
             icon: 'megaphone',
+            onPress: () => {
+                setShowMenuModal(false);
+                (navigation as any).navigate('PubliciteDashboard');
+            },
+        },
+        {
+            label: 'Nouvelle Publicité',
+            icon: 'plus-circle',
             onPress: () => {
                 setShowMenuModal(false);
                 (navigation as any).navigate('CreatePublicite');
@@ -3015,17 +3023,16 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-around',
         alignItems: 'center',
-        flexWrap: 'wrap',
         marginTop: 12,
         paddingTop: 12,
         borderTopWidth: 1,
         borderTopColor: '#E5E7EB',
-        gap: 8,
+        gap: 4,
     },
     iconButton: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
+        width: 34,
+        height: 34,
+        borderRadius: 17,
         backgroundColor: '#F3F4F6',
         alignItems: 'center',
         justifyContent: 'center',

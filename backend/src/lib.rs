@@ -54,7 +54,8 @@ use crate::routes::{
     extended_audio_routes::extended_audio_routes, // ✅ NOUVEAU Phase 2.2: Routes bibliothèque audio étendue
     feature_flags_routes::feature_flags_routes,   // ✅ NOUVEAU: Routes pour feature flags
     flash_promo_routes::flash_promo_routes, // ✅ NOUVEAU: Routes pour flash promotionnels de produits (gratuit)
-    generative_routes::generative_routes,   // ✅ NOUVEAU Phase 3.1: Routes pour génération vidéo IA
+    followers_routes::followers_routes, // ✅ NOUVEAU 2026-03-05: Routes pour système de suivi vendeurs
+    generative_routes::generative_routes, // ✅ NOUVEAU Phase 3.1: Routes pour génération vidéo IA
     global_promo_routes::global_promo_routes,
     health_routes::health_routes,
     // health_structure_routes::health_structure_routes, // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (mobile_routes)
@@ -324,6 +325,7 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
     let feature_flags = feature_flags_routes(state.clone()); // ✅ NOUVEAU: Routes pour feature flags (résout 404 mobile)
     let gpu = crate::routes::gpu_routes::gpu_routes(state.clone()); // ✅ NOUVEAU 2026-02-14: Routes pour gestion GPU GCP
     let hotel_management = hotel_room_management_routes(state.clone()); // ✅ 2026-03-01: Routes gestion hôtels/meublés (chambres, réservations, QR)
+    let followers = followers_routes(state.clone()); // ✅ NOUVEAU 2026-03-05: Routes pour système de suivi vendeurs
 
     let app = Router::new()
         .route("/healthz", get(healthz))
@@ -410,6 +412,7 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .merge(feature_flags) // ✅ NOUVEAU: Routes pour feature flags (résout 404 mobile)
         .merge(gpu) // ✅ NOUVEAU 2026-02-14: Routes pour gestion GPU GCP
         .merge(hotel_management) // ✅ 2026-03-01: Routes gestion hôtels/meublés (chambres, réservations, QR)
+        .merge(followers) // ✅ NOUVEAU 2026-03-05: Routes pour système de suivi vendeurs
         .merge(mobile_logs)
         .merge(navigation) // ✅ NOUVEAU: Routes navigation intelligente
         .merge(phone_verification) // ✅ NOUVEAU 2026-02-25: Routes vérification OTP téléphone

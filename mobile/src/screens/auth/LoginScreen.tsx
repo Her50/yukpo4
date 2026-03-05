@@ -1,27 +1,27 @@
 // @ts-nocheck
 // Écran de connexion ultra-moderne avec gradients et glassmorphism
 import { useNavigation } from '@react-navigation/native';
+import * as Google from 'expo-auth-session/providers/google';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Linking from 'expo-linking';
+import * as WebBrowser from 'expo-web-browser';
 import { CheckCircle, Envelope, Lock, WarningCircle } from 'phosphor-react-native';
 import * as React from 'react';
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Alert,
   Dimensions,
+  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
-  Platform
+  View
 } from 'react-native';
-import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import { Card, Paragraph, TextInput, Title } from 'react-native-paper';
+import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
+import { API_BASE_URL } from '../../config/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { modernColors, modernStyles, modernTheme } from '../../theme/modernTheme';
-import * as WebBrowser from 'expo-web-browser';
-import * as Google from 'expo-auth-session/providers/google';
-import * as Linking from 'expo-linking';
-import { API_BASE_URL } from '../../config/api';
 
 // Configuration WebBrowser pour OAuth
 WebBrowser.maybeCompleteAuthSession();
@@ -44,7 +44,7 @@ const LoginScreen: React.FC = () => {
   // Pour mobile, utilisez le client ID Android ou iOS selon la plateforme
   // ✅ CORRECTION ALIGNEMENT: Utiliser Linking.createURL() pour garantir l'alignement avec app.config.js
   const redirectUri = Linking.createURL('/');
-  
+
   const [googleRequest, googleResponse, googlePromptAsync] = Google.useAuthRequest({
     expoClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || '738929393617-4kt4e9ed1g79j70dng7epskqn7rkqnm2.apps.googleusercontent.com',
     iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
@@ -78,13 +78,13 @@ const LoginScreen: React.FC = () => {
       console.error('[LoginScreen] Code erreur:', googleResponse.error?.code);
       console.error('[LoginScreen] Message erreur:', googleResponse.error?.message);
       console.error('[LoginScreen] URL erreur:', googleResponse.error?.url);
-      
+
       // Messages d'erreur spécifiques selon le type d'erreur
       let errorMessage = 'Erreur de connexion Google. Veuillez réessayer.';
-      
-      if (googleResponse.error?.code === 'invalid_request' || 
-          googleResponse.error?.message?.includes('Custom URI scheme') ||
-          googleResponse.error?.message?.includes('invalid_request')) {
+
+      if (googleResponse.error?.code === 'invalid_request' ||
+        googleResponse.error?.message?.includes('Custom URI scheme') ||
+        googleResponse.error?.message?.includes('invalid_request')) {
         errorMessage = 'Configuration OAuth manquante. Le schéma URI personnalisé n\'est pas activé pour Android.\n\n' +
           'URI utilisée: ' + (googleRequest?.redirectUri || 'non définie') + '\n\n' +
           'Veuillez consulter le guide: mobile/GUIDE_FIX_GOOGLE_OAUTH_ANDROID.md';
@@ -93,7 +93,7 @@ const LoginScreen: React.FC = () => {
       } else if (googleResponse.error?.code === 'popup_closed') {
         errorMessage = 'La fenêtre de connexion a été fermée.';
       }
-      
+
       setError(errorMessage);
       setFormLoading(false);
     }
@@ -118,10 +118,10 @@ const LoginScreen: React.FC = () => {
           const { jwtDecode } = await import('../../utils/jwtDecode');
           const SafeStorage = (await import('../../utils/safeStorage')).default;
           await SafeStorage.setItem('auth_token', data.token);
-          
+
           // Décoder le token pour obtenir les informations utilisateur
           const decoded = jwtDecode(data.token);
-          
+
           // Mettre à jour le contexte d'authentification
           updateUser({
             id: String(decoded.sub),
@@ -131,7 +131,7 @@ const LoginScreen: React.FC = () => {
             credits: decoded.tokens_balance ?? 0,
             role: decoded.role || 'user',
           });
-          
+
           Alert.alert('Succès', `Bienvenue ! Vous êtes connecté avec Google.`);
         } else {
           throw new Error('Token non reçu du serveur');
@@ -154,7 +154,7 @@ const LoginScreen: React.FC = () => {
     try {
       setFormLoading(true);
       setError(null);
-      
+
       // Vérifier que le Client ID Android est configuré sur Android
       if (Platform.OS === 'android' && !process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID) {
         const errorMsg = 'Configuration OAuth Android manquante.\n\n' +
@@ -165,17 +165,17 @@ const LoginScreen: React.FC = () => {
         setFormLoading(false);
         return;
       }
-      
+
       await googlePromptAsync();
     } catch (error: any) {
       console.error('[LoginScreen] Erreur lors du lancement Google OAuth:', error);
       let errorMessage = 'Impossible de lancer la connexion Google. Veuillez réessayer.';
-      
+
       if (error?.message?.includes('Custom URI scheme') || error?.message?.includes('invalid_request')) {
         errorMessage = 'Configuration OAuth manquante. Le schéma URI personnalisé n\'est pas activé pour Android.\n\n' +
           'Veuillez consulter le guide: mobile/GUIDE_FIX_GOOGLE_OAUTH_ANDROID.md';
       }
-      
+
       setError(errorMessage);
       Alert.alert('Erreur OAuth', errorMessage);
       setFormLoading(false);
@@ -206,17 +206,17 @@ const LoginScreen: React.FC = () => {
       console.error('[LoginScreen] Erreur de connexion:', error);
       console.error('[LoginScreen] Type d\'erreur:', typeof error);
       console.error('[LoginScreen] Message d\'erreur:', error.message);
-      
+
       // ✅ CORRIGÉ 2025-12-24: Améliorer le message d'erreur pour l'utilisateur
       let errorMessage = error.message || 'Erreur de connexion';
-      
+
       // ✅ Messages plus clairs pour les erreurs d'authentification
       if (errorMessage.includes('401') || errorMessage.includes('Unauthorized') || errorMessage.includes('Identifiants')) {
         errorMessage = 'Email ou mot de passe incorrect';
       } else if (errorMessage.includes('Network') || errorMessage.includes('fetch')) {
         errorMessage = 'Erreur de connexion au serveur. Vérifiez votre connexion internet.';
       }
-      
+
       setError(errorMessage);
     } finally {
       console.log('[LoginScreen] Fin de handleLogin, setFormLoading(false)');
@@ -255,161 +255,161 @@ const LoginScreen: React.FC = () => {
       style={styles.gradientContainer}
     >
       <KeyboardAwareScreen style={styles.container} contentContainerStyle={styles.scrollContent}>
-          <View style={styles.header}>
-            <Title style={styles.title}>
-              Connexion{' '}
-              <Text style={styles.yukpoText}>Yukpo</Text>
-            </Title>
-            <Paragraph style={styles.subtitle}>
-              Connectez-vous avec votre compte{' '}
-              <Text style={styles.bold}>Google</Text> ou{' '}
-              <Text style={styles.bold}>Facebook</Text>
-            </Paragraph>
+        <View style={styles.header}>
+          <Title style={styles.title}>
+            Connexion{' '}
+            <Text style={styles.brandYuk}>Yuk</Text><Text style={styles.brandPo}>po</Text>
+          </Title>
+          <Paragraph style={styles.subtitle}>
+            Connectez-vous avec votre compte{' '}
+            <Text style={styles.bold}>Google</Text> ou{' '}
+            <Text style={styles.bold}>Facebook</Text>
+          </Paragraph>
+        </View>
+
+        {/* Messages d'état avec glassmorphism */}
+        {showLogoutMessage && (
+          <View style={styles.glassCard}>
+            <Card style={styles.successCard}>
+              <Card.Content style={styles.successContent}>
+                <CheckCircle size={24} color={modernColors.success} weight="fill" />
+                <Text style={styles.successText}>Vous êtes bien déconnecté.</Text>
+              </Card.Content>
+            </Card>
           </View>
+        )}
 
-          {/* Messages d'état avec glassmorphism */}
-          {showLogoutMessage && (
-            <View style={styles.glassCard}>
-              <Card style={styles.successCard}>
-                <Card.Content style={styles.successContent}>
-                  <CheckCircle size={24} color={modernColors.success} weight="fill" />
-                  <Text style={styles.successText}>Vous êtes bien déconnecté.</Text>
-                </Card.Content>
-              </Card>
-            </View>
-          )}
+        {error && (
+          <View style={styles.glassCard}>
+            <Card style={styles.errorCard}>
+              <Card.Content style={styles.errorContent}>
+                <WarningCircle size={24} color={modernColors.error} weight="fill" />
+                <Text style={styles.errorText}>{String(error)}</Text>
+              </Card.Content>
+            </Card>
+          </View>
+        )}
 
-          {error && (
-            <View style={styles.glassCard}>
-              <Card style={styles.errorCard}>
-                <Card.Content style={styles.errorContent}>
-                  <WarningCircle size={24} color={modernColors.error} weight="fill" />
-                  <Text style={styles.errorText}>{String(error)}</Text>
-                </Card.Content>
-              </Card>
-            </View>
-          )}
+        {/* Boutons OAuth */}
+        <View style={styles.oauthContainer}>
+          <OAuthButton
+            provider="google"
+            onPress={handleGoogleLogin}
+          />
+          <OAuthButton
+            provider="facebook"
+            onPress={() => Alert.alert('OAuth', 'Fonctionnalité Facebook à implémenter')}
+          />
+        </View>
 
-          {/* Boutons OAuth */}
-          <View style={styles.oauthContainer}>
-            <OAuthButton
-              provider="google"
-              onPress={handleGoogleLogin}
+        <View style={styles.divider}>
+          <View style={styles.dividerLine} />
+          <Text style={styles.dividerText}>ou utilisez vos identifiants :</Text>
+          <View style={styles.dividerLine} />
+        </View>
+
+        {/* Formulaire de connexion */}
+        <Card style={styles.formCard}>
+          <Card.Content>
+            <TextInput
+              label="Adresse email"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoComplete="email"
+              disabled={formLoading || loading}
+              style={styles.modernInput}
+              theme={modernTheme}
+              left={<TextInput.Icon icon={() => <Envelope size={20} color={modernColors.primary} weight="bold" />} />}
             />
-            <OAuthButton
-              provider="facebook"
-              onPress={() => Alert.alert('OAuth', 'Fonctionnalité Facebook à implémenter')}
+
+            <TextInput
+              label="Mot de passe"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              autoComplete="password"
+              disabled={formLoading || loading}
+              style={styles.modernInput}
+              theme={modernTheme}
+              left={<TextInput.Icon icon={() => <Lock size={20} color={modernColors.primary} weight="bold" />} />}
             />
-          </View>
 
-          <View style={styles.divider}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>ou utilisez vos identifiants :</Text>
-            <View style={styles.dividerLine} />
-          </View>
-
-          {/* Formulaire de connexion */}
-          <Card style={styles.formCard}>
-            <Card.Content>
-              <TextInput
-                label="Adresse email"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoComplete="email"
-                disabled={formLoading || loading}
-                style={styles.modernInput}
-                theme={modernTheme}
-                left={<TextInput.Icon icon={() => <Envelope size={20} color={modernColors.primary} weight="bold" />} />}
-              />
-
-              <TextInput
-                label="Mot de passe"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-                autoComplete="password"
-                disabled={formLoading || loading}
-                style={styles.modernInput}
-                theme={modernTheme}
-                left={<TextInput.Icon icon={() => <Lock size={20} color={modernColors.primary} weight="bold" />} />}
-              />
-
-              <TouchableOpacity
-                onPress={handleLogin}
-                disabled={formLoading || loading}
-                style={styles.loginButtonContainer}
-              >
-                <LinearGradient
-                  colors={modernColors.secondaryGradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.loginButton}
-                >
-                  <Text style={styles.loginButtonLabel}>
-                    {formLoading || loading ? 'Connexion...' : 'Se connecter'}
-                  </Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            </Card.Content>
-          </Card>
-
-          {/* Lien vers l'inscription */}
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>Pas encore inscrit ? </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Register' as never)}>
-              <Text style={styles.footerLink}>Créer un compte</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* ✅ NOUVEAU: Bouton Devenir partenaire avec confirmation */}
-          <View style={styles.partnerContainer}>
             <TouchableOpacity
-              onPress={() => {
-                // ✅ NOUVEAU: Afficher un modal de confirmation avant de naviguer
-                Alert.alert(
-                  '⚠️ Inscription Partenaire',
-                  'Ce bouton est uniquement destiné aux partenaires de l\'application.\n\n' +
-                  '⚠️ Important :\n' +
-                  '• Les fonctionnalités utilisateurs classiques ne seront pas accessibles\n' +
-                  '• Votre compte devra être validé par un administrateur avant d\'être actif\n' +
-                  '• Vous recevrez un email de confirmation une fois votre compte approuvé\n\n' +
-                  'Êtes-vous sûr de vouloir continuer ?',
-                  [
-                    {
-                      text: 'Annuler',
-                      style: 'cancel',
-                      onPress: () => {
-                        console.log('[LoginScreen] Inscription partenaire annulée par l\'utilisateur');
-                      }
-                    },
-                    {
-                      text: 'Oui, je suis partenaire',
-                      style: 'default',
-                      onPress: () => {
-                        console.log('[LoginScreen] Confirmation inscription partenaire acceptée');
-                        navigation.navigate('PartnerRegister' as never);
-                      }
-                    }
-                  ],
-                  { cancelable: true }
-                );
-              }}
-              style={styles.partnerButton}
+              onPress={handleLogin}
+              disabled={formLoading || loading}
+              style={styles.loginButtonContainer}
             >
-              <Text style={styles.partnerButtonText}>
-                🏢 Devenir partenaire
-              </Text>
+              <LinearGradient
+                colors={modernColors.secondaryGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.loginButton}
+              >
+                <Text style={styles.loginButtonLabel}>
+                  {formLoading || loading ? 'Connexion...' : 'Se connecter'}
+                </Text>
+              </LinearGradient>
             </TouchableOpacity>
-          </View>
+          </Card.Content>
+        </Card>
 
-          {/* Informations de support */}
-          <View style={styles.supportContainer}>
-            <Text style={styles.supportText}>
-              En cas de problème, contactez notre support à support@yukpo.com
+        {/* Lien vers l'inscription */}
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>Pas encore inscrit ? </Text>
+          <TouchableOpacity onPress={() => navigation.navigate('Register' as never)}>
+            <Text style={styles.footerLink}>Créer un compte</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* ✅ NOUVEAU: Bouton Devenir partenaire avec confirmation */}
+        <View style={styles.partnerContainer}>
+          <TouchableOpacity
+            onPress={() => {
+              // ✅ NOUVEAU: Afficher un modal de confirmation avant de naviguer
+              Alert.alert(
+                '⚠️ Inscription Partenaire',
+                'Ce bouton est uniquement destiné aux partenaires de l\'application.\n\n' +
+                '⚠️ Important :\n' +
+                '• Les fonctionnalités utilisateurs classiques ne seront pas accessibles\n' +
+                '• Votre compte devra être validé par un administrateur avant d\'être actif\n' +
+                '• Vous recevrez un email de confirmation une fois votre compte approuvé\n\n' +
+                'Êtes-vous sûr de vouloir continuer ?',
+                [
+                  {
+                    text: 'Annuler',
+                    style: 'cancel',
+                    onPress: () => {
+                      console.log('[LoginScreen] Inscription partenaire annulée par l\'utilisateur');
+                    }
+                  },
+                  {
+                    text: 'Oui, je suis partenaire',
+                    style: 'default',
+                    onPress: () => {
+                      console.log('[LoginScreen] Confirmation inscription partenaire acceptée');
+                      navigation.navigate('PartnerRegister' as never);
+                    }
+                  }
+                ],
+                { cancelable: true }
+              );
+            }}
+            style={styles.partnerButton}
+          >
+            <Text style={styles.partnerButtonText}>
+              🏢 Devenir partenaire
             </Text>
-          </View>
+          </TouchableOpacity>
+        </View>
+
+        {/* Informations de support */}
+        <View style={styles.supportContainer}>
+          <Text style={styles.supportText}>
+            En cas de problème, contactez notre support à support@yukpo.com
+          </Text>
+        </View>
       </KeyboardAwareScreen>
     </LinearGradient>
   );
@@ -441,8 +441,11 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 4,
   },
-  yukpoText: {
-    color: '#FFD700',
+  brandYuk: {
+    color: '#3B82F6', // Bleu (cohérent avec le logo officiel)
+  },
+  brandPo: {
+    color: '#7C3AED', // Violet (cohérent avec le logo officiel)
   },
   subtitle: {
     textAlign: 'center',

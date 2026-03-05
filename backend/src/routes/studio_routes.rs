@@ -6,9 +6,10 @@ use std::sync::Arc;
 
 use crate::{
     controllers::studio_controller::{
-        attach_asset, create_session, generate_storyboard, get_session, list_sessions,
-        publish_session, save_timeline, set_dependencies, trigger_preview, trigger_short_preview,
-        update_session,
+        attach_asset, create_session, generate_storyboard, get_dependencies, get_next_video,
+        get_session, list_preview_events, list_sessions, list_templates, preview_metrics,
+        publish_session, recommend_templates, save_timeline, set_dependencies, trigger_preview,
+        trigger_short_preview, update_session,
     },
     state::AppState,
 };
@@ -40,7 +41,7 @@ pub fn studio_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         )
         .route(
             "/api/studio/sessions/{session_id}/dependencies",
-            put(set_dependencies),
+            put(set_dependencies).get(get_dependencies),
         )
         .route(
             "/api/studio/sessions/{session_id}/storyboard",
@@ -62,6 +63,23 @@ pub fn studio_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             "/api/studio/sessions/{session_id}/publish",
             post(publish_session),
         )
+        .route(
+            "/api/studio/sessions/{session_id}/next",
+            get(get_next_video),
+        )
+        .route(
+            "/api/studio/sessions/{session_id}/previews",
+            get(list_preview_events),
+        )
+        .route(
+            "/api/studio/sessions/{session_id}/preview-metrics",
+            get(preview_metrics),
+        )
+        .route(
+            "/api/studio/sessions/{session_id}/template-recommendations",
+            post(recommend_templates),
+        )
+        .route("/api/studio/templates", get(list_templates))
         .layer(axum::middleware::from_fn_with_state(
             state.clone(),
             crate::middlewares::jwt::jwt_auth,

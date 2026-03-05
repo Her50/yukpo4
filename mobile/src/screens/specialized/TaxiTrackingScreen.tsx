@@ -1,14 +1,14 @@
 // ✅ Écran de suivi en temps réel du chauffeur taxi
 import { useNavigation, useRoute } from '@react-navigation/native';
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
+    Dimensions,
     StyleSheet,
     Text,
     TouchableOpacity,
     View,
-    Dimensions,
 } from 'react-native';
 import MapView, { Marker, Polyline } from 'react-native-maps';
 import SafeIcon from '../../components/SafeIcon';
@@ -38,7 +38,7 @@ const TaxiTrackingScreen: React.FC = () => {
     const route = useRoute();
     const { location: userLocation } = useLocation();
     const params = (route.params as any) as RouteParams;
-    
+
     const [driverLocation, setDriverLocation] = useState<DriverLocation | null>(null);
     const [loading, setLoading] = useState(true);
     const [estimatedArrival, setEstimatedArrival] = useState<number | null>(null);
@@ -60,7 +60,7 @@ const TaxiTrackingScreen: React.FC = () => {
         try {
             setLoading(true);
             await fetchDriverLocation();
-            
+
             // ✅ Polling toutes les 5 secondes pour mettre à jour la position
             trackingIntervalRef.current = setInterval(async () => {
                 await fetchDriverLocation();
@@ -76,14 +76,15 @@ const TaxiTrackingScreen: React.FC = () => {
     const fetchDriverLocation = async () => {
         try {
             const response = await apiGet(`/api/taxis/${params.taxiId}/location`);
-            if (response.success && response.data) {
-                const loc = response.data;
+            const r = response.data as any;
+            if (response.success && r) {
+                const loc = r;
                 setDriverLocation({
                     latitude: loc.latitude || loc.lat,
                     longitude: loc.longitude || loc.lng,
                     heading: loc.heading,
                 });
-                
+
                 // Calculer la distance et l'ETA
                 if (userLocation?.coords && driverLocation) {
                     const dist = calculateDistance(
@@ -93,18 +94,18 @@ const TaxiTrackingScreen: React.FC = () => {
                         driverLocation.longitude
                     );
                     setDistance(dist);
-                    
+
                     // Estimation: 30 km/h en moyenne en ville
                     const avgSpeed = 30; // km/h
                     const etaMinutes = Math.round((dist / avgSpeed) * 60);
                     setEstimatedArrival(etaMinutes);
                 }
-                
+
                 // Mettre à jour le statut
                 if (loc.status) {
                     setStatus(loc.status);
                 }
-                
+
                 // Centrer la carte sur le chauffeur
                 if (mapRef.current && driverLocation) {
                     mapRef.current.animateToRegion({
@@ -124,11 +125,11 @@ const TaxiTrackingScreen: React.FC = () => {
         const R = 6371; // Rayon de la Terre en km
         const dLat = (lat2 - lat1) * Math.PI / 180;
         const dLon = (lon2 - lon1) * Math.PI / 180;
-        const a = 
-            Math.sin(dLat/2) * Math.sin(dLat/2) +
+        const a =
+            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
             Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-            Math.sin(dLon/2) * Math.sin(dLon/2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         return R * c;
     };
 
@@ -215,7 +216,7 @@ const TaxiTrackingScreen: React.FC = () => {
                                 pinColor="#06B6D4"
                             />
                         )}
-                        
+
                         {/* Marqueur position chauffeur */}
                         {driverLocation && (
                             <Marker
@@ -232,7 +233,7 @@ const TaxiTrackingScreen: React.FC = () => {
                                 </View>
                             </Marker>
                         )}
-                        
+
                         {/* Ligne entre utilisateur et chauffeur */}
                         {userLocation?.coords && driverLocation && (
                             <Polyline

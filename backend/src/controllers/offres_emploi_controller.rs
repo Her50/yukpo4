@@ -414,6 +414,27 @@ pub async fn list_my_offres(
     ))
 }
 
+/// Met à jour une offre d'emploi
+pub async fn update_offre(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Path(offre_id): Path<i32>,
+    Json(request): Json<CreateOffreEmploiRequest>,
+) -> AppResult<impl IntoResponse> {
+    info!("[update_offre] user_id={}, offre_id={}", user_id, offre_id);
+
+    let service = OffresEmploiService::new(state.pg.clone(), Some(state.redis_client.clone()));
+    let offre = service.update_offre(offre_id, user_id, request).await?;
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "data": offre
+        })),
+    ))
+}
+
 /// Ferme une offre (statut 'pourvue' ou 'fermee')
 pub async fn close_offre(
     State(state): State<Arc<AppState>>,
@@ -873,7 +894,7 @@ pub struct SalaryPredictionQuery {
 /// POST /api/offres-emploi/ai/suggest-formations
 /// Suggestions formations IA
 pub async fn ai_suggest_formations(
-    State(_state): State<Arc<AppState>>,
+    State(state): State<Arc<AppState>>,
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Json(request): Json<SuggestFormationsRequest>,
 ) -> AppResult<impl IntoResponse> {
@@ -889,10 +910,25 @@ pub async fn ai_suggest_formations(
         ));
     }
 
-    // TODO: Implémenter suggestions formations dans emploi_ai_service
+    // ✅ FIX: Implémentation réelle des suggestions formations IA
+    let ai_service = EmploiAIService::new(state.ia.clone());
+
+    let competences_actuelles = request.competences_actuelles.unwrap_or_default();
+    let competences_manquantes = request.competences_manquantes.unwrap_or_default();
+    let objectif_carriere = request.objectif_carriere.as_deref();
+
+    let suggestions = ai_service
+        .suggest_formations(
+            request.candidat_id,
+            &competences_actuelles,
+            &competences_manquantes,
+            objectif_carriere,
+        )
+        .await?;
+
     Ok(Json(json!({
         "success": true,
-        "message": "Suggestions formations à implémenter"
+        "data": suggestions
     })))
 }
 

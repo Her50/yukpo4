@@ -104,7 +104,9 @@ const ResultatBesoinScreen: React.FC = () => {
     // Récupérer les résultats depuis la navigation
     const routeParams = (route.params as any) || {};
     const initialResults = routeParams.results || [];
-    const searchQuery = routeParams.searchQuery || routeParams.query || '';
+    // ✅ CORRIGÉ 2026-03-05: searchQuery en state pour se mettre à jour lors des re-recherches
+    // Avant: const searchQuery = routeParams.searchQuery (jamais mis à jour → scoring produit avec requête périmée)
+    const [searchQuery, setSearchQuery] = useState(routeParams.searchQuery || routeParams.query || '');
 
     // ✅ CORRECTION 2025-12-30: useRef pour éviter les re-renders infinis
     const hasProcessedInitialResults = useRef(false);
@@ -133,12 +135,38 @@ const ResultatBesoinScreen: React.FC = () => {
         return 'Produit sans nom';
     }, []);
 
-    // ✅ CORRIGÉ 2026-01-21: Fonction améliorée pour calculer le score de pertinence au niveau produit
+    // ✅ CORRIGÉ 2026-03-05: Stop words français pour filtrer les mots non-significatifs de la requête
+    // Évite que "manger" dans "je souhaite manger les beignets" donne autant de poids que "beignets"
+    const FRENCH_STOP_WORDS = new Set([
+        'je', 'tu', 'il', 'elle', 'on', 'nous', 'vous', 'ils', 'elles',
+        'le', 'la', 'les', 'un', 'une', 'des', 'du', 'de', 'au', 'aux',
+        'ce', 'ces', 'cette', 'cet', 'mon', 'ma', 'mes', 'ton', 'ta', 'tes',
+        'son', 'sa', 'ses', 'notre', 'votre', 'leur', 'leurs',
+        'me', 'te', 'se', 'en', 'y',
+        'et', 'ou', 'mais', 'donc', 'car', 'ni', 'que', 'qui', 'dont',
+        'dans', 'sur', 'sous', 'avec', 'sans', 'pour', 'par', 'chez',
+        'est', 'sont', 'suis', 'es', 'sommes', 'etes',
+        'ai', 'as', 'avons', 'avez', 'ont',
+        'être', 'avoir', 'fait', 'faire',
+        'pas', 'ne', 'plus', 'très', 'bien', 'tout', 'tous', 'aussi',
+        'souhaite', 'veux', 'voudrais', 'cherche', 'besoin', 'faut',
+    ]);
+
+    // ✅ CORRIGÉ 2026-03-05: Fonction améliorée pour calculer le score de pertinence au niveau produit
+    // Corrige le problème où "salle à manger" ranke au-dessus de "beignets" pour la requête "je souhaite manger les beignets"
     const calculateProductRelevanceScore = useCallback((product: any, query: string): number => {
         if (!query || !product) return 0;
 
         const queryLower = query.toLowerCase().trim();
-        const queryWords = queryLower.split(/\s+/).filter(w => w.length > 0);
+        const allWords = queryLower.split(/\s+/).filter(w => w.length > 0);
+
+        if (allWords.length === 0) return 0;
+
+        // ✅ CORRIGÉ 2026-03-05: Filtrer les stop words pour ne garder que les mots significatifs
+        // "je souhaite manger les beignets" → ["manger", "beignets"]
+        const contentWords = allWords.filter(w => w.length >= 3 && !FRENCH_STOP_WORDS.has(w));
+        // Fallback: si tous les mots sont des stop words, utiliser les mots de 3+ caractères
+        const queryWords = contentWords.length > 0 ? contentWords : allWords.filter(w => w.length >= 3);
 
         if (queryWords.length === 0) return 0;
 
@@ -161,20 +189,21 @@ const ResultatBesoinScreen: React.FC = () => {
         // Construire un texte complet pour la recherche
         const allProductText = `${nomProduit} ${descriptionProduit} ${categorieProduit} ${combinaisonBrute} ${allCharacteristics}`.toLowerCase();
 
-        // ✅ AMÉLIORÉ 2026-01-24: Score pour correspondance exacte de la requête complète dans le nom
-        // ✅ Générique pour tous types de produits (pas seulement "tv")
-        if (nomProduit.includes(queryLower)) {
+        // ✅ CORRIGÉ 2026-03-05: Construire la requête significative (sans stop words) pour matching exact
+        const meaningfulQuery = queryWords.join(' ');
+
+        // Score pour correspondance exacte de la requête significative dans le nom
+        if (nomProduit.includes(meaningfulQuery)) {
             score += 100; // Bonus très élevé pour correspondance exacte dans le nom
-        } else if (categorieProduit.includes(queryLower)) {
+        } else if (categorieProduit.includes(meaningfulQuery)) {
             score += 80; // Bonus élevé pour correspondance dans la catégorie
-        } else if (allProductText.includes(queryLower)) {
+        } else if (allProductText.includes(meaningfulQuery)) {
             score += 50;
         }
 
-        // ✅ AMÉLIORÉ 2026-01-24: Score pondéré pour chaque mot-clé de la requête
-        // ✅ Générique pour tous types de produits
+        // ✅ CORRIGÉ 2026-03-05: Score pondéré pour chaque mot-clé significatif
         queryWords.forEach(word => {
-            if (word.length < 2) return; // Ignorer les mots trop courts
+            if (word.length < 2) return;
 
             // ✅ CORRIGÉ: Correspondance dans le nom (priorité absolue)
             if (nomProduit === word) {
@@ -185,14 +214,14 @@ const ResultatBesoinScreen: React.FC = () => {
                 score += 30; // Contient le mot
             }
 
-            // ✅ AMÉLIORÉ: Correspondance dans la catégorie (ex: "Téléviseur" pour "tv")
+            // Correspondance dans la catégorie
             if (categorieProduit.includes(word)) {
-                score += 35; // Bon score pour correspondance de catégorie
+                score += 35;
             }
 
-            // ✅ AMÉLIORÉ: Correspondance dans les sous-caractéristiques (marque, modèle, etc.) - important pour "Samsonite"
+            // Correspondance dans les sous-caractéristiques (marque, modèle, etc.)
             if (allCharacteristics.includes(word)) {
-                score += 25; // Bon score pour correspondance de marque/modèle
+                score += 25;
             }
 
             // Correspondance dans la description
@@ -206,13 +235,13 @@ const ResultatBesoinScreen: React.FC = () => {
             }
         });
 
-        // ✅ NOUVEAU: Bonus pour correspondance de plusieurs mots-clés (ex: "Sac", "au", "dos", "Samsonite")
+        // ✅ CORRIGÉ 2026-03-05: Bonus multi-mots basé sur les mots significatifs (pas les stop words)
         const matchingWords = queryWords.filter(word =>
             word.length >= 2 && allProductText.includes(word)
         );
-        if (matchingWords.length === queryWords.length) {
-            score += 30; // Bonus si tous les mots correspondent
-        } else if (matchingWords.length >= queryWords.length / 2) {
+        if (matchingWords.length === queryWords.length && queryWords.length > 1) {
+            score += 40; // Bonus élevé si TOUS les mots significatifs correspondent
+        } else if (matchingWords.length >= Math.ceil(queryWords.length / 2)) {
             score += 15; // Bonus partiel si au moins la moitié correspond
         }
 
@@ -309,12 +338,7 @@ const ResultatBesoinScreen: React.FC = () => {
     const filterProducts = (productsList: any[]): any[] => {
         let filtered = [...productsList];
 
-        console.log('🔍 [ResultatBesoinScreen] filterProducts appelé avec:', {
-            produitsCount: productsList.length,
-            categoryFiltersCount: Object.keys(categoryFilters).length,
-            categoryFilters: categoryFilters,
-            priceFilter
-        });
+        if (__DEV__) console.log('🔍 [ResultatBesoinScreen] filterProducts:', productsList.length, 'produits');
 
         // Appliquer les filtres de catégorie spécifiques
         if (Object.keys(categoryFilters).length > 0) {
@@ -327,19 +351,11 @@ const ResultatBesoinScreen: React.FC = () => {
                     // Filtres numériques (min/max)
                     if (key.startsWith('min') && product[key.replace('min', '').toLowerCase()]) {
                         if (parseFloat(product[key.replace('min', '').toLowerCase()]) < parseFloat(value)) {
-                            console.log(`🚫 [ResultatBesoinScreen] Produit ${product.id} exclu par filtre min ${key}:`, {
-                                productValue: product[key.replace('min', '').toLowerCase()],
-                                filterValue: value
-                            });
                             return false;
                         }
                     }
                     if (key.startsWith('max') && product[key.replace('max', '').toLowerCase()]) {
                         if (parseFloat(product[key.replace('max', '').toLowerCase()]) > parseFloat(value)) {
-                            console.log(`🚫 [ResultatBesoinScreen] Produit ${product.id} exclu par filtre max ${key}:`, {
-                                productValue: product[key.replace('max', '').toLowerCase()],
-                                filterValue: value
-                            });
                             return false;
                         }
                     }
@@ -347,22 +363,14 @@ const ResultatBesoinScreen: React.FC = () => {
                     // Filtres de correspondance directe
                     // ✅ CORRIGÉ: Ne pas exclure si la propriété n'existe pas dans le produit
                     if (product[key] !== undefined && product[key] !== null && product[key] !== value) {
-                        console.log(`🚫 [ResultatBesoinScreen] Produit ${product.id} exclu par filtre ${key}:`, {
-                            productValue: product[key],
-                            filterValue: value
-                        });
                         return false;
                     }
                 }
                 return true;
             });
 
-            if (beforeFilter > 0 && filtered.length === 0) {
-                console.error('❌ [ResultatBesoinScreen] filterProducts - TOUS les produits ont été exclus par les filtres de catégorie!', {
-                    avant: beforeFilter,
-                    apres: filtered.length,
-                    categoryFilters
-                });
+            if (__DEV__ && beforeFilter > 0 && filtered.length === 0) {
+                console.error('❌ [ResultatBesoinScreen] Tous les produits exclus par filtres catégorie!');
             }
         }
 
@@ -371,29 +379,15 @@ const ResultatBesoinScreen: React.FC = () => {
             const beforePriceFilter = filtered.length;
             filtered = filtered.filter(product => {
                 const price = parseFloat(product.prix || product.price);
-                if (isNaN(price)) {
-                    console.log(`🚫 [ResultatBesoinScreen] Produit ${product.id} exclu: prix invalide (${product.prix || product.price})`);
-                    return false;
-                }
-
-                if (priceFilter.min !== null && price < priceFilter.min) {
-                    console.log(`🚫 [ResultatBesoinScreen] Produit ${product.id} exclu: prix ${price} < min ${priceFilter.min}`);
-                    return false;
-                }
-                if (priceFilter.max !== null && price > priceFilter.max) {
-                    console.log(`🚫 [ResultatBesoinScreen] Produit ${product.id} exclu: prix ${price} > max ${priceFilter.max}`);
-                    return false;
-                }
+                if (isNaN(price)) return false;
+                if (priceFilter.min !== null && price < priceFilter.min) return false;
+                if (priceFilter.max !== null && price > priceFilter.max) return false;
 
                 return true;
             });
 
-            if (beforePriceFilter > 0 && filtered.length === 0) {
-                console.error('❌ [ResultatBesoinScreen] filterProducts - TOUS les produits ont été exclus par le filtre de prix!', {
-                    avant: beforePriceFilter,
-                    apres: filtered.length,
-                    priceFilter
-                });
+            if (__DEV__ && beforePriceFilter > 0 && filtered.length === 0) {
+                console.error('❌ [ResultatBesoinScreen] Tous les produits exclus par filtre prix!');
             }
         }
 
@@ -415,11 +409,7 @@ const ResultatBesoinScreen: React.FC = () => {
             return distA - distB;
         });
 
-        console.log('✅ [ResultatBesoinScreen] filterProducts - Résultat final:', {
-            produitsAvant: productsList.length,
-            produitsApres: filtered.length,
-            exclus: productsList.length - filtered.length
-        });
+        if (__DEV__) console.log('✅ [ResultatBesoinScreen] filterProducts:', filtered.length, '/', productsList.length);
 
         return filtered;
     };
@@ -922,8 +912,11 @@ const ResultatBesoinScreen: React.FC = () => {
                             }));
                             const relevant = scoredProducts.filter((sp: any) => sp.relevanceScore > 0);
                             if (relevant.length > 0) {
+                                // ✅ CORRIGÉ 2026-03-05: Trier par score de pertinence DÉCROISSANT
+                                // Avant: les produits gardaient l'ordre d'insertion API (ex: "salle à manger" avant "beignets")
+                                relevant.sort((a: any, b: any) => b.relevanceScore - a.relevanceScore);
                                 filteredServiceProduits = relevant.map((sp: any) => sp.product);
-                                console.log(`🎯 [ResultatBesoinScreen] Service ${service.id}: ${filteredServiceProduits.length}/${serviceProduits.length} produits pertinents pour "${searchQuery}"`);
+                                if (__DEV__) console.log(`🎯 [ResultatBesoinScreen] Service ${service.id}: ${filteredServiceProduits.length}/${serviceProduits.length} produits pertinents pour "${searchQuery}"`, relevant.map((sp: any) => ({ nom: getProductName(sp.product.product_data || sp.product), score: sp.relevanceScore })));
                             } else {
                                 // ✅ CORRIGÉ 2026-03-02: Aucun produit pertinent → ne rien afficher pour ce service
                                 // L'ancien code gardait le 1er produit par défaut, ce qui affichait des produits hors-sujet
@@ -1845,6 +1838,12 @@ const ResultatBesoinScreen: React.FC = () => {
                 searchPayload.user_id = user.id.toString();
             }
 
+            // ✅ CORRIGÉ 2026-03-05: Mettre à jour searchQuery pour que le scoring produit utilise la nouvelle requête
+            const newSearchText = searchPayload.texte || '';
+            if (newSearchText) {
+                setSearchQuery(newSearchText);
+            }
+
             const result = await rechercherServices(searchPayload);
             console.log('[ResultatBesoinScreen] Résultat API brut:', result);
 
@@ -1947,39 +1946,22 @@ const ResultatBesoinScreen: React.FC = () => {
 
     // ✅ CORRIGÉ 2025-01-02: Mémoriser les listes filtrées avec comparaison profonde pour éviter les recalculs inutiles
     const filteredProducts = useMemo(() => {
-        // ✅ Comparer les longueurs et références pour éviter les recalculs inutiles
-        console.log('🔍 [ResultatBesoinScreen] filterProducts - produits avant filtrage:', products.length);
-        console.log('🔍 [ResultatBesoinScreen] filterProducts - état products:', {
-            length: products.length,
-            sample: products.length > 0 && products[0] ? {
-                id: products[0]?.id,
-                nom: products[0]?.nom || products[0]?.name || 'unknown',
-                _serviceId: products[0]?._serviceId
-            } : null
-        });
-        console.log('🔍 [ResultatBesoinScreen] filterProducts - filtres actifs:', {
-            categoryFilters: Object.keys(categoryFilters).length,
-            categoryFiltersKeys: Object.keys(categoryFilters),
-            priceFilter: priceFilter.min !== null || priceFilter.max !== null,
-            priceFilterValues: priceFilter
-        });
+        // ✅ OPTIMISÉ 2026-03-XX: Logs gatés derrière __DEV__ pour performance production
+        if (__DEV__) {
+            console.log('🔍 [ResultatBesoinScreen] filterProducts:', products.length, 'produits, filtres:', Object.keys(categoryFilters).length);
+        }
 
         if (products.length === 0) {
-            console.warn('⚠️ [ResultatBesoinScreen] filterProducts - Aucun produit dans l\'état');
+            if (__DEV__) console.warn('⚠️ [ResultatBesoinScreen] filterProducts - Aucun produit');
             return [];
         }
 
         const filtered = filterProducts(products);
-        console.log('✅ [ResultatBesoinScreen] filterProducts - produits après filtrage:', filtered.length);
-
-        if (filtered.length === 0 && products.length > 0) {
-            console.error('❌ [ResultatBesoinScreen] filterProducts - PROBLÈME: Tous les produits ont été filtrés!', {
-                produitsAvant: products.length,
-                filtres: {
-                    categoryFilters,
-                    priceFilter
-                }
-            });
+        if (__DEV__) {
+            console.log('✅ [ResultatBesoinScreen] filterProducts:', filtered.length, '/', products.length);
+            if (filtered.length === 0 && products.length > 0) {
+                console.error('❌ [ResultatBesoinScreen] Tous les produits filtrés!', { categoryFilters, priceFilter });
+            }
         }
 
         return filtered;
@@ -1994,10 +1976,7 @@ const ResultatBesoinScreen: React.FC = () => {
     // ✅ CORRIGÉ 2026-01-14: Mémoriser la liste combinée avec clés STABLES (sans score qui change)
     // ✅ CORRIGÉ 2026-01-XX: Éviter les doublons - ne pas afficher les services qui ont déjà des produits extraits
     const allResults = useMemo(() => {
-        console.log('🔍 [ResultatBesoinScreen] allResults - Construction:', {
-            filteredServicesCount: filteredServices.length,
-            filteredProductsCount: filteredProducts.length
-        });
+        if (__DEV__) console.log('🔍 [ResultatBesoinScreen] allResults:', filteredServices.length, 'services,', filteredProducts.length, 'produits');
 
         // ✅ NOUVEAU: Créer un Set des serviceIds qui ont des produits pour éviter les doublons
         // ✅ CORRIGÉ: Vérifier aussi service_id en plus de _serviceId
@@ -2010,21 +1989,16 @@ const ResultatBesoinScreen: React.FC = () => {
                 .filter(id => id && id !== 'undefined' && id !== 'null' && id !== '')
         );
 
-        // ✅ DEBUG: Logger pour diagnostiquer la comptabilisation
-        console.log('🔍 [ResultatBesoinScreen] Comptabilisation debug:', {
-            filteredProductsCount: filteredProducts.length,
-            filteredServicesCount: filteredServices.length,
-            serviceIdsWithProducts: Array.from(serviceIdsWithProducts),
-            serviceIdsWithProductsSize: serviceIdsWithProducts.size,
-        });
+        // ✅ OPTIMISÉ 2026-03-XX: Debug gaté derriere __DEV__
+        if (__DEV__) console.log('🔍 [ResultatBesoinScreen] serviceIdsWithProducts:', serviceIdsWithProducts.size);
 
         // ✅ CORRIGÉ: Ne pas afficher les services qui ont déjà des produits (éviter doublon)
         const services = filteredServices
             .filter(service => {
                 const serviceId = String(service.id);
                 const hasProducts = serviceIdsWithProducts.has(serviceId);
-                if (hasProducts) {
-                    console.log(`🔄 [ResultatBesoinScreen] Service ${serviceId} ignoré car il a déjà des produits extraits`);
+                if (hasProducts && __DEV__) {
+                    console.log(`🔄 [ResultatBesoinScreen] Service ${serviceId} ignoré (produits extraits)`);
                 }
                 return !hasProducts; // Afficher uniquement les services SANS produits
             })
@@ -2061,37 +2035,9 @@ const ResultatBesoinScreen: React.FC = () => {
             };
         });
 
-        // ✅ DEBUG 2026-01-20: Log les produits qui seront affichés
-        if (products.length > 0) {
-            console.log(`🖥️ [ResultatBesoinScreen] Produits qui seront affichés dans l'UI (${products.length} produits):`,
-                products.map((p: any) => {
-                    const productDataForLog = p.data?.product_data || p.data;
-                    const productNameForLog = getProductName(productDataForLog) || 'sans nom';
-                    return {
-                        key: p.key,
-                        type: p.type,
-                        id: p.data.id,
-                        product_index: p.data.product_index,
-                        nom_produit: productNameForLog,
-                        _serviceId: p.data._serviceId,
-                        score: p.data.score
-                    };
-                })
-            );
-        }
-
         const allResultsArray = [...services, ...products];
-        console.log('✅ [ResultatBesoinScreen] allResults - Total:', {
-            total: allResultsArray.length,
-            services: services.length,
-            products: products.length
-        });
-
-        if (allResultsArray.length === 0 && (filteredServices.length > 0 || filteredProducts.length > 0)) {
-            console.error('❌ [ResultatBesoinScreen] allResults - PROBLÈME: allResults est vide alors que filteredServices ou filteredProducts ne le sont pas!', {
-                filteredServicesLength: filteredServices.length,
-                filteredProductsLength: filteredProducts.length
-            });
+        if (__DEV__) {
+            console.log('✅ [ResultatBesoinScreen] allResults:', allResultsArray.length, '(services:', services.length, ', produits:', products.length, ')');
         }
 
         return allResultsArray;
@@ -2882,7 +2828,8 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     servicesContainerContent: {
-        padding: 16,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
     },
     serviceCard: {
         marginBottom: 16,

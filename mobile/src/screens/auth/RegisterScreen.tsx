@@ -394,7 +394,7 @@ const RegisterScreen: React.FC = () => {
       <View style={styles.header}>
         <Title style={styles.title}>
           Créer un compte{' '}
-          <Text style={styles.yukpoText}>Yukpo</Text>
+          <Text style={styles.brandYuk}>Yuk</Text><Text style={styles.brandPo}>po</Text>
         </Title>
         <Paragraph style={styles.subtitle}>
           Utilisez votre compte{' '}
@@ -580,8 +580,11 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     color: theme.colors.text,
   },
-  yukpoText: {
-    color: '#FF8C00', // Orange comme le frontend
+  brandYuk: {
+    color: '#3B82F6', // Bleu (cohérent avec le logo officiel)
+  },
+  brandPo: {
+    color: '#7C3AED', // Violet (cohérent avec le logo officiel)
   },
   subtitle: {
     textAlign: 'center',

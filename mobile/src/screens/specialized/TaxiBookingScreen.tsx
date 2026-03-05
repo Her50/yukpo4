@@ -123,8 +123,9 @@ const TaxiBookingScreen: React.FC = () => {
             const response = await apiGet(`/api/taxis/${params.taxiId}/details-enhanced`)
                 .catch(() => apiGet(`/api/taxis/${params.taxiId}`));
 
-            if (response.success && response.data) {
-                setTaxi(response.data);
+            const r = response.data as any;
+            if (response.success && r) {
+                setTaxi(r);
             } else {
                 Alert.alert('Erreur', 'Impossible de charger les détails du taxi');
                 navigation.goBack();
@@ -184,8 +185,9 @@ const TaxiBookingScreen: React.FC = () => {
                 vehicle_type: taxi?.type_vehicule || 'taxi',
             });
 
-            if (response.success && response.data) {
-                const priceData = (response.data as any)?.data || response.data;
+            const r = response.data as any;
+            if (response.success && r) {
+                const priceData = r?.data || r;
                 if (priceData?.final_price) {
                     setDynamicPrice(priceData);
                     setEstimatedPrice(Math.round(priceData.final_price));
@@ -243,8 +245,9 @@ const TaxiBookingScreen: React.FC = () => {
                 notes: notes || 'Réservation depuis l\'application mobile',
             });
 
-            if (response.success && response.reservation) {
-                const resId = response.reservation.id;
+            const r = response.data as any;
+            if (response.success && r?.reservation) {
+                const resId = r.reservation.id;
                 setReservationId(resId);
                 setBookingSuccess(true);
 

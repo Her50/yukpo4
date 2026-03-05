@@ -1,6 +1,6 @@
 // ✅ Service API TypeScript pour Livres Scolaires
 
-import { apiDelete, apiGet, apiPost, apiPut } from './api';
+import { apiDelete, apiGet, apiPatch, apiPost, apiPut } from './api';
 
 // Types
 export interface LivreScolaire {
@@ -93,58 +93,65 @@ export const livresScolairesApi = {
     // Rechercher des livres
     search: async (params: SearchLivresScolairesRequest): Promise<LivreScolaireWithDistance[]> => {
         const response = await apiGet<{ livres: LivreScolaireWithDistance[] }>(
-            '/api/livres-scolaires/search',
+            '/api/bourse-livre/search',
             { params }
         );
-        return response.livres || response.data?.livres || [];
+        const r = response.data as any;
+        return r?.livres || [];
     },
 
     // Obtenir les détails d'un livre
     getDetails: async (id: number): Promise<LivreScolaire> => {
         const response = await apiGet<{ livre: LivreScolaire }>(
-            `/api/livres-scolaires/${id}`
+            `/api/bourse-livre/${id}`
         );
-        return response.livre || response.data?.livre || response;
+        const r = response.data as any;
+        return r?.livre || r;
     },
 
     // Créer un livre
     create: async (data: CreateLivreScolaireRequest): Promise<LivreScolaire> => {
         const response = await apiPost<{ livre: LivreScolaire }>(
-            '/api/livres-scolaires',
+            '/api/bourse-livre',
             data
         );
-        return response.livre || response.data?.livre || response;
+        const r = response.data as any;
+        return r?.livre || r;
     },
 
     // Mettre à jour un livre
     update: async (id: number, data: UpdateLivreScolaireRequest): Promise<LivreScolaire> => {
         const response = await apiPut<{ livre: LivreScolaire }>(
-            `/api/livres-scolaires/${id}`,
+            `/api/bourse-livre/${id}`,
             data
         );
-        return response.livre || response.data?.livre || response;
+        const r = response.data as any;
+        return r?.livre || r;
     },
 
     // Supprimer un livre
     delete: async (id: number): Promise<void> => {
-        await apiDelete(`/api/livres-scolaires/${id}`);
+        await apiDelete(`/api/bourse-livre/${id}`);
     },
 
     // Obtenir mes livres
     getMyLivres: async (): Promise<LivreScolaire[]> => {
         const response = await apiGet<{ livres: LivreScolaire[] }>(
-            '/api/livres-scolaires/mes-livres'
+            '/api/bourse-livre/mes-livres'
         );
-        return response.livres || response.data?.livres || [];
+        const r = response.data as any;
+        return r?.livres || [];
     },
 
     // Mettre à jour la disponibilité
+    // ✅ FIX: utiliser PATCH au lieu de POST (correspond au backend)
     updateAvailability: async (id: number, is_available: boolean): Promise<LivreScolaire> => {
-        const response = await apiPost<{ livre: LivreScolaire }>(
-            `/api/livres-scolaires/${id}/availability`,
+        const response = await apiPatch<{ livre: LivreScolaire }>(
+            `/api/bourse-livre/${id}/availability`,
             { is_available }
         );
-        return response.livre || response.data?.livre || response;
+        const r = response.data as any;
+        return r?.livre || r;
     },
 };
 

@@ -94,9 +94,10 @@ const EnhancedBusSeatSelector: React.FC<EnhancedBusSeatSelectorProps> = ({
         try {
             setLoading(true);
             const response = await apiGet(`/api/bus-tickets/${productId}/availability`);
+            const resData = (response?.data || response) as any;
 
-            if (response.success && response.availability) {
-                const availability = response.availability;
+            if (resData.success && resData.availability) {
+                const availability = resData.availability;
                 setSeatMap(availability.seat_map || []);
                 setReservedSeats(availability.reserved_seats || []);
                 setBlockedSeats(availability.blocked_seats || []);
@@ -104,7 +105,7 @@ const EnhancedBusSeatSelector: React.FC<EnhancedBusSeatSelectorProps> = ({
                 // Générer recommandations intelligentes
                 generateRecommendations(availability.seat_map || [], availability.reserved_seats || []);
             } else {
-                Alert.alert('Erreur', response.error || 'Impossible de charger la disponibilité');
+                Alert.alert('Erreur', resData.error || 'Impossible de charger la disponibilité');
             }
         } catch (error: any) {
             console.error('Erreur chargement disponibilité:', error);

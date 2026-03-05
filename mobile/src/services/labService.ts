@@ -99,7 +99,11 @@ export const labService = {
                 patient_sex: patientSex,
             }
         );
-        return response;
+        // ✅ CORRIGÉ 2026-03-05: Extraction correcte des données IA imbriquées
+        const backendData = (response?.data || response) as any;
+        const innerData = backendData?.data || backendData;
+        const analysis = innerData?.analysis || backendData?.analysis || innerData;
+        return { success: response.success, data: { analysis, examination: innerData?.examination }, error: response.error };
     },
 
     // ✅ Mes examens (client)

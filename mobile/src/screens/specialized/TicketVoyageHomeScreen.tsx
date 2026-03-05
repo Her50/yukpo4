@@ -1,5 +1,6 @@
 // ✅ Écran Tickets de Voyage MODERNE - Refonte complète avec UX de niveau mondial
 import { useNavigation } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
@@ -13,21 +14,21 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useLocation } from '../../contexts/LocationContext';
-import { busTicketService, BusTicketSearchFilters, BusTicketSearchResult } from '../../services/busTicketService';
+import { useCurrencyDetection } from '../../hooks/useCurrencyDetection';
+import { BusTicketSearchFilters, BusTicketSearchResult, busTicketService } from '../../services/busTicketService';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
-import LocationSelector, { LocationObject } from '../../components/LocationSelector';
-import { useCurrencyDetection } from '../../hooks/useCurrencyDetection';
 
 type SortOption = 'relevance' | 'price_asc' | 'price_desc' | 'time_asc' | 'time_desc' | 'date_asc';
 
 const TicketVoyageHomeScreen: React.FC = () => {
     const navigation = useNavigation();
     const { location } = useLocation();
-    
+
     // ✅ NOUVEAU: Détection automatique de devise depuis GPS
     const detectedCurrency = useCurrencyDetection();
 
@@ -57,6 +58,9 @@ const TicketVoyageHomeScreen: React.FC = () => {
     const [departureDate, setDepartureDate] = useState('');
     const [departureTime, setDepartureTime] = useState('');
     const [agencyName, setAgencyName] = useState('');
+    // Round-trip
+    const [isRoundTrip, setIsRoundTrip] = useState(false);
+    const [returnDate, setReturnDate] = useState('');
     // ✅ NOUVEAU: État pour tracker quel champ LocationSelector est actif (pour gérer les z-index)
     const [activeLocationField, setActiveLocationField] = useState<'departure' | 'arrival' | null>(null);
 
@@ -121,10 +125,10 @@ const TicketVoyageHomeScreen: React.FC = () => {
             }
 
             // ✅ VALIDATION: Vérifier que départ et arrivée sont remplis
-            const departureCityName = typeof departureCity === 'string' 
+            const departureCityName = typeof departureCity === 'string'
                 ? departureCity.trim()
                 : (departureCity as LocationObject)?.components?.ville || (departureCity as LocationObject)?.place_name || '';
-            
+
             const arrivalCityName = typeof arrivalCity === 'string'
                 ? arrivalCity.trim()
                 : (arrivalCity as LocationObject)?.components?.ville || (arrivalCity as LocationObject)?.place_name || '';
@@ -147,10 +151,11 @@ const TicketVoyageHomeScreen: React.FC = () => {
             };
 
             const response = await busTicketService.searchBusTickets(searchFilters);
-            
-            if (response.success && response.data?.results) {
-                let results = response.data.results;
-                
+
+            const r = response.data as any;
+            if (response.success && r?.results) {
+                let results = r.results;
+
                 // Limiter à 20 résultats pour l'affichage initial
                 if (initialLoad && results.length > 20) {
                     results = results.slice(0, 20);
@@ -185,7 +190,7 @@ const TicketVoyageHomeScreen: React.FC = () => {
                         }
                     });
                 }
-                
+
                 setTickets(results);
                 setTotalResults(results.length);
                 setHasSearched(true); // ✅ NOUVEAU: Marquer qu'une recherche a été effectuée
@@ -213,10 +218,35 @@ const TicketVoyageHomeScreen: React.FC = () => {
 
     const handleTicketPress = (ticket: BusTicketSearchResult) => {
         hapticPress();
-        // Navigation vers détails du ticket
         (navigation as any).navigate('BusTicketDetails', {
             ticketId: ticket.product_id,
             agencyId: ticket.agency_id,
+        });
+    };
+
+    const handleBookTicket = (ticket: BusTicketSearchResult) => {
+        hapticPress();
+        if (ticket.available_seats <= 0) {
+            Alert.alert('Complet', 'Ce bus est complet. Veuillez choisir un autre départ.');
+            return;
+        }
+        (navigation as any).navigate('BusTicketBooking', {
+            productId: ticket.product_id,
+            ticketData: {
+                product_id: ticket.product_id,
+                agency_nom: ticket.agency_nom,
+                departure_city: ticket.departure_city,
+                arrival_city: ticket.arrival_city,
+                departure_date: ticket.departure_date,
+                departure_time: ticket.departure_time,
+                ticket_price: ticket.ticket_price,
+                available_seats: ticket.available_seats,
+                distance_km: ticket.distance_km,
+                bus_number: ticket.bus_number,
+                seat_map: ticket.seat_map,
+            },
+            isRoundTrip,
+            returnDate: isRoundTrip ? returnDate : undefined,
         });
     };
 
@@ -256,10 +286,10 @@ const TicketVoyageHomeScreen: React.FC = () => {
     const handleSearch = () => {
         hapticPress();
         // ✅ VALIDATION: Vérifier que départ et arrivée sont remplis avant de lancer la recherche
-        const departureCityName = typeof departureCity === 'string' 
+        const departureCityName = typeof departureCity === 'string'
             ? departureCity.trim()
             : (departureCity as LocationObject)?.components?.ville || (departureCity as LocationObject)?.place_name || '';
-        
+
         const arrivalCityName = typeof arrivalCity === 'string'
             ? arrivalCity.trim()
             : (arrivalCity as LocationObject)?.components?.ville || (arrivalCity as LocationObject)?.place_name || '';
@@ -274,10 +304,10 @@ const TicketVoyageHomeScreen: React.FC = () => {
 
     // ✅ NOUVEAU: Vérifier si le bouton de recherche doit être activé
     const canSearch = () => {
-        const departureCityName = typeof departureCity === 'string' 
+        const departureCityName = typeof departureCity === 'string'
             ? departureCity.trim()
             : (departureCity as LocationObject)?.components?.ville || (departureCity as LocationObject)?.place_name || '';
-        
+
         const arrivalCityName = typeof arrivalCity === 'string'
             ? arrivalCity.trim()
             : (arrivalCity as LocationObject)?.components?.ville || (arrivalCity as LocationObject)?.place_name || '';
@@ -302,9 +332,9 @@ const TicketVoyageHomeScreen: React.FC = () => {
 
     return (
         <SafeNativeView style={styles.container}>
-            {/* ✅ REFONDU: Header compact avec tous les champs visibles */}
+            {/* Header avec gradient */}
             <View style={styles.headerContainer}>
-                <View style={styles.headerGradient}>
+                <LinearGradient colors={['#92400E', '#F59E0B']} style={styles.headerGradient}>
                     {/* Header compact */}
                     <View style={styles.headerTop}>
                         <TouchableOpacity
@@ -314,30 +344,41 @@ const TicketVoyageHomeScreen: React.FC = () => {
                             }}
                             style={styles.backButton}
                         >
-                            <SafeIcon name="arrow-left" size={22} color="#111827" />
+                            <SafeIcon name="arrow-left" size={22} color="#FFFFFF" />
                         </TouchableOpacity>
                         <View style={styles.headerTitleContainer}>
-                            <Text style={styles.headerTitle}>Tickets de Voyage</Text>
+                            <Text style={[styles.headerTitle, { color: '#FFFFFF' }]}>Tickets de Voyage</Text>
                         </View>
-                        <TouchableOpacity
-                            onPress={() => {
-                                hapticPress();
-                                setShowFilters(!showFilters);
-                            }}
-                            style={styles.filterButton}
-                        >
-                            <SafeIcon 
-                                name="sliders-h" 
-                                size={20} 
-                                color="#6B7280" 
-                                type="lucide" 
-                            />
-                            {activeFiltersCount > 0 && (
-                                <View style={styles.filterBadge}>
-                                    <Text style={styles.filterBadgeText}>{activeFiltersCount}</Text>
-                                </View>
-                            )}
-                        </TouchableOpacity>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            <TouchableOpacity
+                                onPress={() => {
+                                    hapticPress();
+                                    (navigation as any).navigate('MyBusTickets');
+                                }}
+                                style={[styles.filterButton, { backgroundColor: '#ffffff30' }]}
+                            >
+                                <SafeIcon name="ticket" size={20} color="#FFFFFF" type="lucide" />
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={() => {
+                                    hapticPress();
+                                    setShowFilters(!showFilters);
+                                }}
+                                style={styles.filterButton}
+                            >
+                                <SafeIcon
+                                    name="sliders-h"
+                                    size={20}
+                                    color="#6B7280"
+                                    type="lucide"
+                                />
+                                {activeFiltersCount > 0 && (
+                                    <View style={styles.filterBadge}>
+                                        <Text style={styles.filterBadgeText}>{activeFiltersCount}</Text>
+                                    </View>
+                                )}
+                            </TouchableOpacity>
+                        </View>
                     </View>
 
                     {/* ✅ REFONDU: Champs compacts mais visibles - style moderne */}
@@ -411,6 +452,26 @@ const TicketVoyageHomeScreen: React.FC = () => {
                             />
                         </View>
 
+                        {/* Aller-Retour toggle + return date */}
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8, gap: 10 }}>
+                            <TouchableOpacity
+                                style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8, backgroundColor: isRoundTrip ? '#DBEAFE' : '#ffffff30' }}
+                                onPress={() => { setIsRoundTrip(!isRoundTrip); if (isRoundTrip) setReturnDate(''); }}
+                            >
+                                <SafeIcon name="repeat" size={14} color={isRoundTrip ? '#1D4ED8' : '#FFFFFF'} type="lucide" />
+                                <Text style={{ fontSize: 13, fontWeight: '600', color: isRoundTrip ? '#1D4ED8' : '#FFFFFF' }}>Aller-Retour</Text>
+                            </TouchableOpacity>
+                            {isRoundTrip && (
+                                <TextInput
+                                    style={{ flex: 1, backgroundColor: '#ffffff20', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, color: '#FFFFFF', fontSize: 13, borderWidth: 1, borderColor: '#ffffff30' }}
+                                    placeholder="Date retour (AAAA-MM-JJ)"
+                                    placeholderTextColor="#ffffff80"
+                                    value={returnDate}
+                                    onChangeText={setReturnDate}
+                                />
+                            )}
+                        </View>
+
                         {/* Bouton recherche */}
                         <TouchableOpacity
                             style={[
@@ -436,7 +497,7 @@ const TicketVoyageHomeScreen: React.FC = () => {
                             )}
                         </TouchableOpacity>
                     </View>
-                </View>
+                </LinearGradient>
 
                 {/* Quick filters */}
                 <ScrollView
@@ -476,74 +537,77 @@ const TicketVoyageHomeScreen: React.FC = () => {
             </View>
 
             {/* Liste des tickets */}
-            {!hasSearched && !loading ? (
-                <View style={styles.centerContainer}>
-                    <SafeIcon name="map-pin" size={64} color="#9CA3AF" />
-                    <Text style={styles.emptyText}>Sélectionnez votre trajet</Text>
-                    <Text style={styles.emptySubtext} numberOfLines={3}>
-                        Choisissez une ville de départ et une ville d'arrivée, puis cliquez sur "Rechercher"
-                    </Text>
-                </View>
-            ) : loading && tickets.length === 0 ? (
-                <View style={styles.centerContainer}>
-                    <ActivityIndicator size="large" color={modernColors.primary} />
-                    <Text style={styles.loadingText}>Recherche de voyages...</Text>
-                </View>
-            ) : error && tickets.length === 0 ? (
-                <View style={styles.centerContainer}>
-                    <SafeIcon name="ticket" size={64} color="#9CA3AF" />
-                    <Text style={styles.errorText}>{error}</Text>
-                    <Text style={styles.errorSubtext}>
-                        Essayez de modifier vos critères de recherche
-                    </Text>
-                    {activeFiltersCount > 0 && (
-                        <TouchableOpacity
-                            style={styles.clearFiltersButton}
-                            onPress={clearFilters}
-                        >
-                            <Text style={styles.clearFiltersText}>Réinitialiser les filtres</Text>
-                        </TouchableOpacity>
-                    )}
-                </View>
-            ) : (
-                <FlatList
-                    data={tickets}
-                    keyExtractor={(item) => `${item.product_id}-${item.agency_id}`}
-                    renderItem={({ item }) => (
-                        <TicketCard
-                            ticket={item}
-                            onPress={() => handleTicketPress(item)}
-                            formatPrice={formatPrice}
-                            formatDate={formatDate}
-                        />
-                    )}
-                    contentContainerStyle={styles.listContent}
-                    refreshControl={
-                        <RefreshControl
-                            refreshing={refreshing}
-                            onRefresh={handleRefresh}
-                            colors={[modernColors.primary]}
-                        />
-                    }
-                    ListEmptyComponent={
-                        <View style={styles.emptyContainer}>
-                            <SafeIcon name="ticket" size={64} color="#9CA3AF" />
-                            <Text style={styles.emptyText}>Aucun ticket trouvé</Text>
-                            <Text style={styles.emptySubtext} numberOfLines={2}>
-                                Essayez de modifier vos critères de recherche
-                            </Text>
-                            {activeFiltersCount > 0 && (
-                                <TouchableOpacity
-                                    style={styles.clearFiltersButton}
-                                    onPress={clearFilters}
-                                >
-                                    <Text style={styles.clearFiltersText}>Réinitialiser les filtres</Text>
-                                </TouchableOpacity>
-                            )}
-                        </View>
-                    }
-                />
-            )}
+            {
+                !hasSearched && !loading ? (
+                    <View style={styles.centerContainer}>
+                        <SafeIcon name="map-pin" size={64} color="#9CA3AF" />
+                        <Text style={styles.emptyText}>Sélectionnez votre trajet</Text>
+                        <Text style={styles.emptySubtext} numberOfLines={3}>
+                            Choisissez une ville de départ et une ville d'arrivée, puis cliquez sur "Rechercher"
+                        </Text>
+                    </View>
+                ) : loading && tickets.length === 0 ? (
+                    <View style={styles.centerContainer}>
+                        <ActivityIndicator size="large" color={modernColors.primary} />
+                        <Text style={styles.loadingText}>Recherche de voyages...</Text>
+                    </View>
+                ) : error && tickets.length === 0 ? (
+                    <View style={styles.centerContainer}>
+                        <SafeIcon name="ticket" size={64} color="#9CA3AF" />
+                        <Text style={styles.errorText}>{error}</Text>
+                        <Text style={styles.errorSubtext}>
+                            Essayez de modifier vos critères de recherche
+                        </Text>
+                        {activeFiltersCount > 0 && (
+                            <TouchableOpacity
+                                style={styles.clearFiltersButton}
+                                onPress={clearFilters}
+                            >
+                                <Text style={styles.clearFiltersText}>Réinitialiser les filtres</Text>
+                            </TouchableOpacity>
+                        )}
+                    </View>
+                ) : (
+                    <FlatList
+                        data={tickets}
+                        keyExtractor={(item) => `${item.product_id}-${item.agency_id}`}
+                        renderItem={({ item }) => (
+                            <TicketCard
+                                ticket={item}
+                                onPress={() => handleTicketPress(item)}
+                                onBook={() => handleBookTicket(item)}
+                                formatPrice={formatPrice}
+                                formatDate={formatDate}
+                            />
+                        )}
+                        contentContainerStyle={styles.listContent}
+                        refreshControl={
+                            <RefreshControl
+                                refreshing={refreshing}
+                                onRefresh={handleRefresh}
+                                colors={[modernColors.primary]}
+                            />
+                        }
+                        ListEmptyComponent={
+                            <View style={styles.emptyContainer}>
+                                <SafeIcon name="ticket" size={64} color="#9CA3AF" />
+                                <Text style={styles.emptyText}>Aucun ticket trouvé</Text>
+                                <Text style={styles.emptySubtext} numberOfLines={2}>
+                                    Essayez de modifier vos critères de recherche
+                                </Text>
+                                {activeFiltersCount > 0 && (
+                                    <TouchableOpacity
+                                        style={styles.clearFiltersButton}
+                                        onPress={clearFilters}
+                                    >
+                                        <Text style={styles.clearFiltersText}>Réinitialiser les filtres</Text>
+                                    </TouchableOpacity>
+                                )}
+                            </View>
+                        }
+                    />
+                )
+            }
 
             {/* Modal de filtres avancés */}
             <FiltersModal
@@ -574,7 +638,7 @@ const TicketVoyageHomeScreen: React.FC = () => {
                 onSortChange={setSortBy}
                 sortOptions={sortOptions}
             />
-        </SafeNativeView>
+        </SafeNativeView >
     );
 };
 
@@ -582,13 +646,14 @@ const TicketVoyageHomeScreen: React.FC = () => {
 interface TicketCardProps {
     ticket: BusTicketSearchResult;
     onPress: () => void;
+    onBook: () => void;
     formatPrice: (price?: number, currency?: string) => string;
     formatDate: (dateStr?: string) => string;
 }
 
-const TicketCard: React.FC<TicketCardProps> = ({ ticket, onPress, formatPrice, formatDate }) => {
-    const availabilityPercent = ticket.total_seats 
-        ? (ticket.available_seats / ticket.total_seats) * 100 
+const TicketCard: React.FC<TicketCardProps> = ({ ticket, onPress, onBook, formatPrice, formatDate }) => {
+    const availabilityPercent = ticket.total_seats
+        ? (ticket.available_seats / ticket.total_seats) * 100
         : 0;
 
     return (
@@ -653,15 +718,15 @@ const TicketCard: React.FC<TicketCardProps> = ({ ticket, onPress, formatPrice, f
                 </View>
                 <View style={styles.ticketActions}>
                     <View style={styles.availabilityBar}>
-                        <View 
+                        <View
                             style={[
                                 styles.availabilityBarFill,
                                 { width: `${availabilityPercent}%` },
                                 availabilityPercent < 20 && styles.availabilityBarLow,
-                            ]} 
+                            ]}
                         />
                     </View>
-                    <TouchableOpacity style={styles.bookButton}>
+                    <TouchableOpacity style={styles.bookButton} onPress={onBook} activeOpacity={0.7}>
                         <Text style={styles.bookButtonText}>Réserver</Text>
                     </TouchableOpacity>
                 </View>
@@ -713,8 +778,8 @@ const FiltersModal: React.FC<FiltersModalProps> = ({
     const applyFilters = () => {
         const newFilters: BusTicketSearchFilters = {
             ...filters,
-            departure_city: typeof departureCity === 'string' 
-                ? departureCity 
+            departure_city: typeof departureCity === 'string'
+                ? departureCity
                 : (departureCity as LocationObject)?.components?.ville || (departureCity as LocationObject)?.place_name || undefined,
             arrival_city: typeof arrivalCity === 'string'
                 ? arrivalCity

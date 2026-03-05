@@ -113,19 +113,21 @@ export const laboratoryService = {
                     patient_sex: patientSex,
                 }
             );
-            
+
             // Normaliser la réponse
             if (response.success) {
+                const r = response.data as any;
                 return {
                     success: true,
                     data: {
-                        analysis: response.analysis || response.data?.analysis || response.data as any
+                        analysis: r?.analysis || r
                     }
                 };
             } else {
+                const r = response.data as any;
                 return {
                     success: false,
-                    error: response.message || response.error || 'L\'IA d\'analyse d\'images n\'est pas encore opérationnelle.'
+                    error: r?.message || response.error || 'L\'IA d\'analyse d\'images n\'est pas encore opérationnelle.'
                 };
             }
         } catch (error: any) {
@@ -147,19 +149,21 @@ export const laboratoryService = {
                     symptoms,
                 }
             );
-            
+
             // Normaliser la réponse pour gérer différents formats
             if (response.success) {
+                const r = response.data as any;
                 return {
                     success: true,
-                    results: response.results || response.data || [],
-                    data: response.data || { results: response.results || [] }
+                    results: r?.results || r || [],
+                    data: r || { results: r?.results || [] }
                 };
             } else {
+                const r = response.data as any;
                 return {
                     success: false,
                     results: [],
-                    message: response.message || response.error || 'L\'IA de recherche pathologique n\'est pas encore opérationnelle.'
+                    message: r?.message || response.error || 'L\'IA de recherche pathologique n\'est pas encore opérationnelle.'
                 };
             }
         } catch (error: any) {

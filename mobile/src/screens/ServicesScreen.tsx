@@ -276,14 +276,14 @@ const ServicesScreen: React.FC = () => {
     try {
       const SHARE_BASE_URL = process.env.EXPO_PUBLIC_SHARE_URL || 'https://yukpo-backend-376093909298.europe-west1.run.app';
       const shareUrl = `${SHARE_BASE_URL}/service/${service.id}`;
-      const titre = service.title || service.titre || 'Service Yukpo';
+      const titre = service.title || service.titre || 'Service <Text style={styles.brandYuk}>Yuk</Text><Text style={styles.brandPo}>po</Text>';
       const description = service.description || '';
       const prix = service.prix || service.price;
 
       let shareText = ` ${titre}`;
       if (description) shareText += `\n\n${description}`;
       if (prix) shareText += `\n Prix: ${prix} ${service.devise || 'XAF'}`;
-      shareText += `\n\n Voir sur Yukpo:\n${shareUrl}`;
+      shareText += `\n\n Voir sur <Text style={styles.brandYuk}>Yuk</Text><Text style={styles.brandPo}>po</Text>:\n${shareUrl}`;
 
       await Share.share({
         message: shareText,
@@ -830,6 +830,12 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     gap: 10,
+  },
+  brandYuk: {
+    color: '#3B82F6', // Bleu (cohérent avec le logo officiel)
+  },
+  brandPo: {
+    color: '#7C3AED', // Violet (cohérent avec le logo officiel)
   },
 });
 

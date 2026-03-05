@@ -57,6 +57,42 @@ pub struct SalaryPrediction {
     pub comparaison_marche: String,
 }
 
+/// Suggestion de formation IA
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FormationSuggestionAI {
+    pub formation: String,
+    #[serde(default)]
+    pub description: String,
+    pub raison: String,
+    #[serde(default = "default_urgence")]
+    pub urgence: String,
+    #[serde(default)]
+    pub duree_estimee: String,
+    #[serde(default)]
+    pub type_formation: String,
+    #[serde(default)]
+    pub competences_acquises: Vec<String>,
+    #[serde(default)]
+    pub plateformes_recommandees: Vec<String>,
+}
+
+fn default_urgence() -> String {
+    "medium".to_string()
+}
+
+/// Réponse complète suggestions formations
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FormationSuggestionsResponse {
+    pub candidat_id: i32,
+    #[serde(default)]
+    pub nb_suggestions: i32,
+    pub suggestions: Vec<FormationSuggestionAI>,
+    #[serde(default)]
+    pub parcours_recommande: String,
+    #[serde(default)]
+    pub impact_carriere: String,
+}
+
 /// Service IA pour Offres d'Emploi
 pub struct EmploiAIService {
     app_ia: Arc<AppIA>,
@@ -413,5 +449,132 @@ RÉPONSE ATTENDUE (JSON strict) :
         };
 
         Ok(prediction)
+    }
+
+    /// Suggestions de formations IA
+    pub async fn suggest_formations(
+        &self,
+        candidat_id: i32,
+        competences_actuelles: &[String],
+        competences_manquantes: &[String],
+        objectif_carriere: Option<&str>,
+    ) -> AppResult<FormationSuggestionsResponse> {
+        let comp_actuelles_str = if competences_actuelles.is_empty() {
+            "Aucune spécifiée".to_string()
+        } else {
+            competences_actuelles.join(", ")
+        };
+        let comp_manquantes_str = if competences_manquantes.is_empty() {
+            "À déterminer".to_string()
+        } else {
+            competences_manquantes.join(", ")
+        };
+        let objectif_str = objectif_carriere.unwrap_or("Non spécifié");
+
+        let mut variables = HashMap::new();
+        variables.insert("candidat_id".to_string(), candidat_id.to_string());
+        variables.insert(
+            "competences_actuelles".to_string(),
+            comp_actuelles_str.clone(),
+        );
+        variables.insert(
+            "competences_manquantes".to_string(),
+            comp_manquantes_str.clone(),
+        );
+        variables.insert("objectif_carriere".to_string(), objectif_str.to_string());
+
+        let prompt = load_prompt_section_with_vars("emploi", "Suggestions Formations", &variables)
+            .await
+            .unwrap_or_else(|e| {
+                log::warn!(
+                    "[EmploiAIService] Erreur chargement prompt formations, utilisation fallback: {}",
+                    e
+                );
+                format!(
+                    r#"
+Tu es l'expert en développement de carrière et formations pour Yukpo.
+
+CONTEXTE :
+- Candidat ID : {}
+- Compétences actuelles : {}
+- Compétences manquantes : {}
+- Objectif de carrière : {}
+
+TON RÔLE :
+- Analyser les lacunes entre les compétences actuelles et les besoins du marché
+- Proposer des formations pertinentes et accessibles en Afrique
+- Prioriser les formations par urgence et impact sur la carrière
+- Fournir entre 3 et 8 suggestions
+
+RÉPONSE ATTENDUE (JSON strict) :
+{{
+    "candidat_id": {},
+    "nb_suggestions": 5,
+    "suggestions": [
+        {{
+            "formation": "Nom de la formation",
+            "description": "Description courte",
+            "raison": "Pourquoi cette formation est recommandée",
+            "urgence": "high",
+            "duree_estimee": "3 mois",
+            "type_formation": "en_ligne",
+            "competences_acquises": ["Compétence A"],
+            "plateformes_recommandees": ["Coursera"]
+        }}
+    ],
+    "parcours_recommande": "Description du parcours recommandé",
+    "impact_carriere": "Impact attendu sur la carrière"
+}}
+"#,
+                    candidat_id, comp_actuelles_str, comp_manquantes_str, objectif_str, candidat_id
+                )
+            });
+
+        let (model_name, response, tokens) = self.app_ia.predict(&prompt).await?;
+        log::info!(
+            "[EmploiAIService] Suggestions formations avec {} (tokens: {})",
+            model_name,
+            tokens
+        );
+
+        let suggestions_resp: FormationSuggestionsResponse = match serde_json::from_str(&response) {
+            Ok(s) => s,
+            Err(e) => {
+                log::warn!(
+                    "[EmploiAIService] Erreur parsing JSON formations: {}. Réponse: {}",
+                    e,
+                    response
+                );
+                // Fallback: générer des suggestions basiques à partir des compétences manquantes
+                let fallback_suggestions: Vec<FormationSuggestionAI> = competences_manquantes
+                    .iter()
+                    .take(5)
+                    .map(|comp| FormationSuggestionAI {
+                        formation: format!("Formation en {}", comp),
+                        description: format!(
+                            "Acquérir la compétence {} pour améliorer votre profil",
+                            comp
+                        ),
+                        raison: format!("Compétence '{}' identifiée comme manquante", comp),
+                        urgence: "medium".to_string(),
+                        duree_estimee: "2-3 mois".to_string(),
+                        type_formation: "en_ligne".to_string(),
+                        competences_acquises: vec![comp.clone()],
+                        plateformes_recommandees: vec!["Coursera".to_string(), "Udemy".to_string()],
+                    })
+                    .collect();
+                let nb = fallback_suggestions.len() as i32;
+                FormationSuggestionsResponse {
+                    candidat_id,
+                    nb_suggestions: nb,
+                    suggestions: fallback_suggestions,
+                    parcours_recommande: "Parcours basique généré automatiquement".to_string(),
+                    impact_carriere: "Amélioration attendue de votre profil professionnel"
+                        .to_string(),
+                }
+            }
+        };
+
+        Ok(suggestions_resp)
     }
 }

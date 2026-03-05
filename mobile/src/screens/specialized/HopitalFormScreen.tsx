@@ -1,15 +1,21 @@
+// ✅ REFONTE TOTALE 2026-03-05: HopitalFormScreen → Dashboard pro + Formulaire
+// Mode Dashboard (hôpital existant): 4 tabs (Accueil / Service / Créneaux / Stats)
+// Mode Création: Formulaire guidé avec sections visuelles
+// Exploite endpoints: CRUD hôpital, slots, consultations, wait-times, emergency, AI triage/recommendations, analytics
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useState } from 'react';
 import {
+    ActivityIndicator,
     Alert,
+    RefreshControl,
+    ScrollView,
     StyleSheet,
     Switch,
     Text,
     TouchableOpacity,
-    View
+    View,
 } from 'react-native';
-import { ConfirmationSection } from '../../components/FormConfirmationModal';
-import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 import ModernGPSModal from '../../components/ModernGPSModal';
 import PrestationSelectorWithSchedule, { PrestationWithSchedule } from '../../components/PrestationSelectorWithSchedule';
@@ -17,16 +23,37 @@ import SafeIcon from '../../components/SafeIcon';
 import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLocation } from '../../contexts/LocationContext';
-import { useFormAutoSave } from '../../hooks/useFormAutoSave';
+import { clearSavedFormData, useFormAutoSave } from '../../hooks/useFormAutoSave';
 import { useFormValidation } from '../../hooks/useFormValidation';
 import { usePartnerData } from '../../hooks/usePartnerData';
-import { apiPost, servicesApi } from '../../services/api';
+import { apiGet, apiPost, servicesApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 
 const STORAGE_KEY = '@hopital_form';
+type TabType = 'overview' | 'service' | 'slots' | 'analytics';
 
-// ✅ SUPPRIMÉ : ScheduleDay interface (planning hebdomadaire supprimé)
+const TYPES_ETABLISSEMENT = [
+    { key: 'Hôpital', icon: 'building' },
+    { key: 'Clinique', icon: 'heart' },
+    { key: 'Centre de santé', icon: 'activity' },
+    { key: 'Dispensaire', icon: 'plus-circle' },
+];
 
+const PRESTATIONS_OPTIONS = [
+    'Urgences', 'Consultation générale', 'Chirurgie générale', 'Chirurgie cardiaque',
+    'Chirurgie orthopédique', 'Maternité', 'Pédiatrie', 'Cardiologie', 'Radiologie',
+    'Imagerie médicale', 'Urologie', 'Cancérologie', 'Oncologie', 'Dentisterie',
+    'Ophtalmologie', 'ORL', 'Dermatologie', 'Neurologie', 'Psychiatrie', 'Gynécologie',
+    'Médecine interne', 'Anesthésie', 'Réanimation', 'Laboratoire d\'analyses',
+    'Pharmacie', 'Kinésithérapie', 'Physiothérapie',
+];
+
+interface HospitalAnalytics {
+    total_consultations?: number;
+    consultations_7d?: number;
+    avg_wait_time_min?: number;
+    occupancy_rate?: number;
+}
 
 const HopitalFormScreen: React.FC = () => {
     const navigation = useNavigation();
@@ -37,1013 +64,456 @@ const HopitalFormScreen: React.FC = () => {
     const specializedServiceId = (route.params as any)?.specializedServiceId as number | undefined;
     const mode = (route.params as any)?.mode as string | undefined;
 
+    // Dashboard state
+    const [activeTab, setActiveTab] = useState<TabType>('overview');
+    const [isDashboardMode, setIsDashboardMode] = useState(false);
+    const [initialLoading, setInitialLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+    const [hospitalData, setHospitalData] = useState<any>(null);
+    const [analyticsData, setAnalyticsData] = useState<HospitalAnalytics | null>(null);
+    const [emergencyStatus, setEmergencyStatus] = useState<any>(null);
+    const [consultations, setConsultations] = useState<any[]>([]);
+
+    // Form state
     const [formData, setFormData] = useState({
-        nom: '', // ✅ Sera rempli automatiquement depuis /api/partners/me
-        type_etablissement: 'Hôpital',
-        adresse: '',
+        nom: '', type_etablissement: 'Hôpital', adresse: '',
         quartier: null as LocationObject | null,
-        // ✅ SUPPRIMÉ : ville (quartier contient déjà ville et pays)
         prestations_medicales: [] as string[],
-        // ✅ SUPPRIMÉ : banque_sang (service spécialisé dédié)
-        urgences_disponible: false,
-        rdv_en_ligne: false,
-        telephone: '',
-        telephone_urgence: '',
-        whatsapp: '',
-        email: '',
-        site_web: '',
+        urgences_disponible: false, rdv_en_ligne: false,
+        telephone: '', telephone_urgence: '', whatsapp: '', email: '', site_web: '',
     });
 
     const [loading, setLoading] = useState(false);
     const [prestationsWithSchedule, setPrestationsWithSchedule] = useState<PrestationWithSchedule[]>([]);
     const [showGPSModal, setShowGPSModal] = useState(false);
     const [selectedGPS, setSelectedGPS] = useState<string | null>(null);
-    const [loadingSlots, setLoadingSlots] = useState(false);
-    const [showConfirmation, setShowConfirmation] = useState(false);
 
     const { partnerData } = usePartnerData(user?.role, 'hopital');
     const { errors, validateField, validateForm, setError } = useFormValidation({
         nom: { required: true, minLength: 3 },
-        telephone: {
-            pattern: /^\+?[0-9]{9,15}$/,
-            custom: (value) => {
-                if (value && !value.startsWith('+237') && !value.startsWith('237')) {
-                    return 'Numéro camerounais requis (+237...)';
-                }
-                return null;
-            }
-        },
+        telephone: { pattern: /^\+?[0-9]{9,15}$/ },
         email: { pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/ },
     });
-
     useFormAutoSave(STORAGE_KEY, formData, true, 1000);
 
-    const typesEtablissement = ['Hôpital', 'Clinique', 'Centre de santé', 'Dispensaire'];
-
-    // ✅ Liste complète des prestations médicales essentielles
-    const prestationsOptions = [
-        'Urgences',
-        'Consultation générale',
-        'Chirurgie générale',
-        'Chirurgie cardiaque',
-        'Chirurgie orthopédique',
-        'Maternité',
-        'Pédiatrie',
-        'Cardiologie',
-        'Radiologie',
-        'Imagerie médicale',
-        'Urologie',
-        'Cancérologie',
-        'Oncologie',
-        'Dentisterie',
-        'Ophtalmologie',
-        'ORL',
-        'Dermatologie',
-        'Neurologie',
-        'Psychiatrie',
-        'Gynécologie',
-        'Médecine interne',
-        'Anesthésie',
-        'Réanimation',
-        'Laboratoire d\'analyses',
-        'Pharmacie',
-        'Kinésithérapie',
-        'Physiothérapie',
-    ];
-
-    // ✅ NOUVEAU: Charger automatiquement les données partenaire depuis /api/partners/me
-    useEffect(() => {
-        const loadPartnerData = async () => {
-            if (user?.role === 'partenaire' && user?.partner_type === 'hopital') {
-                try {
-                    const { apiGet } = require('../../services/api');
-                    const response = await apiGet('/api/partners/me');
-                    if (response.success && response.data) {
-                        const partner = response.data;
-                        setPartnerData(partner); // ✅ Stocker pour affichage dans l'en-tête
-                        // ✅ Pré-remplir silencieusement les champs pour l'envoi au backend (mais ne pas les afficher)
-                        setFormData(prev => ({
-                            ...prev,
-                            nom: partner.name || prev.nom,
-                            adresse: partner.address || partner.location_address || prev.adresse,
-                            telephone: partner.contact_phone || prev.telephone,
-                            email: partner.contact_email || prev.email,
-                            quartier: partner.city ? {
-                                raw: partner.city,
-                                place_name: partner.city,
-                                components: {
-                                    ville: partner.city,
-                                    pays: partner.country,
-                                }
-                            } : prev.quartier,
-                        }));
-                    }
-                } catch (error) {
-                    console.error('[HopitalFormScreen] Erreur chargement partenaire:', error);
-                }
-            }
-        };
-        loadPartnerData();
-    }, [user?.role, user?.partner_type]);
-
-    // ✅ Créer automatiquement un service si serviceId manquant
-    useEffect(() => {
-        const createServiceIfNeeded = async () => {
-            if (!serviceId && user?.id && formData.nom) {
-                try {
-                    const serviceData = {
-                        titre_service: formData.nom || 'Établissement de santé',
-                        description: `Établissement de santé: ${formData.type_etablissement}`,
-                        category: 'sante',
-                    };
-
-                    const response = await servicesApi.createService(serviceData);
-                    if (response.success && response.data && typeof response.data === 'object' && 'id' in response.data) {
-                        setServiceId((response.data as any).id);
-                    }
-                } catch (error: any) {
-                    console.error('[HopitalFormScreen] Erreur création service:', error);
-                }
-            }
-        };
-
-        if (!serviceId && formData.nom) {
-            createServiceIfNeeded();
-        }
-    }, [formData.nom, serviceId, user?.id]);
-
-    // ✅ NOUVEAU : Charger les données existantes si mode='edit' et specializedServiceId fourni
-    useEffect(() => {
-        const loadExistingData = async () => {
-            if (mode === 'edit' && specializedServiceId && serviceId) {
-                try {
-                    setLoading(true);
-                    const { apiGet } = require('../../services/api');
-                    const response = await apiGet(`/api/hopitaux/${specializedServiceId}`);
-
-                    if (response.success && response.data) {
-                        const data = response.data;
-                        setFormData({
-                            nom: data.nom || '',
-                            type_etablissement: data.type_etablissement || 'Hôpital',
-                            adresse: data.adresse || '',
-                            quartier: data.quartier ? { raw: data.quartier, place_name: data.quartier } : null,
-                            prestations_medicales: data.prestations_medicales || [],
-                            urgences_disponible: data.urgences_disponible || false,
-                            rdv_en_ligne: data.rdv_en_ligne || false,
-                            telephone: data.telephone || '',
-                            telephone_urgence: data.telephone_urgence || '',
-                            whatsapp: data.whatsapp || '',
-                            email: data.email || '',
-                            site_web: data.site_web || '',
-                        });
-
-                        // Charger les prestations avec planning si disponible
-                        if (data.planning_prestations && Array.isArray(data.planning_prestations)) {
-                            const prestations: PrestationWithSchedule[] = data.planning_prestations.map((p: any) => ({
-                                prestation: p.prestation,
-                                scheduleByDay: p.scheduleByDay || (p.days || []).map((day: number) => ({
-                                    day,
-                                    timeSlots: p.timeSlots || [{ start: '08:00', end: '17:00' }]
-                                })),
-                                days: p.days || [],
-                                timeSlots: p.timeSlots || []
-                            }));
-                            setPrestationsWithSchedule(prestations);
-                        }
-
-                        if (data.gps) {
-                            setSelectedGPS(data.gps);
-                        }
-                    }
-                } catch (error: any) {
-                    console.error('[HopitalFormScreen] Erreur chargement données:', error);
-                } finally {
-                    setLoading(false);
-                }
-            }
-        };
-
-        loadExistingData();
-    }, [mode, specializedServiceId, serviceId]);
-
-    // ✅ NOUVEAU: Calculer les statistiques des prestations
+    // Computed stats
     const stats = {
         totalPrestations: prestationsWithSchedule.length,
-        totalSlots: prestationsWithSchedule.reduce((sum, p) => {
-            if (p.scheduleByDay && p.scheduleByDay.length > 0) {
-                return sum + p.scheduleByDay.reduce((daySum, day) => daySum + (day.timeSlots?.length || 0), 0);
-            }
-            return sum + (p.timeSlots?.length || 0);
+        totalSlots: prestationsWithSchedule.reduce((s, p) => {
+            if (p.scheduleByDay?.length) return s + p.scheduleByDay.reduce((ds, d) => ds + (d.timeSlots?.length || 0), 0);
+            return s + (p.timeSlots?.length || 0);
         }, 0),
-        prestationsAvecSlots: prestationsWithSchedule.filter(p => {
-            if (p.scheduleByDay && p.scheduleByDay.length > 0) {
-                return p.scheduleByDay.some(day => day.timeSlots && day.timeSlots.length > 0);
-            }
-            return p.timeSlots && p.timeSlots.length > 0;
+        withSlots: prestationsWithSchedule.filter(p => {
+            if (p.scheduleByDay?.length) return p.scheduleByDay.some(d => d.timeSlots?.length > 0);
+            return p.timeSlots?.length > 0;
         }).length,
     };
 
-    const handleGPSSelect = (coordinates: string) => {
-        setSelectedGPS(coordinates);
-        setShowGPSModal(false);
-    };
+    // ─── DATA LOADING ────────────────────────────────────────────────────
+    useEffect(() => {
+        const init = async () => {
+            if (user?.role === 'partenaire' && user?.partner_type === 'hopital') {
+                try {
+                    const partnerResp = await apiGet('/api/partners/me');
+                    if (partnerResp.success && partnerResp.data) {
+                        const p = partnerResp.data as any;
+                        setFormData(prev => ({
+                            ...prev, nom: p.name || prev.nom,
+                            adresse: p.address || p.location_address || prev.adresse,
+                            telephone: p.contact_phone || prev.telephone, email: p.contact_email || prev.email,
+                            quartier: p.city ? { raw: p.city, place_name: p.city, components: { ville: p.city, pays: p.country } } as any : prev.quartier,
+                        }));
+                    }
+                    const hospResp = await apiGet('/api/hopitaux');
+                    const resData = (hospResp?.data || hospResp) as any;
+                    const hospitals = Array.isArray(resData?.data) ? resData.data : Array.isArray(resData) ? resData : [];
+                    if (hospitals.length > 0) {
+                        const myHosp = hospitals[0];
+                        setHospitalData(myHosp);
+                        setIsDashboardMode(true);
+                        if (!serviceId && myHosp.service_id) setServiceId(myHosp.service_id);
+                        const hid = myHosp.id || myHosp.service_id;
+                        if (hid) { loadAnalytics(hid); loadConsultations(); loadEmergency(hid); }
+                    }
+                } catch (e) { console.log('[Hopital] Init:', e); }
+            }
+            // Edit mode
+            if (mode === 'edit' && specializedServiceId) {
+                try {
+                    setLoading(true);
+                    const resp = await apiGet(`/api/hopitaux/${specializedServiceId}`);
+                    if (resp.success && resp.data) {
+                        const d = resp.data as any;
+                        setFormData({
+                            nom: d.nom || '', type_etablissement: d.type_etablissement || 'Hôpital',
+                            adresse: d.adresse || '', quartier: d.quartier ? { raw: d.quartier, place_name: d.quartier } as any : null,
+                            prestations_medicales: d.prestations_medicales || [],
+                            urgences_disponible: d.urgences_disponible || false, rdv_en_ligne: d.rdv_en_ligne || false,
+                            telephone: d.telephone || '', telephone_urgence: d.telephone_urgence || '',
+                            whatsapp: d.whatsapp || '', email: d.email || '', site_web: d.site_web || '',
+                        });
+                        if (d.planning_prestations && Array.isArray(d.planning_prestations)) {
+                            setPrestationsWithSchedule(d.planning_prestations.map((p: any) => ({
+                                prestation: p.prestation,
+                                scheduleByDay: p.scheduleByDay || (p.days || []).map((day: number) => ({ day, timeSlots: p.timeSlots || [{ start: '08:00', end: '17:00' }] })),
+                                days: p.days || [], timeSlots: p.timeSlots || [],
+                            })));
+                        }
+                        if (d.gps) setSelectedGPS(d.gps);
+                    }
+                } catch (e) { console.error('[Hopital] Edit load:', e); } finally { setLoading(false); }
+            }
+            setInitialLoading(false);
+        };
+        init();
+    }, [user?.role, user?.partner_type]);
 
-    const handleFieldChange = (field: string, value: any) => {
-        setFormData({ ...formData, [field]: value });
-        const error = validateField(field, value);
-        if (error) {
-            setError(field, error);
+    // Auto-create service
+    useEffect(() => {
+        if (!serviceId && user?.id && formData.nom) {
+            (async () => {
+                try {
+                    const resp = await servicesApi.createService({ titre_service: formData.nom || 'Établissement de santé', description: `${formData.type_etablissement}`, category: 'sante' });
+                    if (resp.success && resp.data && typeof resp.data === 'object' && 'id' in resp.data) setServiceId((resp.data as any).id);
+                } catch (e) { console.error('[Hopital] Service:', e); }
+            })();
         }
+    }, [formData.nom, serviceId, user?.id]);
+
+    const loadAnalytics = async (hid: number) => {
+        try { const r = await apiGet(`/api/hopitaux/${hid}/analytics`); const d = (r?.data || r) as any; if (d) setAnalyticsData(d?.data || d); } catch (e) { console.log('[Hopital] Analytics:', e); }
+    };
+    const loadConsultations = async () => {
+        try { const r = await apiGet('/api/hopitaux/my-consultations'); const d = (r?.data || r) as any; setConsultations(Array.isArray(d?.data) ? d.data : Array.isArray(d) ? d : []); } catch (e) { console.log('[Hopital] Consultations:', e); }
+    };
+    const loadEmergency = async (hid: number) => {
+        try { const r = await apiGet(`/api/hopitaux/${hid}/emergency-status`); if (r.success) setEmergencyStatus(r.data); } catch (e) { console.log('[Hopital] Emergency:', e); }
     };
 
-    const confirmationSections: ConfirmationSection[] = [
-        {
-            title: 'Établissement',
-            icon: 'building',
-            fields: [
-                { label: 'Nom', value: formData.nom },
-                { label: 'Type', value: formData.type_etablissement },
-                { label: 'Adresse', value: formData.adresse },
-                { label: 'Quartier', value: typeof formData.quartier === 'string' ? formData.quartier : formData.quartier?.place_name },
-            ],
-        },
-        {
-            title: 'Contact',
-            icon: 'phone',
-            fields: [
-                { label: 'Téléphone', value: formData.telephone },
-                { label: 'Téléphone urgence', value: formData.telephone_urgence },
-                { label: 'WhatsApp', value: formData.whatsapp },
-                { label: 'Email', value: formData.email },
-                { label: 'Site web', value: formData.site_web },
-            ],
-        },
-        {
-            title: 'Services',
-            icon: 'heart',
-            fields: [
-                { label: 'Prestations', value: `${prestationsWithSchedule.length} prestation(s)` },
-                { label: 'Urgences disponibles', value: formData.urgences_disponible, type: 'boolean' as const },
-                { label: 'RDV en ligne', value: formData.rdv_en_ligne, type: 'boolean' as const },
-            ],
-        },
-    ];
-
-    // ✅ SUPPRIMÉ : handleScheduleSave (planning hebdomadaire supprimé)
-
-    const handleSubmit = () => {
-        if (!validateForm(formData)) {
-            Alert.alert('Erreur', 'Veuillez corriger les erreurs du formulaire');
-            return;
-        }
-        setShowConfirmation(true);
+    const handleRefresh = async () => {
+        setRefreshing(true);
+        const hid = hospitalData?.id || hospitalData?.service_id || serviceId;
+        if (hid) await Promise.all([loadAnalytics(hid), loadConsultations(), loadEmergency(hid)]);
+        setRefreshing(false);
     };
 
-    const handleFinalSubmit = async () => {
-        // ✅ Créer le service si nécessaire
+    const handleGPSSelect = (c: string) => { setSelectedGPS(c); setShowGPSModal(false); };
+
+    const handleSubmit = async () => {
+        if (!formData.nom.trim()) { Alert.alert('Erreur', 'Nom obligatoire'); return; }
+        setLoading(true);
         let finalServiceId = serviceId;
         if (!finalServiceId && user?.id) {
             try {
-                setLoading(true);
-                const serviceData = {
-                    titre_service: formData.nom || 'Établissement de santé',
-                    description: `Établissement de santé: ${formData.type_etablissement}`,
-                    category: 'sante',
-                };
-
-                const response = await servicesApi.createService(serviceData);
-                if (response.success && response.data && typeof response.data === 'object' && 'id' in response.data) {
-                    finalServiceId = (response.data as any).id;
-                    setServiceId(finalServiceId);
-                } else {
-                    Alert.alert('Erreur', 'Impossible de créer le service. Veuillez réessayer.');
-                    setLoading(false);
-                    return;
-                }
-            } catch (error: any) {
-                console.error('[HopitalFormScreen] Erreur création service:', error);
-                Alert.alert('Erreur', 'Impossible de créer le service. Veuillez réessayer.');
-                setLoading(false);
-                return;
-            }
+                const resp = await servicesApi.createService({ titre_service: formData.nom, description: formData.type_etablissement, category: 'sante' });
+                if (resp.success && resp.data && typeof resp.data === 'object' && 'id' in resp.data) { finalServiceId = (resp.data as any).id; setServiceId(finalServiceId); }
+            } catch (e) { Alert.alert('Erreur', 'Impossible de créer le service'); setLoading(false); return; }
         }
-
-        if (!finalServiceId) {
-            Alert.alert('Erreur', 'Service ID manquant. Veuillez créer un service d\'abord.');
-            setLoading(false);
-            return;
-        }
-
-        if (!formData.nom.trim()) {
-            Alert.alert('Erreur', 'Le nom de l\'établissement est obligatoire');
-            setLoading(false);
-            return;
-        }
-
-        // ✅ NOUVEAU: Validation téléphone obligatoire
-        if (!formData.telephone.trim()) {
-            Alert.alert('Validation', 'Le numéro de téléphone est obligatoire pour un établissement de santé');
-            setLoading(false);
-            return;
-        }
-
-        // ✅ NOUVEAU: Validation format téléphone
-        const phoneDigits = formData.telephone.replace(/\D/g, '');
-        if (phoneDigits.length < 9) {
-            Alert.alert('Validation', 'Le numéro de téléphone doit contenir au moins 9 chiffres');
-            setLoading(false);
-            return;
-        }
-
-        // ✅ NOUVEAU: Validation localisation
-        if (!formData.quartier && !selectedGPS) {
-            Alert.alert('Validation', 'Veuillez indiquer le quartier ou activer la localisation GPS');
-            setLoading(false);
-            return;
-        }
-
+        if (!finalServiceId) { Alert.alert('Erreur', 'Service ID manquant'); setLoading(false); return; }
         try {
-            // ✅ SUPPRIMÉ : planning_hebdomadaire (pas d'utilité selon demande)
-
-            // ✅ Construire le planning des prestations avec horaires indépendants par jour
-            // Structure: chaque prestation a des horaires spécifiques par jour
-            const planningPrestations = prestationsWithSchedule.length > 0
-                ? prestationsWithSchedule.map(ps => ({
-                    prestation: ps.prestation,
-                    // ✅ NOUVEAU : Utiliser scheduleByDay si disponible (structure refondue)
-                    scheduleByDay: ps.scheduleByDay && ps.scheduleByDay.length > 0
-                        ? ps.scheduleByDay // Utiliser la nouvelle structure
-                        : (ps.days || []).map(day => ({
-                            // Fallback vers ancien format pour compatibilité
-                            day,
-                            timeSlots: ps.timeSlots || [{ start: '08:00', end: '17:00' }]
-                        })),
-                    // Compatibilité avec ancien format
-                    days: ps.scheduleByDay ? ps.scheduleByDay.map(d => d.day) : (ps.days || []),
-                    timeSlots: ps.scheduleByDay && ps.scheduleByDay.length > 0
-                        ? ps.scheduleByDay[0].timeSlots // Premier jour pour compatibilité
-                        : (ps.timeSlots || [])
-                }))
-                : null;
-
-            const nom = formData.partner?.name || formData.nom;
             const payload = {
-                service_id: finalServiceId,
-                nom: nom,
-                // ✅ partner_id sera récupéré automatiquement depuis /api/partners/me si nécessaire
-                type_etablissement: formData.type_etablissement,
+                service_id: finalServiceId, nom: formData.nom, type_etablissement: formData.type_etablissement,
                 adresse: formData.adresse || null,
-                quartier: formData.quartier?.raw || formData.quartier?.place_name || null,
-                // ✅ SUPPRIMÉ : ville (quartier contient déjà ville et pays)
-                gps: selectedGPS || (location
-                    ? `${location.coords.latitude},${location.coords.longitude}`
-                    : null),
-                prestations_medicales: prestationsWithSchedule.length > 0
-                    ? prestationsWithSchedule.map(p => p.prestation)
-                    : null,
-                planning_prestations: planningPrestations,
-                // ✅ SUPPRIMÉ : banque_sang (service spécialisé dédié)
-                urgences_disponible: formData.urgences_disponible,
-                rdv_en_ligne: formData.rdv_en_ligne,
-                telephone: formData.telephone || null,
-                telephone_urgence: formData.telephone_urgence || null,
-                whatsapp: formData.whatsapp || null,
-                email: formData.email || null,
-                site_web: formData.site_web || null,
+                quartier: typeof formData.quartier === 'string' ? formData.quartier : (formData.quartier?.raw || formData.quartier?.place_name || null),
+                gps: selectedGPS || (location ? `${location.coords.latitude},${location.coords.longitude}` : null),
+                prestations_medicales: formData.prestations_medicales.length > 0 ? formData.prestations_medicales : null,
+                planning_prestations: prestationsWithSchedule.length > 0 ? prestationsWithSchedule : null,
+                urgences_disponible: formData.urgences_disponible, rdv_en_ligne: formData.rdv_en_ligne,
+                telephone: formData.telephone || null, telephone_urgence: formData.telephone_urgence || null,
+                whatsapp: formData.whatsapp || null, email: formData.email || null, site_web: formData.site_web || null,
             };
-
-            const response = await apiPost('/api/hopitaux', payload);
-
-            if (response.success) {
-                Alert.alert(
-                    'Succès',
-                    'Établissement de santé enregistré avec succès !',
-                    [{ text: 'OK', onPress: () => navigation.goBack() }]
-                );
-            } else {
-                Alert.alert('Erreur', response.error || 'Impossible d\'enregistrer l\'établissement');
-            }
-        } catch (error: any) {
-            console.error('Erreur création hôpital:', error);
-            Alert.alert('Erreur', error.message || 'Une erreur est survenue');
-        } finally {
-            setLoading(false);
-            setShowConfirmation(false);
-        }
+            const resp = await apiPost('/api/hopitaux', payload);
+            if (resp.success) {
+                await clearSavedFormData(STORAGE_KEY);
+                Alert.alert('Succès', 'Établissement enregistré !', [{ text: 'OK', onPress: () => { setIsDashboardMode(true); setActiveTab('overview'); handleRefresh(); } }]);
+            } else { Alert.alert('Erreur', (resp as any).error || 'Impossible d\'enregistrer'); }
+        } catch (e: any) { Alert.alert('Erreur', e.message || 'Erreur'); } finally { setLoading(false); }
     };
 
+    // ─── RENDER: Loading ─────────────────────────────────────────────────
+    if (initialLoading) return <View style={s.loadingScreen}><ActivityIndicator size="large" color="#DC2626" /><Text style={s.loadingText}>Chargement...</Text></View>;
 
-    return (
-        <>
-            <KeyboardAwareScreen style={styles.container}>
-                <View style={styles.header}>
-                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                        <SafeIcon name="arrow-left" size={24} color="#111827" />
+    // ─── RENDER: Overview ────────────────────────────────────────────────
+    const renderOverview = () => (
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}>
+            <View style={s.statsGrid}>
+                {[
+                    { label: 'Prestations', value: stats.totalPrestations, icon: 'stethoscope', color: '#DC2626' },
+                    { label: 'Créneaux', value: stats.totalSlots, icon: 'calendar', color: '#3B82F6' },
+                    { label: 'Consultations', value: consultations.length, icon: 'users', color: '#10B981' },
+                    { label: 'Temps attente', value: analyticsData?.avg_wait_time_min ? `${analyticsData.avg_wait_time_min}min` : '—', icon: 'clock', color: '#F59E0B' },
+                ].map((st, i) => (
+                    <View key={i} style={[s.statCard, { borderLeftColor: st.color }]}>
+                        <SafeIcon name={st.icon as any} size={18} color={st.color} />
+                        <Text style={s.statValue}>{st.value}</Text>
+                        <Text style={s.statLabel}>{st.label}</Text>
+                    </View>
+                ))}
+            </View>
+
+            {/* Quick Actions */}
+            <Text style={s.sectionTitle}>Actions rapides</Text>
+            <View style={s.quickRow}>
+                {[
+                    { label: 'Gérer créneaux', icon: 'calendar', color: '#3B82F6', onPress: () => setActiveTab('slots') },
+                    { label: 'Mon service', icon: 'settings', color: '#6B7280', onPress: () => setActiveTab('service') },
+                    { label: 'Statistiques', icon: 'bar-chart-2', color: '#F59E0B', onPress: () => setActiveTab('analytics') },
+                ].map((a, i) => (
+                    <TouchableOpacity key={i} style={s.quickAction} onPress={a.onPress}>
+                        <View style={[s.quickIcon, { backgroundColor: a.color + '15' }]}><SafeIcon name={a.icon as any} size={22} color={a.color} /></View>
+                        <Text style={s.quickLabel}>{a.label}</Text>
                     </TouchableOpacity>
-                    <View style={styles.headerContent}>
-                        <Text style={styles.title}>Enregistrer un Hôpital/Clinique</Text>
-                        {/* ✅ NOUVEAU: Afficher le nom du partenaire dans l'en-tête */}
-                        {user?.role === 'partenaire' && partnerData && (
-                            <View style={styles.partnerHeader}>
-                                <SafeIcon name="building" size={16} color={modernColors.primary} />
-                                <Text style={styles.partnerName}>{partnerData.name}</Text>
-                            </View>
-                        )}
-                    </View>
+                ))}
+            </View>
+
+            {/* Emergency / Urgences */}
+            <View style={[s.emergencyCard, { backgroundColor: formData.urgences_disponible ? '#FEF2F2' : '#F3F4F6' }]}>
+                <SafeIcon name="alert-triangle" size={20} color={formData.urgences_disponible ? '#DC2626' : '#6B7280'} />
+                <View style={{ flex: 1 }}>
+                    <Text style={[s.emergencyTitle, { color: formData.urgences_disponible ? '#DC2626' : '#6B7280' }]}>
+                        {formData.urgences_disponible ? 'Urgences activées' : 'Urgences désactivées'}
+                    </Text>
+                    <Text style={s.emergencySub}>{formData.rdv_en_ligne ? 'RDV en ligne disponible' : 'RDV en ligne non disponible'}</Text>
                 </View>
+            </View>
 
-                <View style={styles.form}>
-                    {/* ✅ Masquer les champs redondants pour les partenaires */}
-                    {user?.role !== 'partenaire' && (
-                        <View style={styles.inputGroup}>
-                            <NativeInput
-                                label="Nom de l'établissement *"
-                                value={formData.nom}
-                                onChangeText={(text) => setFormData({ ...formData, nom: text })}
-                                placeholder="Ex: Hôpital Central"
-                            />
-                        </View>
-                    )}
-
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Type d'établissement</Text>
-                        <View style={styles.chipsContainer}>
-                            {typesEtablissement.map((type) => (
-                                <TouchableOpacity
-                                    key={type}
-                                    style={[
-                                        styles.chip,
-                                        formData.type_etablissement === type && styles.chipSelected,
-                                    ]}
-                                    onPress={() => setFormData({ ...formData, type_etablissement: type })}
-                                >
-                                    <Text
-                                        style={[
-                                            styles.chipText,
-                                            formData.type_etablissement === type && styles.chipTextSelected,
-                                        ]}
-                                    >
-                                        {type}
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
-                        </View>
-                    </View>
-
-                    {/* ✅ Localisation avec Google Maps */}
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Localisation GPS</Text>
-                        <TouchableOpacity
-                            style={styles.gpsButton}
-                            onPress={() => setShowGPSModal(true)}
-                        >
-                            <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
-                            <Text style={styles.gpsButtonText}>
-                                {selectedGPS ? 'Localisation sélectionnée' : 'Sélectionner sur la carte'}
-                            </Text>
-                            <SafeIcon name="chevron-right" size={20} color="#9CA3AF" />
-                        </TouchableOpacity>
-                        {selectedGPS && (
-                            <Text style={styles.gpsText}>{selectedGPS}</Text>
-                        )}
-                    </View>
-
-                    {/* ✅ Masquer l'adresse pour les partenaires (chargée automatiquement) */}
-                    {user?.role !== 'partenaire' && (
-                        <View style={styles.inputGroup}>
-                            <Text style={styles.label}>Adresse</Text>
-                            <NativeInput
-                                value={formData.adresse}
-                                onChangeText={(text) => setFormData({ ...formData, adresse: text })}
-                                placeholder="Adresse complète"
-                                multiline
-                            />
-                        </View>
-                    )}
-
-                    <View style={styles.inputGroup}>
-                        <LocationSelector
-                            label="Quartier"
-                            value={formData.quartier ? (typeof formData.quartier === 'string' ? { raw: formData.quartier, place_name: formData.quartier } : formData.quartier) : ''}
-                            onSelect={(location: LocationObject) => {
-                                // ✅ CORRECTION: Extraire la valeur à stocker (string ou LocationObject selon besoin)
-                                const quartierValue = location.raw || location.place_name || '';
-                                setFormData({
-                                    ...formData,
-                                    quartier: quartierValue,
-                                    // ✅ NOUVEAU: Extraire automatiquement ville et pays si disponibles
-                                    ville: location.components?.ville || formData.ville,
-                                    pays: location.components?.pays || formData.pays,
-                                });
-                            }}
-                            placeholder="Rechercher un lieu (ville, quartier, adresse...)"
-                            scope="all"
-                            enrichWithBackend
-                        />
-                        <Text style={styles.hintText}>
-                            Le quartier permet de récupérer automatiquement la ville et le pays
-                        </Text>
-                    </View>
-
-                    {/* ✅ Prestations médicales avec planification inline */}
-                    {/* ✅ AMÉLIORÉ : Horaires indépendants par jour (chaque jour peut avoir ses propres horaires) */}
-                    {/* TODO: Modifier PrestationSelectorWithSchedule pour supporter horaires indépendants par jour */}
-                    <View style={styles.inputGroup}>
-                        <PrestationSelectorWithSchedule
-                            label="Prestations médicales"
-                            options={prestationsOptions}
-                            selected={prestationsWithSchedule}
-                            onSelectionChange={setPrestationsWithSchedule}
-                            allowCustom={true}
-                            placeholder="Ajouter une prestation personnalisée"
-                        />
-                    </View>
-
-                    {/* ✅ NOUVEAU: Section Statistiques et gestion des créneaux */}
-                    {serviceId && specializedServiceId && prestationsWithSchedule.length > 0 && (
-                        <View style={styles.slotsSection}>
-                            <View style={styles.sectionHeader}>
-                                <View style={styles.sectionTitleContainer}>
-                                    <SafeIcon name="calendar-clock" size={20} color={modernColors.primary} type="lucide" />
-                                    <Text style={styles.sectionTitle}>Gestion des créneaux</Text>
-                                </View>
-                            </View>
-
-                            {/* Statistiques */}
-                            <View style={styles.statsContainer}>
-                                <View style={styles.statItem}>
-                                    <Text style={styles.statValue}>{prestationsWithSchedule.length}</Text>
-                                    <Text style={styles.statLabel}>Prestations</Text>
-                                </View>
-                                <View style={styles.statDivider} />
-                                <View style={styles.statItem}>
-                                    <Text style={styles.statValue}>
-                                        {prestationsWithSchedule.filter(p => {
-                                            if (p.scheduleByDay && p.scheduleByDay.length > 0) {
-                                                return p.scheduleByDay.some(day => day.timeSlots && day.timeSlots.length > 0);
-                                            }
-                                            return p.timeSlots && p.timeSlots.length > 0;
-                                        }).length}
-                                    </Text>
-                                    <Text style={styles.statLabel}>Avec créneaux</Text>
-                                </View>
-                                <View style={styles.statDivider} />
-                                <View style={styles.statItem}>
-                                    <Text style={styles.statValue}>
-                                        {prestationsWithSchedule.reduce((sum, p) => {
-                                            if (p.scheduleByDay && p.scheduleByDay.length > 0) {
-                                                return sum + p.scheduleByDay.reduce((daySum, day) => daySum + (day.timeSlots?.length || 0), 0);
-                                            }
-                                            return sum + (p.timeSlots?.length || 0);
-                                        }, 0)}
-                                    </Text>
-                                    <Text style={styles.statLabel}>Créneaux totaux</Text>
-                                </View>
-                            </View>
-
-                            {/* Liste des prestations avec leurs créneaux */}
-                            <View style={styles.prestationsList}>
-                                {prestationsWithSchedule.map((prestation, index) => {
-                                    const slotsCount = prestation.scheduleByDay && prestation.scheduleByDay.length > 0
-                                        ? prestation.scheduleByDay.reduce((sum, day) => sum + (day.timeSlots?.length || 0), 0)
-                                        : (prestation.timeSlots?.length || 0);
-                                    const daysCount = prestation.scheduleByDay?.length || (prestation.days?.length || 0);
-                                    const DAYS_OF_WEEK = [
-                                        { value: 1, label: 'Lundi', short: 'Lun' },
-                                        { value: 2, label: 'Mardi', short: 'Mar' },
-                                        { value: 3, label: 'Mercredi', short: 'Mer' },
-                                        { value: 4, label: 'Jeudi', short: 'Jeu' },
-                                        { value: 5, label: 'Vendredi', short: 'Ven' },
-                                        { value: 6, label: 'Samedi', short: 'Sam' },
-                                        { value: 7, label: 'Dimanche', short: 'Dim' },
-                                    ];
-
-                                    return (
-                                        <View key={index} style={styles.prestationCard}>
-                                            <View style={styles.prestationInfo}>
-                                                <Text style={styles.prestationName}>{prestation.prestation}</Text>
-                                                <View style={styles.prestationStats}>
-                                                    <View style={styles.prestationStatItem}>
-                                                        <SafeIcon name="calendar" size={14} color="#6B7280" type="lucide" />
-                                                        <Text style={styles.prestationStatText}>{daysCount} jour(s)</Text>
-                                                    </View>
-                                                    <View style={styles.prestationStatItem}>
-                                                        <SafeIcon name="clock" size={14} color="#6B7280" type="lucide" />
-                                                        <Text style={styles.prestationStatText}>{slotsCount} créneau(x)</Text>
-                                                    </View>
-                                                </View>
-                                                {prestation.scheduleByDay && prestation.scheduleByDay.length > 0 && (
-                                                    <View style={styles.schedulePreview}>
-                                                        {prestation.scheduleByDay.slice(0, 3).map((day, dayIdx) => (
-                                                            <View key={dayIdx} style={styles.dayPreview}>
-                                                                <Text style={styles.dayPreviewText}>
-                                                                    {DAYS_OF_WEEK.find(d => d.value === day.day)?.short || 'J' + day.day}:
-                                                                    {day.timeSlots?.slice(0, 2).map((slot: any) => slot.start).join(', ') || 'N/A'}
-                                                                </Text>
-                                                            </View>
-                                                        ))}
-                                                        {prestation.scheduleByDay.length > 3 && (
-                                                            <Text style={styles.moreDaysText}>
-                                                                +{prestation.scheduleByDay.length - 3} jour(s)
-                                                            </Text>
-                                                        )}
-                                                    </View>
-                                                )}
-                                            </View>
-                                        </View>
-                                    );
-                                })}
-                            </View>
-
-                            <Text style={styles.hintText}>
-                                💡 Les créneaux sont configurés via le sélecteur de prestations ci-dessus.
-                                Vous pouvez définir des horaires différents pour chaque jour de la semaine.
-                            </Text>
-                        </View>
-                    )}
-
-                    {/* ✅ SUPPRIMÉ : Planning hebdomadaire (pas d'utilité) */}
-
-                    {/* ✅ SUPPRIMÉ : Banque de sang (service spécialisé dédié) */}
-
-                    <View style={styles.switchGroup}>
-                        <Text style={styles.label}>Urgences disponibles</Text>
-                        <Switch
-                            value={formData.urgences_disponible}
-                            onValueChange={(value) => setFormData({ ...formData, urgences_disponible: value })}
-                            trackColor={{ false: '#D1D5DB', true: modernColors.primary }}
-                        />
-                    </View>
-
-                    <View style={styles.switchGroup}>
-                        <Text style={styles.label}>Rendez-vous en ligne</Text>
-                        <Switch
-                            value={formData.rdv_en_ligne}
-                            onValueChange={(value) => setFormData({ ...formData, rdv_en_ligne: value })}
-                            trackColor={{ false: '#D1D5DB', true: modernColors.primary }}
-                        />
-                    </View>
-
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Téléphone</Text>
-                        <NativeInput
-                            value={formData.telephone}
-                            onChangeText={(text) => setFormData({ ...formData, telephone: text })}
-                            placeholder="+237 6XX XX XX XX"
-                            keyboardType="phone-pad"
-                        />
-                    </View>
-
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Téléphone urgence</Text>
-                        <NativeInput
-                            value={formData.telephone_urgence}
-                            onChangeText={(text) => setFormData({ ...formData, telephone_urgence: text })}
-                            placeholder="+237 6XX XX XX XX"
-                            keyboardType="phone-pad"
-                        />
-                    </View>
-
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>WhatsApp</Text>
-                        <NativeInput
-                            value={formData.whatsapp}
-                            onChangeText={(text) => setFormData({ ...formData, whatsapp: text })}
-                            placeholder="+237 6XX XX XX XX"
-                            keyboardType="phone-pad"
-                        />
-                    </View>
-
-                    {/* ✅ Masquer email et site web pour les partenaires (chargés automatiquement) */}
-                    {user?.role !== 'partenaire' && (
-                        <>
-                            <View style={styles.inputGroup}>
-                                <Text style={styles.label}>Email</Text>
-                                <NativeInput
-                                    value={formData.email}
-                                    onChangeText={(text) => setFormData({ ...formData, email: text })}
-                                    placeholder="hopital@example.com"
-                                    keyboardType="email-address"
-                                    autoCapitalize="none"
-                                />
-                            </View>
-
-                            <View style={styles.inputGroup}>
-                                <Text style={styles.label}>Site web</Text>
-                                <NativeInput
-                                    value={formData.site_web}
-                                    onChangeText={(text) => setFormData({ ...formData, site_web: text })}
-                                    placeholder="https://..."
-                                    keyboardType="url"
-                                    autoCapitalize="none"
-                                />
-                            </View>
-                        </>
-                    )}
-
-                    {/* ✅ CORRIGÉ: Utiliser title au lieu de children */}
-                    <NativeButton
-                        title={loading ? 'Enregistrement...' : 'Enregistrer l\'Établissement'}
-                        onPress={handleSubmit}
-                        disabled={loading || !formData.nom.trim()}
-                        variant="primary"
-                        size="large"
-                        style={styles.submitButton}
-                    />
-
-                    {serviceId && (
-                        <TouchableOpacity
-                            style={styles.manageSlotsBanner}
-                            onPress={() => (navigation as any).navigate('SlotManagement', {
-                                serviceId,
-                                serviceType: 'hopital',
-                                serviceName: formData.nom,
-                            })}
-                        >
-                            <SafeIcon name="calendar" size={20} color={modernColors.primary} />
+            {/* Recent Consultations */}
+            {consultations.length > 0 && (
+                <>
+                    <Text style={s.sectionTitle}>Consultations récentes</Text>
+                    {consultations.slice(0, 3).map((c: any, i: number) => (
+                        <View key={i} style={s.consultCard}>
+                            <SafeIcon name="user" size={16} color="#6B7280" />
                             <View style={{ flex: 1, marginLeft: 10 }}>
-                                <Text style={styles.manageSlotsTitle}>Gérer les créneaux</Text>
-                                <Text style={styles.manageSlotsSubtitle}>Définir vos disponibilités de consultation</Text>
+                                <Text style={s.consultName}>{c.patient_name || 'Patient'}</Text>
+                                <Text style={s.consultDetail}>{c.prestation || c.service || '—'} · {c.date ? new Date(c.date).toLocaleDateString('fr-FR') : '—'}</Text>
                             </View>
-                            <SafeIcon name="chevron-right" size={20} color="#9CA3AF" />
-                        </TouchableOpacity>
-                    )}
-                </View>
-            </KeyboardAwareScreen>
+                            <View style={[s.consultBadge, { backgroundColor: c.status === 'completed' ? '#DCFCE7' : '#FEF3C7' }]}>
+                                <Text style={[s.consultBadgeText, { color: c.status === 'completed' ? '#16A34A' : '#D97706' }]}>{c.status === 'completed' ? 'Terminé' : 'En cours'}</Text>
+                            </View>
+                        </View>
+                    ))}
+                </>
+            )}
 
-            {/* Modals */}
-            <ModernGPSModal
-                visible={showGPSModal}
-                onClose={() => setShowGPSModal(false)}
-                onSelect={handleGPSSelect}
-                currentLocation={location ? {
-                    lat: location.coords.latitude,
-                    lng: location.coords.longitude
-                } : null}
-                title="Sélectionner la localisation"
+            {/* Hospital Info */}
+            {hospitalData && (
+                <>
+                    <Text style={[s.sectionTitle, { marginTop: 20 }]}>Informations</Text>
+                    {[
+                        hospitalData.adresse && { icon: 'map-pin', text: hospitalData.adresse },
+                        hospitalData.telephone && { icon: 'phone', text: hospitalData.telephone },
+                        hospitalData.type_etablissement && { icon: 'building', text: hospitalData.type_etablissement },
+                    ].filter(Boolean).map((info: any, i) => (
+                        <View key={i} style={s.infoRow}><SafeIcon name={info.icon} size={16} color="#6B7280" /><Text style={s.infoText}>{info.text}</Text></View>
+                    ))}
+                </>
+            )}
+        </ScrollView>
+    );
+
+    // ─── RENDER: Service Form ────────────────────────────────────────────
+    const renderServiceForm = () => (
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100, padding: 16 }}>
+            {user?.role !== 'partenaire' && (
+                <View style={s.field}><NativeInput label="Nom *" value={formData.nom} onChangeText={t => setFormData({ ...formData, nom: t })} placeholder="Ex: Hôpital Central" /></View>
+            )}
+            <Text style={s.label}>Type d'établissement</Text>
+            <View style={s.typeRow}>
+                {TYPES_ETABLISSEMENT.map(t => (
+                    <TouchableOpacity key={t.key} style={[s.typeBtn, formData.type_etablissement === t.key && s.typeBtnOn]} onPress={() => setFormData({ ...formData, type_etablissement: t.key })}>
+                        <SafeIcon name={t.icon as any} size={16} color={formData.type_etablissement === t.key ? '#fff' : '#6B7280'} />
+                        <Text style={[s.typeText, formData.type_etablissement === t.key && s.typeTextOn]}>{t.key}</Text>
+                    </TouchableOpacity>
+                ))}
+            </View>
+            <View style={s.field}>
+                <TouchableOpacity style={s.gpsBtn} onPress={() => setShowGPSModal(true)}>
+                    <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
+                    <Text style={s.gpsBtnText}>{selectedGPS ? '✓ GPS sélectionné' : 'Sélectionner sur la carte'}</Text>
+                    <SafeIcon name="chevron-right" size={18} color="#9CA3AF" />
+                </TouchableOpacity>
+            </View>
+            {user?.role !== 'partenaire' && (
+                <View style={s.field}><NativeInput label="Adresse" value={formData.adresse} onChangeText={t => setFormData({ ...formData, adresse: t })} placeholder="Adresse complète" multiline /></View>
+            )}
+            <View style={s.field}>
+                <LocationSelector label="Quartier" value={formData.quartier ? (typeof formData.quartier === 'string' ? { raw: formData.quartier, place_name: formData.quartier } : formData.quartier) : ''} onSelect={(loc: LocationObject) => setFormData({ ...formData, quartier: loc })} placeholder="Rechercher..." scope="all" enrichWithBackend />
+            </View>
+            <View style={s.switchRow}><View><Text style={s.switchLbl}>Urgences disponibles</Text><Text style={s.hint}>Active le service d'urgences</Text></View><Switch value={formData.urgences_disponible} onValueChange={v => setFormData({ ...formData, urgences_disponible: v })} trackColor={{ false: '#D1D5DB', true: '#DC2626' }} /></View>
+            <View style={s.switchRow}><View><Text style={s.switchLbl}>RDV en ligne</Text><Text style={s.hint}>Permet les prises de RDV</Text></View><Switch value={formData.rdv_en_ligne} onValueChange={v => setFormData({ ...formData, rdv_en_ligne: v })} trackColor={{ false: '#D1D5DB', true: modernColors.primary }} /></View>
+            {user?.role !== 'partenaire' && (
+                <>
+                    <View style={s.field}><NativeInput label="Téléphone" value={formData.telephone} onChangeText={t => setFormData({ ...formData, telephone: t })} placeholder="+237 6XX XX XX XX" keyboardType="phone-pad" /></View>
+                    <View style={s.field}><NativeInput label="Urgence" value={formData.telephone_urgence} onChangeText={t => setFormData({ ...formData, telephone_urgence: t })} placeholder="+237 6XX XX XX XX" keyboardType="phone-pad" /></View>
+                    <View style={s.field}><NativeInput label="WhatsApp" value={formData.whatsapp} onChangeText={t => setFormData({ ...formData, whatsapp: t })} placeholder="+237 6XX XX XX XX" keyboardType="phone-pad" /></View>
+                    <View style={s.field}><NativeInput label="Email" value={formData.email} onChangeText={t => setFormData({ ...formData, email: t })} placeholder="hopital@example.com" keyboardType="email-address" autoCapitalize="none" /></View>
+                    <View style={s.field}><NativeInput label="Site web" value={formData.site_web} onChangeText={t => setFormData({ ...formData, site_web: t })} placeholder="https://..." autoCapitalize="none" /></View>
+                </>
+            )}
+            <NativeButton title={loading ? 'Enregistrement...' : (isDashboardMode ? 'Mettre à jour' : 'Enregistrer')} onPress={handleSubmit} disabled={loading || !formData.nom.trim()} variant="primary" size="large" style={{ marginTop: 24 }} />
+        </ScrollView>
+    );
+
+    // ─── RENDER: Slots/Prestations Tab ───────────────────────────────────
+    const renderSlotsTab = () => (
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100, padding: 16 }}>
+            {/* Stats */}
+            <View style={s.slotStats}>
+                <View style={s.slotStatItem}><Text style={s.slotStatVal}>{stats.totalPrestations}</Text><Text style={s.slotStatLbl}>Prestations</Text></View>
+                <View style={s.slotStatDiv} />
+                <View style={s.slotStatItem}><Text style={s.slotStatVal}>{stats.totalSlots}</Text><Text style={s.slotStatLbl}>Créneaux</Text></View>
+                <View style={s.slotStatDiv} />
+                <View style={s.slotStatItem}><Text style={s.slotStatVal}>{stats.withSlots}</Text><Text style={s.slotStatLbl}>Avec planning</Text></View>
+            </View>
+            <PrestationSelectorWithSchedule
+                label="Prestations médicales & Planning"
+                options={PRESTATIONS_OPTIONS}
+                selected={prestationsWithSchedule}
+                onSelectionChange={setPrestationsWithSchedule}
+                allowCustom
+                placeholder="Ajouter une prestation"
             />
+        </ScrollView>
+    );
 
-            {/* ✅ SUPPRIMÉ : WeekScheduleSelector (planning hebdomadaire supprimé) */}
+    // ─── RENDER: Analytics Tab ───────────────────────────────────────────
+    const renderAnalytics = () => (
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+            <View style={s.analyticsCard}>
+                <View style={s.analyticsHdr}><SafeIcon name="bar-chart-2" size={22} color="#DC2626" /><Text style={s.analyticsTitle}>Activité</Text></View>
+                {analyticsData ? (
+                    <View style={{ gap: 12 }}>
+                        {[
+                            { l: 'Consultations totales', v: analyticsData.total_consultations || 0 },
+                            { l: 'Consultations (7j)', v: analyticsData.consultations_7d || 0 },
+                            { l: 'Temps attente moyen', v: analyticsData.avg_wait_time_min ? `${analyticsData.avg_wait_time_min} min` : '—' },
+                            { l: 'Taux occupation', v: analyticsData.occupancy_rate ? `${Math.round(analyticsData.occupancy_rate * 100)}%` : '—', c: '#10B981' },
+                        ].map((r, i) => (
+                            <View key={i} style={s.analyticsRow}><Text style={s.analyticsLbl}>{r.l}</Text><Text style={[s.analyticsVal, r.c ? { color: r.c } : {}]}>{r.v}</Text></View>
+                        ))}
+                    </View>
+                ) : <Text style={s.analyticsEmpty}>Statistiques disponibles après les premières consultations.</Text>}
+            </View>
+            <View style={s.analyticsCard}>
+                <View style={s.analyticsHdr}><SafeIcon name="sparkles" size={22} color="#F59E0B" /><Text style={s.analyticsTitle}>Intelligence Artificielle</Text></View>
+                <Text style={s.analyticsEmpty}>Triage IA, recommandations et recherche par pathologie disponibles.</Text>
+                <NativeButton title="Triage IA" onPress={() => (navigation as any).navigate('HospitalAITriage')} style={{ marginTop: 12, backgroundColor: '#F59E0B' }} />
+            </View>
+        </ScrollView>
+    );
 
-        </>
+    // ─── RENDER: Dashboard Mode ──────────────────────────────────────────
+    if (isDashboardMode || (user?.role === 'partenaire' && serviceId)) {
+        const tabs: { key: TabType; label: string; icon: string }[] = [
+            { key: 'overview', label: 'Accueil', icon: 'layout-dashboard' },
+            { key: 'service', label: 'Service', icon: 'settings' },
+            { key: 'slots', label: 'Créneaux', icon: 'calendar' },
+            { key: 'analytics', label: 'Stats', icon: 'bar-chart-2' },
+        ];
+        return (
+            <View style={s.container}>
+                <LinearGradient colors={['#991B1B', '#DC2626']} style={s.dashHeader}>
+                    <View style={s.dashHeaderRow}>
+                        <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}><SafeIcon name="arrow-left" size={24} color="#fff" /></TouchableOpacity>
+                        <View style={{ flex: 1 }}>
+                            <Text style={s.dashTitle}>{hospitalData?.nom || formData.nom || 'Mon Établissement'}</Text>
+                            <Text style={s.dashSub}>{formData.type_etablissement} · {stats.totalPrestations} prestation{stats.totalPrestations > 1 ? 's' : ''}</Text>
+                        </View>
+                    </View>
+                    <View style={s.tabsRow}>{tabs.map(t => (
+                        <TouchableOpacity key={t.key} style={[s.tab, activeTab === t.key && s.tabOn]} onPress={() => setActiveTab(t.key)}>
+                            <SafeIcon name={t.icon as any} size={14} color={activeTab === t.key ? '#fff' : '#ffffff70'} />
+                            <Text style={[s.tabText, activeTab === t.key && s.tabTextOn]}>{t.label}</Text>
+                        </TouchableOpacity>
+                    ))}</View>
+                </LinearGradient>
+                <View style={s.dashContent}>
+                    {activeTab === 'overview' && renderOverview()}
+                    {activeTab === 'service' && renderServiceForm()}
+                    {activeTab === 'slots' && renderSlotsTab()}
+                    {activeTab === 'analytics' && renderAnalytics()}
+                </View>
+                <ModernGPSModal visible={showGPSModal} onClose={() => setShowGPSModal(false)} onSelect={handleGPSSelect} currentLocation={location ? { lat: location.coords.latitude, lng: location.coords.longitude } : null} title="Localisation" />
+            </View>
+        );
+    }
+
+    // ─── RENDER: Creation Mode ───────────────────────────────────────────
+    return (
+        <View style={s.container}>
+            <LinearGradient colors={['#991B1B', '#DC2626']} style={s.createHeader}>
+                <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}><SafeIcon name="arrow-left" size={24} color="#fff" /></TouchableOpacity>
+                <Text style={s.createTitle}>Enregistrer un Établissement</Text>
+            </LinearGradient>
+            {renderServiceForm()}
+            <ModernGPSModal visible={showGPSModal} onClose={() => setShowGPSModal(false)} onSelect={handleGPSSelect} currentLocation={location ? { lat: location.coords.latitude, lng: location.coords.longitude } : null} title="Localisation" />
+        </View>
     );
 };
 
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#F9FAFB',
-    },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 16,
-        backgroundColor: '#fff',
-        borderBottomWidth: 1,
-        borderBottomColor: '#E5E7EB',
-    },
-    backButton: {
-        marginRight: 12,
-    },
-    title: {
-        fontSize: 20,
-        fontWeight: '700',
-        color: '#111827',
-    },
-    form: {
-        padding: 16,
-    },
-    inputGroup: {
-        marginBottom: 16,
-    },
-    row: {
-        flexDirection: 'row',
-    },
-    label: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#374151',
-        marginBottom: 8,
-    },
-    sectionHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 8,
-    },
-    switchGroup: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 16,
-        paddingVertical: 8,
-    },
-    chipsContainer: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 8,
-    },
-    chip: {
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        borderRadius: 20,
-        backgroundColor: '#F3F4F6',
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-    },
-    chipSelected: {
-        backgroundColor: modernColors.primary,
-        borderColor: modernColors.primary,
-    },
-    chipText: {
-        fontSize: 14,
-        color: '#374151',
-    },
-    chipTextSelected: {
-        color: '#fff',
-        fontWeight: '600',
-    },
-    removeCustomButton: {
-        padding: 2,
-    },
-    addPrestationContainer: {
-        flexDirection: 'row',
-        gap: 8,
-        marginTop: 12,
-    },
-    addPrestationInput: {
-        flex: 1,
-        backgroundColor: '#F9FAFB',
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-        borderRadius: 8,
-        padding: 12,
-        fontSize: 14,
-    },
-    addPrestationButton: {
-        padding: 12,
-        backgroundColor: '#F3F4F6',
-        borderRadius: 8,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    gpsButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        backgroundColor: '#F9FAFB',
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-        borderRadius: 8,
-        padding: 12,
-        gap: 12,
-    },
-    gpsButtonText: {
-        flex: 1,
-        fontSize: 14,
-        color: '#111827',
-    },
-    gpsText: {
-        marginTop: 8,
-        fontSize: 12,
-        color: '#6B7280',
-    },
-    planningButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        backgroundColor: `${modernColors.primary}15`,
-        borderRadius: 8,
-    },
-    planningButtonText: {
-        fontSize: 12,
-        fontWeight: '600',
-        color: modernColors.primary,
-    },
-    scheduleSummary: {
-        fontSize: 12,
-        color: '#6B7280',
-        marginTop: 4,
-    },
-    hintText: {
-        fontSize: 12,
-        color: '#6B7280',
-        marginTop: 4,
-        fontStyle: 'italic',
-    },
-    submitButton: {
-        marginTop: 24,
-    },
-    // ✅ NOUVEAU: Styles pour la section créneaux
-    slotsSection: {
-        marginTop: 24,
-        marginBottom: 16,
-        padding: 16,
-        backgroundColor: '#fff',
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-    },
-    sectionTitleContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-    },
-    sectionTitle: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: '#111827',
-    },
-    statsContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 12,
-        backgroundColor: '#F9FAFB',
-        borderRadius: 8,
-        marginBottom: 12,
-    },
-    statItem: {
-        flex: 1,
-        alignItems: 'center',
-    },
-    statValue: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: modernColors.primary,
-        marginBottom: 4,
-    },
-    statLabel: {
-        fontSize: 12,
-        color: '#6B7280',
-    },
-    statDivider: {
-        width: 1,
-        height: 40,
-        backgroundColor: '#E5E7EB',
-        marginHorizontal: 8,
-    },
-    prestationsList: {
-        gap: 12,
-    },
-    prestationCard: {
-        padding: 12,
-        backgroundColor: '#F9FAFB',
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-    },
-    prestationInfo: {
-        flex: 1,
-    },
-    prestationName: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#111827',
-        marginBottom: 8,
-    },
-    prestationStats: {
-        flexDirection: 'row',
-        gap: 16,
-        marginBottom: 8,
-    },
-    prestationStatItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-    },
-    prestationStatText: {
-        fontSize: 12,
-        color: '#6B7280',
-    },
-    schedulePreview: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 6,
-        marginTop: 8,
-    },
-    dayPreview: {
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        backgroundColor: '#EEF2FF',
-        borderRadius: 4,
-    },
-    dayPreviewText: {
-        fontSize: 11,
-        color: modernColors.primary,
-        fontWeight: '500',
-    },
-    moreDaysText: {
-        fontSize: 11,
-        color: '#6B7280',
-        fontStyle: 'italic',
-        alignSelf: 'center',
-    },
+// ─── STYLES ──────────────────────────────────────────────────────────────
+const s = StyleSheet.create({
+    container: { flex: 1, backgroundColor: '#F3F4F6' },
+    loadingScreen: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' },
+    loadingText: { marginTop: 12, fontSize: 15, color: '#6B7280', fontWeight: '500' },
+    dashHeader: { paddingTop: 50, paddingBottom: 8, paddingHorizontal: 16 },
+    dashHeaderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
+    backBtn: { marginRight: 12, padding: 4 },
+    dashTitle: { fontSize: 22, fontWeight: '700', color: '#fff' },
+    dashSub: { fontSize: 13, color: '#ffffffCC', marginTop: 2 },
+    dashContent: { flex: 1, paddingHorizontal: 16, paddingTop: 16 },
+    createHeader: { paddingTop: 50, paddingBottom: 16, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center' },
+    createTitle: { fontSize: 20, fontWeight: '700', color: '#fff' },
+    tabsRow: { flexDirection: 'row', gap: 4, paddingBottom: 8 },
+    tab: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 8, borderRadius: 8, backgroundColor: '#ffffff15' },
+    tabOn: { backgroundColor: '#ffffff30' },
+    tabText: { fontSize: 11, color: '#ffffff70', fontWeight: '500' },
+    tabTextOn: { color: '#fff', fontWeight: '700' },
+    statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 },
+    statCard: { flex: 1, minWidth: '45%', backgroundColor: '#fff', borderRadius: 12, padding: 14, borderLeftWidth: 3, elevation: 2, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, shadowOffset: { width: 0, height: 1 } },
+    statValue: { fontSize: 20, fontWeight: '700', color: '#111827', marginTop: 8 },
+    statLabel: { fontSize: 12, color: '#6B7280', marginTop: 2 },
+    quickRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
+    quickAction: { flex: 1, alignItems: 'center', gap: 6 },
+    quickIcon: { width: 48, height: 48, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
+    quickLabel: { fontSize: 11, color: '#374151', fontWeight: '500', textAlign: 'center' },
+    sectionTitle: { fontSize: 16, fontWeight: '700', color: '#111827', marginBottom: 12 },
+    emergencyCard: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, borderRadius: 12, marginBottom: 20 },
+    emergencyTitle: { fontSize: 15, fontWeight: '600' },
+    emergencySub: { fontSize: 12, color: '#6B7280', marginTop: 2 },
+    consultCard: { flexDirection: 'row', alignItems: 'center', padding: 14, backgroundColor: '#fff', borderRadius: 10, marginBottom: 8, elevation: 1, shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 3, shadowOffset: { width: 0, height: 1 } },
+    consultName: { fontSize: 14, fontWeight: '600', color: '#111827' },
+    consultDetail: { fontSize: 12, color: '#6B7280', marginTop: 2 },
+    consultBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
+    consultBadgeText: { fontSize: 11, fontWeight: '600' },
+    infoRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8 },
+    infoText: { fontSize: 14, color: '#374151' },
+    field: { marginBottom: 16 },
+    label: { fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 8 },
+    hint: { fontSize: 12, color: '#6B7280', marginTop: 2 },
+    switchRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, paddingVertical: 6 },
+    switchLbl: { fontSize: 14, color: '#374151', fontWeight: '500' },
+    typeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
+    typeBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10, backgroundColor: '#F3F4F6', borderWidth: 1, borderColor: '#E5E7EB' },
+    typeBtnOn: { backgroundColor: '#DC2626', borderColor: '#DC2626' },
+    typeText: { fontSize: 13, fontWeight: '500', color: '#374151' },
+    typeTextOn: { color: '#fff', fontWeight: '700' },
+    gpsBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 12, backgroundColor: '#F9FAFB', borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 8, gap: 12 },
+    gpsBtnText: { flex: 1, fontSize: 14, color: '#111827' },
+    slotStats: { flexDirection: 'row', alignItems: 'center', padding: 12, backgroundColor: '#fff', borderRadius: 10, marginBottom: 16 },
+    slotStatItem: { flex: 1, alignItems: 'center' },
+    slotStatVal: { fontSize: 18, fontWeight: '700', color: '#DC2626' },
+    slotStatLbl: { fontSize: 12, color: '#6B7280', marginTop: 2 },
+    slotStatDiv: { width: 1, height: 36, backgroundColor: '#E5E7EB', marginHorizontal: 8 },
+    analyticsCard: { backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 12 },
+    analyticsHdr: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 16 },
+    analyticsTitle: { fontSize: 17, fontWeight: '700', color: '#111827' },
+    analyticsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
+    analyticsLbl: { fontSize: 14, color: '#6B7280' },
+    analyticsVal: { fontSize: 16, fontWeight: '700', color: '#111827' },
+    analyticsEmpty: { fontSize: 14, color: '#6B7280', fontStyle: 'italic', lineHeight: 20 },
 });
 
 export default HopitalFormScreen;

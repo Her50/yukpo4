@@ -11,8 +11,8 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import { apiPost } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 
@@ -70,8 +70,9 @@ const TrocMatchingScreen: React.FC = () => {
                 max_participants: 5,
             });
 
-            if (response.success && response.data?.matchings) {
-                const matchings = response.data.matchings;
+            const r = response.data as any;
+            if (response.success && r?.matchings) {
+                const matchings = r.matchings;
                 setDirectMatches(matchings.matches || []);
                 setChainMatches(matchings.chaines || []);
             } else {

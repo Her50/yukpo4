@@ -1,8 +1,8 @@
 import { useNavigation, useRoute } from '@react-navigation/native';
 import React, { useMemo } from 'react';
-import { Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
+import { Linking, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { modernColors } from '../../theme/modernTheme';
 import {
@@ -22,7 +22,7 @@ interface ResultParams {
 type Navigation = ReturnType<typeof useNavigation>;
 
 const VideoGenerationResultScreen: React.FC = () => {
-    const navigation = useNavigation<Navigation>();
+    const navigation = useNavigation();
     const route = useRoute();
     const { result, costEstimation } = (route.params || {}) as ResultParams;
 
@@ -32,10 +32,10 @@ const VideoGenerationResultScreen: React.FC = () => {
         }
         return [
             { key: 'cost_estimation', label: 'Budget validé', status: 'completed' },
-            { key: 'broll_selection', label: 'B-roll & assets', status: 'completed' },
-            { key: 'timeline_generation', label: 'Timeline immersive', status: 'completed' },
-            { key: 'audio_mix', label: 'Mix audio premium', status: 'completed' },
-            { key: 'video_mux', label: 'Master vidéo', status: 'completed' },
+            { key: 'broll_selection', label: 'Images et visuels', status: 'completed' },
+            { key: 'timeline_generation', label: 'Montage vidéo', status: 'completed' },
+            { key: 'audio_mix', label: 'Musique et son', status: 'completed' },
+            { key: 'video_mux', label: 'Finalisation', status: 'completed' },
         ];
     }, [result?.progress_steps]);
 
@@ -63,11 +63,24 @@ const VideoGenerationResultScreen: React.FC = () => {
         navigation.navigate('VideoAnalytics' as never);
     };
 
+    const handleShare = async () => {
+        if (!result?.video_url) return;
+        try {
+            await Share.share({
+                message: `Regarde ma vidéo créée avec Yukpo ! ${result.video_url}`,
+                url: result.video_url,
+                title: 'Ma vidéo Yukpo',
+            });
+        } catch (error) {
+            console.warn('[VideoGenerationResult] Partage échoué:', error);
+        }
+    };
+
     if (!result) {
         return (
             <SafeNativeView edges={['top', 'bottom']} style={styles.centered}>
                 <SafeIcon name="alert-circle" size={48} color={modernColors.error} />
-                <Text style={styles.errorTitle}>Aucun rendu disponible</Text>
+                <Text style={styles.errorTitle}>Aucune vidéo disponible</Text>
                 <NativeButton title="Retour" onPress={() => navigation.goBack()} variant="primary" />
             </SafeNativeView>
         );
@@ -79,13 +92,13 @@ const VideoGenerationResultScreen: React.FC = () => {
                 <SafeIcon name="sparkles" size={28} color={modernColors.primary} />
                 <Text style={styles.title}>Vidéo prête ✨</Text>
                 <Text style={styles.subtitle}>
-                    Ton spot immersif est disponible. Vérifie les insights avant de le diffuser.
+                    Ta vidéo est prête ! Tu peux la regarder, la partager ou en créer une nouvelle.
                 </Text>
             </View>
 
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 <NativeCard style={styles.videoCard}>
-                    <Text style={styles.sectionTitle}>Vidéo master</Text>
+                    <Text style={styles.sectionTitle}>Ta vidéo</Text>
                     <Text style={styles.videoUrl} numberOfLines={2}>
                         {safeStringDisplay(result.video_url, 'URL non disponible')}
                     </Text>
@@ -166,8 +179,11 @@ const VideoGenerationResultScreen: React.FC = () => {
             </ScrollView>
 
             <View style={styles.actions}>
-                <NativeButton title="Créer une autre vidéo" onPress={handleCreateAnother} variant="secondary" />
-                <NativeButton title="Voir les analytics" onPress={handleViewAnalytics} variant="primary" />
+                <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
+                    <SafeIcon name="share-2" size={20} color={modernColors.primary} />
+                </TouchableOpacity>
+                <NativeButton title="Nouvelle vidéo" onPress={handleCreateAnother} variant="secondary" size="small" />
+                <NativeButton title="Lire la vidéo" onPress={handleOpenVideo} variant="primary" size="small" />
             </View>
         </SafeNativeView>
     );
@@ -185,7 +201,7 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 26,
         fontWeight: '700',
-        color: modernColors.textPrimary,
+        color: modernColors.text,
     },
     subtitle: {
         fontSize: 15,
@@ -205,7 +221,7 @@ const styles = StyleSheet.create({
     sectionTitle: {
         fontSize: 18,
         fontWeight: '700',
-        color: modernColors.textPrimary,
+        color: modernColors.text,
     },
     videoUrl: {
         fontSize: 13,
@@ -218,7 +234,7 @@ const styles = StyleSheet.create({
     },
     progressLabel: {
         fontSize: 15,
-        color: modernColors.textPrimary,
+        color: modernColors.text,
         fontWeight: '600',
     },
     progressDetail: {
@@ -228,7 +244,7 @@ const styles = StyleSheet.create({
     costValue: {
         fontSize: 24,
         fontWeight: '700',
-        color: modernColors.textPrimary,
+        color: modernColors.text,
     },
     costHint: {
         fontSize: 13,
@@ -236,7 +252,7 @@ const styles = StyleSheet.create({
     },
     analyticsItem: {
         fontSize: 14,
-        color: modernColors.textPrimary,
+        color: modernColors.text,
     },
     warningText: {
         fontSize: 13,
@@ -247,10 +263,20 @@ const styles = StyleSheet.create({
         bottom: 0,
         left: 0,
         right: 0,
-        padding: 24,
+        padding: 20,
         backgroundColor: modernColors.background,
         flexDirection: 'row',
+        alignItems: 'center',
         gap: 12,
+    },
+    shareButton: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        borderWidth: 2,
+        borderColor: modernColors.primary,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     centered: {
         flex: 1,

@@ -194,8 +194,14 @@ export const hospitalService = {
                 lng: userLocation?.lng,
             }
         );
-        const resData = (response?.data || response) as any;
-        return { success: response.success, data: resData, error: response.error };
+        // ✅ CORRIGÉ 2026-03-05: Extraction correcte des données IA imbriquées
+        // apiPost wrappe: response.data = backend JSON complet
+        // Backend retourne: {success, data: {recommendations: [...]}}
+        const backendData = (response?.data || response) as any;
+        const innerData = backendData?.data || backendData;
+        // Normaliser: la screen attend .recommendation (singulier)
+        const recommendation = innerData?.recommendation || innerData?.recommendations || innerData;
+        return { success: response.success, data: { recommendation }, error: response.error };
     },
 
     // ✅ Recherche de services médicaux disponibles (avec système de disponibilité)

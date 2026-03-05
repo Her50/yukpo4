@@ -45,6 +45,19 @@ pub fn bourse_livre_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             "/api/bourse-livre/{id}",
             axum::routing::delete(livres_scolaires_controller::delete_livre_scolaire),
         )
+        // Échanges & Analytics
+        .route(
+            "/api/bourse-livre/my-exchanges",
+            get(livres_scolaires_controller::get_my_exchanges),
+        )
+        .route(
+            "/api/bourse-livre/analytics",
+            get(livres_scolaires_controller::get_analytics),
+        )
+        .route(
+            "/api/bourse-livre/{id}/availability",
+            axum::routing::patch(livres_scolaires_controller::update_availability),
+        )
         // Endpoints IA
         .route(
             "/api/bourse-livre/ai/recommendations",

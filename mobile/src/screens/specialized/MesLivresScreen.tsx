@@ -13,8 +13,8 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiGet, apiPost } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
@@ -55,7 +55,7 @@ const MesLivresScreen: React.FC = () => {
                 setLoading(true);
             }
 
-            const response = await apiGet('/api/livres-scolaires/mes-livres');
+            const response = await apiGet('/api/bourse-livre/mes-livres');
 
             if (response.success && response.data) {
                 setLivres(response.data.livres || []);
@@ -73,7 +73,7 @@ const MesLivresScreen: React.FC = () => {
 
     const handleToggleAvailability = async (livre: LivreScolaire) => {
         try {
-            const response = await apiPost(`/api/livres-scolaires/${livre.id}/availability`, {
+            const response = await apiPost(`/api/bourse-livre/${livre.id}/availability`, {
                 is_available: !livre.is_available,
             });
 
@@ -99,7 +99,7 @@ const MesLivresScreen: React.FC = () => {
                     style: 'destructive',
                     onPress: async () => {
                         try {
-                            const response = await apiPost(`/api/livres-scolaires/${livre.id}`, {}, 'DELETE');
+                            const response = await apiPost(`/api/bourse-livre/${livre.id}`, {}, 'DELETE');
                             if (response.success) {
                                 loadLivres();
                                 Alert.alert('Succès', 'Livre supprimé');

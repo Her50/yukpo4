@@ -714,6 +714,235 @@ pub async fn generate_intelligent_shopping_list(
     ))
 }
 
+/// ✅ Endpoint : Suggérer des recettes avec IA
+#[derive(Debug, Deserialize)]
+pub struct SuggestRecipesRequest {
+    pub meal_type: Option<String>,
+    pub limit: Option<i32>,
+}
+
+pub async fn suggest_recipes(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Json(req): Json<SuggestRecipesRequest>,
+) -> AppResult<impl IntoResponse> {
+    info!(
+        "[suggest_recipes] Suggestion recettes pour user_id={}, meal_type={:?}",
+        user_id, req.meal_type
+    );
+
+    let profile = get_or_create_family_profile(&state, user_id).await?;
+    let limit = req.limit.unwrap_or(10).min(20) as usize;
+
+    let ai_service = MenuPlanningAIService::new(state.ia.clone());
+    let suggestions = ai_service.suggest_recipes(&profile, req.meal_type.as_deref(), limit).await?;
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "suggestions": serde_json::to_value(&suggestions).unwrap_or(json!([]))
+        })),
+    ))
+}
+
+/// ✅ Endpoint : Créer / générer une liste de courses pour une semaine
+#[derive(Debug, Deserialize)]
+pub struct CreateShoppingListRequest {
+    pub week_start: Option<String>,
+}
+
+pub async fn create_shopping_list(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Json(req): Json<CreateShoppingListRequest>,
+) -> AppResult<impl IntoResponse> {
+    info!(
+        "[create_shopping_list] Création liste de courses pour user_id={}",
+        user_id
+    );
+
+    let week_start = if let Some(ws) = req.week_start {
+        NaiveDate::parse_from_str(&ws, "%Y-%m-%d")
+            .map_err(|_| AppError::BadRequest("Date invalide (format: YYYY-MM-DD)".to_string()))?
+    } else {
+        let today = Utc::now().date_naive();
+        let days_from_monday = (today.weekday().num_days_from_monday() as i64) % 7;
+        today - chrono::Duration::days(days_from_monday)
+    };
+
+    // Créer ou récupérer la liste de courses
+    let shopping_list_id: Option<i32> = sqlx::query_scalar(
+        r#"
+        INSERT INTO shopping_lists (user_id, week_start, status, total_estimated_cost)
+        VALUES ($1, $2, 'active', 0)
+        ON CONFLICT (user_id, week_start)
+        DO UPDATE SET status = 'active', updated_at = NOW()
+        RETURNING id
+        "#,
+    )
+    .bind(user_id)
+    .bind(week_start)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[create_shopping_list] Erreur: {}", e);
+        AppError::Internal(format!("Erreur création liste: {}", e))
+    })?;
+
+    // Récupérer les items si la liste existe déjà
+    let items = if let Some(sl_id) = shopping_list_id {
+        sqlx::query(
+            r#"
+            SELECT id, ingredient_name, quantity, unit, category, store_section, is_checked, actual_price
+            FROM shopping_list_items
+            WHERE shopping_list_id = $1
+            ORDER BY category, ingredient_name
+            "#,
+        )
+        .bind(sl_id)
+        .fetch_all(&state.pg)
+        .await
+        .map_err(|e| {
+            error!("[create_shopping_list] Erreur items: {}", e);
+            AppError::Internal(format!("Erreur récupération items: {}", e))
+        })?
+        .into_iter()
+        .map(|row| {
+            json!({
+                "id": row.get::<i32, _>("id"),
+                "ingredient_name": row.get::<String, _>("ingredient_name"),
+                "quantity": row.try_get::<Option<rust_decimal::Decimal>, _>("quantity").ok().flatten().map(|d| d.to_string().parse::<f64>().unwrap_or(0.0)).unwrap_or(0.0),
+                "unit": row.try_get::<Option<String>, _>("unit").ok().flatten().unwrap_or_default(),
+                "category": row.try_get::<Option<String>, _>("category").ok().flatten(),
+                "store_section": row.try_get::<Option<String>, _>("store_section").ok().flatten(),
+                "is_checked": row.try_get::<Option<bool>, _>("is_checked").ok().flatten().unwrap_or(false),
+                "actual_price": row.try_get::<Option<rust_decimal::Decimal>, _>("actual_price").ok().flatten().map(|d| d.to_string().parse::<f64>().unwrap_or(0.0)),
+            })
+        })
+        .collect::<Vec<_>>()
+    } else {
+        vec![]
+    };
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "shopping_list": {
+                "id": shopping_list_id,
+                "user_id": user_id,
+                "week_start": week_start.format("%Y-%m-%d").to_string(),
+                "status": "active",
+                "items": items,
+                "total_estimated_cost": 0
+            }
+        })),
+    ))
+}
+
+/// ✅ Endpoint : Récupérer la liste de courses d'une semaine
+#[derive(Debug, Deserialize)]
+pub struct GetShoppingListQuery {
+    pub week_start: Option<String>,
+}
+
+pub async fn get_shopping_list(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Query(query): Query<GetShoppingListQuery>,
+) -> AppResult<impl IntoResponse> {
+    info!(
+        "[get_shopping_list] Récupération liste de courses pour user_id={}",
+        user_id
+    );
+
+    let week_start = if let Some(ws) = query.week_start {
+        NaiveDate::parse_from_str(&ws, "%Y-%m-%d")
+            .map_err(|_| AppError::BadRequest("Date invalide".to_string()))?
+    } else {
+        let today = Utc::now().date_naive();
+        let days_from_monday = (today.weekday().num_days_from_monday() as i64) % 7;
+        today - chrono::Duration::days(days_from_monday)
+    };
+
+    // Récupérer la liste de courses
+    let shopping_list_row = sqlx::query(
+        r#"
+        SELECT id, user_id, week_start, status, total_estimated_cost, created_at
+        FROM shopping_lists
+        WHERE user_id = $1 AND week_start = $2
+        "#,
+    )
+    .bind(user_id)
+    .bind(week_start)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[get_shopping_list] Erreur: {}", e);
+        AppError::Internal(format!("Erreur récupération liste: {}", e))
+    })?;
+
+    if let Some(row) = shopping_list_row {
+        let sl_id = row.get::<i32, _>("id");
+
+        // Récupérer les items
+        let items = sqlx::query(
+            r#"
+            SELECT id, ingredient_name, quantity, unit, category, store_section, is_checked, actual_price
+            FROM shopping_list_items
+            WHERE shopping_list_id = $1
+            ORDER BY category, ingredient_name
+            "#,
+        )
+        .bind(sl_id)
+        .fetch_all(&state.pg)
+        .await
+        .map_err(|e| {
+            error!("[get_shopping_list] Erreur items: {}", e);
+            AppError::Internal(format!("Erreur récupération items: {}", e))
+        })?
+        .into_iter()
+        .map(|row| {
+            json!({
+                "id": row.get::<i32, _>("id"),
+                "ingredient_name": row.get::<String, _>("ingredient_name"),
+                "quantity": row.try_get::<Option<rust_decimal::Decimal>, _>("quantity").ok().flatten().map(|d| d.to_string().parse::<f64>().unwrap_or(0.0)).unwrap_or(0.0),
+                "unit": row.try_get::<Option<String>, _>("unit").ok().flatten().unwrap_or_default(),
+                "category": row.try_get::<Option<String>, _>("category").ok().flatten(),
+                "store_section": row.try_get::<Option<String>, _>("store_section").ok().flatten(),
+                "is_checked": row.try_get::<Option<bool>, _>("is_checked").ok().flatten().unwrap_or(false),
+                "actual_price": row.try_get::<Option<rust_decimal::Decimal>, _>("actual_price").ok().flatten().map(|d| d.to_string().parse::<f64>().unwrap_or(0.0)),
+            })
+        })
+        .collect::<Vec<_>>();
+
+        Ok((
+            StatusCode::OK,
+            Json(json!({
+                "success": true,
+                "shopping_list": {
+                    "id": sl_id,
+                    "user_id": user_id,
+                    "week_start": row.get::<NaiveDate, _>("week_start").format("%Y-%m-%d").to_string(),
+                    "status": row.get::<String, _>("status"),
+                    "items": items,
+                    "total_estimated_cost": row.try_get::<Option<rust_decimal::Decimal>, _>("total_estimated_cost").ok().flatten().map(|d| d.to_string().parse::<f64>().unwrap_or(0.0)),
+                }
+            })),
+        ))
+    } else {
+        Ok((
+            StatusCode::OK,
+            Json(json!({
+                "success": true,
+                "shopping_list": null,
+                "message": "Aucune liste de courses trouvée pour cette semaine"
+            })),
+        ))
+    }
+}
+
 /// ✅ NOUVEAU: Récupère les menus précédents pour éviter la répétition
 async fn get_previous_menus(
     state: &AppState,

@@ -1271,7 +1271,7 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                     <Text style={styles.emptyText} accessibilityRole="text">
                         {searchQuery || filter !== 'tous'
                             ? 'Aucun service ne correspond à vos critères de recherche. Essayez de modifier vos filtres.'
-                            : 'Commencez par créer votre premier service pour proposer vos prestations aux utilisateurs de Yukpo.'}
+                            : 'Commencez par créer votre premier service pour proposer vos prestations aux utilisateurs de <Text style={styles.brandYuk}>Yuk</Text><Text style={styles.brandPo}>po</Text>.'}
                     </Text>
                     {/* ✅ AMÉLIORÉ: CTA avec navigation directe vers le bon formulaire selon le partner_type */}
                     <View style={styles.emptyActions}>
@@ -1282,8 +1282,8 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                                 'laboratoire': { screen: 'LaboratoireForm', label: 'Enregistrer mon laboratoire' },
                                 'banquesang': { screen: 'BanqueSangForm', label: 'Enregistrer ma banque de sang' },
                                 'agence de voyage': { screen: 'AgenceVoyageForm', label: 'Enregistrer mon agence' },
-                                'hotel': { screen: 'ImmobilierForm', label: 'Ajouter un hébergement' },
-                                'meuble': { screen: 'ImmobilierForm', label: 'Ajouter un meublé' },
+                                'hotel': { screen: 'HotelDashboard', label: 'Gérer mon hôtel' },
+                                'meuble': { screen: 'HotelDashboard', label: 'Gérer mon meublé' },
                                 'chauffeur': { screen: 'TaxiForm', label: 'Créer mon profil chauffeur' },
                                 'supermarche': { screen: 'SupermarketHome', label: 'Gérer mon supermarché' },
                             };
@@ -1923,6 +1923,12 @@ const styles = StyleSheet.create({
         color: modernColors.primary,
         fontSize: 15,
         fontWeight: '600',
+    },
+    brandYuk: {
+        color: '#3B82F6', // Bleu (cohérent avec le logo officiel)
+    },
+    brandPo: {
+        color: '#7C3AED', // Violet (cohérent avec le logo officiel)
     },
 });
 

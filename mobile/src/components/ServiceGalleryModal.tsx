@@ -9,12 +9,14 @@ import {
     Modal,
     Platform,
     Image as RNImage,
+    Share,
     StyleSheet,
     Text,
     TouchableOpacity,
     View,
 } from 'react-native';
 import { config } from '../config/environment';
+import { apiGet, mediaApi } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
 
@@ -83,6 +85,7 @@ const ServiceGalleryModal: React.FC<ServiceGalleryModalProps> = ({
     const [filter, setFilter] = useState<'all' | 'images' | 'videos'>('all');
     const [selectedMedia, setSelectedMedia] = useState<GalleryItem | null>(null);
     const [failedUrls, setFailedUrls] = useState<Set<string>>(new Set());
+    const [loading, setLoading] = useState(false);
     const videoRef = useRef<ExpoVideo | null>(null);
 
     React.useEffect(() => {
@@ -97,11 +100,13 @@ const ServiceGalleryModal: React.FC<ServiceGalleryModalProps> = ({
         setFailedUrls(prev => new Set(prev).add(url));
     }, []);
 
-    const loadMedia = () => {
+    const loadMedia = async () => {
         if (!service) return;
+        setLoading(true);
         const items: GalleryItem[] = [];
         const seen = new Set<string>();
         let counter = 0;
+        const serviceId = service.id || service.service_id;
 
         const addItem = (rawUrl: string, type: 'image' | 'video', category: GalleryItem['category'], label?: string) => {
             const url = buildMediaUrl(rawUrl);
@@ -120,7 +125,7 @@ const ServiceGalleryModal: React.FC<ServiceGalleryModalProps> = ({
         extractMediaFromField(service.data?.images_realisations).forEach(u => addItem(u, 'image', 'realisation', 'Realisation'));
         extractMediaFromField(service.data?.videos).forEach(u => addItem(u, 'video', 'realisation', 'Realisation'));
 
-        // 3. Produits
+        // 3. Produits depuis service.data (ancien systeme embedded)
         const produits = extractMediaFromField(service.data?.produits);
         if (Array.isArray(produits)) {
             produits.forEach((prod: any) => {
@@ -132,8 +137,64 @@ const ServiceGalleryModal: React.FC<ServiceGalleryModalProps> = ({
             });
         }
 
+        // 4. Charger les medias depuis la table media (API)
+        if (serviceId) {
+            try {
+                // Map product_index -> product_name pour etiqueter les medias
+                let productNameMap: Record<number, string> = {};
+                try {
+                    const productsResp = await apiGet<any[]>(`/api/services/${serviceId}/products`);
+                    const productsData = (productsResp as any)?.data;
+                    const productsList = Array.isArray(productsData) ? productsData
+                        : Array.isArray((productsData as any)?.data) ? (productsData as any).data : [];
+                    productsList.forEach((p: any) => {
+                        const idx = p.product_index ?? p.productIndex;
+                        const name = p.product_name || p.productName
+                            || p.product_data?.nom?.valeur || p.product_data?.nom
+                            || p.product_data?.title || `Produit ${(idx ?? 0) + 1}`;
+                        if (idx !== undefined && idx !== null) {
+                            productNameMap[idx] = name;
+                        }
+                        // Extraire images/videos depuis product_data
+                        const pd = p.product_data || {};
+                        extractMediaFromField(pd.images).forEach((u: string) => addItem(u, 'image', 'product', name));
+                        extractMediaFromField(pd.videos).forEach((u: string) => addItem(u, 'video', 'product', name));
+                    });
+                } catch (e) {
+                    console.warn('[ServiceGalleryModal] Produits API non disponible:', e);
+                }
+
+                // Charger medias depuis la table media
+                const mediaResponse = await mediaApi.getServiceMediaDetailed(serviceId);
+                if (mediaResponse.success && mediaResponse.data) {
+                    const respData = mediaResponse.data as any;
+                    const apiMedia = Array.isArray(respData) ? respData
+                        : respData?.media || respData?.data || [];
+                    apiMedia.forEach((m: any) => {
+                        const path = m.path || m.url || m.file_path;
+                        const idx = m.product_index;
+                        const label = (idx !== null && idx !== undefined)
+                            ? (productNameMap[idx] || `Produit ${idx + 1}`)
+                            : (m.type === 'video' ? 'Video' : 'Image');
+                        addItem(path, m.type === 'video' ? 'video' : 'image', idx !== null && idx !== undefined ? 'product' : 'realisation', label);
+                    });
+                }
+            } catch (e) {
+                console.warn('[ServiceGalleryModal] Erreur chargement API medias:', e);
+            }
+        }
+
+        // Trier: branding d'abord, puis produits groupes par label, puis realisations
+        items.sort((a, b) => {
+            const order = { branding: 0, product: 1, realisation: 2 };
+            const diff = order[a.category] - order[b.category];
+            if (diff !== 0) return diff;
+            return (a.label || '').localeCompare(b.label || '');
+        });
+
         setFailedUrls(new Set());
         setMedia(items);
+        setLoading(false);
     };
 
     const filteredMedia = React.useMemo(() => media.filter(item => {
@@ -229,7 +290,12 @@ const ServiceGalleryModal: React.FC<ServiceGalleryModalProps> = ({
                 </View>
 
                 {/* Contenu */}
-                {media.length === 0 ? (
+                {loading ? (
+                    <View style={styles.emptyContainer}>
+                        <SafeIcon name="loader" size={36} color={modernColors.primary} />
+                        <Text style={styles.emptyTitle}>Chargement des médias...</Text>
+                    </View>
+                ) : media.length === 0 ? (
                     <View style={styles.emptyContainer}>
                         <View style={styles.emptyIconCircle}>
                             <SafeIcon name="image" size={36} color="#9CA3AF" />
@@ -295,6 +361,24 @@ const ServiceGalleryModal: React.FC<ServiceGalleryModalProps> = ({
                                     onError={(error: any) => console.error('[ServiceGalleryModal] Video error:', error)}
                                 />
                             )}
+
+                            {/* Bouton partage */}
+                            <TouchableOpacity
+                                style={styles.shareButton}
+                                onPress={async () => {
+                                    try {
+                                        const serviceName = service?.titre || service?.data?.titre_service?.valeur || 'Yukpo';
+                                        const emoji = selectedMedia.type === 'video' ? '🎬' : '📸';
+                                        const typeLabel = selectedMedia.type === 'video' ? 'vidéo' : 'photo';
+                                        let shareText = `${emoji} ${selectedMedia.label || typeLabel} — ${serviceName}`;
+                                        shareText += `\n\n🔗 Voir sur Yukpo:\n${selectedMedia.url}`;
+                                        await Share.share({ message: shareText, url: selectedMedia.url, title: `${selectedMedia.label || typeLabel} — ${serviceName}` });
+                                    } catch (e) { console.warn('[ServiceGalleryModal] Share error:', e); }
+                                }}
+                                activeOpacity={0.7}
+                            >
+                                <SafeIcon name="share-2" size={22} color="#FFFFFF" />
+                            </TouchableOpacity>
 
                             {/* Navigation arrows */}
                             {filteredMedia.indexOf(selectedMedia) > 0 && (
@@ -591,6 +675,17 @@ const styles = StyleSheet.create({
     },
     navButtonRight: {
         right: 12,
+    },
+    shareButton: {
+        position: 'absolute',
+        bottom: Platform.OS === 'ios' ? 50 : 30,
+        alignSelf: 'center',
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: 'rgba(99,102,241,0.85)',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
 });
 

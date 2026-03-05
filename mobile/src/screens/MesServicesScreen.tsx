@@ -1286,23 +1286,22 @@ const MesServicesScreen: React.FC = () => {
                 style={dynamicStyles.menuItem}
                 onPress={() => {
                   setShowGlobalMenu(false);
-                  (navigation as any).navigate('CreatePublicite');
+                  (navigation as any).navigate('PubliciteDashboard');
                 }}
               >
-                <SafeIcon name="megaphone" size={18} color="#EC4899" />
-                <Text style={dynamicStyles.menuItemText}>Créer Publicité</Text>
+                <SafeIcon name="megaphone" size={18} color="#8B5CF6" />
+                <Text style={dynamicStyles.menuItemText}>Mes Publicités</Text>
               </TouchableOpacity>
 
-              {/* ✅ NOUVEAU: Accès au Dashboard Publicités */}
               <TouchableOpacity
                 style={dynamicStyles.menuItem}
                 onPress={() => {
                   setShowGlobalMenu(false);
-                  (navigation as any).navigate('PubliciteDashboard');
+                  (navigation as any).navigate('CreatePublicite');
                 }}
               >
-                <SafeIcon name="bar-chart-2" size={18} color="#8B5CF6" />
-                <Text style={dynamicStyles.menuItemText}>Dashboard Publicités</Text>
+                <SafeIcon name="plus-circle" size={18} color="#EC4899" />
+                <Text style={dynamicStyles.menuItemText}>Nouvelle Publicité</Text>
               </TouchableOpacity>
 
               {/* ✅ NOUVEAU: Créer Flash Promo - Sélection multiple de produits */}
@@ -1913,20 +1912,20 @@ const MesServicesScreen: React.FC = () => {
               onPress: () => (navigation as any).navigate('AnalyticsDashboard'),
             },
             {
-              id: 'publicite',
-              label: 'Créer Publicité',
-              icon: 'megaphone',
-              section: 'Marketing',
-              color: '#EC4899',
-              onPress: () => (navigation as any).navigate('CreatePublicite'),
-            },
-            {
               id: 'publicite-dashboard',
-              label: 'Dashboard Publicités',
-              icon: 'bar-chart-2',
+              label: 'Mes Publicités',
+              icon: 'megaphone',
               section: 'Marketing',
               color: '#8B5CF6',
               onPress: () => (navigation as any).navigate('PubliciteDashboard'),
+            },
+            {
+              id: 'publicite-create',
+              label: 'Nouvelle Publicité',
+              icon: 'plus-circle',
+              section: 'Marketing',
+              color: '#EC4899',
+              onPress: () => (navigation as any).navigate('CreatePublicite'),
             },
             {
               id: 'videos',

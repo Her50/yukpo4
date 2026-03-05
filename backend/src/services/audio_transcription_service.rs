@@ -45,7 +45,7 @@ impl AudioTranscriptionService {
 
         log_info(&format!("[AudioTranscription] Hash audio: {}", audio_hash));
 
-        // Vérifier le cache
+        // Vérifier le cache (résilient : si la table n'existe pas, on continue sans cache)
         let cached_result =
             sqlx::query_as::<_, (String, Option<String>, Option<f32>, Option<f32>)>(
                 r#"
@@ -56,48 +56,54 @@ impl AudioTranscriptionService {
             )
             .bind(&audio_hash)
             .fetch_optional(pool)
-            .await
-            .map_err(|e| {
-                log_error(&format!("[AudioTranscription] Erreur cache: {}", e));
-                AppError::Internal(format!("Erreur cache: {}", e))
-            })?;
-
-        if let Some((cached_text, cached_lang, cached_conf, cached_dur)) = cached_result {
-            log_info("[AudioTranscription] ✅ Transcription trouvée dans le cache");
-
-            // Mettre à jour last_used_at et usage_count
-            let _ = sqlx::query(
-                r#"
-                UPDATE audio_transcription_cache
-                SET last_used_at = NOW(), usage_count = usage_count + 1
-                WHERE audio_hash = $1
-                "#,
-            )
-            .bind(&audio_hash)
-            .execute(pool)
             .await;
 
-            // Appliquer corrections via fonction PostgreSQL
-            let corrected_text =
-                sqlx::query_scalar::<_, String>("SELECT correct_transcription_errors($1)")
-                    .bind(&cached_text)
-                    .fetch_one(pool)
-                    .await
-                    .unwrap_or(cached_text);
+        match cached_result {
+            Ok(Some((cached_text, cached_lang, cached_conf, cached_dur))) => {
+                log_info("[AudioTranscription] ✅ Transcription trouvée dans le cache");
 
-            return Ok(TranscriptionResult {
-                text: corrected_text,
-                language: cached_lang,
-                confidence: cached_conf,
-                duration: cached_dur,
-            });
+                // Mettre à jour last_used_at et usage_count (non-bloquant)
+                let _ = sqlx::query(
+                    r#"
+                    UPDATE audio_transcription_cache
+                    SET last_used_at = NOW(), usage_count = usage_count + 1
+                    WHERE audio_hash = $1
+                    "#,
+                )
+                .bind(&audio_hash)
+                .execute(pool)
+                .await;
+
+                // Appliquer corrections via fonction PostgreSQL (résilient)
+                let corrected_text =
+                    sqlx::query_scalar::<_, String>("SELECT correct_transcription_errors($1)")
+                        .bind(&cached_text)
+                        .fetch_one(pool)
+                        .await
+                        .unwrap_or(cached_text);
+
+                return Ok(TranscriptionResult {
+                    text: corrected_text,
+                    language: cached_lang,
+                    confidence: cached_conf,
+                    duration: cached_dur,
+                });
+            }
+            Ok(None) => {
+                log_info("[AudioTranscription] Cache miss, appel API Whisper...");
+            }
+            Err(e) => {
+                log_warn(&format!(
+                    "[AudioTranscription] ⚠️ Cache indisponible ({}), fallback API directe",
+                    e
+                ));
+            }
         }
 
-        // Pas dans le cache : transcrire
-        log_info("[AudioTranscription] Transcription non trouvée dans cache, appel API...");
+        // Pas dans le cache ou cache indisponible : transcrire via Whisper
         let result = Self::transcribe_audio_base64(audio_base64).await?;
 
-        // Sauvegarder dans le cache
+        // Sauvegarder dans le cache (non-bloquant, ignore les erreurs)
         let _ = sqlx::query(
             r#"
             INSERT INTO audio_transcription_cache (
@@ -116,7 +122,7 @@ impl AudioTranscriptionService {
         .execute(pool)
         .await;
 
-        // Appliquer corrections
+        // Appliquer corrections (résilient)
         let corrected_text =
             sqlx::query_scalar::<_, String>("SELECT correct_transcription_errors($1)")
                 .bind(&result.text)

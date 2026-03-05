@@ -46,6 +46,9 @@ const PharmacieHomeScreen: React.FC = () => {
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [totalResults, setTotalResults] = useState(0);
+    const [page, setPage] = useState(1);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [hasMore, setHasMore] = useState(true);
 
     // États UI
     const [sortBy, setSortBy] = useState<SortOption>('relevance');
@@ -140,18 +143,15 @@ const PharmacieHomeScreen: React.FC = () => {
 
             const searchFilters: ProductSearchFilters = {
                 ...filters,
-                query: searchQuery.trim() || 'médicament', // Par défaut, chercher "médicament" pour afficher des résultats
+                query: searchQuery.trim() || '', // Charger tous les produits disponibles si pas de recherche
             };
 
             const response = await pharmacyProductService.searchProducts(searchFilters);
 
-            if (response.success && response.data?.products) {
-                let results = response.data.products;
-
-                // Limiter à 20 résultats pour l'affichage initial
-                if (initialLoad && results.length > 20) {
-                    results = results.slice(0, 20);
-                }
+            const r = response.data as any;
+            if (response.success && r?.products) {
+                let results = r.products;
+                setHasMore(results.length >= 20);
 
                 // Tri côté client
                 if (sortBy !== 'relevance') {
@@ -174,7 +174,8 @@ const PharmacieHomeScreen: React.FC = () => {
                 }
 
                 setMedications(results);
-                setTotalResults(results.length);
+                setTotalResults(r.total || results.length);
+                setPage(1);
             } else {
                 setError('Aucun médicament trouvé');
                 setMedications([]);
@@ -191,8 +192,31 @@ const PharmacieHomeScreen: React.FC = () => {
 
     const handleRefresh = () => {
         setRefreshing(true);
+        setPage(1);
         loadMedications(false);
     };
+
+    const handleLoadMore = useCallback(async () => {
+        if (loadingMore || !hasMore) return;
+        setLoadingMore(true);
+        try {
+            const nextPage = page + 1;
+            const searchFilters: ProductSearchFilters = {
+                ...filters,
+                query: searchQuery.trim() || '',
+                limit: 20,
+                offset: (nextPage - 1) * 20,
+            };
+            const response = await pharmacyProductService.searchProducts(searchFilters);
+            const r = response.data as any;
+            if (response.success && r?.products) {
+                const newResults = r.products;
+                if (newResults.length === 0) { setHasMore(false); }
+                else { setMedications(prev => [...prev, ...newResults]); setPage(nextPage); setHasMore(newResults.length >= 20); }
+            }
+        } catch (err) { console.warn('[PharmacieHome] Load more error:', err); }
+        finally { setLoadingMore(false); }
+    }, [page, loadingMore, hasMore, filters, searchQuery]);
 
     const handleMedicationPress = (medication: PharmacyProduct) => {
         hapticPress();
@@ -338,9 +362,10 @@ const PharmacieHomeScreen: React.FC = () => {
                 // Analyser l'image avec l'IA
                 const analysisResponse = await imageAnalysisService.analyzePharmacyImage(base64Image);
 
-                if (analysisResponse.success && analysisResponse.data) {
+                const ar = analysisResponse.data as any;
+                if (analysisResponse.success && ar) {
                     // Gérer différents formats de réponse
-                    const analysis = analysisResponse.data.analysis || analysisResponse.data;
+                    const analysis = ar?.analysis || ar;
                     setImageAnalysisResult(analysis);
 
                     // Afficher le résultat dans le chat IA
@@ -354,7 +379,8 @@ const PharmacieHomeScreen: React.FC = () => {
                     );
                     setShowAIChat(true);
                 } else {
-                    const errorMsg = analysisResponse.error || analysisResponse.data?.error || 'Impossible d\'analyser l\'image du médicament. L\'IA d\'analyse d\'images n\'est peut-être pas encore opérationnelle.';
+                    const ar = analysisResponse.data as any;
+                    const errorMsg = analysisResponse.error || ar?.error || 'Impossible d\'analyser l\'image du médicament. L\'IA d\'analyse d\'images n\'est peut-être pas encore opérationnelle.';
                     Alert.alert(
                         'Erreur',
                         errorMsg,
@@ -559,9 +585,6 @@ const PharmacieHomeScreen: React.FC = () => {
                                 onFocus={() => setSearchFocused(true)}
                                 onBlur={() => setSearchFocused(false)}
                                 returnKeyType="search"
-                                multiline={true}
-                                numberOfLines={2}
-                                textAlignVertical="top"
                             />
                             {searchQuery.length > 0 && (
                                 <TouchableOpacity
@@ -876,6 +899,9 @@ const PharmacieHomeScreen: React.FC = () => {
                             colors={[modernColors.primary]}
                         />
                     }
+                    onEndReached={handleLoadMore}
+                    onEndReachedThreshold={0.3}
+                    ListFooterComponent={loadingMore ? <ActivityIndicator size="small" color={modernColors.primary} style={{ paddingVertical: 16 }} /> : null}
                     ListEmptyComponent={
                         <View style={styles.emptyContainer}>
                             <SafeIcon name="pill" size={64} color="#9CA3AF" />

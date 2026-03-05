@@ -15,9 +15,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { config } from '../config/environment';
-import { iaApi, mediaApi, apiGet, apiPost } from '../services/api';
-import { productsService } from '../services/productsService';
-import ProductDeliveryConfigModal from './delivery/ProductDeliveryConfigModal';
+import { apiGet, iaApi, mediaApi } from '../services/api';
 import { uploadToCloud } from '../services/cloudUpload';
 import { studioService, type VideoDependency } from '../services/studioService';
 import { trackUxEvent } from '../services/uxMetrics';
@@ -28,6 +26,7 @@ import { extractDescription, extractServiceName } from '../utils/displayHelpers'
 import { getFieldValue } from '../utils/productNormalizer';
 import { apiCallWithRetry } from '../utils/retryWithBackoff';
 import { clearVideoDraft, loadVideoDraft, saveVideoDraft, type VideoDraft } from '../utils/videoDraftStorage';
+import ProductDeliveryConfigModal from './delivery/ProductDeliveryConfigModal';
 import { NativeButton, NativeCard, NativeInput } from './NativeDesign';
 import SafeIcon from './SafeIcon';
 import { TimelineEditor } from './TimelineEditor';
@@ -145,12 +144,14 @@ const normalizeProductName = (product?: ManagedProduct | null): string => {
     return extractProductName(product, 'Votre produit');
 };
 
-const ensureNumber = (value: any, fallback: number): number => {
-    const parsed = Number(value);
-    if (Number.isFinite(parsed)) {
-        return parsed;
+const ensureNumber = (...args: any[]): number => {
+    for (const value of args) {
+        const parsed = Number(value);
+        if (Number.isFinite(parsed) && parsed > 0) {
+            return parsed;
+        }
     }
-    return fallback;
+    return 0;
 };
 
 const computePriceLabel = (product: ManagedProduct | null | undefined): string | undefined => {
@@ -357,7 +358,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
     const [dependencies, setDependencies] = useState<VideoDependency[]>([]);
     const [showVideoChaining, setShowVideoChaining] = useState<boolean>(false);
     const [showAdvancedOptions, setShowAdvancedOptions] = useState<boolean>(false);
-    
+
     // ✅ NOUVEAU: États pour le suivi du job de génération vidéo
     const [currentJobId, setCurrentJobId] = useState<string | null>(null);
     const [jobStatus, setJobStatus] = useState<'queued' | 'running' | 'completed' | 'failed' | null>(null);
@@ -400,7 +401,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         // ✅ CORRIGÉ: Utiliser le produit stocké au moment de l'ouverture de l'éditeur AR
         // Cela garantit que la vidéo AR est liée au produit qui était sélectionné lors de l'ouverture de l'éditeur
         const productToUse = arEditorProduct || selectedProduct || primaryProduct;
-        
+
         if (!productToUse) {
             Alert.alert(
                 'Produit requis',
@@ -517,10 +518,10 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
             console.log('[ProductVideoCreationModal] ✅ Vidéo AR ajoutée avec succès, fermeture du modal');
             setShowAREditor(false);
-            
+
             // ✅ NOUVEAU: Réinitialiser le produit stocké pour l'éditeur AR
             setArEditorProduct(null);
-            
+
             // ✅ NOUVEAU: Afficher l'alerte après la fermeture du modal pour éviter les conflits
             setTimeout(() => {
                 Alert.alert('Succès', `Vidéo AR ajoutée à la médiathèque du produit "${productToUse.nom || productToUse.titre || 'sélectionné'}"`);
@@ -546,13 +547,13 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 response: error?.response?.data,
                 status: error?.response?.status,
             });
-            
+
             // ✅ CORRIGÉ: Fermer le modal même en cas d'erreur pour permettre à l'utilisateur de réessayer
             setShowAREditor(false);
-            
+
             // ✅ NOUVEAU: Réinitialiser le produit stocké même en cas d'erreur
             setArEditorProduct(null);
-            
+
             // Afficher un message d'erreur plus détaillé
             let errorMessage = 'Impossible d\'ajouter la vidéo AR. Réessayez plus tard.';
             if (error?.response?.status === 500) {
@@ -560,7 +561,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             } else if (error?.message) {
                 errorMessage = error.message;
             }
-            
+
             // ✅ NOUVEAU: Afficher l'alerte après la fermeture du modal
             setTimeout(() => {
                 Alert.alert('Erreur', errorMessage);
@@ -584,7 +585,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     required_vehicle_type_id?: number;
                 };
             }>(`/api/delivery/product-config/${serviceId}/${productIndex}`);
-            
+
             if (response.success && response.data?.config) {
                 const config = response.data.config;
                 setDeliveryConfig({
@@ -689,7 +690,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
                 // ✅ CORRIGÉ 2025-12-24: Vérifier plusieurs structures de réponse possibles
                 let productMediaData: any[] = [];
-                
+
                 // Structure 1: response.data.data (tableau)
                 if (Array.isArray((productMediaResponse.data as any)?.data)) {
                     productMediaData = (productMediaResponse.data as any).data;
@@ -712,7 +713,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                         // ✅ CORRIGÉ: Gérer différents formats de réponse
                         const mediaId = ensureNumber(item.id, item.media_id, index + 1);
                         const mediaPath = item.path || item.url || item.uri || item.image_url || item.video_url;
-                        
+
                         return {
                             id: mediaId,
                             path: mediaPath,
@@ -729,11 +730,11 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 // ✅ NOUVEAU: Fallback - Utiliser les images du produit directement si l'API ne retourne rien
                 if (productMediaItems.length === 0 && product) {
                     console.log('[ProductVideoCreationModal] ⚠️ Aucun média depuis API, utilisation fallback depuis product.images');
-                    
+
                     // Extraire les images du produit (gérer différents formats)
                     const extractImagesFromProduct = (product: ManagedProduct): string[] => {
                         const images: string[] = [];
-                        
+
                         // Format 1: product.images (tableau de strings)
                         if (Array.isArray(product.images)) {
                             product.images.forEach((img: any) => {
@@ -748,7 +749,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                 }
                             });
                         }
-                        
+
                         // Format 2: product.data?.images
                         if (product.data && typeof product.data === 'object') {
                             const dataImages = (product.data as any).images;
@@ -765,19 +766,19 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                 });
                             }
                         }
-                        
+
                         // Format 3: product.base64_image (uniquement si pas déjà dans images)
                         if (product.base64_image && typeof product.base64_image === 'string' && !images.includes(product.base64_image)) {
                             images.push(product.base64_image);
                         }
-                        
+
                         // Dédupliquer
                         return Array.from(new Set(images));
                     };
-                    
+
                     const fallbackImages = extractImagesFromProduct(product);
                     console.log('[ProductVideoCreationModal] ✅ Images extraites depuis produit (fallback):', fallbackImages.length);
-                    
+
                     if (fallbackImages.length > 0) {
                         // Créer des MediaLibraryItem depuis les images du produit
                         const fallbackMediaItems: MediaLibraryItem[] = fallbackImages.map((imgUrl: string, index: number) => ({
@@ -788,15 +789,15 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                             product_index: product.product_index || 0,
                             ai_description: null,
                         }));
-                        
+
                         productMediaItems.push(...fallbackMediaItems);
                         console.log('[ProductVideoCreationModal] ✅ Médias fallback ajoutés:', fallbackMediaItems.length);
                     }
-                    
+
                     // Faire de même pour les vidéos
                     const extractVideosFromProduct = (product: ManagedProduct): string[] => {
                         const videos: string[] = [];
-                        
+
                         if (Array.isArray(product.videos)) {
                             product.videos.forEach((vid: any) => {
                                 if (typeof vid === 'string' && vid.trim().length > 0) {
@@ -809,7 +810,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                 }
                             });
                         }
-                        
+
                         if (product.data && typeof product.data === 'object') {
                             const dataVideos = (product.data as any).videos;
                             if (Array.isArray(dataVideos)) {
@@ -825,10 +826,10 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                 });
                             }
                         }
-                        
+
                         return Array.from(new Set(videos));
                     };
-                    
+
                     const fallbackVideos = extractVideosFromProduct(product);
                     if (fallbackVideos.length > 0) {
                         const fallbackVideoItems: MediaLibraryItem[] = fallbackVideos.map((vidUrl: string, index: number) => ({
@@ -839,7 +840,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                             product_index: product.product_index || 0,
                             ai_description: null,
                         }));
-                        
+
                         productMediaItems.push(...fallbackVideoItems);
                         console.log('[ProductVideoCreationModal] ✅ Vidéos fallback ajoutées:', fallbackVideoItems.length);
                     }
@@ -848,11 +849,18 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 // ✅ CORRIGÉ 2025-12-24: Gérer serviceMedia même si l'API échoue (non bloquant)
                 let serviceMediaData: any[] = [];
                 if (serviceMediaResponse.success) {
-                    if (Array.isArray(serviceMediaResponse.data)) {
-                        serviceMediaData = serviceMediaResponse.data;
-                    } else if (serviceMediaResponse.data && typeof serviceMediaResponse.data === 'object') {
-                        const images = (serviceMediaResponse.data as any).images || (serviceMediaResponse.data as any).Images || [];
-                        const videos = (serviceMediaResponse.data as any).videos || (serviceMediaResponse.data as any).Videos || [];
+                    const svcRaw = serviceMediaResponse.data as any;
+                    if (Array.isArray(svcRaw)) {
+                        serviceMediaData = svcRaw;
+                    } else if (svcRaw && Array.isArray(svcRaw.data)) {
+                        serviceMediaData = svcRaw.data;
+                    } else if (svcRaw && Array.isArray(svcRaw.items)) {
+                        serviceMediaData = svcRaw.items;
+                    } else if (svcRaw && Array.isArray(svcRaw.media)) {
+                        serviceMediaData = svcRaw.media;
+                    } else if (svcRaw && typeof svcRaw === 'object') {
+                        const images = svcRaw.images || svcRaw.Images || [];
+                        const videos = svcRaw.videos || svcRaw.Videos || [];
                         serviceMediaData = [...(Array.isArray(images) ? images : []), ...(Array.isArray(videos) ? videos : [])];
                     }
                 }
@@ -861,7 +869,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     .map((item: any, index: number) => {
                         const mediaId = ensureNumber(item.id, item.media_id, index + 1);
                         const mediaPath = item.path || item.url || item.uri || item.image_url || item.video_url;
-                        
+
                         return {
                             id: mediaId,
                             path: mediaPath,
@@ -884,36 +892,36 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
                 // ✅ AMÉLIORÉ: Sélection intelligente - Prioriser les vidéos (surtout AR)
                 const defaultIds = new Set<number>();
-                
+
                 // 1. D'abord sélectionner toutes les vidéos (priorité aux vidéos AR qui ont "AR" dans la description)
-                const videos = productMediaItems.filter(item => 
+                const videos = productMediaItems.filter(item =>
                     (item.type === 'video' || item.media_type === 'video')
                 );
-                const arVideos = videos.filter(item => 
-                    item.ai_description?.toLowerCase().includes('ar') || 
+                const arVideos = videos.filter(item =>
+                    item.ai_description?.toLowerCase().includes('ar') ||
                     item.ai_description?.toLowerCase().includes('immersive')
                 );
-                
+
                 // Sélectionner d'abord les vidéos AR, puis les autres vidéos
                 [...arVideos, ...videos.filter(v => !arVideos.includes(v))].forEach(item => {
                     defaultIds.add(item.id);
                 });
-                
+
                 // 2. Ensuite compléter avec des images si on n'a pas encore 4 médias
                 if (defaultIds.size < 4) {
-                    const images = productMediaItems.filter(item => 
+                    const images = productMediaItems.filter(item =>
                         item.type !== 'video' && item.media_type !== 'video'
                     );
                     images.slice(0, 4 - defaultIds.size).forEach(item => {
                         defaultIds.add(item.id);
                     });
                 }
-                
+
                 // 3. Si aucune vidéo n'est disponible, sélectionner les 4 premiers médias (comportement par défaut)
                 if (defaultIds.size === 0) {
                     productMediaItems.slice(0, 4).forEach((item) => defaultIds.add(item.id));
                 }
-                
+
                 setSelectedMediaIds(defaultIds);
                 console.log('[ProductVideoCreationModal] ✅ Sélection automatique:', {
                     total: defaultIds.size,
@@ -925,11 +933,11 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 return audioTracks;
             } catch (error) {
                 console.error('[ProductVideoCreationModal] Erreur chargement médias:', error);
-                
+
                 // ✅ NOUVEAU: Fallback en cas d'erreur - Utiliser les images du produit directement
                 if (product) {
                     console.log('[ProductVideoCreationModal] ⚠️ Erreur API, utilisation fallback depuis product.images');
-                    
+
                     try {
                         const extractImagesFromProduct = (product: ManagedProduct): string[] => {
                             const images: string[] = [];
@@ -962,7 +970,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                             }
                             return Array.from(new Set(images));
                         };
-                        
+
                         const extractVideosFromProduct = (product: ManagedProduct): string[] => {
                             const videos: string[] = [];
                             if (Array.isArray(product.videos)) {
@@ -979,10 +987,10 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                             }
                             return Array.from(new Set(videos));
                         };
-                        
+
                         const fallbackImages = extractImagesFromProduct(product);
                         const fallbackVideos = extractVideosFromProduct(product);
-                        
+
                         if (fallbackImages.length > 0 || fallbackVideos.length > 0) {
                             const fallbackItems: MediaLibraryItem[] = [
                                 ...fallbackImages.map((imgUrl: string, index: number) => ({
@@ -1002,11 +1010,11 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                     ai_description: null,
                                 })),
                             ];
-                            
+
                             setProductMedia(fallbackItems);
                             // ✅ AMÉLIORÉ: Même logique de sélection intelligente pour le fallback
                             const defaultIds = new Set<number>();
-                            const videos = fallbackItems.filter(item => 
+                            const videos = fallbackItems.filter(item =>
                                 (item.type === 'video' || item.media_type === 'video')
                             );
                             [...videos, ...fallbackItems.filter(v => !videos.includes(v))].slice(0, 4).forEach((item) => {
@@ -1020,7 +1028,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                         console.error('[ProductVideoCreationModal] Erreur fallback:', fallbackError);
                     }
                 }
-                
+
                 // Seulement afficher l'alerte si le fallback n'a rien trouvé
                 Alert.alert(
                     'Erreur récupération médias',
@@ -1279,7 +1287,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                             // ✅ CORRIGÉ: Vérifier que la timeline contient des médias valides
                             const hasValidMedia = responseData.timeline.scenes.some((scene: any) => {
                                 return (scene.media_url && typeof scene.media_url === 'string' && scene.media_url.trim().length > 0) ||
-                                       (scene.media_id !== null && scene.media_id !== undefined);
+                                    (scene.media_id !== null && scene.media_id !== undefined);
                             });
 
                             if (!hasValidMedia) {
@@ -1289,11 +1297,11 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                             } else {
                                 console.log('[ProductVideoCreationModal] ✅ Timeline générée avec médias:', responseData.timeline);
                                 setGeneratedTimeline(responseData.timeline);
-                                
+
                                 // ✅ CORRIGÉ À LA RACINE: Sauvegarder la timeline dans la session Studio
                                 try {
                                     let sessionId = studioSessionId;
-                                    
+
                                     // Créer la session si elle n'existe pas
                                     if (!sessionId && selectedProduct?.serviceId) {
                                         const serviceIdNum = Number(selectedProduct.serviceId);
@@ -1324,7 +1332,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                             }
                                         }
                                     }
-                                    
+
                                     if (sessionId && responseData.timeline.scenes.length > 0) {
                                         // ✅ CORRIGÉ: Mapper les médias disponibles pour remplir media_url si manquant
                                         const allMedia = [...productMedia, ...serviceMedia];
@@ -1337,20 +1345,20 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                                 }
                                             }
                                         });
-                                        
+
                                         // Convertir les scènes en TimelineClipInput[]
                                         const clips: import('../services/studioService').TimelineClipInput[] = responseData.timeline.scenes.map((scene) => {
                                             // ✅ CORRIGÉ: Remplir media_url si manquant en utilisant media_id
                                             let mediaUrl = scene.media_url;
                                             if (!mediaUrl && scene.media_id) {
-                                                const mediaId = typeof scene.media_id === 'string' 
-                                                    ? parseInt(scene.media_id, 10) 
+                                                const mediaId = typeof scene.media_id === 'string'
+                                                    ? parseInt(scene.media_id, 10)
                                                     : scene.media_id;
                                                 if (!isNaN(mediaId)) {
                                                     mediaUrl = mediaMap.get(mediaId) || undefined;
                                                 }
                                             }
-                                            
+
                                             // ✅ FALLBACK: Si toujours pas de media_url, utiliser le premier média disponible
                                             if (!mediaUrl && allMedia.length > 0) {
                                                 const firstMedia = allMedia[0];
@@ -1358,7 +1366,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                                     mediaUrl = buildMediaUrl(firstMedia.path);
                                                 }
                                             }
-                                            
+
                                             return {
                                                 position: scene.scene_index,
                                                 lane: null,
@@ -1376,12 +1384,12 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                                 },
                                             };
                                         });
-                                        
+
                                         console.log('[ProductVideoCreationModal] 💾 Sauvegarde timeline dans session Studio:', {
                                             sessionId,
                                             clipsCount: clips.length,
                                         });
-                                        
+
                                         await studioService.saveTimeline(sessionId, clips);
                                         console.log('[ProductVideoCreationModal] ✅ Timeline sauvegardée avec succès');
                                     } else {
@@ -1394,7 +1402,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                     console.error('[ProductVideoCreationModal] ❌ Erreur sauvegarde timeline:', saveError);
                                     // Ne pas bloquer l'utilisateur si la sauvegarde échoue
                                 }
-                                
+
                                 // ✅ NOUVEAU: Mettre à jour scriptNotes avec le texte des scènes si vide
                                 if (!scriptNotes.trim() && responseData.timeline.scenes.length > 0) {
                                     const scriptFromTimeline = responseData.timeline.scenes
@@ -2061,10 +2069,10 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             // Attendre un peu pour éviter les analyses multiples lors du chargement initial
             const timeoutId = setTimeout(() => {
                 // Vérifier qu'il y a des médias avec des descriptions IA à analyser
-                const hasMediaWithDescriptions = [...productMedia, ...serviceMedia].some(item => 
+                const hasMediaWithDescriptions = [...productMedia, ...serviceMedia].some(item =>
                     item.ai_description && item.ai_description.trim() !== ''
                 );
-                
+
                 // Analyser seulement si on n'a pas déjà une analyse récente
                 if (hasMediaWithDescriptions && Object.keys(mediaAnalysis).length === 0) {
                     console.log('[ProductVideoCreationModal] 🔍 Analyse automatique des médias sélectionnés');
@@ -2249,11 +2257,11 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             });
             return undefined;
         }
-        
+
         // ✅ CORRIGÉ: Convertir serviceId en nombre (peut être string ou number)
         const serviceIdStr = String(selectedProduct.serviceId).trim();
         const serviceIdNum = Number(serviceIdStr);
-        
+
         if (!Number.isFinite(serviceIdNum) || serviceIdNum <= 0) {
             console.warn('[ProductVideoCreationModal] ensureStudioSession: serviceId invalide', {
                 serviceId: selectedProduct.serviceId,
@@ -2261,20 +2269,20 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             });
             return undefined;
         }
-        
+
         try {
             // ✅ AMÉLIORÉ: Logging détaillé pour diagnostic
             console.log('[ProductVideoCreationModal] ensureStudioSession: Vérification sessions existantes...');
             const existing = await studioService.listSessions();
             console.log('[ProductVideoCreationModal] ensureStudioSession: Sessions existantes:', existing.length);
-            
+
             if (existing.length > 0) {
                 const sessionId = existing[0].id;
                 console.log('[ProductVideoCreationModal] ensureStudioSession: Réutilisation session existante:', sessionId);
                 setStudioSessionId(sessionId);
                 return sessionId;
             }
-            
+
             // ✅ AMÉLIORÉ: Créer une nouvelle session avec payload complet
             const payload: import('../services/studioService').CreateStudioSessionPayload = {
                 service_id: serviceIdNum,
@@ -2285,19 +2293,19 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 },
                 distribution_plan: [],
             };
-            
+
             console.log('[ProductVideoCreationModal] ensureStudioSession: Création nouvelle session avec payload:', {
                 service_id: payload.service_id,
                 brief: payload.brief,
             });
-            
+
             const aggregate = await studioService.createSession(payload);
-            
+
             if (!aggregate || !aggregate.session || !aggregate.session.id) {
                 console.error('[ProductVideoCreationModal] ensureStudioSession: Réponse invalide de createSession:', aggregate);
                 throw new Error('Réponse invalide de l\'API Studio');
             }
-            
+
             const sessionId = aggregate.session.id;
             console.log('[ProductVideoCreationModal] ensureStudioSession: ✅ Session créée avec succès:', sessionId);
             setStudioSessionId(sessionId);
@@ -2311,11 +2319,11 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 status: error?.response?.status,
                 serviceId: selectedProduct?.serviceId,
             });
-            
+
             // ✅ AMÉLIORÉ: Message d'erreur plus informatif pour l'utilisateur
             const errorMessage = error?.response?.data?.error || error?.message || 'Erreur inconnue';
             console.warn('[ProductVideoCreationModal] session Studio indisponible:', errorMessage);
-            
+
             return undefined;
         }
     }, [selectedProduct, scriptNotes, headline, studioSessionId]);
@@ -2326,11 +2334,11 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             Alert.alert('Produit requis', 'Sélectionnez un produit avant de générer un storyboard.');
             return;
         }
-        
+
         // ✅ AMÉLIORÉ: Vérifier que le serviceId est valide (peut être string ou number)
         const serviceIdStr = String(selectedProduct.serviceId || '').trim();
         const serviceIdNum = Number(serviceIdStr);
-        
+
         if (!serviceIdStr || !Number.isFinite(serviceIdNum) || serviceIdNum <= 0) {
             Alert.alert(
                 'Erreur',
@@ -2343,7 +2351,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             });
             return;
         }
-        
+
         const startedAt = Date.now();
         trackUxEvent('storyboard_generate_click', {
             device: 'mobile',
@@ -2352,7 +2360,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             sessionId: studioSessionId,
             step: activeStep,
         });
-        
+
         // ✅ AMÉLIORÉ: Gestion d'erreur plus détaillée
         let sessionId: string | undefined;
         try {
@@ -2365,7 +2373,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             );
             return;
         }
-        
+
         if (!sessionId) {
             Alert.alert(
                 'Erreur de session',
@@ -2453,14 +2461,14 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 });
                 return;
             }
-            
+
             // ✅ NOUVEAU: Vérifier que la timeline existe et attacher les médias manquants
             try {
                 const session = await studioService.getSession(studioSessionId);
                 if (!session || !session.timeline || session.timeline.length === 0) {
                     throw new Error('La timeline est vide. Ajoutez d\'abord des médias à votre timeline.');
                 }
-                
+
                 // ✅ CORRIGÉ: Attacher les médias disponibles comme assets dynamiques si nécessaire
                 const allMedia = [...productMedia, ...serviceMedia];
                 if (allMedia.length > 0) {
@@ -2491,7 +2499,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 console.warn('[ProductVideoCreationModal] Vérification timeline:', checkError);
                 // Si la vérification échoue, on continue quand même (l'API retournera une erreur plus claire)
             }
-            
+
             const response = await studioService.requestShortPreview(studioSessionId);
             if (response.preview_url) {
                 setShortPreviewUrl(response.preview_url);
@@ -2525,39 +2533,39 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 durationMs,
                 extra: { error: error?.message ?? 'unknown' },
             });
-            
+
             // ✅ CORRIGÉ: Message d'erreur plus informatif selon le type d'erreur
             let errorMessage = error?.message || 'Impossible de générer la prévisualisation.';
-            
+
             // ✅ AMÉLIORÉ: Détecter les erreurs de configuration du renderer
-            if (errorMessage.includes('n\'est pas configuré') || 
+            if (errorMessage.includes('n\'est pas configuré') ||
                 errorMessage.includes('VIDEO_RENDERER') ||
                 errorMessage.includes('Configuration manquante')) {
                 errorMessage = 'Le service de prévisualisation vidéo n\'est pas configuré sur le serveur.\n\n' +
                     'Contactez l\'administrateur pour activer le service de rendu vidéo.\n\n' +
                     'En attendant, vous pouvez utiliser le "Preview Rapide" ci-dessus pour avoir un aperçu de votre vidéo.';
-            } else if (errorMessage.includes('temporairement indisponible') || 
-                       errorMessage.includes('indisponible')) {
+            } else if (errorMessage.includes('temporairement indisponible') ||
+                errorMessage.includes('indisponible')) {
                 errorMessage = 'Le service de prévisualisation vidéo est temporairement indisponible.\n\n' +
                     'Vous pouvez utiliser le "Preview Rapide" ci-dessus pour avoir un aperçu de votre vidéo.';
-            } else if (errorMessage.includes('400') || errorMessage.includes('Bad Request') || 
-                       errorMessage.includes('Erreur de configuration')) {
+            } else if (errorMessage.includes('400') || errorMessage.includes('Bad Request') ||
+                errorMessage.includes('Erreur de configuration')) {
                 // ✅ CORRIGÉ: Message plus détaillé pour l'erreur 400
                 // Vérifier si le message d'erreur contient des détails du backend
-                const backendError = (error as any)?.response?.data?.error || 
-                                    (error as any)?.response?.data?.message || 
-                                    errorMessage;
-                
-                if (backendError.includes('timeline') || 
-                    backendError.includes('sans timeline') || 
+                const backendError = (error as any)?.response?.data?.error ||
+                    (error as any)?.response?.data?.message ||
+                    errorMessage;
+
+                if (backendError.includes('timeline') ||
+                    backendError.includes('sans timeline') ||
                     backendError.includes('Impossible de générer un aperçu sans timeline')) {
                     errorMessage = 'Impossible de générer la prévisualisation : la timeline est vide.\n\n' +
                         'Solutions :\n' +
                         '• Générez d\'abord un storyboard (étape 1)\n' +
                         '• Ajoutez des médias à votre timeline\n' +
                         '• Utilisez le "Preview Rapide" ci-dessus pour avoir un aperçu';
-                } else if (backendError.includes('Erreur temporaire') || 
-                           backendError.includes('réessayer')) {
+                } else if (backendError.includes('Erreur temporaire') ||
+                    backendError.includes('réessayer')) {
                     errorMessage = 'Erreur temporaire lors de la génération de la prévisualisation.\n\n' +
                         'Veuillez réessayer dans quelques instants.\n\n' +
                         'Si le problème persiste, utilisez le "Preview Rapide" ci-dessus.';
@@ -2568,7 +2576,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                         'Si le problème persiste, utilisez le "Preview Rapide" ci-dessus.';
                 }
             }
-            
+
             Alert.alert('Erreur', errorMessage);
         } finally {
             setShortPreviewLoading(false);
@@ -2580,7 +2588,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         return (
             <>
                 {renderProductSelection()}
-                
+
                 {/* ✅ Configuration de livraison */}
                 {selectedProduct && (
                     <NativeCard style={styles.sectionCard}>
@@ -2655,7 +2663,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                         )}
                     </NativeCard>
                 )}
-                
+
                 {/* ✅ SUPPRIMÉ: coachPanel retiré de l'étape 1 pour éviter le doublon avec les autres étapes */}
                 {selectedProduct && renderRelatedProducts()}
             </>
@@ -2709,7 +2717,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                             try {
                                 // ✅ CORRIGÉ: Utiliser primaryProduct comme fallback si selectedProduct n'est pas défini
                                 const productToUse = selectedProduct || primaryProduct;
-                                
+
                                 if (!productToUse) {
                                     Alert.alert(
                                         'Produit requis',
@@ -2769,7 +2777,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                 if (!selectedProduct && productToUse) {
                                     setSelectedProduct(productToUse);
                                 }
-                                
+
                                 // ✅ NOUVEAU: Stocker le produit courant au moment de l'ouverture de l'éditeur AR
                                 // Cela garantit que la vidéo AR sera liée au bon produit même si selectedProduct change
                                 // ✅ CORRIGÉ: Créer un produit normalisé avec product_index garanti
@@ -2784,7 +2792,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                     product_index: productIndexValue,
                                     product_name: productToUse.nom || productToUse.titre
                                 });
-                                
+
                                 // ✅ CORRIGÉ: Vérifier que react-native-vision-camera est disponible avec try-catch robuste
                                 let CameraModule: any = null;
                                 try {
@@ -2801,7 +2809,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                     );
                                     return;
                                 }
-                                
+
                                 // ✅ CORRIGÉ: Vérifier que le composant ARVideoEditor peut être chargé
                                 try {
                                     setShowAREditor(true);
@@ -3155,14 +3163,14 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                         .replace(/\n+/g, ' ') // Remplacer les retours à la ligne multiples par un espace
                                         .replace(/\s+/g, ' ') // Remplacer les espaces multiples par un seul espace
                                         .trim(); // Supprimer les espaces en début/fin
-                                    
+
                                     return (
                                         <View key={scene.index} style={styles.storyboardItem}>
                                             <Text style={styles.storyboardSceneType}>
                                                 {scene.sceneType}
                                             </Text>
-                                            <Text 
-                                                style={styles.storyboardSceneText} 
+                                            <Text
+                                                style={styles.storyboardSceneText}
                                                 numberOfLines={2}
                                                 ellipsizeMode="tail"
                                             >
@@ -3352,10 +3360,10 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
                         if (selectedVideoIds.length > 0) {
                             const firstVideoId = selectedVideoIds[0];
-                            const firstVideo = productMedia.find(m => m.id === firstVideoId) || 
-                                              serviceMedia.find(m => m.id === firstVideoId);
+                            const firstVideo = productMedia.find(m => m.id === firstVideoId) ||
+                                serviceMedia.find(m => m.id === firstVideoId);
                             const url = firstVideo ? buildMediaUrl(firstVideo.path) : '';
-                            
+
                             if (url) {
                                 videoUrl = url;
                                 videoId = firstVideoId;
@@ -3373,7 +3381,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                 const urlLower = scene.media_url.toLowerCase();
                                 const hasVideoExtension = /\.(mp4|mov|avi|mkv|webm|m4v|flv|wmv|3gp)(\?|$)/i.test(scene.media_url);
                                 const containsVideo = urlLower.includes('video') || urlLower.includes('/videos/');
-                                
+
                                 // Si c'est clairement une vidéo, l'utiliser
                                 if (hasVideoExtension || containsVideo) {
                                     videoUrl = scene.media_url;
@@ -3385,7 +3393,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                 // mais on préfère chercher d'abord une vraie vidéo
                             }
                         }
-                        
+
                         // ✅ Si toujours aucune vidéo trouvée mais qu'il y a au moins une scène avec media_url,
                         // utiliser la première scène avec media_url (peut être une vidéo)
                         if (!videoUrl) {
@@ -3440,16 +3448,16 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 {selectedMediaIds.size > 0 && Array.from(selectedMediaIds).length > 0 && (() => {
                     // ✅ CORRIGÉ: Convertir l'ID du média en URL
                     const firstMediaId = Array.from(selectedMediaIds)[0];
-                    const firstMedia = productMedia.find(m => m.id === firstMediaId) || 
-                                      serviceMedia.find(m => m.id === firstMediaId);
+                    const firstMedia = productMedia.find(m => m.id === firstMediaId) ||
+                        serviceMedia.find(m => m.id === firstMediaId);
                     const mediaUrl = firstMedia ? buildMediaUrl(firstMedia.path) : '';
-                    
+
                     // ✅ Ne pas afficher si aucune URL n'est disponible
                     if (!mediaUrl) {
                         console.warn('[ProductVideoCreationModal] Aucune URL média trouvée pour ColorGradingPanel, mediaId:', firstMediaId);
                         return null;
                     }
-                    
+
                     return (
                         <ColorGradingPanel
                             mediaUrl={mediaUrl}
@@ -3464,16 +3472,16 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 {styleSuggestion && styleSuggestion.effects && styleSuggestion.effects.length > 0 && selectedMediaIds.size > 0 && (() => {
                     // ✅ CORRIGÉ: Convertir l'ID du média en URL
                     const firstMediaId = Array.from(selectedMediaIds)[0];
-                    const firstMedia = productMedia.find(m => m.id === firstMediaId) || 
-                                      serviceMedia.find(m => m.id === firstMediaId);
+                    const firstMedia = productMedia.find(m => m.id === firstMediaId) ||
+                        serviceMedia.find(m => m.id === firstMediaId);
                     const sampleMediaUrl = firstMedia ? buildMediaUrl(firstMedia.path) : '';
-                    
+
                     // ✅ Ne pas afficher si aucune URL n'est disponible
                     if (!sampleMediaUrl) {
                         console.warn('[ProductVideoCreationModal] Aucune URL média trouvée pour EffectPreviewCarousel, mediaId:', firstMediaId);
                         return null;
                     }
-                    
+
                     return (
                         <EffectPreviewCarousel
                             effectNames={styleSuggestion.effects}
@@ -3750,7 +3758,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                         <View style={styles.sectionHeader}>
                             <Text style={styles.sectionTitle}>🎬 Génération en cours</Text>
                         </View>
-                        
+
                         <View style={styles.jobProgressContainer}>
                             <ActivityIndicator size="large" color={modernColors.primary} style={styles.jobProgressSpinner} />
                             <Text style={styles.jobProgressText}>
@@ -3759,14 +3767,14 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                             <Text style={styles.jobProgressSubtext}>
                                 Job ID: {currentJobId.substring(0, 8)}...
                             </Text>
-                            
+
                             {/* Barre de progression */}
                             <View style={styles.progressBarContainer}>
                                 <View style={[styles.progressBar, { width: `${jobProgress}%` }]} />
                             </View>
                             <Text style={styles.progressPercentage}>{Math.round(jobProgress)}%</Text>
                         </View>
-                        
+
                         <View style={styles.jobInfoContainer}>
                             <Text style={styles.jobInfoText}>
                                 ⏱️ La génération peut prendre quelques minutes selon la durée et la complexité de la vidéo.
@@ -3779,7 +3787,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 </ScrollView>
             );
         }
-        
+
         // Étape 6 : Publication et distribution
         if (!selectedProduct) {
             return (
@@ -4298,7 +4306,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             return;
         }
         setActiveStep(newStep);
-        
+
         // ✅ CORRIGÉ 2025-12-24: Scroller vers le haut lors du changement d'étape
         setTimeout(() => {
             if (mainScrollViewRef.current) {
@@ -4485,7 +4493,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         const hasScript = scriptNotes.trim().length > 0;
         const hasStoryboard = storyboard && storyboard.scenes.length > 0;
         const hasBrief = briefVariants.length > 0 && briefVariants[0]?.script_outline?.length > 0;
-        
+
         if (!hasScript && !hasStoryboard && !hasBrief) {
             Alert.alert(
                 'Script requis',
@@ -4518,75 +4526,75 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
         // ✅ NOUVEAU 2025-11-30: Estimer le coût et afficher dans un toast avant de générer
         // ✅ CORRIGÉ: Ne pas bloquer la génération si l'estimation échoue
-        
+
         // ✅ CORRIGÉ: Construire le payload AVANT les vérifications pour pouvoir l'utiliser en cas d'erreur
         const payloadForEstimation: VideoGenerationPayload = {
-                style: stylePreset,
-                duration_seconds: durationSeconds,
-                headline: headline.trim(),
-                call_to_action: callToAction.trim(),
-                include_price: includePrice,
-                include_promotion: includePromotion,
-                include_contact: includeContact,
-                selected_media_ids: Array.from(selectedMediaIds.values()),
-                related_product_indices: Array.from(selectedRelatedProducts.values()),
-                use_product_gallery: useProductGallery,
-                use_service_mediatech: useMediatechLibrary,
-                include_publicite_assets: includePubliciteAssets,
-                publish_to_chat: publishToChat,
-                publish_to_product_card: publishToProductCard,
-                timeline: generatedTimeline ? {
-                    total_duration: generatedTimeline.total_duration,
-                    scenes: generatedTimeline.scenes.map(s => ({
-                        scene_index: s.scene_index,
-                        start_time: s.start_time,
-                        duration: s.duration,
-                        media_id: s.media_id,
-                        media_url: s.media_url,
-                        text: s.text,
-                        text_position: s.text_position,
-                        transition: s.transition,
-                        effects: s.effects,
-                        audio_cue: s.audio_cue,
-                    }))
-                } : undefined,
-                auto_storyboard: autoStoryboard,
-                storyboard: generatedTimeline
-                    ? undefined
-                    : (hasStoryboard && storyboard
-                        ? storyboard.scenes.map(s => s.body || s.headline || '').filter(Boolean)
-                        : hasBrief && briefVariants[0]?.script_outline
-                            ? briefVariants[0].script_outline
-                            : scriptNotes
-                                .split(/\r?\n/)
-                                .map((line) => line.trim())
-                                .filter((line) => line.length > 0)),
-                music_mode: musicMode,
-                music_volume: musicMode === 'none' ? undefined : safeMusicVolume,
-                music_track_id: selectedMusicTrackId ?? undefined,
-                voiceover_script: voiceoverEnabled ? voiceoverScript.trim() : undefined,
-                voiceover_lang: voiceoverEnabled ? voiceoverLang : undefined,
-                voiceover_voice: voiceoverEnabled ? voiceoverLang : undefined,
-                subtitle_lang: subtitleLang,
-                generate_square_variant: generateSquareVariant,
-                generate_landscape_variant: generateLandscapeVariant,
-                distribute_channels: Array.from(selectedChannels.values()),
-                style_effects: selectedEffects.size > 0 ? Array.from(selectedEffects) : undefined,
-                style_transitions: selectedTransitions.size > 0 ? Array.from(selectedTransitions) : undefined,
-                style_overlay_tips: selectedOverlayTips.size > 0 ? Array.from(selectedOverlayTips) : undefined,
-                style_color_palette: colorPalette.trim().length > 0 ? colorPalette.trim() : undefined,
-                style_music_hint: styleMusicHint.trim().length > 0 ? styleMusicHint.trim() : undefined,
-                // ✅ CORRIGÉ: Activer auto_generate_images par défaut si aucun média n'est disponible
-                auto_generate_images: true,
-                // ✅ NOTE: linked_session_ids retiré car non supporté dans VideoGenerationPayload
-            };
+            style: stylePreset,
+            duration_seconds: durationSeconds,
+            headline: headline.trim(),
+            call_to_action: callToAction.trim(),
+            include_price: includePrice,
+            include_promotion: includePromotion,
+            include_contact: includeContact,
+            selected_media_ids: Array.from(selectedMediaIds.values()),
+            related_product_indices: Array.from(selectedRelatedProducts.values()),
+            use_product_gallery: useProductGallery,
+            use_service_mediatech: useMediatechLibrary,
+            include_publicite_assets: includePubliciteAssets,
+            publish_to_chat: publishToChat,
+            publish_to_product_card: publishToProductCard,
+            timeline: generatedTimeline ? {
+                total_duration: generatedTimeline.total_duration,
+                scenes: generatedTimeline.scenes.map(s => ({
+                    scene_index: s.scene_index,
+                    start_time: s.start_time,
+                    duration: s.duration,
+                    media_id: s.media_id,
+                    media_url: s.media_url,
+                    text: s.text,
+                    text_position: s.text_position,
+                    transition: s.transition,
+                    effects: s.effects,
+                    audio_cue: s.audio_cue,
+                }))
+            } : undefined,
+            auto_storyboard: autoStoryboard,
+            storyboard: generatedTimeline
+                ? undefined
+                : (hasStoryboard && storyboard
+                    ? storyboard.scenes.map(s => s.body || s.headline || '').filter(Boolean)
+                    : hasBrief && briefVariants[0]?.script_outline
+                        ? briefVariants[0].script_outline
+                        : scriptNotes
+                            .split(/\r?\n/)
+                            .map((line) => line.trim())
+                            .filter((line) => line.length > 0)),
+            music_mode: musicMode,
+            music_volume: musicMode === 'none' ? undefined : safeMusicVolume,
+            music_track_id: selectedMusicTrackId ?? undefined,
+            voiceover_script: voiceoverEnabled ? voiceoverScript.trim() : undefined,
+            voiceover_lang: voiceoverEnabled ? voiceoverLang : undefined,
+            voiceover_voice: voiceoverEnabled ? voiceoverLang : undefined,
+            subtitle_lang: subtitleLang,
+            generate_square_variant: generateSquareVariant,
+            generate_landscape_variant: generateLandscapeVariant,
+            distribute_channels: Array.from(selectedChannels.values()),
+            style_effects: selectedEffects.size > 0 ? Array.from(selectedEffects) : undefined,
+            style_transitions: selectedTransitions.size > 0 ? Array.from(selectedTransitions) : undefined,
+            style_overlay_tips: selectedOverlayTips.size > 0 ? Array.from(selectedOverlayTips) : undefined,
+            style_color_palette: colorPalette.trim().length > 0 ? colorPalette.trim() : undefined,
+            style_music_hint: styleMusicHint.trim().length > 0 ? styleMusicHint.trim() : undefined,
+            // ✅ CORRIGÉ: Activer auto_generate_images par défaut si aucun média n'est disponible
+            auto_generate_images: true,
+            // ✅ NOTE: linked_session_ids retiré car non supporté dans VideoGenerationPayload
+        };
 
         // ✅ NOUVEAU 2025-11-30: Estimer le coût et afficher dans un toast avant de générer
         // ✅ CORRIGÉ: Ne pas bloquer la génération si l'estimation échoue
         try {
             setCostLoading(true);
             const serviceId = selectedProduct.serviceId;
-            
+
             // ✅ CORRIGÉ: Validations avant l'appel d'estimation
             if (!serviceId || serviceId === null || serviceId === undefined) {
                 console.warn('[ProductVideoCreationModal] Service ID manquant, génération sans estimation de coût');
@@ -4614,13 +4622,13 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             }
 
             const response = await iaApi.estimateVideoCost(serviceId, selectedProduct.product_index, payloadForEstimation);
-            
+
             // ✅ CORRIGÉ: Validation de la réponse - Ne pas bloquer si l'estimation échoue
             if (!response || !response.success) {
                 setCostLoading(false);
                 const errorMsg = response?.error || 'Impossible d\'estimer le coût pour le moment.';
                 console.warn('[ProductVideoCreationModal] Erreur estimation coût:', errorMsg);
-                
+
                 // ✅ CORRIGÉ: Proposer de continuer quand même
                 Alert.alert(
                     'Estimation impossible',
@@ -4717,10 +4725,10 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         } catch (error: any) {
             setCostLoading(false);
             console.error('[ProductVideoCreationModal] Erreur estimation coût:', error);
-            
+
             // ✅ CORRIGÉ: Messages d'erreur améliorés
             let errorMessage = 'Erreur lors de l\'estimation du coût.';
-            
+
             if (error?.message) {
                 const msg = error.message.toLowerCase();
                 if (msg.includes('500') || msg.includes('internal') || msg.includes('erreur 500')) {
@@ -4737,7 +4745,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     errorMessage = error.message;
                 }
             }
-            
+
             Alert.alert('Erreur d\'estimation', errorMessage, [{ text: 'OK' }]);
         }
     };
@@ -4845,18 +4853,18 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 // ✅ S'assurer que auto_generate_images est activé si aucun média n'est disponible
                 auto_generate_images: payload.auto_generate_images !== false,
             };
-            
+
             // ✅ DEBUG: Log du payload pour diagnostic
             console.log('[ProductVideoCreationModal] 🎬 Génération vidéo - Payload:', JSON.stringify(finalPayload, null, 2));
             console.log('[ProductVideoCreationModal] 🎬 Service ID:', serviceId);
             console.log('[ProductVideoCreationModal] 🎬 Product Index:', productIndex);
-            
+
             const response = await mediaApi.generateProductVideo(
                 serviceId,
                 productIndex,
                 finalPayload
             );
-            
+
             // ✅ DEBUG: Log de la réponse
             console.log('[ProductVideoCreationModal] 🎬 Réponse génération:', response);
 
@@ -4867,21 +4875,21 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             }
 
             const result = response.data as any;
-            
+
             // ✅ CORRIGÉ: Le backend retourne maintenant un job_id (génération asynchrone)
             // Si job_id est présent, la génération est en cours
             if (result.job_id) {
                 console.log('[ProductVideoCreationModal] ✅ Génération démarrée, job_id:', result.job_id);
-                
+
                 // ✅ NOUVEAU: Démarrer le polling pour suivre le statut
                 setCurrentJobId(result.job_id);
                 setJobStatus('queued');
                 setJobProgress(0);
                 completionHandledRef.current = false;
-                
+
                 // Démarrer le polling
                 startJobPolling(result.job_id);
-                
+
                 // Afficher un message informatif mais ne pas fermer le modal immédiatement
                 Alert.alert(
                     'Génération en cours',
@@ -4899,14 +4907,14 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 );
                 return;
             }
-            
+
             // ✅ Fallback: Si video_url est présent (ancienne version synchrone)
             if (result.video_url) {
                 const videoResult = result as GeneratedVideoResponse;
                 await onSuccess(videoResult);
                 return;
             }
-            
+
             // ✅ Si ni job_id ni video_url, c'est une erreur
             throw new Error('Réponse invalide : ni job_id ni video_url reçu');
         } catch (error: any) {
@@ -4926,8 +4934,8 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                         '• La génération automatique d\'images IA sera activée automatiquement lors de la prochaine tentative';
                 } else if (msg.includes('400') || msg.includes('bad request') || msg.includes('invalide') || msg.includes('demande invalide')) {
                     // ✅ AMÉLIORÉ: Extraire les détails du message d'erreur du backend si disponible
-                    const backendDetails = error.message.includes('Solutions possibles') 
-                        ? '\n\n' + error.message.split('Solutions possibles')[1] 
+                    const backendDetails = error.message.includes('Solutions possibles')
+                        ? '\n\n' + error.message.split('Solutions possibles')[1]
                         : '';
                     errorMessage = 'Demande invalide.\n\n' +
                         'Vérifiez que tous les champs sont correctement remplis et réessayez.\n\n' +
@@ -4987,7 +4995,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
                 // Mettre à jour le statut et la progression
                 setJobStatus(job.status as 'queued' | 'running' | 'completed' | 'failed');
-                
+
                 // Calculer la progression basée sur les steps
                 if (job.progress_steps && Array.isArray(job.progress_steps)) {
                     const completedSteps = job.progress_steps.filter((step: any) => step.status === 'completed').length;
@@ -5070,7 +5078,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
                     setJobStatus('failed');
                     const errorMsg = job.error_message || 'Erreur inconnue lors de la génération';
-                    
+
                     Alert.alert(
                         '❌ Génération échouée',
                         'La génération de la vidéo a échoué.\n\n' +

@@ -116,19 +116,22 @@ export const pharmacyService = {
                     medical_conditions: medicalConditions,
                 }
             );
-            
-            // Normaliser la réponse
+
+            // ✅ CORRIGÉ 2026-03-05: Extraction correcte des données IA imbriquées
+            // apiPost wrappe: response.data = backend JSON complet
+            const backendData = (response?.data || response) as any;
+            const innerData = backendData?.data || backendData;
             if (response.success) {
                 return {
                     success: true,
                     data: {
-                        interaction: response.interaction || response.data?.interaction || response.data as any
+                        interaction: innerData?.interaction || backendData?.interaction || innerData as any
                     }
                 };
             } else {
                 return {
                     success: false,
-                    error: response.message || response.error || 'L\'IA de vérification d\'interactions n\'est pas encore opérationnelle.'
+                    error: backendData?.message || response.error || 'L\'IA de vérification d\'interactions n\'est pas encore opérationnelle.'
                 };
             }
         } catch (error: any) {
@@ -157,7 +160,7 @@ export const pharmacyService = {
                     condition: medicalCondition,
                 }
             );
-            
+
             // Normaliser la réponse
             if (response.success) {
                 return {

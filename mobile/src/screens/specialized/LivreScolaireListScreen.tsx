@@ -13,8 +13,8 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import { NativeCard } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeCard } from '../../components/SafeNativeDesign';
 import { apiGet } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 
@@ -77,10 +77,11 @@ const LivreScolaireListScreen: React.FC = () => {
             queryParams.append('limit', '20');
             queryParams.append('offset', ((isRefresh ? 1 : page) - 1).toString());
 
-            const response = await apiGet(`/api/livres-scolaires/search?${queryParams.toString()}`);
+            const response = await apiGet(`/api/bourse-livre/search?${queryParams.toString()}`);
 
-            if (response.success && response.data) {
-                const newLivres = response.data.livres || [];
+            const r = response.data as any;
+            if (response.success && r) {
+                const newLivres = r.livres || [];
                 if (isRefresh || page === 1) {
                     setLivres(newLivres);
                 } else {

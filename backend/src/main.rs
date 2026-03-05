@@ -2754,6 +2754,82 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
+    // ✅ NOUVEAU 2026-03-05: Tables navigation_checkpoints (radars, contrôles)
+    if is_cloud_run {
+        let pg_for_checkpoints = app_state.pg.clone();
+        tokio::spawn(async move {
+            tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+            if let Err(e) =
+                yukpomnang_backend::migrations::auto_migrate::ensure_navigation_checkpoints_table(
+                    &pg_for_checkpoints,
+                )
+                .await
+            {
+                log::warn!("⚠️ Erreur création navigation_checkpoints: {}", e);
+            }
+            if let Err(e) = yukpomnang_backend::migrations::auto_migrate::ensure_navigation_checkpoint_votes_table(&pg_for_checkpoints).await {
+                log::warn!("⚠️ Erreur création navigation_checkpoint_votes: {}", e);
+            }
+            if let Err(e) =
+                yukpomnang_backend::migrations::auto_migrate::ensure_navigation_activity_log_table(
+                    &pg_for_checkpoints,
+                )
+                .await
+            {
+                log::warn!("⚠️ Erreur création navigation_activity_log: {}", e);
+            }
+            if let Err(e) =
+                yukpomnang_backend::migrations::auto_migrate::ensure_navigation_achievements_table(
+                    &pg_for_checkpoints,
+                )
+                .await
+            {
+                log::warn!("⚠️ Erreur création navigation_achievements: {}", e);
+            }
+            if let Err(e) = yukpomnang_backend::migrations::auto_migrate::ensure_push_tokens_table(
+                &pg_for_checkpoints,
+            )
+            .await
+            {
+                log::warn!("⚠️ Erreur création push_tokens: {}", e);
+            }
+            if let Err(e) =
+                yukpomnang_backend::migrations::auto_migrate::ensure_geo_regional_config_table(
+                    &pg_for_checkpoints,
+                )
+                .await
+            {
+                log::warn!("⚠️ Erreur création geo_regional_config: {}", e);
+            }
+            log::info!("✅ Tables navigation (checkpoints + activity_log + achievements + push_tokens + geo_regional_config) créées/vérifiées");
+        });
+    } else {
+        let _ = yukpomnang_backend::migrations::auto_migrate::ensure_navigation_checkpoints_table(
+            &app_state.pg,
+        )
+        .await;
+        let _ =
+            yukpomnang_backend::migrations::auto_migrate::ensure_navigation_checkpoint_votes_table(
+                &app_state.pg,
+            )
+            .await;
+        let _ = yukpomnang_backend::migrations::auto_migrate::ensure_navigation_activity_log_table(
+            &app_state.pg,
+        )
+        .await;
+        let _ = yukpomnang_backend::migrations::auto_migrate::ensure_navigation_achievements_table(
+            &app_state.pg,
+        )
+        .await;
+        let _ =
+            yukpomnang_backend::migrations::auto_migrate::ensure_push_tokens_table(&app_state.pg)
+                .await;
+        let _ = yukpomnang_backend::migrations::auto_migrate::ensure_geo_regional_config_table(
+            &app_state.pg,
+        )
+        .await;
+    }
+
     // ✅ OPTIMISÉ Cloud Run: Index MongoDB en arrière-plan
     if is_cloud_run {
         let mongo_for_indexes = app_state.mongo_history.clone();

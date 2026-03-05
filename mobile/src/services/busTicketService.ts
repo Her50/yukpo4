@@ -137,17 +137,17 @@ export const busTicketService = {
     // ✅ Valider un ticket par QR code
     validateTicketQR: async (qrData: string) => {
         const response = await apiPost<{ success: boolean; message: string; passenger?: any }>(
-            '/api/bus-tickets/validate',
-            { qr_data: qrData }
+            '/api/bus-tickets/validate/qr',
+            { qr_code_data: qrData }
         );
         return response;
     },
 
     // ✅ Validation manuelle d'un passager
-    validatePassengerManual: async (productId: string, passengerName: string, seatNumber?: number) => {
+    validatePassengerManual: async (reservationId: string) => {
         const response = await apiPost<{ success: boolean; message: string }>(
             '/api/bus-tickets/validate/manual',
-            { product_id: productId, passenger_name: passengerName, seat_number: seatNumber }
+            { reservation_id: reservationId }
         );
         return response;
     },
@@ -155,7 +155,7 @@ export const busTicketService = {
     // ✅ Résumé d'embarquement
     getBoardingSummary: async (productId: string) => {
         const response = await apiGet<{ success: boolean; data: any }>(
-            `/api/bus-tickets/boarding/${productId}/summary`
+            `/api/bus-tickets/${productId}/boarding-summary`
         );
         return response;
     },
@@ -163,7 +163,7 @@ export const busTicketService = {
     // ✅ Liste des passagers d'un bus
     getBusPassengers: async (productId: string) => {
         const response = await apiGet<{ success: boolean; data: any[] }>(
-            `/api/bus-tickets/boarding/${productId}/passengers`
+            `/api/bus-tickets/${productId}/passengers`
         );
         return response;
     },
@@ -253,6 +253,58 @@ export const busTicketService = {
         const response = await apiPost<{ success: boolean; data: any }>(
             '/api/bus-tickets/agencies/schedules',
             scheduleData
+        );
+        return response;
+    },
+
+    // ✅ Mettre à jour un horaire
+    updateSchedule: async (scheduleId: number, scheduleData: any) => {
+        const { apiPut } = await import('./api');
+        const response = await apiPut<{ success: boolean; data: any }>(
+            `/api/bus-tickets/agencies/schedules/${scheduleId}`,
+            scheduleData
+        );
+        return response;
+    },
+
+    // ✅ Supprimer un horaire
+    deleteSchedule: async (scheduleId: number) => {
+        const { apiDelete } = await import('./api');
+        const response = await apiDelete<{ success: boolean }>(
+            `/api/bus-tickets/agencies/schedules/${scheduleId}`
+        );
+        return response;
+    },
+
+    // ✅ Créer un produit bus (bus virtuel avec plan de sièges)
+    createBusProduct: async (productData: {
+        service_id: number;
+        name: string;
+        type: string;
+        total_seats: number;
+        bus_configuration: any;
+        seat_map: any[];
+        price_cents?: number;
+        currency?: string;
+    }) => {
+        const response = await apiPost<{ success: boolean; id: string }>(
+            '/api/bus-tickets/products',
+            productData
+        );
+        return response;
+    },
+
+    // ✅ Lier un produit bus à une agence
+    linkBusProductToAgency: async (linkData: {
+        agency_id: number;
+        product_id: string;
+        nom_modele: string;
+        classe?: string;
+        equipements?: string[];
+    }) => {
+        const response = await apiPost<{ success: boolean }>(
+            '/api/bus-tickets/products/link-agency',
+            linkData
         );
         return response;
     },

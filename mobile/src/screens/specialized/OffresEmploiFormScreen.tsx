@@ -151,9 +151,10 @@ const OffresEmploiFormScreen: React.FC = () => {
                 try {
                     setLoading(true);
                     const response = await apiGet(`/api/offres-emploi/${offreId}`);
+                    const resData = (response?.data || response) as any;
 
-                    if (response.success && response.data) {
-                        const data = response.data;
+                    if (resData?.success && resData?.data) {
+                        const data = resData.data;
                         setFormData({
                             titre_poste: data.titre_poste || '',
                             description: data.description || '',
@@ -322,7 +323,8 @@ const OffresEmploiFormScreen: React.FC = () => {
                 response = await apiPost('/api/offres-emploi', payload);
             }
 
-            if (response.success) {
+            const resData = (response?.data || response) as any;
+            if (resData?.success) {
                 await clearSavedFormData(STORAGE_KEY);
                 Alert.alert(
                     'Succès',
@@ -330,7 +332,7 @@ const OffresEmploiFormScreen: React.FC = () => {
                     [{ text: 'OK', onPress: () => navigation.goBack() }]
                 );
             } else {
-                Alert.alert('Erreur', response.error || 'Impossible d\'enregistrer l\'offre');
+                Alert.alert('Erreur', resData?.message || resData?.error || 'Impossible d\'enregistrer l\'offre');
             }
         } catch (error: any) {
             console.error('Erreur création offre:', error);

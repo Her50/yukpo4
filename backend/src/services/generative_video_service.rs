@@ -278,30 +278,342 @@ IMPORTANT:
 
     /// Traite une génération vidéo de manière asynchrone
     async fn process_generation(
-        _pool: Arc<PgPool>,
-        _app_ia: Arc<AppIA>,
-        _http: reqwest::Client,
+        pool: Arc<PgPool>,
+        app_ia: Arc<AppIA>,
+        http: reqwest::Client,
         job_id: String,
-        _user_id: i64,
-        _request: GenerateVideoRequest,
+        user_id: i64,
+        request: GenerateVideoRequest,
     ) -> Result<(), String> {
-        info!("[GenerativeVideo] Début génération: {}", job_id);
+        info!(
+            "[GenerativeVideo] Début pipeline génération: {} pour user {}",
+            job_id, user_id
+        );
 
-        // TODO: Implémenter le pipeline complet:
-        // 1. Générer storyboard avec IA
-        // 2. Générer clips pour chaque scène
-        // 3. Télécharger les clips
-        // 4. Assembler dans une timeline
-        // 5. Upload vers S3
-        // 6. Mettre à jour le job dans la DB
+        // Mettre à jour le statut en DB
+        let _ = sqlx::query(
+            "UPDATE generative_video_jobs SET status = 'processing', updated_at = NOW() WHERE job_id = $1"
+        )
+        .bind(&job_id)
+        .execute(pool.as_ref())
+        .await;
 
-        // Pour l'instant, on simule
-        warn!(
-            "[GenerativeVideo] Génération non encore implémentée complètement pour job: {}",
+        // ── ÉTAPE 1: Générer le storyboard avec l'IA ──
+        info!(
+            "[GenerativeVideo] [{}] Étape 1/5: Génération storyboard",
             job_id
+        );
+        let storyboard = match Self::generate_storyboard(&app_ia, &request).await {
+            Ok(sb) => {
+                info!(
+                    "[GenerativeVideo] [{}] ✅ Storyboard généré: {} scènes, {}s total",
+                    job_id,
+                    sb.scenes.len(),
+                    sb.total_duration
+                );
+                sb
+            }
+            Err(e) => {
+                error!("[GenerativeVideo] [{}] ❌ Échec storyboard: {}", job_id, e);
+                let _ = sqlx::query(
+                    "UPDATE generative_video_jobs SET status = 'failed', error_message = $2, updated_at = NOW() WHERE job_id = $1"
+                )
+                .bind(&job_id)
+                .bind(&format!("Échec storyboard: {}", e))
+                .execute(pool.as_ref())
+                .await;
+                return Err(e);
+            }
+        };
+
+        // ── ÉTAPE 2: Déterminer les providers et générer les clips avec fallback ──
+        info!(
+            "[GenerativeVideo] [{}] Étape 2/5: Génération clips vidéo IA",
+            job_id
+        );
+        let available_providers = Self::get_available_providers();
+
+        if available_providers.is_empty() {
+            let msg = "Aucun provider IA vidéo configuré. Vérifiez les clés API (RUNWAY_API_KEY, SORA_API_KEY, PIKA_API_KEY).";
+            error!("[GenerativeVideo] [{}] ❌ {}", job_id, msg);
+            let _ = sqlx::query(
+                "UPDATE generative_video_jobs SET status = 'failed', error_message = $2, updated_at = NOW() WHERE job_id = $1"
+            )
+            .bind(&job_id)
+            .bind(msg)
+            .execute(pool.as_ref())
+            .await;
+            return Err(msg.to_string());
+        }
+
+        let aspect_ratio = request.aspect_ratio.as_deref().unwrap_or("9:16");
+        let mut generated_clips: Vec<GeneratedClip> = Vec::new();
+
+        for scene in &storyboard.scenes {
+            info!(
+                "[GenerativeVideo] [{}] Génération clip scène {}/{}",
+                job_id,
+                scene.scene_number,
+                storyboard.scenes.len()
+            );
+
+            // Tenter avec chaque provider disponible jusqu'à succès
+            let mut clip_generated = false;
+            for provider in &available_providers {
+                match Self::generate_clip(&http, scene, provider, aspect_ratio).await {
+                    Ok(Some(clip)) => {
+                        info!(
+                            "[GenerativeVideo] [{}] ✅ Clip scène {} généré avec {}: {}",
+                            job_id,
+                            scene.scene_number,
+                            provider_name(provider),
+                            clip.video_url
+                        );
+                        generated_clips.push(clip);
+                        clip_generated = true;
+                        break; // Succès, pas besoin d'essayer les autres providers
+                    }
+                    Ok(None) => {
+                        warn!(
+                            "[GenerativeVideo] [{}] ⚠️ Provider {} indisponible pour scène {}, tentative suivante...",
+                            job_id, provider_name(provider), scene.scene_number
+                        );
+                    }
+                    Err(e) => {
+                        warn!(
+                            "[GenerativeVideo] [{}] ⚠️ Erreur {} pour scène {}: {}, tentative suivante...",
+                            job_id, provider_name(provider), scene.scene_number, e
+                        );
+                    }
+                }
+            }
+
+            if !clip_generated {
+                warn!(
+                    "[GenerativeVideo] [{}] ❌ Échec génération scène {} avec tous les providers disponibles",
+                    job_id, scene.scene_number
+                );
+            }
+        }
+
+        info!(
+            "[GenerativeVideo] [{}] Clips générés: {}/{}",
+            job_id,
+            generated_clips.len(),
+            storyboard.scenes.len()
+        );
+
+        if generated_clips.is_empty() {
+            let msg = "Aucun clip vidéo n'a pu être généré. Vérifiez les clés API des providers (RUNWAY_API_KEY, SORA_API_KEY, PIKA_API_KEY).";
+            error!("[GenerativeVideo] [{}] ❌ {}", job_id, msg);
+            let _ = sqlx::query(
+                "UPDATE generative_video_jobs SET status = 'failed', error_message = $2, updated_at = NOW() WHERE job_id = $1"
+            )
+            .bind(&job_id)
+            .bind(msg)
+            .execute(pool.as_ref())
+            .await;
+            return Err(msg.to_string());
+        }
+
+        // ── ÉTAPE 3: Télécharger les clips générés ──
+        info!(
+            "[GenerativeVideo] [{}] Étape 3/5: Téléchargement clips",
+            job_id
+        );
+        let session_dir = std::path::PathBuf::from(
+            std::env::var("UPLOAD_STORAGE_PATH").unwrap_or_else(|_| "uploads".to_string()),
+        )
+        .join("generative_videos")
+        .join(&job_id);
+        tokio::fs::create_dir_all(&session_dir)
+            .await
+            .map_err(|e| format!("Impossible de créer le dossier session: {}", e))?;
+
+        let mut local_clip_paths: Vec<String> = Vec::new();
+        for clip in &generated_clips {
+            let filename = format!("scene_{}.mp4", clip.scene_number);
+            let local_path = session_dir.join(&filename);
+            match http.get(&clip.video_url).send().await {
+                Ok(response) if response.status().is_success() => match response.bytes().await {
+                    Ok(bytes) => {
+                        if let Err(e) = tokio::fs::write(&local_path, &bytes).await {
+                            warn!(
+                                "[GenerativeVideo] [{}] ⚠️ Écriture clip {} échouée: {}",
+                                job_id, filename, e
+                            );
+                            continue;
+                        }
+                        info!(
+                            "[GenerativeVideo] [{}] ✅ Clip téléchargé: {} ({} bytes)",
+                            job_id,
+                            filename,
+                            bytes.len()
+                        );
+                        local_clip_paths.push(local_path.to_string_lossy().to_string());
+                    }
+                    Err(e) => warn!(
+                        "[GenerativeVideo] [{}] ⚠️ Lecture bytes clip {} échouée: {}",
+                        job_id, filename, e
+                    ),
+                },
+                Ok(response) => {
+                    warn!(
+                        "[GenerativeVideo] [{}] ⚠️ Téléchargement clip {} HTTP {}",
+                        job_id,
+                        filename,
+                        response.status()
+                    );
+                }
+                Err(e) => {
+                    warn!(
+                        "[GenerativeVideo] [{}] ⚠️ Téléchargement clip {} échoué: {}",
+                        job_id, filename, e
+                    );
+                }
+            }
+        }
+
+        if local_clip_paths.is_empty() {
+            let msg = "Aucun clip n'a pu être téléchargé depuis les providers IA.";
+            error!("[GenerativeVideo] [{}] ❌ {}", job_id, msg);
+            let _ = sqlx::query(
+                "UPDATE generative_video_jobs SET status = 'failed', error_message = $2, updated_at = NOW() WHERE job_id = $1"
+            )
+            .bind(&job_id)
+            .bind(msg)
+            .execute(pool.as_ref())
+            .await;
+            return Err(msg.to_string());
+        }
+
+        // ── ÉTAPE 4: Assembler les clips avec FFmpeg ──
+        info!(
+            "[GenerativeVideo] [{}] Étape 4/5: Assemblage FFmpeg",
+            job_id
+        );
+        let concat_list_path = session_dir.join("concat_list.txt");
+        let concat_content: String = local_clip_paths
+            .iter()
+            .map(|p| format!("file '{}'", p.replace('\\', "/")))
+            .collect::<Vec<_>>()
+            .join("\n");
+        tokio::fs::write(&concat_list_path, &concat_content)
+            .await
+            .map_err(|e| format!("Écriture concat_list.txt: {}", e))?;
+
+        let output_filename = format!("generative_{}.mp4", job_id);
+        let output_path = session_dir.join(&output_filename);
+        let ffmpeg_output = tokio::process::Command::new("ffmpeg")
+            .current_dir(&session_dir)
+            .args([
+                "-y",
+                "-f",
+                "concat",
+                "-safe",
+                "0",
+                "-i",
+                &concat_list_path.to_string_lossy(),
+                "-c:v",
+                "libx264",
+                "-preset",
+                "fast",
+                "-crf",
+                "23",
+                "-pix_fmt",
+                "yuv420p",
+                "-movflags",
+                "+faststart",
+                &output_path.to_string_lossy(),
+            ])
+            .output()
+            .await
+            .map_err(|e| format!("FFmpeg concat échoué: {}", e))?;
+
+        if !ffmpeg_output.status.success() {
+            let stderr = String::from_utf8_lossy(&ffmpeg_output.stderr);
+            error!(
+                "[GenerativeVideo] [{}] ❌ FFmpeg concat stderr: {}",
+                job_id, stderr
+            );
+            let _ = sqlx::query(
+                "UPDATE generative_video_jobs SET status = 'failed', error_message = $2, updated_at = NOW() WHERE job_id = $1"
+            )
+            .bind(&job_id)
+            .bind(&format!("Assemblage vidéo échoué: {}", stderr.chars().take(500).collect::<String>()))
+            .execute(pool.as_ref())
+            .await;
+            return Err(format!("FFmpeg concat échoué: {}", stderr));
+        }
+
+        info!(
+            "[GenerativeVideo] [{}] ✅ Vidéo assemblée: {:?}",
+            job_id, output_path
+        );
+
+        // ── ÉTAPE 5: Stocker le résultat et mettre à jour le job ──
+        info!("[GenerativeVideo] [{}] Étape 5/5: Finalisation", job_id);
+        let relative_path = format!("generative_videos/{}/{}", job_id, output_filename);
+        let api_base_url = std::env::var("PUBLIC_BASE_URL")
+            .or_else(|_| std::env::var("UPLOAD_BASE_URL"))
+            .unwrap_or_else(|_| "http://localhost:3000".to_string());
+        let video_url = format!(
+            "{}/api/media/files/{}",
+            api_base_url.trim_end_matches('/'),
+            relative_path
+        );
+
+        let result_payload = json!({
+            "video_url": video_url,
+            "clips_count": generated_clips.len(),
+            "total_duration": storyboard.total_duration,
+            "provider": available_providers.first().map(provider_name).unwrap_or("unknown"),
+            "storyboard_scenes": storyboard.scenes.len(),
+        });
+
+        let _ = sqlx::query(
+            "UPDATE generative_video_jobs SET status = 'completed', result_payload = $2, updated_at = NOW() WHERE job_id = $1"
+        )
+        .bind(&job_id)
+        .bind(&result_payload)
+        .execute(pool.as_ref())
+        .await;
+
+        info!(
+            "[GenerativeVideo] [{}] ✅ Génération terminée: {} clips, provider {}, URL: {}",
+            job_id,
+            generated_clips.len(),
+            available_providers.first().map(provider_name).unwrap_or("unknown"),
+            video_url
         );
 
         Ok(())
+    }
+
+    /// Retourne la liste des providers disponibles par ordre de priorité
+    fn get_available_providers() -> Vec<GenerativeProvider> {
+        let mut providers = Vec::new();
+
+        if std::env::var("RUNWAY_API_KEY").is_ok() && std::env::var("RUNWAY_API_URL").is_ok() {
+            providers.push(GenerativeProvider::Runway);
+        }
+        if std::env::var("SORA_API_KEY").is_ok() && std::env::var("SORA_API_URL").is_ok() {
+            providers.push(GenerativeProvider::Sora);
+        }
+        if std::env::var("PIKA_API_KEY").is_ok() && std::env::var("PIKA_API_URL").is_ok() {
+            providers.push(GenerativeProvider::Pika);
+        }
+
+        if providers.is_empty() {
+            warn!("[GenerativeVideo] ⚠️ Aucun provider IA vidéo configuré");
+        } else {
+            info!(
+                "[GenerativeVideo] Providers disponibles: {:?}",
+                providers.iter().map(provider_name).collect::<Vec<_>>()
+            );
+        }
+
+        providers
     }
 
     /// Récupère le statut d'un job de génération
