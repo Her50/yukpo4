@@ -1,8 +1,8 @@
 import React, { useRef, useState } from 'react';
 import { Animated, Dimensions, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
-import { NativeButton, NativeCard } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
+import { NativeButton, NativeCard } from './SafeNativeDesign';
 
 interface TutorialStep {
     id: string;
@@ -261,7 +261,8 @@ const styles = StyleSheet.create({
         borderRadius: 24,
         padding: 24,
         maxHeight: '90%',
-        minHeight: 400, // ✅ CORRIGÉ: Hauteur minimale pour s'assurer que le contenu est visible
+        minHeight: 450, // ✅ AUGMENTÉ: Hauteur minimale pour s'assurer que le contenu est visible
+        maxWidth: '95%', // ✅ AJOUTÉ: S'assurer que le card ne dépasse pas l'écran
     },
     header: {
         marginBottom: 24,
@@ -297,17 +298,19 @@ const styles = StyleSheet.create({
     },
     content: {
         flex: 1,
-        minHeight: 200, // ✅ CORRIGÉ: Hauteur minimale pour s'assurer que le contenu est visible
+        minHeight: 250, // ✅ AUGMENTÉ: Hauteur minimale pour s'assurer que le contenu est visible
     },
     contentContainer: {
-        paddingVertical: 8,
+        paddingVertical: 16, // ✅ AUGMENTÉ: Plus de padding vertical
         flexGrow: 1,
         justifyContent: 'center', // ✅ CORRIGÉ: Centrer le contenu verticalement
+        paddingHorizontal: 8, // ✅ AJOUTÉ: Padding horizontal pour éviter les coupures
     },
     stepContent: {
         alignItems: 'center',
-        gap: 20,
-        paddingVertical: 16, // ✅ CORRIGÉ: Ajouter du padding vertical
+        gap: 24, // ✅ AUGMENTÉ: Plus d'espace entre les éléments
+        paddingVertical: 20, // ✅ AUGMENTÉ: Plus de padding vertical
+        paddingHorizontal: 12, // ✅ AJOUTÉ: Padding horizontal pour éviter les coupures de texte
     },
     iconContainer: {
         width: 120,
@@ -319,17 +322,19 @@ const styles = StyleSheet.create({
         marginBottom: 8,
     },
     title: {
-        fontSize: 24,
+        fontSize: 26, // ✅ AUGMENTÉ: Police plus grande pour meilleure lisibilité
         fontWeight: '700',
         color: modernColors.text,
         textAlign: 'center',
-        marginBottom: 12,
+        marginBottom: 16, // ✅ AUGMENTÉ: Plus d'espace avec la description
+        lineHeight: 32, // ✅ AJOUTÉ: Line height pour éviter les coupures
     },
     description: {
-        fontSize: 16,
+        fontSize: 18, // ✅ AUGMENTÉ: Police plus grande pour meilleure lisibilité
         color: modernColors.textSecondary,
         textAlign: 'center',
-        lineHeight: 24,
+        lineHeight: 26, // ✅ AUGMENTÉ: Line height pour meilleure lisibilité
+        paddingHorizontal: 8, // ✅ AJOUTÉ: Padding horizontal pour éviter les coupures
     },
     dotsContainer: {
         flexDirection: 'row',

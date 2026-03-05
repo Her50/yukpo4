@@ -1456,6 +1456,7 @@ const CreatePubliciteScreen: React.FC = () => {
                 visible={videoCreatorVisible}
                 primaryProduct={primaryProduct}
                 products={produitsList}
+                navigation={navigation} // ✅ AJOUTÉ: Navigation pour la redirection
                 onClose={() => setVideoCreatorVisible(false)}
                 onSuccess={handleVideoGenerationSuccess}
             />

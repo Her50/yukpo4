@@ -33,7 +33,6 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({
 }) => {
     const [hasPermission, setHasPermission] = useState<boolean | null>(null);
     const [scanned, setScanned] = useState(false);
-    const [torchEnabled, setTorchEnabled] = useState(false);
 
     useEffect(() => {
         if (visible) {
@@ -98,10 +97,6 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({
             console.warn('[QRCodeScanner] QR code non-JSON, tentative de scan:', data);
             onScan(data);
         }
-    };
-
-    const toggleTorch = () => {
-        setTorchEnabled(!torchEnabled);
     };
 
     if (!visible) return null;
@@ -184,12 +179,6 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({
                     <BarCodeScanner
                         onBarCodeScanned={scanned ? undefined : handleBarCodeScanned}
                         style={StyleSheet.absoluteFillObject}
-                        barCodeTypes={[BarCodeScanner.Constants.BarCodeType.qr]}
-                        torchMode={
-                            torchEnabled
-                                ? BarCodeScanner.Constants.TorchMode.on
-                                : BarCodeScanner.Constants.TorchMode.off
-                        }
                     />
 
                     {/* Overlay avec cadre de scan */}
@@ -223,21 +212,6 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({
 
                 {/* Contrôles */}
                 <View style={styles.controlsContainer}>
-                    {Platform.OS === 'ios' && (
-                        <TouchableOpacity
-                            style={styles.controlButton}
-                            onPress={toggleTorch}
-                        >
-                            <SafeIcon
-                                name={torchEnabled ? 'flash' : 'flash-off'}
-                                size={24}
-                                color="#fff"
-                            />
-                            <Text style={styles.controlButtonText}>
-                                {torchEnabled ? 'Lampe ON' : 'Lampe OFF'}
-                            </Text>
-                        </TouchableOpacity>
-                    )}
                     {scanned && (
                         <TouchableOpacity
                             style={styles.retryScanButton}
@@ -402,20 +376,6 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(0, 0, 0, 0.8)',
         alignItems: 'center',
         gap: 12,
-    },
-    controlButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        backgroundColor: 'rgba(255, 255, 255, 0.2)',
-        borderRadius: 8,
-    },
-    controlButtonText: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#fff',
     },
     retryScanButton: {
         flexDirection: 'row',

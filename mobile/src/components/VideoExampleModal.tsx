@@ -1,11 +1,10 @@
 import { ResizeMode, Video } from 'expo-av';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Dimensions, FlatList, Image, Modal, StyleSheet, Text, TouchableOpacity, View, ViewToken } from 'react-native';
-import { API_BASE_URL } from '../config/api.config';
 import { apiGet } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
-import { NativeButton, NativeCard } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
+import { NativeButton, NativeCard } from './SafeNativeDesign';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_WIDTH = SCREEN_WIDTH - 80; // Largeur avec padding
@@ -39,7 +38,7 @@ interface VideoExample {
 
 // ✅ NOUVEAU: Collection d'exemples avec les 4 styles
 // Les exemples réels seront chargés depuis l'API et remplaceront ces valeurs par défaut
-// ✅ CORRECTION: Utiliser uniquement la vidéo exemple qui existe réellement
+// ✅ CORRECTION: Utiliser des vidéos démonstratives différentes pour chaque style
 const VIDEO_EXAMPLES: VideoExample[] = [
     {
         id: 'tiktok',
@@ -47,8 +46,8 @@ const VIDEO_EXAMPLES: VideoExample[] = [
         label: 'TikTok Boost',
         description: 'Transitions rapides, texte dynamique, format vertical 9:16',
         icon: '🎬',
-        videoUrl: `${API_BASE_URL}/api/media/examples/video-creation-demo.mp4`, // ✅ Utiliser la vidéo qui existe
-        thumbnail: undefined, // ✅ Pas de thumbnail par défaut pour éviter les 404
+        videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4', // ✅ Vidéo démonstrative publique
+        thumbnail: undefined,
         stats: {
             views: '2.5K',
             engagement: '15%',
@@ -62,8 +61,8 @@ const VIDEO_EXAMPLES: VideoExample[] = [
         label: 'Story Produit',
         description: 'Narration douce, highlight des atouts, superpositions élégantes',
         icon: '📚',
-        videoUrl: `${API_BASE_URL}/api/media/examples/video-creation-demo.mp4`, // ✅ Utiliser la vidéo qui existe
-        thumbnail: undefined, // ✅ Pas de thumbnail par défaut pour éviter les 404
+        videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4', // ✅ Vidéo démonstrative différente
+        thumbnail: undefined,
         stats: {
             views: '1.8K',
             engagement: '22%',
@@ -77,8 +76,8 @@ const VIDEO_EXAMPLES: VideoExample[] = [
         label: 'Ciné Premium',
         description: 'Animations lentes, focus sur détails, ambiance immersive',
         icon: '🎨',
-        videoUrl: `${API_BASE_URL}/api/media/examples/video-creation-demo.mp4`, // ✅ Utiliser la vidéo qui existe
-        thumbnail: undefined, // ✅ Pas de thumbnail par défaut pour éviter les 404
+        videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4', // ✅ Vidéo démonstrative différente
+        thumbnail: undefined,
         stats: {
             views: '3.2K',
             engagement: '18%',
@@ -92,14 +91,14 @@ const VIDEO_EXAMPLES: VideoExample[] = [
         label: 'Carousel Flash',
         description: 'Slides punchy, CTA répétés, idéal publicités express',
         icon: '🔄',
-        videoUrl: `${API_BASE_URL}/api/media/examples/video-creation-demo.mp4`, // ✅ Utiliser la vidéo qui existe
-        thumbnail: undefined, // ✅ Pas de thumbnail par défaut pour éviter les 404
+        videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4', // ✅ Vidéo démonstrative différente
+        thumbnail: undefined,
         stats: {
             views: '1.5K',
             engagement: '25%',
             creationTime: '2 min',
         },
-        features: ['Slides punchy', 'CTA répétés', 'Création rapide', 'Idéal publicités'],
+        features: ['Slides punchy', 'CTA répétés', 'Idéal publicités express', 'Format carousel'],
     },
 ];
 

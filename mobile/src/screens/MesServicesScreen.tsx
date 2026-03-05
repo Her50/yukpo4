@@ -887,11 +887,52 @@ const MesServicesScreen: React.FC = () => {
   }, [services]);
 
   const handleCreateVideo = (productItem: any) => {
-    // ✅ CORRECTION: productItem est en fait un produit (car services contient les produits)
-    // Il faut regrouper tous les produits du même service_id
-    const serviceId = productItem.service_id || productItem.data?.serviceId || productItem.id?.split('_')[0];
+    // ✅ CORRECTION: productItem est un produit qui contient le service_id correct
+    // Le service_id doit être extrait de manière fiable du produit
+    let serviceId: string | number;
 
-    logger.log('[MesServicesScreen] handleCreateVideo - Service ID:', serviceId, 'Produit:', productItem.id);
+    // ✅ PRIORITÉ 1: Utiliser service_id direct du produit (le plus fiable)
+    if (productItem.service_id) {
+      serviceId = productItem.service_id;
+    }
+    // ✅ PRIORITÉ 2: Utiliser data.serviceId si disponible
+    else if (productItem.data?.serviceId) {
+      serviceId = productItem.data.serviceId;
+    }
+    // ✅ PRIORITÉ 3: Extraire depuis l'ID au format "serviceId_productIndex"
+    else if (productItem.id && typeof productItem.id === 'string' && productItem.id.includes('_')) {
+      const parts = productItem.id.split('_');
+      if (parts.length >= 2) {
+        serviceId = parts[0];
+      } else {
+        logger.error('[MesServicesScreen] ❌ Format ID produit invalide:', productItem.id);
+        toaster.error('Impossible de déterminer le service pour ce produit');
+        return;
+      }
+    }
+    // ✅ PRIORITÉ 4: Utiliser l'ID directement si c'est un nombre
+    else if (productItem.id && !isNaN(Number(productItem.id))) {
+      serviceId = productItem.id;
+    }
+    else {
+      logger.error('[MesServicesScreen] ❌ Impossible d\'extraire serviceId du produit:', {
+        product_id: productItem.id,
+        service_id: productItem.service_id,
+        data_serviceId: productItem.data?.serviceId
+      });
+      toaster.error('Impossible de déterminer le service pour ce produit');
+      return;
+    }
+
+    // ✅ S'assurer que serviceId est un nombre pour la cohérence
+    const numericServiceId = Number(serviceId);
+    if (!Number.isFinite(numericServiceId) || numericServiceId <= 0) {
+      logger.error('[MesServicesScreen] ❌ serviceId invalide:', serviceId);
+      toaster.error('Service invalide pour ce produit');
+      return;
+    }
+
+    logger.log('[MesServicesScreen] handleCreateVideo - Service ID:', numericServiceId, 'Produit:', productItem.id);
 
     // ✅ CORRECTION: S'assurer que services est un tableau avant filter
     if (!Array.isArray(services)) {
@@ -902,8 +943,38 @@ const MesServicesScreen: React.FC = () => {
     // Regrouper tous les produits du même service
     const produitsDuService = services.filter((s: Service) => {
       if (!s) return false; // ✅ PROTECTION: Ignorer les services null/undefined
-      const sServiceId = s.service_id || s.data?.serviceId || (typeof s.id === 'string' && s.id.includes('_') ? s.id.split('_')[0] : s.id);
-      return sServiceId === serviceId;
+
+      // ✅ CORRECTION: Utiliser la même logique robuste pour extraire le serviceId de chaque produit
+      let sServiceId: string | number;
+
+      // ✅ PRIORITÉ 1: Utiliser service_id direct du produit
+      if (s.service_id) {
+        sServiceId = s.service_id;
+      }
+      // ✅ PRIORITÉ 2: Utiliser data.serviceId si disponible
+      else if (s.data?.serviceId) {
+        sServiceId = s.data.serviceId;
+      }
+      // ✅ PRIORITÉ 3: Extraire depuis l'ID au format "serviceId_productIndex"
+      else if (s.id && typeof s.id === 'string' && s.id.includes('_')) {
+        const parts = s.id.split('_');
+        if (parts.length >= 2) {
+          sServiceId = parts[0];
+        } else {
+          return false; // ✅ Ignorer les produits avec un ID invalide
+        }
+      }
+      // ✅ PRIORITÉ 4: Utiliser l'ID directement si c'est un nombre
+      else if (s.id && !isNaN(Number(s.id))) {
+        sServiceId = s.id;
+      }
+      else {
+        return false; // ✅ Ignorer les produits sans serviceId identifiable
+      }
+
+      // ✅ Comparer les serviceId numériques pour la cohérence
+      const numericSServiceId = Number(sServiceId);
+      return numericSServiceId === numericServiceId;
     });
 
     logger.log('[MesServicesScreen] handleCreateVideo - Produits du service trouvés:', produitsDuService.length);
@@ -918,7 +989,7 @@ const MesServicesScreen: React.FC = () => {
           {
             text: 'Créer un produit',
             onPress: () => {
-              handleAddProduct(serviceId);
+              handleAddProduct(numericServiceId);
             }
           }
         ]
@@ -935,14 +1006,14 @@ const MesServicesScreen: React.FC = () => {
     // Convertir les produits en ManagedProduct pour le modal
     const managedProducts: ManagedProduct[] = produitsDuService.filter((p: any) => p != null).map((product: any) => ({
       id: product.id || `prod_${product.product_index || 0}`,
-      serviceId: serviceId.toString(),
+      serviceId: numericServiceId.toString(),
       product_index: product.product_index || product.data?.product_index || 0,
       nom: product.nom || product.data?.nom || product.data?.nom_produit || product.nom_produit || product.title || product.data?.title || 'Produit',
       description: product.description || product.data?.description || '',
       prix: product.data?.prix || product.prix || product.price,
       devise: product.data?.devise || product.devise || product.currency || 'XAF',
       type: product.data?.type || product.type || product.categorie || 'produit',
-      serviceTitre: product.service_title || product.data?.serviceTitre || product.title || `Service #${serviceId}`,
+      serviceTitre: product.service_title || product.data?.serviceTitre || product.title || `Service #${numericServiceId}`,
       ...product.data,
       ...product
     }));
@@ -951,7 +1022,7 @@ const MesServicesScreen: React.FC = () => {
     if (managedProducts.length === 1) {
       const product = managedProducts[0];
       navigateToVideoWizard(navigation, {
-        serviceId: Number(serviceId),
+        serviceId: numericServiceId,
         productIndex: product.product_index || 0,
         productName: extractProductName(product, 'Produit')
       });
@@ -1856,6 +1927,7 @@ const MesServicesScreen: React.FC = () => {
             visible={showVideoCreationModal}
             primaryProduct={productsForVideoCreation[0]}
             products={productsForVideoCreation}
+            navigation={navigation} // ✅ AJOUTÉ: Navigation pour la redirection
             onClose={() => {
               setShowVideoCreationModal(false);
               setProductsForVideoCreation([]);

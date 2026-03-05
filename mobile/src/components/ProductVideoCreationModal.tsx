@@ -77,6 +77,7 @@ interface ProductVideoCreationModalProps {
     products: ManagedProduct[];
     onClose: () => void;
     onSuccess: (result: GeneratedVideoResponse) => void | Promise<void>;
+    navigation?: any; // ✅ AJOUTÉ: Navigation pour rediriger vers la recharge
 }
 
 const VIDEO_STYLE_OPTIONS: Array<{ key: VideoStylePreset; label: string; description: string }> = [
@@ -277,6 +278,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
     products,
     onClose,
     onSuccess,
+    navigation, // ✅ AJOUTÉ: Navigation pour rediriger vers la recharge
 }) => {
     const insets = useSafeAreaInsets();
     const [activeStep, setActiveStep] = useState<ModalStep>(1);
@@ -4958,8 +4960,35 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     errorMessage = 'La génération prend plus de temps que prévu.\n\n' +
                         'La vidéo est peut-être en cours de création. Vérifiez vos vidéos dans quelques instants.';
                 } else if (msg.includes('solde') || msg.includes('balance') || msg.includes('tokens') || msg.includes('insuffisant')) {
-                    errorMessage = 'Solde insuffisant.\n\n' +
-                        'Veuillez recharger vos tokens avant de générer la vidéo.';
+                    // ✅ AMÉLIORÉ: Message plus informatif avec bouton de redirection
+                    errorMessage = 'Solde insuffisant pour générer cette vidéo.\n\n' +
+                        'Coût estimé : ' + (msg.match(/\d+/)?.[0] || 'inconnu') + ' FCFA\n' +
+                        'Votre solde actuel est insuffisant.';
+
+                    // ✅ AMÉLIORÉ: Alert avec bouton de redirection vers la recharge
+                    Alert.alert(
+                        'Solde insuffisant',
+                        errorMessage,
+                        [
+                            {
+                                text: 'Annuler',
+                                style: 'cancel'
+                            },
+                            {
+                                text: 'Recharger mes tokens',
+                                style: 'default',
+                                onPress: () => {
+                                    // Fermer le modal de création vidéo
+                                    onClose();
+                                    // Rediriger vers l'écran de recharge
+                                    if (navigation) {
+                                        navigation.navigate('RechargeTokens' as never);
+                                    }
+                                }
+                            }
+                        ]
+                    );
+                    return; // ✅ ARRÊTER: Ne pas continuer avec l'Alert standard
                 } else {
                     errorMessage = error.message;
                 }

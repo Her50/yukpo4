@@ -802,7 +802,8 @@ pub async fn generate_product_video(
                                 &video_url,
                                 &product_name,
                                 &progress_steps,
-                            ).await?;
+                            )
+                            .await?;
 
                             let result = VideoGenerationResult {
                                 success: true,
@@ -818,7 +819,9 @@ pub async fn generate_product_video(
                                 headline: Some(product_name),
                                 call_to_action: payload.call_to_action,
                                 published_to_chat: payload.publish_to_chat.unwrap_or(true),
-                                published_to_product_card: payload.publish_to_product_card.unwrap_or(true),
+                                published_to_product_card: payload
+                                    .publish_to_product_card
+                                    .unwrap_or(true),
                                 background_music_used: payload.music_mode,
                                 voiceover_generated: false,
                                 additional_outputs: vec![],
@@ -835,7 +838,13 @@ pub async fn generate_product_video(
                             };
 
                             if let Some(jid) = job_id {
-                                let _ = try_store_progress(&state, jid, "completed", &result.progress_steps).await;
+                                let _ = try_store_progress(
+                                    &state,
+                                    jid,
+                                    "completed",
+                                    &result.progress_steps,
+                                )
+                                .await;
                             }
 
                             return Ok(result);
@@ -849,7 +858,8 @@ pub async fn generate_product_video(
                             });
 
                             if let Some(jid) = job_id {
-                                let _ = try_store_progress(&state, jid, "failed", &progress_steps).await;
+                                let _ = try_store_progress(&state, jid, "failed", &progress_steps)
+                                    .await;
                             }
 
                             return Err(AppError::Internal(
@@ -871,13 +881,7 @@ pub async fn generate_product_video(
                 )));
             }
         }
-            state
-                .voice_profiles
-                .resolve_for_generation(profile_id, user.id, service_id)
-                .await?,
-        ),
-        None => None,
-    };
+    }
 
     // ✅ CORRIGÉ 2025-11-30: S'assurer que le produit existe dans products_lifecycle
     // avant de charger le snapshot
@@ -2736,15 +2740,18 @@ pub async fn generate_product_video(
 
     // ✅ NOUVEAU: Lancer le transcodage HLS/DASH après génération
     if let Some(transcoding_service) = &state.video_transcoding {
-        info!("[VideoGeneration] 🎬 Lancement transcodage HLS/DASH pour media_id: {}", inserted.id);
-        
+        info!(
+            "[VideoGeneration] 🎬 Lancement transcodage HLS/DASH pour media_id: {}",
+            inserted.id
+        );
+
         match transcoding_service.transcode_video(&public_url, inserted.id).await {
             Ok(transcoded) => {
                 info!(
                     "[VideoGeneration] ✅ Transcodage réussi - HLS: {}, DASH: {}",
                     transcoded.hls_path, transcoded.dash_path
                 );
-                
+
                 // Mettre à jour les URLs transcoded en base
                 let _ = sqlx::query(
                     "UPDATE media SET hls_url = $1, dash_url = $2, thumbnail_url = $3 WHERE id = $4"
@@ -4902,18 +4909,30 @@ async fn find_best_matching_audio_loop(
 
     // ✅ AMÉLIORÉ: Essayer d'abord la musique trending TikTok/Shorts
     if let Some(trending_service) = &state.trending_music {
-        info!("[VideoGeneration] 🎵 Recherche musique trending pour mode: {:?}", mode);
-        
+        info!(
+            "[VideoGeneration] 🎵 Recherche musique trending pour mode: {:?}",
+            mode
+        );
+
         if let Some(loop_info) = trending_service.get_curated_loop(mode, hint).await {
-            info!("[VideoGeneration] ✅ Musique trending trouvée: {} (score: {})", loop_info.name, loop_info.trending_score);
-            
+            info!(
+                "[VideoGeneration] ✅ Musique trending trouvée: {} (score: {})",
+                loop_info.name, loop_info.trending_score
+            );
+
             match download_curated_audio_loop(session_dir, &loop_info).await {
                 Ok(path) => {
-                    info!("[VideoGeneration] 🎵 Musique trending téléchargée: {}", path);
+                    info!(
+                        "[VideoGeneration] 🎵 Musique trending téléchargée: {}",
+                        path
+                    );
                     return Ok(Some(path));
                 }
                 Err(err) => {
-                    warn!("[VideoGeneration] ⚠️ Erreur téléchargement musique trending: {}", err);
+                    warn!(
+                        "[VideoGeneration] ⚠️ Erreur téléchargement musique trending: {}",
+                        err
+                    );
                     // Continuer avec le fallback local
                 }
             }

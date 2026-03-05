@@ -2494,6 +2494,7 @@ const MesProduitsScreen: React.FC = () => {
                 visible={videoCreatorVisible}
                 primaryProduct={videoCreatorProduct}
                 products={products || []}
+                navigation={navigation} // ✅ AJOUTÉ: Navigation pour la redirection
                 onClose={closeVideoCreator}
                 onSuccess={handleVideoCreatorSuccess}
             />

@@ -684,6 +684,7 @@ const VideoCreationIntroScreen: React.FC = () => {
                     visible={showVideoCreationModal}
                     primaryProduct={productsForVideoCreation[0]}
                     products={productsForVideoCreation}
+                    navigation={navigation} // ✅ AJOUTÉ: Navigation pour la redirection
                     onClose={() => {
                         setShowVideoCreationModal(false);
                         setProductsForVideoCreation([]);

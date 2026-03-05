@@ -19,7 +19,7 @@ use crate::{
 // ✅ NOUVEAU: Templates spécifiques TikTok/Shorts
 const TIKTOK_TEMPLATES: &[&str] = &[
     "tiktok_product_showcase",
-    "tiktok_before_after", 
+    "tiktok_before_after",
     "tiktok_unboxing",
     "tiktok_tutorial",
     "tiktok_transition",
