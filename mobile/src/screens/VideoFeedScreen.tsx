@@ -831,13 +831,17 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                 </View>
 
                 {/* ✅ Disque tournant vendeur (comme TikTok) */}
-                <Animated.View style={[styles.spinningDisc, { transform: [{ rotate: isActive && !paused ? spinRotation : '0deg' }] }]}>
-                    <View style={styles.spinningDiscInner}>
+                <TouchableOpacity
+                    style={styles.spinningDisc}
+                    onPress={() => item.serviceId && handleViewProduct(item)}
+                    activeOpacity={0.8}
+                >
+                    <Animated.View style={[styles.spinningDiscInner, { transform: [{ rotate: isActive && !paused ? spinRotation : '0deg' }] }]}>
                         <Text style={styles.spinningDiscText}>
                             {(item.sellerName || 'Y')[0].toUpperCase()}
                         </Text>
-                    </View>
-                </Animated.View>
+                    </Animated.View>
+                </TouchableOpacity>
 
                 {/* ✅ Picker multi-réactions (apparaît au long-press sur coeur) */}
                 {showReactionPicker === contentId && (

@@ -645,12 +645,14 @@ const styles = StyleSheet.create({
     },
     statsGrid: {
         flexDirection: 'row',
-        flexWrap: 'wrap',
+        justifyContent: 'space-between',
         gap: 12,
         marginBottom: 24,
+        paddingHorizontal: 4,
     },
     statCard: {
-        width: (width - 44) / 2,
+        flex: 1,
+        minWidth: 0,
         padding: 16,
         alignItems: 'center',
     },

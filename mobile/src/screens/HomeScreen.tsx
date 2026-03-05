@@ -41,8 +41,10 @@ import { genererSuggestionsService, rechercherServices } from '../services/yukpo
 import { modernColors } from '../theme/modernTheme';
 import { hapticError } from '../utils/hapticFeedback';
 
-// Barre promotions toujours visible (plus de dropdown)
+// Barre promotions regroupée sous un bouton "Offres Spéciales"
 const PromotionsBar: React.FC<{ navigate: (route: string) => boolean }> = ({ navigate }) => {
+    const [showDropdown, setShowDropdown] = useState(false);
+
     const promotions = [
         { id: 'flash', icon: 'zap', title: 'Flash Promo', route: 'FlashPromosActive', color: '#F59E0B' },
         { id: 'blackfriday', icon: 'shopping-bag', title: 'Black Friday', route: 'GlobalPromoCatalog', color: '#DC2626' },
@@ -51,19 +53,52 @@ const PromotionsBar: React.FC<{ navigate: (route: string) => boolean }> = ({ nav
 
     return (
         <View style={styles.promoBarContainer}>
-            {promotions.map((promo) => (
-                <TouchableOpacity
-                    key={promo.id}
-                    style={styles.promoBarItem}
-                    onPress={() => navigate(promo.route)}
-                    activeOpacity={0.7}
-                >
-                    <View style={[styles.promoBarIcon, { backgroundColor: `${promo.color}15` }]}>
-                        <SafeIcon name={promo.icon as any} size={20} color={promo.color} />
+            <TouchableOpacity
+                style={styles.promoBarButton}
+                onPress={() => setShowDropdown(!showDropdown)}
+                activeOpacity={0.8}
+            >
+                <View style={styles.promoBarButtonContent}>
+                    <View style={[styles.promoBarIcon, { backgroundColor: '#F59E0B20' }]}>
+                        <SafeIcon name="gift" size={20} color="#F59E0B" />
                     </View>
-                    <Text style={styles.promoBarText} numberOfLines={1}>{promo.title}</Text>
-                </TouchableOpacity>
-            ))}
+                    <Text style={styles.promoBarButtonText}>Offres Spéciales</Text>
+                    <SafeIcon
+                        name={showDropdown ? "chevron-up" : "chevron-down"}
+                        size={16}
+                        color="#6B7280"
+                    />
+                </View>
+                {/* Indicateur visuel qu'il y a plusieurs options */}
+                <View style={styles.promoBarDots}>
+                    <View style={[styles.dot, { backgroundColor: '#F59E0B' }]} />
+                    <View style={[styles.dot, { backgroundColor: '#DC2626' }]} />
+                    <View style={[styles.dot, { backgroundColor: '#8B5CF6' }]} />
+                </View>
+            </TouchableOpacity>
+
+            {/* Menu déroulant */}
+            {showDropdown && (
+                <View style={styles.promoDropdown}>
+                    {promotions.map((promo) => (
+                        <TouchableOpacity
+                            key={promo.id}
+                            style={styles.promoDropdownItem}
+                            onPress={() => {
+                                setShowDropdown(false);
+                                navigate(promo.route);
+                            }}
+                            activeOpacity={0.7}
+                        >
+                            <View style={[styles.promoDropdownIcon, { backgroundColor: `${promo.color}15` }]}>
+                                <SafeIcon name={promo.icon as any} size={18} color={promo.color} />
+                            </View>
+                            <Text style={styles.promoDropdownText}>{promo.title}</Text>
+                            <SafeIcon name="chevron-right" size={16} color="#9CA3AF" />
+                        </TouchableOpacity>
+                    ))}
+                </View>
+            )}
         </View>
     );
 };
@@ -634,6 +669,17 @@ const HomeScreen: React.FC = () => {
                 {/* ✅ AJOUTÉ: Espace pour compenser la hauteur de l'en-tète fixe */}
                 <View style={{ height: headerTotalHeight }} />
 
+                {/* ✅ NOUVEAU: Icône Navigation Intelligente */}
+                <View style={styles.navigationIconContainer}>
+                    <TouchableOpacity
+                        style={styles.navigationIconButton}
+                        onPress={() => navigate('NavigationScreen')}
+                        activeOpacity={0.8}
+                    >
+                        <SafeIcon name="navigation" size={20} color="#6366F1" />
+                    </TouchableOpacity>
+                </View>
+
                 {/* Sélecteur de mode */}
                 <View style={styles.modeSelector}>
                     <TouchableOpacity
@@ -987,11 +1033,83 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
     promoBarContainer: {
-        flexDirection: 'row',
-        gap: 8,
         marginTop: 12,
         marginBottom: 12,
     },
+    promoBarButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: '#FFFFFF',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+        elevation: 2,
+    },
+    promoBarButtonContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        flex: 1,
+    },
+    promoBarButtonText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#374151',
+        flex: 1,
+    },
+    promoBarDots: {
+        flexDirection: 'row',
+        gap: 4,
+        alignItems: 'center',
+    },
+    dot: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+    },
+    promoDropdown: {
+        marginTop: 8,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
+        overflow: 'hidden',
+    },
+    promoDropdownItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        paddingVertical: 14,
+        paddingHorizontal: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F3F4F6',
+    },
+    promoDropdownIcon: {
+        width: 32,
+        height: 32,
+        borderRadius: 8,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    promoDropdownText: {
+        flex: 1,
+        fontSize: 15,
+        fontWeight: '500',
+        color: '#374151',
+    },
+    // Styles anciens conservés pour compatibilité
     promoBarItem: {
         flex: 1,
         flexDirection: 'row',
@@ -1027,6 +1145,27 @@ const styles = StyleSheet.create({
         color: '#111827',
         marginBottom: 12, // ✅ AUGMENTÉ: De 8 à 12 pour plus d'espace
         marginTop: 4, // ✅ AJOUTÉ: Marge en haut pour séparation
+    },
+    // ✅ NOUVEAU: Styles pour l'icône Navigation Intelligente
+    navigationIconContainer: {
+        alignItems: 'flex-end',
+        paddingHorizontal: 16,
+        marginBottom: 8,
+    },
+    navigationIconButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#EEF2FF',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#C7D2FE',
+        shadowColor: '#6366F1',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
+        elevation: 2,
     },
 });
 

@@ -159,7 +159,7 @@ const LoginScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#F8FAFC', // Fond gris très clair au lieu de blanc pur
   },
   scrollContainer: {
     flexGrow: 1,
@@ -171,11 +171,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#333',
+    fontSize: 32, // Augmenté pour meilleure visibilité
+    fontWeight: '900', // Plus gras comme dans HomeScreen
+    color: '#1F2937', // Couleur plus foncée pour contraste
     textAlign: 'center',
-    marginBottom: 10,
+    marginBottom: 16,
+    letterSpacing: -0.3, // Ajouté comme dans HomeScreen
   },
   brandYuk: {
     color: '#3B82F6', // Bleu (cohérent avec le logo officiel)
@@ -223,10 +224,15 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   formContainer: {
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#FFFFFF', // Fond blanc pour contraster avec le fond gris clair
     borderRadius: 15,
     padding: 20,
     marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   inputContainer: {
     marginBottom: 15,

@@ -290,9 +290,9 @@ const DashboardPrestataireScreen: React.FC = () => {
         ))}
       </View>
 
-      {/* Activit� r�cente */}
+      {/* Activité récente */}
       <View style={styles.sectionCard}>
-        <Text style={styles.sectionTitle}>Activit&#233; r&#233;cente</Text>
+        <Text style={styles.sectionTitle}>Activité récente</Text>
 
         {dashboardData.recentActivity.map((activity, index) => (
           <View key={index} style={styles.activityItem}>
@@ -308,7 +308,7 @@ const DashboardPrestataireScreen: React.FC = () => {
               <Text style={styles.activityText}>
                 {activity.type === 'view' ? 'Vue' :
                   activity.type === 'message' ? 'Message' :
-                    activity.type === 'call' ? 'Appel' : 'Activit\u00e9'} sur {activity.service}
+                    activity.type === 'call' ? 'Appel' : 'Activité'} sur {activity.service}
               </Text>
               <Text style={styles.activityTime}>Il y a {activity.time}</Text>
             </View>
@@ -321,15 +321,15 @@ const DashboardPrestataireScreen: React.FC = () => {
         <Text style={styles.sectionTitle}>Actions rapides</Text>
 
         <TouchableOpacity style={styles.actionButton} onPress={loadDashboardData}>
-          <Text style={styles.actionButtonText}>Actualiser les donn\u00e9es</Text>
+          <Text style={styles.actionButtonText}>Actualiser les données</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.actionButton}>
-          <Text style={styles.actionButtonText}>Cr\u00e9er un nouveau service</Text>
+          <Text style={styles.actionButtonText}>Créer un nouveau service</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.actionButton}>
-          <Text style={styles.actionButtonText}>Voir les statistiques d\u00e9taill\u00e9es</Text>
+          <Text style={styles.actionButtonText}>Voir les statistiques détaillées</Text>
         </TouchableOpacity>
 
         <TouchableOpacity

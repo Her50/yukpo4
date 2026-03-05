@@ -94,7 +94,7 @@ pub async fn list_upcoming_sessions(
 
 pub async fn start_live_session(
     State(state): State<Arc<AppState>>,
-    Authenticated(user): Authenticated,
+    Authenticated(_user): Authenticated,
     Json(payload): Json<CreateLiveSessionRequest>,
 ) -> AppResult<Json<serde_json::Value>> {
     if !state
@@ -174,7 +174,7 @@ pub async fn get_join_information(
 pub async fn register_replay(
     State(state): State<Arc<AppState>>,
     Path(session_id): Path<Uuid>,
-    Authenticated(user): Authenticated,
+    Authenticated(_user): Authenticated,
     Json(payload): Json<SaveReplayRequest>,
 ) -> AppResult<Json<serde_json::Value>> {
     let replay = LiveStreamingService::save_replay(&state.pg, session_id, payload).await?;
@@ -277,11 +277,11 @@ pub async fn get_lives_analytics(
 pub async fn configure_flash_sales(
     State(state): State<Arc<AppState>>,
     Path(session_id): Path<Uuid>,
-    Authenticated(user): Authenticated,
+    Authenticated(_user): Authenticated,
     Json(payload): Json<ConfigureFlashSalesRequest>,
 ) -> AppResult<Json<serde_json::Value>> {
     let configured =
-        LiveFlashSaleService::configure_flash_sales(state.clone(), session_id, user.id, payload)
+        LiveFlashSaleService::configure_flash_sales(state.clone(), session_id, _user.id, payload)
             .await?;
 
     Ok(Json(json!({
@@ -305,7 +305,7 @@ pub async fn list_flash_sales(
 pub async fn reserve_flash_sale(
     State(state): State<Arc<AppState>>,
     Path(flash_sale_id): Path<Uuid>,
-    Authenticated(user): Authenticated,
+    Authenticated(_user): Authenticated,
     Json(payload): Json<FlashSaleReservationPayload>,
 ) -> AppResult<Json<serde_json::Value>> {
     // ✅ NOUVEAU: Utiliser la queue pour gérer les pics de trafic
@@ -315,7 +315,7 @@ pub async fn reserve_flash_sale(
 
         let request = FlashSaleReservationRequest {
             flash_sale_id,
-            user_id: user.id,
+            user_id: _user.id,
             quantity: payload.quantity.unwrap_or(1),
             requested_at: Utc::now(),
         };
@@ -336,7 +336,7 @@ pub async fn reserve_flash_sale(
         let summary = LiveFlashSaleService::reserve_slot(
             &state.pg,
             flash_sale_id,
-            user.id,
+            _user.id,
             payload.quantity.unwrap_or(1),
         )
         .await?;
@@ -350,10 +350,11 @@ pub async fn reserve_flash_sale(
 pub async fn list_flash_sale_reservations(
     State(state): State<Arc<AppState>>,
     Path(flash_sale_id): Path<Uuid>,
-    Authenticated(user): Authenticated,
+    Authenticated(_user): Authenticated,
 ) -> AppResult<Json<serde_json::Value>> {
     let reservations =
-        LiveFlashSaleService::list_reservations_for_host(&state.pg, flash_sale_id, user.id).await?;
+        LiveFlashSaleService::list_reservations_for_host(&state.pg, flash_sale_id, _user.id)
+            .await?;
 
     Ok(Json(json!({
         "success": true,
@@ -401,13 +402,13 @@ pub async fn get_flash_sale_ticket_status(
 pub async fn create_flash_sale_commentary(
     State(state): State<Arc<AppState>>,
     Path(flash_sale_id): Path<Uuid>,
-    Authenticated(user): Authenticated,
+    Authenticated(_user): Authenticated,
     Json(payload): Json<FlashSaleCommentaryPayload>,
 ) -> AppResult<Json<serde_json::Value>> {
     let commentary = LiveFlashSaleService::add_host_commentary(
         state.clone(),
         flash_sale_id,
-        user.id,
+        _user.id,
         payload.message,
     )
     .await?;
