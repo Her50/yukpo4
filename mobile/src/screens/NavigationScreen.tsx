@@ -13,6 +13,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import MapView, { Marker, Polyline, PROVIDER_GOOGLE, Region } from 'react-native-maps';
 // ✅ FIX 2026-03-04: Remplacé KeyboardAwareScrollView par ScrollView simple
 // KeyboardAwareScrollView bloquait le scroll horizontal des cartes de routes
 import LocationSelector, { LocationObject } from '../components/LocationSelector';

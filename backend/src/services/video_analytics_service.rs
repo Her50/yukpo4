@@ -240,7 +240,7 @@ impl VideoAnalyticsService {
 
         // 8️⃣ Score d'engagement
         let engagement_score = self.calculate_engagement_score(
-            views_data.0.unwrap_or(0) as f64,
+            views_data.0 as f64,
             completion_data.0.unwrap_or(0.0),
             skip_data.0.unwrap_or(0.0),
             &performance,
@@ -248,8 +248,8 @@ impl VideoAnalyticsService {
 
         Ok(VideoAnalyticsSummary {
             video_id,
-            total_views: views_data.0.unwrap_or(0),
-            unique_viewers: views_data.1.unwrap_or(0),
+            total_views: views_data.0,
+            unique_viewers: views_data.1,
             avg_watch_time_seconds: views_data.2.unwrap_or(0.0),
             completion_rate: completion_data.0.unwrap_or(0.0),
             skip_rate: skip_data.0.unwrap_or(0.0),
@@ -571,7 +571,7 @@ pub async fn get_analytics_service(pool: Arc<PgPool>) -> Arc<VideoAnalyticsServi
     if service.is_none() {
         *service = Some(VideoAnalyticsService::new(pool));
     }
-    Arc::clone(service.as_ref().unwrap())
+    Arc::new(service.as_ref().unwrap().clone())
 }
 
 // Legacy functions for compatibility

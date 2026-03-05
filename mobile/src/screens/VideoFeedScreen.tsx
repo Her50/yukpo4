@@ -301,6 +301,10 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
         } catch { /* silent */ }
     }, [user?.id]);
 
+    // ✅ NOUVEAU: Gérer le compteur de lectures pour le mode TikTok (2 lectures avant auto-scroll)
+    const playCountRef = useRef<Record<string, number>>({});
+    const [playCount, setPlayCount] = useState<Record<string, number>>({});
+
     useEffect(() => {
         const item = feed[currentIndex];
         if (item?.serviceId) {
@@ -572,11 +576,29 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                 return { ...prev, [contentId]: progress };
             });
 
-            // ✅ Auto-scroll vers la vidéo suivante quand la vidéo se termine
+            // ✅ Mode TikTok: 2 lectures avant auto-scroll
             if (status.didJustFinish && !status.isLooping) {
-                const nextIndex = index + 1;
-                if (nextIndex < feed.length) {
-                    flatListRef.current?.scrollToIndex({ index: nextIndex, animated: true });
+                const contentId = item?.contentId || item?.id;
+                if (contentId) {
+                    const currentPlayCount = (playCountRef.current[contentId] || 0) + 1;
+                    playCountRef.current[contentId] = currentPlayCount;
+                    setPlayCount(prev => ({ ...prev, [contentId]: currentPlayCount }));
+
+                    // Si c'est la première lecture, relancer la vidéo
+                    if (currentPlayCount === 1) {
+                        setTimeout(() => {
+                            const videoRef = videoRefs.current.get(index);
+                            if (videoRef) {
+                                videoRef.replayAsync().catch(() => undefined);
+                            }
+                        }, 500); // Petite pause avant de relancer
+                    } else {
+                        // Après la deuxième lecture, passer à la vidéo suivante
+                        const nextIndex = index + 1;
+                        if (nextIndex < feed.length) {
+                            flatListRef.current?.scrollToIndex({ index: nextIndex, animated: true });
+                        }
+                    }
                 }
             }
         }
@@ -1103,7 +1125,7 @@ const styles = StyleSheet.create({
     },
     bottomInfo: {
         position: 'absolute',
-        bottom: 40,
+        bottom: 100, // ✅ AJOUT: Plus haut pour être visible avec le bouton "Voir le produit"
         left: 16,
         right: 72,
         gap: 6,
@@ -1189,6 +1211,16 @@ const styles = StyleSheet.create({
         borderRadius: 50,
         backgroundColor: 'rgba(255,45,85,0.9)',
         marginTop: 4,
+        // ✅ AJOUT: Positionnement absolu en bas pour être toujours visible
+        position: 'absolute',
+        bottom: 20,
+        left: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+        elevation: 6,
+        zIndex: 25,
     },
     ctaText: {
         color: '#fff',
@@ -1198,7 +1230,7 @@ const styles = StyleSheet.create({
     actions: {
         position: 'absolute',
         right: 8,
-        bottom: 60,
+        bottom: 120, // ✅ AJOUT: Plus haut pour laisser de la place au bouton CTA
         gap: 16,
         alignItems: 'center',
     },
