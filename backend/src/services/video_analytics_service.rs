@@ -156,7 +156,7 @@ impl VideoAnalyticsService {
         let since_date = Utc::now() - Duration::days(days as i64);
 
         // 1️⃣ Vues et viewers uniques
-        let views_data = sqlx::query!(
+        let views_data: (i64, i64, Option<f64>) = sqlx::query_as(
             r#"
             SELECT 
                 COUNT(*) as total_views,
@@ -167,15 +167,15 @@ impl VideoAnalyticsService {
               AND timestamp >= $2
               AND event_type = 'play'
             "#,
-            video_id,
-            since_date
         )
+        .bind(video_id)
+        .bind(since_date)
         .fetch_one(&*self.pool)
         .await
         .map_err(|e| AppError::Database(format!("Erreur récupération vues: {}", e)))?;
 
         // 2️⃣ Taux de complétion
-        let completion_data = sqlx::query!(
+        let completion_data: (Option<f64>, i64) = sqlx::query_as(
             r#"
             WITH video_sessions AS (
                 SELECT 
@@ -195,15 +195,15 @@ impl VideoAnalyticsService {
                 COUNT(*) as total_sessions
             FROM video_sessions
             "#,
-            video_id,
-            since_date
         )
+        .bind(video_id)
+        .bind(since_date)
         .fetch_one(&*self.pool)
         .await
         .map_err(|e| AppError::Database(format!("Erreur calcul complétion: {}", e)))?;
 
         // 3️⃣ Taux de skip
-        let skip_data = sqlx::query!(
+        let skip_data: (Option<f64>,) = sqlx::query_as(
             r#"
             WITH session_events AS (
                 SELECT 
@@ -219,10 +219,10 @@ impl VideoAnalyticsService {
                 AVG(CASE WHEN play_count > 0 THEN (skip_count::float / play_count::float) * 100 ELSE 0 END) as skip_rate
             FROM session_events
             WHERE play_count > 0
-            "#,
-            video_id,
-            since_date
+            "#
         )
+        .bind(video_id)
+        .bind(since_date)
         .fetch_one(&*self.pool)
         .await
         .map_err(|e| AppError::Database(format!("Erreur calcul skip rate: {}", e)))?;
@@ -268,7 +268,7 @@ impl VideoAnalyticsService {
         video_id: i32,
         since_date: DateTime<Utc>,
     ) -> AppResult<Vec<DropoffPoint>> {
-        let rows = sqlx::query!(
+        let rows: Vec<(Option<f64>, Option<f64>, Option<i64>)> = sqlx::query_as(
             r#"
             WITH session_positions AS (
                 SELECT 
@@ -297,9 +297,9 @@ impl VideoAnalyticsService {
                 SUM(drop_count) OVER (ORDER BY bucket) as cumulative_drops
             FROM dropoff_buckets
             "#,
-            video_id,
-            since_date
         )
+        .bind(video_id)
+        .bind(since_date)
         .fetch_all(&*self.pool)
         .await
         .map_err(|e| AppError::Database(format!("Erreur calcul dropoff: {}", e)))?;
@@ -307,9 +307,9 @@ impl VideoAnalyticsService {
         let points = rows
             .into_iter()
             .map(|row| DropoffPoint {
-                position_seconds: row.position_seconds.unwrap_or(0.0),
-                percentage_dropped: row.percentage_dropped.unwrap_or(0.0),
-                cumulative_drops: row.cumulative_drops.unwrap_or(0),
+                position_seconds: row.0.unwrap_or(0.0),
+                percentage_dropped: row.1.unwrap_or(0.0),
+                cumulative_drops: row.2.unwrap_or(0),
             })
             .collect();
 
@@ -322,7 +322,7 @@ impl VideoAnalyticsService {
         video_id: i32,
         since_date: DateTime<Utc>,
     ) -> AppResult<QualityDistribution> {
-        let row = sqlx::query!(
+        let row: (i64, i64, i64, i64, i64) = sqlx::query_as(
             r#"
             SELECT 
                 COUNT(*) FILTER (WHERE quality = '1080p') as count_1080p,
@@ -335,19 +335,19 @@ impl VideoAnalyticsService {
               AND timestamp >= $2
               AND event_type = 'play'
             "#,
-            video_id,
-            since_date
         )
+        .bind(video_id)
+        .bind(since_date)
         .fetch_one(&*self.pool)
         .await
         .map_err(|e| AppError::Database(format!("Erreur distribution qualité: {}", e)))?;
 
         Ok(QualityDistribution {
-            count_1080p: row.count_1080p.unwrap_or(0),
-            count_720p: row.count_720p.unwrap_or(0),
-            count_480p: row.count_480p.unwrap_or(0),
-            count_360p: row.count_360p.unwrap_or(0),
-            count_auto: row.count_auto.unwrap_or(0),
+            count_1080p: row.0,
+            count_720p: row.1,
+            count_480p: row.2,
+            count_360p: row.3,
+            count_auto: row.4,
         })
     }
 
@@ -357,7 +357,7 @@ impl VideoAnalyticsService {
         video_id: i32,
         since_date: DateTime<Utc>,
     ) -> AppResult<PerformanceMetrics> {
-        let row = sqlx::query!(
+        let row: (Option<f64>, Option<f64>, Option<f64>, f64) = sqlx::query_as(
             r#"
             WITH buffer_sessions AS (
                 SELECT 
@@ -390,19 +390,19 @@ impl VideoAnalyticsService {
                          NULLIF((SELECT COUNT(DISTINCT session_id) FROM video_analytics_events WHERE video_id = $1 AND timestamp >= $2 AND event_type = 'play'), 0), 0) as error_rate,
                 1500.0 as avg_load_time_ms  -- Placeholder: à implémenter avec tracking load time
             FROM buffer_sessions, error_sessions
-            "#,
-            video_id,
-            since_date
+            "#
         )
+        .bind(video_id)
+        .bind(since_date)
         .fetch_one(&*self.pool)
         .await
         .map_err(|e| AppError::Database(format!("Erreur métriques performance: {}", e)))?;
 
         Ok(PerformanceMetrics {
-            avg_buffer_time_ms: row.avg_buffer_time_ms.unwrap_or(0.0),
-            buffer_events_per_view: row.buffer_events_per_view.unwrap_or(0.0),
-            error_rate: row.error_rate.unwrap_or(0.0),
-            avg_load_time_ms: row.avg_load_time_ms.unwrap_or(0.0),
+            avg_buffer_time_ms: row.0.unwrap_or(0.0),
+            buffer_events_per_view: row.1.unwrap_or(0.0),
+            error_rate: row.2.unwrap_or(0.0),
+            avg_load_time_ms: row.3,
         })
     }
 
@@ -412,7 +412,7 @@ impl VideoAnalyticsService {
         video_id: i32,
         since_date: DateTime<Utc>,
     ) -> AppResult<Vec<HeatmapPoint>> {
-        let rows = sqlx::query!(
+        let rows: Vec<(Option<f64>, Option<f64>, i64, i64, i64)> = sqlx::query_as(
             r#"
             WITH reaction_buckets AS (
                 SELECT 
@@ -435,10 +435,10 @@ impl VideoAnalyticsService {
                 0 as shares_count     -- À implémenter avec tracking shares
             FROM reaction_buckets
             ORDER BY position_seconds
-            "#,
-            video_id,
-            since_date
+            "#
         )
+        .bind(video_id)
+        .bind(since_date)
         .fetch_all(&*self.pool)
         .await
         .map_err(|e| AppError::Database(format!("Erreur génération heatmap: {}", e)))?;
@@ -446,11 +446,11 @@ impl VideoAnalyticsService {
         let heatmap = rows
             .into_iter()
             .map(|row| HeatmapPoint {
-                position_seconds: row.position_seconds.unwrap_or(0.0),
-                intensity: row.intensity.unwrap_or(0.0),
-                reactions_count: row.reactions_count.unwrap_or(0),
-                comments_count: row.comments_count.unwrap_or(0),
-                shares_count: row.shares_count.unwrap_or(0),
+                position_seconds: row.0.unwrap_or(0.0),
+                intensity: row.1.unwrap_or(0.0),
+                reactions_count: row.2,
+                comments_count: row.3,
+                shares_count: row.4,
             })
             .collect();
 
@@ -478,7 +478,7 @@ impl VideoAnalyticsService {
 
     /// Met à jour les agrégats en temps réel pour dashboard créateurs
     async fn update_realtime_aggregates(&self, video_id: i32) -> AppResult<()> {
-        sqlx::query!(
+        sqlx::query(
             r#"
             INSERT INTO video_analytics_realtime (video_id, last_updated, total_views, avg_watch_time)
             SELECT 
@@ -493,9 +493,9 @@ impl VideoAnalyticsService {
                 last_updated = EXCLUDED.last_updated,
                 total_views = EXCLUDED.total_views,
                 avg_watch_time = EXCLUDED.avg_watch_time
-            "#,
-            video_id
+            "#
         )
+        .bind(video_id)
         .execute(&*self.pool)
         .await
         .map_err(|e| AppError::Database(format!("Erreur mise à jour agrégats temps réel: {}", e)))?;
@@ -511,7 +511,7 @@ impl VideoAnalyticsService {
     ) -> AppResult<serde_json::Value> {
         let since_date = Utc::now() - Duration::days(days as i64);
 
-        let analytics = sqlx::query!(
+        let analytics: (i64, i64, i64, Option<f64>, i64, f64) = sqlx::query_as(
             r#"
             WITH creator_videos AS (
                 SELECT DISTINCT vt.video_id
@@ -541,21 +541,21 @@ impl VideoAnalyticsService {
                 COALESCE(SUM(completions), 0) as total_completions,
                 COALESCE(AVG(CASE WHEN views > 0 THEN (completions::float / views::float) * 100 ELSE 0 END), 0) as avg_completion_rate
             FROM video_stats
-            "#,
-            user_id,
-            since_date
+            "#
         )
+        .bind(user_id)
+        .bind(since_date)
         .fetch_one(&*self.pool)
         .await
         .map_err(|e| AppError::Database(format!("Erreur analytics créateur: {}", e)))?;
 
         Ok(serde_json::json!({
-            "total_videos": analytics.total_videos,
-            "total_views": analytics.total_views,
-            "total_unique_viewers": analytics.total_unique_viewers,
-            "avg_watch_time_seconds": analytics.avg_watch_time_all_videos,
-            "total_completions": analytics.total_completions,
-            "avg_completion_rate": analytics.avg_completion_rate,
+            "total_videos": analytics.0,
+            "total_views": analytics.1,
+            "total_unique_viewers": analytics.2,
+            "avg_watch_time_seconds": analytics.3,
+            "total_completions": analytics.4,
+            "avg_completion_rate": analytics.5,
             "period_days": days
         }))
     }
