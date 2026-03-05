@@ -572,7 +572,7 @@ pub async fn get_analytics_service(pool: Arc<PgPool>) -> Arc<VideoAnalyticsServi
     if service.is_none() {
         *service = Some(VideoAnalyticsService::new(pool));
     }
-    Arc::clone(&service.as_ref().unwrap())
+    service.as_ref().unwrap().clone()
 }
 
 // Legacy functions for compatibility

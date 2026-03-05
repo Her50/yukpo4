@@ -841,23 +841,23 @@ IMPORTANT:
     }
 
     /// Obtient les métriques de performance
-    pub fn get_metrics(&self) -> ETAMetrics {
+    pub async fn get_metrics(&self) -> ETAMetrics {
         ETAMetrics {
             total_predictions: self.total_predictions.load(Ordering::Relaxed),
             ai_predictions: self.ai_predictions.load(Ordering::Relaxed),
             fallback_predictions: self.fallback_predictions.load(Ordering::Relaxed),
             cache_hits: self.cache_hits.load(Ordering::Relaxed),
             cache_size: {
-                let cache = self.cache.read().unwrap();
+                let cache = self.cache.read().await;
                 cache.len()
             },
         }
     }
 
     /// Nettoie le cache des entrées expirées
-    pub fn cleanup_cache(&mut self) {
+    pub async fn cleanup_cache(&mut self) {
         let now = Utc::now();
-        let mut cache = self.cache.write().unwrap();
+        let mut cache = self.cache.write().await;
         cache.retain(|_, (_, cached_time)| {
             let elapsed = now - *cached_time;
             elapsed.timestamp() < 300 // Garder seulement les entrées < 5 min
