@@ -83,7 +83,7 @@ async fn create_media_entry_for_ai_video(
     progress_steps: &[crate::models::video_generation_model::ProgressStep],
 ) -> AppResult<i32> {
     let media_type = "video";
-    
+
     let result = sqlx::query!(
         r#"
         INSERT INTO media (
@@ -106,14 +106,13 @@ async fn create_media_entry_for_ai_video(
             "type": "ai_generated_video",
             "product_name": product_name,
             "progress_steps": progress_steps
-        }).to_string()
+        })
+        .to_string()
     )
     .fetch_one(pg)
     .await
-    .map_err(|e| {
-        AppError::Database(format!("Failed to create media entry for AI video: {}", e))
-    })?;
-    
+    .map_err(|e| AppError::Database(format!("Failed to create media entry for AI video: {}", e)))?;
+
     Ok(result.id)
 }
 
@@ -779,7 +778,9 @@ pub async fn generate_product_video(
 
         // Get the generative video service from state
         let generative_service = state.generative_video.as_ref().ok_or_else(|| {
-            AppError::ServiceUnavailable("Service de génération vidéo IA non disponible".to_string())
+            AppError::ServiceUnavailable(
+                "Service de génération vidéo IA non disponible".to_string(),
+            )
         })?;
 
         match generative_service.generate_video(user.id as i64, request).await {
@@ -1001,7 +1002,11 @@ pub async fn generate_product_video(
     let mut resolved_voiceover_lang = payload.voiceover_lang.clone();
     if resolved_voiceover_lang.is_none() {
         if let Some(profile) = &voice_profile {
-            if let Some(lang) = profile.metadata.get("lang").and_then(|value: &serde_json::Value| value.as_str()) {
+            if let Some(lang) = profile
+                .metadata
+                .get("lang")
+                .and_then(|value: &serde_json::Value| value.as_str())
+            {
                 resolved_voiceover_lang = Some(lang.to_string());
             }
         }

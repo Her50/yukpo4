@@ -41,11 +41,11 @@ pub struct MusicTrack {
     pub is_instrumental: bool,
     pub has_vocals: bool,
     pub language: Option<String>,
-    pub popularity_score: f32, // 0.0 - 1.0
-    pub trending_score: f32,    // Score de tendance actuel
-    pub license_type: String,   // "royalty_free", "commercial", "creative_commons"
+    pub popularity_score: f32,     // 0.0 - 1.0
+    pub trending_score: f32,       // Score de tendance actuel
+    pub license_type: String,      // "royalty_free", "commercial", "creative_commons"
     pub cost_credits: Option<u32>, // Coût en crédits si payant
-    pub source: String,        // "spotify", "tiktok", "epidemic", "artlist"
+    pub source: String,            // "spotify", "tiktok", "epidemic", "artlist"
     pub source_track_id: String,
     pub tags: Vec<String>,
     pub similar_tracks: Vec<String>, // IDs de pistes similaires
@@ -73,16 +73,35 @@ pub struct CuratedPlaylist {
     pub popularity_score: f32,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum TrendDirection {
+    Up,
+    Down,
+    Stable,
+}
+
 /// Métadonnées de trending
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TrendingMetadata {
-    pub platform: String, // "tiktok", "instagram", "youtube"
+    pub track_id: String,
+    pub title: String,
+    pub artist: String,
+    pub genre: String,
+    pub tempo_bpm: Option<u32>,
+    pub energy_level: f32,
+    pub danceability: f32,
+    pub valence: f32,
+    pub duration_seconds: u32,
+    pub preview_url: Option<String>,
+    pub cover_art_url: Option<String>,
+    pub is_explicit: bool,
+    pub release_date: Option<DateTime<Utc>>,
     pub region: String,
     pub chart_position: Option<u32>,
     pub viral_score: f32,
     pub usage_count_videos: u64,
     pub peak_date: Option<DateTime<Utc>>,
-    pub trend_direction: "up" | "down" | "stable",
+    pub trend_direction: TrendDirection,
 }
 
 /// Service de musique trending
@@ -97,7 +116,7 @@ impl TrendingMusicService {
             pool,
             sources: HashMap::new(),
         };
-        
+
         service.initialize_sources();
         service
     }
@@ -112,11 +131,20 @@ impl TrendingMusicService {
                 is_active: true,
                 rate_limit_per_hour: 1000,
                 supported_genres: vec![
-                    "pop", "rock", "hip_hop", "electronic", "r&b", "country", 
-                    "jazz", "classical", "latin", "indie", "metal", "folk"
+                    "pop",
+                    "rock",
+                    "hip_hop",
+                    "electronic",
+                    "r&b",
+                    "country",
+                    "jazz",
+                    "classical",
+                    "latin",
+                    "indie",
+                    "metal",
+                    "folk",
                 ],
             },
-            
             MusicSource {
                 name: "TikTok Trends".to_string(),
                 api_endpoint: Some("https://open-api.tiktok.com/api".to_string()),
@@ -124,10 +152,9 @@ impl TrendingMusicService {
                 is_active: true,
                 rate_limit_per_hour: 500,
                 supported_genres: vec![
-                    "viral", "trending", "dance", "chill", "energy", "lofi", "phonk"
+                    "viral", "trending", "dance", "chill", "energy", "lofi", "phonk",
                 ],
             },
-            
             MusicSource {
                 name: "Epidemic Sound".to_string(),
                 api_endpoint: Some("https://api.epidemicsound.com/v1".to_string()),
@@ -135,10 +162,14 @@ impl TrendingMusicService {
                 is_active: false, // Souvent payant
                 rate_limit_per_hour: 200,
                 supported_genres: vec![
-                    "cinematic", "corporate", "documentary", "vlog", "gaming", "sports"
+                    "cinematic",
+                    "corporate",
+                    "documentary",
+                    "vlog",
+                    "gaming",
+                    "sports",
                 ],
             },
-            
             MusicSource {
                 name: "Artlist".to_string(),
                 api_endpoint: Some("https://api.artlist.io/v1".to_string()),
@@ -146,7 +177,12 @@ impl TrendingMusicService {
                 is_active: false, // Souvent payant
                 rate_limit_per_hour: 200,
                 supported_genres: vec![
-                    "indie", "folk", "ambient", "electronic", "orchestral", "world"
+                    "indie",
+                    "folk",
+                    "ambient",
+                    "electronic",
+                    "orchestral",
+                    "world",
                 ],
             },
         ];
@@ -155,7 +191,10 @@ impl TrendingMusicService {
             self.sources.insert(source.name.clone(), source);
         }
 
-        info!("[TrendingMusic] ✅ {} sources de musique initialisées", self.sources.len());
+        info!(
+            "[TrendingMusic] ✅ {} sources de musique initialisées",
+            self.sources.len()
+        );
     }
 
     /// Récupère les pistes trending par région et genre
@@ -167,11 +206,11 @@ impl TrendingMusicService {
         limit: Option<u32>,
     ) -> AppResult<Vec<MusicTrack>> {
         let limit = limit.unwrap_or(50);
-        
+
         let mut query = sqlx::QueryBuilder::new(
             "SELECT * FROM music_tracks 
              WHERE trending_score > 0.3
-             AND is_explicit = false"
+             AND is_explicit = false",
         );
 
         if let Some(genre_filter) = genre {
@@ -194,17 +233,18 @@ impl TrendingMusicService {
         query.push(" ORDER BY trending_score DESC, popularity_score DESC LIMIT ");
         query.push_bind(limit as i64);
 
-        let tracks: Vec<MusicTrack> = query
-            .build_query_as()
-            .fetch_all(self.pool.as_ref())
-            .await
-            .map_err(|e| {
+        let tracks: Vec<MusicTrack> =
+            query.build_query_as().fetch_all(self.pool.as_ref()).await.map_err(|e| {
                 error!("[TrendingMusic] Erreur récupération trending tracks: {}", e);
                 AppError::Database(e.to_string())
             })?;
 
-        info!("[TrendingMusic] {} pistes trending trouvées pour {}/{}", 
-              tracks.len(), region, genre.unwrap_or("tous"));
+        info!(
+            "[TrendingMusic] {} pistes trending trouvées pour {}/{}",
+            tracks.len(),
+            region,
+            genre.unwrap_or("tous")
+        );
 
         Ok(tracks)
     }
@@ -233,11 +273,8 @@ impl TrendingMusicService {
         query.push(" ORDER BY popularity_score DESC LIMIT ");
         query.push_bind(limit as i64);
 
-        let playlists: Vec<CuratedPlaylist> = query
-            .build_query_as()
-            .fetch_all(self.pool.as_ref())
-            .await
-            .map_err(|e| {
+        let playlists: Vec<CuratedPlaylist> =
+            query.build_query_as().fetch_all(self.pool.as_ref()).await.map_err(|e| {
                 error!("[TrendingMusic] Erreur récupération playlists: {}", e);
                 AppError::Database(e.to_string())
             })?;
@@ -261,7 +298,7 @@ impl TrendingMusicService {
 
         let mut query = sqlx::QueryBuilder::new(
             "SELECT * FROM music_tracks 
-             WHERE (title ILIKE $1 OR artist ILIKE $1 OR album ILIKE $1 OR tags && $2)"
+             WHERE (title ILIKE $1 OR artist ILIKE $1 OR album ILIKE $1 OR tags && $2)",
         );
 
         let search_pattern = format!("%{}%", query_text);
@@ -302,35 +339,39 @@ impl TrendingMusicService {
         query.push(" ORDER BY popularity_score DESC, trending_score DESC LIMIT ");
         query.push_bind(limit as i64);
 
-        let tracks: Vec<MusicTrack> = query
-            .build_query_as()
-            .fetch_all(self.pool.as_ref())
-            .await
-            .map_err(|e| {
+        let tracks: Vec<MusicTrack> =
+            query.build_query_as().fetch_all(self.pool.as_ref()).await.map_err(|e| {
                 error!("[TrendingMusic] Erreur recherche pistes: {}", e);
                 AppError::Database(e.to_string())
             })?;
 
-        info!("[TrendingMusic] {} pistes trouvées pour '{}'", tracks.len(), query_text);
+        info!(
+            "[TrendingMusic] {} pistes trouvées pour '{}'",
+            tracks.len(),
+            query_text
+        );
 
         Ok(tracks)
     }
 
     /// Récupère les pistes similaires
-    pub async fn get_similar_tracks(&self, track_id: &str, limit: Option<u32>) -> AppResult<Vec<MusicTrack>> {
+    pub async fn get_similar_tracks(
+        &self,
+        track_id: &str,
+        limit: Option<u32>,
+    ) -> AppResult<Vec<MusicTrack>> {
         let limit = limit.unwrap_or(10);
 
         // D'abord récupérer les IDs de pistes similaires
-        let similar_ids: Vec<String> = sqlx::query_scalar(
-            "SELECT similar_tracks FROM music_tracks WHERE id = $1"
-        )
-        .bind(track_id)
-        .fetch_one(self.pool.as_ref())
-        .await
-        .map_err(|e| {
-            error!("[TrendingMusic] Erreur récupération similar IDs: {}", e);
-            AppError::Database(e.to_string())
-        })?;
+        let similar_ids: Vec<String> =
+            sqlx::query_scalar("SELECT similar_tracks FROM music_tracks WHERE id = $1")
+                .bind(track_id)
+                .fetch_one(self.pool.as_ref())
+                .await
+                .map_err(|e| {
+                    error!("[TrendingMusic] Erreur récupération similar IDs: {}", e);
+                    AppError::Database(e.to_string())
+                })?;
 
         if similar_ids.is_empty() {
             return Ok(vec![]);
@@ -341,7 +382,7 @@ impl TrendingMusicService {
             "SELECT * FROM music_tracks 
              WHERE id = ANY($1) 
              ORDER BY popularity_score DESC 
-             LIMIT $2"
+             LIMIT $2",
         )
         .bind(&similar_ids)
         .bind(limit as i64)
@@ -389,7 +430,10 @@ impl TrendingMusicService {
             }
         }
 
-        info!("[TrendingMusic] ✅ {} pistes trending mises à jour au total", updated_count);
+        info!(
+            "[TrendingMusic] ✅ {} pistes trending mises à jour au total",
+            updated_count
+        );
         Ok(updated_count)
     }
 
@@ -409,7 +453,7 @@ impl TrendingMusicService {
             let result = sqlx::query(
                 "UPDATE music_tracks 
                  SET trending_score = $1, last_trending_update = NOW()
-                 WHERE source_track_id = $2 AND source = 'TikTok Trends'"
+                 WHERE source_track_id = $2 AND source = 'TikTok Trends'",
             )
             .bind(trending_score)
             .bind(track_id)
@@ -440,7 +484,7 @@ impl TrendingMusicService {
             let result = sqlx::query(
                 "UPDATE music_tracks 
                  SET trending_score = $1, last_trending_update = NOW()
-                 WHERE source_track_id = $2 AND source = 'Spotify'"
+                 WHERE source_track_id = $2 AND source = 'Spotify'",
             )
             .bind(trending_score)
             .bind(track_id)
@@ -463,16 +507,12 @@ impl TrendingMusicService {
         duration_minutes: u32,
     ) -> AppResult<Vec<MusicTrack>> {
         let target_mood = preferences.get("mood").and_then(|v| v.as_str()).unwrap_or("energetic");
-        let target_energy = preferences.get("energy").and_then(|v| v.as_f64()).unwrap_or(0.7) as f32;
+        let target_energy =
+            preferences.get("energy").and_then(|v| v.as_f64()).unwrap_or(0.7) as f32;
         let preferred_genres: Vec<String> = preferences
             .get("genres")
             .and_then(|v| v.as_array())
-            .map(|arr| {
-                arr.iter()
-                    .filter_map(|v| v.as_str())
-                    .map(|s| s.to_string())
-                    .collect()
-            })
+            .map(|arr| arr.iter().filter_map(|v| v.as_str()).map(|s| s.to_string()).collect())
             .unwrap_or_default();
 
         let target_duration_seconds = duration_minutes * 60;
@@ -483,7 +523,7 @@ impl TrendingMusicService {
         let mut query = sqlx::QueryBuilder::new(
             "SELECT * FROM music_tracks 
              WHERE is_explicit = false 
-             AND energy_level BETWEEN $1 AND $2"
+             AND energy_level BETWEEN $1 AND $2",
         );
 
         let energy_min = (target_energy - 0.2).max(0.0);
@@ -498,12 +538,12 @@ impl TrendingMusicService {
 
         query.push(" ORDER BY trending_score DESC, popularity_score DESC");
 
-        let available_tracks: Vec<MusicTrack> = query
-            .build_query_as()
-            .fetch_all(self.pool.as_ref())
-            .await
-            .map_err(|e| {
-                error!("[TrendingMusic] Erreur sélection pistes personnalisées: {}", e);
+        let available_tracks: Vec<MusicTrack> =
+            query.build_query_as().fetch_all(self.pool.as_ref()).await.map_err(|e| {
+                error!(
+                    "[TrendingMusic] Erreur sélection pistes personnalisées: {}",
+                    e
+                );
                 AppError::Database(e.to_string())
             })?;
 
@@ -521,8 +561,12 @@ impl TrendingMusicService {
             }
         }
 
-        info!("[TrendingMusic] Playlist générée: {} pistes, {}s pour utilisateur {}", 
-              selected_tracks.len(), current_duration, user_id);
+        info!(
+            "[TrendingMusic] Playlist générée: {} pistes, {}s pour utilisateur {}",
+            selected_tracks.len(),
+            current_duration,
+            user_id
+        );
 
         Ok(selected_tracks)
     }
@@ -549,18 +593,24 @@ impl TrendingMusicService {
         let genre = video_analysis["genre"].as_str().unwrap_or("pop");
 
         // Rechercher des pistes compatibles
-        let tracks = self.search_tracks(
-            "", // Pas de recherche textuelle
-            Some(genre),
-            Some(mood),
-            Some((energy - 0.2).max(0.0)),
-            Some((energy + 0.2).min(1.0)),
-            Some((tempo - 15).max(60)),
-            Some((tempo + 15).min(180)),
-            Some(20),
-        ).await?;
+        let tracks = self
+            .search_tracks(
+                "", // Pas de recherche textuelle
+                Some(genre),
+                Some(mood),
+                Some((energy - 0.2).max(0.0)),
+                Some((energy + 0.2).min(1.0)),
+                Some((tempo - 15).max(60)),
+                Some((tempo + 15).min(180)),
+                Some(20),
+            )
+            .await?;
 
-        info!("[TrendingMusic] {} pistes recommandées pour vidéo {}", tracks.len(), video_url);
+        info!(
+            "[TrendingMusic] {} pistes recommandées pour vidéo {}",
+            tracks.len(),
+            video_url
+        );
 
         Ok(tracks)
     }
@@ -580,7 +630,7 @@ impl TrendingMusicService {
         // Calculer les métadonnées
         let track_count = track_ids.len() as u32;
         let total_duration: u32 = sqlx::query_scalar(
-            "SELECT COALESCE(SUM(duration_seconds), 0) FROM music_tracks WHERE id = ANY($1)"
+            "SELECT COALESCE(SUM(duration_seconds), 0) FROM music_tracks WHERE id = ANY($1)",
         )
         .bind(&track_ids)
         .fetch_one(self.pool.as_ref())
@@ -600,7 +650,10 @@ impl TrendingMusicService {
             tempo_range: (60, 180),   // À calculer depuis les pistes
             track_count,
             total_duration_minutes: total_duration / 60,
-            cover_image_url: format!("https://storage.googleapis.com/yukpo-playlists/{}.jpg", playlist_id),
+            cover_image_url: format!(
+                "https://storage.googleapis.com/yukpo-playlists/{}.jpg",
+                playlist_id
+            ),
             is_premium: false,
             tracks: track_ids,
             created_by,
@@ -613,7 +666,7 @@ impl TrendingMusicService {
                 id, name, description, category, mood_tags, track_count,
                 total_duration_minutes, cover_image_url, is_premium, tracks,
                 created_by, popularity_score, created_at
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW())"
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW())",
         )
         .bind(&playlist.id)
         .bind(&playlist.name)
