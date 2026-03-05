@@ -32,6 +32,7 @@ use crate::routes::{
     analytics_routes::analytics_routes,
     // appliance_model_routes::appliance_model_routes, // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (mobile_routes)
     ar_routes::ar_routes, // ✅ NOUVEAU Phase 3.2: Routes pour preview AR/VR
+    assurance_routes::assurance_routes, // ✅ NOUVEAU: Routes assurance dédiées (recherche, devis IA, comparaison)
     auth_routes::auth_routes,
     autocomplete_routes::autocomplete_routes,
     bourse_livre_routes::bourse_livre_routes, // ✅ NOUVEAU 2025-01-27: Routes pour upload médias chat vers S3/Wasabi
@@ -325,6 +326,7 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
     let feature_flags = feature_flags_routes(state.clone()); // ✅ NOUVEAU: Routes pour feature flags (résout 404 mobile)
     let gpu = crate::routes::gpu_routes::gpu_routes(state.clone()); // ✅ NOUVEAU 2026-02-14: Routes pour gestion GPU GCP
     let hotel_management = hotel_room_management_routes(state.clone()); // ✅ 2026-03-01: Routes gestion hôtels/meublés (chambres, réservations, QR)
+    let assurance = assurance_routes(state.clone()); // ✅ NOUVEAU: Routes assurance dédiées (recherche, devis IA, comparaison)
     let followers = followers_routes(state.clone()); // ✅ NOUVEAU 2026-03-05: Routes pour système de suivi vendeurs
 
     let app = Router::new()
@@ -412,6 +414,7 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .merge(feature_flags) // ✅ NOUVEAU: Routes pour feature flags (résout 404 mobile)
         .merge(gpu) // ✅ NOUVEAU 2026-02-14: Routes pour gestion GPU GCP
         .merge(hotel_management) // ✅ 2026-03-01: Routes gestion hôtels/meublés (chambres, réservations, QR)
+        .merge(assurance) // ✅ NOUVEAU: Routes assurance dédiées (recherche, devis IA, comparaison)
         .merge(followers) // ✅ NOUVEAU 2026-03-05: Routes pour système de suivi vendeurs
         .merge(mobile_logs)
         .merge(navigation) // ✅ NOUVEAU: Routes navigation intelligente

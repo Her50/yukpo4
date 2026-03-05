@@ -123,42 +123,50 @@ const RechargeTokensScreen: React.FC = () => {
         ? rechargeOptions.find(opt => opt.id === selectedOption)?.amount || 0
         : parseInt(customAmount) || 0;
 
-      // Appel API pour initier le paiement
-      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001'}/api/payments/initiate`, {
+      // Appel API pour recharger les tokens (route corrigée)
+      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001'}/api/tokens/recharge`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${user?.token}`
         },
         body: JSON.stringify({
-          amount_xaf: amount,
-          payment_method: selectedPaymentMethod,
-          currency: 'XAF',
-          phone_number: (selectedPaymentMethod === 'mtn_money' || selectedPaymentMethod === 'orange_money') ? phoneNumber : null
+          amount: amount,
+          payment_method: {
+            type: selectedPaymentMethod,
+            phone_number: phoneNumber,
+            country_code: '+237',
+          },
+          description: `Recharge de ${amount} XAF via ${selectedPaymentMethod}`
         })
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Erreur lors de l\'initiation du paiement');
+        throw new Error(errorData.message || 'Erreur lors de la recharge');
       }
 
       const paymentData = await response.json();
 
-      // Calculer les tokens et bonus
-      const tokens = amount; // 1 XAF = 1 token
-      const bonus = amount >= 10000 ? Math.floor(amount * 0.2) :
-        amount >= 5000 ? Math.floor(amount * 0.1) :
-          amount >= 2000 ? Math.floor(amount * 0.05) : 0;
+      if (!paymentData.success) {
+        throw new Error(paymentData.message || 'Erreur lors de la recharge');
+      }
+
+      // Les tokens sont déjà crédités par le backend, utiliser les données de la réponse
+      const tokens = paymentData.data.amount; // Montant en XAF = tokens
+      const bonus = tokens >= 10000 ? Math.floor(tokens * 0.2) :
+        tokens >= 5000 ? Math.floor(tokens * 0.1) :
+          tokens >= 2000 ? Math.floor(tokens * 0.05) : 0;
+      const totalTokens = tokens + bonus;
 
       // Générer le reçu
       const receipt = {
-        id: paymentData.payment_id,
+        id: paymentData.data.transaction_id,
         amount: amount,
         tokens: tokens,
         bonus: bonus,
         paymentMethod: paymentMethods.find(method => method.id === selectedPaymentMethod)?.name || 'Méthode de paiement',
-        transactionId: paymentData.payment_id,
+        transactionId: paymentData.data.transaction_id,
         date: new Date().toISOString(),
         status: 'completed' as const,
         instructions: paymentData.instructions
@@ -166,6 +174,13 @@ const RechargeTokensScreen: React.FC = () => {
 
       setReceiptData(receipt);
       setShowReceiptModal(true);
+
+      // Afficher un message de succès
+      Alert.alert(
+        '✅ Recharge réussie',
+        `Votre compte a été crédité de ${totalTokens.toLocaleString()} tokens (${tokens.toLocaleString()} XAF${bonus > 0 ? ` + ${bonus.toLocaleString()} bonus` : ''})`,
+        [{ text: 'OK' }]
+      );
 
       // Réinitialiser le formulaire
       setSelectedOption(null);

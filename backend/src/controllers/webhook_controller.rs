@@ -359,25 +359,45 @@ async fn process_payment_webhook(
     .await
     .map_err(|e| AppError::Internal(format!("Erreur mise à jour paiement: {}", e)))?;
 
-    // Si le paiement est réussi, créditer les tokens
+    // Si le paiement est réussi, créditer les tokens via le PaymentService
     if internal_status == "success" {
-        let tokens_to_add = payment_attempt.amount_xaf;
+        // Utiliser le PaymentService pour créditer les tokens (bonus inclus)
+        use crate::services::payment_service::PaymentService;
 
-        sqlx::query("UPDATE users SET tokens_balance = tokens_balance + $1 WHERE id = $2")
-            .bind(tokens_to_add)
-            .bind(payment_attempt.user_id)
-            .execute(&state.pg)
+        let payment_service = PaymentService::new(state.pg.clone());
+
+        // Ajouter les tokens avec bonus calculé automatiquement
+        payment_service
+            .add_tokens_to_user(payment_attempt.user_id, payment_attempt.amount_xaf as f64)
             .await
             .map_err(|e| AppError::Internal(format!("Erreur crédit tokens: {}", e)))?;
 
         log::info!(
-            "[process_payment_webhook] {} tokens crédités pour utilisateur {}",
-            tokens_to_add,
+            "[process_payment_webhook] {} XAF crédités pour utilisateur {} (avec bonus automatique)",
+            payment_attempt.amount_xaf,
             payment_attempt.user_id
         );
 
-        // Envoyer une notification à l'utilisateur (optionnel)
-        // TODO: Implémenter le système de notifications
+        // Envoyer une notification push à l'utilisateur
+        if let Err(e) = crate::services::push_notification_service::send_push_notification(
+            &state.pg,
+            payment_attempt.user_id,
+            "✅ Recharge réussie".to_string(),
+            format!(
+                "Votre recharge de {} XAF a été confirmée",
+                payment_attempt.amount_xaf
+            ),
+            Some(serde_json::json!({
+                "type": "recharge_completed",
+                "amount": payment_attempt.amount_xaf,
+                "transaction_id": transaction_id
+            })),
+            Some("default".to_string()),
+        )
+        .await
+        {
+            log::warn!("[process_payment_webhook] Erreur notification push: {}", e);
+        }
     }
 
     log::info!(

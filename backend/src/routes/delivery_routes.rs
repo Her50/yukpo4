@@ -4755,11 +4755,12 @@ async fn delete_proof_media(
         ));
     }
 
-    // Note: delivery_proof_media table n'existe pas encore dans les migrations
-    // TODO: Créer la migration pour cette table
+    // Supprimer le média de la base de données
     let deleted = sqlx::query(
         r#"
-        SELECT 1 WHERE FALSE
+        DELETE FROM delivery_proof_media 
+        WHERE id = $1 AND delivery_id = $2
+        RETURNING id
         "#,
     )
     .bind(media_id)
@@ -4775,6 +4776,7 @@ async fn delete_proof_media(
     Ok(Json(json!({
         "success": true,
         "message": "Média supprimé avec succès",
+        "media_id": media_id
     })))
 }
 

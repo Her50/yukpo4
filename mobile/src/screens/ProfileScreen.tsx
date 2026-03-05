@@ -293,6 +293,13 @@ const ProfileScreen: React.FC = () => {
       description: 'Ajouter des tokens à votre compte'
     },
     {
+      title: '🎥 Démarrer un Live',
+      icon: 'radio',
+      color: '#DC2626',
+      route: 'StartLive',
+      description: 'Créer et démarrer une session live'
+    },
+    {
       title: 'Mes Suivis',
       icon: 'heart',
       color: '#FF2D55',

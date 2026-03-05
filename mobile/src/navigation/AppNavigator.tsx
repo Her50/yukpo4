@@ -188,6 +188,7 @@ import MesLivresScreen from '../screens/specialized/MesLivresScreen';
 // ✅ NOUVEAU 2025-01-28: Écrans Orientation scolaire
 import ConcoursEntreeScreen from '../screens/orientation/ConcoursEntreeScreen';
 import ConferencesLivesScreen from '../screens/orientation/ConferencesLivesScreen';
+// ✅ NOUVEAU 2026-03-05: Écrans Live Streaming
 import CreateEtablissementScreen from '../screens/orientation/CreateEtablissementScreen';
 import EtablissementDetailsScreen from '../screens/orientation/EtablissementDetailsScreen';
 import EtablissementSearchScreen from '../screens/orientation/EtablissementSearchScreen';
@@ -219,6 +220,7 @@ import AutoServicesResultsScreen from '../screens/specialized/AutoServicesResult
 import AutoServicesSearchScreen from '../screens/specialized/AutoServicesSearchScreen';
 import BayamSelamResultsScreen from '../screens/specialized/BayamSelamResultsScreen';
 import BayamSelamSearchScreen from '../screens/specialized/BayamSelamSearchScreen';
+import InsuranceQuoteRequestScreen from '../screens/specialized/InsuranceQuoteRequestScreen';
 import InsuranceServicesResultsScreen from '../screens/specialized/InsuranceServicesResultsScreen';
 import InsuranceServicesSearchScreen from '../screens/specialized/InsuranceServicesSearchScreen';
 import MenuWeekCalendarScreen from '../screens/specialized/MenuWeekCalendarScreen';
@@ -343,6 +345,10 @@ const FournituresScolairesScreenWithSafeArea = withNavigatorSafeArea(Fournitures
 const ConcoursEntreeScreenWithSafeArea = withNavigatorSafeArea(ConcoursEntreeScreen);
 const ExperiencesEtudiantsScreenWithSafeArea = withNavigatorSafeArea(ExperiencesEtudiantsScreen);
 const ConferencesLivesScreenWithSafeArea = withNavigatorSafeArea(ConferencesLivesScreen);
+// ✅ NOUVEAU 2026-03-05: Live Streaming screens
+const StartLiveScreenWithSafeArea = withNavigatorSafeArea(StartLiveScreen);
+const LiveHostScreenWithSafeArea = withNavigatorSafeArea(LiveHostScreen);
+const LivesListScreenWithSafeArea = withNavigatorSafeArea(LivesListScreen);
 const MesLivresScreenWithSafeArea = withNavigatorSafeArea(MesLivresScreen);
 const TrocMatchingScreenWithSafeArea = withNavigatorSafeArea(TrocMatchingScreen);
 const TrocDetailsScreenWithSafeArea = withNavigatorSafeArea(TrocDetailsScreen);
@@ -374,6 +380,7 @@ const BayamSelamResultsScreenWithSafeArea = withNavigatorSafeArea(BayamSelamResu
 const AutoServicesSearchScreenWithSafeArea = withNavigatorSafeArea(AutoServicesSearchScreen);
 const InsuranceServicesSearchScreenWithSafeArea = withNavigatorSafeArea(InsuranceServicesSearchScreen);
 const InsuranceServicesResultsScreenWithSafeArea = withNavigatorSafeArea(InsuranceServicesResultsScreen);
+const InsuranceQuoteRequestScreenWithSafeArea = withNavigatorSafeArea(InsuranceQuoteRequestScreen);
 const AutoServicesResultsScreenWithSafeArea = withNavigatorSafeArea(AutoServicesResultsScreen);
 const ReservationScreenWithSafeArea = withNavigatorSafeArea(ReservationScreen);
 const MesReservationsScreenWithSafeArea = withNavigatorSafeArea(MesReservationsScreen);
@@ -1577,6 +1584,11 @@ const SecondaryStack = () => {
         options={{ title: 'Rechercher une assurance' }}
       />
       <Stack.Screen
+        name="InsuranceQuoteRequest"
+        component={InsuranceQuoteRequestScreenWithSafeArea}
+        options={{ title: 'Demande de devis IA' }}
+      />
+      <Stack.Screen
         name="InsuranceServicesResults"
         component={InsuranceServicesResultsScreenWithSafeArea}
         options={{ title: 'Résultats Assurance' }}
@@ -1737,6 +1749,32 @@ const SecondaryStack = () => {
         options={{
           ...defaultScreenOptions,
           title: '⚡ Flash Promotionnels',
+        }}
+      />
+      {/* ✅ NOUVEAU 2026-03-05: Live Streaming screens */}
+      <Stack.Screen
+        name="StartLive"
+        component={StartLiveScreenWithSafeArea}
+        options={{
+          ...defaultScreenOptions,
+          title: '🎥 Démarrer un Live',
+        }}
+      />
+      <Stack.Screen
+        name="LiveHost"
+        component={LiveHostScreenWithSafeArea}
+        options={{
+          ...defaultScreenOptions,
+          title: '🎥 Live en cours',
+          headerShown: false, // Hide header for live streaming
+        }}
+      />
+      <Stack.Screen
+        name="LivesList"
+        component={LivesListScreenWithSafeArea}
+        options={{
+          ...defaultScreenOptions,
+          title: '🎥 Lives',
         }}
       />
       <Stack.Screen

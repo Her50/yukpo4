@@ -1,5 +1,6 @@
 pub mod admin_user_controller;
 pub mod assistance_controller;
+pub mod assurance_controller; // ✅ NOUVEAU: Contrôleur assurance dédié (recherche, devis IA, comparaison)
 pub mod async_upload_controller; // ✅ NOUVEAU 2025-01-27: Contrôleur pour upload asynchrone
 pub mod audio_library_controller;
 pub mod auth_controller;

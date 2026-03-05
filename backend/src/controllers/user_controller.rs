@@ -285,12 +285,69 @@ pub async fn purchase_pack(
     Err(AppError::NotImplemented("Fonction à implémenter".into()))
 }
 
+#[derive(Deserialize)]
+pub struct RechargeTokensRequest {
+    pub amount: f64,
+    pub payment_method: serde_json::Value,
+    pub description: Option<String>,
+}
+
 pub async fn recharge_tokens(
-    Extension(_user): Extension<AuthenticatedUser>,
-    State(_state): State<Arc<AppState>>,
-    Json(_req): Json<serde_json::Value>,
+    Extension(user): Extension<AuthenticatedUser>,
+    State(state): State<Arc<AppState>>,
+    Json(req): Json<RechargeTokensRequest>,
 ) -> AppResult<Json<serde_json::Value>> {
-    Err(AppError::NotImplemented("Fonction à implémenter".into()))
+    use crate::services::payment_service::{PaymentRequest, PaymentService};
+
+    info!(
+        "Recharge tokens pour user_id={}, amount={} XAF",
+        user.id, req.amount
+    );
+
+    // Valider le montant minimum (100 XAF minimum)
+    if req.amount < 100.0 {
+        return Err(AppError::BadRequest(
+            "Le montant minimum de recharge est de 100 XAF".into(),
+        ));
+    }
+
+    // Valider le montant maximum (1 000 000 XAF maximum)
+    if req.amount > 1_000_000.0 {
+        return Err(AppError::BadRequest(
+            "Le montant maximum de recharge est de 1 000 000 XAF".into(),
+        ));
+    }
+
+    // Créer la requête de paiement
+    let payment_request = PaymentRequest {
+        user_id: user.id,
+        amount: req.amount,
+        currency: "XAF".to_string(),
+        payment_method: serde_json::from_value(req.payment_method)
+            .map_err(|e| AppError::BadRequest(format!("Méthode de paiement invalide: {}", e)))?,
+        description: req.description.or_else(|| Some(format!("Recharge de {} XAF", req.amount))),
+    };
+
+    // Traiter le paiement
+    let payment_service = PaymentService::new(state.pg.clone());
+    let payment_response = payment_service
+        .process_payment(payment_request)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur lors du traitement du paiement: {}", e)))?;
+
+    // Retourner la réponse avec les détails de la transaction
+    Ok(Json(serde_json::json!({
+        "success": true,
+        "message": format!("Recharge de {} XAF initiée avec succès", req.amount),
+        "transaction_id": payment_response.transaction_id,
+        "status": payment_response.status,
+        "amount": payment_response.amount,
+        "currency": payment_response.currency,
+        "payment_method": payment_response.payment_method,
+        "created_at": payment_response.created_at,
+        "reference": payment_response.reference,
+        "gateway_response": payment_response.gateway_response
+    })))
 }
 
 #[derive(Deserialize)]

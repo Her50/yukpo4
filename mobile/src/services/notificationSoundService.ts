@@ -23,7 +23,7 @@ class NotificationSoundService {
             // Configurer le mode audio pour les notifications
             await Audio.setAudioModeAsync({
                 playsInSilentModeIOS: true,
-                staysActiveInBackground: false,
+                staysActiveInBackground: true, // ✅ Activer pour les coursiers
                 shouldDuckAndroid: true,
             });
 
@@ -52,17 +52,39 @@ class NotificationSoundService {
             let soundSource: any;
 
             try {
-                // Fichier local existant : delivery_alert.mp3
-                soundSource = require('../../assets/sounds/delivery_alert.mp3');
-            } catch {
-                // Fallback en ligne si le fichier local n'est pas trouvé
+                // ✅ AMÉLIORATION: Utiliser des fichiers audio distincts pour chaque type
                 switch (type) {
                     case 'order':
+                        soundSource = require('../../assets/sounds/order_notification.mp3');
+                        break;
                     case 'delivery_request':
-                        soundSource = { uri: 'https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg' };
+                        soundSource = require('../../assets/sounds/delivery_request.mp3');
                         break;
                     case 'courier':
+                        soundSource = require('../../assets/sounds/courier_alert.mp3');
+                        break;
                     case 'ready':
+                        soundSource = require('../../assets/sounds/ready_notification.mp3');
+                        break;
+                    default:
+                        soundSource = require('../../assets/sounds/delivery_alert.mp3');
+                        break;
+                }
+            } catch {
+                // Fallback en ligne si les fichiers locaux ne sont pas trouvés
+                switch (type) {
+                    case 'order':
+                        soundSource = { uri: 'https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg' };
+                        break;
+                    case 'delivery_request':
+                        soundSource = { uri: 'https://actions.google.com/sounds/v1/notifications/ting.ogg' };
+                        break;
+                    case 'courier':
+                        soundSource = { uri: 'https://actions.google.com/sounds/v1/alarms/beep_short.ogg' };
+                        break;
+                    case 'ready':
+                        soundSource = { uri: 'https://actions.google.com/sounds/v1/notifications/notification.ogg' };
+                        break;
                     default:
                         soundSource = { uri: 'https://actions.google.com/sounds/v1/alarms/beep_short.ogg' };
                         break;

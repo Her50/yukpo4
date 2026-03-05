@@ -412,7 +412,7 @@ const LaboratoireHomeScreen: React.FC = () => {
                             )}
                             {/* Bouton de recherche */}
                             <TouchableOpacity
-                                style={[styles.searchButton, (!searchQuery.trim() && !autocompleteQuery.trim()) && styles.searchButtonDisabled]}
+                                style={[styles.headerSearchButton, (!searchQuery.trim() && !autocompleteQuery.trim()) && styles.headerSearchButtonDisabled]}
                                 onPress={handleSearch}
                                 disabled={!searchQuery.trim() && !autocompleteQuery.trim()}
                                 activeOpacity={0.7}
@@ -807,7 +807,7 @@ const AIModal: React.FC<AIModalProps> = ({
                         ) : (
                             <>
                                 {selectedImage && (
-                                    <Image source={{ uri: selectedImage }} style={styles.previewImage} />
+                                    <Image source={{ uri: selectedImage }} style={styles.previewImage} resizeMode="contain" />
                                 )}
                                 {loading ? (
                                     <View style={styles.loadingContainer}>
@@ -952,7 +952,7 @@ const styles = StyleSheet.create({
     clearButton: {
         padding: 4,
     },
-    searchButton: {
+    headerSearchButton: {
         width: 40,
         height: 40,
         borderRadius: 20,
@@ -961,7 +961,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginLeft: 8,
     },
-    searchButtonDisabled: {
+    headerSearchButtonDisabled: {
         backgroundColor: '#D1D5DB',
         opacity: 0.5,
     },
@@ -1199,17 +1199,11 @@ const styles = StyleSheet.create({
         color: '#111827',
         marginBottom: 8,
     },
-    examItem: {
-        fontSize: 14,
-        color: '#6B7280',
-        marginBottom: 4,
-    },
     previewImage: {
         width: '100%',
         height: 300,
         borderRadius: 12,
         marginBottom: 20,
-        resizeMode: 'contain',
     },
     loadingContainer: {
         padding: 32,

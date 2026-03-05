@@ -1017,6 +1017,28 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
   // ✅ CORRIGÉ 2026-01-22: Extraire le prix depuis productData ET product (si disponible)
   const displayPrice = extractPrice(productData) || extractPrice(product) || 0;
 
+  // ✅ NOUVEAU 2026-03-05: Extraire les données de promotion flash active
+  const isEnPromotion = !!(productData?.en_promotion || product?.en_promotion || productData?.promotion_active || product?.promotion_active);
+  const promoDiscountType = productData?.promo_discount_type || product?.promo_discount_type || '';
+  const promoDiscountValue = typeof (productData?.promo_discount_value ?? product?.promo_discount_value) === 'number'
+    ? (productData?.promo_discount_value ?? product?.promo_discount_value)
+    : parseFloat(productData?.promo_discount_value || product?.promo_discount_value || '0') || 0;
+  const promoTitle = productData?.promo_title || product?.promo_title || 'Promo';
+  const promoEndsAt = productData?.promo_ends_at || product?.promo_ends_at || '';
+
+  // ✅ NOUVEAU 2026-03-05: Calculer le prix promotionnel
+  const promoPrice = useMemo(() => {
+    if (!isEnPromotion || displayPrice <= 0) return 0;
+    if (promoDiscountType === 'free') return 0;
+    if (promoDiscountType === 'percentage' && promoDiscountValue > 0) {
+      return Math.round(displayPrice * (1 - promoDiscountValue / 100));
+    }
+    if (promoDiscountType === 'fixed' && promoDiscountValue > 0) {
+      return Math.max(0, displayPrice - promoDiscountValue);
+    }
+    return 0;
+  }, [isEnPromotion, displayPrice, promoDiscountType, promoDiscountValue]);
+
   // ✅ CORRIGÉ 2026-01-22: Extraire la devise depuis toutes les sources possibles
   const extractDevise = (data: any): string => {
     if (!data) return 'XAF';
@@ -1693,15 +1715,51 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
                 </Text>
 
                 {/* ✅ NOUVEAU 2026-03-XX: Prix affiché directement sous le nom (Amazon-style) */}
+                {/* ✅ NOUVEAU 2026-03-05: Badge promotion flash si produit en promo */}
+                {isEnPromotion && (
+                  <View style={styles.promoBadgeRow}>
+                    <View style={styles.promoBadge}>
+                      <SafeIcon name="zap" size={10} color="#FFFFFF" />
+                      <Text style={styles.promoBadgeText}>
+                        {promoDiscountType === 'free' ? 'GRATUIT' :
+                          promoDiscountType === 'percentage' ? `-${promoDiscountValue}%` :
+                            promoDiscountType === 'fixed' ? `-${promoDiscountValue.toLocaleString()} ${devise}` :
+                              promoTitle}
+                      </Text>
+                    </View>
+                    {promoEndsAt ? (
+                      <Text style={styles.promoEndsText}>
+                        Fin: {(() => { try { const d = new Date(promoEndsAt); return `${d.getDate()}/${d.getMonth() + 1}`; } catch { return ''; } })()}
+                      </Text>
+                    ) : null}
+                  </View>
+                )}
                 <View style={styles.priceInlineRow}>
-                  {hasVariant && variants.length > 0 && displayPrice > 0 && (
+                  {hasVariant && variants.length > 0 && displayPrice > 0 && !isEnPromotion && (
                     <Text style={styles.priceInlineFrom}>À partir de </Text>
                   )}
-                  <Text style={styles.priceInline}>
-                    {displayPrice > 0 ? `${displayPrice.toLocaleString()}` : 'Prix sur demande'}
-                  </Text>
-                  {displayPrice > 0 && (
-                    <Text style={styles.priceInlineDevise}> {devise}</Text>
+                  {/* ✅ NOUVEAU 2026-03-05: Si en promo, afficher ancien prix barré + nouveau prix en rouge */}
+                  {isEnPromotion && displayPrice > 0 ? (
+                    <>
+                      <Text style={styles.priceInlineStrikethrough}>
+                        {displayPrice.toLocaleString()}
+                      </Text>
+                      <Text style={styles.priceInlinePromo}>
+                        {promoDiscountType === 'free' ? 'GRATUIT' : `${promoPrice.toLocaleString()}`}
+                      </Text>
+                      {promoDiscountType !== 'free' && (
+                        <Text style={styles.priceInlineDevisePromo}> {devise}</Text>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <Text style={styles.priceInline}>
+                        {displayPrice > 0 ? `${displayPrice.toLocaleString()}` : 'Prix sur demande'}
+                      </Text>
+                      {displayPrice > 0 && (
+                        <Text style={styles.priceInlineDevise}> {devise}</Text>
+                      )}
+                    </>
                   )}
                   {reviewsCount > 0 && (
                     <View style={styles.ratingInline}>
@@ -2424,6 +2482,52 @@ const styles = StyleSheet.create({
   priceInlineFrom: {
     fontSize: 11,
     color: '#565959',
+  },
+  // ✅ NOUVEAU 2026-03-05: Styles pour les promotions flash
+  promoBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 2,
+    marginBottom: 1,
+  },
+  promoBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#DC2626',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    gap: 3,
+  },
+  promoBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.3,
+  },
+  promoEndsText: {
+    fontSize: 10,
+    color: '#9CA3AF',
+    fontStyle: 'italic',
+  },
+  priceInlineStrikethrough: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#9CA3AF',
+    textDecorationLine: 'line-through',
+    marginRight: 4,
+  },
+  priceInlinePromo: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#DC2626',
+    letterSpacing: -0.3,
+  },
+  priceInlineDevisePromo: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#DC2626',
   },
   ratingInline: {
     flexDirection: 'row',

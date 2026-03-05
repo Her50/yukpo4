@@ -1363,6 +1363,14 @@ const MesServicesScreen: React.FC = () => {
                 <Text style={[dynamicStyles.menuItemText, { color: colors.primary }]}>Mes Vidéos Créées</Text>
               </TouchableOpacity>
 
+              {/* ✅ NOUVEAU: Démarrer un Live */}
+              <TouchableOpacity
+                style={[dynamicStyles.menuItem, { backgroundColor: '#FEF2F2' }]}
+                onPress={() => (navigation as any).navigate('StartLive')}
+              >
+                <SafeIcon name="radio" size={18} color="#DC2626" />
+                <Text style={[dynamicStyles.menuItemText, { color: '#DC2626' }]}>🎥 Démarrer un Live</Text>
+              </TouchableOpacity>
 
               {/* ✅ NOUVEAU: Analytiques Vidéos */}
               <TouchableOpacity
@@ -1945,6 +1953,14 @@ const MesServicesScreen: React.FC = () => {
                   toaster.error('Impossible d\'ouvrir Mes Vidéos');
                 }
               },
+            },
+            {
+              id: 'start-live',
+              label: 'Démarrer un Live',
+              icon: 'radio',
+              section: 'Contenu',
+              color: '#DC2626',
+              onPress: () => (navigation as any).navigate('StartLive'),
             },
             {
               id: 'video-analytics',

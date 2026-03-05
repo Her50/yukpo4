@@ -1476,6 +1476,90 @@ pub async fn rechercher_besoin_direct(
                         }
                     }
 
+                    // ✅ NOUVEAU 2026-03-05: Enrichir avec les flash promotions actives
+                    // Les flash promos sont stockées dans services.data.promotion.flash_promos
+                    let now_str = chrono::Utc::now().to_rfc3339();
+                    let active_flash_promos: Vec<&Value> = matched_service
+                        .data
+                        .get("promotion")
+                        .and_then(|p| p.get("flash_promos"))
+                        .and_then(|fp| fp.as_array())
+                        .map(|arr| {
+                            arr.iter()
+                                .filter(|promo| {
+                                    let is_active = promo
+                                        .get("is_active")
+                                        .and_then(|v| v.as_bool())
+                                        .unwrap_or(false);
+                                    let ends_at =
+                                        promo.get("ends_at").and_then(|v| v.as_str()).unwrap_or("");
+                                    let starts_at = promo
+                                        .get("starts_at")
+                                        .and_then(|v| v.as_str())
+                                        .unwrap_or("");
+                                    is_active
+                                        && starts_at <= now_str.as_str()
+                                        && ends_at > now_str.as_str()
+                                })
+                                .collect()
+                        })
+                        .unwrap_or_default();
+
+                    if !active_flash_promos.is_empty() {
+                        if let Some(pidx) = product_index {
+                            // Trouver la première promo applicable à ce produit
+                            let applicable_promo = active_flash_promos.iter().find(|promo| {
+                                if let Some(indexes) =
+                                    promo.get("product_indexes").and_then(|v| v.as_array())
+                                {
+                                    indexes
+                                        .iter()
+                                        .any(|idx| idx.as_i64().map(|i| i as i32) == Some(pidx))
+                                } else {
+                                    true // Si pas d'indexes spécifiés, s'applique à tous
+                                }
+                            });
+
+                            if let Some(promo) = applicable_promo {
+                                if let Some(obj) = enriched_product.as_object_mut() {
+                                    obj.insert("en_promotion".to_string(), json!(true));
+                                    obj.insert("promotion_active".to_string(), json!(true));
+                                    obj.insert(
+                                        "promo_title".to_string(),
+                                        promo.get("title").cloned().unwrap_or(json!("Promotion")),
+                                    );
+                                    obj.insert(
+                                        "promo_discount_type".to_string(),
+                                        promo
+                                            .get("discount_type")
+                                            .cloned()
+                                            .unwrap_or(json!("percentage")),
+                                    );
+                                    obj.insert(
+                                        "promo_discount_value".to_string(),
+                                        promo.get("discount_value").cloned().unwrap_or(json!(0)),
+                                    );
+                                    obj.insert(
+                                        "promo_ends_at".to_string(),
+                                        promo.get("ends_at").cloned().unwrap_or(json!("")),
+                                    );
+                                    if let Some(stock_cap) = promo.get("stock_cap") {
+                                        obj.insert(
+                                            "promo_stock_cap".to_string(),
+                                            stock_cap.clone(),
+                                        );
+                                    }
+                                    if let Some(availability) = promo.get("availability") {
+                                        obj.insert(
+                                            "promo_availability".to_string(),
+                                            availability.clone(),
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     enriched_products.push(enriched_product);
                 }
 

@@ -331,6 +331,13 @@ const DashboardPrestataireScreen: React.FC = () => {
         <TouchableOpacity style={styles.actionButton}>
           <Text style={styles.actionButtonText}>Voir les statistiques d\u00e9taill\u00e9es</Text>
         </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.actionButton, styles.liveButton]}
+          onPress={() => navigation.navigate('StartLive' as any)}
+        >
+          <Text style={styles.actionButtonText}>🎥 Démarrer un Live</Text>
+        </TouchableOpacity>
       </View>
     </ScrollView>
   );
@@ -557,6 +564,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: theme.colors.text,
     fontWeight: '500',
+  },
+  liveButton: {
+    backgroundColor: '#DC2626',
+    borderWidth: 1,
+    borderColor: '#DC2626',
   },
 });
 

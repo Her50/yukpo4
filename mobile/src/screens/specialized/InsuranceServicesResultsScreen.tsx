@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import SafeIcon from '../../components/SafeIcon';
 import { NativeCard } from '../../components/SafeNativeDesign';
-import { apiGet } from '../../services/api';
+import assuranceService, { InsuranceSearchFilters } from '../../services/assuranceService';
 import { modernColors } from '../../theme/modernTheme';
 
 interface InsuranceResult {
@@ -26,6 +26,9 @@ interface InsuranceResult {
     price?: number;
     distance_km?: number;
     rating?: number;
+    compagnie?: string;
+    couvertures?: string[];
+    prestataire?: string;
 }
 
 const InsuranceServicesResultsScreen: React.FC = () => {
@@ -45,40 +48,34 @@ const InsuranceServicesResultsScreen: React.FC = () => {
     const loadResults = async () => {
         try {
             setLoading(true);
-            const queryParams = new URLSearchParams();
-            queryParams.append('category', 'assurance');
-            queryParams.append('actif', 'true');
-            if (filters.prix_min) queryParams.append('min_price', filters.prix_min.toString());
-            if (filters.prix_max) queryParams.append('max_price', filters.prix_max.toString());
+            // ✅ Utiliser le nouveau endpoint dédié /api/assurance/search
+            const searchFilters: InsuranceSearchFilters = {};
+            if (filters.type_assurance) searchFilters.type_assurance = filters.type_assurance;
+            if (filters.compagnie) searchFilters.compagnie = filters.compagnie;
+            if (filters.ville) searchFilters.ville = filters.ville;
+            if (filters.quartier) searchFilters.quartier = filters.quartier;
+            if (filters.gps_lat) searchFilters.gps_lat = filters.gps_lat;
+            if (filters.gps_lon) searchFilters.gps_lon = filters.gps_lon;
+            if (filters.rayon_km) searchFilters.rayon_km = filters.rayon_km;
+            if (filters.prix_min) searchFilters.prix_min = filters.prix_min;
+            if (filters.prix_max) searchFilters.prix_max = filters.prix_max;
 
-            const response = await apiGet(`/services/filter?${queryParams.toString()}`);
-            // response.data contains the backend JSON (array of {id, data, is_active})
-            const backendData = response?.data as any;
-            let rawResults = Array.isArray(backendData) ? backendData : [];
+            const rawResults = await assuranceService.searchInsurance(searchFilters);
 
-            // Transformer en format affichable + filtrage client-side
-            let mapped = rawResults.map((item: any) => {
-                const d = item.data || {};
-                return {
-                    id: item.id,
-                    name: d.titre_service || d.nom || d.title || 'Service assurance',
-                    description: d.description || d.details || '',
-                    category: d.type_assurance || d.sous_categorie || d.category || 'assurance',
-                    address: d.adresse || d.ville || '',
-                    phone: d.telephone || d.phone || '',
-                    price: parseFloat(d.price || d.prix || '0') || undefined,
-                    ville: (d.ville || '').toLowerCase(),
-                    quartier: (d.quartier || '').toLowerCase(),
-                    compagnie: (d.compagnie || d.nom_compagnie || '').toLowerCase(),
-                    type_assurance: (d.type_assurance || '').toLowerCase(),
-                };
-            });
-
-            // Filtrage client-side pour les champs non supportés par le backend
-            if (filters.ville) mapped = mapped.filter((s: any) => s.ville.includes(filters.ville.toLowerCase()));
-            if (filters.quartier) mapped = mapped.filter((s: any) => s.quartier.includes(filters.quartier.toLowerCase()));
-            if (filters.compagnie) mapped = mapped.filter((s: any) => s.compagnie.includes(filters.compagnie.toLowerCase()));
-            if (filters.type_assurance) mapped = mapped.filter((s: any) => s.type_assurance.includes(filters.type_assurance.toLowerCase()));
+            // Transformer en format affichable
+            const mapped = rawResults.map((item: any) => ({
+                id: item.id,
+                name: item.titre || 'Service assurance',
+                description: item.description || '',
+                category: item.type_assurance || 'assurance',
+                address: item.adresse || item.ville || '',
+                phone: item.telephone || '',
+                price: item.prix || undefined,
+                distance_km: item.distance_km,
+                compagnie: item.compagnie || '',
+                couvertures: item.couvertures || [],
+                prestataire: item.prestataire || '',
+            }));
 
             setResults(mapped);
         } catch (error: any) {

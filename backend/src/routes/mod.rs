@@ -5,6 +5,7 @@ pub mod ai_chat_routes;
 pub mod analytics_routes;
 pub mod appliance_model_routes; // ✅ Routes pour modèles d'appareils électroménagers
 pub mod ar_routes;
+pub mod assurance_routes; // ✅ NOUVEAU: Routes assurance dédiées (recherche, devis IA, comparaison)
 pub mod auth_routes;
 pub mod autocomplete_routes; // ✅ NOUVEAU: Routes pour autocomplete characteristics
 pub mod bourse_livre_routes;

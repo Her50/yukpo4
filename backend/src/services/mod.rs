@@ -5,6 +5,7 @@ pub mod alert_service;
 pub mod analytics_service; // ✅ Phase 10 - Service d'analytics pour prestataires
 pub mod app_ia;
 pub mod assistance;
+pub mod assurance_ai_service; // ✅ NOUVEAU: Service IA assurance (devis, comparaison, recommandations)
 pub mod async_upload_service; // ✅ NOUVEAU 2025-01-27 : Service d'upload asynchrone
 pub mod audio_analysis_service;
 pub mod audio_extraction_service;
