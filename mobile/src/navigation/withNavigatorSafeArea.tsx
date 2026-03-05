@@ -17,6 +17,13 @@ export function withNavigatorSafeArea<P>(
 ): React.FC<P> {
   const { edges = ['top'], backgroundColor = modernColors.background } = options;
 
+  if (!Component) {
+    console.error('[withNavigatorSafeArea] Component is undefined! Check imports.');
+    const FallbackComponent: React.FC<P> = () => null;
+    FallbackComponent.displayName = 'withNavigatorSafeArea(MISSING)';
+    return FallbackComponent;
+  }
+
   const WrappedComponent: React.FC<P> = (props) => {
     if (Component.disableNavigatorSafeArea) {
       return <Component {...props} />;

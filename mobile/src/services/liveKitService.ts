@@ -4,8 +4,23 @@
  * ✅ INTÉGRÉ: SDK LiveKit React Native
  */
 
-import { DataPacket_Kind, RemoteParticipant, Room, RoomEvent } from 'livekit-client';
 import { apiGet, apiPost } from './api';
+
+// ✅ CORRIGÉ: Import conditionnel pour livekit-client (SDK browser incompatible avec Hermes)
+let Room: any = null;
+let RoomEvent: any = null;
+let DataPacket_Kind: any = null;
+let RemoteParticipant: any = null;
+try {
+    const livekitClient = require('livekit-client');
+    Room = livekitClient.Room;
+    RoomEvent = livekitClient.RoomEvent;
+    DataPacket_Kind = livekitClient.DataPacket_Kind;
+    RemoteParticipant = livekitClient.RemoteParticipant;
+} catch (error) {
+    console.warn('[LiveKitService] livekit-client non disponible, mode fallback');
+}
+
 // ✅ INTÉGRÉ: Import conditionnel pour livekit-react-native
 let setAudioSession: any = null;
 let AudioSession: any = null;

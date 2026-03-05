@@ -2828,6 +2828,16 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
             &app_state.pg,
         )
         .await;
+
+        // ✅ NOUVEAU 2026-03-05: Tables pour transcodage vidéo HLS/DASH et analytics avancés
+        let _ = yukpomnang_backend::migrations::auto_migrate::ensure_video_transcoding_table(
+            &app_state.pg,
+        )
+        .await;
+        let _ = yukpomnang_backend::migrations::auto_migrate::ensure_video_analytics_tables(
+            &app_state.pg,
+        )
+        .await;
     }
 
     // ✅ OPTIMISÉ Cloud Run: Index MongoDB en arrière-plan

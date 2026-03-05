@@ -3,8 +3,8 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { modernColors } from '../../theme/modernTheme';
 import { DeliverySummary } from '../../types/delivery';
-import { NativeBadge, NativeButton, NativeCard } from '../SafeNativeDesign';
 import SafeIcon from '../SafeIcon';
+import { NativeBadge, NativeButton, NativeCard } from '../SafeNativeDesign';
 
 interface ActiveDeliveryCardProps {
     delivery: DeliverySummary;
@@ -13,40 +13,61 @@ interface ActiveDeliveryCardProps {
 
 const statusLabelMap: Record<string, string> = {
     pending: 'En attente',
+    requested: 'En attente',
     awaiting_courier: 'Recherche coursier',
+    awaiting_courier_confirmation: 'Recherche coursier',
     assigned: 'Coursier assigné',
-    en_route_pickup: 'En route supermarché',
+    accepted: 'Coursier assigné',
+    en_route_pickup: 'En route vers le retrait',
+    arrival_pickup: 'Arrivé au point de retrait',
+    picked_up: 'Colis récupéré',
     shopping_pending: 'Arrivé au supermarché',
     shopping_in_progress: 'Courses en cours',
     shopping_completed: 'Panier validé',
     en_route_delivery: 'En route client',
+    arrival_destination: 'Arrivé à destination',
     delivered: 'Livré',
+    completed: 'Terminé',
     cancelled: 'Annulé',
 };
 
 const statusColorMap: Record<string, string> = {
     pending: modernColors.warning,
+    requested: modernColors.warning,
     awaiting_courier: modernColors.warning,
+    awaiting_courier_confirmation: modernColors.warning,
     assigned: modernColors.info,
+    accepted: modernColors.info,
     en_route_pickup: modernColors.info,
+    arrival_pickup: modernColors.info,
+    picked_up: modernColors.info,
     shopping_pending: modernColors.info,
     shopping_in_progress: modernColors.primary,
     shopping_completed: modernColors.primary,
     en_route_delivery: modernColors.primary,
+    arrival_destination: modernColors.primary,
     delivered: modernColors.success,
+    completed: modernColors.success,
     cancelled: modernColors.error,
 };
 
 const iconMap: Record<string, string> = {
     pending: 'clock',
+    requested: 'clock',
     awaiting_courier: 'clock',
+    awaiting_courier_confirmation: 'clock',
     assigned: 'users',
-    en_route_pickup: 'shopping-cart',
+    accepted: 'users',
+    en_route_pickup: 'car',
+    arrival_pickup: 'map-pin',
+    picked_up: 'package',
     shopping_pending: 'shopping-cart',
     shopping_in_progress: 'package',
     shopping_completed: 'check',
     en_route_delivery: 'navigation',
+    arrival_destination: 'map-pin',
     delivered: 'success',
+    completed: 'success',
     cancelled: 'alert-circle',
 };
 
@@ -78,8 +99,8 @@ const ActiveDeliveryCard: React.FC<ActiveDeliveryCardProps> = ({ delivery, onPre
         return lowerAddress !== 'false' && lowerAddress !== 'null' && lowerAddress !== '' && lowerAddress !== 'undefined';
     };
 
-    const displayAddress = isValidAddress(delivery.dropoff?.address) 
-        ? delivery.dropoff!.address! 
+    const displayAddress = isValidAddress(delivery.dropoff?.address)
+        ? delivery.dropoff!.address!
         : null;
 
     return (

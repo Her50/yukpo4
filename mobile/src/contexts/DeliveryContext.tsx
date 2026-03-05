@@ -383,8 +383,8 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                 });
 
                 setDeliveries(prev => ({
-                    ...nextDeliveries,
                     ...prev,
+                    ...nextDeliveries,
                 }));
                 setError(null);
             } else if (response.error) {

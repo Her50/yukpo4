@@ -277,10 +277,10 @@ pub struct ForecastQuery {
 /// POST /api/delivery/fraud/analyze
 /// Analyser une livraison pour fraude
 pub async fn analyze_fraud(
-    State(_state): State<Arc<AppState>>,
+    State(state): State<Arc<AppState>>,
     Json(payload): Json<AnalyzeFraudRequest>,
 ) -> Result<impl IntoResponse, AppError> {
-    let mut service = DeliveryFraudDetectionService::new();
+    let mut service = DeliveryFraudDetectionService::new(state.pg.clone());
 
     let delivery_data = DeliveryData {
         delivery_id: payload.delivery_id,

@@ -65,12 +65,12 @@ interface ApiResponse<T> {
  */
 export const fetchActiveFlashSales = async (): Promise<LiveFlashSale[]> => {
     try {
-        const response = await apiGet<ApiResponse<LiveFlashSale[]>>('/api/live/flash-sales');
-        const payload = response.data || response;
-        if (payload.success === false) {
-            throw new Error(payload.error || payload.message || 'Erreur lors de la récupération des flash sales');
+        const response = await apiGet<any>('/api/flash-promos/active');
+        const backendData = response?.data || response;
+        if (backendData?.success === false) {
+            throw new Error(backendData.error || backendData.message || 'Erreur lors de la récupération des flash sales');
         }
-        return payload.data || [];
+        return backendData?.data || [];
     } catch (error: any) {
         console.error('[flashSaleService] Erreur fetchActiveFlashSales:', error);
         throw error;
@@ -82,12 +82,12 @@ export const fetchActiveFlashSales = async (): Promise<LiveFlashSale[]> => {
  */
 export const fetchFlashSalesBySession = async (sessionId: string): Promise<LiveFlashSale[]> => {
     try {
-        const response = await apiGet<ApiResponse<LiveFlashSale[]>>(`/api/live/${sessionId}/flash-sales`);
-        const payload = response.data || response;
-        if (payload.success === false) {
-            throw new Error(payload.error || payload.message || 'Erreur lors de la récupération des flash sales');
+        const response = await apiGet<any>(`/api/live/${sessionId}/flash-sales`);
+        const backendData = response?.data || response;
+        if (backendData?.success === false) {
+            throw new Error(backendData.error || backendData.message || 'Erreur lors de la récupération des flash sales');
         }
-        return payload.data || [];
+        return backendData?.data || [];
     } catch (error: any) {
         console.error('[flashSaleService] Erreur fetchFlashSalesBySession:', error);
         throw error;
@@ -102,15 +102,15 @@ export const reserveFlashSaleSlot = async (
     quantity: number = 1
 ): Promise<FlashSaleReservationTicket> => {
     try {
-        const response = await apiPost<ApiResponse<FlashSaleReservationTicket>>(
+        const response = await apiPost<any>(
             `/api/live/flash-sales/${flashSaleId}/reservations`,
             { quantity }
         );
-        const payload = response.data || response;
-        if (payload.success === false) {
-            throw new Error(payload.error || payload.message || 'Erreur lors de la réservation');
+        const backendData = response?.data || response;
+        if (backendData?.success === false) {
+            throw new Error(backendData.error || backendData.message || 'Erreur lors de la réservation');
         }
-        return payload.data!;
+        return backendData?.data || backendData;
     } catch (error: any) {
         console.error('[flashSaleService] Erreur reserveFlashSaleSlot:', error);
         throw error;
@@ -122,17 +122,18 @@ export const reserveFlashSaleSlot = async (
  */
 export const getFlashSaleTicketStatus = async (ticketId: string): Promise<FlashSaleReservationTicket> => {
     try {
-        const response = await apiGet<ApiResponse<FlashSaleReservationTicket>>(
+        const response = await apiGet<any>(
             `/api/live/flash-sales/tickets/${ticketId}`
         );
-        const payload = response.data || response;
-        if (payload.success === false) {
-            throw new Error(payload.error || payload.message || 'Erreur lors de la vérification du ticket');
+        const backendData = response?.data || response;
+        if (backendData?.success === false) {
+            throw new Error(backendData.error || backendData.message || 'Erreur lors de la vérification du ticket');
         }
-        if (!payload.data) {
+        const ticket = backendData?.data || backendData;
+        if (!ticket) {
             throw new Error('Ticket introuvable');
         }
-        return payload.data;
+        return ticket;
     } catch (error: any) {
         console.error('[flashSaleService] Erreur getFlashSaleTicketStatus:', error);
         throw error;
@@ -146,14 +147,14 @@ export const fetchFlashSaleReservations = async (
     flashSaleId: string
 ): Promise<LiveFlashSaleReservation[]> => {
     try {
-        const response = await apiGet<ApiResponse<LiveFlashSaleReservation[]>>(
+        const response = await apiGet<any>(
             `/api/live/flash-sales/${flashSaleId}/reservations`
         );
-        const payload = response.data || response;
-        if (payload.success === false) {
-            throw new Error(payload.error || payload.message || 'Erreur lors de la récupération des réservations');
+        const backendData = response?.data || response;
+        if (backendData?.success === false) {
+            throw new Error(backendData.error || backendData.message || 'Erreur lors de la récupération des réservations');
         }
-        return payload.data || [];
+        return backendData?.data || [];
     } catch (error: any) {
         console.error('[flashSaleService] Erreur fetchFlashSaleReservations:', error);
         throw error;
@@ -168,15 +169,14 @@ export const fetchFlashSaleCommentaries = async (
     limit: number = 20
 ): Promise<LiveFlashSaleCommentary[]> => {
     try {
-        const response = await apiGet<ApiResponse<LiveFlashSaleCommentary[]>>(
-            `/api/live/flash-sales/${flashSaleId}/commentaries`,
-            { limit }
+        const response = await apiGet<any>(
+            `/api/live/flash-sales/${flashSaleId}/commentaries?limit=${limit}`
         );
-        const payload = response.data || response;
-        if (payload.success === false) {
-            throw new Error(payload.error || payload.message || 'Erreur lors de la récupération des commentaires');
+        const backendData = response?.data || response;
+        if (backendData?.success === false) {
+            throw new Error(backendData.error || backendData.message || 'Erreur lors de la récupération des commentaires');
         }
-        return payload.data || [];
+        return backendData?.data || [];
     } catch (error: any) {
         console.error('[flashSaleService] Erreur fetchFlashSaleCommentaries:', error);
         throw error;

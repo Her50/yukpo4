@@ -1,6 +1,31 @@
 // Configuration partagée pour les livraisons
 export type VehicleType = 'bike' | 'motorcycle' | 'tricycle' | 'car' | 'pickup' | 'van' | 'truck' | 'walking';
 
+// ✅ FIX 2026-03-05: Mapping formel entre VehicleType mobile et DeliveryEngineType backend (snake_case)
+// Backend enum: moto, scooter, tricycle, voiture, camionnette, velo_cargo, pieton, camion_leger, autre
+export const VEHICLE_TYPE_TO_BACKEND: Record<VehicleType, string> = {
+    bike: 'velo_cargo',
+    motorcycle: 'moto',
+    tricycle: 'tricycle',
+    car: 'voiture',
+    pickup: 'camionnette',
+    van: 'camionnette',
+    truck: 'camion_leger',
+    walking: 'pieton',
+};
+
+export const BACKEND_TO_VEHICLE_TYPE: Record<string, VehicleType> = {
+    velo_cargo: 'bike',
+    moto: 'motorcycle',
+    scooter: 'motorcycle',
+    tricycle: 'tricycle',
+    voiture: 'car',
+    camionnette: 'van',
+    camion_leger: 'truck',
+    pieton: 'walking',
+    autre: 'car',
+};
+
 export interface VehicleOption {
     value: VehicleType;
     label: string;

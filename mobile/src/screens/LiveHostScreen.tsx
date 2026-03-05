@@ -12,7 +12,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import SafeIcon from '../components/SafeIcon';
 import { LiveChatModal } from '../components/video/LiveChatModal';
+import { useAuth } from '../contexts/AuthContext';
 import { liveKitService } from '../services/liveKitService';
+import { liveStreamingService } from '../services/liveStreamingService';
 
 type RouteParams = {
   sessionId: string;
@@ -25,7 +27,9 @@ const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 export default function LiveHostScreen() {
   const navigation = useNavigation();
   const route = useRoute();
+  const { user } = useAuth();
   const { sessionId, streamKey, rtmpUrl } = (route.params as any) || {};
+  const viewerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const [isLive, setIsLive] = useState(false);
   const [viewerCount, setViewerCount] = useState(0);
@@ -70,17 +74,21 @@ export default function LiveHostScreen() {
     try {
       // Connect to LiveKit as host
       if (sessionId) {
-        await liveKitService.joinRoom(sessionId, 'host');
+        const hostUserId = user?.id ? (typeof user.id === 'string' ? parseInt(user.id, 10) : user.id) : 0;
+        await liveKitService.joinRoom(sessionId, hostUserId);
         setIsConnected(true);
         setIsLive(true);
         startTimeRef.current = Date.now();
 
-        // Simulate viewer count (in real app, this would come from backend)
-        const viewerInterval = setInterval(() => {
-          setViewerCount(prev => prev + Math.floor(Math.random() * 3));
+        // Poll real viewer count from backend
+        viewerIntervalRef.current = setInterval(async () => {
+          try {
+            const resp = await liveStreamingService.getLiveSession(sessionId);
+            if (resp.success && resp.data) {
+              setViewerCount((resp.data as any).current_viewers || 0);
+            }
+          } catch (_e) { /* silently ignore polling errors */ }
         }, 5000);
-
-        return () => clearInterval(viewerInterval);
       }
     } catch (error) {
       console.error('[LiveHostScreen] Erreur connexion LiveKit:', error);
@@ -91,6 +99,10 @@ export default function LiveHostScreen() {
   const endLive = async () => {
     try {
       setIsLive(false);
+      if (viewerIntervalRef.current) {
+        clearInterval(viewerIntervalRef.current);
+        viewerIntervalRef.current = null;
+      }
       await liveKitService.leaveRoom();
       setIsConnected(false);
       navigation.goBack();
@@ -140,11 +152,7 @@ export default function LiveHostScreen() {
       <TouchableOpacity
         style={[styles.controlButton, styles.flashSaleButton]}
         onPress={() => {
-          Alert.alert(
-            'Vente Flash',
-            'Cette fonctionnalité sera bientôt disponible!',
-            [{ text: 'OK' }]
-          );
+          (navigation as any).navigate('FlashSale', { sessionId });
         }}
       >
         <SafeIcon name="zap" size={20} color="#FFFFFF" />
@@ -253,7 +261,7 @@ export default function LiveHostScreen() {
       <LiveChatModal
         visible={showChat}
         sessionId={sessionId}
-        userId={0} // Host user ID
+        userId={user?.id ? (typeof user.id === 'string' ? parseInt(user.id, 10) : user.id) : 0}
         onClose={() => setShowChat(false)}
       />
     </SafeAreaView>

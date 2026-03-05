@@ -2,14 +2,21 @@ export type DeliveryKind = 'parcel' | 'shopping';
 
 export type DeliveryStatus =
     | 'pending'
+    | 'requested'                      // ✅ Backend: Requested (sérialisé snake_case)
     | 'awaiting_courier'
+    | 'awaiting_courier_confirmation'  // ✅ Backend: AwaitingCourierConfirmation
     | 'assigned'
+    | 'accepted'                       // ✅ Backend: Accepted
     | 'en_route_pickup'
+    | 'arrival_pickup'                 // ✅ Backend: ArrivalPickup
+    | 'picked_up'                      // ✅ Backend: PickedUp
     | 'shopping_pending'
     | 'shopping_in_progress'
     | 'shopping_completed'
     | 'en_route_delivery'
+    | 'arrival_destination'            // ✅ Backend: ArrivalDestination
     | 'delivered'
+    | 'completed'                      // ✅ Backend: Completed (distinct de delivered)
     | 'cancelled'
     | 'refunded';
 

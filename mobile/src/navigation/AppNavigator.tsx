@@ -52,12 +52,16 @@ import AnalyticsDashboardScreen from '../screens/dashboard/AnalyticsDashboardScr
 import DashboardPrestataireScreen from '../screens/DashboardPrestataireScreen'; // ✅ Dashboard Prestataire
 import DashboardScreen from '../screens/DashboardScreen'; // ✅ Ancien Dashboard
 import CourierAdminScreen from '../screens/delivery/CourierAdminScreen';
+import CourierDashboardScreen from '../screens/delivery/CourierDashboardScreen';
+import CourierRegistrationScreen from '../screens/delivery/CourierRegistrationScreen';
+import CourierVerificationCodeScreen from '../screens/delivery/CourierVerificationCodeScreen';
 import DeliveryHomeScreen from '../screens/delivery/DeliveryHomeScreen';
 import DeliveryParcelFlowNewScreen from '../screens/delivery/DeliveryParcelFlowNewScreen';
 import DeliveryParcelFlowScreen from '../screens/delivery/DeliveryParcelFlowScreen';
 import DeliveryPartnersAdminScreen from '../screens/delivery/DeliveryPartnersAdminScreen';
 import DeliveryShoppingFlowScreen from '../screens/delivery/DeliveryShoppingFlowScreen';
 import DeliveryShoppingTrackingScreen from '../screens/delivery/DeliveryShoppingTrackingScreen';
+import ProviderCourierVerificationScreen from '../screens/delivery/ProviderCourierVerificationScreen';
 import ShoppingBasketScreen from '../screens/delivery/ShoppingBasketScreen';
 import ShoppingBudgetScreen from '../screens/delivery/ShoppingBudgetScreen';
 import ShoppingPickupDropScreen from '../screens/delivery/ShoppingPickupDropScreen';
@@ -96,6 +100,7 @@ import CovoiturageListScreen from '../screens/specialized/CovoiturageListScreen'
 import CovoiturageSearchScreen from '../screens/specialized/CovoiturageSearchScreen';
 import HopitalFormScreen from '../screens/specialized/HopitalFormScreen';
 import LaboratoireFormScreen from '../screens/specialized/LaboratoireFormScreen';
+import MesReservationsCovoiturageScreen from '../screens/specialized/MesReservationsCovoiturageScreen';
 import MesReservationsScreen from '../screens/specialized/MesReservationsScreen';
 import MesTaxisScreen from '../screens/specialized/MesTaxisScreen';
 import MyTripsScreen from '../screens/specialized/MyTripsScreen';
@@ -168,6 +173,7 @@ import MyBloodDonationsScreen from '../screens/specialized/MyBloodDonationsScree
 // ✅ NOUVEAU: Écrans tickets bus
 import BusTicketBookingScreen from '../screens/specialized/BusTicketBookingScreen';
 import BusTicketDetailsScreen from '../screens/specialized/BusTicketDetailsScreen';
+import BusTicketPaymentScreen from '../screens/specialized/BusTicketPaymentScreen';
 import BusTicketQRScannerScreen from '../screens/specialized/BusTicketQRScannerScreen';
 import BusTicketQRScreen from '../screens/specialized/BusTicketQRScreen';
 import BusTicketSearchScreen from '../screens/specialized/BusTicketSearchScreen';
@@ -189,14 +195,20 @@ import MesLivresScreen from '../screens/specialized/MesLivresScreen';
 // ✅ NOUVEAU 2025-01-28: Écrans Orientation scolaire
 import ConcoursEntreeScreen from '../screens/orientation/ConcoursEntreeScreen';
 import ConferencesLivesScreen from '../screens/orientation/ConferencesLivesScreen';
-// ✅ NOUVEAU 2026-03-05: Écrans Live Streaming
-import LiveHostScreen from '../screens/LiveHostScreen';
-import LivesListScreen from '../screens/LivesListScreen';
-import StartLiveScreen from '../screens/StartLiveScreen';
-// ✅ NOUVEAU 2026-03-05: Écrans Orientation scolaire
+import CreateEtablissementScreen from '../screens/orientation/CreateEtablissementScreen';
 import EtablissementDetailsScreen from '../screens/orientation/EtablissementDetailsScreen';
 import EtablissementSearchScreen from '../screens/orientation/EtablissementSearchScreen';
 import ExperiencesEtudiantsScreen from '../screens/orientation/ExperiencesEtudiantsScreen';
+import OrientationAICompareProgramsScreen from '../screens/orientation/OrientationAICompareProgramsScreen';
+import OrientationAIProfileAnalysisScreen from '../screens/orientation/OrientationAIProfileAnalysisScreen';
+import OrientationAIRecommendationsScreen from '../screens/orientation/OrientationAIRecommendationsScreen';
+import ProfilEtudiantScreen from '../screens/orientation/ProfilEtudiantScreen';
+// ✅ NOUVEAU 2026-03-05: Écrans Live Streaming
+import LiveHostScreen from '../screens/LiveHostScreen';
+import LivesListScreen from '../screens/LivesListScreen';
+import LiveViewerScreen from '../screens/LiveViewerScreen';
+import StartLiveScreen from '../screens/StartLiveScreen';
+// ✅ NOUVEAU 2026-03-05: Écrans Orientation scolaire
 import FournituresScolairesScreen from '../screens/orientation/FournituresScolairesScreen';
 import OrientationScolaireHomeScreen from '../screens/orientation/OrientationScolaireHomeScreen';
 import OrientationScolaireHubScreen from '../screens/orientation/OrientationScolaireHubScreen';
@@ -206,8 +218,14 @@ import TrocDetailsScreen from '../screens/specialized/TrocDetailsScreen';
 import TrocLiveValidationScreen from '../screens/specialized/TrocLiveValidationScreen';
 import TrocMatchingScreen from '../screens/specialized/TrocMatchingScreen';
 // ✅ NOUVEAU 2025-01-28: Écrans offres d'emploi
+import AICVAnalysisScreen from '../screens/offres-emploi/AICVAnalysisScreen';
+import AISalaryPredictionScreen from '../screens/offres-emploi/AISalaryPredictionScreen';
+import AISuggestFormationsScreen from '../screens/offres-emploi/AISuggestFormationsScreen';
 import CreateOffreScreen from '../screens/offres-emploi/CreateOffreScreen';
 import MesOffresScreen from '../screens/offres-emploi/MesOffresScreen';
+import OffreCandidaturesScreen from '../screens/offres-emploi/OffreCandidaturesScreen';
+import OffreDetailsScreen from '../screens/offres-emploi/OffreDetailsScreen';
+import OffreListScreen from '../screens/offres-emploi/OffreListScreen';
 import OffreSearchScreen from '../screens/offres-emploi/OffreSearchScreen';
 import OffresEmploiHomeScreen from '../screens/offres-emploi/OffresEmploiHomeScreen';
 import OffresEmploiHubScreen from '../screens/offres-emploi/OffresEmploiHubScreen';
@@ -220,6 +238,8 @@ import MenuPlanningHubScreen from '../screens/specialized/MenuPlanningHubScreen'
 import RecipeSearchScreen from '../screens/specialized/RecipeSearchScreen';
 // ✅ NOUVEAU: BayamSelam = SupermarketHome (même écran professionnel)
 import ErrorBoundary from '../components/ErrorBoundary';
+import AgencyAnalyticsDashboardScreen from '../screens/AgencyAnalyticsDashboard';
+import ProductStatsScreen from '../screens/ProductStatsScreen';
 import AutoServicesResultsScreen from '../screens/specialized/AutoServicesResultsScreen';
 import AutoServicesSearchScreen from '../screens/specialized/AutoServicesSearchScreen';
 import BayamSelamResultsScreen from '../screens/specialized/BayamSelamResultsScreen';
@@ -352,6 +372,7 @@ const ConferencesLivesScreenWithSafeArea = withNavigatorSafeArea(ConferencesLive
 // ✅ NOUVEAU 2026-03-05: Live Streaming screens
 const StartLiveScreenWithSafeArea = withNavigatorSafeArea(StartLiveScreen);
 const LiveHostScreenWithSafeArea = withNavigatorSafeArea(LiveHostScreen);
+const LiveViewerScreenWithSafeArea = withNavigatorSafeArea(LiveViewerScreen);
 const LivesListScreenWithSafeArea = withNavigatorSafeArea(LivesListScreen);
 const MesLivresScreenWithSafeArea = withNavigatorSafeArea(MesLivresScreen);
 const TrocMatchingScreenWithSafeArea = withNavigatorSafeArea(TrocMatchingScreen);
@@ -434,7 +455,7 @@ const DeliveryShoppingTrackingScreenWithSafeArea = withNavigatorSafeArea(Deliver
 const StorageLocationsScreenWithSafeArea = withNavigatorSafeArea(StorageLocationsScreen);
 const DashboardScreenWithSafeArea = withNavigatorSafeArea(DashboardScreen);
 const DashboardPrestataireScreenWithSafeArea = withNavigatorSafeArea(DashboardPrestataireScreen);
-const CourierDashboardScreenWithSafeArea = withNavigatorSafeArea(require('../screens/delivery/CourierDashboardScreen').default);
+const CourierDashboardScreenWithSafeArea = withNavigatorSafeArea(CourierDashboardScreen);
 // ✅ NOUVEAU 2025-01-27: Planification Menus
 const MenuPlanningHubScreenWithSafeArea = withNavigatorSafeArea(MenuPlanningHubScreen);
 const FamilyProfileScreenWithSafeArea = withNavigatorSafeArea(FamilyProfileScreen);
@@ -1331,7 +1352,7 @@ const SecondaryStack = () => {
       {/* ✅ NOUVEAU: Écrans Orientation Scolaire IA */}
       <Stack.Screen
         name="ProfilEtudiant"
-        component={withNavigatorSafeArea(require('../screens/orientation/ProfilEtudiantScreen').default)}
+        component={withNavigatorSafeArea(ProfilEtudiantScreen)}
         options={{
           ...defaultScreenOptions,
           title: 'Mon Profil Étudiant',
@@ -1339,7 +1360,7 @@ const SecondaryStack = () => {
       />
       <Stack.Screen
         name="OrientationAIProfileAnalysis"
-        component={withNavigatorSafeArea(require('../screens/orientation/OrientationAIProfileAnalysisScreen').default)}
+        component={withNavigatorSafeArea(OrientationAIProfileAnalysisScreen)}
         options={{
           ...defaultScreenOptions,
           title: 'Analyse Profil IA',
@@ -1347,7 +1368,7 @@ const SecondaryStack = () => {
       />
       <Stack.Screen
         name="OrientationAIRecommendations"
-        component={withNavigatorSafeArea(require('../screens/orientation/OrientationAIRecommendationsScreen').default)}
+        component={withNavigatorSafeArea(OrientationAIRecommendationsScreen)}
         options={{
           ...defaultScreenOptions,
           title: 'Recommandations Programmes',
@@ -1355,7 +1376,7 @@ const SecondaryStack = () => {
       />
       <Stack.Screen
         name="OrientationAIComparePrograms"
-        component={withNavigatorSafeArea(require('../screens/orientation/OrientationAICompareProgramsScreen').default)}
+        component={withNavigatorSafeArea(OrientationAICompareProgramsScreen)}
         options={{
           ...defaultScreenOptions,
           title: 'Comparer Programmes',
@@ -1364,7 +1385,7 @@ const SecondaryStack = () => {
       {/* ✅ NOUVEAU: Écrans Offres d'Emploi IA */}
       <Stack.Screen
         name="AICVAnalysis"
-        component={withNavigatorSafeArea(require('../screens/offres-emploi/AnalyseCVScreen').default)}
+        component={withNavigatorSafeArea(AICVAnalysisScreen)}
         options={{
           ...defaultScreenOptions,
           title: 'Analyse CV IA',
@@ -1372,7 +1393,7 @@ const SecondaryStack = () => {
       />
       <Stack.Screen
         name="AISalaryPrediction"
-        component={withNavigatorSafeArea(require('../screens/offres-emploi/AISalaryPredictionScreen').default)}
+        component={withNavigatorSafeArea(AISalaryPredictionScreen)}
         options={{
           ...defaultScreenOptions,
           title: 'Prédiction Salaire IA',
@@ -1380,7 +1401,7 @@ const SecondaryStack = () => {
       />
       <Stack.Screen
         name="AISuggestFormations"
-        component={withNavigatorSafeArea(require('../screens/offres-emploi/AISuggestFormationsScreen').default)}
+        component={withNavigatorSafeArea(AISuggestFormationsScreen)}
         options={{
           ...defaultScreenOptions,
           title: 'Suggestions Formations IA',
@@ -1412,7 +1433,7 @@ const SecondaryStack = () => {
       />
       <Stack.Screen
         name="OffreList"
-        component={withNavigatorSafeArea(require('../screens/offres-emploi/OffreListScreen').default)}
+        component={withNavigatorSafeArea(OffreListScreen)}
         options={{
           ...defaultScreenOptions,
           title: 'Résultats de recherche',
@@ -1420,7 +1441,7 @@ const SecondaryStack = () => {
       />
       <Stack.Screen
         name="OffreDetails"
-        component={withNavigatorSafeArea(require('../screens/offres-emploi/OffreDetailsScreen').default)}
+        component={withNavigatorSafeArea(OffreDetailsScreen)}
         options={{
           ...defaultScreenOptions,
           title: 'Détails de l\'offre',
@@ -1444,7 +1465,7 @@ const SecondaryStack = () => {
       />
       <Stack.Screen
         name="OffreCandidatures"
-        component={withNavigatorSafeArea(require('../screens/offres-emploi/OffreCandidaturesScreen').default)}
+        component={withNavigatorSafeArea(OffreCandidaturesScreen)}
         options={{
           ...defaultScreenOptions,
           title: 'Candidatures',
@@ -1476,7 +1497,7 @@ const SecondaryStack = () => {
       />
       <Stack.Screen
         name="MesReservationsCovoiturage"
-        component={withNavigatorSafeArea(require('../screens/specialized/MesReservationsCovoiturageScreen').default)}
+        component={withNavigatorSafeArea(MesReservationsCovoiturageScreen)}
         options={{
           ...defaultScreenOptions,
           title: 'Mes Réservations Covoiturage',
@@ -1609,7 +1630,7 @@ const SecondaryStack = () => {
       />
       <Stack.Screen
         name="BusTicketPayment"
-        component={withNavigatorSafeArea(require('../screens/specialized/BusTicketPaymentScreen').default)}
+        component={withNavigatorSafeArea(BusTicketPaymentScreen)}
         options={{ title: 'Paiement ticket' }}
       />
       <Stack.Screen
@@ -1774,6 +1795,15 @@ const SecondaryStack = () => {
         }}
       />
       <Stack.Screen
+        name="LiveViewerScreen"
+        component={LiveViewerScreenWithSafeArea}
+        options={{
+          ...defaultScreenOptions,
+          title: '🎥 Regarder le Live',
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
         name="LivesList"
         component={LivesListScreenWithSafeArea}
         options={{
@@ -1845,7 +1875,7 @@ const SecondaryStack = () => {
       />
       <Stack.Screen
         name="ProductStats"
-        component={withNavigatorSafeArea(require('../screens/ProductStatsScreen').default)}
+        component={withNavigatorSafeArea(ProductStatsScreen)}
         options={{
           ...defaultScreenOptions,
           title: 'Statistiques Produit',
@@ -1854,7 +1884,7 @@ const SecondaryStack = () => {
       />
       <Stack.Screen
         name="AgencyAnalyticsDashboard"
-        component={withNavigatorSafeArea(require('../screens/AgencyAnalyticsDashboard').default)}
+        component={withNavigatorSafeArea(AgencyAnalyticsDashboardScreen)}
         options={{
           ...defaultScreenOptions,
           title: 'Analytics Agence',
@@ -1862,20 +1892,20 @@ const SecondaryStack = () => {
       />
       <Stack.Screen
         name="CourierRegistration"
-        component={withNavigatorSafeArea(require('../screens/delivery/CourierRegistrationScreen').default)}
+        component={withNavigatorSafeArea(CourierRegistrationScreen)}
       />
       <Stack.Screen
         name="CourierDashboard"
-        component={withNavigatorSafeArea(require('../screens/delivery/CourierDashboardScreen').default)}
+        component={withNavigatorSafeArea(CourierDashboardScreen)}
       />
       <Stack.Screen
         name="CourierVerificationCode"
-        component={withNavigatorSafeArea(require('../screens/delivery/CourierVerificationCodeScreen').default)}
+        component={withNavigatorSafeArea(CourierVerificationCodeScreen)}
         options={{ headerShown: false }}
       />
       <Stack.Screen
         name="ProviderCourierVerification"
-        component={withNavigatorSafeArea(require('../screens/delivery/ProviderCourierVerificationScreen').default)}
+        component={withNavigatorSafeArea(ProviderCourierVerificationScreen)}
         options={{ headerShown: false }}
       />
       <Stack.Screen

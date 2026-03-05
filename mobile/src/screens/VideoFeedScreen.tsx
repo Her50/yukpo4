@@ -27,6 +27,7 @@ import { SafeNativeView } from '../components/SafeNativeView';
 import { useAuth } from '../contexts/AuthContext';
 import { apiGet, apiPost } from '../services/api';
 import { mediaService } from '../services/mediaService';
+import { videoCacheService } from '../services/videoCacheService';
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -252,6 +253,37 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
         setPage(nextPage);
         fetchFeed(false, nextPage);
     }, [hasMore, loading, refreshing, page, fetchFeed]);
+
+    // ✅ PRÉCHARGEMENT PRÉDICTIF: Précharger les 3 prochaines vidéos
+    const preloadNextVideos = useCallback(async (currentIdx: number) => {
+        for (let i = 1; i <= 3; i++) {
+            const nextIndex = currentIdx + i;
+            if (nextIndex < feed.length) {
+                const nextItem = feed[nextIndex];
+                if (nextItem?.videoUrl) {
+                    // Précharger en arrière-plan sans bloquer
+                    try {
+                        await videoCacheService.preloadVideo(nextItem.videoUrl);
+                    } catch (error) {
+                        // Ignorer erreurs de préchargement
+                        console.debug('[VideoFeedScreen] Préchargement échoué pour index', nextIndex);
+                    }
+                }
+            }
+        }
+    }, [feed]);
+
+    // ✅ Lancer préchargement quand currentIndex change
+    useEffect(() => {
+        if (feed.length > 0 && currentIndex >= 0) {
+            // Délai court pour ne pas impacter la performance du scroll
+            const timeoutId = setTimeout(() => {
+                preloadNextVideos(currentIndex);
+            }, 500);
+
+            return () => clearTimeout(timeoutId);
+        }
+    }, [currentIndex, feed.length, preloadNextVideos]);
 
     // ✅ Vérifier le statut de suivi pour les vidéos visibles
     const checkedFollowRef = useRef<Set<string>>(new Set());

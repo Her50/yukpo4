@@ -6,6 +6,7 @@ import {
     Image,
     RefreshControl,
     ScrollView,
+    Share,
     StyleSheet,
     Text,
     TouchableOpacity,
@@ -284,20 +285,35 @@ const FlashSaleScreen: React.FC = () => {
                                         </View>
                                     </View>
 
-                                    <TouchableOpacity
-                                        style={[
-                                            styles.reserveButton,
-                                            (!canReserve || reservingSaleId === sale.id) && styles.reserveButtonDisabled,
-                                        ]}
-                                        onPress={() => handleReserve(sale)}
-                                        disabled={!canReserve || reservingSaleId === sale.id}
-                                    >
-                                        {reservingSaleId === sale.id ? (
-                                            <ActivityIndicator size="small" color="#fff" />
-                                        ) : (
-                                            <Text style={styles.reserveButtonText}>{buttonLabel}</Text>
-                                        )}
-                                    </TouchableOpacity>
+                                    <View style={styles.actionRow}>
+                                        <TouchableOpacity
+                                            style={[
+                                                styles.reserveButton,
+                                                (!canReserve || reservingSaleId === sale.id) && styles.reserveButtonDisabled,
+                                                !user && styles.loginButton,
+                                            ]}
+                                            onPress={() => handleReserve(sale)}
+                                            disabled={(!canReserve && !!user) || reservingSaleId === sale.id}
+                                        >
+                                            {reservingSaleId === sale.id ? (
+                                                <ActivityIndicator size="small" color="#fff" />
+                                            ) : (
+                                                <Text style={[styles.reserveButtonText, !user && styles.loginButtonText]}>{buttonLabel}</Text>
+                                            )}
+                                        </TouchableOpacity>
+                                        <TouchableOpacity
+                                            style={styles.shareIconButton}
+                                            onPress={async () => {
+                                                try {
+                                                    await Share.share({
+                                                        message: `Vente flash : ${linked?.title || 'Produit'} à ${sale.promo_price_cfa.toLocaleString('fr-FR')} CFA ! Découvrez sur Yukpo.`,
+                                                    });
+                                                } catch (_e) { /* cancelled */ }
+                                            }}
+                                        >
+                                            <Text style={styles.shareIconText}>Partager</Text>
+                                        </TouchableOpacity>
+                                    </View>
                                 </View>
                             </View>
                         );
@@ -475,6 +491,29 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 16,
         fontWeight: '600',
+    },
+    loginButton: {
+        backgroundColor: '#6366F1',
+    },
+    loginButtonText: {
+        color: '#FFFFFF',
+    },
+    actionRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    shareIconButton: {
+        paddingVertical: 14,
+        paddingHorizontal: 12,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+    },
+    shareIconText: {
+        fontSize: 13,
+        color: modernColors.primary,
+        fontWeight: '500',
     },
 });
 

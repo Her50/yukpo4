@@ -84,9 +84,23 @@ const CourierDashboardScreen: React.FC = () => {
             }
             setLastDeliveryCount(deliveriesList.length);
 
-            // TODO: Charger les statistiques du coursier
-            // const statsResponse = await deliveryApi.getCourierStats(user?.id);
-            // setStats(statsResponse.data);
+            // ✅ FIX 2026-03-05: Charger les stats réelles depuis l'API
+            try {
+                const statsResponse = await deliveryApi.getCourierStats() as any;
+                if (statsResponse?.success && statsResponse?.data) {
+                    const d = statsResponse.data;
+                    setStats({
+                        totalDeliveries: d.totalDeliveries ?? 0,
+                        completedDeliveries: d.completedDeliveries ?? 0,
+                        totalEarnings: d.totalEarnings ?? 0,
+                        currentMonthEarnings: d.currentMonthEarnings ?? 0,
+                        avgDeliveryTime: d.avgDeliveryTime ?? 0,
+                        successRate: d.successRate ?? 0,
+                    });
+                }
+            } catch (statsErr) {
+                console.warn('[CourierDashboardScreen] Stats non disponibles:', statsErr);
+            }
         } catch (error) {
             console.error('[CourierDashboardScreen] Erreur chargement:', error);
         } finally {

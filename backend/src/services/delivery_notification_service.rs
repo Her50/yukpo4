@@ -93,14 +93,36 @@ pub async fn notify_delivery_status_change(
     recipient_email: Option<&str>,
     recipient_name: Option<&str>,
 ) -> AppResult<()> {
+    let delivery_id_short = if delivery_id.len() >= 8 {
+        &delivery_id[..8]
+    } else {
+        delivery_id
+    };
+    let name_suffix = recipient_name.map(|n| format!(" {}", n)).unwrap_or_default();
+
     let (notification_type, subject, message) = match status {
         "accepted" => (
             NotificationType::DeliveryAccepted,
             "📦 Coursier assigné",
             format!(
                 "Bonjour{},\n\nUn coursier a été assigné à votre livraison #{}. Vous serez informé des prochaines étapes.",
-                recipient_name.map(|n| format!(" {}", n)).unwrap_or_default(),
-                &delivery_id[..8]
+                name_suffix, delivery_id_short
+            ),
+        ),
+        "en_route_pickup" => (
+            NotificationType::DeliveryEnRoutePickup,
+            "🚗 Coursier en route vers le retrait",
+            format!(
+                "Bonjour{},\n\nLe coursier est en route vers le point de retrait. Livraison #{}.",
+                name_suffix, delivery_id_short
+            ),
+        ),
+        "arrival_pickup" => (
+            NotificationType::DeliveryArrivalPickup,
+            "📍 Coursier arrivé au point de retrait",
+            format!(
+                "Bonjour{},\n\nLe coursier est arrivé au point de retrait. Livraison #{}.",
+                name_suffix, delivery_id_short
             ),
         ),
         "picked_up" => (
@@ -108,8 +130,23 @@ pub async fn notify_delivery_status_change(
             "✅ Colis récupéré",
             format!(
                 "Bonjour{},\n\nLe coursier a récupéré votre colis. Livraison #{}. Il est maintenant en route vers vous.",
-                recipient_name.map(|n| format!(" {}", n)).unwrap_or_default(),
-                &delivery_id[..8]
+                name_suffix, delivery_id_short
+            ),
+        ),
+        "shopping_in_progress" => (
+            NotificationType::DeliveryShoppingInProgress,
+            "🛒 Courses en cours",
+            format!(
+                "Bonjour{},\n\nLe coursier effectue vos courses. Livraison #{}.",
+                name_suffix, delivery_id_short
+            ),
+        ),
+        "shopping_completed" => (
+            NotificationType::DeliveryShoppingCompleted,
+            "✅ Courses terminées",
+            format!(
+                "Bonjour{},\n\nLes courses sont terminées. Le coursier se prépare à livrer. Livraison #{}.",
+                name_suffix, delivery_id_short
             ),
         ),
         "en_route_delivery" => (
@@ -117,17 +154,23 @@ pub async fn notify_delivery_status_change(
             "🚚 En route vers vous",
             format!(
                 "Bonjour{},\n\nLe coursier est en route vers vous. Livraison #{}.",
-                recipient_name.map(|n| format!(" {}", n)).unwrap_or_default(),
-                &delivery_id[..8]
+                name_suffix, delivery_id_short
             ),
         ),
-        "delivered" => (
+        "arrival_destination" => (
+            NotificationType::DeliveryArrivalDestination,
+            "📍 Coursier arrivé à destination",
+            format!(
+                "Bonjour{},\n\nLe coursier est arrivé à destination ! Livraison #{}.",
+                name_suffix, delivery_id_short
+            ),
+        ),
+        "delivered" | "completed" => (
             NotificationType::DeliveryDelivered,
             "✅ Livraison effectuée",
             format!(
                 "Bonjour{},\n\nVotre livraison #{} a été livrée avec succès !",
-                recipient_name.map(|n| format!(" {}", n)).unwrap_or_default(),
-                &delivery_id[..8]
+                name_suffix, delivery_id_short
             ),
         ),
         "cancelled" => (
@@ -135,8 +178,7 @@ pub async fn notify_delivery_status_change(
             "❌ Livraison annulée",
             format!(
                 "Bonjour{},\n\nVotre livraison #{} a été annulée.",
-                recipient_name.map(|n| format!(" {}", n)).unwrap_or_default(),
-                &delivery_id[..8]
+                name_suffix, delivery_id_short
             ),
         ),
         _ => return Ok(()), // Ne pas envoyer pour les autres statuts

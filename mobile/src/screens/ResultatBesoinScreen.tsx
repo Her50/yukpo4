@@ -605,7 +605,7 @@ const ResultatBesoinScreen: React.FC = () => {
                         try {
                             const productsResponse = await apiGet(`/api/services/${serviceId}/products`);
                             // ✅ DEBUG 2026-01-13: Logs détaillés pour diagnostiquer les problèmes d'affichage
-                            console.log(`🔍 [ResultatBesoinScreen] DEBUG produits API pour service ${serviceId}:`, {
+                            if (__DEV__) console.log(`🔍 [ResultatBesoinScreen] DEBUG produits API pour service ${serviceId}:`, {
                                 success: productsResponse.success,
                                 hasData: !!productsResponse.data,
                                 dataType: typeof productsResponse.data,
@@ -616,18 +616,20 @@ const ResultatBesoinScreen: React.FC = () => {
 
                             if (productsResponse.success && Array.isArray(productsResponse.data)) {
                                 productsFromAPI = productsResponse.data;
-                                console.log(`✅ [ResultatBesoinScreen] ${productsFromAPI.length} produits récupérés depuis API pour service ${serviceId}`);
-                                // ✅ DEBUG: Log détaillé des produits récupérés
-                                if (productsFromAPI.length > 0) {
-                                    console.log(`📦 [ResultatBesoinScreen] Détails produits pour service ${serviceId}:`,
-                                        productsFromAPI.map((p: any) => ({
-                                            id: p.id,
-                                            product_id: p.product_id,
-                                            product_index: p.product_index,
-                                            nom: p.product_data?.nom || p.nom || p.name,
-                                            product_data_keys: p.product_data ? Object.keys(p.product_data) : []
-                                        }))
-                                    );
+                                if (__DEV__) {
+                                    console.log(`✅ [ResultatBesoinScreen] ${productsFromAPI.length} produits récupérés depuis API pour service ${serviceId}`);
+                                    // ✅ DEBUG: Log détaillé des produits récupérés
+                                    if (productsFromAPI.length > 0) {
+                                        console.log(`📦 [ResultatBesoinScreen] Détails produits pour service ${serviceId}:`,
+                                            productsFromAPI.map((p: any) => ({
+                                                id: p.id,
+                                                product_id: p.product_id,
+                                                product_index: p.product_index,
+                                                nom: p.product_data?.nom || p.nom || p.name,
+                                                product_data_keys: p.product_data ? Object.keys(p.product_data) : []
+                                            }))
+                                        );
+                                    }
                                 }
                             } else {
                                 console.warn(`⚠️ [ResultatBesoinScreen] Réponse produits API invalide pour service ${serviceId}:`, {
@@ -664,7 +666,7 @@ const ResultatBesoinScreen: React.FC = () => {
                             _productsFromAPI: productsFromAPI
                         };
 
-                        console.log(`✅ [ResultatBesoinScreen] Service ${service.id} enrichi avec GPS:`, {
+                        if (__DEV__) console.log(`✅ [ResultatBesoinScreen] Service ${service.id} enrichi avec GPS:`, {
                             searchGps,
                             finalGps: enrichedService.gps,
                             gps_fixe: enrichedService.data?.gps_fixe,
@@ -708,7 +710,7 @@ const ResultatBesoinScreen: React.FC = () => {
                     let serviceProduits: any[] = [];
 
                     // ✅ DEBUG 2026-01-13: Logs détaillés pour diagnostiquer les problèmes d'affichage
-                    console.log(`🔍 [ResultatBesoinScreen] DEBUG extraction produits pour service ${service.id}:`, {
+                    if (__DEV__) console.log(`🔍 [ResultatBesoinScreen] DEBUG extraction produits pour service ${service.id}:`, {
                         hasProductsFromAPI: !!service._productsFromAPI,
                         isArray: Array.isArray(service._productsFromAPI),
                         productsFromAPICount: Array.isArray(service._productsFromAPI) ? service._productsFromAPI.length : 0,
@@ -840,7 +842,7 @@ const ResultatBesoinScreen: React.FC = () => {
                             };
 
                             // ✅ DEBUG 2026-02-10: Log détaillé de chaque produit transformé avec description et images
-                            console.log(`📦 [ResultatBesoinScreen] Produit transformé pour service ${service.id}:`, {
+                            if (__DEV__) console.log(`📦 [ResultatBesoinScreen] Produit transformé pour service ${service.id}:`, {
                                 id: transformedProduct.id,
                                 product_index: transformedProduct.product_index,
                                 nom_produit: transformedProduct.nom_produit,
@@ -849,49 +851,24 @@ const ResultatBesoinScreen: React.FC = () => {
                                 product_name: transformedProduct.product_name,
                                 description: transformedProduct.description,
                                 description_produit: transformedProduct.description_produit,
-                                // ✅ CORRIGÉ 2026-02-10: Log détaillé des médias normalisés
                                 images_count: normalizedImages.length,
                                 videos_count: normalizedVideos.length,
-                                images_sample: normalizedImages.length > 0
-                                    ? normalizedImages[0].substring(0, 100) + '...'
-                                    : 'aucune',
-                                videos_sample: normalizedVideos.length > 0
-                                    ? normalizedVideos[0].substring(0, 100) + '...'
-                                    : 'aucune',
-                                hasProductData: !!productFromAPI.product_data,
-                                productDataKeys: productData ? Object.keys(productData) : [],
-                                originalProductFromAPI: {
-                                    id: productFromAPI.id,
-                                    product_index: productFromAPI.product_index,
-                                    product_name: productFromAPI.product_name,
-                                    hasProductData: !!productFromAPI.product_data,
-                                    product_data_description: productData?.description,
-                                    product_data_description_produit: productData?.description_produit,
-                                    product_data_images_count: Array.isArray(productData?.images) ? productData.images.length : (productData?.images ? 1 : 0),
-                                    product_data_videos_count: Array.isArray(productData?.videos) ? productData.videos.length : (productData?.videos ? 1 : 0),
-                                    // ✅ NOUVEAU 2026-02-10: Vérifier aussi productFromAPI.images/videos directement
-                                    direct_images_count: Array.isArray(productFromAPI.images) ? productFromAPI.images.length : (productFromAPI.images ? 1 : 0),
-                                    direct_videos_count: Array.isArray(productFromAPI.videos) ? productFromAPI.videos.length : (productFromAPI.videos ? 1 : 0),
-                                    // ✅ NOUVEAU: Vérifier le format des images (string vs object)
-                                    direct_images_type: productFromAPI.images ? (Array.isArray(productFromAPI.images) ? 'array' : typeof productFromAPI.images) : 'absent',
-                                    product_data_images_type: productData?.images ? (Array.isArray(productData.images) ? 'array' : typeof productData.images) : 'absent',
-                                }
                             });
 
                             return transformedProduct;
                         });
-                        console.log(`✅ [ResultatBesoinScreen] ${serviceProduits.length} produits depuis API service_products pour service ${service.id}`);
-
-                        // ✅ DEBUG: Log tous les noms de produits extraits
-                        console.log(`📋 [ResultatBesoinScreen] Liste des produits extraits pour service ${service.id}:`,
-                            serviceProduits.map((p: any) => ({
-                                id: p.id,
-                                product_index: p.product_index,
-                                nom_produit: p.nom_produit,
-                                nom: p.nom,
-                                name: p.name
-                            }))
-                        );
+                        if (__DEV__) {
+                            console.log(`✅ [ResultatBesoinScreen] ${serviceProduits.length} produits depuis API service_products pour service ${service.id}`);
+                            console.log(`📋 [ResultatBesoinScreen] Liste des produits extraits pour service ${service.id}:`,
+                                serviceProduits.map((p: any) => ({
+                                    id: p.id,
+                                    product_index: p.product_index,
+                                    nom_produit: p.nom_produit,
+                                    nom: p.nom,
+                                    name: p.name
+                                }))
+                            );
+                        }
                     } else {
                         console.warn(`⚠️ [ResultatBesoinScreen] Aucun produit trouvé dans _productsFromAPI pour service ${service.id}`);
                     }
@@ -921,7 +898,7 @@ const ResultatBesoinScreen: React.FC = () => {
                                 // ✅ CORRIGÉ 2026-03-02: Aucun produit pertinent → ne rien afficher pour ce service
                                 // L'ancien code gardait le 1er produit par défaut, ce qui affichait des produits hors-sujet
                                 filteredServiceProduits = [];
-                                console.log(`🎯 [ResultatBesoinScreen] Service ${service.id}: aucun produit pertinent pour "${searchQuery}", service ignoré`);
+                                if (__DEV__) console.log(`🎯 [ResultatBesoinScreen] Service ${service.id}: aucun produit pertinent pour "${searchQuery}", service ignoré`);
                             }
                         }
 
@@ -943,9 +920,6 @@ const ResultatBesoinScreen: React.FC = () => {
                                     if (!isNaN(userLat) && !isNaN(userLon) && !isNaN(productLat) && !isNaN(productLon)) {
                                         // ✅ CORRIGÉ 2026-01-XX: Utiliser calculateDistance au lieu de calculateDistanceFromCoords
                                         distance = calculateDistance(userLat, userLon, productLat, productLon);
-                                        const productDataForLog = product.product_data || product;
-                                        const productNameForLog = getProductName(productDataForLog) || 'produit';
-                                        console.log(`✅ [ResultatBesoinScreen] Distance produit calculée: ${distance.toFixed(2)} km (${productNameForLog})`);
                                     }
                                 } catch (error) {
                                     console.warn('⚠️ [ResultatBesoinScreen] Erreur calcul distance produit:', error);
@@ -955,9 +929,6 @@ const ResultatBesoinScreen: React.FC = () => {
                             // ✅ FALLBACK: Utiliser la distance du service si disponible et si la distance du produit n'a pas pu être calculée
                             if ((distance === undefined || !Number.isFinite(distance)) && service.distance !== undefined && Number.isFinite(service.distance)) {
                                 distance = service.distance;
-                                const productDataForLog = product.product_data || product;
-                                const productNameForLog = getProductName(productDataForLog) || 'produit';
-                                console.log(`✅ [ResultatBesoinScreen] Distance service utilisée comme fallback: ${distance.toFixed(2)} km (${productNameForLog})`);
                             }
 
                             // ✅ NOUVEAU 2026-01-20: Calculer le score de pertinence au niveau produit
@@ -970,15 +941,16 @@ const ResultatBesoinScreen: React.FC = () => {
                                 // Ajouter le score de pertinence produit (poids important pour différencier les produits)
                                 finalScore += productRelevanceScore;
 
-                                // ✅ DEBUG: Log le score calculé pour diagnostiquer
-                                const productDataForLog = product.product_data || product;
-                                const productNameForLog = getProductName(productDataForLog) || 'unknown';
-                                console.log(`🎯 [ResultatBesoinScreen] Score produit calculé pour "${productNameForLog}":`, {
-                                    serviceScore: service.score || 0,
-                                    productRelevanceScore,
-                                    finalScore,
-                                    searchQuery
-                                });
+                                if (__DEV__) {
+                                    const productDataForLog = product.product_data || product;
+                                    const productNameForLog = getProductName(productDataForLog) || 'unknown';
+                                    console.log(`🎯 [ResultatBesoinScreen] Score produit calculé pour "${productNameForLog}":`, {
+                                        serviceScore: service.score || 0,
+                                        productRelevanceScore,
+                                        finalScore,
+                                        searchQuery
+                                    });
+                                }
                             }
 
                             const isPromo = product.en_promotion || product.promotion_active;
@@ -1008,7 +980,7 @@ const ResultatBesoinScreen: React.FC = () => {
                                 if (fallbackImages.length > 0) {
                                     // ✅ Normaliser les fallbacks avec la même fonction que l'extraction initiale
                                     productImages = normalizeMediaArray(fallbackImages);
-                                    console.log(`[ResultatBesoinScreen] ✅ Images récupérées depuis product_data (fallback):`, productImages.length);
+                                    if (__DEV__) console.log(`[ResultatBesoinScreen] ✅ Images récupérées depuis product_data (fallback):`, productImages.length);
                                 }
                             }
 
@@ -1023,7 +995,7 @@ const ResultatBesoinScreen: React.FC = () => {
                                 if (fallbackVideos.length > 0) {
                                     // ✅ Normaliser les fallbacks avec la même fonction que l'extraction initiale
                                     productVideos = normalizeMediaArray(fallbackVideos);
-                                    console.log(`[ResultatBesoinScreen] ✅ Vidéos récupérées depuis product_data (fallback):`, productVideos.length);
+                                    if (__DEV__) console.log(`[ResultatBesoinScreen] ✅ Vidéos récupérées depuis product_data (fallback):`, productVideos.length);
                                 }
                             }
 
@@ -1041,8 +1013,8 @@ const ResultatBesoinScreen: React.FC = () => {
                                     productVideosCount: productVideos.length,
                                     productHasImages: !!product.images,
                                     productHasVideos: !!product.videos,
-                                    productDataHasImages: !!productDataFromProduct?.images,
-                                    productDataHasVideos: !!productDataFromProduct?.videos,
+                                    productDataHasImages: !!productDataForLog?.images,
+                                    productDataHasVideos: !!productDataForLog?.videos,
                                     firstImageUrl: productImages[0]?.substring?.(0, 80) || productImages[0],
                                     firstVideoUrl: productVideos[0]?.substring?.(0, 80) || productVideos[0],
                                 });
@@ -1096,28 +1068,19 @@ const ResultatBesoinScreen: React.FC = () => {
                     }
                 });
 
-                console.log(`📦 [ResultatBesoinScreen] ${extractedProducts.length} produits extraits de ${validServices.length} services`);
-
-                // ✅ DEBUG 2026-01-20: Log détaillé des produits extraits avant déduplication avec tous les champs importants
-                if (extractedProducts.length > 0) {
-                    console.log(`🔍 [ResultatBesoinScreen] DEBUG produits extraits (avant déduplication):`,
-                        extractedProducts.map((p: any) => ({
-                            id: p.id,
-                            product_id: p.product_id,
-                            product_index: p.product_index,
-                            nom_produit: p.nom_produit,
-                            nom: p.nom,
-                            name: p.name,
-                            product_name: p.product_name,
-                            _serviceId: p._serviceId,
-                            score: p.score,
-                            distance: p.distance,
-                            // ✅ Ajouter les champs de matching pour diagnostiquer
-                            combinaison_brute: p.combinaison_brute,
-                            categorie_produit: p.categorie_produit,
-                            sous_caracteristiques: p.sous_caracteristiques ? Object.keys(p.sous_caracteristiques) : []
-                        }))
-                    );
+                if (__DEV__) {
+                    console.log(`📦 [ResultatBesoinScreen] ${extractedProducts.length} produits extraits de ${validServices.length} services`);
+                    if (extractedProducts.length > 0) {
+                        console.log(`🔍 [ResultatBesoinScreen] DEBUG produits extraits (avant déduplication):`,
+                            extractedProducts.map((p: any) => ({
+                                id: p.id,
+                                product_index: p.product_index,
+                                nom: p.nom || p.name,
+                                _serviceId: p._serviceId,
+                                score: p.score,
+                            }))
+                        );
+                    }
                 }
 
                 // ✅ CORRIGÉ: Dédupliquer les produits basés sur un identifiant unique stable
@@ -1160,23 +1123,11 @@ const ResultatBesoinScreen: React.FC = () => {
                     return true;
                 });
 
-                console.log(`📦 [ResultatBesoinScreen] ${deduplicatedProducts.length} produits après déduplication (${extractedProducts.length - deduplicatedProducts.length} doublons supprimés)`);
-
-                // ✅ DEBUG 2026-01-13: Log détaillé des produits après déduplication
-                if (deduplicatedProducts.length > 0) {
-                    console.log(`🔍 [ResultatBesoinScreen] DEBUG produits après déduplication:`,
-                        deduplicatedProducts.map((p: any) => ({
-                            id: p.id,
-                            product_id: p.product_id,
-                            product_index: p.product_index,
-                            nom: p.nom || p.name,
-                            _serviceId: p._serviceId,
-                            score: p.score,
-                            en_promotion: p.en_promotion
-                        }))
-                    );
-                } else if (extractedProducts.length > 0) {
-                    console.error(`❌ [ResultatBesoinScreen] PROBLÈME: ${extractedProducts.length} produits extraits mais 0 après déduplication!`);
+                if (__DEV__) {
+                    console.log(`📦 [ResultatBesoinScreen] ${deduplicatedProducts.length} produits après déduplication (${extractedProducts.length - deduplicatedProducts.length} doublons supprimés)`);
+                    if (deduplicatedProducts.length === 0 && extractedProducts.length > 0) {
+                        console.error(`❌ [ResultatBesoinScreen] PROBLÈME: ${extractedProducts.length} produits extraits mais 0 après déduplication!`);
+                    }
                 }
 
                 // ✅ TRI PRIORITAIRE : Produits en promotion d'abord
@@ -1197,24 +1148,12 @@ const ResultatBesoinScreen: React.FC = () => {
                     return distA - distB;
                 });
 
-                // ✅ DEBUG 2026-01-20: Log les produits triés avant affichage
-                console.log(`📊 [ResultatBesoinScreen] Produits triés (ordre final):`,
-                    deduplicatedProducts.map((p: any, idx: number) => ({
-                        index: idx,
-                        id: p.id,
-                        product_index: p.product_index,
-                        nom_produit: p.nom_produit || p.nom || p.name,
-                        score: p.score,
-                        distance: p.distance,
-                        en_promotion: p.en_promotion || p.promotion_active,
-                        _serviceId: p._serviceId
-                    }))
-                );
+                if (__DEV__) console.log(`📊 [ResultatBesoinScreen] Produits triés: ${deduplicatedProducts.length} produits (ordre final)`);
 
                 // ✅ CORRIGÉ 2026-01-13: Utiliser startTransition pour les mises à jour non urgentes
                 startTransition(() => {
                     setProducts(deduplicatedProducts);
-                    console.log(`✅ [ResultatBesoinScreen] ${deduplicatedProducts.length} produits définis dans l'état pour affichage`);
+                    if (__DEV__) console.log(`✅ [ResultatBesoinScreen] ${deduplicatedProducts.length} produits définis dans l'état pour affichage`);
                 });
 
                 // Récupérer les informations des prestataires
@@ -1223,7 +1162,7 @@ const ResultatBesoinScreen: React.FC = () => {
                     await fetchPrestatairesBatch(userIds);
                 } else {
                     // Aucun prestataire à charger, marquer comme chargé
-                    console.log('📊 Aucun prestataire à charger');
+                    if (__DEV__) console.log('📊 Aucun prestataire à charger');
                     setPrestatairesLoaded(true);
                 }
             }
@@ -1240,13 +1179,13 @@ const ResultatBesoinScreen: React.FC = () => {
     // Fonction pour récupérer les informations des prestataires
     const fetchPrestatairesBatch = async (userIds: string[]) => {
         try {
-            console.log('🔄 Début du chargement des prestataires pour:', userIds);
+            if (__DEV__) console.log('🔄 Début du chargement des prestataires pour:', userIds);
 
             const prestatairePromises = userIds.map(async (userId) => {
                 try {
                     const response = await apiGet(`/api/users/profile/${userId}`);
                     if (response.data) {
-                        console.log(`✅ Prestataire ${userId} chargé`);
+                        if (__DEV__) console.log(`✅ Prestataire ${userId} chargé`);
                         return { userId, prestataire: response.data as Prestataire };
                     }
                     console.warn(`⚠️ Prestataire ${userId} non trouvé`);
@@ -1271,11 +1210,11 @@ const ResultatBesoinScreen: React.FC = () => {
                         userId: result.userId
                     };
                     newPrestataires.set(result.userId, normalizedPrestataire);
-                    console.log(`📝 Prestataire ${result.userId} normalisé:`, normalizedPrestataire.name);
+                    if (__DEV__) console.log(`📝 Prestataire ${result.userId} normalisé:`, normalizedPrestataire.name);
                 }
             });
 
-            console.log(`📊 ${newPrestataires.size} prestataires chargés sur ${userIds.length} demandés`);
+            if (__DEV__) console.log(`📊 ${newPrestataires.size} prestataires chargés sur ${userIds.length} demandés`);
 
             // ✅ CORRIGÉ 2025-01-01: Mémoriser la Map pour éviter les changements de référence
             // Ne mettre à jour que si les données ont réellement changé
@@ -1357,7 +1296,7 @@ const ResultatBesoinScreen: React.FC = () => {
         // Vérifier si on a déjà traité ces résultats (même longueur)
         const currentLength = initialResults?.length || 0;
         if (hasProcessedInitialResults.current && initialResultsLength.current === currentLength) {
-            console.log('⏭️ [ResultatBesoinScreen] Résultats déjà traités, skip');
+            if (__DEV__) console.log('⏭️ [ResultatBesoinScreen] Résultats déjà traités, skip');
             return;
         }
 
@@ -1365,7 +1304,7 @@ const ResultatBesoinScreen: React.FC = () => {
             try {
                 // ✅ AMÉLIORÉ: Validation robuste des résultats initiaux
                 if (!initialResults) {
-                    console.log('⚠️ [ResultatBesoinScreen] Aucun résultat initial fourni (null/undefined)');
+                    if (__DEV__) console.log('⚠️ [ResultatBesoinScreen] Aucun résultat initial fourni (null/undefined)');
                     hasProcessedInitialResults.current = true;
                     initialResultsLength.current = 0;
                     setLoading(false);
@@ -1384,7 +1323,7 @@ const ResultatBesoinScreen: React.FC = () => {
                 }
 
                 if (initialResults.length === 0) {
-                    console.log('⚠️ [ResultatBesoinScreen] Aucun résultat initial fourni (array vide)');
+                    if (__DEV__) console.log('⚠️ [ResultatBesoinScreen] Aucun résultat initial fourni (array vide)');
                     hasProcessedInitialResults.current = true;
                     initialResultsLength.current = 0;
                     setLoading(false);
@@ -1392,7 +1331,7 @@ const ResultatBesoinScreen: React.FC = () => {
                     return;
                 }
 
-                console.log('🔄 [ResultatBesoinScreen] Traitement des résultats initiaux:', initialResults.length);
+                if (__DEV__) console.log('🔄 [ResultatBesoinScreen] Traitement des résultats initiaux:', initialResults.length);
 
                 // Marquer comme traité AVANT le traitement asynchrone
                 hasProcessedInitialResults.current = true;
@@ -1402,12 +1341,12 @@ const ResultatBesoinScreen: React.FC = () => {
                 let sortedResults: SearchResult[] = [];
                 try {
                     sortedResults = await sortResultsByRelevanceAndProximity(initialResults);
-                    console.log('✅ [ResultatBesoinScreen] Résultats triés:', sortedResults.length);
+                    if (__DEV__) console.log('✅ [ResultatBesoinScreen] Résultats triés:', sortedResults.length);
                 } catch (sortError) {
                     console.error('❌ [ResultatBesoinScreen] Erreur lors du tri des résultats:', sortError);
                     // Fallback: utiliser les résultats initiaux sans tri
                     sortedResults = initialResults.filter((r: any) => r && r.service_id) as SearchResult[];
-                    console.warn('⚠️ [ResultatBesoinScreen] Utilisation des résultats sans tri (fallback)');
+                    if (__DEV__) console.warn('⚠️ [ResultatBesoinScreen] Utilisation des résultats sans tri (fallback)');
                 }
 
                 // ✅ AMÉLIORÉ: Extraction des IDs avec validation robuste
@@ -1433,12 +1372,12 @@ const ResultatBesoinScreen: React.FC = () => {
                     })
                     .filter((id: any): id is string => id !== null && id !== undefined && id !== '');
 
-                console.log('📋 [ResultatBesoinScreen] IDs des services à charger:', serviceIds.length, serviceIds);
+                if (__DEV__) console.log('📋 [ResultatBesoinScreen] IDs des services à charger:', serviceIds.length, serviceIds);
 
                 if (serviceIds.length > 0) {
                     await fetchServicesByIds(serviceIds, sortedResults);
                 } else {
-                    console.warn('⚠️ [ResultatBesoinScreen] Aucun service ID valide trouvé après extraction');
+                    if (__DEV__) console.warn('⚠️ [ResultatBesoinScreen] Aucun service ID valide trouvé après extraction');
                     setLoading(false);
                     setPrestatairesLoaded(true);
                     setError('Aucun service valide trouvé dans les résultats');
@@ -1456,7 +1395,7 @@ const ResultatBesoinScreen: React.FC = () => {
         // Ajouter un timeout de sécurité
         const timeoutId = setTimeout(() => {
             if (!prestatairesLoaded) {
-                console.warn('⏰ Timeout atteint, forcer le chargement');
+                if (__DEV__) console.warn('⏰ Timeout atteint, forcer le chargement');
                 setPrestatairesLoaded(true);
             }
         }, 10000); // 10 secondes
@@ -1629,7 +1568,7 @@ const ResultatBesoinScreen: React.FC = () => {
                     }
                 });
 
-                console.log('[ResultatBesoinScreen] Notification de chat ouvert envoyée au prestataire');
+                if (__DEV__) console.log('[ResultatBesoinScreen] Notification de chat ouvert envoyée au prestataire');
             } catch (error) {
                 console.error('[ResultatBesoinScreen] Erreur création notification chat:', error);
             }
@@ -1676,7 +1615,7 @@ const ResultatBesoinScreen: React.FC = () => {
             });
 
             if (result.action === Share.sharedAction) {
-                console.log('[ResultatBesoinScreen] Service partagé avec succès');
+                if (__DEV__) console.log('[ResultatBesoinScreen] Service partagé avec succès');
             }
         } catch (error) {
             console.error('[ResultatBesoinScreen] Erreur partage:', error);
@@ -1692,7 +1631,7 @@ const ResultatBesoinScreen: React.FC = () => {
     }, []);
 
     const handleServicePress = useCallback((service: Service) => {
-        console.log('Service pressé:', service.id);
+        if (__DEV__) console.log('Service pressé:', service.id);
     }, []);
 
     const handleServiceClick = useCallback((serviceId: string) => {
@@ -1736,7 +1675,7 @@ const ResultatBesoinScreen: React.FC = () => {
             });
 
             if (response.success) {
-                console.log('[ResultatBesoinScreen] Notification de contact créée pour le prestataire');
+                if (__DEV__) console.log('[ResultatBesoinScreen] Notification de contact créée pour le prestataire');
             }
         } catch (error) {
             console.error('[ResultatBesoinScreen] Erreur création notification:', error);
@@ -1798,7 +1737,7 @@ const ResultatBesoinScreen: React.FC = () => {
             }
 
             setLoading(true);
-            console.log('[ResultatBesoinScreen] Recherche avec:', {
+            if (__DEV__) console.log('[ResultatBesoinScreen] Recherche avec:', {
                 texte: input.texte || input.text || '',
                 hasImages: (input.base64_image || []).length > 0,
                 hasAudio: (input.audio_base64 || []).length > 0,
@@ -1845,33 +1784,33 @@ const ResultatBesoinScreen: React.FC = () => {
             }
 
             const result = await rechercherServices(searchPayload);
-            console.log('[ResultatBesoinScreen] Résultat API brut:', result);
+            if (__DEV__) console.log('[ResultatBesoinScreen] Résultat API brut:', result);
 
             // Parser les résultats (même logique que HomeScreen)
             let results = [];
             if (result?.resultats?.resultats && Array.isArray(result.resultats.resultats)) {
                 results = result.resultats.resultats;
-                console.log('[ResultatBesoinScreen] ✅ Résultats trouvés dans result.resultats.resultats:', results.length);
+                if (__DEV__) console.log('[ResultatBesoinScreen] ✅ Résultats trouvés dans result.resultats.resultats:', results.length);
             }
             else if (result?.resultats && Array.isArray(result.resultats)) {
                 results = result.resultats;
-                console.log('[ResultatBesoinScreen] ✅ Résultats trouvés dans result.resultats:', results.length);
+                if (__DEV__) console.log('[ResultatBesoinScreen] ✅ Résultats trouvés dans result.resultats:', results.length);
             }
             else if (result?.results && Array.isArray(result.results)) {
                 results = result.results;
-                console.log('[ResultatBesoinScreen] ✅ Résultats trouvés dans result.results:', results.length);
+                if (__DEV__) console.log('[ResultatBesoinScreen] ✅ Résultats trouvés dans result.results:', results.length);
             }
             else if (result?.data?.resultats && Array.isArray(result.data.resultats)) {
                 results = result.data.resultats;
-                console.log('[ResultatBesoinScreen] ✅ Résultats trouvés dans result.data.resultats:', results.length);
+                if (__DEV__) console.log('[ResultatBesoinScreen] ✅ Résultats trouvés dans result.data.resultats:', results.length);
             }
             else if (result?.data && Array.isArray(result.data)) {
                 results = result.data;
-                console.log('[ResultatBesoinScreen] ✅ Résultats trouvés dans result.data:', results.length);
+                if (__DEV__) console.log('[ResultatBesoinScreen] ✅ Résultats trouvés dans result.data:', results.length);
             }
 
             if (results.length > 0) {
-                console.log('[ResultatBesoinScreen] Traitement de', results.length, 'résultats');
+                if (__DEV__) console.log('[ResultatBesoinScreen] Traitement de', results.length, 'résultats');
 
                 // Trier par pertinence et proximité
                 const sortedResults = await sortResultsByRelevanceAndProximity(results);
@@ -1888,7 +1827,7 @@ const ResultatBesoinScreen: React.FC = () => {
                     Alert.alert('Aucun résultat', 'Aucun service trouvé pour cette recherche');
                 }
             } else {
-                console.log('[ResultatBesoinScreen] Aucun résultat trouvé');
+                if (__DEV__) console.log('[ResultatBesoinScreen] Aucun résultat trouvé');
                 Alert.alert('Aucun résultat', 'Aucun service trouvé pour cette recherche');
             }
 
@@ -2079,7 +2018,7 @@ const ResultatBesoinScreen: React.FC = () => {
     const renderProductCard = useCallback((product: any) => {
         // ✅ CORRIGÉ: Vérifier que product existe
         if (!product) {
-            console.warn('[ResultatBesoinScreen] ⚠️ Product est undefined dans renderProductCard');
+            if (__DEV__) console.warn('[ResultatBesoinScreen] ⚠️ Product est undefined dans renderProductCard');
             return null;
         }
 
@@ -2190,21 +2129,21 @@ const ResultatBesoinScreen: React.FC = () => {
     const renderListItem = useCallback(({ item }: { item: { type: 'service' | 'product'; data: any; key: string } }) => {
         // ✅ CORRIGÉ: Vérifier que item et item.data existent
         if (!item || !item.data) {
-            console.warn('[ResultatBesoinScreen] ⚠️ Item ou item.data est undefined:', item);
+            if (__DEV__) console.warn('[ResultatBesoinScreen] ⚠️ Item ou item.data est undefined:', item);
             return null;
         }
 
         if (item.type === 'service') {
             const service = item.data as Service;
             if (!service) {
-                console.warn('[ResultatBesoinScreen] ⚠️ Service est undefined');
+                if (__DEV__) console.warn('[ResultatBesoinScreen] ⚠️ Service est undefined');
                 return null;
             }
             return renderServiceAsProductCard(service);
         } else {
             const product = item.data;
             if (!product) {
-                console.warn('[ResultatBesoinScreen] ⚠️ Product est undefined');
+                if (__DEV__) console.warn('[ResultatBesoinScreen] ⚠️ Product est undefined');
                 return null;
             }
             return renderProductCard(product);
@@ -2234,9 +2173,9 @@ const ResultatBesoinScreen: React.FC = () => {
                 avatar: prestataire.avatar
             } : service.prestataire,
             // Ajouter des statistiques par défaut si manquantes
-            views: service.views || Math.floor(Math.random() * 100),
-            likes: service.likes || Math.floor(Math.random() * 20),
-            comments: service.comments || Math.floor(Math.random() * 10),
+            views: service.views || 0,
+            likes: service.likes || 0,
+            comments: service.comments || 0,
             isNew: service.isNew || false
         };
 
@@ -2322,7 +2261,7 @@ const ResultatBesoinScreen: React.FC = () => {
                                     const lng = parseFloat(firstPoint[1]);
                                     if (!isNaN(lat) && !isNaN(lng)) {
                                         setSelectedLocation({ lat, lng });
-                                        console.log('[ResultatBesoinScreen] Localisation GPS définie:', { lat, lng });
+                                        if (__DEV__) console.log('[ResultatBesoinScreen] Localisation GPS définie:', { lat, lng });
                                     }
                                 }
                             } catch (error) {
@@ -2536,7 +2475,7 @@ const ResultatBesoinScreen: React.FC = () => {
                             onClose={() => setShowCategoryFilters(false)}
                             onApply={(filters) => {
                                 setCategoryFilters(filters);
-                                console.log('Filtres appliqués:', filters);
+                                if (__DEV__) console.log('Filtres appliqués:', filters);
                             }}
                             initialFilters={categoryFilters}
                         />

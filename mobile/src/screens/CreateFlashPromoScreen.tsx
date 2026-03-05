@@ -1,27 +1,23 @@
-// @ts-nocheck
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { Picker } from '@react-native-picker/picker';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
   ActivityIndicator,
-  TouchableOpacity,
-  FlatList,
   Platform,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
-import { NativeButton } from '../components/SafeNativeDesign';
-import { NativeInput } from '../components/SafeNativeDesign';
-import { NativeCard } from '../components/SafeNativeDesign';
-import { apiPost } from '../services/api';
-import { productsService } from '../services/productsService';
+import SafeIcon from '../components/SafeIcon';
+import { NativeButton, NativeCard, NativeInput } from '../components/SafeNativeDesign';
 import { useToaster } from '../components/ToasterProvider';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { Picker } from '@react-native-picker/picker';
-import SafeIcon from '../components/SafeIcon';
+import { apiPost } from '../services/api';
+import { productsService } from '../services/productsService';
 import { modernColors } from '../theme/modernTheme';
 
 interface RouteParams {
@@ -47,7 +43,7 @@ const CreateFlashPromoScreen: React.FC = () => {
   const { user } = useAuth();
   const { colors } = useTheme();
   const toaster = useToaster();
-  
+
   const params = (route.params || {}) as RouteParams;
   const { serviceId, serviceData, serviceTitle, productIndex } = params;
 
@@ -94,7 +90,7 @@ const CreateFlashPromoScreen: React.FC = () => {
   const loadProducts = async () => {
     try {
       setLoadingProducts(true);
-      
+
       if (!user?.id) {
         console.warn('[CreateFlashPromo] ⚠️ Utilisateur non connecté');
         setProducts([]);
@@ -118,7 +114,7 @@ const CreateFlashPromoScreen: React.FC = () => {
           serviceTitle: productData.titre_service || productData.nom_service || `Service #${apiProduct.service_id}`,
         };
       });
-      
+
       setProducts(productsList);
       console.log('[CreateFlashPromo] ✅ Produits convertis:', productsList.length);
     } catch (error: any) {
@@ -199,7 +195,7 @@ const CreateFlashPromoScreen: React.FC = () => {
         const [serviceIdStr, productIndexStr] = productId.split('_');
         const serviceIdNum = parseInt(serviceIdStr, 10);
         const productIndexNum = parseInt(productIndexStr, 10);
-        
+
         if (!isNaN(serviceIdNum) && !isNaN(productIndexNum)) {
           if (!productIndexesByService[serviceIdNum]) {
             productIndexesByService[serviceIdNum] = [];
@@ -269,7 +265,7 @@ const CreateFlashPromoScreen: React.FC = () => {
   }
 
   return (
-    <KeyboardAwareScrollView 
+    <KeyboardAwareScrollView
       style={[styles.container, { backgroundColor: modernColors.background }]}
       contentContainerStyle={styles.scrollContent}
       showsVerticalScrollIndicator={true}
@@ -353,7 +349,7 @@ const CreateFlashPromoScreen: React.FC = () => {
                     key={item.id}
                     style={[
                       styles.productItem,
-                      { 
+                      {
                         backgroundColor: isSelected ? modernColors.primary + '15' : modernColors.surface,
                         borderColor: isSelected ? modernColors.primary : modernColors.border,
                         borderWidth: isSelected ? 2 : 1,

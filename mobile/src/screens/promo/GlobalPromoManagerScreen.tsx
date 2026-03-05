@@ -1,9 +1,11 @@
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
     Modal,
+    Platform,
     ScrollView,
     StyleSheet,
     Text,
@@ -85,6 +87,10 @@ const GlobalPromoManagerScreen: React.FC = () => {
     const [selectedEntryForDetails, setSelectedEntryForDetails] = useState<GlobalPromoEntry | null>(null);
     const [selectedEntryIds, setSelectedEntryIds] = useState<string[]>([]);
     const [statusFilter, setStatusFilter] = useState<'all' | 'pending_review' | 'approved' | 'rejected'>('all');
+    const [showStartPicker, setShowStartPicker] = useState(false);
+    const [showEndPicker, setShowEndPicker] = useState(false);
+    const [pickerMode, setPickerMode] = useState<'date' | 'time'>('date');
+    const [pendingPickerField, setPendingPickerField] = useState<'startsAt' | 'endsAt'>('startsAt');
 
     const stats = useMemo(() => {
         const liveCount = events.filter((event) => event.status === 'live').length;
@@ -293,21 +299,75 @@ const GlobalPromoManagerScreen: React.FC = () => {
                         <View style={styles.row}>
                             <View style={[styles.field, styles.fieldHalf]}>
                                 <Text style={styles.label}>Début *</Text>
-                                <TextInput
+                                <TouchableOpacity
                                     style={styles.input}
-                                    value={eventForm.startsAt}
-                                    onChangeText={(value) => setEventForm((prev) => ({ ...prev, startsAt: value }))}
-                                    placeholder="YYYY-MM-DDTHH:mm"
-                                />
+                                    onPress={() => {
+                                        setPendingPickerField('startsAt');
+                                        setPickerMode('date');
+                                        setShowStartPicker(true);
+                                    }}
+                                >
+                                    <Text style={styles.dateText}>
+                                        {new Date(eventForm.startsAt).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })}
+                                    </Text>
+                                </TouchableOpacity>
+                                {showStartPicker && (
+                                    <DateTimePicker
+                                        value={new Date(eventForm.startsAt)}
+                                        mode={pickerMode}
+                                        display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                                        onChange={(_e: any, selectedDate?: Date) => {
+                                            if (Platform.OS === 'android') setShowStartPicker(false);
+                                            if (selectedDate) {
+                                                if (pickerMode === 'date') {
+                                                    setEventForm(prev => ({ ...prev, startsAt: formatDateTimeLocal(selectedDate) }));
+                                                    setPickerMode('time');
+                                                    if (Platform.OS === 'android') setShowStartPicker(true);
+                                                } else {
+                                                    setEventForm(prev => ({ ...prev, startsAt: formatDateTimeLocal(selectedDate) }));
+                                                    setShowStartPicker(false);
+                                                    setPickerMode('date');
+                                                }
+                                            }
+                                        }}
+                                    />
+                                )}
                             </View>
                             <View style={[styles.field, styles.fieldHalf]}>
                                 <Text style={styles.label}>Fin *</Text>
-                                <TextInput
+                                <TouchableOpacity
                                     style={styles.input}
-                                    value={eventForm.endsAt}
-                                    onChangeText={(value) => setEventForm((prev) => ({ ...prev, endsAt: value }))}
-                                    placeholder="YYYY-MM-DDTHH:mm"
-                                />
+                                    onPress={() => {
+                                        setPendingPickerField('endsAt');
+                                        setPickerMode('date');
+                                        setShowEndPicker(true);
+                                    }}
+                                >
+                                    <Text style={styles.dateText}>
+                                        {new Date(eventForm.endsAt).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })}
+                                    </Text>
+                                </TouchableOpacity>
+                                {showEndPicker && (
+                                    <DateTimePicker
+                                        value={new Date(eventForm.endsAt)}
+                                        mode={pickerMode}
+                                        display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                                        onChange={(_e: any, selectedDate?: Date) => {
+                                            if (Platform.OS === 'android') setShowEndPicker(false);
+                                            if (selectedDate) {
+                                                if (pickerMode === 'date') {
+                                                    setEventForm(prev => ({ ...prev, endsAt: formatDateTimeLocal(selectedDate) }));
+                                                    setPickerMode('time');
+                                                    if (Platform.OS === 'android') setShowEndPicker(true);
+                                                } else {
+                                                    setEventForm(prev => ({ ...prev, endsAt: formatDateTimeLocal(selectedDate) }));
+                                                    setShowEndPicker(false);
+                                                    setPickerMode('date');
+                                                }
+                                            }
+                                        }}
+                                    />
+                                )}
                             </View>
                         </View>
 
@@ -876,6 +936,10 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#1F2937',
         backgroundColor: '#FFFFFF',
+    },
+    dateText: {
+        fontSize: 14,
+        color: '#1F2937',
     },
     textArea: {
         minHeight: 80,

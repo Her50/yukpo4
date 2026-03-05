@@ -9,6 +9,7 @@
 use crate::core::types::AppResult;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use sqlx::PgPool;
 use std::collections::HashMap;
 
 /// Type de fraude détectée
@@ -45,18 +46,49 @@ pub struct FraudSignal {
 }
 
 /// Service de détection de fraude
+/// ✅ FIX 2026-03-05: Ajout PgPool pour persister les signaux de fraude dans PostgreSQL
 pub struct DeliveryFraudDetectionService {
-    // Historique des fraudes détectées
-    fraud_history: Vec<FraudSignal>,
-    // Patterns suspects
+    pool: PgPool,
+    // Patterns suspects (cache mémoire, rechargé périodiquement)
     suspicious_patterns: HashMap<String, Vec<DateTime<Utc>>>,
 }
 
 impl DeliveryFraudDetectionService {
-    pub fn new() -> Self {
+    pub fn new(pool: PgPool) -> Self {
         Self {
-            fraud_history: Vec::new(),
+            pool,
             suspicious_patterns: HashMap::new(),
+        }
+    }
+
+    /// Persiste un signal de fraude dans PostgreSQL
+    async fn persist_signal(&self, signal: &FraudSignal) {
+        let fraud_type_str = format!("{:?}", signal.fraud_type);
+        let risk_level_str = format!("{:?}", signal.risk_level);
+        let metadata_json = serde_json::to_value(&signal.metadata).unwrap_or_default();
+
+        let result = sqlx::query(
+            r#"
+            INSERT INTO delivery_fraud_signals (
+                fraud_type, risk_level, confidence, reason,
+                delivery_id, user_id, courier_id, detected_at, metadata
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            "#,
+        )
+        .bind(&fraud_type_str)
+        .bind(&risk_level_str)
+        .bind(signal.confidence)
+        .bind(&signal.reason)
+        .bind(signal.delivery_id)
+        .bind(signal.user_id)
+        .bind(signal.courier_id)
+        .bind(signal.detected_at)
+        .bind(metadata_json)
+        .execute(&self.pool)
+        .await;
+
+        if let Err(e) = result {
+            log::warn!("[FraudDetection] Erreur persistance signal: {}", e);
         }
     }
 
@@ -86,9 +118,9 @@ impl DeliveryFraudDetectionService {
             signals.push(signal);
         }
 
-        // Enregistrer les signaux
+        // ✅ FIX: Persister les signaux dans PostgreSQL
         for signal in &signals {
-            self.fraud_history.push(signal.clone());
+            self.persist_signal(signal).await;
         }
 
         Ok(signals)
@@ -227,12 +259,22 @@ impl DeliveryFraudDetectionService {
         Ok(None)
     }
 
-    /// Vérifie si un utilisateur est blacklisté
-    pub fn is_blacklisted(&self, user_id: i32) -> bool {
-        // Vérifier dans l'historique
-        self.fraud_history
-            .iter()
-            .any(|s| s.user_id == Some(user_id) && s.risk_level == RiskLevel::Critical)
+    /// Vérifie si un utilisateur est blacklisté (depuis la DB)
+    pub async fn is_blacklisted(&self, user_id: i32) -> bool {
+        let result = sqlx::query_scalar::<_, i64>(
+            r#"
+            SELECT COUNT(*) FROM delivery_fraud_signals
+            WHERE user_id = $1 AND risk_level = 'Critical'
+            "#,
+        )
+        .bind(user_id)
+        .fetch_one(&self.pool)
+        .await;
+
+        match result {
+            Ok(count) => count > 0,
+            Err(_) => false,
+        }
     }
 }
 
@@ -246,10 +288,4 @@ pub struct DeliveryData {
     pub pickup_gps: (f64, f64),
     pub delivery_gps: (f64, f64),
     pub payment_amount: f64,
-}
-
-impl Default for DeliveryFraudDetectionService {
-    fn default() -> Self {
-        Self::new()
-    }
 }

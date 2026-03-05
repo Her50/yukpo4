@@ -3,20 +3,20 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
-    Image,
     RefreshControl,
     ScrollView,
+    Share,
     StyleSheet,
     Text,
     TouchableOpacity,
-    View,
+    View
 } from 'react-native';
-import { SafeNativeView } from '../components/SafeNativeView';
 import ProductCard from '../components/ProductCard';
+import SafeIcon from '../components/SafeIcon';
+import { SafeNativeView } from '../components/SafeNativeView';
 import { useAuth } from '../contexts/AuthContext';
 import { apiGet } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
-import SafeIcon from '../components/SafeIcon';
 
 const PLACEHOLDER_IMAGE = 'https://via.placeholder.com/400x300?text=Produit';
 
@@ -65,6 +65,13 @@ const FlashPromosActiveScreen: React.FC = () => {
     const [flashPromos, setFlashPromos] = useState<FlashPromo[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [nowMs, setNowMs] = useState(() => Date.now());
+
+    // BUG-7 fix: live countdown timer
+    useEffect(() => {
+        const interval = setInterval(() => setNowMs(Date.now()), 1000);
+        return () => clearInterval(interval);
+    }, []);
 
     const loadFlashPromos = useCallback(async () => {
         try {
@@ -103,6 +110,17 @@ const FlashPromosActiveScreen: React.FC = () => {
         },
         [navigation]
     );
+
+    const handleSharePromo = useCallback(async (promo: FlashPromo) => {
+        try {
+            const discount = promo.discount_type === 'percentage' && promo.discount_value
+                ? `-${promo.discount_value}%`
+                : promo.discount_type === 'free' ? 'GRATUIT' : 'Promotion';
+            await Share.share({
+                message: `${discount} sur ${promo.display_title || promo.title} ! Offre flash disponible maintenant sur Yukpo.`,
+            });
+        } catch (_e) { /* user cancelled */ }
+    }, []);
 
     const formatDiscount = (promo: FlashPromo): string => {
         if (promo.discount_type === 'percentage' && promo.discount_value) {
@@ -155,6 +173,9 @@ const FlashPromosActiveScreen: React.FC = () => {
                     flashPromos.map((promo) => {
                         const products = promo.products || [];
                         const timeRemaining = formatTimeRemaining(promo.ends_at);
+                        const endsAtMs = new Date(promo.ends_at).getTime();
+                        const isEnded = nowMs >= endsAtMs;
+                        const isUrgent = !isEnded && (endsAtMs - nowMs) < 30 * 60 * 1000;
 
                         return (
                             <View key={promo.id} style={styles.promoSection}>
@@ -169,9 +190,14 @@ const FlashPromosActiveScreen: React.FC = () => {
                                         )}
                                         <View style={styles.promoHeaderFooter}>
                                             <View style={styles.timeContainer}>
-                                                <SafeIcon name="clock" size={14} color={modernColors.textSecondary} />
-                                                <Text style={styles.timeText}>{timeRemaining}</Text>
+                                                <SafeIcon name="clock" size={14} color={isUrgent ? '#DC2626' : modernColors.textSecondary} />
+                                                <Text style={[styles.timeText, isUrgent && styles.urgentTimeText]}>
+                                                    {isEnded ? 'Terminé' : timeRemaining}
+                                                </Text>
                                             </View>
+                                            <TouchableOpacity onPress={() => handleSharePromo(promo)} style={styles.shareButton}>
+                                                <SafeIcon name="share-2" size={16} color={modernColors.primary} />
+                                            </TouchableOpacity>
                                             <View style={styles.discountBadgeInline}>
                                                 <Text style={styles.discountBadgeTextInline}>{formatDiscount(promo)}</Text>
                                             </View>
@@ -386,6 +412,13 @@ const styles = StyleSheet.create({
     timeText: {
         fontSize: 14,
         color: modernColors.textSecondary,
+    },
+    urgentTimeText: {
+        color: '#DC2626',
+        fontWeight: '700',
+    },
+    shareButton: {
+        padding: 4,
     },
     stockContainer: {
         flexDirection: 'row',

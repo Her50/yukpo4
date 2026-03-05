@@ -1173,6 +1173,41 @@ pub async fn ensure_live_flash_sales_tables(pool: &PgPool) -> Result<(), sqlx::E
     .execute(pool)
     .await?;
 
+    // SEC-3: Add reservation_status column to allow re-reservations after cancellation
+    sqlx::query(
+        "ALTER TABLE live_flash_sale_reservations ADD COLUMN IF NOT EXISTS reservation_status VARCHAR(20) NOT NULL DEFAULT 'confirmed'",
+    )
+    .execute(pool)
+    .await?;
+    sqlx::query(
+        "ALTER TABLE live_flash_sale_reservations ADD COLUMN IF NOT EXISTS cancelled_at TIMESTAMPTZ",
+    )
+    .execute(pool)
+    .await?;
+
+    // Drop old strict UNIQUE constraint if it exists, replace with partial unique (only active reservations)
+    sqlx::query(
+        r#"
+        DO $$
+        BEGIN
+            IF EXISTS (
+                SELECT 1 FROM pg_constraint
+                WHERE conname = 'live_flash_sale_reservations_flash_sale_id_user_id_key'
+            ) THEN
+                ALTER TABLE live_flash_sale_reservations
+                DROP CONSTRAINT live_flash_sale_reservations_flash_sale_id_user_id_key;
+            END IF;
+        END $$;
+        "#,
+    )
+    .execute(pool)
+    .await?;
+    sqlx::query(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_flash_reservations_active_unique ON live_flash_sale_reservations(flash_sale_id, user_id) WHERE reservation_status != 'cancelled'",
+    )
+    .execute(pool)
+    .await?;
+
     sqlx::query(
         r#"
         CREATE TABLE IF NOT EXISTS live_flash_sale_commentaries (
@@ -7906,6 +7941,11 @@ pub async fn run_auto_migrations(pool: &PgPool) {
             "❌ Erreur migration auto external_delivery_providers: {}",
             e
         ),
+    }
+
+    match ensure_delivery_fraud_signals_table(pool).await {
+        Ok(_) => info!("✅ Migration auto: delivery_fraud_signals OK"),
+        Err(e) => error!("❌ Erreur migration auto delivery_fraud_signals: {}", e),
     }
 
     // TODO: Fonction ensure_public_tracking_tokens_table à implémenter
@@ -18269,5 +18309,297 @@ pub async fn ensure_geo_regional_config_table(pool: &PgPool) -> Result<(), sqlx:
     .await?;
 
     info!("✅ Table geo_regional_config créée/vérifiée avec données de seed");
+    Ok(())
+}
+
+/// ✅ FIX 2026-03-05: Table pour persister les signaux de détection de fraude
+pub async fn ensure_delivery_fraud_signals_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification de la table delivery_fraud_signals...");
+
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS delivery_fraud_signals (
+            id SERIAL PRIMARY KEY,
+            fraud_type VARCHAR(50) NOT NULL,
+            risk_level VARCHAR(20) NOT NULL,
+            confidence REAL NOT NULL DEFAULT 0.0,
+            reason TEXT NOT NULL DEFAULT '',
+            delivery_id UUID REFERENCES deliveries(id) ON DELETE SET NULL,
+            user_id INTEGER,
+            courier_id INTEGER,
+            detected_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            metadata JSONB DEFAULT '{}',
+            reviewed_at TIMESTAMPTZ,
+            reviewed_by INTEGER,
+            action_taken VARCHAR(100)
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_fraud_signals_user ON delivery_fraud_signals(user_id)",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_fraud_signals_delivery ON delivery_fraud_signals(delivery_id)",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_fraud_signals_risk ON delivery_fraud_signals(risk_level)",
+    )
+    .execute(pool)
+    .await?;
+
+    info!("✅ Table delivery_fraud_signals créée/vérifiée");
+    Ok(())
+}
+
+/// Crée les tables pour le transcodage vidéo HLS/DASH
+pub async fn ensure_video_transcoding_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification de la table video_transcoding...");
+
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS video_transcoding (
+            id SERIAL PRIMARY KEY,
+            video_id INTEGER NOT NULL UNIQUE REFERENCES media(id) ON DELETE CASCADE,
+            
+            -- Chemins originaux et transcoded
+            original_path TEXT NOT NULL,
+            hls_path TEXT NOT NULL,           -- Playlist HLS maître (.m3u8)
+            dash_path TEXT NOT NULL,          -- Manifest DASH (.mpd)
+            thumbnail_path TEXT NOT NULL,     -- Thumbnail généré
+            
+            -- Métadonnées qualités (JSON array)
+            qualities JSONB NOT NULL DEFAULT '[]'::jsonb,
+            
+            -- Métadonnées vidéo
+            duration_seconds DECIMAL(10,2) NOT NULL,
+            file_size_mb DECIMAL(10,2) NOT NULL,
+            
+            -- Timestamps
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            
+            -- Statut du transcodage
+            status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'completed', 'failed')),
+            error_message TEXT,
+            
+            -- Index pour performance
+            CONSTRAINT video_transcoding_check CHECK (video_id > 0)
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    // Index pour recherche rapide par video_id
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_video_transcoding_video_id ON video_transcoding(video_id)",
+    )
+    .execute(pool)
+    .await?;
+
+    // Index pour recherche par statut
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_video_transcoding_status ON video_transcoding(status)",
+    )
+    .execute(pool)
+    .await?;
+
+    // Index pour les vidéos récentes
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_video_transcoding_created_at ON video_transcoding(created_at DESC)")
+        .execute(pool)
+        .await?;
+
+    // Trigger pour mettre à jour updated_at automatiquement
+    sqlx::query(
+        r#"
+        CREATE OR REPLACE FUNCTION update_video_transcoding_updated_at()
+        RETURNS TRIGGER AS $$
+        BEGIN
+            NEW.updated_at = NOW();
+            RETURN NEW;
+        END;
+        $$ language 'plpgsql';
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        CREATE TRIGGER video_transcoding_updated_at_trigger
+            BEFORE UPDATE ON video_transcoding
+            FOR EACH ROW
+            EXECUTE FUNCTION update_video_transcoding_updated_at();
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    // Vue pour les vidéos transcoded actives
+    sqlx::query(
+        r#"
+        CREATE OR REPLACE VIEW active_transcoded_videos AS
+        SELECT 
+            vt.video_id,
+            vt.hls_path,
+            vt.dash_path,
+            vt.thumbnail_path,
+            vt.qualities,
+            vt.duration_seconds,
+            vt.file_size_mb,
+            vt.created_at,
+            m.path as original_media_path,
+            m.service_id,
+            s.category,
+            s.data as service_data
+        FROM video_transcoding vt
+        JOIN media m ON m.id = vt.video_id
+        JOIN services s ON s.id = m.service_id
+        WHERE vt.status = 'completed'
+          AND s.is_active = true
+          AND m.type = 'video';
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    info!("✅ Table video_transcoding vérifiée/créée avec succès");
+    Ok(())
+}
+
+/// Crée les tables pour analytics vidéo avancé
+pub async fn ensure_video_analytics_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification des tables video_analytics...");
+
+    // Table des événements analytics détaillés
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS video_analytics_events (
+            id SERIAL PRIMARY KEY,
+            video_id INTEGER NOT NULL REFERENCES media(id) ON DELETE CASCADE,
+            user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            session_id VARCHAR(255) NOT NULL,  -- Session unique par utilisateur/device
+            
+            -- Type d'événement
+            event_type VARCHAR(20) NOT NULL CHECK (event_type IN (
+                'play', 'pause', 'seek', 'complete', 'skip', 
+                'quality_change', 'buffer_start', 'buffer_end', 'error'
+            )),
+            
+            -- Timestamp et position
+            timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            position_seconds DECIMAL(10,2) NOT NULL,  -- Position dans la vidéo
+            duration_seconds DECIMAL(10,2) NOT NULL,  -- Durée totale de la vidéo
+            
+            -- Device et qualité
+            device_info JSONB,  -- {platform, app_version, connection_type, network_quality}
+            quality VARCHAR(10),  -- "1080p", "720p", "480p", "360p", "auto"
+            
+            -- Index pour performance
+            CONSTRAINT video_analytics_events_check CHECK (video_id > 0)
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    // Index pour requêtes analytics
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_video_analytics_events_video_id ON video_analytics_events(video_id)")
+        .execute(pool)
+        .await?;
+
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_video_analytics_events_timestamp ON video_analytics_events(timestamp DESC)")
+        .execute(pool)
+        .await?;
+
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_video_analytics_events_user_id ON video_analytics_events(user_id)")
+        .execute(pool)
+        .await?;
+
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_video_analytics_events_session_id ON video_analytics_events(session_id)")
+        .execute(pool)
+        .await?;
+
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_video_analytics_events_type ON video_analytics_events(event_type)")
+        .execute(pool)
+        .await?;
+
+    // Index composite pour requêtes complexes
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_video_analytics_events_video_timestamp ON video_analytics_events(video_id, timestamp DESC)")
+        .execute(pool)
+        .await?;
+
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_video_analytics_events_video_type ON video_analytics_events(video_id, event_type)")
+        .execute(pool)
+        .await?;
+
+    // Agrégats temps réel pour dashboard créateurs
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS video_analytics_realtime (
+            video_id INTEGER PRIMARY KEY REFERENCES media(id) ON DELETE CASCADE,
+            last_updated TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            total_views BIGINT NOT NULL DEFAULT 0,
+            avg_watch_time DECIMAL(10,2) NOT NULL DEFAULT 0,
+            unique_viewers_today INTEGER NOT NULL DEFAULT 0,
+            completion_rate DECIMAL(5,2) NOT NULL DEFAULT 0,
+            engagement_score DECIMAL(5,2) NOT NULL DEFAULT 0,
+            
+            -- Cache des dernières 24h
+            views_today BIGINT NOT NULL DEFAULT 0,
+            shares_today BIGINT NOT NULL DEFAULT 0,
+            comments_today BIGINT NOT NULL DEFAULT 0,
+            
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_video_analytics_realtime_updated ON video_analytics_realtime(last_updated DESC)")
+        .execute(pool)
+        .await?;
+
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_video_analytics_realtime_score ON video_analytics_realtime(engagement_score DESC)")
+        .execute(pool)
+        .await?;
+
+    // Trigger pour mettre à jour updated_at automatiquement
+    sqlx::query(
+        r#"
+        CREATE OR REPLACE FUNCTION update_video_analytics_realtime_updated_at()
+        RETURNS TRIGGER AS $$
+        BEGIN
+            NEW.updated_at = NOW();
+            RETURN NEW;
+        END;
+        $$ language 'plpgsql';
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        CREATE TRIGGER video_analytics_realtime_updated_at_trigger
+            BEFORE UPDATE ON video_analytics_realtime
+            FOR EACH ROW
+            EXECUTE FUNCTION update_video_analytics_realtime_updated_at();
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    info!("✅ Tables video_analytics vérifiées/créées avec succès");
     Ok(())
 }

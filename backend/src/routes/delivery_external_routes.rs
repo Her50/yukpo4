@@ -124,38 +124,28 @@ async fn create_external_delivery(
             flexibility_window_days: Some(3),
         };
 
-        // Note: On ne peut pas utiliser l'endpoint normal car il nécessite un user authentifié
-        // On va directement insérer dans la base
-        let delivery_date = preferred_delivery_date
-            .as_ref()
-            .and_then(|d| chrono::NaiveDate::parse_from_str(d, "%Y-%m-%d").ok());
-        let delivery_time_start = preferred_delivery_time_start
-            .as_ref()
-            .and_then(|t| chrono::NaiveTime::parse_from_str(t, "%H:%M").ok());
-        let delivery_time_end = preferred_delivery_time_end
-            .as_ref()
-            .and_then(|t| chrono::NaiveTime::parse_from_str(t, "%H:%M").ok());
+        // ✅ FIX 2026-03-05: Stocker les préférences dans le metadata JSONB de la livraison
+        // au lieu de client_delivery_preferences (qui nécessite un user_id FK valide)
         let urgency_level = urgency.unwrap_or_else(|| "standard".to_string());
+        let prefs_json = serde_json::json!({
+            "preferred_delivery_date": preferred_delivery_date,
+            "preferred_delivery_time_start": preferred_delivery_time_start,
+            "preferred_delivery_time_end": preferred_delivery_time_end,
+            "urgency_level": urgency_level,
+            "is_flexible": true,
+            "flexibility_window_days": 3,
+            "source": "external_api",
+        });
 
         sqlx::query(
             r#"
-            INSERT INTO client_delivery_preferences (
-                user_id, delivery_id,
-                preferred_delivery_date, preferred_delivery_time_start, preferred_delivery_time_end,
-                preferred_delivery_window_hours, urgency_level,
-                is_flexible, flexibility_window_days
-            )
-            VALUES (
-                0, $1, $2, $3, $4, 2, $5, TRUE, 3
-            )
-            ON CONFLICT DO NOTHING
+            UPDATE deliveries
+            SET metadata_aller = COALESCE(metadata_aller, '{}'::jsonb) || $2::jsonb
+            WHERE id = $1
             "#,
         )
         .bind(summary.id)
-        .bind(delivery_date)
-        .bind(delivery_time_start)
-        .bind(delivery_time_end)
-        .bind(urgency_level)
+        .bind(prefs_json)
         .execute(&state.pg)
         .await
         .ok(); // Ne pas faire échouer si les préférences échouent

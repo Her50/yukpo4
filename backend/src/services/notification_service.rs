@@ -34,8 +34,13 @@ pub enum NotificationType {
     ProductDeliveryConfigMissing,
     // ✅ Phase 10 - Notifications de livraison
     DeliveryAccepted,
+    DeliveryEnRoutePickup,
+    DeliveryArrivalPickup,
     DeliveryPickedUp,
+    DeliveryShoppingInProgress,
+    DeliveryShoppingCompleted,
     DeliveryInTransit,
+    DeliveryArrivalDestination,
     DeliveryDelivered,
     DeliveryCancelled,
     // ✅ NOUVEAU: Notifications de candidature coursier
@@ -77,8 +82,13 @@ impl NotificationType {
             NotificationType::ProductDeliveryConfigMissing => "product_delivery_config_missing",
             // ✅ Phase 10 - Notifications de livraison
             NotificationType::DeliveryAccepted => "delivery_accepted",
+            NotificationType::DeliveryEnRoutePickup => "delivery_en_route_pickup",
+            NotificationType::DeliveryArrivalPickup => "delivery_arrival_pickup",
             NotificationType::DeliveryPickedUp => "delivery_picked_up",
+            NotificationType::DeliveryShoppingInProgress => "delivery_shopping_in_progress",
+            NotificationType::DeliveryShoppingCompleted => "delivery_shopping_completed",
             NotificationType::DeliveryInTransit => "delivery_in_transit",
+            NotificationType::DeliveryArrivalDestination => "delivery_arrival_destination",
             NotificationType::DeliveryDelivered => "delivery_delivered",
             NotificationType::DeliveryCancelled => "delivery_cancelled",
             // ✅ NOUVEAU: Notifications de candidature coursier

@@ -117,7 +117,7 @@ export default function LivesListScreen() {
         <View style={styles.hostInfo}>
           <SafeIcon name="user" size={12} color="#6B7280" />
           <Text style={styles.hostText}>
-            Host ID: {item.host_user_id}
+            {(item as any).host_name || (item as any).metadata?.host_name || `Hôte #${item.host_user_id}`}
           </Text>
         </View>
 

@@ -327,6 +327,7 @@ pub fn delivery_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             "/api/delivery/product-validation/{service_id}/{product_index}",
             get(validate_product),
         )
+        .route("/api/delivery/courier/stats", get(get_courier_stats))
         .route(
             "/api/delivery/preferences",
             post(save_client_delivery_preferences),
@@ -1253,6 +1254,65 @@ async fn get_client_delivery_preferences(
             "preferences": null
         })))
     }
+}
+
+/// ✅ FIX 2026-03-05: GET /api/delivery/courier/stats - Statistiques réelles du coursier
+async fn get_courier_stats(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+) -> AppResult<Json<Value>> {
+    // Récupérer les stats depuis la table deliveries
+    let stats_row = sqlx::query_as::<_, (i64, i64, Option<f64>, Option<f64>)>(
+        r#"
+        SELECT 
+            COUNT(*) as total_deliveries,
+            COUNT(*) FILTER (WHERE status = 'delivered' OR status = 'completed') as completed_deliveries,
+            AVG(EXTRACT(EPOCH FROM (COALESCE(completed_at, delivered_at) - picked_up_at)) / 60.0) 
+                FILTER (WHERE (status = 'delivered' OR status = 'completed') AND picked_up_at IS NOT NULL) as avg_delivery_time,
+            SUM(COALESCE(delivery_fee_cents, 0))::float / 100.0 as total_earnings
+        FROM deliveries
+        WHERE courier_id IN (SELECT id FROM couriers WHERE user_id = $1)
+        "#,
+    )
+    .bind(user.id)
+    .fetch_optional(&state.pg)
+    .await?;
+
+    let (total, completed, avg_time, earnings) = stats_row.unwrap_or((0, 0, None, None));
+
+    // Stats du mois en cours
+    let month_earnings: Option<(Option<f64>,)> = sqlx::query_as(
+        r#"
+        SELECT SUM(COALESCE(delivery_fee_cents, 0))::float / 100.0 as month_earnings
+        FROM deliveries
+        WHERE courier_id IN (SELECT id FROM couriers WHERE user_id = $1)
+          AND (status = 'delivered' OR status = 'completed')
+          AND EXTRACT(MONTH FROM COALESCE(completed_at, delivered_at)) = EXTRACT(MONTH FROM NOW())
+          AND EXTRACT(YEAR FROM COALESCE(completed_at, delivered_at)) = EXTRACT(YEAR FROM NOW())
+        "#,
+    )
+    .bind(user.id)
+    .fetch_optional(&state.pg)
+    .await?;
+
+    let current_month_earnings = month_earnings.and_then(|r| r.0).unwrap_or(0.0);
+    let success_rate = if total > 0 {
+        (completed as f64 / total as f64 * 100.0).round()
+    } else {
+        0.0
+    };
+
+    Ok(Json(serde_json::json!({
+        "success": true,
+        "data": {
+            "totalDeliveries": total,
+            "completedDeliveries": completed,
+            "totalEarnings": earnings.unwrap_or(0.0),
+            "currentMonthEarnings": current_month_earnings,
+            "avgDeliveryTime": avg_time.unwrap_or(0.0).round(),
+            "successRate": success_rate,
+        }
+    })))
 }
 
 /// GET /api/delivery/product-config/{service_id}/{product_index} - Récupérer la configuration

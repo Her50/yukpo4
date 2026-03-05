@@ -19,17 +19,26 @@ const StatusIndicator: React.FC<StatusIndicatorProps> = ({
     const getStatusColor = () => {
         switch (status) {
             case 'delivered':
+            case 'completed':
                 return modernColors.success;
             case 'cancelled':
                 return modernColors.error;
             case 'en_route_delivery':
             case 'shopping_completed':
+            case 'arrival_destination':
                 return modernColors.primary;
             case 'shopping_in_progress':
             case 'en_route_pickup':
+            case 'arrival_pickup':
+            case 'picked_up':
+            case 'assigned':
+            case 'accepted':
                 return modernColors.info;
             case 'awaiting_courier':
+            case 'awaiting_courier_confirmation':
             case 'pending':
+            case 'requested':
+            case 'shopping_pending':
                 return modernColors.warning;
             default:
                 return modernColors.textSecondary;

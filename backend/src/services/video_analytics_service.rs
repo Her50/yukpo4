@@ -1,15 +1,586 @@
+// 📊 Service d'analytics vidéo avancé
+// Track watch time, skip rate, completion rate, heatmaps, performance créateurs
+
+use crate::core::types::{AppError, AppResult};
+use crate::utils::log::{log_error, log_info};
+use chrono::{DateTime, Duration, Utc};
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use sqlx::{FromRow, PgPool};
 use std::sync::Arc;
 
-use chrono::{DateTime, Utc};
-use log::{error, info};
-use serde::Serialize;
-use serde_json::Value;
-use sqlx::FromRow;
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VideoAnalyticsEvent {
+    pub video_id: i32,
+    pub user_id: Option<i32>,
+    pub session_id: String,
+    pub event_type: VideoEventType,
+    pub timestamp: DateTime<Utc>,
+    pub position_seconds: f64,
+    pub duration_seconds: f64,
+    pub device_info: Option<DeviceInfo>,
+    pub quality: Option<String>,
+}
 
-use crate::{
-    core::types::{AppError, AppResult},
-    state::AppState,
-};
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum VideoEventType {
+    Play,
+    Pause,
+    Seek,
+    Complete,
+    Skip,
+    QualityChange,
+    BufferStart,
+    BufferEnd,
+    Error,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DeviceInfo {
+    pub platform: String, // "ios", "android", "web"
+    pub app_version: String,
+    pub connection_type: String, // "wifi", "cellular", "unknown"
+    pub network_quality: String, // "4g", "3g", "2g", "wifi"
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VideoAnalyticsSummary {
+    pub video_id: i32,
+    pub total_views: i64,
+    pub unique_viewers: i64,
+    pub avg_watch_time_seconds: f64,
+    pub completion_rate: f64,  // % de vidéos regardées jusqu'à la fin
+    pub skip_rate: f64,        // % de vidéos sautées
+    pub engagement_score: f64, // Score 0-100 basé sur interactions
+    pub top_dropoff_points: Vec<DropoffPoint>,
+    pub quality_distribution: QualityDistribution,
+    pub performance_metrics: PerformanceMetrics,
+    pub heatmap_data: Vec<HeatmapPoint>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DropoffPoint {
+    pub position_seconds: f64,
+    pub percentage_dropped: f64,
+    pub cumulative_drops: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct QualityDistribution {
+    pub count_1080p: i64,
+    pub count_720p: i64,
+    pub count_480p: i64,
+    pub count_360p: i64,
+    pub count_auto: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PerformanceMetrics {
+    pub avg_buffer_time_ms: f64,
+    pub buffer_events_per_view: f64,
+    pub error_rate: f64,
+    pub avg_load_time_ms: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HeatmapPoint {
+    pub position_seconds: f64,
+    pub intensity: f64, // 0-1, intensité des réactions à ce point
+    pub reactions_count: i64,
+    pub comments_count: i64,
+    pub shares_count: i64,
+}
+
+pub struct VideoAnalyticsService {
+    pool: Arc<PgPool>,
+}
+
+impl VideoAnalyticsService {
+    pub fn new(pool: Arc<PgPool>) -> Self {
+        Self { pool }
+    }
+
+    /// Enregistre un événement analytics
+    pub async fn track_event(&self, event: VideoAnalyticsEvent) -> AppResult<()> {
+        let event_type_str = match event.event_type {
+            VideoEventType::Play => "play",
+            VideoEventType::Pause => "pause",
+            VideoEventType::Seek => "seek",
+            VideoEventType::Complete => "complete",
+            VideoEventType::Skip => "skip",
+            VideoEventType::QualityChange => "quality_change",
+            VideoEventType::BufferStart => "buffer_start",
+            VideoEventType::BufferEnd => "buffer_end",
+            VideoEventType::Error => "error",
+        };
+
+        let device_info_json =
+            event.device_info.map(|d| serde_json::to_string(&d)).transpose().unwrap_or(None);
+
+        sqlx::query!(
+            r#"
+            INSERT INTO video_analytics_events (
+                video_id, user_id, session_id, event_type, 
+                timestamp, position_seconds, duration_seconds,
+                device_info, quality
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            "#,
+            event.video_id,
+            event.user_id,
+            event.session_id,
+            event_type_str,
+            event.timestamp,
+            event.position_seconds,
+            event.duration_seconds,
+            device_info_json,
+            event.quality
+        )
+        .execute(&*self.pool)
+        .await
+        .map_err(|e| AppError::Database(format!("Erreur insertion événement analytics: {}", e)))?;
+
+        // Mettre à jour les agrégats en temps réel
+        self.update_realtime_aggregates(event.video_id).await?;
+
+        Ok(())
+    }
+
+    /// Calcule les analytics complets pour une vidéo
+    pub async fn get_video_analytics(
+        &self,
+        video_id: i32,
+        days: i32,
+    ) -> AppResult<VideoAnalyticsSummary> {
+        let since_date = Utc::now() - Duration::days(days as i64);
+
+        // 1️⃣ Vues et viewers uniques
+        let views_data = sqlx::query!(
+            r#"
+            SELECT 
+                COUNT(*) as total_views,
+                COUNT(DISTINCT user_id) as unique_viewers,
+                AVG(position_seconds) as avg_position
+            FROM video_analytics_events 
+            WHERE video_id = $1 
+              AND timestamp >= $2
+              AND event_type = 'play'
+            "#,
+            video_id,
+            since_date
+        )
+        .fetch_one(&*self.pool)
+        .await
+        .map_err(|e| AppError::Database(format!("Erreur récupération vues: {}", e)))?;
+
+        // 2️⃣ Taux de complétion
+        let completion_data = sqlx::query!(
+            r#"
+            WITH video_sessions AS (
+                SELECT 
+                    session_id,
+                    MAX(CASE WHEN event_type = 'complete' THEN 1 ELSE 0 END) as completed,
+                    MAX(position_seconds) as max_position,
+                    MAX(duration_seconds) as video_duration
+                FROM video_analytics_events 
+                WHERE video_id = $1 
+                  AND timestamp >= $2
+                GROUP BY session_id
+            )
+            SELECT 
+                AVG(CASE WHEN completed = 1 THEN 100.0 
+                     WHEN video_duration > 0 THEN (max_position / video_duration) * 100 
+                     ELSE 0 END) as completion_rate,
+                COUNT(*) as total_sessions
+            FROM video_sessions
+            "#,
+            video_id,
+            since_date
+        )
+        .fetch_one(&*self.pool)
+        .await
+        .map_err(|e| AppError::Database(format!("Erreur calcul complétion: {}", e)))?;
+
+        // 3️⃣ Taux de skip
+        let skip_data = sqlx::query!(
+            r#"
+            WITH session_events AS (
+                SELECT 
+                    session_id,
+                    COUNT(*) FILTER (WHERE event_type = 'skip') as skip_count,
+                    COUNT(*) FILTER (WHERE event_type = 'play') as play_count
+                FROM video_analytics_events 
+                WHERE video_id = $1 
+                  AND timestamp >= $2
+                GROUP BY session_id
+            )
+            SELECT 
+                AVG(CASE WHEN play_count > 0 THEN (skip_count::float / play_count::float) * 100 ELSE 0 END) as skip_rate
+            FROM session_events
+            WHERE play_count > 0
+            "#,
+            video_id,
+            since_date
+        )
+        .fetch_one(&*self.pool)
+        .await
+        .map_err(|e| AppError::Database(format!("Erreur calcul skip rate: {}", e)))?;
+
+        // 4️⃣ Points de dropoff
+        let dropoff_points = self.calculate_dropoff_points(video_id, since_date).await?;
+
+        // 5️⃣ Distribution qualité
+        let quality_dist = self.get_quality_distribution(video_id, since_date).await?;
+
+        // 6️⃣ Métriques performance
+        let performance = self.get_performance_metrics(video_id, since_date).await?;
+
+        // 7️⃣ Heatmap des réactions
+        let heatmap = self.generate_heatmap(video_id, since_date).await?;
+
+        // 8️⃣ Score d'engagement
+        let engagement_score = self.calculate_engagement_score(
+            views_data.total_views.unwrap_or(0) as f64,
+            completion_data.completion_rate.unwrap_or(0.0),
+            skip_data.skip_rate.unwrap_or(0.0),
+            &performance,
+        );
+
+        Ok(VideoAnalyticsSummary {
+            video_id,
+            total_views: views_data.total_views.unwrap_or(0),
+            unique_viewers: views_data.unique_viewers.unwrap_or(0),
+            avg_watch_time_seconds: views_data.avg_position.unwrap_or(0.0),
+            completion_rate: completion_data.completion_rate.unwrap_or(0.0),
+            skip_rate: skip_data.skip_rate.unwrap_or(0.0),
+            engagement_score,
+            top_dropoff_points: dropoff_points,
+            quality_distribution: quality_dist,
+            performance_metrics: performance,
+            heatmap_data: heatmap,
+        })
+    }
+
+    /// Calcule les points où les utilisateurs abandonnent la vidéo
+    async fn calculate_dropoff_points(
+        &self,
+        video_id: i32,
+        since_date: DateTime<Utc>,
+    ) -> AppResult<Vec<DropoffPoint>> {
+        let rows = sqlx::query!(
+            r#"
+            WITH session_positions AS (
+                SELECT 
+                    session_id,
+                    MAX(position_seconds) as max_position,
+                    MAX(duration_seconds) as video_duration
+                FROM video_analytics_events 
+                WHERE video_id = $1 
+                  AND timestamp >= $2
+                  AND event_type IN ('play', 'pause', 'seek')
+                GROUP BY session_id
+            ),
+            dropoff_buckets AS (
+                SELECT 
+                    width_bucket(max_position, 0, video_duration, 20) as bucket,
+                    COUNT(*) as drop_count,
+                    video_duration / 20 as bucket_size
+                FROM session_positions
+                WHERE max_position < video_duration * 0.95  -- Exclure les complétions
+                GROUP BY bucket, video_duration
+                ORDER BY bucket
+            )
+            SELECT 
+                bucket * bucket_size as position_seconds,
+                (drop_count::float / SUM(drop_count) OVER ()) * 100 as percentage_dropped,
+                SUM(drop_count) OVER (ORDER BY bucket) as cumulative_drops
+            FROM dropoff_buckets
+            "#,
+            video_id,
+            since_date
+        )
+        .fetch_all(&*self.pool)
+        .await
+        .map_err(|e| AppError::Database(format!("Erreur calcul dropoff: {}", e)))?;
+
+        let points = rows
+            .into_iter()
+            .map(|row| DropoffPoint {
+                position_seconds: row.position_seconds.unwrap_or(0.0),
+                percentage_dropped: row.percentage_dropped.unwrap_or(0.0),
+                cumulative_drops: row.cumulative_drops.unwrap_or(0),
+            })
+            .collect();
+
+        Ok(points)
+    }
+
+    /// Distribution des qualités utilisées
+    async fn get_quality_distribution(
+        &self,
+        video_id: i32,
+        since_date: DateTime<Utc>,
+    ) -> AppResult<QualityDistribution> {
+        let row = sqlx::query!(
+            r#"
+            SELECT 
+                COUNT(*) FILTER (WHERE quality = '1080p') as count_1080p,
+                COUNT(*) FILTER (WHERE quality = '720p') as count_720p,
+                COUNT(*) FILTER (WHERE quality = '480p') as count_480p,
+                COUNT(*) FILTER (WHERE quality = '360p') as count_360p,
+                COUNT(*) FILTER (WHERE quality = 'auto' OR quality IS NULL) as count_auto
+            FROM video_analytics_events 
+            WHERE video_id = $1 
+              AND timestamp >= $2
+              AND event_type = 'play'
+            "#,
+            video_id,
+            since_date
+        )
+        .fetch_one(&*self.pool)
+        .await
+        .map_err(|e| AppError::Database(format!("Erreur distribution qualité: {}", e)))?;
+
+        Ok(QualityDistribution {
+            count_1080p: row.count_1080p.unwrap_or(0),
+            count_720p: row.count_720p.unwrap_or(0),
+            count_480p: row.count_480p.unwrap_or(0),
+            count_360p: row.count_360p.unwrap_or(0),
+            count_auto: row.count_auto.unwrap_or(0),
+        })
+    }
+
+    /// Métriques de performance (buffer, erreurs, etc.)
+    async fn get_performance_metrics(
+        &self,
+        video_id: i32,
+        since_date: DateTime<Utc>,
+    ) -> AppResult<PerformanceMetrics> {
+        let row = sqlx::query!(
+            r#"
+            WITH buffer_sessions AS (
+                SELECT 
+                    session_id,
+                    EXTRACT(EPOCH FROM (
+                        MAX(CASE WHEN event_type = 'buffer_end' THEN timestamp END) -
+                        MIN(CASE WHEN event_type = 'buffer_start' THEN timestamp END)
+                    )) as buffer_duration_ms
+                FROM video_analytics_events 
+                WHERE video_id = $1 
+                  AND timestamp >= $2
+                  AND event_type IN ('buffer_start', 'buffer_end')
+                GROUP BY session_id
+                HAVING buffer_duration_ms IS NOT NULL
+            ),
+            error_sessions AS (
+                SELECT 
+                    COUNT(*) as error_count,
+                    COUNT(DISTINCT session_id) as sessions_with_errors
+                FROM video_analytics_events 
+                WHERE video_id = $1 
+                  AND timestamp >= $2
+                  AND event_type = 'error'
+            )
+            SELECT 
+                COALESCE(AVG(buffer_duration_ms * 1000), 0) as avg_buffer_time_ms,
+                (SELECT COUNT(*) FROM video_analytics_events WHERE video_id = $1 AND timestamp >= $2 AND event_type = 'play')::float / 
+                (SELECT COUNT(DISTINCT session_id) FROM video_analytics_events WHERE video_id = $1 AND timestamp >= $2 AND event_type = 'play') as buffer_events_per_view,
+                COALESCE((SELECT error_count FROM error_sessions)::float / 
+                         NULLIF((SELECT COUNT(DISTINCT session_id) FROM video_analytics_events WHERE video_id = $1 AND timestamp >= $2 AND event_type = 'play'), 0), 0) as error_rate,
+                1500.0 as avg_load_time_ms  -- Placeholder: à implémenter avec tracking load time
+            FROM buffer_sessions, error_sessions
+            "#,
+            video_id,
+            since_date
+        )
+        .fetch_one(&*self.pool)
+        .await
+        .map_err(|e| AppError::Database(format!("Erreur métriques performance: {}", e)))?;
+
+        Ok(PerformanceMetrics {
+            avg_buffer_time_ms: row.avg_buffer_time_ms.unwrap_or(0.0),
+            buffer_events_per_view: row.buffer_events_per_view.unwrap_or(0.0),
+            error_rate: row.error_rate.unwrap_or(0.0),
+            avg_load_time_ms: row.avg_load_time_ms.unwrap_or(0.0),
+        })
+    }
+
+    /// Génère heatmap des réactions par position
+    async fn generate_heatmap(
+        &self,
+        video_id: i32,
+        since_date: DateTime<Utc>,
+    ) -> AppResult<Vec<HeatmapPoint>> {
+        let rows = sqlx::query!(
+            r#"
+            WITH reaction_buckets AS (
+                SELECT 
+                    width_bucket(position_seconds, 0, 
+                        (SELECT MAX(duration_seconds) FROM video_analytics_events WHERE video_id = $1 AND timestamp >= $2), 
+                        50) as bucket,
+                    COUNT(*) FILTER (WHERE event_type = 'complete') as reactions,
+                    video_duration / 50 as bucket_size
+                FROM video_analytics_events 
+                WHERE video_id = $1 
+                  AND timestamp >= $2
+                  AND event_type IN ('complete', 'pause')  -- Pauses comme proxy d'engagement
+                GROUP BY bucket, video_duration
+            )
+            SELECT 
+                bucket * bucket_size as position_seconds,
+                (reactions::float / NULLIF(MAX(reactions) OVER (), 0)) as intensity,
+                reactions as reactions_count,
+                0 as comments_count,  -- À implémenter avec tracking commentaires
+                0 as shares_count     -- À implémenter avec tracking shares
+            FROM reaction_buckets
+            ORDER BY position_seconds
+            "#,
+            video_id,
+            since_date
+        )
+        .fetch_all(&*self.pool)
+        .await
+        .map_err(|e| AppError::Database(format!("Erreur génération heatmap: {}", e)))?;
+
+        let heatmap = rows
+            .into_iter()
+            .map(|row| HeatmapPoint {
+                position_seconds: row.position_seconds.unwrap_or(0.0),
+                intensity: row.intensity.unwrap_or(0.0),
+                reactions_count: row.reactions_count.unwrap_or(0),
+                comments_count: row.comments_count.unwrap_or(0),
+                shares_count: row.shares_count.unwrap_or(0),
+            })
+            .collect();
+
+        Ok(heatmap)
+    }
+
+    /// Calcule un score d'engagement 0-100
+    fn calculate_engagement_score(
+        &self,
+        views: f64,
+        completion_rate: f64,
+        skip_rate: f64,
+        performance: &PerformanceMetrics,
+    ) -> f64 {
+        let view_score = (views / 1000.0).min(10.0) * 10.0; // 0-100 points
+        let completion_score = completion_rate; // 0-100 points
+        let skip_penalty = skip_rate * 0.5; // -0-50 points
+        let performance_penalty = (performance.avg_buffer_time_ms / 1000.0 * 10.0).min(20.0); // -0-20 points
+        let error_penalty = performance.error_rate * 100.0; // -0-100 points
+
+        let total_score =
+            view_score + completion_score - skip_penalty - performance_penalty - error_penalty;
+        total_score.max(0.0).min(100.0)
+    }
+
+    /// Met à jour les agrégats en temps réel pour dashboard créateurs
+    async fn update_realtime_aggregates(&self, video_id: i32) -> AppResult<()> {
+        sqlx::query!(
+            r#"
+            INSERT INTO video_analytics_realtime (video_id, last_updated, total_views, avg_watch_time)
+            SELECT 
+                $1,
+                NOW(),
+                COUNT(*) FILTER (WHERE event_type = 'play'),
+                AVG(position_seconds) FILTER (WHERE event_type = 'play')
+            FROM video_analytics_events 
+            WHERE video_id = $1 
+              AND timestamp >= NOW() - INTERVAL '1 hour'
+            ON CONFLICT (video_id) DO UPDATE SET
+                last_updated = EXCLUDED.last_updated,
+                total_views = EXCLUDED.total_views,
+                avg_watch_time = EXCLUDED.avg_watch_time
+            "#,
+            video_id
+        )
+        .execute(&*self.pool)
+        .await
+        .map_err(|e| AppError::Database(format!("Erreur mise à jour agrégats temps réel: {}", e)))?;
+
+        Ok(())
+    }
+
+    /// Analytics pour créateurs (top vidéos, performance globale)
+    pub async fn get_creator_analytics(
+        &self,
+        user_id: i32,
+        days: i32,
+    ) -> AppResult<serde_json::Value> {
+        let since_date = Utc::now() - Duration::days(days as i64);
+
+        let analytics = sqlx::query!(
+            r#"
+            WITH creator_videos AS (
+                SELECT DISTINCT vt.video_id
+                FROM video_transcoding vt
+                JOIN media m ON m.id = vt.video_id
+                JOIN services s ON s.id = m.service_id
+                WHERE s.user_id = $1
+                  AND vt.status = 'completed'
+            ),
+            video_stats AS (
+                SELECT 
+                    v.video_id,
+                    COUNT(*) FILTER (WHERE e.event_type = 'play') as views,
+                    COUNT(DISTINCT e.session_id) as unique_viewers,
+                    AVG(e.position_seconds) as avg_watch_time,
+                    COUNT(*) FILTER (WHERE e.event_type = 'complete') as completions
+                FROM creator_videos v
+                LEFT JOIN video_analytics_events e ON e.video_id = v.video_id
+                  AND e.timestamp >= $2
+                GROUP BY v.video_id
+            )
+            SELECT 
+                COUNT(*) as total_videos,
+                COALESCE(SUM(views), 0) as total_views,
+                COALESCE(SUM(unique_viewers), 0) as total_unique_viewers,
+                COALESCE(AVG(avg_watch_time), 0) as avg_watch_time_all_videos,
+                COALESCE(SUM(completions), 0) as total_completions,
+                COALESCE(AVG(CASE WHEN views > 0 THEN (completions::float / views::float) * 100 ELSE 0 END), 0) as avg_completion_rate
+            FROM video_stats
+            "#,
+            user_id,
+            since_date
+        )
+        .fetch_one(&*self.pool)
+        .await
+        .map_err(|e| AppError::Database(format!("Erreur analytics créateur: {}", e)))?;
+
+        Ok(serde_json::json!({
+            "total_videos": analytics.total_videos,
+            "total_views": analytics.total_views,
+            "total_unique_viewers": analytics.total_unique_viewers,
+            "avg_watch_time_seconds": analytics.avg_watch_time_all_videos,
+            "total_completions": analytics.total_completions,
+            "avg_completion_rate": analytics.avg_completion_rate,
+            "period_days": days
+        }))
+    }
+}
+
+// Singleton global
+lazy_static::lazy_static! {
+    pub static ref VIDEO_ANALYTICS_SERVICE: std::sync::Arc<tokio::sync::Mutex<Option<VideoAnalyticsService>>> =
+        std::sync::Arc::new(tokio::sync::Mutex::new(None));
+}
+
+pub async fn get_analytics_service(pool: Arc<PgPool>) -> Arc<VideoAnalyticsService> {
+    let mut service = VIDEO_ANALYTICS_SERVICE.lock().await;
+    if service.is_none() {
+        *service = Some(VideoAnalyticsService::new(pool));
+    }
+    Arc::clone(service.as_ref().unwrap())
+}
+
+// Legacy functions for compatibility
+#[derive(Debug, serde::Serialize, FromRow)]
+pub struct QualityScoreRecord {
+    pub media_id: i32,
+    pub service_id: i32,
+    pub quality_score: f32,
+    pub occurred_at: DateTime<Utc>,
+}
 
 #[derive(Debug, serde::Serialize, FromRow)]
 pub struct QualityScoreRecord {

@@ -17,6 +17,7 @@ use sqlx::PgPool;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use tokio::sync::RwLock;
 
 /// Localisation (origine ou destination)
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -57,8 +58,8 @@ pub struct DeliveryAIETAService {
     weather_service: Arc<tokio::sync::Mutex<DeliveryWeatherService>>,
     traffic_service: Arc<tokio::sync::Mutex<DeliveryTrafficService>>,
     ml_models: Arc<tokio::sync::Mutex<DeliveryMLModelsService>>,
-    // Cache pour prédictions récentes (5 minutes)
-    cache: HashMap<String, (EstimatedTime, DateTime<Utc>)>,
+    // ✅ FIX 2026-03-05: Cache thread-safe avec RwLock pour accès concurrent
+    cache: Arc<RwLock<HashMap<String, (EstimatedTime, DateTime<Utc>)>>>,
     // Métriques pour monitoring
     total_predictions: Arc<AtomicU64>,
     ai_predictions: Arc<AtomicU64>,
@@ -75,7 +76,7 @@ impl DeliveryAIETAService {
             weather_service: Arc::new(tokio::sync::Mutex::new(DeliveryWeatherService::new())),
             traffic_service: Arc::new(tokio::sync::Mutex::new(DeliveryTrafficService::new())),
             ml_models: Arc::new(tokio::sync::Mutex::new(DeliveryMLModelsService::new())),
-            cache: HashMap::new(),
+            cache: Arc::new(RwLock::new(HashMap::new())),
             total_predictions: Arc::new(AtomicU64::new(0)),
             ai_predictions: Arc::new(AtomicU64::new(0)),
             ml_predictions: Arc::new(AtomicU64::new(0)),
@@ -108,15 +109,18 @@ impl DeliveryAIETAService {
             origin.lat, origin.lng, destination.lat, destination.lng, delivery_type
         );
 
-        if let Some((cached, cached_time)) = self.cache.get(&cache_key) {
-            let elapsed = Utc::now() - *cached_time;
-            if elapsed.num_seconds() < 300 {
-                self.cache_hits.fetch_add(1, Ordering::Relaxed);
-                log::info!(
-                    "[AI ETA] Cache hit (total: {})",
-                    self.cache_hits.load(Ordering::Relaxed)
-                );
-                return Ok(cached.clone());
+        {
+            let cache_read = self.cache.read().await;
+            if let Some((cached, cached_time)) = cache_read.get(&cache_key) {
+                let elapsed = Utc::now() - *cached_time;
+                if elapsed.num_seconds() < 300 {
+                    self.cache_hits.fetch_add(1, Ordering::Relaxed);
+                    log::info!(
+                        "[AI ETA] Cache hit (total: {})",
+                        self.cache_hits.load(Ordering::Relaxed)
+                    );
+                    return Ok(cached.clone());
+                }
             }
         }
 
@@ -173,7 +177,7 @@ impl DeliveryAIETAService {
                     };
 
                     // Mettre en cache
-                    self.cache.insert(cache_key, (final_eta.clone(), Utc::now()));
+                    self.cache.write().await.insert(cache_key, (final_eta.clone(), Utc::now()));
 
                     log::info!(
                         "[AI ETA] Prédiction IA+ML réussie (IA: {}, ML: {}, Cache: {})",
@@ -219,7 +223,7 @@ impl DeliveryAIETAService {
         };
 
         // Mettre en cache
-        self.cache.insert(cache_key, (ml_prediction.clone(), Utc::now()));
+        self.cache.write().await.insert(cache_key, (ml_prediction.clone(), Utc::now()));
 
         log::info!(
             "[AI ETA] Prédiction ML réussie (IA: {}, ML: {}, Fallback: {}, Cache: {})",

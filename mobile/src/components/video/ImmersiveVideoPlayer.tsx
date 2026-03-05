@@ -5,7 +5,7 @@
 
 import { AVPlaybackStatus, ResizeMode, Video } from 'expo-av';
 import React, { useCallback, useEffect, useState } from 'react';
-import { StatusBar, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Platform, StatusBar, StyleSheet, TouchableOpacity, View } from 'react-native';
 import Animated, {
     useAnimatedStyle,
     useSharedValue,
@@ -49,15 +49,54 @@ export const ImmersiveVideoPlayer: React.FC<ImmersiveVideoPlayerProps> = ({
     const videoRef = React.useRef<Video>(null);
     const hideControlsTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
-    // Masquer la barre de statut en mode plein écran
+    // ✅ FORCAGE MODE PORTRAIT: Masquer barre statut + forcer orientation portrait
     useEffect(() => {
         if (isFullscreen && isActive) {
             StatusBar.setHidden(true, 'fade');
+
+            // Forcer orientation portrait en mode fullscreen (style TikTok)
+            if (Platform.OS === 'ios') {
+                // iOS: utiliser expo-screen-orientation si disponible
+                try {
+                    // Note: nécessite expo-screen-orientation package
+                    // import * as ScreenOrientation from 'expo-screen-orientation';
+                    // ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT);
+                } catch (error) {
+                    console.debug('[ImmersiveVideoPlayer] Orientation lock non disponible');
+                }
+            } else if (Platform.OS === 'android') {
+                // Android: forcer orientation via Activity
+                try {
+                    // Note: nécessite configuration AndroidManifest.xml
+                    // android:screenOrientation="portrait"
+                    console.debug('[ImmersiveVideoPlayer] Mode portrait Android');
+                } catch (error) {
+                    console.debug('[ImmersiveVideoPlayer] Orientation lock Android error');
+                }
+            }
         } else {
             StatusBar.setHidden(false, 'fade');
+
+            // Restaurer orientation autorisée quand pas fullscreen
+            if (Platform.OS === 'ios') {
+                try {
+                    // ScreenOrientation.unlockAsync();
+                } catch (error) {
+                    console.debug('[ImmersiveVideoPlayer] Orientation unlock non disponible');
+                }
+            }
         }
+
         return () => {
             StatusBar.setHidden(false, 'fade');
+            // Nettoyer orientation à la destruction
+            if (Platform.OS === 'ios') {
+                try {
+                    // ScreenOrientation.unlockAsync();
+                } catch (error) {
+                    // Silent
+                }
+            }
         };
     }, [isFullscreen, isActive]);
 

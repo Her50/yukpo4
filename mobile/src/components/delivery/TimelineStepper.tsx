@@ -12,27 +12,41 @@ interface TimelineStepperProps {
 
 const STATUS_ORDER: DeliveryStatus[] = [
     'pending',
+    'requested',
     'awaiting_courier',
+    'awaiting_courier_confirmation',
     'assigned',
+    'accepted',
     'en_route_pickup',
+    'arrival_pickup',
+    'picked_up',
     'shopping_pending',
     'shopping_in_progress',
     'shopping_completed',
     'en_route_delivery',
+    'arrival_destination',
     'delivered',
+    'completed',
     'cancelled',
 ];
 
 const STATUS_ICON: Partial<Record<DeliveryStatus, string>> = {
     pending: 'clock',
+    requested: 'clock',
     awaiting_courier: 'clock',
+    awaiting_courier_confirmation: 'clock',
     assigned: 'users',
+    accepted: 'users',
     en_route_pickup: 'car',
+    arrival_pickup: 'map-pin',
+    picked_up: 'package',
     shopping_pending: 'shopping-cart',
     shopping_in_progress: 'package',
     shopping_completed: 'check',
     en_route_delivery: 'location',
+    arrival_destination: 'map-pin',
     delivered: 'success',
+    completed: 'success',
     cancelled: 'error',
 };
 
@@ -104,13 +118,20 @@ const TimelineStepper: React.FC<TimelineStepperProps> = ({ checkpoints, currentS
 const statusToLabel = (status: DeliveryStatus): string => {
     switch (status) {
         case 'pending':
+        case 'requested':
             return 'Commande créée';
         case 'awaiting_courier':
+        case 'awaiting_courier_confirmation':
             return 'Recherche de coursier';
         case 'assigned':
+        case 'accepted':
             return 'Coursier assigné';
         case 'en_route_pickup':
-            return 'Coursier en route';
+            return 'Coursier en route vers le pickup';
+        case 'arrival_pickup':
+            return 'Arrivé au point de retrait';
+        case 'picked_up':
+            return 'Colis récupéré';
         case 'shopping_pending':
             return 'En attente au supermarché';
         case 'shopping_in_progress':
@@ -119,7 +140,11 @@ const statusToLabel = (status: DeliveryStatus): string => {
             return 'Shopping terminé';
         case 'en_route_delivery':
             return 'En route vers le destinataire';
+        case 'arrival_destination':
+            return 'Arrivé à destination';
         case 'delivered':
+            return 'Livraison effectuée';
+        case 'completed':
             return 'Livraison terminée';
         case 'cancelled':
             return 'Commande annulée';

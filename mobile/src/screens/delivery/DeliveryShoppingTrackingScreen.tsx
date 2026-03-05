@@ -68,16 +68,16 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
         const prevStatus = prevStatusRef.current;
 
         if (currentStatus && prevStatus && currentStatus !== prevStatus) {
-            // Coursier trouvé ! (statut passe à assigned ou en_route_pickup)
+            // Coursier trouvé ! (statut passe à assigned/accepted ou en_route_pickup)
             if (
-                (currentStatus === 'assigned' || currentStatus === 'en_route_pickup') &&
-                (prevStatus === 'pending' || prevStatus === 'awaiting_courier' || prevStatus === 'awaiting_courier_confirmation')
+                (currentStatus === 'assigned' || currentStatus === 'accepted' || currentStatus === 'en_route_pickup') &&
+                (prevStatus === 'pending' || prevStatus === 'requested' || prevStatus === 'awaiting_courier' || prevStatus === 'awaiting_courier_confirmation')
             ) {
                 notificationSoundService.playSoundWithVibration('courier').catch(console.error);
                 showSuccess('Coursier trouvé ! Votre livraison est en cours de prise en charge.');
             }
             // Livraison terminée
-            if (currentStatus === 'delivered' && prevStatus !== 'delivered') {
+            if ((currentStatus === 'delivered' || currentStatus === 'completed') && prevStatus !== 'delivered' && prevStatus !== 'completed') {
                 notificationSoundService.playSoundWithVibration('ready').catch(console.error);
                 showSuccess('Livraison terminée ! Votre colis a été livré.');
             }

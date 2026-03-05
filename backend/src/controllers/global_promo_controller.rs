@@ -69,6 +69,8 @@ pub async fn create_global_promo_event(
     Authenticated(user): Authenticated,
     Json(payload): Json<CreateGlobalPromoEventRequest>,
 ) -> AppResult<Json<serde_json::Value>> {
+    // ✅ SEC-1: Seuls les admins peuvent créer des événements promotionnels globaux
+    ensure_admin_role(&user)?;
     // ✅ NOUVEAU: Passer la queue de notifications si disponible
     let notification_queue = state.notification_queue.as_deref();
     let event = GlobalPromoService::create_event_with_notification_queue(

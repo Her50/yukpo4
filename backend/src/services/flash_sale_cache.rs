@@ -8,7 +8,7 @@ use redis::{AsyncCommands, Client as RedisClient};
 use std::sync::Arc;
 use uuid::Uuid;
 
-const FLASH_SALE_STOCK_TTL: u64 = 1; // 1 seconde (très court pour cohérence)
+const FLASH_SALE_STOCK_TTL: u64 = 5; // 5 secondes (optimisé pour réduire les appels DB)
 const FLASH_SALE_SUMMARY_TTL: u64 = 5; // 5 secondes
 #[allow(dead_code)]
 const FLASH_SALE_LIST_TTL: u64 = 10; // 10 secondes
@@ -56,8 +56,9 @@ impl FlashSaleCache {
         Ok(stock)
     }
 
-    /// Incrémente le stock réservé dans le cache (atomique)
-    pub async fn increment_reserved_stock(
+    /// Décrémente le stock disponible dans le cache (atomique)
+    /// Retourne le nouveau stock disponible après décrémentation
+    pub async fn decrement_available_stock(
         &self,
         flash_sale_id: Uuid,
         quantity: i32,
@@ -67,7 +68,19 @@ impl FlashSaleCache {
             .map_err(|e| AppError::Internal(format!("Redis connection failed: {}", e)))?;
 
         let key = format!("flash_sale:stock:{}", flash_sale_id);
-        // Utiliser DECRBY via commande Redis
+
+        // Vérifier que la clé existe avant de décrémenter (éviter les valeurs négatives)
+        let exists: bool = conn
+            .exists(&key)
+            .await
+            .map_err(|e| AppError::Internal(format!("Redis EXISTS failed: {}", e)))?;
+
+        if !exists {
+            return Err(AppError::Internal(
+                "Stock cache expired, please retry".into(),
+            ));
+        }
+
         let new_value: i32 = redis::cmd("DECRBY")
             .arg(&key)
             .arg(quantity)
@@ -75,7 +88,29 @@ impl FlashSaleCache {
             .await
             .map_err(|e| AppError::Internal(format!("Redis DECRBY failed: {}", e)))?;
 
+        // Si le stock est devenu négatif, restaurer et signaler stock épuisé
+        if new_value < 0 {
+            let _: () = redis::cmd("INCRBY")
+                .arg(&key)
+                .arg(quantity)
+                .query_async(&mut conn)
+                .await
+                .map_err(|e| {
+                AppError::Internal(format!("Redis INCRBY rollback failed: {}", e))
+            })?;
+            return Err(AppError::BadRequest("Stock épuisé".into()));
+        }
+
         Ok(new_value)
+    }
+
+    /// Alias rétrocompatible pour l'ancien nom
+    pub async fn increment_reserved_stock(
+        &self,
+        flash_sale_id: Uuid,
+        quantity: i32,
+    ) -> AppResult<i32> {
+        self.decrement_available_stock(flash_sale_id, quantity).await
     }
 
     /// Cache un résumé de flash sale

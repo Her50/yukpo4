@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import SafeIcon from '../components/SafeIcon';
 import { NativeButton, NativeInput } from '../components/SafeNativeDesign';
 import { useAuth } from '../contexts/AuthContext';
+import { apiGet } from '../services/api';
 import { liveStreamingService, StartLiveSessionPayload } from '../services/liveStreamingService';
 
 type RouteParams = {
@@ -32,16 +33,28 @@ export default function StartLiveScreen() {
   );
   const [userServices, setUserServices] = useState<Array<{ id: number; title: string }>>([]);
 
-  // Load user's services for selection
+  // Load user's real services from API
   useEffect(() => {
     if (user?.id) {
-      // TODO: Fetch user's services from API
-      // For now, using mock data
-      setUserServices([
-        { id: 1, title: 'Restaurant Le Gourmet' },
-        { id: 2, title: 'Boutique Mode Élégante' },
-        { id: 3, title: 'Service de Nettoyage Pro' },
-      ]);
+      const loadServices = async () => {
+        try {
+          const response = await apiGet<any>('/api/me/services');
+          const backendData = response?.data || response;
+          const services = backendData?.data || backendData?.services || [];
+          if (Array.isArray(services)) {
+            setUserServices(
+              services.map((s: any) => ({
+                id: s.id,
+                title: s.data?.titre_service?.valeur || s.title || `Service #${s.id}`,
+              }))
+            );
+          }
+        } catch (error) {
+          console.error('[StartLiveScreen] Erreur chargement services:', error);
+          setUserServices([]);
+        }
+      };
+      loadServices();
     }
   }, [user]);
 

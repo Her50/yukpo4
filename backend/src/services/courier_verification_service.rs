@@ -157,8 +157,9 @@ impl CourierVerificationService {
         };
 
         info!(
-            "[CourierVerification] Code généré: code={}, expires_at={:?}",
-            verification_code, expires_at
+            "[CourierVerification] Code généré: code=****{}, expires_at={:?}",
+            &verification_code[verification_code.len().saturating_sub(2)..],
+            expires_at
         );
 
         // Récupérer le code créé
@@ -173,8 +174,9 @@ impl CourierVerificationService {
         request: VerifyCourierRequest,
     ) -> AppResult<CourierVerificationResult> {
         info!(
-            "[CourierVerification] Vérification: delivery_id={}, code={}",
-            delivery_id, request.verification_code
+            "[CourierVerification] Vérification: delivery_id={}, code=****{}",
+            delivery_id,
+            &request.verification_code[request.verification_code.len().saturating_sub(2)..]
         );
 
         // Récupérer le code de vérification

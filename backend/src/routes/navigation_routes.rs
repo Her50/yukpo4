@@ -1173,7 +1173,7 @@ async fn get_destination_by_label(
 async fn delete_destination(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<AuthenticatedUser>,
-    Path(destination_id): Path<Uuid>,
+    Path(destination_id): Path<i32>,
 ) -> AppResult<Json<serde_json::Value>> {
     let user_id = user.id;
 

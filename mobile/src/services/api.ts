@@ -965,14 +965,9 @@ export const deliveryApi = {
       };
     }>(`/api/delivery/product-availability/${serviceId}/${productIndex}`);
   },
-  // ✅ AJOUTÉ: Médias de preuve de livraison (pickup/delivery)
-  listProofMedia: async (deliveryId: string) => {
-    return apiCall(`/api/delivery/${deliveryId}/proof-media`);
-  },
-  deleteProofMedia: async (deliveryId: string, mediaId: number) => {
-    return apiCall(`/api/delivery/${deliveryId}/proof-media/${mediaId}`, {
-      method: 'DELETE',
-    });
+  // ✅ FIX 2026-03-05: API stats coursier (remplace le hardcode)
+  getCourierStats: async () => {
+    return apiCall('/api/delivery/courier/stats');
   },
   listActiveDeliveries: async () => {
     return apiCall<DeliveryListResponse>('/api/deliveries/active');

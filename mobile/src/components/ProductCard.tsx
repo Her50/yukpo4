@@ -351,6 +351,7 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
   }, [product?.service_id, service?.id, product?.product_index, productData?.nom]);
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [hasDeliveryConfig, setHasDeliveryConfig] = useState<boolean | null>(null); // null = en cours de vérification
+  const [descriptionExpanded, setDescriptionExpanded] = useState(false);
 
   // ✅ PHASE 4: Gérer les produits depuis l'API (type Product) ou JSONB (fallback)
   // Si le produit vient de l'API, utiliser product.product_data pour les données
@@ -1228,6 +1229,14 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
     productData.nb_avis ??
     0;
 
+  // ✅ NOUVEAU 2026-03-06: Extraire la note moyenne pour affichage étoiles Amazon-style
+  const averageRating: number =
+    service?.average_rating ??
+    productData.average_rating ??
+    productData.note_moyenne ??
+    productData.rating ??
+    0;
+
   // ✅ NOTE 2026-01-23: favoritesCount n'est pas encore tracké dynamiquement
   // Les valeurs viennent du JSON statique product_data qui n'est probablement jamais mis à jour
   const favoritesCount =
@@ -1680,7 +1689,7 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
                     disabled={pendingReaction === 'love'}
                   >
                     <SafeIcon
-                      name={reactions.love?.hasReacted ? 'heart' : 'heart'}
+                      name="heart"
                       size={16}
                       color={reactions.love?.hasReacted ? '#EF4444' : '#6B7280'}
                     />
@@ -1735,7 +1744,7 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
                   </View>
                 )}
                 <View style={styles.priceInlineRow}>
-                  {hasVariant && variants.length > 0 && displayPrice > 0 && !isEnPromotion && (
+                  {hasVariant && variants.length > 0 && displayPrice > 0 && (
                     <Text style={styles.priceInlineFrom}>À partir de </Text>
                   )}
                   {/* ✅ NOUVEAU 2026-03-05: Si en promo, afficher ancien prix barré + nouveau prix en rouge */}
@@ -1761,10 +1770,25 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
                       )}
                     </>
                   )}
-                  {reviewsCount > 0 && (
+                  {(reviewsCount > 0 || averageRating > 0) && (
                     <View style={styles.ratingInline}>
-                      <SafeIcon name="star" size={12} color="#f59e0b" />
-                      <Text style={styles.ratingCountInline}>{reviewsCount} avis</Text>
+                      {averageRating > 0 ? (
+                        <>
+                          <Text style={styles.ratingStarsInline}>
+                            {Array.from({ length: 5 }, (_, i) =>
+                              i < Math.round(averageRating) ? '★' : '☆'
+                            ).join('')}
+                          </Text>
+                          <Text style={styles.ratingValueInline}>{averageRating.toFixed(1)}</Text>
+                        </>
+                      ) : (
+                        <SafeIcon name="star" size={12} color="#f59e0b" />
+                      )}
+                      {reviewsCount > 0 && (
+                        <Text style={styles.ratingCountInline}>
+                          {averageRating > 0 ? '· ' : ''}{reviewsCount} avis
+                        </Text>
+                      )}
                     </View>
                   )}
                 </View>
@@ -1773,34 +1797,30 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
                 {/* ✅ CORRIGÉ 2026-01-23: Utiliser UNIQUEMENT productData.description pour éviter confusion avec description du service */}
                 {/* ✅ CORRIGÉ 2026-02-06: Permettre l'affichage de la description sur plus de lignes (4 au lieu de 2) */}
                 {(productData.description || productData.description_produit || product.description || product.description_produit) && (
-                  <Text
-                    style={styles.productDescription}
-                    numberOfLines={2}
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={() => setDescriptionExpanded(prev => !prev)}
                   >
-                    {normalizeNewlines(filterBooleanValue(
-                      // ✅ CORRIGÉ 2026-01-23: PRIORITÉ ABSOLUE à la description du produit depuis productData
-                      // Ne JAMAIS utiliser la description du service comme fallback
-                      productData.description ||
-                      productData.description_produit ||
-                      product.description ||
-                      product.description_produit ||
-                      '',
-                      ''
-                    ))}
-                  </Text>
+                    <Text
+                      style={styles.productDescription}
+                      numberOfLines={descriptionExpanded ? undefined : 2}
+                    >
+                      {normalizeNewlines(filterBooleanValue(
+                        // ✅ CORRIGÉ 2026-01-23: PRIORITÉ ABSOLUE à la description du produit depuis productData
+                        // Ne JAMAIS utiliser la description du service comme fallback
+                        productData.description ||
+                        productData.description_produit ||
+                        product.description ||
+                        product.description_produit ||
+                        '',
+                        ''
+                      ))}
+                    </Text>
+                    {!descriptionExpanded && (
+                      <Text style={styles.voirPlusText}>Voir plus</Text>
+                    )}
+                  </TouchableOpacity>
                 )}
-                {/* ✅ DEBUG 2026-01-23: Log pour vérifier le nom et la description affichés */}
-                {__DEV__ && console.log('[ProductCard] 📦 Produit affiché:', {
-                  productId: productId,
-                  serviceId: serviceId,
-                  productIndex: productIndex,
-                  nom: productData?.nom || productData?.nom_produit || productData?.name,
-                  description: productData?.description || productData?.description_produit,
-                  productDataKeys: Object.keys(productData),
-                  hasServiceData: !!service?.data,
-                  serviceTitre: service?.data?.titre_service?.valeur,
-                  serviceDescription: service?.data?.description?.valeur
-                })}
               </View>
 
               {/* ✅ OPTIMISÉ 2026-01-14: Section prestataire et localisation - Ligne compacte et équilibrée */}
@@ -2535,10 +2555,27 @@ const styles = StyleSheet.create({
     gap: 3,
     marginLeft: 8,
   },
+  ratingStarsInline: {
+    fontSize: 12,
+    color: '#f59e0b',
+    letterSpacing: -0.5,
+  },
+  ratingValueInline: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#f59e0b',
+    marginLeft: 2,
+  },
   ratingCountInline: {
     fontSize: 11,
     color: '#007185', // Amazon teal link
     fontWeight: '500',
+  },
+  voirPlusText: {
+    fontSize: 11,
+    color: '#007185',
+    fontWeight: '600',
+    marginTop: 2,
   },
   // ✅ SUPPRIMÉ 2026-01-14: prestataireRow, avatar, avatarPlaceholder, prestataireName remplacés par prestataireNameCompact
   // ✅ SUPPRIMÉ 2026-01-14: locationRow, locationText, locationSection remplacés par addressRow

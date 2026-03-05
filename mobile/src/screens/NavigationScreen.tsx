@@ -22,9 +22,27 @@ import { SafeNativeView } from '../components/SafeNativeView';
 import { useAuth } from '../contexts/AuthContext';
 import { useLocationSafe } from '../contexts/LocationContext';
 import { apiGet, apiPost } from '../services/api';
+import { socialSharing } from '../services/socialSharing';
 import { modernColors } from '../theme/modernTheme';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
+const MAP_HEIGHT = height * 0.35;
+
+// ── Décodeur polyline Google ─────────────────────────────────────────────
+const decodePolyline = (encoded: string): { latitude: number; longitude: number }[] => {
+    const points: { latitude: number; longitude: number }[] = [];
+    let index = 0, lat = 0, lng = 0;
+    while (index < encoded.length) {
+        let b, shift = 0, result = 0;
+        do { b = encoded.charCodeAt(index++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
+        lat += (result & 1) ? ~(result >> 1) : (result >> 1);
+        shift = 0; result = 0;
+        do { b = encoded.charCodeAt(index++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
+        lng += (result & 1) ? ~(result >> 1) : (result >> 1);
+        points.push({ latitude: lat / 1e5, longitude: lng / 1e5 });
+    }
+    return points;
+};
 
 // ── Types ──────────────────────────────────────────────────────────────────
 interface RouteOption {
@@ -162,6 +180,7 @@ const NavigationScreen: React.FC = () => {
     const checkpointsReportedRef = useRef<number>(0);
     const checkpointsEncounteredRef = useRef<number>(0);
     const wasOffRouteRef = useRef<boolean>(false);
+    const encounteredCheckpointIdsRef = useRef<Set<string>>(new Set());
 
     // ── Statistiques intelligentes ──
     const [showActivityStats, setShowActivityStats] = useState(false);
@@ -186,6 +205,12 @@ const NavigationScreen: React.FC = () => {
     const [parentScrollEnabled, setParentScrollEnabled] = useState(true);
     const routeCardWidth = width * 0.72 + 10; // card width + marginRight
 
+    // ── Carte interactive ──
+    const [showMap, setShowMap] = useState(true);
+    const [loadingCheckpoints, setLoadingCheckpoints] = useState(false);
+    const [showAllSteps, setShowAllSteps] = useState(false);
+    const mapRef = useRef<MapView>(null);
+
     // ✅ FIX 2026-03-03: Ref pour éviter les closures obsolètes dans les callbacks asynchrones
     const searchRoutesRef = useRef<() => void>(() => { });
 
@@ -198,7 +223,47 @@ const NavigationScreen: React.FC = () => {
         return groups;
     }, [pointsOfInterest]);
 
-    // ── Helpers ────────────────────────────────────────────────────────────
+    // ── Polyline décodée pour la carte ──
+    const routePolylineCoords = useMemo(() => {
+        if (!selectedRoute?.overview_polyline) return [];
+        try { return decodePolyline(selectedRoute.overview_polyline); }
+        catch { return []; }
+    }, [selectedRoute?.overview_polyline]);
+
+    // ── Région carte calculée à partir de la route ──
+    const mapRegion = useMemo((): Region | undefined => {
+        if (routePolylineCoords.length > 0) {
+            const lats = routePolylineCoords.map(p => p.latitude);
+            const lngs = routePolylineCoords.map(p => p.longitude);
+            const minLat = Math.min(...lats), maxLat = Math.max(...lats);
+            const minLng = Math.min(...lngs), maxLng = Math.max(...lngs);
+            return {
+                latitude: (minLat + maxLat) / 2,
+                longitude: (minLng + maxLng) / 2,
+                latitudeDelta: Math.max((maxLat - minLat) * 1.4, 0.01),
+                longitudeDelta: Math.max((maxLng - minLng) * 1.4, 0.01),
+            };
+        }
+        if (destinationCoords) {
+            return { latitude: destinationCoords.lat, longitude: destinationCoords.lng, latitudeDelta: 0.05, longitudeDelta: 0.05 };
+        }
+        if (currentLocation?.coords) {
+            return { latitude: currentLocation.coords.latitude, longitude: currentLocation.coords.longitude, latitudeDelta: 0.05, longitudeDelta: 0.05 };
+        }
+        return { latitude: 4.05, longitude: 9.7, latitudeDelta: 0.1, longitudeDelta: 0.1 };
+    }, [routePolylineCoords, destinationCoords, currentLocation]);
+
+    // ── Adapter la carte quand la route change ──
+    useEffect(() => {
+        if (routePolylineCoords.length > 1 && mapRef.current) {
+            mapRef.current.fitToCoordinates(routePolylineCoords, {
+                edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
+                animated: true,
+            });
+        }
+    }, [routePolylineCoords]);
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
     const getCurrentPosition = useCallback(async () => {
         try {
             if (currentLocation) {
@@ -530,8 +595,9 @@ const NavigationScreen: React.FC = () => {
     // ── Charger les checkpoints (radars/contrôles) le long du trajet ─────
     const loadCheckpoints = useCallback(async () => {
         if (!selectedRoute || !destinationCoords) return;
+        setLoadingCheckpoints(true);
         const origin = await getCurrentPosition();
-        if (!origin) return;
+        if (!origin) { setLoadingCheckpoints(false); return; }
         try {
             const response = await apiGet(`/api/navigation/checkpoints/along-route?origin_lat=${origin.lat}&origin_lng=${origin.lng}&dest_lat=${destinationCoords.lat}&dest_lng=${destinationCoords.lng}`);
             const data = response?.data as any;
@@ -540,6 +606,7 @@ const NavigationScreen: React.FC = () => {
                 console.log(`[Navigation] ${data.checkpoints.length} checkpoints détectés sur le trajet`);
             }
         } catch (e) { console.error('[Navigation] Erreur chargement checkpoints:', e); }
+        setLoadingCheckpoints(false);
     }, [selectedRoute, destinationCoords, getCurrentPosition]);
 
     // ── Signaler un checkpoint ──────────────────────────────────────────────
@@ -645,6 +712,7 @@ const NavigationScreen: React.FC = () => {
         checkpointsReportedRef.current = 0;
         checkpointsEncounteredRef.current = 0;
         wasOffRouteRef.current = false;
+        encounteredCheckpointIdsRef.current = new Set();
 
         setIsTracking(true);
         setNextStepIndex(0);
@@ -727,7 +795,10 @@ const NavigationScreen: React.FC = () => {
                         nearest = { id: cp.id, checkpoint_type: cp.checkpoint_type, distance: Math.round(cpDist), speed_limit: cp.speed_limit };
                     }
                 }
-                if (nearest) checkpointsEncounteredRef.current += 1;
+                if (nearest && !encounteredCheckpointIdsRef.current.has(nearest.id)) {
+                    encounteredCheckpointIdsRef.current.add(nearest.id);
+                    checkpointsEncounteredRef.current += 1;
+                }
                 setNearbyCheckpoint(nearest);
             }
         );
@@ -770,10 +841,10 @@ const NavigationScreen: React.FC = () => {
             try {
                 await apiPost('/api/navigation/activity/log', {
                     travel_mode: travelMode,
-                    origin_address: origin || undefined,
-                    destination_address: destination || undefined,
-                    origin_lat: livePosition?.lat || undefined,
-                    origin_lng: livePosition?.lng || undefined,
+                    origin_address: selectedRoute?.start_address || undefined,
+                    destination_address: destination || selectedRoute?.end_address || undefined,
+                    origin_lat: livePosition?.lat || lastPositionRef.current?.lat || undefined,
+                    origin_lng: livePosition?.lng || lastPositionRef.current?.lng || undefined,
                     dest_lat: destinationCoords?.lat || undefined,
                     dest_lng: destinationCoords?.lng || undefined,
                     distance_meters: distM,
@@ -806,7 +877,7 @@ const NavigationScreen: React.FC = () => {
         setNearbyCheckpoint(null);
         setIsOffRoute(false);
         setLivePosition(null);
-    }, [travelMode, origin, destination, livePosition, destinationCoords, estimateCalories, computeQualityScore, activityPeriod, loadActivityStats]);
+    }, [travelMode, destination, livePosition, destinationCoords, selectedRoute, estimateCalories, computeQualityScore, activityPeriod, loadActivityStats]);
 
     // ── Cleanup au démontage ────────────────────────────────────────────────
     useEffect(() => {
@@ -942,7 +1013,7 @@ const NavigationScreen: React.FC = () => {
                                                     <Text style={styles.healthIndicatorIcon}>{ind.icon}</Text>
                                                     <Text style={styles.healthIndicatorLabel}>{ind.label}</Text>
                                                     <View style={styles.healthBarBg}>
-                                                        <View style={[styles.healthBarFill, { width: `${parseInt(ind.value) || 50}%` as any, backgroundColor: ind.color }]} />
+                                                        <View style={[styles.healthBarFill, { width: `${isNaN(parseInt(ind.value)) ? 50 : parseInt(ind.value)}%` as any, backgroundColor: ind.color }]} />
                                                     </View>
                                                     <Text style={[styles.healthIndicatorValue, { color: ind.color }]}>{ind.value}</Text>
                                                 </View>
@@ -1445,7 +1516,8 @@ const NavigationScreen: React.FC = () => {
                                                     if (name?.trim()) saveDestination('autre', name.trim());
                                                 });
                                             } else {
-                                                saveDestination('autre', 'Favori');
+                                                const customName = destination?.trim() ? destination.trim().substring(0, 30) : 'Favori';
+                                                saveDestination('autre', customName);
                                             }
                                         }
                                     },
@@ -1466,13 +1538,13 @@ const NavigationScreen: React.FC = () => {
                 {/* ━━ Préférences de route (pliable) ━━━━━━━━━━━━━━━━━━━━━━ */}
                 {showPrefs && (
                     <View style={styles.prefsRow}>
-                        <TouchableOpacity style={[styles.prefChip, avoidTolls && styles.prefChipActive]} onPress={() => setAvoidTolls(!avoidTolls)}>
+                        <TouchableOpacity style={[styles.prefChip, avoidTolls && styles.prefChipActive]} onPress={() => { setAvoidTolls(!avoidTolls); if (routes.length > 0) setTimeout(() => searchRoutesRef.current(), 200); }}>
                             <Text style={[styles.prefChipText, avoidTolls && styles.prefChipTextActive]}>Éviter péages</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity style={[styles.prefChip, avoidHighways && styles.prefChipActive]} onPress={() => setAvoidHighways(!avoidHighways)}>
+                        <TouchableOpacity style={[styles.prefChip, avoidHighways && styles.prefChipActive]} onPress={() => { setAvoidHighways(!avoidHighways); if (routes.length > 0) setTimeout(() => searchRoutesRef.current(), 200); }}>
                             <Text style={[styles.prefChipText, avoidHighways && styles.prefChipTextActive]}>Éviter autoroutes</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity style={[styles.prefChip, avoidFerries && styles.prefChipActive]} onPress={() => setAvoidFerries(!avoidFerries)}>
+                        <TouchableOpacity style={[styles.prefChip, avoidFerries && styles.prefChipActive]} onPress={() => { setAvoidFerries(!avoidFerries); if (routes.length > 0) setTimeout(() => searchRoutesRef.current(), 200); }}>
                             <Text style={[styles.prefChipText, avoidFerries && styles.prefChipTextActive]}>Éviter ferries</Text>
                         </TouchableOpacity>
                     </View>
@@ -1579,6 +1651,118 @@ const NavigationScreen: React.FC = () => {
                             })}
                         </ScrollView>
                     </View>
+                )}
+
+                {/* ━━ Carte interactive ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+                {(selectedRoute || destinationCoords) && showMap && mapRegion && (
+                    <View style={styles.mapContainer}>
+                        <View style={styles.mapHeader}>
+                            <View style={styles.mapHeaderLeft}>
+                                <SafeIcon name="Map" size={16} color={modernColors.primary} />
+                                <Text style={styles.mapHeaderTitle}>Carte du trajet</Text>
+                            </View>
+                            <TouchableOpacity onPress={() => setShowMap(false)} style={styles.mapToggleBtn}>
+                                <SafeIcon name="Minimize2" size={16} color={modernColors.textSecondary} />
+                            </TouchableOpacity>
+                        </View>
+                        <MapView
+                            ref={mapRef}
+                            style={styles.mapView}
+                            provider={PROVIDER_GOOGLE}
+                            initialRegion={mapRegion}
+                            showsUserLocation={true}
+                            showsMyLocationButton={false}
+                            showsTraffic={true}
+                            showsCompass={true}
+                            showsScale={true}
+                            loadingEnabled={true}
+                            loadingIndicatorColor={modernColors.primary}
+                        >
+                            {/* Polyline de la route */}
+                            {routePolylineCoords.length > 1 && (
+                                <Polyline
+                                    coordinates={routePolylineCoords}
+                                    strokeColor={modernColors.primary}
+                                    strokeWidth={4}
+                                />
+                            )}
+
+                            {/* Marqueur destination */}
+                            {destinationCoords && (
+                                <Marker
+                                    coordinate={{ latitude: destinationCoords.lat, longitude: destinationCoords.lng }}
+                                    title={destination || 'Destination'}
+                                    pinColor="#EF4444"
+                                    tracksViewChanges={false}
+                                />
+                            )}
+
+                            {/* Marqueur position live (tracking) */}
+                            {isTracking && livePosition && (
+                                <Marker
+                                    coordinate={{ latitude: livePosition.lat, longitude: livePosition.lng }}
+                                    title="Ma position"
+                                    pinColor="#3B82F6"
+                                    tracksViewChanges={true}
+                                />
+                            )}
+
+                            {/* Marqueurs checkpoints */}
+                            {checkpoints.slice(0, 10).map((cp) => {
+                                const cpInfo = CHECKPOINT_LABELS[cp.checkpoint_type] || { label: cp.checkpoint_type, icon: '⚠️', color: '#6B7280' };
+                                return (
+                                    <Marker
+                                        key={cp.id}
+                                        coordinate={{ latitude: cp.latitude, longitude: cp.longitude }}
+                                        title={`${cpInfo.icon} ${cpInfo.label}`}
+                                        description={cp.description || (cp.speed_limit ? `Limite: ${cp.speed_limit} km/h` : undefined)}
+                                        pinColor={cpInfo.color}
+                                        tracksViewChanges={false}
+                                    />
+                                );
+                            })}
+
+                            {/* Marqueurs POI (top 5 visibles) */}
+                            {pointsOfInterest.slice(0, 5).map((poi) => (
+                                <Marker
+                                    key={poi.id}
+                                    coordinate={{ latitude: poi.latitude, longitude: poi.longitude }}
+                                    title={poi.name}
+                                    description={poi.address || `${formatDistance(poi.distance_from_route_meters)} de détour`}
+                                    pinColor="#10B981"
+                                    tracksViewChanges={false}
+                                />
+                            ))}
+                        </MapView>
+
+                        {/* Bouton recentrer */}
+                        <TouchableOpacity
+                            style={styles.mapRecenterBtn}
+                            onPress={() => {
+                                if (routePolylineCoords.length > 1 && mapRef.current) {
+                                    mapRef.current.fitToCoordinates(routePolylineCoords, {
+                                        edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
+                                        animated: true,
+                                    });
+                                } else if (livePosition && mapRef.current) {
+                                    mapRef.current.animateToRegion({
+                                        latitude: livePosition.lat, longitude: livePosition.lng,
+                                        latitudeDelta: 0.01, longitudeDelta: 0.01,
+                                    }, 500);
+                                }
+                            }}
+                        >
+                            <SafeIcon name="Crosshair" size={18} color={modernColors.primary} />
+                        </TouchableOpacity>
+                    </View>
+                )}
+
+                {/* Bouton ouvrir carte si masquée */}
+                {(selectedRoute || destinationCoords) && !showMap && (
+                    <TouchableOpacity style={styles.showMapBtn} onPress={() => setShowMap(true)}>
+                        <SafeIcon name="Map" size={16} color={modernColors.primary} />
+                        <Text style={styles.showMapBtnText}>Afficher la carte</Text>
+                    </TouchableOpacity>
                 )}
 
                 {/* ━━ Tableau de bord navigation en temps réel ━━━━━━━━━━━━━ */}
@@ -1697,11 +1881,14 @@ const NavigationScreen: React.FC = () => {
                 )}
 
                 {/* ━━ Checkpoints sur le trajet (mode planification) ━━━━━━━ */}
-                {!isTracking && selectedRoute && checkpoints.length > 0 && (
+                {!isTracking && selectedRoute && (checkpoints.length > 0 || loadingCheckpoints) && (
                     <NativeCard style={styles.checkpointsCard}>
                         <View style={styles.checkpointsHeader}>
                             <SafeIcon name="AlertTriangle" size={16} color="#F59E0B" />
-                            <Text style={styles.checkpointsTitle}>{checkpoints.length} signalement{checkpoints.length > 1 ? 's' : ''} sur votre trajet</Text>
+                            <Text style={styles.checkpointsTitle}>
+                                {loadingCheckpoints ? 'Recherche de signalements...' : `${checkpoints.length} signalement${checkpoints.length > 1 ? 's' : ''} sur votre trajet`}
+                            </Text>
+                            {loadingCheckpoints && <ActivityIndicator size="small" color="#F59E0B" style={{ marginLeft: 8 }} />}
                         </View>
                         {checkpoints.slice(0, 5).map((cp) => {
                             const cpInfo = CHECKPOINT_LABELS[cp.checkpoint_type] || { label: cp.checkpoint_type, icon: '⚠️', color: '#6B7280' };
@@ -1729,7 +1916,7 @@ const NavigationScreen: React.FC = () => {
                         </TouchableOpacity>
                         {showSteps && (
                             <View style={styles.stepsList}>
-                                {selectedRoute.steps.slice(0, 15).map((step, idx) => (
+                                {(showAllSteps ? selectedRoute.steps : selectedRoute.steps.slice(0, 15)).map((step, idx) => (
                                     <View key={idx} style={styles.stepItem}>
                                         <View style={styles.stepNumberCol}>
                                             <View style={styles.stepDot} />
@@ -1744,8 +1931,17 @@ const NavigationScreen: React.FC = () => {
                                         </View>
                                     </View>
                                 ))}
-                                {selectedRoute.steps.length > 15 && (
-                                    <Text style={styles.poiMoreText}>+{selectedRoute.steps.length - 15} autres étapes</Text>
+                                {selectedRoute.steps.length > 15 && !showAllSteps && (
+                                    <TouchableOpacity style={styles.showAllStepsBtn} onPress={() => setShowAllSteps(true)}>
+                                        <SafeIcon name="ChevronDown" size={16} color={modernColors.primary} />
+                                        <Text style={styles.showAllStepsBtnText}>Voir les {selectedRoute.steps.length - 15} étapes restantes</Text>
+                                    </TouchableOpacity>
+                                )}
+                                {showAllSteps && selectedRoute.steps.length > 15 && (
+                                    <TouchableOpacity style={styles.showAllStepsBtn} onPress={() => setShowAllSteps(false)}>
+                                        <SafeIcon name="ChevronUp" size={16} color={modernColors.primary} />
+                                        <Text style={styles.showAllStepsBtnText}>Réduire</Text>
+                                    </TouchableOpacity>
                                 )}
                             </View>
                         )}
@@ -1932,6 +2128,17 @@ const styles = StyleSheet.create({
     recalcButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 10, paddingVertical: 8, borderRadius: 8, backgroundColor: '#EFF6FF' },
     recalcText: { fontSize: 13, color: modernColors.primary, fontWeight: '600' },
 
+    // Map
+    mapContainer: { marginBottom: 16, borderRadius: 16, overflow: 'hidden', backgroundColor: modernColors.surface, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 6, elevation: 3 },
+    mapHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 10, backgroundColor: modernColors.surface, borderBottomWidth: 1, borderBottomColor: modernColors.border },
+    mapHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    mapHeaderTitle: { fontSize: 14, fontWeight: '700', color: modernColors.text },
+    mapToggleBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: modernColors.background, alignItems: 'center', justifyContent: 'center' },
+    mapView: { width: '100%', height: MAP_HEIGHT },
+    mapRecenterBtn: { position: 'absolute', bottom: 16, right: 16, width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.95)', alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 4 },
+    showMapBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 12, marginBottom: 12, borderRadius: 12, backgroundColor: modernColors.surface, borderWidth: 1, borderColor: modernColors.border },
+    showMapBtnText: { fontSize: 13, fontWeight: '600', color: modernColors.primary },
+
     // Routes section
     routesSection: { marginBottom: 16 },
     routesSectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
@@ -1971,6 +2178,8 @@ const styles = StyleSheet.create({
     stepMeta: { flexDirection: 'row', gap: 12, marginTop: 4 },
     stepDistance: { fontSize: 11, color: modernColors.textSecondary },
     stepDuration: { fontSize: 11, color: modernColors.textSecondary },
+    showAllStepsBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, marginTop: 4, borderTopWidth: 1, borderTopColor: modernColors.border },
+    showAllStepsBtnText: { fontSize: 13, fontWeight: '600', color: modernColors.primary },
 
     // POI section
     poiSection: { marginBottom: 16 },

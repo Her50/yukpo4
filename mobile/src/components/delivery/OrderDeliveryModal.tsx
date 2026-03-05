@@ -6,6 +6,7 @@ import {
     Alert,
     Animated,
     Modal,
+    Image as RNImage,
     ScrollView,
     StyleSheet,
     Text,
@@ -13,6 +14,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import { config } from '../../config/environment';
 import { UserSavedAddress } from '../../hooks/useSavedAddresses';
 import { apiGet, apiPost, userApi } from '../../services/api';
 import { notificationSoundService } from '../../services/notificationSoundService';
@@ -230,26 +232,9 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
         }
     }, [visible, selectedProducts, dropoffLocation, selectedVariantIdx, quantity]);
 
-    // NOUVEAU: Calculer l'assurance quand le prix produit change
-    useEffect(() => {
-        if (productPrice && productPrice > 0) {
-            const insuranceRates = [
-                { min: 0, max: 10000, rate: 0.02 },
-                { min: 10001, max: 50000, rate: 0.015 },
-                { min: 50001, max: 100000, rate: 0.01 },
-                { min: 100001, max: 500000, rate: 0.008 },
-                { min: 500001, max: Infinity, rate: 0.005 },
-            ];
-            for (const tier of insuranceRates) {
-                if (productPrice >= tier.min && productPrice <= tier.max) {
-                    setInsuranceCost(Math.ceil(productPrice * tier.rate));
-                    break;
-                }
-            }
-        } else {
-            setInsuranceCost(0);
-        }
-    }, [productPrice]);
+    // ✅ FIX 2026-03-05: L'assurance est maintenant calculée par le backend via estimate-costs
+    // Le calcul local a été supprimé car il divergeait du backend (taux/paliers différents)
+    // Le coût d'assurance est mis à jour dans loadCosts() via response.data.insurance_cost_cents
 
     // NOUVEAU: Charger le solde utilisateur
     useEffect(() => {
@@ -545,7 +530,7 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                                 if (img.startsWith('http://') || img.startsWith('https://') || img.startsWith('data:')) {
                                     thumbnail = img;
                                 } else {
-                                    const base = (config.API_URL || '').replace(/\/$/, '');
+                                    const base = (config.API_BASE_URL || '').replace(/\/$/, '');
                                     thumbnail = base ? `${base}/api/media/files/${img.replace(/^\//, '')}` : undefined;
                                 }
                             }
@@ -637,6 +622,12 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                 }
                 if (data.is_delivery_free !== undefined) {
                     setIsDeliveryFree(data.is_delivery_free);
+                }
+                // ✅ FIX 2026-03-05: Utiliser le coût d'assurance calculé par le backend
+                if ((data as any).insurance_cost_cents !== undefined) {
+                    setInsuranceCost(Math.ceil((data as any).insurance_cost_cents / 100));
+                } else {
+                    setInsuranceCost(0);
                 }
             }
         } catch (error) {
@@ -1119,7 +1110,7 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                                                     </View>
                                                 </View>
                                                 {product.thumbnail ? (
-                                                    <Image source={{ uri: product.thumbnail }} style={styles.productThumb} />
+                                                    <RNImage source={{ uri: product.thumbnail }} style={styles.productThumb} />
                                                 ) : (
                                                     <View style={[styles.productThumb, styles.productThumbPlaceholder]}>
                                                         <SafeIcon name="package" size={18} color="#9CA3AF" />
@@ -1159,7 +1150,7 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                                         return product ? (
                                             <View key={idx} style={styles.selectedProductCard}>
                                                 {product.thumbnail ? (
-                                                    <Image source={{ uri: product.thumbnail }} style={styles.selectedProductThumb} />
+                                                    <RNImage source={{ uri: product.thumbnail }} style={styles.selectedProductThumb} />
                                                 ) : (
                                                     <View style={[styles.selectedProductThumb, styles.productThumbPlaceholder]}>
                                                         <SafeIcon name="package" size={14} color="#9CA3AF" />
