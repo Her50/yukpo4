@@ -4982,6 +4982,7 @@ async fn generate_background_music(
     Ok(track_path)
 }
 
+#[allow(dead_code)]
 async fn find_best_matching_audio_loop(
     state: &AppState,
     session_dir: &Path,
@@ -5063,6 +5064,7 @@ async fn find_best_matching_audio_loop(
     }
 }
 
+#[allow(dead_code)]
 async fn download_curated_audio(
     session_dir: &Path,
     loop_info: &audio_library_service::CuratedAudioLoop,
@@ -5187,6 +5189,7 @@ async fn download_curated_audio(
     Ok(path)
 }
 
+#[allow(dead_code)]
 fn curated_loop_identifier(mode: Option<&str>, hint: Option<&str>) -> Option<String> {
     if let Some(raw_mode) = mode {
         let normalized = raw_mode.trim().to_lowercase();

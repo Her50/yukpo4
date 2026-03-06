@@ -17,6 +17,7 @@ use crate::{
 };
 
 // ✅ NOUVEAU: Templates spécifiques TikTok/Shorts
+#[allow(dead_code)]
 const TIKTOK_TEMPLATES: &[&str] = &[
     "tiktok_product_showcase",
     "tiktok_before_after",
@@ -26,6 +27,7 @@ const TIKTOK_TEMPLATES: &[&str] = &[
     "tiktok_text_overlay",
 ];
 
+#[allow(dead_code)]
 const SHORTS_TEMPLATES: &[&str] = &[
     "shorts_vertical_story",
     "shorts_quick_demo",

@@ -11,11 +11,22 @@ export PORT=${PORT:-8080}
 export HOST=${HOST:-0.0.0.0}
 export RUST_LOG=${RUST_LOG:-info}
 
-# Vérifier DATABASE_URL (critique)
-if [ -z "$DATABASE_URL" ]; then
-    echo "❌ ERREUR: DATABASE_URL non définie"
-    exit 1
+# Vérifier DATABASE_URL (peut être un env var ou un secret Cloud Run)
+DB_URL=""
+if [ -n "$DATABASE_URL" ]; then
+  DB_URL="$DATABASE_URL"
+elif [ -f "/secrets/database-url/DATABASE_URL" ]; then
+  DB_URL=$(cat /secrets/database-url/DATABASE_URL)
+elif [ -f "/secrets/database-url/value" ]; then
+  DB_URL=$(cat /secrets/database-url/value)
 fi
+
+if [ -z "$DB_URL" ]; then
+  echo "❌ ERREUR: DATABASE_URL non trouvé (ni env var ni secret)"
+  exit 1
+fi
+
+export DATABASE_URL="$DB_URL"
 
 # Vérifier l'exécutable
 if [ ! -f "./yukpomnang_backend" ]; then

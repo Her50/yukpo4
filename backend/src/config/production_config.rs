@@ -54,10 +54,41 @@ impl Default for ProductionConfig {
                     || std::env::var("NVIDIA_VISIBLE_DEVICES").is_ok()
             });
 
+        // En Cloud Run, les secrets peuvent être montés dans /secrets/
+        let database_url = if let Ok(url) = std::env::var("DATABASE_URL") {
+            url
+        } else if let Ok(content) = std::fs::read_to_string("/secrets/database-url/DATABASE_URL") {
+            content
+        } else if let Ok(content) = std::fs::read_to_string("/secrets/database-url/value") {
+            content
+        } else {
+            Default::default()
+        };
+
+        let redis_url = if let Ok(url) = std::env::var("REDIS_URL") {
+            url
+        } else if let Ok(content) = std::fs::read_to_string("/secrets/redis-url/REDIS_URL") {
+            content
+        } else if let Ok(content) = std::fs::read_to_string("/secrets/redis-url/value") {
+            content
+        } else {
+            Default::default()
+        };
+
+        let jwt_secret = if let Ok(secret) = std::env::var("JWT_SECRET") {
+            secret
+        } else if let Ok(content) = std::fs::read_to_string("/secrets/jwt-secret/JWT_SECRET") {
+            content
+        } else if let Ok(content) = std::fs::read_to_string("/secrets/jwt-secret/value") {
+            content
+        } else {
+            Default::default()
+        };
+
         Self {
-            database_url: std::env::var("DATABASE_URL").unwrap_or_default(),
-            redis_url: std::env::var("REDIS_URL").unwrap_or_default(),
-            jwt_secret: std::env::var("JWT_SECRET").unwrap_or_default(),
+            database_url,
+            redis_url,
+            jwt_secret,
             openai_api_key: std::env::var("OPENAI_API_KEY").unwrap_or_default(),
             environment: std::env::var("ENVIRONMENT").unwrap_or_else(|_| "production".to_string()),
             log_level: std::env::var("RUST_LOG").unwrap_or_else(|_| "info".to_string()),

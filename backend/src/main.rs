@@ -254,14 +254,22 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     eprintln!("[MAIN] 🔍 Récupération de DATABASE_URL...");
-    let mut db_url = env::var("DATABASE_URL").map_err(|e| {
-        eprintln!(
-            "[MAIN] ❌ ERREUR CRITIQUE: DATABASE_URL manquante ou invalide: {}",
-            e
-        );
-        log::error!("❌ DATABASE_URL manquante ou invalide: {}", e);
-        e
-    })?;
+
+    // En Cloud Run, DATABASE_URL peut être un secret monté, pas une env var
+    let mut db_url = if let Ok(url) = env::var("DATABASE_URL") {
+        url
+    } else if let Ok(content) = std::fs::read_to_string("/secrets/database-url/DATABASE_URL") {
+        content
+    } else if let Ok(content) = std::fs::read_to_string("/secrets/database-url/value") {
+        content
+    } else {
+        let err = "DATABASE_URL non trouvé (ni env var ni secret Cloud Run)";
+        eprintln!("[MAIN] ❌ ERREUR CRITIQUE: {}", err);
+        log::error!("❌ {}", err);
+        return Err(err.into());
+    };
+
+    // Nettoyer les retours à la ligne qui cassent le parsing
 
     // ✅ CRITIQUE 2026-02-17: Nettoyer les retours à la ligne qui cassent le parsing
     // Les retours à la ligne dans DATABASE_URL causent "error with configuration: empty host"
