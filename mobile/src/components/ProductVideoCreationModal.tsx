@@ -603,7 +603,6 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
     const [dependencies, setDependencies] = useState<VideoDependency[]>([]);
     const [showVideoChaining, setShowVideoChaining] = useState(false);
     const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
-    const [showAdvancedOptions, setShowAdvancedOptions] = useState<boolean>(false);
 
     // ✅ NOUVEAU: États pour le suivi du job de génération vidéo
     const [currentJobId, setCurrentJobId] = useState<string | null>(null);
