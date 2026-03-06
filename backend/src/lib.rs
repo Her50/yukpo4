@@ -122,6 +122,7 @@ use crate::routes::{
     webhook_routes::webhook_routes,
     webrtc_routes::webrtc_routes,
 };
+use crate::state::AppState;
 use crate::websocket::chat_websocket::create_chat_websocket_router;
 use crate::websocket::flash_sale_websocket::create_flash_sale_websocket_router;
 use crate::websocket::websocket_handler::create_websocket_router;

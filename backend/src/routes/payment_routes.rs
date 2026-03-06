@@ -339,7 +339,7 @@ pub async fn webhook_orange_money(Json(payload): Json<serde_json::Value>) -> imp
     }
 }
 
-pub fn payment_routes(state: Arc<crate::AppState>) -> Router<Arc<crate::AppState>> {
+pub fn payment_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
     Router::new()
         .route("/methods", get(get_available_payment_methods))
         .route("/validate-phone", post(validate_phone_number))

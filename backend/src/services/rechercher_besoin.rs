@@ -1389,7 +1389,7 @@ pub async fn rechercher_besoin_direct(
                                 let mut merged_images = existing_images.clone();
                                 for img in &images_cdn {
                                     if !merged_images.contains(&img) {
-                                        merged_images.push(img);
+                                        merged_images.push(img.clone());
                                     }
                                 }
 
@@ -1408,7 +1408,7 @@ pub async fn rechercher_besoin_direct(
                                 let mut merged_videos = existing_videos.clone();
                                 for vid in &videos_cdn {
                                     if !merged_videos.contains(&vid) {
-                                        merged_videos.push(vid);
+                                        merged_videos.push(vid.clone());
                                     }
                                 }
 

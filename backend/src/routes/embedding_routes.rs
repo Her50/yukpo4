@@ -1,6 +1,6 @@
 use crate::controllers::embedding_controller;
 use crate::middlewares::jwt::jwt_auth;
-use crate::AppState;
+use crate::state::AppState;
 use axum::{
     routing::{get, post},
     Router,

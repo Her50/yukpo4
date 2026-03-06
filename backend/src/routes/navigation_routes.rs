@@ -14,7 +14,7 @@ use uuid::Uuid;
 
 use crate::core::types::{AppError, AppResult};
 use crate::middlewares::jwt::{jwt_auth, AuthenticatedUser};
-use crate::AppState;
+use crate::state::AppState;
 
 #[derive(Deserialize)]
 struct GeocodeRequest {

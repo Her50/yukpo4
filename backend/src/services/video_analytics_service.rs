@@ -2,7 +2,7 @@
 // Track watch time, skip rate, completion rate, heatmaps, performance créateurs
 
 use crate::core::types::{AppError, AppResult};
-use crate::AppState;
+use crate::state::AppState;
 use chrono::{DateTime, Duration, Utc};
 use log::{error, info};
 use serde::{Deserialize, Serialize};
