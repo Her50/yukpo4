@@ -31,7 +31,7 @@ pub fn advanced_analytics_routes(state: Arc<AppState>) -> Router<Arc<AppState>> 
         .with_state(state)
 }
 
-/// GET /api/analytics/video/:video_id
+/// GET /api/analytics/video/{video_id}
 async fn analyze_video(
     State(state): State<Arc<AppState>>,
     Path(video_id): Path<String>,
@@ -48,7 +48,7 @@ async fn analyze_video(
     }
 }
 
-/// GET /api/analytics/ab-test/:test_id
+/// GET /api/analytics/ab-test/{test_id}
 async fn analyze_ab_test(
     State(state): State<Arc<AppState>>,
     Path(test_id): Path<String>,

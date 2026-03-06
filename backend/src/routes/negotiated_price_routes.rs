@@ -149,7 +149,7 @@ async fn get_pending_offer(
     Ok(Json(offer))
 }
 
-/// ✅ NOUVEAU : POST /api/negotiated-prices/:id/accept
+/// ✅ NOUVEAU : POST /api/negotiated-prices/{id}/accept
 /// Accepte une offre de prix négocié
 async fn accept_offer(
     State(state): State<Arc<AppState>>,
@@ -165,7 +165,7 @@ async fn accept_offer(
     })))
 }
 
-/// ✅ NOUVEAU : POST /api/negotiated-prices/:id/reject
+/// ✅ NOUVEAU : POST /api/negotiated-prices/{id}/reject
 /// Rejette une offre de prix négocié
 async fn reject_offer(
     State(state): State<Arc<AppState>>,
@@ -181,7 +181,7 @@ async fn reject_offer(
     })))
 }
 
-/// ✅ NOUVEAU : POST /api/negotiated-prices/:id/cancel
+/// ✅ NOUVEAU : POST /api/negotiated-prices/{id}/cancel
 /// Annule une offre de prix négocié (pour le client)
 async fn cancel_offer(
     State(state): State<Arc<AppState>>,

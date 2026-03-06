@@ -32,7 +32,7 @@ pub struct ReactionResponse {
     pub count: i64,
 }
 
-/// POST /api/chat/messages/:message_id/reactions - Ajouter une réaction
+/// POST /api/chat/messages/{message_id}/reactions - Ajouter une réaction
 /// ✅ OPTIMISÉ pour scalabilité : cache Redis, batch processing
 pub async fn add_reaction(
     State(state): State<Arc<AppState>>,
@@ -188,7 +188,7 @@ pub async fn add_reaction(
     }
 }
 
-/// DELETE /api/chat/messages/:message_id/reactions/:emoji - Supprimer une réaction
+/// DELETE /api/chat/messages/{message_id}/reactions/{emoji} - Supprimer une réaction
 /// ✅ OPTIMISÉ pour scalabilité : cache Redis, invalidation
 pub async fn remove_reaction(
     State(state): State<Arc<AppState>>,
@@ -272,7 +272,7 @@ pub async fn remove_reaction(
     }
 }
 
-/// GET /api/chat/messages/:message_id/reactions - Récupérer toutes les réactions d'un message
+/// GET /api/chat/messages/{message_id}/reactions - Récupérer toutes les réactions d'un message
 /// ✅ OPTIMISÉ pour scalabilité : cache Redis avec TTL
 pub async fn get_message_reactions(
     State(state): State<Arc<AppState>>,

@@ -43,7 +43,7 @@ pub fn video_hls_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .with_state(state)
 }
 
-/// POST /api/videos/:video_id/generate-hls
+/// POST /api/videos/{video_id}/generate-hls
 async fn generate_hls_variants(
     State(state): State<Arc<AppState>>,
     Path(video_id): Path<String>,
@@ -82,7 +82,7 @@ async fn generate_hls_variants(
     }
 }
 
-/// POST /api/videos/:video_id/generate-dash
+/// POST /api/videos/{video_id}/generate-dash
 async fn generate_dash_variants(
     State(state): State<Arc<AppState>>,
     Path(video_id): Path<String>,
@@ -112,7 +112,7 @@ async fn generate_dash_variants(
     }
 }
 
-/// GET /api/videos/:video_id/master.m3u8
+/// GET /api/videos/{video_id}/master.m3u8
 async fn get_master_playlist(Path(video_id): Path<String>) -> Result<String, StatusCode> {
     let output_dir = std::env::var("HLS_OUTPUT_DIR").unwrap_or_else(|_| "./hls_output".to_string());
     let hls_service = HLSDashService::new(output_dir.clone());
@@ -130,7 +130,7 @@ async fn get_master_playlist(Path(video_id): Path<String>) -> Result<String, Sta
     }
 }
 
-/// GET /api/videos/:video_id/:quality/playlist.m3u8
+/// GET /api/videos/{video_id}/{quality}/playlist.m3u8
 async fn get_variant_playlist(
     Path((video_id, quality)): Path<(String, String)>,
 ) -> Result<String, StatusCode> {
@@ -147,7 +147,7 @@ async fn get_variant_playlist(
     }
 }
 
-/// GET /api/videos/:video_id/manifest.mpd
+/// GET /api/videos/{video_id}/manifest.mpd
 async fn get_dash_manifest(Path(video_id): Path<String>) -> Result<String, StatusCode> {
     let output_dir = std::env::var("HLS_OUTPUT_DIR").unwrap_or_else(|_| "./hls_output".to_string());
 

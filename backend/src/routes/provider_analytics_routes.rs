@@ -50,7 +50,7 @@ struct AnalyticsQueryParams {
     service_id: Option<i32>,
 }
 
-/// GET /api/provider/:provider_id/analytics/orders - Statistiques de commandes
+/// GET /api/provider/{provider_id}/analytics/orders - Statistiques de commandes
 async fn get_order_stats(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<AuthenticatedUser>,
@@ -74,7 +74,7 @@ async fn get_order_stats(
     })))
 }
 
-/// GET /api/provider/:provider_id/analytics/preparation-time - Métriques délais préparation
+/// GET /api/provider/{provider_id}/analytics/preparation-time - Métriques délais préparation
 async fn get_preparation_time_stats(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<AuthenticatedUser>,
@@ -97,7 +97,7 @@ async fn get_preparation_time_stats(
     })))
 }
 
-/// GET /api/provider/:provider_id/analytics/rejections - Analyse produits rejetés
+/// GET /api/provider/{provider_id}/analytics/rejections - Analyse produits rejetés
 async fn get_rejection_stats(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<AuthenticatedUser>,
@@ -120,7 +120,7 @@ async fn get_rejection_stats(
     })))
 }
 
-/// GET /api/provider/:provider_id/analytics/cancellations - Statistiques d'annulation
+/// GET /api/provider/{provider_id}/analytics/cancellations - Statistiques d'annulation
 async fn get_cancellation_stats(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<AuthenticatedUser>,
@@ -143,7 +143,7 @@ async fn get_cancellation_stats(
     })))
 }
 
-/// GET /api/provider/:provider_id/analytics/product-performance - Performance par produit
+/// GET /api/provider/{provider_id}/analytics/product-performance - Performance par produit
 async fn get_product_performance(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<AuthenticatedUser>,
@@ -171,7 +171,7 @@ async fn get_product_performance(
     })))
 }
 
-/// GET /api/provider/:provider_id/analytics/dashboard - Données complètes dashboard
+/// GET /api/provider/{provider_id}/analytics/dashboard - Données complètes dashboard
 async fn get_dashboard_analytics(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<AuthenticatedUser>,

@@ -61,7 +61,7 @@ pub fn delivery_chat_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .with_state(state)
 }
 
-/// GET /api/delivery/:delivery_id/chat/messages
+/// GET /api/delivery/{delivery_id}/chat/messages
 /// Récupère l'historique des messages de chat pour une livraison
 async fn get_delivery_chat_messages(
     State(state): State<Arc<AppState>>,
@@ -180,7 +180,7 @@ async fn get_delivery_chat_messages(
     }
 }
 
-/// POST /api/delivery/:delivery_id/chat/send
+/// POST /api/delivery/{delivery_id}/chat/send
 /// Envoie un message de chat pour une livraison
 async fn send_delivery_chat_message(
     State(state): State<Arc<AppState>>,

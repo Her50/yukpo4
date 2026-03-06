@@ -311,8 +311,8 @@ pub async fn get_performance_analytics(
 pub fn video_analytics_routes() -> Router<Arc<AppState>> {
     Router::new()
         .route("/track", post(track_video_event))
-        .route("/video/:video_id", get(get_video_analytics))
-        .route("/creator/:user_id", get(get_creator_analytics))
+        .route("/video/{video_id}", get(get_video_analytics))
+        .route("/creator/{user_id}", get(get_creator_analytics))
         .route("/top", get(get_top_videos))
         .route("/global", get(get_global_analytics))
         .route("/performance", get(get_performance_analytics))

@@ -14,11 +14,11 @@ pub fn media_analytics_routes() -> Router<Arc<AppState>> {
     Router::new()
         // Routes pour tracking d'engagement
         .route(
-            "/media/:media_id/track/view",
+            "/media/{media_id}/track/view",
             post(media_analytics_controller::track_view),
         )
         .route(
-            "/media/:media_id/track/share",
+            "/media/{media_id}/track/share",
             post(media_analytics_controller::track_share),
         )
         // Routes pour analytics de contenu
@@ -40,7 +40,7 @@ pub fn media_analytics_routes() -> Router<Arc<AppState>> {
             get(media_analytics_controller::list_quality_scores),
         )
         .route(
-            "/media/:media_id/distribution/:target",
+            "/media/{media_id}/distribution/{target}",
             post(media_analytics_controller::update_distribution),
         )
 }

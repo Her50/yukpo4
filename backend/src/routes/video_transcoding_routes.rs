@@ -194,6 +194,6 @@ async fn build_urls_response(transcoded: &crate::services::video_transcoding_ser
 pub fn video_transcoding_routes() -> Router<Arc<AppState>> {
     Router::new()
         .route("/transcode/start", post(start_transcode))
-        .route("/transcode/:video_id", get(get_transcoded_urls))
-        .route("/transcode/:video_id/status", get(get_transcode_status))
+        .route("/transcode/{video_id}", get(get_transcoded_urls))
+        .route("/transcode/{video_id}/status", get(get_transcode_status))
 }

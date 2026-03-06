@@ -145,7 +145,7 @@ async fn create_order(
     })))
 }
 
-/// POST /api/delivery/orders/:order_id/validate - Prestataire valide une commande
+/// POST /api/delivery/orders/{order_id}/validate - Prestataire valide une commande
 async fn validate_order(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<AuthenticatedUser>,
@@ -209,7 +209,7 @@ async fn validate_order(
     })))
 }
 
-/// POST /api/delivery/orders/:order_id/reject - Prestataire rejette une commande
+/// POST /api/delivery/orders/{order_id}/reject - Prestataire rejette une commande
 async fn reject_order(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<AuthenticatedUser>,
@@ -267,7 +267,7 @@ async fn reject_order(
     })))
 }
 
-/// GET /api/delivery/orders/:order_id/similar - Récupérer produits similaires
+/// GET /api/delivery/orders/{order_id}/similar - Récupérer produits similaires
 async fn get_similar_products(
     State(state): State<Arc<AppState>>,
     Extension(_user): Extension<AuthenticatedUser>,
@@ -345,7 +345,7 @@ async fn get_similar_products(
     })))
 }
 
-/// GET /api/delivery/orders/:order_id - Récupérer une commande
+/// GET /api/delivery/orders/{order_id} - Récupérer une commande
 async fn get_order(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<AuthenticatedUser>,

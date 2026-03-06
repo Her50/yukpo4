@@ -75,7 +75,7 @@ pub fn delivery_suggestions_routes(state: Arc<AppState>) -> Router<Arc<AppState>
         .with_state(state)
 }
 
-/// GET /api/delivery/:delivery_id/suggestions
+/// GET /api/delivery/{delivery_id}/suggestions
 /// Récupère les suggestions de produits pour une livraison
 async fn get_delivery_suggestions(
     State(state): State<Arc<AppState>>,
@@ -175,7 +175,7 @@ async fn get_delivery_suggestions(
     }
 }
 
-/// GET /api/delivery/:delivery_id/suggestions/generate
+/// GET /api/delivery/{delivery_id}/suggestions/generate
 /// Génère de nouvelles suggestions de produits via IA
 async fn generate_delivery_suggestions(
     State(state): State<Arc<AppState>>,
@@ -307,7 +307,7 @@ async fn generate_delivery_suggestions(
     })))
 }
 
-/// GET /api/delivery/:delivery_id/suggestions/:suggestion_id/accept
+/// GET /api/delivery/{delivery_id}/suggestions/{suggestion_id}/accept
 /// Marque une suggestion comme acceptée
 async fn accept_suggestion(
     State(state): State<Arc<AppState>>,

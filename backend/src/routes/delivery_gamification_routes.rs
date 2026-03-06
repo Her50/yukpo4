@@ -106,7 +106,7 @@ pub fn delivery_gamification_routes(state: Arc<AppState>) -> Router<Arc<AppState
         .with_state(state)
 }
 
-/// GET /api/delivery/gamification/stats/:user_id
+/// GET /api/delivery/gamification/stats/{user_id}
 /// Récupère les statistiques de gamification d'un utilisateur
 async fn get_gamification_stats(
     State(state): State<Arc<AppState>>,
@@ -222,7 +222,7 @@ async fn get_gamification_stats(
     Ok(Json(stats))
 }
 
-/// GET /api/delivery/gamification/badges/:user_id
+/// GET /api/delivery/gamification/badges/{user_id}
 /// Récupère tous les badges d'un utilisateur
 async fn get_user_badges(
     State(state): State<Arc<AppState>>,

@@ -195,7 +195,7 @@ async fn create_external_delivery(
     })))
 }
 
-/// ✅ Phase 4 - Amélioration 8 : GET /api/external/track/:token - Suivi public d'une livraison
+/// ✅ Phase 4 - Amélioration 8 : GET /api/external/track/{token} - Suivi public d'une livraison
 async fn get_delivery_status_by_token(
     State(state): State<Arc<AppState>>,
     Path(token): Path<String>,

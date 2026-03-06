@@ -232,7 +232,7 @@ pub async fn get_user_conversations(
     Ok(Json(conversations))
 }
 
-/// GET /api/chat/messages/:conversation_id - Récupère les messages d'une conversation
+/// GET /api/chat/messages/{conversation_id} - Récupère les messages d'une conversation
 pub async fn get_conversation_messages(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<AuthenticatedUser>,

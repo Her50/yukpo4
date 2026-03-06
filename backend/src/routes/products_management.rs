@@ -77,7 +77,7 @@ pub struct ApiResponse {
 }
 
 /// Activer/Désactiver un produit spécifique
-/// PATCH /api/products/:id/toggle-status
+/// PATCH /api/products/{id}/toggle-status
 pub async fn toggle_product_status(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<crate::middlewares::jwt::AuthenticatedUser>,
@@ -196,7 +196,7 @@ pub async fn toggle_product_status(
 }
 
 /// Supprimer un produit spécifique
-/// DELETE /api/products/:id
+/// DELETE /api/products/{id}
 pub async fn delete_product(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<crate::middlewares::jwt::AuthenticatedUser>,
@@ -522,7 +522,7 @@ pub async fn get_all_prestataire_products(
 }
 
 /// Ajouter un produit dupliqué à un service (pour duplication)
-/// PATCH /api/services/:id/add-product
+/// PATCH /api/services/{id}/add-product
 #[derive(Debug, Deserialize)]
 pub struct AddProductRequest {
     pub product: serde_json::Value,
@@ -627,7 +627,7 @@ pub async fn add_product_to_service(
 }
 
 /// Modifier un produit spécifique dans un service (GRATUIT)
-/// PATCH /api/products/:id/update
+/// PATCH /api/products/{id}/update
 #[derive(Debug, Deserialize)]
 pub struct UpdateProductRequest {
     pub service_id: String,
