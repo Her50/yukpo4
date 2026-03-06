@@ -2560,7 +2560,8 @@ const styles = StyleSheet.create({
     header: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 16,
+        paddingHorizontal: 16, // ✅ RÉDUIT: De padding: 16 à paddingHorizontal: 16
+        paddingVertical: 8, // ✅ AJOUTÉ: paddingVertical explicite et réduit
         backgroundColor: 'white',
         borderBottomWidth: 1,
         borderBottomColor: theme.colors.border,
@@ -2575,7 +2576,8 @@ const styles = StyleSheet.create({
         color: theme.colors.primary,
     },
     searchContainer: {
-        padding: 16,
+        paddingHorizontal: 16, // ✅ RÉDUIT: De padding: 16 à paddingHorizontal: 16
+        paddingVertical: 8, // ✅ AJOUTÉ: paddingVertical explicite et réduit
         backgroundColor: 'white',
         borderBottomWidth: 1,
         borderBottomColor: theme.colors.border,
@@ -2768,7 +2770,7 @@ const styles = StyleSheet.create({
     },
     servicesContainerContent: {
         paddingHorizontal: 10,
-        paddingVertical: 6,
+        paddingVertical: 2, // ✅ RÉDUIT: De 6 à 2 pour compacter l'espacement vertical
     },
     serviceCard: {
         marginBottom: 16,
@@ -2962,7 +2964,8 @@ const styles = StyleSheet.create({
     modernFiltersContainer: {
         backgroundColor: '#FFFFFF',
         marginHorizontal: 16,
-        marginVertical: 12,
+        marginTop: 4, // ✅ RÉDUIT: De 12 à 4 pour éliminer le vide excessif en haut
+        marginBottom: 8, // ✅ RÉDUIT: De 12 à 8 pour compacter l'espacement
         borderRadius: 16,
         padding: 16,
         shadowColor: '#000',

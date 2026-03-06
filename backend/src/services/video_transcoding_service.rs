@@ -2,7 +2,7 @@
 // Génère des streams adaptatifs comme TikTok/Reels
 
 use crate::core::types::{AppError, AppResult};
-use crate::utils::log::{log_error, log_info, log_warn};
+use crate::utils::log::{log_error, log_info};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use std::path::{Path, PathBuf};
@@ -31,6 +31,7 @@ pub struct TranscodedVideo {
     pub created_at: chrono::DateTime<chrono::Utc>,
 }
 
+#[derive(Clone)]
 pub struct VideoTranscodingService {
     pool: Arc<PgPool>,
     output_dir: PathBuf,
@@ -193,7 +194,6 @@ impl VideoTranscodingService {
                 thumbnail_path.to_str().unwrap(),
             ])
             .output()
-            .await
             .map_err(|e| AppError::Internal(format!("Erreur génération thumbnail: {}", e)))?;
 
         if !output.status.success() {
@@ -222,9 +222,10 @@ impl VideoTranscodingService {
         master_content.push_str("#EXT-X-VERSION:6\n");
 
         for quality in qualities {
+            let video_path_buf = PathBuf::from(video_path);
             let quality_name = format!(
                 "{}_{}",
-                video_base.file_stem().unwrap().to_str().unwrap(),
+                video_path_buf.file_stem().unwrap().to_str().unwrap(),
                 quality.label
             );
             let variant_path = output_base.join(&quality_name);
@@ -267,7 +268,6 @@ impl VideoTranscodingService {
                     playlist_path.to_str().unwrap(),
                 ])
                 .output()
-                .await
                 .map_err(|e| {
                     AppError::Internal(format!("Erreur transcodage HLS {}: {}", quality.label, e))
                 })?;
@@ -322,7 +322,7 @@ impl VideoTranscodingService {
         ];
 
         // Ajouter les maps pour chaque qualité
-        for (i, quality) in qualities.iter().enumerate() {
+        for (_i, quality) in qualities.iter().enumerate() {
             args.extend(vec![
                 "-map".to_string(),
                 "0:v".to_string(),
@@ -341,8 +341,7 @@ impl VideoTranscodingService {
         let output = Command::new(&self.ffmpeg_path)
             .args(&args)
             .output()
-            .await
-            .map_err(|e| AppError::Internal(format!("Erreur transcodage DASH: {}", e)))?;
+            .map_err(|e| AppError::Internal(format!("Erreur transcoding HLS: {}", e)))?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
@@ -365,8 +364,7 @@ impl VideoTranscodingService {
                 video_path,
             ])
             .output()
-            .await
-            .map_err(|e| AppError::Internal(format!("Erreur ffprobe: {}", e)))?;
+            .map_err(|e| AppError::Internal(format!("Erreur FFprobe: {}", e)))?;
 
         if !output.status.success() {
             return Err(AppError::Internal(
@@ -509,5 +507,5 @@ pub async fn get_transcoding_service(pool: Arc<PgPool>) -> Arc<VideoTranscodingS
         new_service.initialize().await.unwrap();
         *service = Some(new_service);
     }
-    Arc::clone(service.as_ref().unwrap())
+    Arc::new(service.as_ref().unwrap().clone())
 }

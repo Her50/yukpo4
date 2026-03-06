@@ -243,46 +243,51 @@ const DashboardPrestataire: React.FC = () => {
     <ResponsiveContainer>
       <div className="py-8">
         {/* Header avec contrôles */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              📊 Dashboard Prestataire
-            </h1>
-            <p className="text-gray-600">
-              Tableau de bord intelligent avec statistiques en temps réel
-            </p>
-          </div>
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 mb-8">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+                <Briefcase className="w-7 h-7 text-white" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+                  Dashboard Prestataire
+                </h1>
+                <p className="text-gray-600 font-medium">Tableau de bord intelligent avec statistiques en temps réel</p>
+              </div>
+            </div>
 
-          <div className="flex items-center gap-4 mt-4 md:mt-0">
-            <Button
-              onClick={() => window.location.href = '/mes-services'}
-              variant="outline"
-              size="sm"
-              className="flex items-center gap-2"
-            >
-              <Activity className="w-4 h-4" />
-              Gérer mes services
-            </Button>
+            <div className="flex items-center gap-3 mt-4 md:mt-0">
+              <Button
+                onClick={() => window.location.href = '/mes-services'}
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-2 border-gray-300 hover:border-gray-400 hover:bg-gray-50 transition-all duration-200"
+              >
+                <Settings className="w-4 h-4" />
+                <span className="font-medium">Gérer mes services</span>
+              </Button>
 
-            <select
-              value={selectedPeriod}
-              onChange={(e) => setSelectedPeriod(e.target.value as any)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="7d">7 derniers jours</option>
-              <option value="30d">30 derniers jours</option>
-              <option value="90d">90 derniers jours</option>
-            </select>
+              <select
+                value={selectedPeriod}
+                onChange={(e) => setSelectedPeriod(e.target.value as any)}
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              >
+                <option value="7d">7 derniers jours</option>
+                <option value="30d">30 derniers jours</option>
+                <option value="90d">90 derniers jours</option>
+              </select>
 
-            <Button
-              onClick={loadDashboardData}
-              variant="outline"
-              size="sm"
-              className="flex items-center gap-2"
-            >
-              <RefreshCw className="w-4 h-4" />
-              Actualiser
-            </Button>
+              <Button
+                onClick={loadDashboardData}
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-2 border-gray-300 hover:border-gray-400 hover:bg-gray-50 transition-all duration-200"
+              >
+                <RefreshCw className="w-4 h-4" />
+                <span className="font-medium">Actualiser</span>
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -341,57 +346,127 @@ const DashboardPrestataire: React.FC = () => {
           </Card>
         </div>
 
-        {/* Actions rapides - Navigation vers workflow de livraison */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          <Card className="border-blue-200 hover:border-blue-400 transition-colors cursor-pointer"
-            onClick={() => window.location.href = '/orders/management'}
-            role="button"
-            aria-label="Gérer mes commandes"
-            tabIndex={0}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                window.location.href = '/orders/management';
-              }
-            }}
-          >
-            <CardContent className="p-6">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                  <span className="text-2xl">📦</span>
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900 mb-1">Gérer mes commandes</h3>
-                  <p className="text-sm text-gray-600">Valider, rejeter et suivre les commandes</p>
-                </div>
-                <span className="text-blue-600">→</span>
-              </div>
-            </CardContent>
-          </Card>
+        {/* ✅ Actions Rapides - Design Moderne */}
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 mb-8">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg flex items-center justify-center">
+              <Zap className="w-4 h-4 text-white" />
+            </div>
+            <h2 className="text-xl font-bold text-gray-900">Actions Rapides</h2>
+          </div>
 
-          <Card className="border-purple-200 hover:border-purple-400 transition-colors cursor-pointer"
-            onClick={() => window.location.href = '/provider/analytics'}
-            role="button"
-            aria-label="Voir les analytics détaillées"
-            tabIndex={0}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                window.location.href = '/provider/analytics';
-              }
-            }}
-          >
-            <CardContent className="p-6">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
-                  <BarChart3 className="w-6 h-6 text-purple-600" />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Gérer les commandes */}
+            <Button
+              onClick={() => window.location.href = '/orders/management'}
+              className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02] h-16 group"
+            >
+              <div className="flex flex-col items-center gap-2">
+                <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center group-hover:bg-white/30 transition-colors">
+                  <Package className="w-5 h-5 text-white" />
                 </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900 mb-1">Analytics détaillées</h3>
-                  <p className="text-sm text-gray-600">Statistiques complètes et analyses</p>
+                <div className="text-center">
+                  <span className="font-semibold text-sm">Gérer les commandes</span>
+                  <span className="text-xs text-blue-100 block mt-1">Validation & suivi</span>
                 </div>
-                <span className="text-purple-600">→</span>
               </div>
-            </CardContent>
-          </Card>
+            </Button>
+
+            {/* Analytics détaillées */}
+            <Button
+              onClick={() => window.location.href = '/provider/analytics'}
+              className="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02] h-16 group"
+            >
+              <div className="flex flex-col items-center gap-2">
+                <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center group-hover:bg-white/30 transition-colors">
+                  <BarChart3 className="w-5 h-5 text-white" />
+                </div>
+                <div className="text-center">
+                  <span className="font-semibold text-sm">Analytics</span>
+                  <span className="text-xs text-purple-100 block mt-1">Statistiques</span>
+                </div>
+              </div>
+            </Button>
+
+            {/* Créer une promotion */}
+            <Button
+              onClick={() => window.location.href = '/creer-publicite'}
+              className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02] h-16 group"
+            >
+              <div className="flex flex-col items-center gap-2">
+                <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center group-hover:bg-white/30 transition-colors">
+                  <Target className="w-5 h-5 text-white" />
+                </div>
+                <div className="text-center">
+                  <span className="font-semibold text-sm">Promotion</span>
+                  <span className="text-xs text-green-100 block mt-1">Publicité IA</span>
+                </div>
+              </div>
+            </Button>
+
+            {/* Livraison express */}
+            <Button
+              onClick={() => window.location.href = '/delivery/setup'}
+              className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02] h-16 group"
+            >
+              <div className="flex flex-col items-center gap-2">
+                <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center group-hover:bg-white/30 transition-colors">
+                  <Truck className="w-5 h-5 text-white" />
+                </div>
+                <div className="text-center">
+                  <span className="font-semibold text-sm">Livraison</span>
+                  <span className="text-xs text-orange-100 block mt-1">Express</span>
+                </div>
+              </div>
+            </Button>
+          </div>
+
+          {/* Actions secondaires */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+            <Button
+              onClick={() => window.location.href = '/mes-services'}
+              variant="outline"
+              className="border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-all duration-200 h-12 group"
+            >
+              <div className="flex items-center justify-center gap-2">
+                <Settings className="w-4 h-4 text-gray-600 group-hover:text-gray-700" />
+                <span className="font-medium text-sm text-gray-700 group-hover:text-gray-900">Services</span>
+              </div>
+            </Button>
+
+            <Button
+              onClick={() => window.location.href = '/messages'}
+              variant="outline"
+              className="border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-all duration-200 h-12 group"
+            >
+              <div className="flex items-center justify-center gap-2">
+                <MessageCircle className="w-4 h-4 text-gray-600 group-hover:text-gray-700" />
+                <span className="font-medium text-sm text-gray-700 group-hover:text-gray-900">Messages</span>
+              </div>
+            </Button>
+
+            <Button
+              onClick={() => window.location.href = '/notifications'}
+              variant="outline"
+              className="border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-all duration-200 h-12 group"
+            >
+              <div className="flex items-center justify-center gap-2">
+                <Activity className="w-4 h-4 text-gray-600 group-hover:text-gray-700" />
+                <span className="font-medium text-sm text-gray-700 group-hover:text-gray-900">Alertes</span>
+              </div>
+            </Button>
+
+            <Button
+              onClick={() => window.location.href = '/help/support'}
+              variant="outline"
+              className="border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-all duration-200 h-12 group"
+            >
+              <div className="flex items-center justify-center gap-2">
+                <Star className="w-4 h-4 text-gray-600 group-hover:text-gray-700" />
+                <span className="font-medium text-sm text-gray-700 group-hover:text-gray-900">Support</span>
+              </div>
+            </Button>
+          </div>
         </div>
 
         <QualityScoreWidget average={qualityAverage} items={qualityItems} className="mb-8" />

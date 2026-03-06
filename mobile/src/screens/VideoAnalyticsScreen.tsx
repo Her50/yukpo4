@@ -1032,18 +1032,18 @@ const styles = StyleSheet.create({
     contentContainer: {
         paddingBottom: 24,
         paddingHorizontal: 18,
-        paddingTop: 16
+        paddingTop: 8 // ✅ RÉDUIT: De 16 à 8 pour éliminer le décalage excessif
     },
     title: {
         fontSize: 22,
         fontWeight: '600',
         color: '#F8FAFC',
-        marginBottom: 6
+        marginBottom: 4 // ✅ RÉDUIT: De 6 à 4 pour compacter
     },
     subtitle: {
         fontSize: 14,
         color: '#CBD5F5',
-        marginBottom: 18
+        marginBottom: 12 // ✅ RÉDUIT: De 18 à 12 pour moins d'espace
     },
     overviewErrorContainer: {
         backgroundColor: 'rgba(248, 113, 113, 0.15)',
@@ -1051,7 +1051,7 @@ const styles = StyleSheet.create({
         borderWidth: StyleSheet.hairlineWidth,
         borderRadius: 16,
         padding: 14,
-        marginBottom: 18,
+        marginBottom: 12, // ✅ RÉDUIT: De 18 à 12 pour compacter
     },
     overviewErrorText: {
         color: '#FCA5A5',
@@ -1059,7 +1059,7 @@ const styles = StyleSheet.create({
         fontWeight: '500',
     },
     overviewCard: {
-        marginBottom: 20,
+        marginBottom: 16, // ✅ RÉDUIT: De 20 à 16 pour compacter
         backgroundColor: '#111C32',
         borderRadius: 20,
         padding: 18,
@@ -1165,7 +1165,7 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(148, 163, 184, 0.15)',
         borderRadius: 16,
         padding: 4,
-        marginBottom: 16
+        marginBottom: 12 // ✅ RÉDUIT: De 16 à 12 pour compacter
     },
     segmentButton: {
         flex: 1,
@@ -1218,12 +1218,12 @@ const styles = StyleSheet.create({
         color: '#F8FAFC'
     },
     section: {
-        marginBottom: 24,
+        marginBottom: 16, // ✅ RÉDUIT: De 24 à 16 pour compacter
         backgroundColor: '#111C32',
         borderRadius: 18,
         padding: 16,
         borderWidth: StyleSheet.hairlineWidth,
-        borderColor: 'rgba(148, 163, 184, 0.2)'
+        borderColor: 'rgba(99, 102, 241, 0.15)', // ✅ CORRIGÉ: Cohérent avec les autres styles
     },
     emptyText: {
         fontSize: 13,

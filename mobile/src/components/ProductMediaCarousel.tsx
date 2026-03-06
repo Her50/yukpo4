@@ -264,7 +264,7 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
                             }}
                             source={{ uri: media.uri }}
                             style={styles.media}
-                            resizeMode={ResizeMode.CONTAIN}
+                            resizeMode={ResizeMode.COVER} // ✅ CORRIGÉ: COVER au lieu de CONTAIN pour éviter les espaces noirs
                             shouldPlay={playingVideoIndex === index}
                             isLooping
                             isMuted={playingVideoIndex !== index}
@@ -414,7 +414,7 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
                                 }}
                                 source={{ uri: fullscreenMedia.uri }}
                                 style={styles.fullscreenVideo}
-                                resizeMode={ResizeMode.CONTAIN}
+                                resizeMode={ResizeMode.COVER} // ✅ CORRIGÉ: COVER pour cohérence et éviter les espaces
                                 shouldPlay
                                 useNativeControls
                             />
@@ -440,12 +440,26 @@ const styles = StyleSheet.create({
         width: '100%',
         height: '100%',
     },
+    videoContainer: {
+        width: '100%',
+        height: '100%',
+        overflow: 'hidden', // ✅ CORRIGÉ: Assurer que le rognage est contenu dans les limites
+        borderTopLeftRadius: 12,
+        borderTopRightRadius: 12,
+        position: 'relative',
+    },
     media: {
         width: '100%',
         height: '100%',
         borderTopLeftRadius: 12,
         borderTopRightRadius: 12,
-        backgroundColor: '#1a1a2e',
+        backgroundColor: '#1a1a2e', // ✅ CORRIGÉ: Background pour les vidéos sans média
+        // ✅ CORRIGÉ: Positionnement pour minimiser le rognage visible avec COVER
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
     },
     gradient: {
         position: 'absolute',

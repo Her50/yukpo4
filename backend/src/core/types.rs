@@ -45,6 +45,9 @@ pub enum AppError {
 
     #[error("?? Not Implemented: {0}")]
     NotImplemented(String),
+
+    #[error("?? Service Unavailable: {0}")]
+    ServiceUnavailable(String),
 }
 
 impl AppError {
@@ -80,6 +83,11 @@ impl IntoResponse for AppError {
             AppError::NotImplemented(msg) => {
                 (StatusCode::NOT_IMPLEMENTED, "NOT_IMPLEMENTED", msg.clone())
             }
+            AppError::ServiceUnavailable(msg) => (
+                StatusCode::SERVICE_UNAVAILABLE,
+                "SERVICE_UNAVAILABLE",
+                msg.clone(),
+            ),
         };
 
         // ✅ CORRIGÉ: Format d'erreur structuré avec code et message clair (sans préfixe enum)

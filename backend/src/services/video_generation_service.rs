@@ -56,7 +56,6 @@ use crate::{
         commerce_connector_service::ProductConnectorSnapshot,
         cost_service::CostEstimation,
         distribution_automation_service,
-        generative_video_service::GenerativeVideoService,
         immersive_orchestrator::{
             ImmersiveOrchestrator, TimelineAnalytics, TimelineBrollAsset, TimelineBusinessContext,
             TimelineMediaItem, TimelineRequest,
@@ -67,7 +66,6 @@ use crate::{
         video_analytics_service::{record_engagement, schedule_distribution_targets},
         video_job_service::try_store_progress,
         video_renderer::{RenderExecutionMode, RenderJobRequest, RenderJobResponse},
-        voice_profile_service::ResolvedVoiceProfile,
         watermark_service,
     },
     state::AppState,
@@ -80,7 +78,7 @@ async fn create_media_entry_for_ai_video(
     product_index: i32,
     video_url: &str,
     product_name: &str,
-    progress_steps: &[crate::models::video_generation_model::ProgressStep],
+    progress_steps: &[ProgressStep],
 ) -> AppResult<i32> {
     let media_type = "video";
 
@@ -121,7 +119,7 @@ async fn select_curated_audio_track(
     session_dir: &Path,
     mode: Option<&str>,
     hint: Option<&str>,
-) -> AppResult<Option<audio_library_service::CuratedAudioLoop>> {
+) -> AppResult<Option<PathBuf>> {
     // For now, return None - this would be implemented with actual audio library logic
     let _ = (session_dir, mode, hint);
     Ok(None)
@@ -987,10 +985,19 @@ pub async fn generate_product_video(
     };
 
     // Get voice profile if available
-    let voice_profile = if let Some(voice_id) = &payload.voiceover_voice_id {
-        match state.voice_profiles.get_profile_by_id(voice_id).await {
-            Ok(profile) => Some(profile),
-            Err(_) => None,
+    let voice_profile = if let Some(voice_id) = &payload.voiceover_voice {
+        // Parse voice_id as i32
+        if let Ok(profile_id) = voice_id.parse::<i32>() {
+            match state
+                .voice_profiles
+                .resolve_for_generation(profile_id, user.id as i32, service_id)
+                .await
+            {
+                Ok(profile) => Some(profile),
+                Err(_) => None,
+            }
+        } else {
+            None
         }
     } else {
         None
@@ -999,7 +1006,7 @@ pub async fn generate_product_video(
     let mut headline = payload.headline.clone();
     let mut call_to_action = payload.call_to_action.clone();
     let mut voiceover_script_opt = payload.voiceover_script.clone();
-    let mut resolved_voiceover_lang = payload.voiceover_lang.clone();
+    let mut resolved_voiceover_lang: Option<String> = payload.voiceover_lang.clone();
     if resolved_voiceover_lang.is_none() {
         if let Some(profile) = &voice_profile {
             if let Some(lang) = profile
@@ -2123,7 +2130,7 @@ pub async fn generate_product_video(
     };
 
     // Injecte les beats synthétiques dans la timeline immersive si un track musical est disponible
-    if let (Some(ref music_track_path), Some(ref mut timeline)) =
+    if let (Some(music_track_path), Some(ref mut timeline)) =
         (music_track.as_ref(), &mut immersive_timeline)
     {
         if let Err(err) =
@@ -4974,6 +4981,7 @@ async fn generate_background_music(
 }
 
 async fn find_best_matching_audio_loop(
+    state: &AppState,
     session_dir: &Path,
     mode: Option<&str>,
     hint: Option<&str>,
@@ -4992,7 +5000,7 @@ async fn find_best_matching_audio_loop(
         if let Some(loop_info) = trending_service.get_curated_loop(mode, hint).await {
             info!(
                 "[VideoGeneration] ✅ Musique trending trouvée: {} (score: {})",
-                loop_info.name, loop_info.trending_score
+                loop_info.title, "mock_score"
             );
 
             match download_curated_audio(session_dir, &loop_info).await {

@@ -4,6 +4,8 @@ import {
     ActivityIndicator,
     Alert,
     Dimensions,
+    Keyboard,
+    KeyboardAvoidingView,
     Linking,
     Platform,
     ScrollView,
@@ -28,21 +30,64 @@ import { modernColors } from '../theme/modernTheme';
 
 const { width, height } = Dimensions.get('window');
 const MAP_HEIGHT = height * 0.35;
+const KEYBOARD_OFFSET = Platform.OS === 'ios' ? 0 : 20;
 
 // ── Décodeur polyline Google ─────────────────────────────────────────────
 const decodePolyline = (encoded: string): { latitude: number; longitude: number }[] => {
+    if (!encoded || typeof encoded !== 'string') return [];
+
     const points: { latitude: number; longitude: number }[] = [];
     let index = 0, lat = 0, lng = 0;
-    while (index < encoded.length) {
-        let b, shift = 0, result = 0;
-        do { b = encoded.charCodeAt(index++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
-        lat += (result & 1) ? ~(result >> 1) : (result >> 1);
-        shift = 0; result = 0;
-        do { b = encoded.charCodeAt(index++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
-        lng += (result & 1) ? ~(result >> 1) : (result >> 1);
-        points.push({ latitude: lat / 1e5, longitude: lng / 1e5 });
+
+    try {
+        while (index < encoded.length) {
+            let b, shift = 0, result = 0;
+            do {
+                b = encoded.charCodeAt(index++) - 63;
+                if (b < -63 || b > 95) throw new Error('Invalid polyline encoding');
+                result |= (b & 0x1f) << shift;
+                shift += 5;
+            } while (b >= 0x20);
+            lat += (result & 1) ? ~(result >> 1) : (result >> 1);
+            shift = 0; result = 0;
+            do {
+                b = encoded.charCodeAt(index++) - 63;
+                if (b < -63 || b > 95) throw new Error('Invalid polyline encoding');
+                result |= (b & 0x1f) << shift;
+                shift += 5;
+            } while (b >= 0x20);
+            lng += (result & 1) ? ~(result >> 1) : (result >> 1);
+
+            // ✅ VALIDATION: Vérifier les coordonnées avant d'ajouter
+            const decodedLat = lat / 1e5;
+            const decodedLng = lng / 1e5;
+
+            if (validateCoords(decodedLat, decodedLng)) {
+                points.push({ latitude: decodedLat, longitude: decodedLng });
+            } else {
+                console.warn('[Navigation] Coordonnées invalides ignorées:', decodedLat, decodedLng);
+            }
+        }
+    } catch (error) {
+        console.error('[Navigation] Erreur décodage polyline:', error);
+        return [];
     }
+
     return points;
+};
+
+// ✅ VALIDATION: Coordonnées géographiques
+const validateCoords = (lat: number, lng: number): boolean => {
+    return (
+        typeof lat === 'number' &&
+        typeof lng === 'number' &&
+        !isNaN(lat) &&
+        !isNaN(lng) &&
+        lat >= -90 && lat <= 90 &&
+        lng >= -180 && lng <= 180 &&
+        isFinite(lat) &&
+        isFinite(lng)
+    );
 };
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -171,6 +216,8 @@ const NavigationScreen: React.FC = () => {
     const checkpointsRef = useRef(checkpoints);
     checkpointsRef.current = checkpoints;
     const checkpointRefreshRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const checkpointRefreshIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const trackingUpdateIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     // ── Métriques d'activité (collectées pendant le suivi) ──
     const trackingStartTimeRef = useRef<string | null>(null);
@@ -205,6 +252,11 @@ const NavigationScreen: React.FC = () => {
     // ✅ FIX 2026-03-03: Contrôle du scroll parent pour éviter le conflit avec les FlatList horizontaux
     const [parentScrollEnabled, setParentScrollEnabled] = useState(true);
     const routeCardWidth = width * 0.72 + 10; // card width + marginRight
+
+    // ── Gestion du clavier ─────────────────────────────────────
+    const [keyboardHeight, setKeyboardHeight] = useState(0);
+    const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+    const [isLocationSelectorFocused, setIsLocationSelectorFocused] = useState(false);
 
     // ── Carte interactive ──
     const [showMap, setShowMap] = useState(true);
@@ -327,6 +379,24 @@ const NavigationScreen: React.FC = () => {
         if (user) loadSavedDestinations();
     }, [user, loadSavedDestinations]);
 
+    // ── Gestion du clavier ─────────────────────────────────────
+    useEffect(() => {
+        const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', (e) => {
+            setKeyboardHeight(e.endCoordinates.height);
+            setIsKeyboardVisible(true);
+        });
+
+        const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => {
+            setKeyboardHeight(0);
+            setIsKeyboardVisible(false);
+        });
+
+        return () => {
+            keyboardDidShowListener.remove();
+            keyboardDidHideListener.remove();
+        };
+    }, []);
+
     const resolveDestination = useCallback(async (dest: string): Promise<{ lat: number; lng: number; address: string } | null> => {
         const destLower = dest.toLowerCase().trim();
         if (destLower === 'domicile' || destLower === 'bureau') {
@@ -392,18 +462,43 @@ const NavigationScreen: React.FC = () => {
             });
             console.log('[NavigationScreen] searchRoutes → response.success:', response?.success, 'hasRoutes:', !!response?.data?.routes, 'routeCount:', response?.data?.routes?.length, 'error:', response?.error);
 
-            // ✅ FIX 2026-03-05: Vérifier success ET routes pour distinguer erreur API vs aucune route
+            // ✅ FIX 2026-03-06: Validation robuste des données API pour prévenir les crashes
             if (response?.success === false) {
                 // Erreur API (500, timeout, réseau...) → afficher le vrai message d'erreur
                 const errorMsg = response?.error || response?.data?.error || response?.data?.message || 'Erreur serveur';
                 console.error('[NavigationScreen] Erreur API routes:', errorMsg);
                 Alert.alert('Erreur', `Impossible de calculer l'itinéraire: ${errorMsg}`);
-            } else if (response?.data?.routes && response.data.routes.length > 0) {
-                setRoutes(response.data.routes);
-                setSelectedRoute(response.data.routes[0]);
-                loadPointsOfInterest(response.data.routes[0]);
-                // Charger les signalements (radars, contrôles) sur le trajet
-                setTimeout(() => loadCheckpoints(), 500);
+            } else if (response?.data?.routes && Array.isArray(response.data.routes) && response.data.routes.length > 0) {
+                // ✅ VALIDATION: Filtrer les routes invalides pour éviter les crashes
+                const validRoutes = response.data.routes.filter((route: any) =>
+                    route &&
+                    typeof route === 'object' &&
+                    route.overview_polyline &&
+                    typeof route.distance_meters === 'number' && route.distance_meters > 0 &&
+                    typeof route.duration_seconds === 'number' && route.duration_seconds > 0 &&
+                    Array.isArray(route.steps)
+                );
+
+                if (validRoutes.length === 0) {
+                    console.warn('[NavigationScreen] Aucune route valide trouvée après filtrage');
+                    Alert.alert('Aucun itinéraire', 'Aucun itinéraire valide trouvé. Essayez une destination différente.');
+                    setLoading(false);
+                    return;
+                }
+
+                console.log(`[NavigationScreen] ${validRoutes.length} routes valides trouvées`);
+                setRoutes(validRoutes);
+                setSelectedRoute(validRoutes[0]);
+
+                // ✅ CHARGEMENT SÉQUENTIEL SÉCURISÉ: Éviter les appels API simultanés
+                try {
+                    await loadPointsOfInterestSafely(validRoutes[0]);
+                    // Charger les signalements avec délai pour ne pas surcharger
+                    setTimeout(() => loadCheckpointsSafely(), 800);
+                } catch (poiError) {
+                    console.warn('[NavigationScreen] Erreur chargement POI (non critique):', poiError);
+                    // Continuer même si les POI échouent
+                }
             } else {
                 Alert.alert('Aucun itinéraire', 'Aucune route trouvée entre ces deux points. Essayez une destination différente.');
             }
@@ -418,29 +513,60 @@ const NavigationScreen: React.FC = () => {
     // ✅ FIX 2026-03-03: Garder la ref à jour pour éviter les closures obsolètes
     useEffect(() => { searchRoutesRef.current = searchRoutes; }, [searchRoutes]);
 
-    // ── Points d'intérêt ────────────────────────────────────────────────
-    const loadPointsOfInterest = useCallback(async (route: RouteOption) => {
-        if (!route || !destinationCoords) { setPointsOfInterest([]); return; }
+    // ✅ FONCTION SÉCURISÉE: Charger les POI avec validation
+    const loadPointsOfInterestSafely = useCallback(async (route: RouteOption) => {
+        if (!route || !destinationCoords) {
+            setPointsOfInterest([]);
+            return;
+        }
+
         setLoadingPOI(true);
         setPointsOfInterest([]);
+
         try {
             const origin = await getCurrentPosition();
-            if (!origin) { setLoadingPOI(false); return; }
+            if (!origin) {
+                setLoadingPOI(false);
+                return;
+            }
+
+            // ✅ VALIDATION: S'assurer que la route est valide
+            if (!route.id || !route.steps || route.steps.length === 0) {
+                console.warn('[Navigation] Route invalide pour POI, utilisation fallback');
+                setLoadingPOI(false);
+                return;
+            }
+
             // ✅ FIX 2026-03-04: Envoyer les vrais steps du trajet pour que le backend
             // cherche les POI le long du VRAI parcours (pas une ligne droite)
             const stepsParam = route.steps && route.steps.length > 0
-                ? `&route_steps=${encodeURIComponent(JSON.stringify(route.steps.map(s => ({ lat: s.location.lat, lng: s.location.lng }))))}`
+                ? `&route_steps=${encodeURIComponent(JSON.stringify(route.steps.map(s => ({
+                    lat: s.location?.lat || s.start_location?.lat || 0,
+                    lng: s.location?.lng || s.start_location?.lng || 0
+                }))))}`
                 : '';
+
             const response = await apiGet(
                 `/api/navigation/points-of-interest?route_id=${route.id}&origin_lat=${origin.lat}&origin_lng=${origin.lng}&dest_lat=${destinationCoords.lat}&dest_lng=${destinationCoords.lng}${stepsParam}`
             );
-            if (response?.data?.pois) {
-                setPointsOfInterest(response.data.pois);
+
+            // ✅ VALIDATION: Vérifier la réponse POI
+            if (response?.data?.pois && Array.isArray(response.data.pois)) {
+                const validPois = response.data.pois.filter((poi: any) =>
+                    poi &&
+                    poi.name &&
+                    validateCoords(poi.latitude || poi.lat, poi.longitude || poi.lng)
+                );
+
+                setPointsOfInterest(validPois);
+                console.log(`[Navigation] ${validPois.length} POI valides chargés`);
+
                 // Ouvrir la première catégorie qui a des résultats
                 const firstCatWithResults = Object.entries(POI_CATEGORIES).find(([key]) => {
                     const cat = POI_CATEGORIES[key];
-                    return (response.data.pois as PointOfInterest[]).some((p: PointOfInterest) => cat.types.includes(p.type));
+                    return validPois.some((p: PointOfInterest) => cat.types.includes(p.type));
                 });
+
                 if (firstCatWithResults) {
                     setExpandedCategories(prev => {
                         const reset: Record<string, boolean> = {};
@@ -459,6 +585,42 @@ const NavigationScreen: React.FC = () => {
             setLoadingPOI(false);
         }
     }, [destinationCoords, getCurrentPosition]);
+
+    // ✅ FONCTION SÉCURISÉE: Charger les checkpoints avec validation
+    const loadCheckpointsSafely = useCallback(async () => {
+        if (!selectedRoute || !destinationCoords) return;
+
+        setLoadingCheckpoints(true);
+        const origin = await getCurrentPosition();
+        if (!origin) {
+            setLoadingCheckpoints(false);
+            return;
+        }
+
+        try {
+            const response = await apiGet(`/api/navigation/checkpoints/along-route?origin_lat=${origin.lat}&origin_lng=${origin.lng}&dest_lat=${destinationCoords.lat}&dest_lng=${destinationCoords.lng}`);
+            const data = response?.data as any;
+
+            // ✅ VALIDATION: Vérifier les checkpoints
+            if (data?.checkpoints && Array.isArray(data.checkpoints)) {
+                const validCheckpoints = data.checkpoints.filter((checkpoint: any) =>
+                    checkpoint &&
+                    checkpoint.type &&
+                    validateCoords(checkpoint.latitude || checkpoint.lat, checkpoint.longitude || checkpoint.lng)
+                );
+
+                setCheckpoints(validCheckpoints);
+                console.log(`[Navigation] ${validCheckpoints.length} checkpoints valides chargés`);
+            } else {
+                setCheckpoints([]);
+            }
+        } catch (e) {
+            console.error('[Navigation] Erreur chargement checkpoints:', e);
+            setCheckpoints([]);
+        } finally {
+            setLoadingCheckpoints(false);
+        }
+    }, [selectedRoute, destinationCoords, getCurrentPosition]);
 
     // ── Démarrer la navigation ────────────────────────────────────────────
     const startNavigation = useCallback(async (route: RouteOption) => {
@@ -698,6 +860,13 @@ const NavigationScreen: React.FC = () => {
     // ── Démarrer le suivi en temps réel ─────────────────────────────────────
     const startTracking = useCallback(async () => {
         if (!selectedRoute || isTracking) return;
+
+        // ✅ VALIDATION: Vérifier que la route est valide
+        if (!selectedRoute.distance_meters || !selectedRoute.duration_seconds) {
+            Alert.alert('Erreur', 'Itinéraire invalide pour le suivi');
+            return;
+        }
+
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== 'granted') {
             Alert.alert('Permission requise', 'La localisation est nécessaire pour le suivi en temps réel');
@@ -715,10 +884,23 @@ const NavigationScreen: React.FC = () => {
         wasOffRouteRef.current = false;
         encounteredCheckpointIdsRef.current = new Set();
 
+        // ✅ VALIDATION: Mises à jour d'état sécurisées
         setIsTracking(true);
         setNextStepIndex(0);
-        setDistanceRemaining(selectedRoute.distance_meters);
-        setDurationRemaining(selectedRoute.duration_in_traffic_seconds || selectedRoute.duration_seconds);
+
+        // Validation des valeurs avant mise à jour
+        const distance = typeof selectedRoute.distance_meters === 'number' && selectedRoute.distance_meters > 0
+            ? selectedRoute.distance_meters
+            : 1000; // fallback
+
+        const duration = typeof selectedRoute.duration_in_traffic_seconds === 'number' && selectedRoute.duration_in_traffic_seconds > 0
+            ? selectedRoute.duration_in_traffic_seconds
+            : (typeof selectedRoute.duration_seconds === 'number' && selectedRoute.duration_seconds > 0
+                ? selectedRoute.duration_seconds
+                : 300); // fallback 5 minutes
+
+        setDistanceRemaining(distance);
+        setDurationRemaining(duration);
         loadCheckpoints();
 
         // Analyse IA des checkpoints pour alertes contextuelles
@@ -883,8 +1065,47 @@ const NavigationScreen: React.FC = () => {
     // ── Cleanup au démontage ────────────────────────────────────────────────
     useEffect(() => {
         return () => {
-            if (locationSubscriptionRef.current) locationSubscriptionRef.current.remove();
-            if (checkpointRefreshRef.current) clearInterval(checkpointRefreshRef.current);
+            // ✅ CLEANUP COMPLET: Éviter les memory leaks
+            console.log('[Navigation] Cleanup ressources');
+
+            // Nettoyer l'abonnement location
+            if (locationSubscriptionRef.current) {
+                try {
+                    locationSubscriptionRef.current.remove();
+                    console.log('[Navigation] Location subscription nettoyée');
+                } catch (error) {
+                    console.warn('[Navigation] Erreur cleanup location subscription:', error);
+                }
+                locationSubscriptionRef.current = null;
+            }
+
+            // Nettoyer l'intervalle de checkpoints
+            if (checkpointRefreshIntervalRef.current) {
+                try {
+                    clearInterval(checkpointRefreshIntervalRef.current);
+                    console.log('[Navigation] Checkpoint interval nettoyé');
+                } catch (error) {
+                    console.warn('[Navigation] Erreur cleanup checkpoint interval:', error);
+                }
+                checkpointRefreshIntervalRef.current = null;
+            }
+
+            // Nettoyer l'intervalle de tracking
+            if (trackingUpdateIntervalRef.current) {
+                try {
+                    clearInterval(trackingUpdateIntervalRef.current);
+                    console.log('[Navigation] Tracking interval nettoyé');
+                } catch (error) {
+                    console.warn('[Navigation] Erreur cleanup tracking interval:', error);
+                }
+                trackingUpdateIntervalRef.current = null;
+            }
+
+            // Réinitialiser les refs
+            trackingStartTimeRef.current = null;
+            lastPositionRef.current = null;
+            speedSamplesRef.current = [];
+            encounteredCheckpointIdsRef.current.clear();
         };
     }, []);
 
@@ -898,1165 +1119,1322 @@ const NavigationScreen: React.FC = () => {
         speed_bump: { label: 'Ralentisseur', icon: '🔶', color: '#8B5CF6' },
     };
 
+    // ── Styles calculés pour le clavier ─────────────────────────────────────
+    const dynamicStyles = useMemo(() => ({
+        scrollContentDynamic: {
+            ...styles.scrollContent,
+            paddingBottom: isKeyboardVisible ? Math.max(100, keyboardHeight + 50) : 100
+        },
+        locationSelectorDynamic: {
+            ...styles.locationSelector,
+            maxHeight: isKeyboardVisible ? 200 : undefined // Limiter la hauteur quand le clavier est ouvert
+        }
+    }), [isKeyboardVisible, keyboardHeight]);
+
     // ── Rendu ──────────────────────────────────────────────────────────────
     return (
         <SafeNativeView style={styles.container}>
-            <ScrollView
-                style={styles.scrollView}
-                contentContainerStyle={styles.scrollContent}
-                keyboardShouldPersistTaps="handled"
-                scrollEnabled={parentScrollEnabled}
-                nestedScrollEnabled={true}
+            <KeyboardAvoidingView
+                style={styles.keyboardContainer}
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                keyboardVerticalOffset={KEYBOARD_OFFSET}
             >
-                {/* ━━ Header avec icône ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-                <View style={styles.header}>
-                    <View style={styles.headerLeft}>
-                        <View style={styles.headerIconWrap}>
-                            <SafeIcon name="Navigation" size={20} color="#FFFFFF" />
+                <ScrollView
+                    style={styles.scrollView}
+                    contentContainerStyle={dynamicStyles.scrollContentDynamic}
+                    keyboardShouldPersistTaps="handled"
+                    scrollEnabled={parentScrollEnabled}
+                    showsVerticalScrollIndicator={true}
+                    nestedScrollEnabled={true}
+                >
+                    {/* ━━ Header avec icône ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+                    <View style={styles.header}>
+                        <View style={styles.headerLeft}>
+                            <View style={styles.headerIconWrap}>
+                                <SafeIcon name="Navigation" size={20} color="#FFFFFF" />
+                            </View>
+                            <View>
+                                <Text style={styles.title}>Navigation intelligente</Text>
+                                <Text style={styles.subtitle}>Itinéraires optimisés en temps réel</Text>
+                            </View>
                         </View>
-                        <View>
-                            <Text style={styles.title}>Navigation intelligente</Text>
-                            <Text style={styles.subtitle}>Itinéraires optimisés en temps réel</Text>
-                        </View>
+                        <TouchableOpacity style={styles.statsButton} onPress={() => { const next = !showActivityStats; setShowActivityStats(next); if (next) loadActivityStats(activityPeriod); }}>
+                            <SafeIcon name="BarChart2" size={22} color={showActivityStats ? modernColors.primary : modernColors.textSecondary} />
+                        </TouchableOpacity>
                     </View>
-                    <TouchableOpacity style={styles.statsButton} onPress={() => { const next = !showActivityStats; setShowActivityStats(next); if (next) loadActivityStats(activityPeriod); }}>
-                        <SafeIcon name="BarChart2" size={22} color={showActivityStats ? modernColors.primary : modernColors.textSecondary} />
-                    </TouchableOpacity>
-                </View>
 
-                {/* ━━ Statistiques intelligentes (pliable) ━━━━━━━━━━━━━━━━━━ */}
-                {showActivityStats && (
-                    <View style={styles.activityDashboard}>
-                        {/* Sélecteur de période */}
-                        <View style={styles.periodRow}>
-                            {(['week', 'month', 'year'] as const).map((p) => (
-                                <TouchableOpacity key={p} style={[styles.periodBtn, activityPeriod === p && styles.periodBtnActive]}
-                                    onPress={() => { setActivityPeriod(p); loadActivityStats(p); }}>
-                                    <Text style={[styles.periodBtnText, activityPeriod === p && styles.periodBtnTextActive]}>
-                                        {p === 'week' ? 'Semaine' : p === 'month' ? 'Mois' : 'Année'}
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
-                        </View>
+                    {/* ━━ Statistiques intelligentes (pliable) ━━━━━━━━━━━━━━━━━━ */}
+                    {showActivityStats && (
+                        <View style={styles.activityDashboard}>
+                            {/* Sélecteur de période */}
+                            <View style={styles.periodRow}>
+                                {(['week', 'month', 'year'] as const).map((p) => (
+                                    <TouchableOpacity key={p} style={[styles.periodBtn, activityPeriod === p && styles.periodBtnActive]}
+                                        onPress={() => { setActivityPeriod(p); loadActivityStats(p); }}>
+                                        <Text style={[styles.periodBtnText, activityPeriod === p && styles.periodBtnTextActive]}>
+                                            {p === 'week' ? 'Semaine' : p === 'month' ? 'Mois' : 'Année'}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
 
-                        {loadingActivity ? (
-                            <NativeCard style={styles.statsCard}><ActivityIndicator size="small" color={modernColors.primary} /></NativeCard>
-                        ) : activitySummary?.summary ? (
-                            <>
-                                {/* Métriques principales */}
-                                <NativeCard style={styles.statsCard}>
-                                    <View style={styles.statsRow}>
-                                        <View style={styles.statItem}>
-                                            <Text style={styles.statValue}>{activitySummary.summary.total_sessions}</Text>
-                                            <Text style={styles.statLabel}>Sessions</Text>
+                            {loadingActivity ? (
+                                <NativeCard style={styles.statsCard}><ActivityIndicator size="small" color={modernColors.primary} /></NativeCard>
+                            ) : activitySummary?.summary ? (
+                                <>
+                                    {/* Métriques principales */}
+                                    <NativeCard style={styles.statsCard}>
+                                        <View style={styles.statsRow}>
+                                            <View style={styles.statItem}>
+                                                <Text style={styles.statValue}>{activitySummary.summary.total_sessions}</Text>
+                                                <Text style={styles.statLabel}>Sessions</Text>
+                                            </View>
+                                            <View style={styles.statDivider} />
+                                            <View style={styles.statItem}>
+                                                <Text style={styles.statValue}>{activitySummary.summary.total_distance_km?.toFixed(1)}</Text>
+                                                <Text style={styles.statLabel}>km</Text>
+                                            </View>
+                                            <View style={styles.statDivider} />
+                                            <View style={styles.statItem}>
+                                                <Text style={styles.statValue}>{Math.round(activitySummary.summary.total_duration_minutes || 0)}</Text>
+                                                <Text style={styles.statLabel}>minutes</Text>
+                                            </View>
                                         </View>
-                                        <View style={styles.statDivider} />
-                                        <View style={styles.statItem}>
-                                            <Text style={styles.statValue}>{activitySummary.summary.total_distance_km?.toFixed(1)}</Text>
-                                            <Text style={styles.statLabel}>km</Text>
-                                        </View>
-                                        <View style={styles.statDivider} />
-                                        <View style={styles.statItem}>
-                                            <Text style={styles.statValue}>{Math.round(activitySummary.summary.total_duration_minutes || 0)}</Text>
-                                            <Text style={styles.statLabel}>minutes</Text>
-                                        </View>
-                                    </View>
-                                </NativeCard>
+                                    </NativeCard>
 
-                                {/* Santé & Calories */}
-                                <NativeCard style={styles.healthCard}>
-                                    <View style={styles.healthHeader}>
-                                        <SafeIcon name="Heart" size={18} color="#EF4444" />
-                                        <Text style={styles.healthTitle}>Santé & Performance</Text>
-                                    </View>
-                                    <View style={styles.healthGrid}>
-                                        <View style={styles.healthItem}>
-                                            <Text style={styles.healthEmoji}>🔥</Text>
-                                            <Text style={styles.healthValue}>{Math.round(activitySummary.summary.total_calories || 0)}</Text>
-                                            <Text style={styles.healthLabel}>calories</Text>
+                                    {/* Santé & Calories */}
+                                    <NativeCard style={styles.healthCard}>
+                                        <View style={styles.healthHeader}>
+                                            <SafeIcon name="Heart" size={18} color="#EF4444" />
+                                            <Text style={styles.healthTitle}>Santé & Performance</Text>
                                         </View>
-                                        <View style={styles.healthItem}>
-                                            <Text style={styles.healthEmoji}>⚡</Text>
-                                            <Text style={styles.healthValue}>{(activitySummary.summary.avg_speed_kmh || 0).toFixed(1)}</Text>
-                                            <Text style={styles.healthLabel}>km/h moy</Text>
+                                        <View style={styles.healthGrid}>
+                                            <View style={styles.healthItem}>
+                                                <Text style={styles.healthEmoji}>🔥</Text>
+                                                <Text style={styles.healthValue}>{Math.round(activitySummary.summary.total_calories || 0)}</Text>
+                                                <Text style={styles.healthLabel}>calories</Text>
+                                            </View>
+                                            <View style={styles.healthItem}>
+                                                <Text style={styles.healthEmoji}>⚡</Text>
+                                                <Text style={styles.healthValue}>{(activitySummary.summary.avg_speed_kmh || 0).toFixed(1)}</Text>
+                                                <Text style={styles.healthLabel}>km/h moy</Text>
+                                            </View>
+                                            <View style={styles.healthItem}>
+                                                <Text style={styles.healthEmoji}>🏆</Text>
+                                                <Text style={styles.healthValue}>{(activitySummary.summary.max_speed_kmh || 0).toFixed(0)}</Text>
+                                                <Text style={styles.healthLabel}>km/h max</Text>
+                                            </View>
+                                            <View style={styles.healthItem}>
+                                                <Text style={styles.healthEmoji}>⭐</Text>
+                                                <Text style={styles.healthValue}>{Math.round(activitySummary.summary.avg_quality_score || 0)}</Text>
+                                                <Text style={styles.healthLabel}>qualité /100</Text>
+                                            </View>
                                         </View>
-                                        <View style={styles.healthItem}>
-                                            <Text style={styles.healthEmoji}>🏆</Text>
-                                            <Text style={styles.healthValue}>{(activitySummary.summary.max_speed_kmh || 0).toFixed(0)}</Text>
-                                            <Text style={styles.healthLabel}>km/h max</Text>
-                                        </View>
-                                        <View style={styles.healthItem}>
-                                            <Text style={styles.healthEmoji}>⭐</Text>
-                                            <Text style={styles.healthValue}>{Math.round(activitySummary.summary.avg_quality_score || 0)}</Text>
-                                            <Text style={styles.healthLabel}>qualité /100</Text>
-                                        </View>
-                                    </View>
-                                    {/* Indicateurs de santé */}
-                                    <View style={styles.healthIndicators}>
-                                        {(() => {
-                                            const cal = activitySummary.summary.total_calories || 0;
-                                            const dist = activitySummary.summary.total_distance_km || 0;
-                                            const dur = activitySummary.summary.total_duration_minutes || 0;
-                                            const quality = activitySummary.summary.avg_quality_score || 0;
-                                            const indicators: { label: string; value: string; color: string; icon: string }[] = [];
-                                            // Objectif calories hebdo (2000 kcal/semaine = référence OMS activité modérée)
-                                            const calTarget = activityPeriod === 'week' ? 2000 : activityPeriod === 'month' ? 8000 : 100000;
-                                            const calPct = Math.min(100, (cal / calTarget) * 100);
-                                            indicators.push({ label: 'Objectif calories', value: `${Math.round(calPct)}%`, color: calPct >= 80 ? '#10B981' : calPct >= 50 ? '#F59E0B' : '#EF4444', icon: calPct >= 80 ? '💪' : '🎯' });
-                                            // Activité physique (OMS: 150min/semaine d'activité modérée)
-                                            const durTarget = activityPeriod === 'week' ? 150 : activityPeriod === 'month' ? 600 : 7800;
-                                            const durPct = Math.min(100, (dur / durTarget) * 100);
-                                            indicators.push({ label: 'Activité physique', value: `${Math.round(durPct)}%`, color: durPct >= 80 ? '#10B981' : durPct >= 50 ? '#F59E0B' : '#EF4444', icon: durPct >= 80 ? '🏃' : '🚶' });
-                                            // Score qualité
-                                            indicators.push({ label: 'Régularité', value: quality >= 70 ? 'Excellent' : quality >= 50 ? 'Bon' : 'À améliorer', color: quality >= 70 ? '#10B981' : quality >= 50 ? '#F59E0B' : '#EF4444', icon: quality >= 70 ? '🌟' : '📊' });
-                                            return indicators.map((ind, i) => (
-                                                <View key={i} style={styles.healthIndicatorRow}>
-                                                    <Text style={styles.healthIndicatorIcon}>{ind.icon}</Text>
-                                                    <Text style={styles.healthIndicatorLabel}>{ind.label}</Text>
-                                                    <View style={styles.healthBarBg}>
-                                                        <View style={[styles.healthBarFill, { width: `${isNaN(parseInt(ind.value)) ? 50 : parseInt(ind.value)}%` as any, backgroundColor: ind.color }]} />
+                                        {/* Indicateurs de santé */}
+                                        <View style={styles.healthIndicators}>
+                                            {(() => {
+                                                const cal = activitySummary.summary.total_calories || 0;
+                                                const dist = activitySummary.summary.total_distance_km || 0;
+                                                const dur = activitySummary.summary.total_duration_minutes || 0;
+                                                const quality = activitySummary.summary.avg_quality_score || 0;
+                                                const indicators: { label: string; value: string; color: string; icon: string }[] = [];
+                                                // Objectif calories hebdo (2000 kcal/semaine = référence OMS activité modérée)
+                                                const calTarget = activityPeriod === 'week' ? 2000 : activityPeriod === 'month' ? 8000 : 100000;
+                                                const calPct = Math.min(100, (cal / calTarget) * 100);
+                                                indicators.push({ label: 'Objectif calories', value: `${Math.round(calPct)}%`, color: calPct >= 80 ? '#10B981' : calPct >= 50 ? '#F59E0B' : '#EF4444', icon: calPct >= 80 ? '💪' : '🎯' });
+                                                // Activité physique (OMS: 150min/semaine d'activité modérée)
+                                                const durTarget = activityPeriod === 'week' ? 150 : activityPeriod === 'month' ? 600 : 7800;
+                                                const durPct = Math.min(100, (dur / durTarget) * 100);
+                                                indicators.push({ label: 'Activité physique', value: `${Math.round(durPct)}%`, color: durPct >= 80 ? '#10B981' : durPct >= 50 ? '#F59E0B' : '#EF4444', icon: durPct >= 80 ? '🏃' : '🚶' });
+                                                // Score qualité
+                                                indicators.push({ label: 'Régularité', value: quality >= 70 ? 'Excellent' : quality >= 50 ? 'Bon' : 'À améliorer', color: quality >= 70 ? '#10B981' : quality >= 50 ? '#F59E0B' : '#EF4444', icon: quality >= 70 ? '🌟' : '📊' });
+                                                return indicators.map((ind, i) => (
+                                                    <View key={i} style={styles.healthIndicatorRow}>
+                                                        <Text style={styles.healthIndicatorIcon}>{ind.icon}</Text>
+                                                        <Text style={styles.healthIndicatorLabel}>{ind.label}</Text>
+                                                        <View style={styles.healthBarBg}>
+                                                            <View style={[styles.healthBarFill, { width: `${isNaN(parseInt(ind.value)) ? 50 : parseInt(ind.value)}%` as any, backgroundColor: ind.color }]} />
+                                                        </View>
+                                                        <Text style={[styles.healthIndicatorValue, { color: ind.color }]}>{ind.value}</Text>
                                                     </View>
-                                                    <Text style={[styles.healthIndicatorValue, { color: ind.color }]}>{ind.value}</Text>
-                                                </View>
-                                            ));
-                                        })()}
-                                    </View>
-                                </NativeCard>
-
-                                {/* Meilleure session */}
-                                {activitySummary.best_session && (
-                                    <NativeCard style={styles.bestSessionCard}>
-                                        <View style={styles.bestSessionHeader}>
-                                            <Text style={styles.bestSessionEmoji}>🏅</Text>
-                                            <Text style={styles.bestSessionTitle}>Meilleure session</Text>
+                                                ));
+                                            })()}
                                         </View>
-                                        <View style={styles.bestSessionRow}>
-                                            <Text style={styles.bestSessionStat}>{activitySummary.best_session.distance_km?.toFixed(1)} km</Text>
-                                            <Text style={styles.bestSessionStat}>{Math.round(activitySummary.best_session.duration_minutes || 0)} min</Text>
-                                            <Text style={styles.bestSessionStat}>⭐ {Math.round(activitySummary.best_session.quality_score)}/100</Text>
-                                        </View>
-                                        <Text style={styles.bestSessionDate}>{activitySummary.best_session.date}</Text>
                                     </NativeCard>
-                                )}
 
-                                {/* Par mode de transport */}
-                                {activitySummary.by_mode && activitySummary.by_mode.length > 0 && (
-                                    <NativeCard style={styles.modeCard}>
-                                        <Text style={styles.modeCardTitle}>Par mode de transport</Text>
-                                        {activitySummary.by_mode.map((m: any, i: number) => (
-                                            <View key={i} style={styles.modeRow}>
-                                                <Text style={styles.modeIcon}>
-                                                    {m.mode === 'walking' ? '🚶' : m.mode === 'bicycling' ? '🚲' : m.mode === 'transit' ? '🚌' : '🚗'}
-                                                </Text>
-                                                <Text style={styles.modeName}>
-                                                    {m.mode === 'walking' ? 'Marche' : m.mode === 'bicycling' ? 'Vélo' : m.mode === 'transit' ? 'Transport' : 'Voiture'}
-                                                </Text>
-                                                <Text style={styles.modeCount}>{m.count}x</Text>
-                                                <Text style={styles.modeDist}>{m.distance_km?.toFixed(1)} km</Text>
+                                    {/* Meilleure session */}
+                                    {activitySummary.best_session && (
+                                        <NativeCard style={styles.bestSessionCard}>
+                                            <View style={styles.bestSessionHeader}>
+                                                <Text style={styles.bestSessionEmoji}>🏅</Text>
+                                                <Text style={styles.bestSessionTitle}>Meilleure session</Text>
                                             </View>
-                                        ))}
-                                    </NativeCard>
-                                )}
-
-                                {/* Destinations les plus visitées */}
-                                {activitySummary.top_destinations && activitySummary.top_destinations.length > 0 && (
-                                    <NativeCard style={styles.destCard}>
-                                        <View style={styles.destCardHeader}>
-                                            <SafeIcon name="MapPin" size={16} color={modernColors.primary} />
-                                            <Text style={styles.destCardTitle}>Lieux les plus visités</Text>
-                                        </View>
-                                        {activitySummary.top_destinations.slice(0, 5).map((d: any, i: number) => (
-                                            <View key={i} style={styles.destRow}>
-                                                <View style={styles.destRank}><Text style={styles.destRankText}>{i + 1}</Text></View>
-                                                <Text style={styles.destName} numberOfLines={1}>{d.address}</Text>
-                                                <Text style={styles.destVisits}>{d.visits}x</Text>
+                                            <View style={styles.bestSessionRow}>
+                                                <Text style={styles.bestSessionStat}>{activitySummary.best_session.distance_km?.toFixed(1)} km</Text>
+                                                <Text style={styles.bestSessionStat}>{Math.round(activitySummary.best_session.duration_minutes || 0)} min</Text>
+                                                <Text style={styles.bestSessionStat}>⭐ {Math.round(activitySummary.best_session.quality_score)}/100</Text>
                                             </View>
-                                        ))}
-                                    </NativeCard>
-                                )}
+                                            <Text style={styles.bestSessionDate}>{activitySummary.best_session.date}</Text>
+                                        </NativeCard>
+                                    )}
 
-                                {/* Historique récent */}
-                                {activityHistory.length > 0 && (
-                                    <NativeCard style={styles.historyCard}>
-                                        <Text style={styles.historyTitle}>Activités récentes</Text>
-                                        {activityHistory.slice(0, 5).map((a: any, i: number) => (
-                                            <View key={i} style={styles.historyRow}>
-                                                <Text style={styles.historyIcon}>
-                                                    {a.travel_mode === 'walking' ? '🚶' : a.travel_mode === 'bicycling' ? '🚲' : a.travel_mode === 'transit' ? '🚌' : '🚗'}
-                                                </Text>
-                                                <View style={styles.historyInfo}>
-                                                    <Text style={styles.historyDest} numberOfLines={1}>{a.destination || 'Trajet'}</Text>
-                                                    <Text style={styles.historyMeta}>
-                                                        {a.distance_km?.toFixed(1)} km · {Math.round(a.duration_minutes || 0)} min · 🔥 {Math.round(a.calories || 0)} cal
+                                    {/* Par mode de transport */}
+                                    {activitySummary.by_mode && activitySummary.by_mode.length > 0 && (
+                                        <NativeCard style={styles.modeCard}>
+                                            <Text style={styles.modeCardTitle}>Par mode de transport</Text>
+                                            {activitySummary.by_mode.map((m: any, i: number) => (
+                                                <View key={i} style={styles.modeRow}>
+                                                    <Text style={styles.modeIcon}>
+                                                        {m.mode === 'walking' ? '🚶' : m.mode === 'bicycling' ? '🚲' : m.mode === 'transit' ? '🚌' : '🚗'}
                                                     </Text>
-                                                </View>
-                                                <View style={styles.historyQuality}>
-                                                    <Text style={[styles.historyScore, { color: (a.quality_score || 0) >= 70 ? '#10B981' : (a.quality_score || 0) >= 50 ? '#F59E0B' : '#EF4444' }]}>
-                                                        {Math.round(a.quality_score || 0)}
+                                                    <Text style={styles.modeName}>
+                                                        {m.mode === 'walking' ? 'Marche' : m.mode === 'bicycling' ? 'Vélo' : m.mode === 'transit' ? 'Transport' : 'Voiture'}
                                                     </Text>
-                                                    <Text style={styles.historyScoreLabel}>/100</Text>
+                                                    <Text style={styles.modeCount}>{m.count}x</Text>
+                                                    <Text style={styles.modeDist}>{m.distance_km?.toFixed(1)} km</Text>
                                                 </View>
+                                            ))}
+                                        </NativeCard>
+                                    )}
+
+                                    {/* Destinations les plus visitées */}
+                                    {activitySummary.top_destinations && activitySummary.top_destinations.length > 0 && (
+                                        <NativeCard style={styles.destCard}>
+                                            <View style={styles.destCardHeader}>
+                                                <SafeIcon name="MapPin" size={16} color={modernColors.primary} />
+                                                <Text style={styles.destCardTitle}>Lieux les plus visités</Text>
                                             </View>
-                                        ))}
-                                    </NativeCard>
-                                )}
-
-                                {/* ━━━━━━ COACH IA & ANALYSE AVANCÉE ━━━━━━ */}
-                                {aiInsights && (
-                                    <>
-                                        {/* Bouton partage performances */}
-                                        <View style={styles.sharePerformanceRow}>
-                                            <Text style={styles.coachTitle}>🤖 Coach IA</Text>
-                                            <TouchableOpacity onPress={sharePerformance} style={styles.sharePerformanceBtn}>
-                                                <SafeIcon name="Share2" size={14} color="#fff" />
-                                                <Text style={styles.sharePerformanceTxt}>Partager</Text>
-                                            </TouchableOpacity>
-                                        </View>
-
-                                        {/* Score de santé global */}
-                                        {aiInsights.health_score && (
-                                            <NativeCard style={[styles.healthCard, { borderLeftWidth: 4, borderLeftColor: aiInsights.health_score.score >= 80 ? '#10B981' : aiInsights.health_score.score >= 60 ? '#F59E0B' : aiInsights.health_score.score >= 40 ? '#FF6B35' : '#EF4444' }]}>
-                                                <View style={styles.healthHeader}>
-                                                    <Text style={{ fontSize: 22 }}>🫀</Text>
-                                                    <Text style={styles.healthTitle}>Score de Santé Global</Text>
+                                            {activitySummary.top_destinations.slice(0, 5).map((d: any, i: number) => (
+                                                <View key={i} style={styles.destRow}>
+                                                    <View style={styles.destRank}><Text style={styles.destRankText}>{i + 1}</Text></View>
+                                                    <Text style={styles.destName} numberOfLines={1}>{d.address}</Text>
+                                                    <Text style={styles.destVisits}>{d.visits}x</Text>
                                                 </View>
-                                                <View style={{ alignItems: 'center', marginVertical: 12 }}>
-                                                    <View style={[styles.aiScoreCircle, { borderColor: aiInsights.health_score.score >= 80 ? '#10B981' : aiInsights.health_score.score >= 60 ? '#F59E0B' : '#EF4444' }]}>
-                                                        <Text style={[styles.aiScoreValue, { color: aiInsights.health_score.score >= 80 ? '#10B981' : aiInsights.health_score.score >= 60 ? '#F59E0B' : '#EF4444' }]}>
-                                                            {aiInsights.health_score.score}
+                                            ))}
+                                        </NativeCard>
+                                    )}
+
+                                    {/* Historique récent */}
+                                    {activityHistory.length > 0 && (
+                                        <NativeCard style={styles.historyCard}>
+                                            <Text style={styles.historyTitle}>Activités récentes</Text>
+                                            {activityHistory.slice(0, 5).map((a: any, i: number) => (
+                                                <View key={i} style={styles.historyRow}>
+                                                    <Text style={styles.historyIcon}>
+                                                        {a.travel_mode === 'walking' ? '🚶' : a.travel_mode === 'bicycling' ? '🚲' : a.travel_mode === 'transit' ? '🚌' : '🚗'}
+                                                    </Text>
+                                                    <View style={styles.historyInfo}>
+                                                        <Text style={styles.historyDest} numberOfLines={1}>{a.destination || 'Trajet'}</Text>
+                                                        <Text style={styles.historyMeta}>
+                                                            {a.distance_km?.toFixed(1)} km · {Math.round(a.duration_minutes || 0)} min · 🔥 {Math.round(a.calories || 0)} cal
                                                         </Text>
-                                                        <Text style={styles.aiScoreMax}>/100</Text>
                                                     </View>
-                                                    <Text style={[styles.aiScoreLabel, { color: aiInsights.health_score.score >= 80 ? '#10B981' : aiInsights.health_score.score >= 60 ? '#F59E0B' : '#EF4444' }]}>
-                                                        {aiInsights.health_score.label}
-                                                    </Text>
+                                                    <View style={styles.historyQuality}>
+                                                        <Text style={[styles.historyScore, { color: (a.quality_score || 0) >= 70 ? '#10B981' : (a.quality_score || 0) >= 50 ? '#F59E0B' : '#EF4444' }]}>
+                                                            {Math.round(a.quality_score || 0)}
+                                                        </Text>
+                                                        <Text style={styles.historyScoreLabel}>/100</Text>
+                                                    </View>
                                                 </View>
-                                                <View style={styles.aiBreakdownGrid}>
-                                                    {[
-                                                        { label: 'Activité', pts: aiInsights.health_score.breakdown?.activity || 0, max: 30, emoji: '🏃' },
-                                                        { label: 'Qualité', pts: aiInsights.health_score.breakdown?.quality || 0, max: 20, emoji: '⭐' },
-                                                        { label: 'Série', pts: aiInsights.health_score.breakdown?.streak || 0, max: 15, emoji: '🔥' },
-                                                        { label: 'Éco', pts: aiInsights.health_score.breakdown?.eco || 0, max: 10, emoji: '🌍' },
-                                                        { label: 'Fitness', pts: aiInsights.health_score.breakdown?.fitness || 0, max: 15, emoji: '❤️' },
-                                                        { label: 'Diversité', pts: aiInsights.health_score.breakdown?.diversity || 0, max: 10, emoji: '🎯' },
-                                                    ].map((item, i) => (
-                                                        <View key={i} style={styles.aiBreakdownItem}>
-                                                            <Text style={{ fontSize: 14 }}>{item.emoji}</Text>
-                                                            <View style={styles.aiBreakdownBar}>
-                                                                <View style={[styles.aiBreakdownFill, { width: `${(item.pts / item.max * 100)}%` as any, backgroundColor: item.pts >= item.max * 0.7 ? '#10B981' : '#F59E0B' }]} />
+                                            ))}
+                                        </NativeCard>
+                                    )}
+
+                                    {/* ━━━━━━ COACH IA & ANALYSE AVANCÉE ━━━━━━ */}
+                                    {aiInsights && (
+                                        <>
+                                            {/* Bouton partage performances */}
+                                            <View style={styles.sharePerformanceRow}>
+                                                <Text style={styles.coachTitle}>🤖 Coach IA</Text>
+                                                <TouchableOpacity onPress={sharePerformance} style={styles.sharePerformanceBtn}>
+                                                    <SafeIcon name="Share2" size={14} color="#fff" />
+                                                    <Text style={styles.sharePerformanceTxt}>Partager</Text>
+                                                </TouchableOpacity>
+                                            </View>
+
+                                            {/* Score de santé global */}
+                                            {aiInsights.health_score && (
+                                                <NativeCard style={[styles.healthCard, { borderLeftWidth: 4, borderLeftColor: aiInsights.health_score.score >= 80 ? '#10B981' : aiInsights.health_score.score >= 60 ? '#F59E0B' : aiInsights.health_score.score >= 40 ? '#FF6B35' : '#EF4444' }]}>
+                                                    <View style={styles.healthHeader}>
+                                                        <Text style={{ fontSize: 22 }}>🫀</Text>
+                                                        <Text style={styles.healthTitle}>Score de Santé Global</Text>
+                                                    </View>
+                                                    <View style={{ alignItems: 'center', marginVertical: 12 }}>
+                                                        <View style={[styles.aiScoreCircle, { borderColor: aiInsights.health_score.score >= 80 ? '#10B981' : aiInsights.health_score.score >= 60 ? '#F59E0B' : '#EF4444' }]}>
+                                                            <Text style={[styles.aiScoreValue, { color: aiInsights.health_score.score >= 80 ? '#10B981' : aiInsights.health_score.score >= 60 ? '#F59E0B' : '#EF4444' }]}>
+                                                                {aiInsights.health_score.score}
+                                                            </Text>
+                                                            <Text style={styles.aiScoreMax}>/100</Text>
+                                                        </View>
+                                                        <Text style={[styles.aiScoreLabel, { color: aiInsights.health_score.score >= 80 ? '#10B981' : aiInsights.health_score.score >= 60 ? '#F59E0B' : '#EF4444' }]}>
+                                                            {aiInsights.health_score.label}
+                                                        </Text>
+                                                    </View>
+                                                    <View style={styles.aiBreakdownGrid}>
+                                                        {[
+                                                            { label: 'Activité', pts: aiInsights.health_score.breakdown?.activity || 0, max: 30, emoji: '🏃' },
+                                                            { label: 'Qualité', pts: aiInsights.health_score.breakdown?.quality || 0, max: 20, emoji: '⭐' },
+                                                            { label: 'Série', pts: aiInsights.health_score.breakdown?.streak || 0, max: 15, emoji: '🔥' },
+                                                            { label: 'Éco', pts: aiInsights.health_score.breakdown?.eco || 0, max: 10, emoji: '🌍' },
+                                                            { label: 'Fitness', pts: aiInsights.health_score.breakdown?.fitness || 0, max: 15, emoji: '❤️' },
+                                                            { label: 'Diversité', pts: aiInsights.health_score.breakdown?.diversity || 0, max: 10, emoji: '🎯' },
+                                                        ].map((item, i) => (
+                                                            <View key={i} style={styles.aiBreakdownItem}>
+                                                                <Text style={{ fontSize: 14 }}>{item.emoji}</Text>
+                                                                <View style={styles.aiBreakdownBar}>
+                                                                    <View style={[styles.aiBreakdownFill, { width: `${(item.pts / item.max * 100)}%` as any, backgroundColor: item.pts >= item.max * 0.7 ? '#10B981' : '#F59E0B' }]} />
+                                                                </View>
+                                                                <Text style={styles.aiBreakdownPts}>{item.pts}/{item.max}</Text>
                                                             </View>
-                                                            <Text style={styles.aiBreakdownPts}>{item.pts}/{item.max}</Text>
+                                                        ))}
+                                                    </View>
+                                                </NativeCard>
+                                            )}
+
+                                            {/* Recommandations IA personnalisées */}
+                                            {aiInsights.ai_tips && aiInsights.ai_tips.length > 0 && (
+                                                <NativeCard style={[styles.healthCard, { borderLeftWidth: 4, borderLeftColor: '#8B5CF6' }]}>
+                                                    <View style={styles.healthHeader}>
+                                                        <Text style={{ fontSize: 22 }}>🤖</Text>
+                                                        <Text style={[styles.healthTitle, { color: '#8B5CF6' }]}>Coach IA Yukpo</Text>
+                                                    </View>
+                                                    {aiInsights.ai_tips.map((tip: any, i: number) => (
+                                                        <View key={i} style={[styles.aiTipCard, { borderLeftColor: tip.priority === 'critical' ? '#EF4444' : tip.priority === 'high' ? '#F59E0B' : tip.priority === 'positive' ? '#10B981' : '#6B7280' }]}>
+                                                            <View style={styles.aiTipHeader}>
+                                                                <Text style={{ fontSize: 18 }}>{tip.emoji}</Text>
+                                                                <Text style={styles.aiTipTitle}>{tip.title}</Text>
+                                                            </View>
+                                                            <Text style={styles.aiTipMessage}>{tip.message}</Text>
                                                         </View>
                                                     ))}
-                                                </View>
-                                            </NativeCard>
-                                        )}
+                                                </NativeCard>
+                                            )}
 
-                                        {/* Recommandations IA personnalisées */}
-                                        {aiInsights.ai_tips && aiInsights.ai_tips.length > 0 && (
-                                            <NativeCard style={[styles.healthCard, { borderLeftWidth: 4, borderLeftColor: '#8B5CF6' }]}>
-                                                <View style={styles.healthHeader}>
-                                                    <Text style={{ fontSize: 22 }}>🤖</Text>
-                                                    <Text style={[styles.healthTitle, { color: '#8B5CF6' }]}>Coach IA Yukpo</Text>
-                                                </View>
-                                                {aiInsights.ai_tips.map((tip: any, i: number) => (
-                                                    <View key={i} style={[styles.aiTipCard, { borderLeftColor: tip.priority === 'critical' ? '#EF4444' : tip.priority === 'high' ? '#F59E0B' : tip.priority === 'positive' ? '#10B981' : '#6B7280' }]}>
-                                                        <View style={styles.aiTipHeader}>
-                                                            <Text style={{ fontSize: 18 }}>{tip.emoji}</Text>
-                                                            <Text style={styles.aiTipTitle}>{tip.title}</Text>
+                                            {/* Streak & Gamification */}
+                                            {aiInsights.gamification && (
+                                                <NativeCard style={[styles.healthCard, { borderLeftWidth: 4, borderLeftColor: '#F59E0B' }]}>
+                                                    <View style={styles.healthHeader}>
+                                                        <Text style={{ fontSize: 22 }}>🎮</Text>
+                                                        <Text style={styles.healthTitle}>Gamification</Text>
+                                                    </View>
+                                                    <View style={styles.aiStreakRow}>
+                                                        <View style={styles.aiStreakItem}>
+                                                            <Text style={styles.aiStreakEmoji}>🔥</Text>
+                                                            <Text style={styles.aiStreakValue}>{aiInsights.gamification.current_streak}</Text>
+                                                            <Text style={styles.aiStreakLabel}>jours d'affilée</Text>
                                                         </View>
-                                                        <Text style={styles.aiTipMessage}>{tip.message}</Text>
-                                                    </View>
-                                                ))}
-                                            </NativeCard>
-                                        )}
-
-                                        {/* Streak & Gamification */}
-                                        {aiInsights.gamification && (
-                                            <NativeCard style={[styles.healthCard, { borderLeftWidth: 4, borderLeftColor: '#F59E0B' }]}>
-                                                <View style={styles.healthHeader}>
-                                                    <Text style={{ fontSize: 22 }}>🎮</Text>
-                                                    <Text style={styles.healthTitle}>Gamification</Text>
-                                                </View>
-                                                <View style={styles.aiStreakRow}>
-                                                    <View style={styles.aiStreakItem}>
-                                                        <Text style={styles.aiStreakEmoji}>🔥</Text>
-                                                        <Text style={styles.aiStreakValue}>{aiInsights.gamification.current_streak}</Text>
-                                                        <Text style={styles.aiStreakLabel}>jours d'affilée</Text>
-                                                    </View>
-                                                    <View style={styles.aiStreakItem}>
-                                                        <Text style={styles.aiStreakEmoji}>🏆</Text>
-                                                        <Text style={styles.aiStreakValue}>{aiInsights.gamification.max_streak}</Text>
-                                                        <Text style={styles.aiStreakLabel}>record</Text>
-                                                    </View>
-                                                    <View style={styles.aiStreakItem}>
-                                                        <Text style={styles.aiStreakEmoji}>⭐</Text>
-                                                        <Text style={styles.aiStreakValue}>{aiInsights.gamification.total_points}</Text>
-                                                        <Text style={styles.aiStreakLabel}>points</Text>
-                                                    </View>
-                                                </View>
-                                                {aiInsights.gamification.badges && aiInsights.gamification.badges.length > 0 && (
-                                                    <View style={styles.aiBadgesWrap}>
-                                                        {aiInsights.gamification.badges.map((b: any, i: number) => (
-                                                            <View key={i} style={styles.aiBadge}>
-                                                                <Text style={{ fontSize: 20 }}>{b.emoji}</Text>
-                                                                <Text style={styles.aiBadgeLabel} numberOfLines={1}>{b.label}</Text>
-                                                            </View>
-                                                        ))}
-                                                    </View>
-                                                )}
-                                                {aiInsights.gamification.new_badges && aiInsights.gamification.new_badges.length > 0 && (
-                                                    <View style={[styles.aiNewBadgeBanner]}>
-                                                        <Text style={styles.aiNewBadgeTitle}>🎉 Nouveaux badges !</Text>
-                                                        {aiInsights.gamification.new_badges.map((b: any, i: number) => (
-                                                            <Text key={i} style={styles.aiNewBadgeText}>{b.emoji} {b.label}</Text>
-                                                        ))}
-                                                    </View>
-                                                )}
-                                            </NativeCard>
-                                        )}
-
-                                        {/* Défis hebdomadaires */}
-                                        {aiInsights.challenges && aiInsights.challenges.length > 0 && (
-                                            <NativeCard style={[styles.healthCard, { borderLeftWidth: 4, borderLeftColor: '#3B82F6' }]}>
-                                                <View style={styles.healthHeader}>
-                                                    <Text style={{ fontSize: 22 }}>🎯</Text>
-                                                    <Text style={styles.healthTitle}>Défis de la semaine</Text>
-                                                </View>
-                                                {aiInsights.challenges.map((c: any, i: number) => (
-                                                    <View key={i} style={styles.aiChallengeRow}>
-                                                        <View style={styles.aiChallengeHeader}>
-                                                            <Text style={{ fontSize: 16 }}>{c.emoji}</Text>
-                                                            <Text style={styles.aiChallengeLabel} numberOfLines={1}>{c.label}</Text>
-                                                            {c.completed && <Text style={styles.aiChallengeCheck}>✅</Text>}
+                                                        <View style={styles.aiStreakItem}>
+                                                            <Text style={styles.aiStreakEmoji}>🏆</Text>
+                                                            <Text style={styles.aiStreakValue}>{aiInsights.gamification.max_streak}</Text>
+                                                            <Text style={styles.aiStreakLabel}>record</Text>
                                                         </View>
-                                                        <View style={styles.aiChallengeBarBg}>
-                                                            <View style={[styles.aiChallengeBarFill, { width: `${c.progress}%` as any, backgroundColor: c.completed ? '#10B981' : '#3B82F6' }]} />
+                                                        <View style={styles.aiStreakItem}>
+                                                            <Text style={styles.aiStreakEmoji}>⭐</Text>
+                                                            <Text style={styles.aiStreakValue}>{aiInsights.gamification.total_points}</Text>
+                                                            <Text style={styles.aiStreakLabel}>points</Text>
                                                         </View>
-                                                        <Text style={styles.aiChallengeProgress}>
-                                                            {c.type === 'sessions' ? `${Math.round(c.current)}/${Math.round(c.target)}` : `${c.current?.toFixed(1)}/${c.target?.toFixed(0)}`} — {Math.round(c.progress)}%
-                                                        </Text>
                                                     </View>
-                                                ))}
-                                            </NativeCard>
-                                        )}
-
-                                        {/* Impact CO2 & Économies */}
-                                        {aiInsights.co2_impact && (
-                                            <NativeCard style={[styles.healthCard, { borderLeftWidth: 4, borderLeftColor: '#10B981' }]}>
-                                                <View style={styles.healthHeader}>
-                                                    <Text style={{ fontSize: 22 }}>🌍</Text>
-                                                    <Text style={styles.healthTitle}>Impact Environnemental</Text>
-                                                </View>
-                                                <View style={styles.healthGrid}>
-                                                    <View style={styles.healthItem}>
-                                                        <Text style={styles.healthEmoji}>💨</Text>
-                                                        <Text style={styles.healthValue}>{aiInsights.co2_impact.emitted_kg?.toFixed(1)}</Text>
-                                                        <Text style={styles.healthLabel}>kg CO2 émis</Text>
-                                                    </View>
-                                                    <View style={styles.healthItem}>
-                                                        <Text style={styles.healthEmoji}>🌱</Text>
-                                                        <Text style={[styles.healthValue, { color: '#10B981' }]}>{aiInsights.co2_impact.saved_kg?.toFixed(1)}</Text>
-                                                        <Text style={styles.healthLabel}>kg CO2 économisé</Text>
-                                                    </View>
-                                                    <View style={styles.healthItem}>
-                                                        <Text style={styles.healthEmoji}>🌳</Text>
-                                                        <Text style={styles.healthValue}>{aiInsights.co2_impact.trees_equivalent?.toFixed(1)}</Text>
-                                                        <Text style={styles.healthLabel}>arbres plantés</Text>
-                                                    </View>
-                                                    <View style={styles.healthItem}>
-                                                        <Text style={styles.healthEmoji}>💰</Text>
-                                                        <Text style={[styles.healthValue, { color: '#10B981' }]}>{Math.round(aiInsights.co2_impact.fuel_cost_saved || aiInsights.co2_impact.fuel_cost_saved_fcfa || 0)}</Text>
-                                                        <Text style={styles.healthLabel}>{aiInsights.co2_impact.currency_symbol || aiInsights.geo_context?.currency_symbol || 'FCFA'} économisés</Text>
-                                                    </View>
-                                                </View>
-                                            </NativeCard>
-                                        )}
-
-                                        {/* Niveau de fitness (VO2max) */}
-                                        {aiInsights.fitness && aiInsights.fitness.vo2max_estimate > 0 && (
-                                            <NativeCard style={[styles.healthCard, { borderLeftWidth: 4, borderLeftColor: '#EF4444' }]}>
-                                                <View style={styles.healthHeader}>
-                                                    <Text style={{ fontSize: 22 }}>❤️</Text>
-                                                    <Text style={styles.healthTitle}>Condition Physique</Text>
-                                                </View>
-                                                <View style={{ alignItems: 'center', marginVertical: 8 }}>
-                                                    <Text style={styles.aiFitnessVO2}>{aiInsights.fitness.vo2max_estimate}</Text>
-                                                    <Text style={styles.aiFitnessUnit}>VO2max (ml/kg/min)</Text>
-                                                    <View style={[styles.aiFitnessLevel, { backgroundColor: aiInsights.fitness.level === 'Excellent' ? '#10B98120' : aiInsights.fitness.level === 'Très bon' ? '#3B82F620' : '#F59E0B20' }]}>
-                                                        <Text style={[styles.aiFitnessLevelText, { color: aiInsights.fitness.level === 'Excellent' ? '#10B981' : aiInsights.fitness.level === 'Très bon' ? '#3B82F6' : '#F59E0B' }]}>
-                                                            {aiInsights.fitness.level}
-                                                        </Text>
-                                                    </View>
-                                                </View>
-                                                <View style={styles.healthIndicators}>
-                                                    <View style={styles.healthIndicatorRow}>
-                                                        <Text style={styles.healthIndicatorIcon}>🏃</Text>
-                                                        <Text style={styles.healthIndicatorLabel}>Objectif OMS (150 min/sem)</Text>
-                                                        <View style={styles.healthBarBg}>
-                                                            <View style={[styles.healthBarFill, { width: `${aiInsights.fitness.oms_progress_pct}%` as any, backgroundColor: aiInsights.fitness.oms_progress_pct >= 100 ? '#10B981' : '#F59E0B' }]} />
-                                                        </View>
-                                                        <Text style={[styles.healthIndicatorValue, { color: aiInsights.fitness.oms_progress_pct >= 100 ? '#10B981' : '#F59E0B' }]}>
-                                                            {aiInsights.fitness.oms_progress_pct}%
-                                                        </Text>
-                                                    </View>
-                                                </View>
-                                            </NativeCard>
-                                        )}
-
-                                        {/* Records personnels */}
-                                        {aiInsights.records && (
-                                            <NativeCard style={[styles.healthCard, { borderLeftWidth: 4, borderLeftColor: '#FFD700' }]}>
-                                                <View style={styles.healthHeader}>
-                                                    <Text style={{ fontSize: 22 }}>🏅</Text>
-                                                    <Text style={styles.healthTitle}>Records Personnels</Text>
-                                                </View>
-                                                <View style={styles.aiRecordsList}>
-                                                    {aiInsights.records.longest_session && (
-                                                        <View style={styles.aiRecordRow}>
-                                                            <Text style={styles.aiRecordEmoji}>📏</Text>
-                                                            <View style={styles.aiRecordInfo}>
-                                                                <Text style={styles.aiRecordTitle}>Plus longue session</Text>
-                                                                <Text style={styles.aiRecordValue}>
-                                                                    {aiInsights.records.longest_session.distance_km?.toFixed(1)} km · {Math.round(aiInsights.records.longest_session.duration_minutes)} min
-                                                                </Text>
-                                                            </View>
-                                                            <Text style={styles.aiRecordDate}>{aiInsights.records.longest_session.date}</Text>
-                                                        </View>
-                                                    )}
-                                                    {aiInsights.records.fastest_km && (
-                                                        <View style={styles.aiRecordRow}>
-                                                            <Text style={styles.aiRecordEmoji}>⚡</Text>
-                                                            <View style={styles.aiRecordInfo}>
-                                                                <Text style={styles.aiRecordTitle}>Meilleur km</Text>
-                                                                <Text style={styles.aiRecordValue}>{aiInsights.records.fastest_km.pace_display}</Text>
-                                                            </View>
-                                                            <Text style={styles.aiRecordDate}>{aiInsights.records.fastest_km.date}</Text>
-                                                        </View>
-                                                    )}
-                                                    {aiInsights.records.best_quality && (
-                                                        <View style={styles.aiRecordRow}>
-                                                            <Text style={styles.aiRecordEmoji}>⭐</Text>
-                                                            <View style={styles.aiRecordInfo}>
-                                                                <Text style={styles.aiRecordTitle}>Meilleure qualité</Text>
-                                                                <Text style={styles.aiRecordValue}>{Math.round(aiInsights.records.best_quality.score)}/100</Text>
-                                                            </View>
-                                                            <Text style={styles.aiRecordDate}>{aiInsights.records.best_quality.date}</Text>
-                                                        </View>
-                                                    )}
-                                                    {aiInsights.records.most_calories && (
-                                                        <View style={styles.aiRecordRow}>
-                                                            <Text style={styles.aiRecordEmoji}>🔥</Text>
-                                                            <View style={styles.aiRecordInfo}>
-                                                                <Text style={styles.aiRecordTitle}>Max calories</Text>
-                                                                <Text style={styles.aiRecordValue}>{Math.round(aiInsights.records.most_calories.calories)} cal</Text>
-                                                            </View>
-                                                            <Text style={styles.aiRecordDate}>{aiInsights.records.most_calories.date}</Text>
-                                                        </View>
-                                                    )}
-                                                    {aiInsights.records.max_speed && (
-                                                        <View style={styles.aiRecordRow}>
-                                                            <Text style={styles.aiRecordEmoji}>🚀</Text>
-                                                            <View style={styles.aiRecordInfo}>
-                                                                <Text style={styles.aiRecordTitle}>Vitesse max</Text>
-                                                                <Text style={styles.aiRecordValue}>{aiInsights.records.max_speed.speed_kmh?.toFixed(1)} km/h</Text>
-                                                            </View>
-                                                            <Text style={styles.aiRecordDate}>{aiInsights.records.max_speed.date}</Text>
-                                                        </View>
-                                                    )}
-                                                </View>
-                                                <View style={styles.aiRecordsTotals}>
-                                                    <Text style={styles.aiRecordTotal}>Total: {aiInsights.records.total_km?.toFixed(0)} km · {aiInsights.records.total_sessions} sessions · {Math.round(aiInsights.records.total_calories || 0)} cal</Text>
-                                                </View>
-                                            </NativeCard>
-                                        )}
-
-                                        {/* Commute Insights */}
-                                        {aiInsights.commute?.frequent_routes && aiInsights.commute.frequent_routes.length > 0 && (
-                                            <NativeCard style={[styles.healthCard, { borderLeftWidth: 4, borderLeftColor: '#6366F1' }]}>
-                                                <View style={styles.healthHeader}>
-                                                    <Text style={{ fontSize: 22 }}>🏠</Text>
-                                                    <Text style={styles.healthTitle}>Trajets Habituels</Text>
-                                                </View>
-                                                {aiInsights.commute.frequent_routes.map((r: any, i: number) => (
-                                                    <View key={i} style={styles.aiCommuteRow}>
-                                                        <Text style={styles.aiCommuteFrom} numberOfLines={1}>{r.from}</Text>
-                                                        <Text style={styles.aiCommuteArrow}>→</Text>
-                                                        <Text style={styles.aiCommuteTo} numberOfLines={1}>{r.to}</Text>
-                                                        <Text style={styles.aiCommuteMeta}>{r.trips}x · {Math.round(r.avg_duration_minutes)} min</Text>
-                                                    </View>
-                                                ))}
-                                                {aiInsights.commute.peak_hours && aiInsights.commute.peak_hours.length > 0 && (
-                                                    <View style={styles.aiPeakHours}>
-                                                        <Text style={styles.aiPeakTitle}>🕐 Heures de départ fréquentes</Text>
-                                                        <View style={styles.aiPeakRow}>
-                                                            {aiInsights.commute.peak_hours.slice(0, 4).map((h: any, i: number) => (
-                                                                <View key={i} style={styles.aiPeakBadge}>
-                                                                    <Text style={styles.aiPeakHour}>{h.hour}h</Text>
-                                                                    <Text style={styles.aiPeakCount}>{h.trips}x</Text>
+                                                    {aiInsights.gamification.badges && aiInsights.gamification.badges.length > 0 && (
+                                                        <View style={styles.aiBadgesWrap}>
+                                                            {aiInsights.gamification.badges.map((b: any, i: number) => (
+                                                                <View key={i} style={styles.aiBadge}>
+                                                                    <Text style={{ fontSize: 20 }}>{b.emoji}</Text>
+                                                                    <Text style={styles.aiBadgeLabel} numberOfLines={1}>{b.label}</Text>
                                                                 </View>
                                                             ))}
                                                         </View>
+                                                    )}
+                                                    {aiInsights.gamification.new_badges && aiInsights.gamification.new_badges.length > 0 && (
+                                                        <View style={[styles.aiNewBadgeBanner]}>
+                                                            <Text style={styles.aiNewBadgeTitle}>🎉 Nouveaux badges !</Text>
+                                                            {aiInsights.gamification.new_badges.map((b: any, i: number) => (
+                                                                <Text key={i} style={styles.aiNewBadgeText}>{b.emoji} {b.label}</Text>
+                                                            ))}
+                                                        </View>
+                                                    )}
+                                                </NativeCard>
+                                            )}
+
+                                            {/* Défis hebdomadaires */}
+                                            {aiInsights.challenges && aiInsights.challenges.length > 0 && (
+                                                <NativeCard style={[styles.healthCard, { borderLeftWidth: 4, borderLeftColor: '#3B82F6' }]}>
+                                                    <View style={styles.healthHeader}>
+                                                        <Text style={{ fontSize: 22 }}>🎯</Text>
+                                                        <Text style={styles.healthTitle}>Défis de la semaine</Text>
                                                     </View>
-                                                )}
-                                            </NativeCard>
-                                        )}
-                                    </>
-                                )}
-                            </>
-                        ) : (
-                            <NativeCard style={styles.statsCard}>
-                                <Text style={{ textAlign: 'center', color: modernColors.textSecondary, fontSize: 14, padding: 20 }}>
-                                    Aucune activité enregistrée. Démarrez un suivi pour voir vos statistiques !
-                                </Text>
-                            </NativeCard>
-                        )}
-                    </View>
-                )}
+                                                    {aiInsights.challenges.map((c: any, i: number) => (
+                                                        <View key={i} style={styles.aiChallengeRow}>
+                                                            <View style={styles.aiChallengeHeader}>
+                                                                <Text style={{ fontSize: 16 }}>{c.emoji}</Text>
+                                                                <Text style={styles.aiChallengeLabel} numberOfLines={1}>{c.label}</Text>
+                                                                {c.completed && <Text style={styles.aiChallengeCheck}>✅</Text>}
+                                                            </View>
+                                                            <View style={styles.aiChallengeBarBg}>
+                                                                <View style={[styles.aiChallengeBarFill, { width: `${c.progress}%` as any, backgroundColor: c.completed ? '#10B981' : '#3B82F6' }]} />
+                                                            </View>
+                                                            <Text style={styles.aiChallengeProgress}>
+                                                                {c.type === 'sessions' ? `${Math.round(c.current)}/${Math.round(c.target)}` : `${c.current?.toFixed(1)}/${c.target?.toFixed(0)}`} — {Math.round(c.progress)}%
+                                                            </Text>
+                                                        </View>
+                                                    ))}
+                                                </NativeCard>
+                                            )}
 
-                {/* ━━ Mode de transport ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-                <View style={styles.travelModeRow}>
-                    {TRAVEL_MODES.map((mode) => {
-                        const isActive = travelMode === mode.key;
-                        return (
-                            <TouchableOpacity
-                                key={mode.key}
-                                style={[styles.travelModeBtn, isActive && { backgroundColor: mode.color + '15', borderColor: mode.color }]}
-                                onPress={() => { setTravelMode(mode.key); if (routes.length > 0) setTimeout(() => searchRoutesRef.current(), 100); }}
-                                activeOpacity={0.7}
-                            >
-                                <SafeIcon name={mode.icon} size={18} color={isActive ? mode.color : modernColors.textSecondary} />
-                                <Text style={[styles.travelModeLabel, isActive && { color: mode.color, fontWeight: '700' }]}>{mode.label}</Text>
-                            </TouchableOpacity>
-                        );
-                    })}
-                </View>
+                                            {/* Impact CO2 & Économies */}
+                                            {aiInsights.co2_impact && (
+                                                <NativeCard style={[styles.healthCard, { borderLeftWidth: 4, borderLeftColor: '#10B981' }]}>
+                                                    <View style={styles.healthHeader}>
+                                                        <Text style={{ fontSize: 22 }}>🌍</Text>
+                                                        <Text style={styles.healthTitle}>Impact Environnemental</Text>
+                                                    </View>
+                                                    <View style={styles.healthGrid}>
+                                                        <View style={styles.healthItem}>
+                                                            <Text style={styles.healthEmoji}>💨</Text>
+                                                            <Text style={styles.healthValue}>{aiInsights.co2_impact.emitted_kg?.toFixed(1)}</Text>
+                                                            <Text style={styles.healthLabel}>kg CO2 émis</Text>
+                                                        </View>
+                                                        <View style={styles.healthItem}>
+                                                            <Text style={styles.healthEmoji}>🌱</Text>
+                                                            <Text style={[styles.healthValue, { color: '#10B981' }]}>{aiInsights.co2_impact.saved_kg?.toFixed(1)}</Text>
+                                                            <Text style={styles.healthLabel}>kg CO2 économisé</Text>
+                                                        </View>
+                                                        <View style={styles.healthItem}>
+                                                            <Text style={styles.healthEmoji}>🌳</Text>
+                                                            <Text style={styles.healthValue}>{aiInsights.co2_impact.trees_equivalent?.toFixed(1)}</Text>
+                                                            <Text style={styles.healthLabel}>arbres plantés</Text>
+                                                        </View>
+                                                        <View style={styles.healthItem}>
+                                                            <Text style={styles.healthEmoji}>💰</Text>
+                                                            <Text style={[styles.healthValue, { color: '#10B981' }]}>{Math.round(aiInsights.co2_impact.fuel_cost_saved || aiInsights.co2_impact.fuel_cost_saved_fcfa || 0)}</Text>
+                                                            <Text style={styles.healthLabel}>{aiInsights.co2_impact.currency_symbol || aiInsights.geo_context?.currency_symbol || 'FCFA'} économisés</Text>
+                                                        </View>
+                                                    </View>
+                                                </NativeCard>
+                                            )}
 
-                {/* ━━ Destinations favorites (chips) ━━━━━━━━━━━━━━━━━━━━━━ */}
-                {savedDestinations.length > 0 && !destination && (
-                    <ScrollView
-                        horizontal showsHorizontalScrollIndicator={false}
-                        style={styles.favoritesScroll} contentContainerStyle={styles.favoritesContent}
-                        nestedScrollEnabled={true}
-                        onScrollBeginDrag={() => setParentScrollEnabled(false)}
-                        onScrollEndDrag={() => setParentScrollEnabled(true)}
-                        onMomentumScrollEnd={() => setParentScrollEnabled(true)}
-                    >
-                        {savedDestinations.slice(0, 5).map((dest) => (
-                            <TouchableOpacity key={dest.id} style={styles.favoriteChip}
-                                onPress={() => {
-                                    setDestination(dest.custom_label || dest.label);
-                                    setDestinationCoords({ lat: dest.latitude, lng: dest.longitude });
-                                    setTimeout(() => searchRoutesRef.current(), 200);
-                                }}>
-                                <SafeIcon name={dest.label === 'domicile' ? 'Home' : dest.label === 'bureau' ? 'Briefcase' : 'MapPin'} size={14} color={modernColors.primary} />
-                                <Text style={styles.favoriteChipText} numberOfLines={1}>
-                                    {dest.custom_label || (dest.label === 'domicile' ? 'Domicile' : dest.label === 'bureau' ? 'Bureau' : dest.label)}
-                                </Text>
-                            </TouchableOpacity>
-                        ))}
-                    </ScrollView>
-                )}
+                                            {/* Niveau de fitness (VO2max) */}
+                                            {aiInsights.fitness && aiInsights.fitness.vo2max_estimate > 0 && (
+                                                <NativeCard style={[styles.healthCard, { borderLeftWidth: 4, borderLeftColor: '#EF4444' }]}>
+                                                    <View style={styles.healthHeader}>
+                                                        <Text style={{ fontSize: 22 }}>❤️</Text>
+                                                        <Text style={styles.healthTitle}>Condition Physique</Text>
+                                                    </View>
+                                                    <View style={{ alignItems: 'center', marginVertical: 8 }}>
+                                                        <Text style={styles.aiFitnessVO2}>{aiInsights.fitness.vo2max_estimate}</Text>
+                                                        <Text style={styles.aiFitnessUnit}>VO2max (ml/kg/min)</Text>
+                                                        <View style={[styles.aiFitnessLevel, { backgroundColor: aiInsights.fitness.level === 'Excellent' ? '#10B98120' : aiInsights.fitness.level === 'Très bon' ? '#3B82F620' : '#F59E0B20' }]}>
+                                                            <Text style={[styles.aiFitnessLevelText, { color: aiInsights.fitness.level === 'Excellent' ? '#10B981' : aiInsights.fitness.level === 'Très bon' ? '#3B82F6' : '#F59E0B' }]}>
+                                                                {aiInsights.fitness.level}
+                                                            </Text>
+                                                        </View>
+                                                    </View>
+                                                    <View style={styles.healthIndicators}>
+                                                        <View style={styles.healthIndicatorRow}>
+                                                            <Text style={styles.healthIndicatorIcon}>🏃</Text>
+                                                            <Text style={styles.healthIndicatorLabel}>Objectif OMS (150 min/sem)</Text>
+                                                            <View style={styles.healthBarBg}>
+                                                                <View style={[styles.healthBarFill, { width: `${aiInsights.fitness.oms_progress_pct}%` as any, backgroundColor: aiInsights.fitness.oms_progress_pct >= 100 ? '#10B981' : '#F59E0B' }]} />
+                                                            </View>
+                                                            <Text style={[styles.healthIndicatorValue, { color: aiInsights.fitness.oms_progress_pct >= 100 ? '#10B981' : '#F59E0B' }]}>
+                                                                {aiInsights.fitness.oms_progress_pct}%
+                                                            </Text>
+                                                        </View>
+                                                    </View>
+                                                </NativeCard>
+                                            )}
 
-                {/* ━━ Champ de destination ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-                <NativeCard style={styles.searchCard}>
-                    <View style={styles.originRow}>
-                        <View style={styles.originDot} />
-                        <Text style={styles.originText}>Ma position actuelle</Text>
-                    </View>
-                    <View style={styles.routeLine} />
-                    <View style={styles.destRow}>
-                        <View style={styles.destDot} />
-                        <View style={styles.destInputWrap}>
-                            <LocationSelector
-                                value={selectedLocation ? selectedLocation : (destination || '')}
-                                onSelect={(location: LocationObject) => {
-                                    setSelectedLocation(location);
-                                    const locationText = location.raw || location.place_name || '';
-                                    setDestination(locationText);
-                                    if (location.latitude && location.longitude) {
-                                        setDestinationCoords({ lat: location.latitude, lng: location.longitude });
-                                        setTimeout(() => searchRoutesRef.current(), 200);
-                                    } else {
-                                        geocodeDestination(locationText).then((coords) => {
-                                            if (coords) { setDestinationCoords(coords); setTimeout(() => searchRoutesRef.current(), 200); }
-                                        });
-                                    }
-                                }}
-                                placeholder="Où allez-vous ?"
-                                scope="all"
-                                style={styles.locationSelector}
-                            />
-                        </View>
-                    </View>
+                                            {/* Records personnels */}
+                                            {aiInsights.records && (
+                                                <NativeCard style={[styles.healthCard, { borderLeftWidth: 4, borderLeftColor: '#FFD700' }]}>
+                                                    <View style={styles.healthHeader}>
+                                                        <Text style={{ fontSize: 22 }}>🏅</Text>
+                                                        <Text style={styles.healthTitle}>Records Personnels</Text>
+                                                    </View>
+                                                    <View style={styles.aiRecordsList}>
+                                                        {aiInsights.records.longest_session && (
+                                                            <View style={styles.aiRecordRow}>
+                                                                <Text style={styles.aiRecordEmoji}>📏</Text>
+                                                                <View style={styles.aiRecordInfo}>
+                                                                    <Text style={styles.aiRecordTitle}>Plus longue session</Text>
+                                                                    <Text style={styles.aiRecordValue}>
+                                                                        {aiInsights.records.longest_session.distance_km?.toFixed(1)} km · {Math.round(aiInsights.records.longest_session.duration_minutes)} min
+                                                                    </Text>
+                                                                </View>
+                                                                <Text style={styles.aiRecordDate}>{aiInsights.records.longest_session.date}</Text>
+                                                            </View>
+                                                        )}
+                                                        {aiInsights.records.fastest_km && (
+                                                            <View style={styles.aiRecordRow}>
+                                                                <Text style={styles.aiRecordEmoji}>⚡</Text>
+                                                                <View style={styles.aiRecordInfo}>
+                                                                    <Text style={styles.aiRecordTitle}>Meilleur km</Text>
+                                                                    <Text style={styles.aiRecordValue}>{aiInsights.records.fastest_km.pace_display}</Text>
+                                                                </View>
+                                                                <Text style={styles.aiRecordDate}>{aiInsights.records.fastest_km.date}</Text>
+                                                            </View>
+                                                        )}
+                                                        {aiInsights.records.best_quality && (
+                                                            <View style={styles.aiRecordRow}>
+                                                                <Text style={styles.aiRecordEmoji}>⭐</Text>
+                                                                <View style={styles.aiRecordInfo}>
+                                                                    <Text style={styles.aiRecordTitle}>Meilleure qualité</Text>
+                                                                    <Text style={styles.aiRecordValue}>{Math.round(aiInsights.records.best_quality.score)}/100</Text>
+                                                                </View>
+                                                                <Text style={styles.aiRecordDate}>{aiInsights.records.best_quality.date}</Text>
+                                                            </View>
+                                                        )}
+                                                        {aiInsights.records.most_calories && (
+                                                            <View style={styles.aiRecordRow}>
+                                                                <Text style={styles.aiRecordEmoji}>🔥</Text>
+                                                                <View style={styles.aiRecordInfo}>
+                                                                    <Text style={styles.aiRecordTitle}>Max calories</Text>
+                                                                    <Text style={styles.aiRecordValue}>{Math.round(aiInsights.records.most_calories.calories)} cal</Text>
+                                                                </View>
+                                                                <Text style={styles.aiRecordDate}>{aiInsights.records.most_calories.date}</Text>
+                                                            </View>
+                                                        )}
+                                                        {aiInsights.records.max_speed && (
+                                                            <View style={styles.aiRecordRow}>
+                                                                <Text style={styles.aiRecordEmoji}>🚀</Text>
+                                                                <View style={styles.aiRecordInfo}>
+                                                                    <Text style={styles.aiRecordTitle}>Vitesse max</Text>
+                                                                    <Text style={styles.aiRecordValue}>{aiInsights.records.max_speed.speed_kmh?.toFixed(1)} km/h</Text>
+                                                                </View>
+                                                                <Text style={styles.aiRecordDate}>{aiInsights.records.max_speed.date}</Text>
+                                                            </View>
+                                                        )}
+                                                    </View>
+                                                    <View style={styles.aiRecordsTotals}>
+                                                        <Text style={styles.aiRecordTotal}>Total: {aiInsights.records.total_km?.toFixed(0)} km · {aiInsights.records.total_sessions} sessions · {Math.round(aiInsights.records.total_calories || 0)} cal</Text>
+                                                    </View>
+                                                </NativeCard>
+                                            )}
 
-                    <TouchableOpacity
-                        style={[styles.searchButton, loading && styles.searchButtonDisabled]}
-                        onPress={searchRoutes}
-                        disabled={loading || (!destination.trim() && !selectedLocation)}
-                        activeOpacity={0.8}
-                    >
-                        {loading ? (
-                            <><ActivityIndicator color="white" size="small" /><Text style={styles.searchButtonText}> Recherche en cours...</Text></>
-                        ) : (
-                            <><SafeIcon name="Search" size={18} color="white" /><Text style={styles.searchButtonText}> Trouver mon itinéraire</Text></>
-                        )}
-                    </TouchableOpacity>
-
-                    {/* Actions sous le bouton rechercher */}
-                    {destinationCoords && (
-                        <View style={styles.destActionsRow}>
-                            <TouchableOpacity style={styles.saveDestBtn} onPress={() => {
-                                Alert.alert('Enregistrer destination', 'Choisissez un type', [
-                                    { text: 'Domicile', onPress: () => saveDestination('domicile') },
-                                    { text: 'Bureau', onPress: () => saveDestination('bureau') },
-                                    {
-                                        text: 'Personnalisé', onPress: () => {
-                                            if (Platform.OS === 'ios' && Alert.prompt) {
-                                                Alert.prompt('Nom personnalisé', 'Donnez un nom à cette destination', (name: string) => {
-                                                    if (name?.trim()) saveDestination('autre', name.trim());
-                                                });
-                                            } else {
-                                                const customName = destination?.trim() ? destination.trim().substring(0, 30) : 'Favori';
-                                                saveDestination('autre', customName);
-                                            }
-                                        }
-                                    },
-                                    { text: 'Annuler', style: 'cancel' },
-                                ]);
-                            }}>
-                                <SafeIcon name="Bookmark" size={14} color={modernColors.primary} />
-                                <Text style={styles.saveDestText}>Enregistrer</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity style={styles.saveDestBtn} onPress={() => setShowPrefs(!showPrefs)}>
-                                <SafeIcon name="Sliders" size={14} color={modernColors.textSecondary} />
-                                <Text style={[styles.saveDestText, { color: modernColors.textSecondary }]}>Options</Text>
-                            </TouchableOpacity>
-                        </View>
-                    )}
-                </NativeCard>
-
-                {/* ━━ Préférences de route (pliable) ━━━━━━━━━━━━━━━━━━━━━━ */}
-                {showPrefs && (
-                    <View style={styles.prefsRow}>
-                        <TouchableOpacity style={[styles.prefChip, avoidTolls && styles.prefChipActive]} onPress={() => { setAvoidTolls(!avoidTolls); if (routes.length > 0) setTimeout(() => searchRoutesRef.current(), 200); }}>
-                            <Text style={[styles.prefChipText, avoidTolls && styles.prefChipTextActive]}>Éviter péages</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity style={[styles.prefChip, avoidHighways && styles.prefChipActive]} onPress={() => { setAvoidHighways(!avoidHighways); if (routes.length > 0) setTimeout(() => searchRoutesRef.current(), 200); }}>
-                            <Text style={[styles.prefChipText, avoidHighways && styles.prefChipTextActive]}>Éviter autoroutes</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity style={[styles.prefChip, avoidFerries && styles.prefChipActive]} onPress={() => { setAvoidFerries(!avoidFerries); if (routes.length > 0) setTimeout(() => searchRoutesRef.current(), 200); }}>
-                            <Text style={[styles.prefChipText, avoidFerries && styles.prefChipTextActive]}>Éviter ferries</Text>
-                        </TouchableOpacity>
-                    </View>
-                )}
-
-                {/* ━━ Étapes (waypoints) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-                {waypoints.length > 0 && (
-                    <NativeCard style={styles.waypointsCard}>
-                        <Text style={styles.waypointsTitle}>Mes étapes ({waypoints.length})</Text>
-                        {waypoints.map((wp, idx) => (
-                            <View key={idx} style={styles.waypointRow}>
-                                <View style={styles.waypointBadge}><Text style={styles.waypointBadgeText}>{idx + 1}</Text></View>
-                                <Text style={styles.waypointName} numberOfLines={1}>{wp.name}</Text>
-                                <TouchableOpacity onPress={() => removeWaypoint(idx)} style={styles.waypointRemove}>
-                                    <SafeIcon name="X" size={16} color="#EF4444" />
-                                </TouchableOpacity>
-                            </View>
-                        ))}
-                        <TouchableOpacity style={styles.recalcButton} onPress={searchRoutes}>
-                            <SafeIcon name="RefreshCw" size={14} color={modernColors.primary} />
-                            <Text style={styles.recalcText}>Recalculer avec étapes</Text>
-                        </TouchableOpacity>
-                    </NativeCard>
-                )}
-
-                {/* ━━ Routes disponibles (enrichies) ━━━━━━━━━━━━━━━━━━━━━━ */}
-                {routes.length > 0 && (
-                    <View style={styles.routesSection}>
-                        <View style={styles.routesSectionHeader}>
-                            <Text style={styles.sectionTitle}>{routes.length} itinéraire{routes.length > 1 ? 's' : ''}</Text>
-                            {selectedRoute && (
-                                <TouchableOpacity onPress={shareRoute} style={styles.shareBtn}>
-                                    <SafeIcon name="Share2" size={16} color={modernColors.primary} />
-                                    <Text style={styles.shareBtnText}>Partager</Text>
-                                </TouchableOpacity>
+                                            {/* Commute Insights */}
+                                            {aiInsights.commute?.frequent_routes && aiInsights.commute.frequent_routes.length > 0 && (
+                                                <NativeCard style={[styles.healthCard, { borderLeftWidth: 4, borderLeftColor: '#6366F1' }]}>
+                                                    <View style={styles.healthHeader}>
+                                                        <Text style={{ fontSize: 22 }}>🏠</Text>
+                                                        <Text style={styles.healthTitle}>Trajets Habituels</Text>
+                                                    </View>
+                                                    {aiInsights.commute.frequent_routes.map((r: any, i: number) => (
+                                                        <View key={i} style={styles.aiCommuteRow}>
+                                                            <Text style={styles.aiCommuteFrom} numberOfLines={1}>{r.from}</Text>
+                                                            <Text style={styles.aiCommuteArrow}>→</Text>
+                                                            <Text style={styles.aiCommuteTo} numberOfLines={1}>{r.to}</Text>
+                                                            <Text style={styles.aiCommuteMeta}>{r.trips}x · {Math.round(r.avg_duration_minutes)} min</Text>
+                                                        </View>
+                                                    ))}
+                                                    {aiInsights.commute.peak_hours && aiInsights.commute.peak_hours.length > 0 && (
+                                                        <View style={styles.aiPeakHours}>
+                                                            <Text style={styles.aiPeakTitle}>🕐 Heures de départ fréquentes</Text>
+                                                            <View style={styles.aiPeakRow}>
+                                                                {aiInsights.commute.peak_hours.slice(0, 4).map((h: any, i: number) => (
+                                                                    <View key={i} style={styles.aiPeakBadge}>
+                                                                        <Text style={styles.aiPeakHour}>{h.hour}h</Text>
+                                                                        <Text style={styles.aiPeakCount}>{h.trips}x</Text>
+                                                                    </View>
+                                                                ))}
+                                                            </View>
+                                                        </View>
+                                                    )}
+                                                </NativeCard>
+                                            )}
+                                        </>
+                                    )}
+                                </>
+                            ) : (
+                                <NativeCard style={styles.statsCard}>
+                                    <Text style={{ textAlign: 'center', color: modernColors.textSecondary, fontSize: 14, padding: 20 }}>
+                                        Aucune activité enregistrée. Démarrez un suivi pour voir vos statistiques !
+                                    </Text>
+                                </NativeCard>
                             )}
                         </View>
+                    )}
+
+                    {/* ━━ Mode de transport ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+                    <View style={styles.travelModeRow}>
+                        {TRAVEL_MODES.map((mode) => {
+                            const isActive = travelMode === mode.key;
+                            return (
+                                <TouchableOpacity
+                                    key={mode.key}
+                                    style={[styles.travelModeBtn, isActive && { backgroundColor: mode.color + '15', borderColor: mode.color }]}
+                                    onPress={() => { setTravelMode(mode.key); if (routes.length > 0) setTimeout(() => searchRoutesRef.current(), 100); }}
+                                    activeOpacity={0.7}
+                                >
+                                    <SafeIcon name={mode.icon} size={18} color={isActive ? mode.color : modernColors.textSecondary} />
+                                    <Text style={[styles.travelModeLabel, isActive && { color: mode.color, fontWeight: '700' }]}>{mode.label}</Text>
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </View>
+
+                    {/* ━━ Destinations favorites (chips) ━━━━━━━━━━━━━━━━━━━━━━ */}
+                    {savedDestinations.length > 0 && !destination && (
                         <ScrollView
                             horizontal showsHorizontalScrollIndicator={false}
-                            nestedScrollEnabled={true} contentContainerStyle={{ paddingRight: 16 }}
-                            snapToInterval={routeCardWidth} snapToAlignment="start" decelerationRate="fast"
+                            style={styles.favoritesScroll} contentContainerStyle={styles.favoritesContent}
+                            nestedScrollEnabled={true}
                             onScrollBeginDrag={() => setParentScrollEnabled(false)}
                             onScrollEndDrag={() => setParentScrollEnabled(true)}
                             onMomentumScrollEnd={() => setParentScrollEnabled(true)}
                         >
-                            {routes.map((item, index) => {
-                                const isSelected = selectedRoute?.id === item.id;
-                                const trafficColor = getTrafficColor(item.traffic_level);
-                                const duration = item.duration_in_traffic_seconds || item.duration_seconds;
-                                const delay = (item.duration_in_traffic_seconds && item.duration_in_traffic_seconds > item.duration_seconds)
-                                    ? item.duration_in_traffic_seconds - item.duration_seconds : 0;
-
-                                return (
-                                    <TouchableOpacity
-                                        key={item.id}
-                                        style={[styles.routeCard, isSelected && styles.routeCardSelected]}
-                                        onPress={() => { setSelectedRoute(item); loadPointsOfInterest(item); }}
-                                        activeOpacity={0.7}
-                                    >
-                                        <View style={styles.routeTopRow}>
-                                            <View style={[styles.routeNumberBadge, isSelected && { backgroundColor: modernColors.primary }]}>
-                                                <Text style={styles.routeNumber}>{index + 1}</Text>
-                                            </View>
-                                            <View style={[styles.trafficBadge, { backgroundColor: trafficColor + '20' }]}>
-                                                <View style={[styles.trafficDot, { backgroundColor: trafficColor }]} />
-                                                <Text style={[styles.trafficText, { color: trafficColor }]}>{getTrafficLabel(item.traffic_level)}</Text>
-                                            </View>
-                                            {index === 0 && <View style={styles.fastestBadge}><Text style={styles.fastestText}>Recommandé</Text></View>}
-                                        </View>
-                                        <Text style={styles.routeSummary} numberOfLines={1}>{item.summary || `Via ${item.end_address?.split(',')[0] || `Itinéraire ${index + 1}`}`}</Text>
-                                        {/* Métriques principales */}
-                                        <View style={styles.routeMetrics}>
-                                            <View style={styles.routeMetric}>
-                                                <SafeIcon name="Clock" size={13} color={modernColors.textSecondary} />
-                                                <Text style={styles.routeMetricValue}>{formatDuration(duration)}</Text>
-                                            </View>
-                                            <View style={styles.routeMetric}>
-                                                <SafeIcon name="MapPin" size={13} color={modernColors.textSecondary} />
-                                                <Text style={styles.routeMetricValue}>{formatDistance(item.distance_meters)}</Text>
-                                            </View>
-                                            {item.arrival_time && (
-                                                <View style={styles.routeMetric}>
-                                                    <SafeIcon name="Flag" size={13} color={modernColors.primary} />
-                                                    <Text style={[styles.routeMetricValue, { color: modernColors.primary, fontWeight: '700' }]}>{item.arrival_time}</Text>
-                                                </View>
-                                            )}
-                                        </View>
-                                        {/* Délai trafic */}
-                                        {delay > 0 && (
-                                            <Text style={styles.trafficDelay}>+{formatDuration(delay)} (embouteillage)</Text>
-                                        )}
-                                        {/* Tarif transit */}
-                                        {item.fare && (
-                                            <View style={styles.fareBadge}>
-                                                <Text style={styles.fareText}>{item.fare.text}</Text>
-                                            </View>
-                                        )}
-                                        {/* Avertissements */}
-                                        {item.warnings && item.warnings.length > 0 && (
-                                            <Text style={styles.warningText} numberOfLines={1}>{item.warnings[0]}</Text>
-                                        )}
-                                    </TouchableOpacity>
-                                );
-                            })}
-                        </ScrollView>
-                    </View>
-                )}
-
-                {/* ━━ Carte interactive ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-                {(selectedRoute || destinationCoords) && showMap && mapRegion && (
-                    <View style={styles.mapContainer}>
-                        <View style={styles.mapHeader}>
-                            <View style={styles.mapHeaderLeft}>
-                                <SafeIcon name="Map" size={16} color={modernColors.primary} />
-                                <Text style={styles.mapHeaderTitle}>Carte du trajet</Text>
-                            </View>
-                            <TouchableOpacity onPress={() => setShowMap(false)} style={styles.mapToggleBtn}>
-                                <SafeIcon name="Minimize2" size={16} color={modernColors.textSecondary} />
-                            </TouchableOpacity>
-                        </View>
-                        <MapView
-                            ref={mapRef}
-                            style={styles.mapView}
-                            provider={PROVIDER_GOOGLE}
-                            initialRegion={mapRegion}
-                            showsUserLocation={true}
-                            showsMyLocationButton={false}
-                            showsTraffic={true}
-                            showsCompass={true}
-                            showsScale={true}
-                            loadingEnabled={true}
-                            loadingIndicatorColor={modernColors.primary}
-                        >
-                            {/* Polyline de la route */}
-                            {routePolylineCoords.length > 1 && (
-                                <Polyline
-                                    coordinates={routePolylineCoords}
-                                    strokeColor={modernColors.primary}
-                                    strokeWidth={4}
-                                />
-                            )}
-
-                            {/* Marqueur destination */}
-                            {destinationCoords && (
-                                <Marker
-                                    coordinate={{ latitude: destinationCoords.lat, longitude: destinationCoords.lng }}
-                                    title={destination || 'Destination'}
-                                    pinColor="#EF4444"
-                                    tracksViewChanges={false}
-                                />
-                            )}
-
-                            {/* Marqueur position live (tracking) */}
-                            {isTracking && livePosition && (
-                                <Marker
-                                    coordinate={{ latitude: livePosition.lat, longitude: livePosition.lng }}
-                                    title="Ma position"
-                                    pinColor="#3B82F6"
-                                    tracksViewChanges={true}
-                                />
-                            )}
-
-                            {/* Marqueurs checkpoints */}
-                            {checkpoints.slice(0, 10).map((cp) => {
-                                const cpInfo = CHECKPOINT_LABELS[cp.checkpoint_type] || { label: cp.checkpoint_type, icon: '⚠️', color: '#6B7280' };
-                                return (
-                                    <Marker
-                                        key={cp.id}
-                                        coordinate={{ latitude: cp.latitude, longitude: cp.longitude }}
-                                        title={`${cpInfo.icon} ${cpInfo.label}`}
-                                        description={cp.description || (cp.speed_limit ? `Limite: ${cp.speed_limit} km/h` : undefined)}
-                                        pinColor={cpInfo.color}
-                                        tracksViewChanges={false}
-                                    />
-                                );
-                            })}
-
-                            {/* Marqueurs POI (top 5 visibles) */}
-                            {pointsOfInterest.slice(0, 5).map((poi) => (
-                                <Marker
-                                    key={poi.id}
-                                    coordinate={{ latitude: poi.latitude, longitude: poi.longitude }}
-                                    title={poi.name}
-                                    description={poi.address || `${formatDistance(poi.distance_from_route_meters)} de détour`}
-                                    pinColor="#10B981"
-                                    tracksViewChanges={false}
-                                />
+                            {savedDestinations.slice(0, 5).map((dest) => (
+                                <TouchableOpacity key={dest.id} style={styles.favoriteChip}
+                                    onPress={() => {
+                                        setDestination(dest.custom_label || dest.label);
+                                        setDestinationCoords({ lat: dest.latitude, lng: dest.longitude });
+                                        setTimeout(() => searchRoutesRef.current(), 200);
+                                    }}>
+                                    <SafeIcon name={dest.label === 'domicile' ? 'Home' : dest.label === 'bureau' ? 'Briefcase' : 'MapPin'} size={14} color={modernColors.primary} />
+                                    <Text style={styles.favoriteChipText} numberOfLines={1}>
+                                        {dest.custom_label || (dest.label === 'domicile' ? 'Domicile' : dest.label === 'bureau' ? 'Bureau' : dest.label)}
+                                    </Text>
+                                </TouchableOpacity>
                             ))}
-                        </MapView>
+                        </ScrollView>
+                    )}
 
-                        {/* Bouton recentrer */}
+                    {/* ━━ Champ de destination ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+                    <NativeCard style={styles.searchCard}>
+                        <View style={styles.originRow}>
+                            <View style={styles.originDot} />
+                            <Text style={styles.originText}>Ma position actuelle</Text>
+                        </View>
+                        <View style={styles.routeLine} />
+                        <View style={styles.destRow}>
+                            <View style={styles.destDot} />
+                            <View style={styles.destInputWrap}>
+                                <LocationSelector
+                                    value={selectedLocation ? selectedLocation : (destination || '')}
+                                    onSelect={(location: LocationObject) => {
+                                        setSelectedLocation(location);
+                                        const locationText = location.raw || location.place_name || '';
+                                        setDestination(locationText);
+                                        if (location.latitude && location.longitude) {
+                                            setDestinationCoords({ lat: location.latitude, lng: location.longitude });
+                                            setTimeout(() => searchRoutesRef.current(), 200);
+                                        } else {
+                                            geocodeDestination(locationText).then((coords) => {
+                                                if (coords) { setDestinationCoords(coords); setTimeout(() => searchRoutesRef.current(), 200); }
+                                            });
+                                        }
+                                    }}
+                                    onFocusChange={(focused: boolean) => {
+                                        setIsLocationSelectorFocused(focused);
+                                        // Désactiver le scroll parent quand le clavier est ouvert pour éviter les conflits
+                                        setParentScrollEnabled(!focused);
+                                        // Optionnellement, faire défiler vers le haut quand le clavier s'ouvre
+                                        if (focused && isKeyboardVisible) {
+                                            setTimeout(() => {
+                                                // Le scroll sera géré par le ScrollView parent
+                                            }, 100);
+                                        }
+                                    }}
+                                    placeholder="Où allez-vous ?"
+                                    scope="all"
+                                    style={dynamicStyles.locationSelectorDynamic}
+                                />
+                            </View>
+                        </View>
+
                         <TouchableOpacity
-                            style={styles.mapRecenterBtn}
-                            onPress={() => {
-                                if (routePolylineCoords.length > 1 && mapRef.current) {
-                                    mapRef.current.fitToCoordinates(routePolylineCoords, {
-                                        edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
-                                        animated: true,
-                                    });
-                                } else if (livePosition && mapRef.current) {
-                                    mapRef.current.animateToRegion({
-                                        latitude: livePosition.lat, longitude: livePosition.lng,
-                                        latitudeDelta: 0.01, longitudeDelta: 0.01,
-                                    }, 500);
-                                }
-                            }}
+                            style={[styles.searchButton, loading && styles.searchButtonDisabled]}
+                            onPress={searchRoutes}
+                            disabled={loading || (!destination.trim() && !selectedLocation)}
+                            activeOpacity={0.8}
                         >
-                            <SafeIcon name="Crosshair" size={18} color={modernColors.primary} />
-                        </TouchableOpacity>
-                    </View>
-                )}
-
-                {/* Bouton ouvrir carte si masquée */}
-                {(selectedRoute || destinationCoords) && !showMap && (
-                    <TouchableOpacity style={styles.showMapBtn} onPress={() => setShowMap(true)}>
-                        <SafeIcon name="Map" size={16} color={modernColors.primary} />
-                        <Text style={styles.showMapBtnText}>Afficher la carte</Text>
-                    </TouchableOpacity>
-                )}
-
-                {/* ━━ Tableau de bord navigation en temps réel ━━━━━━━━━━━━━ */}
-                {isTracking && selectedRoute && (
-                    <View style={styles.trackingSection}>
-                        {/* Analyse IA risque trajet */}
-                        {checkpointAiAnalysis && (
-                            <View style={[styles.aiRiskBanner, { borderLeftColor: (checkpointAiAnalysis.risk_level || 0) >= 7 ? '#EF4444' : (checkpointAiAnalysis.risk_level || 0) >= 4 ? '#F59E0B' : '#10B981' }]}>
-                                <View style={styles.aiRiskHeader}>
-                                    <Text style={{ fontSize: 18 }}>{(checkpointAiAnalysis.risk_level || 0) >= 7 ? '🚨' : (checkpointAiAnalysis.risk_level || 0) >= 4 ? '⚠️' : '✅'}</Text>
-                                    <Text style={[styles.aiRiskTitle, { color: (checkpointAiAnalysis.risk_level || 0) >= 7 ? '#EF4444' : (checkpointAiAnalysis.risk_level || 0) >= 4 ? '#F59E0B' : '#10B981' }]}>
-                                        Risque {checkpointAiAnalysis.risk_label || 'Inconnu'} ({checkpointAiAnalysis.risk_level}/10)
-                                    </Text>
-                                </View>
-                                {checkpointAiAnalysis.driving_tip && <Text style={styles.aiRiskTip}>{checkpointAiAnalysis.driving_tip}</Text>}
-                                {checkpointAiAnalysis.alerts?.map((a: any, i: number) => (
-                                    <View key={i} style={[styles.aiRiskAlertRow, { borderLeftColor: a.severity === 'critical' ? '#EF4444' : a.severity === 'warning' ? '#F59E0B' : '#6B7280' }]}>
-                                        <Text style={styles.aiRiskAlertMsg}>{a.message}</Text>
-                                    </View>
-                                ))}
-                            </View>
-                        )}
-
-                        {/* Alerte checkpoint proche */}
-                        {nearbyCheckpoint && (
-                            <View style={[styles.checkpointAlert, { backgroundColor: (CHECKPOINT_LABELS[nearbyCheckpoint.checkpoint_type]?.color || '#EF4444') + '15' }]}>
-                                <Text style={styles.checkpointAlertIcon}>{CHECKPOINT_LABELS[nearbyCheckpoint.checkpoint_type]?.icon || '⚠️'}</Text>
-                                <View style={styles.checkpointAlertInfo}>
-                                    <Text style={[styles.checkpointAlertTitle, { color: CHECKPOINT_LABELS[nearbyCheckpoint.checkpoint_type]?.color || '#EF4444' }]}>
-                                        {CHECKPOINT_LABELS[nearbyCheckpoint.checkpoint_type]?.label || 'Attention'} dans {nearbyCheckpoint.distance}m
-                                    </Text>
-                                    {nearbyCheckpoint.speed_limit && (
-                                        <Text style={styles.checkpointAlertSpeed}>Vitesse limitée : {nearbyCheckpoint.speed_limit} km/h</Text>
-                                    )}
-                                </View>
-                            </View>
-                        )}
-
-                        {/* Alerte déviation */}
-                        {isOffRoute && (
-                            <TouchableOpacity style={styles.deviationAlert} onPress={() => { stopTracking(); searchRoutesRef.current(); }}>
-                                <SafeIcon name="AlertTriangle" size={18} color="#EF4444" />
-                                <Text style={styles.deviationText}>Vous avez quitté l'itinéraire — Appuyez pour recalculer</Text>
-                            </TouchableOpacity>
-                        )}
-
-                        {/* Dashboard vitesse + progression */}
-                        <NativeCard style={styles.trackingCard}>
-                            <View style={styles.trackingTopRow}>
-                                {/* Vitesse actuelle */}
-                                <View style={styles.speedGauge}>
-                                    <Text style={styles.speedValue}>{Math.round(currentSpeed)}</Text>
-                                    <Text style={styles.speedUnit}>km/h</Text>
-                                </View>
-                                {/* Métriques restantes */}
-                                <View style={styles.trackingMetrics}>
-                                    <View style={styles.trackingMetric}>
-                                        <SafeIcon name="MapPin" size={14} color={modernColors.primary} />
-                                        <Text style={styles.trackingMetricValue}>{formatDistance(distanceRemaining)}</Text>
-                                        <Text style={styles.trackingMetricLabel}>restant</Text>
-                                    </View>
-                                    <View style={styles.trackingMetric}>
-                                        <SafeIcon name="Clock" size={14} color={modernColors.primary} />
-                                        <Text style={styles.trackingMetricValue}>{formatDuration(durationRemaining)}</Text>
-                                        <Text style={styles.trackingMetricLabel}>restant</Text>
-                                    </View>
-                                    <View style={styles.trackingMetric}>
-                                        <SafeIcon name="Flag" size={14} color="#10B981" />
-                                        <Text style={[styles.trackingMetricValue, { color: '#10B981' }]}>{liveETA || '--:--'}</Text>
-                                        <Text style={styles.trackingMetricLabel}>arrivée</Text>
-                                    </View>
-                                </View>
-                            </View>
-
-                            {/* Prochaine instruction */}
-                            {selectedRoute.steps && selectedRoute.steps[nextStepIndex] && (
-                                <View style={styles.nextStepBanner}>
-                                    <SafeIcon name="CornerUpRight" size={18} color={modernColors.primary} />
-                                    <View style={styles.nextStepInfo}>
-                                        <Text style={styles.nextStepText} numberOfLines={2}>
-                                            {selectedRoute.steps[nextStepIndex].instructions}
-                                        </Text>
-                                        <Text style={styles.nextStepDistance}>
-                                            dans {formatDistance(selectedRoute.steps[nextStepIndex].distance_meters)}
-                                        </Text>
-                                    </View>
-                                </View>
+                            {loading ? (
+                                <><ActivityIndicator color="white" size="small" /><Text style={styles.searchButtonText}> Recherche en cours...</Text></>
+                            ) : (
+                                <><SafeIcon name="Search" size={18} color="white" /><Text style={styles.searchButtonText}> Trouver mon itinéraire</Text></>
                             )}
-
-                            {/* Barre de progression */}
-                            <View style={styles.progressBarContainer}>
-                                <View style={[styles.progressBar, { width: `${Math.max(2, Math.min(100, ((selectedRoute.distance_meters - distanceRemaining) / selectedRoute.distance_meters) * 100))}%` as any }]} />
-                            </View>
-                        </NativeCard>
-
-                        {/* Boutons de signalement rapide */}
-                        <View style={styles.reportRow}>
-                            <Text style={styles.reportLabel}>Signaler :</Text>
-                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.reportBtnsContainer}>
-                                {Object.entries(CHECKPOINT_LABELS).map(([key, val]) => (
-                                    <TouchableOpacity key={key} style={[styles.reportBtn, { backgroundColor: val.color + '15' }]}
-                                        onPress={() => reportCheckpoint(key)}>
-                                        <Text style={styles.reportBtnIcon}>{val.icon}</Text>
-                                        <Text style={[styles.reportBtnText, { color: val.color }]}>{val.label}</Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </ScrollView>
-                        </View>
-
-                        {/* Bouton arrêter le suivi */}
-                        <TouchableOpacity style={styles.stopTrackingBtn} onPress={stopTracking}>
-                            <SafeIcon name="Square" size={16} color="#EF4444" />
-                            <Text style={styles.stopTrackingText}>Arrêter le suivi</Text>
                         </TouchableOpacity>
-                    </View>
-                )}
 
-                {/* ━━ Checkpoints sur le trajet (mode planification) ━━━━━━━ */}
-                {!isTracking && selectedRoute && (checkpoints.length > 0 || loadingCheckpoints) && (
-                    <NativeCard style={styles.checkpointsCard}>
-                        <View style={styles.checkpointsHeader}>
-                            <SafeIcon name="AlertTriangle" size={16} color="#F59E0B" />
-                            <Text style={styles.checkpointsTitle}>
-                                {loadingCheckpoints ? 'Recherche de signalements...' : `${checkpoints.length} signalement${checkpoints.length > 1 ? 's' : ''} sur votre trajet`}
-                            </Text>
-                            {loadingCheckpoints && <ActivityIndicator size="small" color="#F59E0B" style={{ marginLeft: 8 }} />}
-                        </View>
-                        {checkpoints.slice(0, 5).map((cp) => {
-                            const cpInfo = CHECKPOINT_LABELS[cp.checkpoint_type] || { label: cp.checkpoint_type, icon: '⚠️', color: '#6B7280' };
-                            return (
-                                <View key={cp.id} style={styles.checkpointItem}>
-                                    <Text style={styles.checkpointItemIcon}>{cpInfo.icon}</Text>
-                                    <View style={styles.checkpointItemInfo}>
-                                        <Text style={styles.checkpointItemLabel}>{cpInfo.label}</Text>
-                                        {cp.description && <Text style={styles.checkpointItemDesc} numberOfLines={1}>{cp.description}</Text>}
-                                    </View>
-                                    {cp.speed_limit && <Text style={styles.checkpointItemSpeed}>{cp.speed_limit} km/h</Text>}
-                                </View>
-                            );
-                        })}
-                    </NativeCard>
-                )}
-
-                {/* ━━ Détails du trajet sélectionné (étapes) ━━━━━━━━━━━━━━ */}
-                {selectedRoute && selectedRoute.steps && selectedRoute.steps.length > 0 && (
-                    <NativeCard style={styles.stepsCard}>
-                        <TouchableOpacity style={styles.stepsHeader} onPress={() => setShowSteps(!showSteps)} activeOpacity={0.7}>
-                            <SafeIcon name="List" size={18} color={modernColors.primary} />
-                            <Text style={styles.stepsTitle}>Détails du trajet ({selectedRoute.steps.length} étapes)</Text>
-                            <SafeIcon name={showSteps ? 'ChevronUp' : 'ChevronDown'} size={20} color={modernColors.textSecondary} />
-                        </TouchableOpacity>
-                        {showSteps && (
-                            <View style={styles.stepsList}>
-                                {(showAllSteps ? selectedRoute.steps : selectedRoute.steps.slice(0, 15)).map((step, idx) => (
-                                    <View key={idx} style={styles.stepItem}>
-                                        <View style={styles.stepNumberCol}>
-                                            <View style={styles.stepDot} />
-                                            {idx < selectedRoute.steps.length - 1 && <View style={styles.stepLine} />}
-                                        </View>
-                                        <View style={styles.stepContent}>
-                                            <Text style={styles.stepInstruction} numberOfLines={2}>{step.instructions}</Text>
-                                            <View style={styles.stepMeta}>
-                                                <Text style={styles.stepDistance}>{formatDistance(step.distance_meters)}</Text>
-                                                <Text style={styles.stepDuration}>{formatDuration(step.duration_seconds)}</Text>
-                                            </View>
-                                        </View>
-                                    </View>
-                                ))}
-                                {selectedRoute.steps.length > 15 && !showAllSteps && (
-                                    <TouchableOpacity style={styles.showAllStepsBtn} onPress={() => setShowAllSteps(true)}>
-                                        <SafeIcon name="ChevronDown" size={16} color={modernColors.primary} />
-                                        <Text style={styles.showAllStepsBtnText}>Voir les {selectedRoute.steps.length - 15} étapes restantes</Text>
-                                    </TouchableOpacity>
-                                )}
-                                {showAllSteps && selectedRoute.steps.length > 15 && (
-                                    <TouchableOpacity style={styles.showAllStepsBtn} onPress={() => setShowAllSteps(false)}>
-                                        <SafeIcon name="ChevronUp" size={16} color={modernColors.primary} />
-                                        <Text style={styles.showAllStepsBtnText}>Réduire</Text>
-                                    </TouchableOpacity>
-                                )}
+                        {/* Actions sous le bouton rechercher */}
+                        {destinationCoords && (
+                            <View style={styles.destActionsRow}>
+                                <TouchableOpacity style={styles.saveDestBtn} onPress={() => {
+                                    Alert.alert('Enregistrer destination', 'Choisissez un type', [
+                                        { text: 'Domicile', onPress: () => saveDestination('domicile') },
+                                        { text: 'Bureau', onPress: () => saveDestination('bureau') },
+                                        {
+                                            text: 'Personnalisé', onPress: () => {
+                                                if (Platform.OS === 'ios' && Alert.prompt) {
+                                                    Alert.prompt('Nom personnalisé', 'Donnez un nom à cette destination', (name: string) => {
+                                                        if (name?.trim()) saveDestination('autre', name.trim());
+                                                    });
+                                                } else {
+                                                    const customName = destination?.trim() ? destination.trim().substring(0, 30) : 'Favori';
+                                                    saveDestination('autre', customName);
+                                                }
+                                            }
+                                        },
+                                        { text: 'Annuler', style: 'cancel' },
+                                    ]);
+                                }}>
+                                    <SafeIcon name="Bookmark" size={14} color={modernColors.primary} />
+                                    <Text style={styles.saveDestText}>Enregistrer</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity style={styles.saveDestBtn} onPress={() => setShowPrefs(!showPrefs)}>
+                                    <SafeIcon name="Sliders" size={14} color={modernColors.textSecondary} />
+                                    <Text style={[styles.saveDestText, { color: modernColors.textSecondary }]}>Options</Text>
+                                </TouchableOpacity>
+                                {/* ✅ NOUVEAU: Ajouter un waypoint */}
+                                <TouchableOpacity style={styles.saveDestBtn} onPress={() => {
+                                    Alert.alert('Ajouter une étape', 'Voulez-vous ajouter un point intermédiaire à votre itinéraire ?', [
+                                        {
+                                            text: 'Ajouter ma position actuelle',
+                                            onPress: async () => {
+                                                const currentPos = await getCurrentPosition();
+                                                if (currentPos) {
+                                                    const newWaypoint = {
+                                                        lat: currentPos.lat,
+                                                        lng: currentPos.lng,
+                                                        name: 'Position actuelle'
+                                                    };
+                                                    setWaypoints([...waypoints, newWaypoint]);
+                                                    Alert.alert('Étape ajoutée', 'Position actuelle ajoutée comme étape intermédiaire');
+                                                }
+                                            }
+                                        },
+                                        {
+                                            text: 'Choisir une adresse',
+                                            onPress: () => {
+                                                // TODO: Ouvrir un écran de sélection d'adresse
+                                                Alert.alert('Bientôt disponible', 'La sélection d\'adresse personnalisée arrive bientôt!');
+                                            }
+                                        },
+                                        { text: 'Annuler', style: 'cancel' }
+                                    ]);
+                                }}>
+                                    <SafeIcon name="Plus" size={14} color={modernColors.primary} />
+                                    <Text style={styles.saveDestText}>Ajouter étape</Text>
+                                </TouchableOpacity>
                             </View>
                         )}
                     </NativeCard>
-                )}
 
-                {/* ━━ Points d'intérêt groupés par catégorie (enrichis) ━━━ */}
-                {selectedRoute && (
-                    <View style={styles.poiSection}>
-                        <View style={styles.poiSectionHeader}>
-                            <Text style={styles.sectionTitle}>Lieux utiles sur le trajet</Text>
-                            {loadingPOI && <ActivityIndicator size="small" color={modernColors.primary} />}
+                    {/* ━━ Préférences de route (pliable) ━━━━━━━━━━━━━━━━━━━━━━ */}
+                    {showPrefs && (
+                        <View style={styles.prefsRow}>
+                            <TouchableOpacity style={[styles.prefChip, avoidTolls && styles.prefChipActive]} onPress={() => { setAvoidTolls(!avoidTolls); if (routes.length > 0) setTimeout(() => searchRoutesRef.current(), 200); }}>
+                                <Text style={[styles.prefChipText, avoidTolls && styles.prefChipTextActive]}>Éviter péages</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={[styles.prefChip, avoidHighways && styles.prefChipActive]} onPress={() => { setAvoidHighways(!avoidHighways); if (routes.length > 0) setTimeout(() => searchRoutesRef.current(), 200); }}>
+                                <Text style={[styles.prefChipText, avoidHighways && styles.prefChipTextActive]}>Éviter autoroutes</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={[styles.prefChip, avoidFerries && styles.prefChipActive]} onPress={() => { setAvoidFerries(!avoidFerries); if (routes.length > 0) setTimeout(() => searchRoutesRef.current(), 200); }}>
+                                <Text style={[styles.prefChipText, avoidFerries && styles.prefChipTextActive]}>Éviter ferries</Text>
+                            </TouchableOpacity>
                         </View>
+                    )}
 
-                        {loadingPOI && pointsOfInterest.length === 0 ? (
-                            <NativeCard style={styles.poiLoadingCard}>
-                                <ActivityIndicator size="small" color={modernColors.primary} />
-                                <Text style={styles.poiLoadingText}>Recherche des lieux clés...</Text>
-                            </NativeCard>
-                        ) : pointsOfInterest.length === 0 && !loadingPOI ? (
-                            <NativeCard style={styles.poiEmptyCard}>
-                                <SafeIcon name="MapPin" size={24} color={modernColors.textSecondary} />
-                                <Text style={styles.poiEmptyText}>Aucun lieu clé trouvé sur ce trajet</Text>
-                            </NativeCard>
-                        ) : (
-                            Object.entries(POI_CATEGORIES).map(([catKey, cat]) => {
-                                const pois = groupedPOIs[catKey] || [];
-                                if (pois.length === 0) return null;
-                                const isExpanded = expandedCategories[catKey];
-                                return (
-                                    <NativeCard key={catKey} style={styles.poiCategoryCard}>
-                                        <TouchableOpacity style={styles.poiCategoryHeader} onPress={() => toggleCategory(catKey)} activeOpacity={0.7}>
-                                            <View style={[styles.poiCategoryIcon, { backgroundColor: cat.color + '15' }]}>
-                                                <Text style={styles.poiCategoryEmoji}>{cat.icon}</Text>
-                                            </View>
-                                            <View style={styles.poiCategoryInfo}>
-                                                <Text style={styles.poiCategoryLabel}>{cat.label}</Text>
-                                                <Text style={styles.poiCategoryCount}>{pois.length} lieu{pois.length > 1 ? 'x' : ''}</Text>
-                                            </View>
-                                            <SafeIcon name={isExpanded ? 'ChevronUp' : 'ChevronDown'} size={20} color={modernColors.textSecondary} />
-                                        </TouchableOpacity>
+                    {/* ━━ Étapes (waypoints) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+                    {waypoints.length > 0 && (
+                        <NativeCard style={styles.waypointsCard}>
+                            <Text style={styles.waypointsTitle}>Mes étapes ({waypoints.length})</Text>
+                            {waypoints.map((wp, idx) => (
+                                <View key={idx} style={styles.waypointRow}>
+                                    <View style={styles.waypointBadge}><Text style={styles.waypointBadgeText}>{idx + 1}</Text></View>
+                                    <Text style={styles.waypointName} numberOfLines={1}>{wp.name}</Text>
+                                    <TouchableOpacity onPress={() => removeWaypoint(idx)} style={styles.waypointRemove}>
+                                        <SafeIcon name="X" size={16} color="#EF4444" />
+                                    </TouchableOpacity>
+                                </View>
+                            ))}
+                            <TouchableOpacity style={styles.recalcButton} onPress={searchRoutes}>
+                                <SafeIcon name="RefreshCw" size={14} color={modernColors.primary} />
+                                <Text style={styles.recalcText}>Recalculer avec étapes</Text>
+                            </TouchableOpacity>
+                        </NativeCard>
+                    )}
 
-                                        {isExpanded && (
-                                            <View style={styles.poiList}>
-                                                {pois.slice(0, 8).map((poi) => (
-                                                    <View key={poi.id} style={styles.poiItem}>
-                                                        <View style={styles.poiItemInfo}>
-                                                            <Text style={styles.poiName} numberOfLines={1}>{poi.name}</Text>
-                                                            {poi.address && <Text style={styles.poiAddress} numberOfLines={1}>{poi.address}</Text>}
-                                                            <View style={styles.poiMeta}>
-                                                                <Text style={styles.poiDistance}>{formatDistance(poi.distance_from_route_meters)} de détour</Text>
-                                                                {poi.rating != null && poi.rating > 0 && (
-                                                                    <View style={styles.poiRating}>
-                                                                        <SafeIcon name="Star" size={11} color="#FBBF24" />
-                                                                        <Text style={styles.poiRatingText}>{poi.rating.toFixed(1)}{poi.total_ratings ? ` (${poi.total_ratings})` : ''}</Text>
-                                                                    </View>
-                                                                )}
-                                                                {poi.price_level != null && poi.price_level > 0 && (
-                                                                    <Text style={styles.poiPriceLevel}>{getPriceLevelText(poi.price_level)}</Text>
-                                                                )}
-                                                                {poi.is_open != null && (
-                                                                    <View style={[styles.openBadge, { backgroundColor: poi.is_open ? '#DCFCE7' : '#FEE2E2' }]}>
-                                                                        <Text style={[styles.openBadgeText, { color: poi.is_open ? '#16A34A' : '#DC2626' }]}>
-                                                                            {poi.is_open ? 'Ouvert' : 'Fermé'}
-                                                                        </Text>
-                                                                    </View>
-                                                                )}
-                                                            </View>
-                                                        </View>
-                                                        {/* Actions POI */}
-                                                        <View style={styles.poiActions}>
-                                                            <TouchableOpacity style={styles.poiActionBtn} onPress={() => navigateToPOI(poi)}>
-                                                                <SafeIcon name="Navigation" size={14} color="#10B981" />
-                                                            </TouchableOpacity>
-                                                            <TouchableOpacity style={styles.addWaypointBtn} onPress={() => addWaypoint(poi)}>
-                                                                <SafeIcon name="Plus" size={14} color={modernColors.primary} />
-                                                            </TouchableOpacity>
-                                                        </View>
+                    {/* ✅ NOUVEAU: Waypoints (étapes intermédiaires) */}
+                    {waypoints.length > 0 && (
+                        <NativeCard style={styles.waypointsCard}>
+                            <View style={styles.waypointsHeader}>
+                                <SafeIcon name="MapPin" size={16} color={modernColors.primary} />
+                                <Text style={styles.waypointsTitle}>Étapes intermédiaires ({waypoints.length})</Text>
+                                <TouchableOpacity
+                                    style={styles.clearWaypointsBtn}
+                                    onPress={() => {
+                                        setWaypoints([]);
+                                        Alert.alert('Étapes supprimées', 'Toutes les étapes intermédiaires ont été supprimées');
+                                    }}
+                                >
+                                    <SafeIcon name="X" size={14} color={modernColors.textSecondary} />
+                                </TouchableOpacity>
+                            </View>
+                            {waypoints.map((waypoint, index) => (
+                                <View key={index} style={styles.waypointItem}>
+                                    <View style={styles.waypointIndex}>
+                                        <Text style={styles.waypointIndexText}>{index + 1}</Text>
+                                    </View>
+                                    <View style={styles.waypointInfo}>
+                                        <Text style={styles.waypointName}>{waypoint.name}</Text>
+                                        <Text style={styles.waypointCoords}>{waypoint.lat.toFixed(6)}, {waypoint.lng.toFixed(6)}</Text>
+                                    </View>
+                                    <TouchableOpacity
+                                        style={styles.removeWaypointBtn}
+                                        onPress={() => {
+                                            const newWaypoints = waypoints.filter((_, i) => i !== index);
+                                            setWaypoints(newWaypoints);
+                                            Alert.alert('Étape supprimée', `L'étape "${waypoint.name}" a été supprimée`);
+                                        }}
+                                    >
+                                        <SafeIcon name="Trash2" size={14} color="#EF4444" />
+                                    </TouchableOpacity>
+                                </View>
+                            ))}
+                        </NativeCard>
+                    )}
+
+                    {/* ━━ Routes disponibles (enrichies) ━━━━━━━━━━━━━━━━━━━━━━ */}
+                    {routes.length > 0 && (
+                        <View style={styles.routesSection}>
+                            <View style={styles.routesSectionHeader}>
+                                <Text style={styles.sectionTitle}>{routes.length} itinéraire{routes.length > 1 ? 's' : ''}</Text>
+                                {selectedRoute && (
+                                    <TouchableOpacity onPress={shareRoute} style={styles.shareBtn}>
+                                        <SafeIcon name="Share2" size={16} color={modernColors.primary} />
+                                        <Text style={styles.shareBtnText}>Partager</Text>
+                                    </TouchableOpacity>
+                                )}
+                            </View>
+                            <ScrollView
+                                horizontal showsHorizontalScrollIndicator={false}
+                                nestedScrollEnabled={true} contentContainerStyle={{ paddingRight: 16 }}
+                                snapToInterval={routeCardWidth} snapToAlignment="start" decelerationRate="fast"
+                                onScrollBeginDrag={() => setParentScrollEnabled(false)}
+                                onScrollEndDrag={() => setParentScrollEnabled(true)}
+                                onMomentumScrollEnd={() => setParentScrollEnabled(true)}
+                            >
+                                {routes.map((item, index) => {
+                                    const isSelected = selectedRoute?.id === item.id;
+                                    const trafficColor = getTrafficColor(item.traffic_level);
+                                    const duration = item.duration_in_traffic_seconds || item.duration_seconds;
+                                    const delay = (item.duration_in_traffic_seconds && item.duration_in_traffic_seconds > item.duration_seconds)
+                                        ? item.duration_in_traffic_seconds - item.duration_seconds : 0;
+
+                                    return (
+                                        <TouchableOpacity
+                                            key={item.id}
+                                            style={[styles.routeCard, isSelected && styles.routeCardSelected]}
+                                            onPress={() => { setSelectedRoute(item); loadPointsOfInterest(item); }}
+                                            activeOpacity={0.7}
+                                        >
+                                            <View style={styles.routeTopRow}>
+                                                <View style={[styles.routeNumberBadge, isSelected && { backgroundColor: modernColors.primary }]}>
+                                                    <Text style={styles.routeNumber}>{index + 1}</Text>
+                                                </View>
+                                                <View style={[styles.trafficBadge, { backgroundColor: trafficColor + '20' }]}>
+                                                    <View style={[styles.trafficDot, { backgroundColor: trafficColor }]} />
+                                                    <Text style={[styles.trafficText, { color: trafficColor }]}>{getTrafficLabel(item.traffic_level)}</Text>
+                                                </View>
+                                                {index === 0 && <View style={styles.fastestBadge}><Text style={styles.fastestText}>Recommandé</Text></View>}
+                                            </View>
+                                            <Text style={styles.routeSummary} numberOfLines={1}>{item.summary || `Via ${item.end_address?.split(',')[0] || `Itinéraire ${index + 1}`}`}</Text>
+                                            {/* Métriques principales */}
+                                            <View style={styles.routeMetrics}>
+                                                <View style={styles.routeMetric}>
+                                                    <SafeIcon name="Clock" size={13} color={modernColors.textSecondary} />
+                                                    <Text style={styles.routeMetricValue}>{formatDuration(duration)}</Text>
+                                                </View>
+                                                <View style={styles.routeMetric}>
+                                                    <SafeIcon name="MapPin" size={13} color={modernColors.textSecondary} />
+                                                    <Text style={styles.routeMetricValue}>{formatDistance(item.distance_meters)}</Text>
+                                                </View>
+                                                {item.arrival_time && (
+                                                    <View style={styles.routeMetric}>
+                                                        <SafeIcon name="Flag" size={13} color={modernColors.primary} />
+                                                        <Text style={[styles.routeMetricValue, { color: modernColors.primary, fontWeight: '700' }]}>{item.arrival_time}</Text>
                                                     </View>
-                                                ))}
-                                                {pois.length > 8 && (
-                                                    <Text style={styles.poiMoreText}>+{pois.length - 8} autres lieux</Text>
                                                 )}
                                             </View>
-                                        )}
-                                    </NativeCard>
-                                );
-                            })
-                        )}
-                    </View>
-                )}
+                                            {/* Délai trafic */}
+                                            {delay > 0 && (
+                                                <Text style={styles.trafficDelay}>+{formatDuration(delay)} (embouteillage)</Text>
+                                            )}
+                                            {/* Tarif transit */}
+                                            {item.fare && (
+                                                <View style={styles.fareBadge}>
+                                                    <Text style={styles.fareText}>{item.fare.text}</Text>
+                                                </View>
+                                            )}
+                                            {/* Avertissements */}
+                                            {item.warnings && item.warnings.length > 0 && (
+                                                <Text style={styles.warningText} numberOfLines={1}>{item.warnings[0]}</Text>
+                                            )}
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                            </ScrollView>
+                        </View>
+                    )}
 
-                {/* ━━ Boutons démarrer ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-                {selectedRoute && !isTracking && (
-                    <View style={styles.goSection}>
-                        {/* Bouton principal : suivi en temps réel in-app */}
-                        <TouchableOpacity style={styles.goButton} onPress={() => { startTracking(); loadCheckpoints(); }} activeOpacity={0.85}>
-                            <SafeIcon name="Radio" size={22} color="white" />
-                            <View>
-                                <Text style={styles.goButtonText}>Suivi en temps réel</Text>
-                                <Text style={styles.goButtonETA}>Vitesse, radars, progression en direct</Text>
+                    {/* ✅ NOUVEAU: Alertes trafic */}
+                    {selectedRoute?.warnings && selectedRoute.warnings.length > 0 && (
+                        <NativeCard style={styles.trafficAlertsCard}>
+                            <View style={styles.trafficAlertsHeader}>
+                                <SafeIcon name="AlertTriangle" size={16} color="#F59E0B" />
+                                <Text style={styles.trafficAlertsTitle}>Informations trafic ({selectedRoute.warnings.length})</Text>
                             </View>
-                        </TouchableOpacity>
-                        {/* Bouton secondaire : ouvrir Google Maps */}
-                        <TouchableOpacity style={styles.externalNavButton} onPress={() => startNavigation(selectedRoute)} activeOpacity={0.8}>
-                            <SafeIcon name="ExternalLink" size={16} color={modernColors.primary} />
-                            <Text style={styles.externalNavText}>Ouvrir dans Google Maps</Text>
-                            {selectedRoute.arrival_time && (
-                                <Text style={styles.externalNavETA}>ETA {selectedRoute.arrival_time}</Text>
+                            {selectedRoute.warnings.map((warning: string, index: number) => (
+                                <View key={index} style={styles.trafficAlertItem}>
+                                    <SafeIcon name="Info" size={14} color="#F59E0B" />
+                                    <Text style={styles.trafficAlertText}>{warning}</Text>
+                                </View>
+                            ))}
+                        </NativeCard>
+                    )}
+
+                    {/* ✅ NOUVEAU: Étapes détaillées */}
+                    {selectedRoute && (
+                        <NativeCard style={styles.stepsCard}>
+                            <TouchableOpacity
+                                style={styles.stepsHeader}
+                                onPress={() => setShowSteps(!showSteps)}
+                            >
+                                <View style={styles.stepsHeaderLeft}>
+                                    <SafeIcon name="List" size={16} color={modernColors.primary} />
+                                    <Text style={styles.stepsTitle}>Étapes détaillées</Text>
+                                    <Text style={styles.stepsCount}>{selectedRoute.steps?.length || 0} étapes</Text>
+                                </View>
+                                <SafeIcon
+                                    name={showSteps ? "ChevronUp" : "ChevronDown"}
+                                    size={16}
+                                    color={modernColors.textSecondary}
+                                />
+                            </TouchableOpacity>
+
+                            {showSteps && selectedRoute.steps && (
+                                <View style={styles.stepsList}>
+                                    {selectedRoute.steps.map((step: any, index: number) => (
+                                        <View key={index} style={styles.stepItem}>
+                                            <View style={styles.stepIndex}>
+                                                <Text style={styles.stepIndexText}>{index + 1}</Text>
+                                            </View>
+                                            <View style={styles.stepInfo}>
+                                                <Text style={styles.stepInstruction}>{step.instructions || 'Continuer'}</Text>
+                                                <View style={styles.stepDetails}>
+                                                    <Text style={styles.stepDistance}>{(step.distance?.text || `${Math.round(step.distance || 0)}m`)}</Text>
+                                                    <Text style={styles.stepDuration}>{(step.duration?.text || `${Math.round((step.duration || 0) / 60)}min`)}</Text>
+                                                </View>
+                                            </View>
+                                        </View>
+                                    ))}
+                                </View>
                             )}
+                        </NativeCard>
+                    )}
+
+                    {/* ━━ Carte interactive ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+                    {(selectedRoute || destinationCoords) && showMap && mapRegion && (
+                        <View style={styles.mapContainer}>
+                            <View style={styles.mapHeader}>
+                                <View style={styles.mapHeaderLeft}>
+                                    <SafeIcon name="Map" size={16} color={modernColors.primary} />
+                                    <Text style={styles.mapHeaderTitle}>Carte du trajet</Text>
+                                </View>
+                                <TouchableOpacity onPress={() => setShowMap(false)} style={styles.mapToggleBtn}>
+                                    <SafeIcon name="Minimize2" size={16} color={modernColors.textSecondary} />
+                                </TouchableOpacity>
+                            </View>
+                            <MapView
+                                ref={mapRef}
+                                style={styles.mapView}
+                                provider={PROVIDER_GOOGLE}
+                                initialRegion={mapRegion}
+                                showsUserLocation={true}
+                                showsMyLocationButton={false}
+                                showsTraffic={true}
+                                showsCompass={true}
+                                showsScale={true}
+                                loadingEnabled={true}
+                                loadingIndicatorColor={modernColors.primary}
+                            >
+                                {/* Polyline de la route */}
+                                {routePolylineCoords.length > 1 && (
+                                    <Polyline
+                                        coordinates={routePolylineCoords}
+                                        strokeColor={modernColors.primary}
+                                        strokeWidth={4}
+                                    />
+                                )}
+
+                                {/* Marqueur destination */}
+                                {destinationCoords && (
+                                    <Marker
+                                        coordinate={{ latitude: destinationCoords.lat, longitude: destinationCoords.lng }}
+                                        title={destination || 'Destination'}
+                                        pinColor="#EF4444"
+                                        tracksViewChanges={false}
+                                    />
+                                )}
+
+                                {/* Marqueur position live (tracking) */}
+                                {isTracking && livePosition && (
+                                    <Marker
+                                        coordinate={{ latitude: livePosition.lat, longitude: livePosition.lng }}
+                                        title="Ma position"
+                                        pinColor="#3B82F6"
+                                        tracksViewChanges={true}
+                                    />
+                                )}
+
+                                {/* Marqueurs checkpoints */}
+                                {checkpoints.slice(0, 10).map((cp) => {
+                                    const cpInfo = CHECKPOINT_LABELS[cp.checkpoint_type] || { label: cp.checkpoint_type, icon: '⚠️', color: '#6B7280' };
+                                    return (
+                                        <Marker
+                                            key={cp.id}
+                                            coordinate={{ latitude: cp.latitude, longitude: cp.longitude }}
+                                            title={`${cpInfo.icon} ${cpInfo.label}`}
+                                            description={cp.description || (cp.speed_limit ? `Limite: ${cp.speed_limit} km/h` : undefined)}
+                                            pinColor={cpInfo.color}
+                                            tracksViewChanges={false}
+                                        />
+                                    );
+                                })}
+
+                                {/* Marqueurs POI (top 5 visibles) */}
+                                {pointsOfInterest.slice(0, 5).map((poi) => (
+                                    <Marker
+                                        key={poi.id}
+                                        coordinate={{ latitude: poi.latitude, longitude: poi.longitude }}
+                                        title={poi.name}
+                                        description={poi.address || `${formatDistance(poi.distance_from_route_meters)} de détour`}
+                                        pinColor="#10B981"
+                                        tracksViewChanges={false}
+                                    />
+                                ))}
+                            </MapView>
+
+                            {/* Bouton recentrer */}
+                            <TouchableOpacity
+                                style={styles.mapRecenterBtn}
+                                onPress={() => {
+                                    if (routePolylineCoords.length > 1 && mapRef.current) {
+                                        mapRef.current.fitToCoordinates(routePolylineCoords, {
+                                            edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
+                                            animated: true,
+                                        });
+                                    } else if (livePosition && mapRef.current) {
+                                        mapRef.current.animateToRegion({
+                                            latitude: livePosition.lat, longitude: livePosition.lng,
+                                            latitudeDelta: 0.01, longitudeDelta: 0.01,
+                                        }, 500);
+                                    }
+                                }}
+                            >
+                                <SafeIcon name="Crosshair" size={18} color={modernColors.primary} />
+                            </TouchableOpacity>
+                        </View>
+                    )}
+
+                    {/* Bouton ouvrir carte si masquée */}
+                    {(selectedRoute || destinationCoords) && !showMap && (
+                        <TouchableOpacity style={styles.showMapBtn} onPress={() => setShowMap(true)}>
+                            <SafeIcon name="Map" size={16} color={modernColors.primary} />
+                            <Text style={styles.showMapBtnText}>Afficher la carte</Text>
                         </TouchableOpacity>
-                    </View>
-                )}
-            </ScrollView>
+                    )}
+
+                    {/* ━━ Tableau de bord navigation en temps réel ━━━━━━━━━━━━━ */}
+                    {isTracking && selectedRoute && (
+                        <View style={styles.trackingSection}>
+                            {/* Analyse IA risque trajet */}
+                            {checkpointAiAnalysis && (
+                                <View style={[styles.aiRiskBanner, { borderLeftColor: (checkpointAiAnalysis.risk_level || 0) >= 7 ? '#EF4444' : (checkpointAiAnalysis.risk_level || 0) >= 4 ? '#F59E0B' : '#10B981' }]}>
+                                    <View style={styles.aiRiskHeader}>
+                                        <Text style={{ fontSize: 18 }}>{(checkpointAiAnalysis.risk_level || 0) >= 7 ? '🚨' : (checkpointAiAnalysis.risk_level || 0) >= 4 ? '⚠️' : '✅'}</Text>
+                                        <Text style={[styles.aiRiskTitle, { color: (checkpointAiAnalysis.risk_level || 0) >= 7 ? '#EF4444' : (checkpointAiAnalysis.risk_level || 0) >= 4 ? '#F59E0B' : '#10B981' }]}>
+                                            Risque {checkpointAiAnalysis.risk_label || 'Inconnu'} ({checkpointAiAnalysis.risk_level}/10)
+                                        </Text>
+                                    </View>
+                                    {checkpointAiAnalysis.driving_tip && <Text style={styles.aiRiskTip}>{checkpointAiAnalysis.driving_tip}</Text>}
+                                    {checkpointAiAnalysis.alerts?.map((a: any, i: number) => (
+                                        <View key={i} style={[styles.aiRiskAlertRow, { borderLeftColor: a.severity === 'critical' ? '#EF4444' : a.severity === 'warning' ? '#F59E0B' : '#6B7280' }]}>
+                                            <Text style={styles.aiRiskAlertMsg}>{a.message}</Text>
+                                        </View>
+                                    ))}
+                                </View>
+                            )}
+
+                            {/* Alerte checkpoint proche */}
+                            {nearbyCheckpoint && (
+                                <View style={[styles.checkpointAlert, { backgroundColor: (CHECKPOINT_LABELS[nearbyCheckpoint.checkpoint_type]?.color || '#EF4444') + '15' }]}>
+                                    <Text style={styles.checkpointAlertIcon}>{CHECKPOINT_LABELS[nearbyCheckpoint.checkpoint_type]?.icon || '⚠️'}</Text>
+                                    <View style={styles.checkpointAlertInfo}>
+                                        <Text style={[styles.checkpointAlertTitle, { color: CHECKPOINT_LABELS[nearbyCheckpoint.checkpoint_type]?.color || '#EF4444' }]}>
+                                            {CHECKPOINT_LABELS[nearbyCheckpoint.checkpoint_type]?.label || 'Attention'} dans {nearbyCheckpoint.distance}m
+                                        </Text>
+                                        {nearbyCheckpoint.speed_limit && (
+                                            <Text style={styles.checkpointAlertSpeed}>Vitesse limitée : {nearbyCheckpoint.speed_limit} km/h</Text>
+                                        )}
+                                    </View>
+                                </View>
+                            )}
+
+                            {/* Alerte déviation */}
+                            {isOffRoute && (
+                                <TouchableOpacity style={styles.deviationAlert} onPress={() => { stopTracking(); searchRoutesRef.current(); }}>
+                                    <SafeIcon name="AlertTriangle" size={18} color="#EF4444" />
+                                    <Text style={styles.deviationText}>Vous avez quitté l'itinéraire — Appuyez pour recalculer</Text>
+                                </TouchableOpacity>
+                            )}
+
+                            {/* Dashboard vitesse + progression */}
+                            <NativeCard style={styles.trackingCard}>
+                                <View style={styles.trackingTopRow}>
+                                    {/* Vitesse actuelle */}
+                                    <View style={styles.speedGauge}>
+                                        <Text style={styles.speedValue}>{Math.round(currentSpeed)}</Text>
+                                        <Text style={styles.speedUnit}>km/h</Text>
+                                    </View>
+                                    {/* Métriques restantes */}
+                                    <View style={styles.trackingMetrics}>
+                                        <View style={styles.trackingMetric}>
+                                            <SafeIcon name="MapPin" size={14} color={modernColors.primary} />
+                                            <Text style={styles.trackingMetricValue}>{formatDistance(distanceRemaining)}</Text>
+                                            <Text style={styles.trackingMetricLabel}>restant</Text>
+                                        </View>
+                                        <View style={styles.trackingMetric}>
+                                            <SafeIcon name="Clock" size={14} color={modernColors.primary} />
+                                            <Text style={styles.trackingMetricValue}>{formatDuration(durationRemaining)}</Text>
+                                            <Text style={styles.trackingMetricLabel}>restant</Text>
+                                        </View>
+                                        <View style={styles.trackingMetric}>
+                                            <SafeIcon name="Flag" size={14} color="#10B981" />
+                                            <Text style={[styles.trackingMetricValue, { color: '#10B981' }]}>{liveETA || '--:--'}</Text>
+                                            <Text style={styles.trackingMetricLabel}>arrivée</Text>
+                                        </View>
+                                    </View>
+                                </View>
+
+                                {/* Prochaine instruction */}
+                                {selectedRoute.steps && selectedRoute.steps[nextStepIndex] && (
+                                    <View style={styles.nextStepBanner}>
+                                        <SafeIcon name="CornerUpRight" size={18} color={modernColors.primary} />
+                                        <View style={styles.nextStepInfo}>
+                                            <Text style={styles.nextStepText} numberOfLines={2}>
+                                                {selectedRoute.steps[nextStepIndex].instructions}
+                                            </Text>
+                                            <Text style={styles.nextStepDistance}>
+                                                dans {formatDistance(selectedRoute.steps[nextStepIndex].distance_meters)}
+                                            </Text>
+                                        </View>
+                                    </View>
+                                )}
+
+                                {/* Barre de progression */}
+                                <View style={styles.progressBarContainer}>
+                                    <View style={[styles.progressBar, { width: `${Math.max(2, Math.min(100, ((selectedRoute.distance_meters - distanceRemaining) / selectedRoute.distance_meters) * 100))}%` as any }]} />
+                                </View>
+                            </NativeCard>
+
+                            {/* Boutons de signalement rapide */}
+                            <View style={styles.reportRow}>
+                                <Text style={styles.reportLabel}>Signaler :</Text>
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.reportBtnsContainer}>
+                                    {Object.entries(CHECKPOINT_LABELS).map(([key, val]) => (
+                                        <TouchableOpacity key={key} style={[styles.reportBtn, { backgroundColor: val.color + '15' }]}
+                                            onPress={() => reportCheckpoint(key)}>
+                                            <Text style={styles.reportBtnIcon}>{val.icon}</Text>
+                                            <Text style={[styles.reportBtnText, { color: val.color }]}>{val.label}</Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </ScrollView>
+                            </View>
+
+                            {/* Bouton arrêter le suivi */}
+                            <TouchableOpacity style={styles.stopTrackingBtn} onPress={stopTracking}>
+                                <SafeIcon name="Square" size={16} color="#EF4444" />
+                                <Text style={styles.stopTrackingText}>Arrêter le suivi</Text>
+                            </TouchableOpacity>
+                        </View>
+                    )}
+
+                    {/* ━━ Checkpoints sur le trajet (mode planification) ━━━━━━━ */}
+                    {!isTracking && selectedRoute && (checkpoints.length > 0 || loadingCheckpoints) && (
+                        <NativeCard style={styles.checkpointsCard}>
+                            <View style={styles.checkpointsHeader}>
+                                <SafeIcon name="AlertTriangle" size={16} color="#F59E0B" />
+                                <Text style={styles.checkpointsTitle}>
+                                    {loadingCheckpoints ? 'Recherche de signalements...' : `${checkpoints.length} signalement${checkpoints.length > 1 ? 's' : ''} sur votre trajet`}
+                                </Text>
+                                {loadingCheckpoints && <ActivityIndicator size="small" color="#F59E0B" style={{ marginLeft: 8 }} />}
+                            </View>
+                            {checkpoints.slice(0, 5).map((cp) => {
+                                const cpInfo = CHECKPOINT_LABELS[cp.checkpoint_type] || { label: cp.checkpoint_type, icon: '⚠️', color: '#6B7280' };
+                                return (
+                                    <View key={cp.id} style={styles.checkpointItem}>
+                                        <Text style={styles.checkpointItemIcon}>{cpInfo.icon}</Text>
+                                        <View style={styles.checkpointItemInfo}>
+                                            <Text style={styles.checkpointItemLabel}>{cpInfo.label}</Text>
+                                            {cp.description && <Text style={styles.checkpointItemDesc} numberOfLines={1}>{cp.description}</Text>}
+                                        </View>
+                                        {cp.speed_limit && <Text style={styles.checkpointItemSpeed}>{cp.speed_limit} km/h</Text>}
+                                    </View>
+                                );
+                            })}
+                        </NativeCard>
+                    )}
+
+                    {/* ━━ Détails du trajet sélectionné (étapes) ━━━━━━━━━━━━━━ */}
+                    {selectedRoute && selectedRoute.steps && selectedRoute.steps.length > 0 && (
+                        <NativeCard style={styles.stepsCard}>
+                            <TouchableOpacity style={styles.stepsHeader} onPress={() => setShowSteps(!showSteps)} activeOpacity={0.7}>
+                                <SafeIcon name="List" size={18} color={modernColors.primary} />
+                                <Text style={styles.stepsTitle}>Détails du trajet ({selectedRoute.steps.length} étapes)</Text>
+                                <SafeIcon name={showSteps ? 'ChevronUp' : 'ChevronDown'} size={20} color={modernColors.textSecondary} />
+                            </TouchableOpacity>
+                            {showSteps && (
+                                <View style={styles.stepsList}>
+                                    {(showAllSteps ? selectedRoute.steps : selectedRoute.steps.slice(0, 15)).map((step, idx) => (
+                                        <View key={idx} style={styles.stepItem}>
+                                            <View style={styles.stepNumberCol}>
+                                                <View style={styles.stepDot} />
+                                                {idx < selectedRoute.steps.length - 1 && <View style={styles.stepLine} />}
+                                            </View>
+                                            <View style={styles.stepContent}>
+                                                <Text style={styles.stepInstruction} numberOfLines={2}>{step.instructions}</Text>
+                                                <View style={styles.stepMeta}>
+                                                    <Text style={styles.stepDistance}>{formatDistance(step.distance_meters)}</Text>
+                                                    <Text style={styles.stepDuration}>{formatDuration(step.duration_seconds)}</Text>
+                                                </View>
+                                            </View>
+                                        </View>
+                                    ))}
+                                    {selectedRoute.steps.length > 15 && !showAllSteps && (
+                                        <TouchableOpacity style={styles.showAllStepsBtn} onPress={() => setShowAllSteps(true)}>
+                                            <SafeIcon name="ChevronDown" size={16} color={modernColors.primary} />
+                                            <Text style={styles.showAllStepsBtnText}>Voir les {selectedRoute.steps.length - 15} étapes restantes</Text>
+                                        </TouchableOpacity>
+                                    )}
+                                    {showAllSteps && selectedRoute.steps.length > 15 && (
+                                        <TouchableOpacity style={styles.showAllStepsBtn} onPress={() => setShowAllSteps(false)}>
+                                            <SafeIcon name="ChevronUp" size={16} color={modernColors.primary} />
+                                            <Text style={styles.showAllStepsBtnText}>Réduire</Text>
+                                        </TouchableOpacity>
+                                    )}
+                                </View>
+                            )}
+                        </NativeCard>
+                    )}
+
+                    {/* ━━ Points d'intérêt groupés par catégorie (enrichis) ━━━ */}
+                    {selectedRoute && (
+                        <View style={styles.poiSection}>
+                            <View style={styles.poiSectionHeader}>
+                                <Text style={styles.sectionTitle}>Lieux utiles sur le trajet</Text>
+                                {loadingPOI && <ActivityIndicator size="small" color={modernColors.primary} />}
+                            </View>
+
+                            {loadingPOI && pointsOfInterest.length === 0 ? (
+                                <NativeCard style={styles.poiLoadingCard}>
+                                    <ActivityIndicator size="small" color={modernColors.primary} />
+                                    <Text style={styles.poiLoadingText}>Recherche des lieux clés...</Text>
+                                </NativeCard>
+                            ) : pointsOfInterest.length === 0 && !loadingPOI ? (
+                                <NativeCard style={styles.poiEmptyCard}>
+                                    <SafeIcon name="MapPin" size={24} color={modernColors.textSecondary} />
+                                    <Text style={styles.poiEmptyText}>Aucun lieu clé trouvé sur ce trajet</Text>
+                                </NativeCard>
+                            ) : (
+                                Object.entries(POI_CATEGORIES).map(([catKey, cat]) => {
+                                    const pois = groupedPOIs[catKey] || [];
+                                    if (pois.length === 0) return null;
+                                    const isExpanded = expandedCategories[catKey];
+                                    return (
+                                        <NativeCard key={catKey} style={styles.poiCategoryCard}>
+                                            <TouchableOpacity style={styles.poiCategoryHeader} onPress={() => toggleCategory(catKey)} activeOpacity={0.7}>
+                                                <View style={[styles.poiCategoryIcon, { backgroundColor: cat.color + '15' }]}>
+                                                    <Text style={styles.poiCategoryEmoji}>{cat.icon}</Text>
+                                                </View>
+                                                <View style={styles.poiCategoryInfo}>
+                                                    <Text style={styles.poiCategoryLabel}>{cat.label}</Text>
+                                                    <Text style={styles.poiCategoryCount}>{pois.length} lieu{pois.length > 1 ? 'x' : ''}</Text>
+                                                </View>
+                                                <SafeIcon name={isExpanded ? 'ChevronUp' : 'ChevronDown'} size={20} color={modernColors.textSecondary} />
+                                            </TouchableOpacity>
+
+                                            {isExpanded && (
+                                                <View style={styles.poiList}>
+                                                    {pois.slice(0, 8).map((poi) => (
+                                                        <View key={poi.id} style={styles.poiItem}>
+                                                            <View style={styles.poiItemInfo}>
+                                                                <Text style={styles.poiName} numberOfLines={1}>{poi.name}</Text>
+                                                                {poi.address && <Text style={styles.poiAddress} numberOfLines={1}>{poi.address}</Text>}
+                                                                <View style={styles.poiMeta}>
+                                                                    <Text style={styles.poiDistance}>{formatDistance(poi.distance_from_route_meters)} de détour</Text>
+                                                                    {poi.rating != null && poi.rating > 0 && (
+                                                                        <View style={styles.poiRating}>
+                                                                            <SafeIcon name="Star" size={11} color="#FBBF24" />
+                                                                            <Text style={styles.poiRatingText}>{poi.rating.toFixed(1)}{poi.total_ratings ? ` (${poi.total_ratings})` : ''}</Text>
+                                                                        </View>
+                                                                    )}
+                                                                    {poi.price_level != null && poi.price_level > 0 && (
+                                                                        <Text style={styles.poiPriceLevel}>{getPriceLevelText(poi.price_level)}</Text>
+                                                                    )}
+                                                                    {poi.is_open != null && (
+                                                                        <View style={[styles.openBadge, { backgroundColor: poi.is_open ? '#DCFCE7' : '#FEE2E2' }]}>
+                                                                            <Text style={[styles.openBadgeText, { color: poi.is_open ? '#16A34A' : '#DC2626' }]}>
+                                                                                {poi.is_open ? 'Ouvert' : 'Fermé'}
+                                                                            </Text>
+                                                                        </View>
+                                                                    )}
+                                                                </View>
+                                                            </View>
+                                                            {/* Actions POI */}
+                                                            <View style={styles.poiActions}>
+                                                                <TouchableOpacity style={styles.poiActionBtn} onPress={() => navigateToPOI(poi)}>
+                                                                    <SafeIcon name="Navigation" size={14} color="#10B981" />
+                                                                </TouchableOpacity>
+                                                                <TouchableOpacity style={styles.addWaypointBtn} onPress={() => addWaypoint(poi)}>
+                                                                    <SafeIcon name="Plus" size={14} color={modernColors.primary} />
+                                                                </TouchableOpacity>
+                                                            </View>
+                                                        </View>
+                                                    ))}
+                                                    {pois.length > 8 && (
+                                                        <Text style={styles.poiMoreText}>+{pois.length - 8} autres lieux</Text>
+                                                    )}
+                                                </View>
+                                            )}
+                                        </NativeCard>
+                                    );
+                                })
+                            )}
+                        </View>
+                    )}
+
+                    {/* ━━ Boutons démarrer ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+                    {selectedRoute && !isTracking && (
+                        <View style={styles.goSection}>
+                            {/* Bouton principal : suivi en temps réel in-app */}
+                            <TouchableOpacity style={styles.goButton} onPress={() => { startTracking(); loadCheckpoints(); }} activeOpacity={0.85}>
+                                <SafeIcon name="Radio" size={22} color="white" />
+                                <View>
+                                    <Text style={styles.goButtonText}>Suivi en temps réel</Text>
+                                    <Text style={styles.goButtonETA}>Vitesse, radars, progression en direct</Text>
+                                </View>
+                            </TouchableOpacity>
+                            {/* Bouton secondaire : ouvrir Google Maps */}
+                            <TouchableOpacity style={styles.externalNavButton} onPress={() => startNavigation(selectedRoute)} activeOpacity={0.8}>
+                                <SafeIcon name="ExternalLink" size={16} color={modernColors.primary} />
+                                <Text style={styles.externalNavText}>Ouvrir dans Google Maps</Text>
+                                {selectedRoute.arrival_time && (
+                                    <Text style={styles.externalNavETA}>ETA {selectedRoute.arrival_time}</Text>
+                                )}
+                            </TouchableOpacity>
+                        </View>
+                    )}
+                </ScrollView>
+            </KeyboardAvoidingView>
         </SafeNativeView>
     );
 };
@@ -2064,6 +2442,7 @@ const NavigationScreen: React.FC = () => {
 // ── Styles ─────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: modernColors.background },
+    keyboardContainer: { flex: 1 },
     scrollView: { flex: 1 },
     scrollContent: { padding: 16, paddingBottom: 100 },
 
@@ -2368,6 +2747,42 @@ const styles = StyleSheet.create({
     aiBadgesWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
     aiBadge: { alignItems: 'center', backgroundColor: modernColors.surface, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6, borderWidth: 1, borderColor: modernColors.border },
     aiBadgeLabel: { fontSize: 10, fontWeight: '600', color: modernColors.textSecondary, marginTop: 2, maxWidth: 80, textAlign: 'center' },
+
+    // ✅ NOUVEAUX: Waypoints Styles
+    waypointsCard: { marginBottom: 16, padding: 16, backgroundColor: modernColors.surface, borderRadius: 12, borderWidth: 1, borderColor: modernColors.border },
+    waypointsHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
+    waypointsTitle: { fontSize: 16, fontWeight: '700', color: modernColors.text, marginLeft: 8 },
+    clearWaypointsBtn: { padding: 4, borderRadius: 4 },
+    waypointItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: modernColors.border },
+    waypointIndex: { width: 24, height: 24, borderRadius: 12, backgroundColor: modernColors.primary, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+    waypointIndexText: { fontSize: 12, fontWeight: '700', color: 'white' },
+    waypointInfo: { flex: 1 },
+    waypointName: { fontSize: 14, fontWeight: '600', color: modernColors.text },
+    waypointCoords: { fontSize: 11, color: modernColors.textSecondary, marginTop: 2 },
+    removeWaypointBtn: { padding: 6, borderRadius: 4 },
+
+    // ✅ NOUVEAUX: Traffic Alerts Styles
+    trafficAlertsCard: { marginBottom: 16, padding: 16, backgroundColor: '#FEF3C7', borderRadius: 12, borderWidth: 1, borderColor: '#F59E0B' },
+    trafficAlertsHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+    trafficAlertsTitle: { fontSize: 16, fontWeight: '700', color: '#92400E', marginLeft: 8 },
+    trafficAlertItem: { flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#FDE68A' },
+    trafficAlertText: { flex: 1, fontSize: 13, color: '#92400E', marginLeft: 8, lineHeight: 18 },
+
+    // ✅ NOUVEAUX: Steps Styles
+    stepsCard: { marginBottom: 16, backgroundColor: modernColors.surface, borderRadius: 12, borderWidth: 1, borderColor: modernColors.border },
+    stepsHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16 },
+    stepsHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    stepsTitle: { fontSize: 16, fontWeight: '700', color: modernColors.text },
+    stepsCount: { fontSize: 12, color: modernColors.textSecondary, backgroundColor: modernColors.border, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 },
+    stepsList: { paddingHorizontal: 16, paddingBottom: 16 },
+    stepItem: { flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: modernColors.border },
+    stepIndex: { width: 28, height: 28, borderRadius: 14, backgroundColor: modernColors.primary, alignItems: 'center', justifyContent: 'center', marginRight: 12, marginTop: 2 },
+    stepIndexText: { fontSize: 12, fontWeight: '700', color: 'white' },
+    stepInfo: { flex: 1 },
+    stepInstruction: { fontSize: 14, color: modernColors.text, lineHeight: 20, marginBottom: 4 },
+    stepDetails: { flexDirection: 'row', gap: 16 },
+    stepDistance: { fontSize: 12, color: modernColors.textSecondary },
+    stepDuration: { fontSize: 12, color: modernColors.textSecondary },
     aiNewBadgeBanner: { marginTop: 10, backgroundColor: '#FEF3C7', borderRadius: 10, padding: 12, alignItems: 'center' },
     aiNewBadgeTitle: { fontSize: 14, fontWeight: '800', color: '#92400E', marginBottom: 4 },
     aiNewBadgeText: { fontSize: 13, color: '#78350F', fontWeight: '600' },

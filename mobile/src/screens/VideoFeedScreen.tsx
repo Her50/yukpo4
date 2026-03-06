@@ -201,11 +201,15 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                 ? '/api/videos/my-videos'
                 : `/api/content/mixed?limit=20&page=${pageNum}&format=video${userIdParam}`;
             const response = await apiGet(endpoint);
-            let data = response?.data;
-            if (data && typeof data === 'object' && !Array.isArray(data)) {
-                data = data.data || data.items || [];
-            } else if (!data || !Array.isArray(data)) {
-                data = response?.items || [];
+            let data: any[] = [];
+            const responseData = response?.data as any;
+
+            if (responseData && typeof responseData === 'object' && !Array.isArray(responseData)) {
+                data = responseData.data || responseData.items || [];
+            } else if (responseData && Array.isArray(responseData)) {
+                data = responseData;
+            } else {
+                data = [];
             }
             const normalized = normalizeFeed(data);
             console.log(`[VideoFeedScreen] Feed chargé: ${normalized.length} vidéos (page ${pageNum})`);
@@ -324,21 +328,49 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
             Alert.alert('Connexion requise', 'Connectez-vous pour suivre ce vendeur.');
             return;
         }
-        const key = String(serviceId);
+
+        // ✅ VALIDATION: S'assurer que serviceId est un nombre valide
+        const numericServiceId = typeof serviceId === 'string' ? parseInt(serviceId, 10) : serviceId;
+        if (isNaN(numericServiceId) || numericServiceId <= 0) {
+            console.error(`[VideoFeed] Invalid serviceId: ${serviceId}`);
+            Alert.alert('Erreur', 'Identifiant de service invalide.');
+            return;
+        }
+
+        const key = String(numericServiceId);
         const wasFollowing = followMap[key] || false;
+
         // Optimistic update
         setFollowMap((prev) => ({ ...prev, [key]: !wasFollowing }));
+
         try {
-            const res = await apiPost(`/api/services/${key}/follow`, {});
+            console.log(`[VideoFeed] Toggling follow for service ${numericServiceId}, wasFollowing: ${wasFollowing}`);
+            const res = await apiPost(`/api/services/${numericServiceId}/follow`, {});
             const data = res?.data as any;
+            console.log(`[VideoFeed] Follow response:`, data);
+
             if (data?.success) {
+                // Mettre à jour avec la vraie valeur de l'API
                 setFollowMap((prev) => ({ ...prev, [key]: data.is_following }));
+                console.log(`[VideoFeed] Follow status updated to: ${data.is_following}`);
+            } else {
+                // Si l'API retourne success: false, revenir à l'état précédent
+                console.warn(`[VideoFeed] Follow API returned success: false`);
+                setFollowMap((prev) => ({ ...prev, [key]: wasFollowing }));
             }
-        } catch {
-            // Revert on error
+        } catch (error) {
+            // Revert on error et logger l'erreur
+            console.error(`[VideoFeed] Error toggling follow for service ${numericServiceId}:`, error);
             setFollowMap((prev) => ({ ...prev, [key]: wasFollowing }));
+
+            // Afficher un message d'erreur à l'utilisateur
+            Alert.alert(
+                'Erreur',
+                'Impossible de suivre ce vendeur. Veuillez réessayer.',
+                [{ text: 'OK' }]
+            );
         }
-    }, [user?.id, followMap]);
+    }, [user?.id]);
 
     // ✅ View tracking: comptabiliser la vue quand vidéo active pendant >2s
     useEffect(() => {
@@ -585,7 +617,6 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
 
             // ✅ Mode TikTok: 2 lectures avant auto-scroll
             if (status.didJustFinish && !status.isLooping) {
-                const contentId = item?.contentId || item?.id;
                 if (contentId) {
                     const currentPlayCount = (playCountRef.current[contentId] || 0) + 1;
                     playCountRef.current[contentId] = currentPlayCount;
@@ -773,7 +804,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                             onPress={() => handleViewProduct(item)}
                             activeOpacity={0.8}
                         >
-                            <SafeIcon name="shopping-bag" size={16} color="#fff" type="lucide" />
+                            <SafeIcon name="shopping-bag" size={14} color="#fff" type="lucide" />
                             <Text style={styles.ctaText}>Voir le produit</Text>
                         </TouchableOpacity>
                     )}
@@ -798,7 +829,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                         disabled={pendingReaction !== null}
                     >
                         <View style={[styles.actionIconBg, liked && styles.actionIconBgActive]}>
-                            <SafeIcon name="heart" size={28} color={liked ? '#FF2D55' : '#fff'} type="lucide" />
+                            <SafeIcon name="heart" size={24} color={liked ? '#FF2D55' : '#fff'} type="lucide" />
                         </View>
                         <Text style={styles.actionLabel}>
                             {formatCount(
@@ -810,21 +841,21 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
 
                     <TouchableOpacity style={styles.actionButton} onPress={() => handleOpenComments(item)} activeOpacity={0.7}>
                         <View style={styles.actionIconBg}>
-                            <SafeIcon name="message-circle" size={28} color="#fff" type="lucide" />
+                            <SafeIcon name="message-circle" size={24} color="#fff" type="lucide" />
                         </View>
                         <Text style={styles.actionLabel}>{formatCount(item.commentsCount ?? 0)}</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity style={styles.actionButton} onPress={() => toggleSave(item)} activeOpacity={0.7}>
                         <View style={[styles.actionIconBg, saved && styles.actionIconBgActive]}>
-                            <SafeIcon name="bookmark" size={28} color={saved ? '#FFD700' : '#fff'} type="lucide" />
+                            <SafeIcon name="bookmark" size={24} color={saved ? '#FFD700' : '#fff'} type="lucide" />
                         </View>
                         <Text style={styles.actionLabel}>{formatCount((item.savesCount ?? 0) + (saved ? 1 : 0))}</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity style={styles.actionButton} onPress={() => handleShare(item)} activeOpacity={0.7}>
                         <View style={styles.actionIconBg}>
-                            <SafeIcon name="send" size={26} color="#fff" type="lucide" />
+                            <SafeIcon name="send" size={22} color="#fff" type="lucide" />
                         </View>
                         <Text style={styles.actionLabel}>Partager</Text>
                     </TouchableOpacity>
@@ -1225,17 +1256,17 @@ const styles = StyleSheet.create({
     ctaButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
+        gap: 6, // ✅ RÉDUIT: De 8 à 6 pour compacter
         alignSelf: 'flex-start',
-        paddingHorizontal: 16,
-        paddingVertical: 10,
-        borderRadius: 50,
-        backgroundColor: 'rgba(255,45,85,0.95)', // ✅ AJOUT: Plus opaque
+        paddingHorizontal: 12, // ✅ RÉDUIT: De 16 à 12 pour compacter
+        paddingVertical: 8, // ✅ RÉDUIT: De 10 à 8 pour compacter
+        borderRadius: 20, // ✅ RÉDUIT: De 50 à 20 pour moins d'encombrement
+        backgroundColor: 'rgba(255,45,85,0.95)',
         marginTop: 4,
-        // ✅ AJOUT: Positionnement absolu en bas pour être toujours visible
+        // ✅ REPOSITIONNÉ: Plus bas pour éviter les chevauchements
         position: 'absolute',
-        bottom: 20,
-        left: 16,
+        bottom: 12, // ✅ RÉDUIT: De 20 à 12 pour plus d'espace
+        left: 12, // ✅ RÉDUIT: De 16 à 12 pour plus d'espace
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.3,
@@ -1243,18 +1274,18 @@ const styles = StyleSheet.create({
         elevation: 6,
         zIndex: 25,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.2)', // ✅ AJOUT: Bordure subtile
+        borderColor: 'rgba(255,255,255,0.2)',
     },
     ctaText: {
         color: '#fff',
-        fontSize: 13,
+        fontSize: 12, // ✅ RÉDUIT: De 13 à 12 pour compacter
         fontWeight: '700',
     },
     actions: {
         position: 'absolute',
         right: 8,
-        bottom: 120, // ✅ AJOUT: Plus haut pour laisser de la place au bouton CTA
-        gap: 16,
+        bottom: 140, // ✅ RÉDUIT: De 120 à 140 pour plus d'espace avec le spinning disc
+        gap: 14, // ✅ RÉDUIT: De 16 à 14 pour compacter
         alignItems: 'center',
     },
     actionButton: {
@@ -1262,9 +1293,9 @@ const styles = StyleSheet.create({
         gap: 4,
     },
     actionIconBg: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
+        width: 40, // ✅ RÉDUIT: De 44 à 40 pour compacter
+        height: 40, // ✅ RÉDUIT: De 44 à 40 pour compacter
+        borderRadius: 20, // ✅ RÉDUIT: De 22 à 20 pour proportion
         backgroundColor: 'rgba(0,0,0,0.3)',
         alignItems: 'center',
         justifyContent: 'center',
@@ -1362,11 +1393,11 @@ const styles = StyleSheet.create({
     },
     spinningDisc: {
         position: 'absolute',
-        right: 10,
-        bottom: 20,
-        width: 44,
-        height: 44,
-        borderRadius: 22,
+        right: 8, // ✅ RÉDUIT: De 10 à 8 pour plus d'espace
+        bottom: 70, // ✅ AUGMENTÉ: De 20 à 70 pour éviter le chevauchement avec le CTA
+        width: 38, // ✅ RÉDUIT: De 44 à 38 pour moins d'encombrement
+        height: 38, // ✅ RÉDUIT: De 44 à 38 pour moins d'encombrement
+        borderRadius: 19, // ✅ RÉDUIT: De 22 à 19 pour proportion
         borderWidth: 2,
         borderColor: 'rgba(255,255,255,0.3)',
         backgroundColor: '#1a1a1a',
@@ -1374,16 +1405,16 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     spinningDiscInner: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
+        width: 30, // ✅ RÉDUIT: De 36 à 30 pour proportion
+        height: 30, // ✅ RÉDUIT: De 36 à 30 pour proportion
+        borderRadius: 15, // ✅ RÉDUIT: De 18 à 15 pour proportion
         backgroundColor: '#333',
         alignItems: 'center',
         justifyContent: 'center',
     },
     spinningDiscText: {
         color: '#fff',
-        fontSize: 16,
+        fontSize: 14, // ✅ RÉDUIT: De 16 à 14 pour proportion
         fontWeight: '800',
     },
     // ✅ AJOUT: Indicateur de lecture style TikTok

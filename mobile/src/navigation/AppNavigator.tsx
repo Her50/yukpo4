@@ -290,6 +290,7 @@ const ProviderOrderManagementScreenWithSafeArea = withNavigatorSafeArea(Provider
 const CreatePubliciteScreenWithSafeArea = withNavigatorSafeArea(CreatePubliciteScreen);
 const PubliciteDashboardScreenWithSafeArea = withNavigatorSafeArea(PubliciteDashboardScreen);
 const SoldeDetailScreenWithSafeArea = withNavigatorSafeArea(SoldeDetailScreen);
+const GlobalPromoCatalogScreenWithSafeArea = withNavigatorSafeArea(GlobalPromoCatalogScreen);
 const YukpoServicePlaceholderScreenWithSafeArea = withNavigatorSafeArea(YukpoServicePlaceholderScreen);
 const MesServicesSpecialisesScreenWithSafeArea = withNavigatorSafeArea(MesServicesSpecialisesScreen);
 const PharmacieFormScreenWithSafeArea = withNavigatorSafeArea(PharmacieFormScreen);
@@ -1852,7 +1853,7 @@ const SecondaryStack = () => {
       />
       <Stack.Screen
         name="GlobalPromoCatalog"
-        component={withNavigatorSafeArea(GlobalPromoCatalogScreen)}
+        component={GlobalPromoCatalogScreenWithSafeArea}
         options={{
           ...defaultScreenOptions,
           title: '🛍️ Black Friday',

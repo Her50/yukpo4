@@ -1,8 +1,8 @@
 import {
     Activity,
-    ArrowLeft,
     Calendar,
     DollarSign,
+    Edit3,
     Eye,
     Film,
     Globe,
@@ -13,6 +13,7 @@ import {
     Package,
     PlayCircle,
     Plus,
+    RefreshCw,
     Sparkles,
     TrendingUp
 } from 'lucide-react';
@@ -276,88 +277,111 @@ const PubliciteDashboardPage: React.FC = () => {
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 py-8 px-4">
             <div className="max-w-7xl mx-auto">
-                {/* Header */}
-                <div className="flex items-center justify-between mb-8">
-                    <div className="flex items-center gap-4">
-                        <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={() => navigate('/mes-services')}
-                            className="rounded-full"
-                        >
-                            <ArrowLeft className="w-5 h-5" />
-                        </Button>
-                        <div>
-                            <h1 className="text-3xl font-bold text-gray-900">Dashboard Publicité</h1>
-                            <p className="text-gray-600">Analytics et performances</p>
+                {/* Header - Design amélioré */}
+                <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 mb-8">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() => navigate('/mes-services')}
+                                className="rounded-full border-gray-300 hover:border-gray-400 hover:bg-gray-50 transition-all duration-200"
+                            >
+                                <ArrowLeft className="w-5 h-5" />
+                            </Button>
+                            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+                                <Megaphone className="w-6 h-6 text-white" />
+                            </div>
+                            <div>
+                                <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+                                    Dashboard Publicité
+                                </h1>
+                                <p className="text-gray-600 font-medium">Analytics et performances de vos campagnes</p>
+                            </div>
                         </div>
+                        <Button
+                            onClick={() => navigate('/creer-publicite')}
+                            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02] px-6 py-3"
+                        >
+                            <Plus className="w-5 h-5 mr-2" />
+                            <span className="font-semibold">Créer une publicité</span>
+                        </Button>
                     </div>
-                    <Button
-                        onClick={() => navigate('/creer-publicite')}
-                        className="gap-2"
-                    >
-                        <Plus className="w-5 h-5" />
-                        Créer une publicité
-                    </Button>
                 </div>
 
-                {/* Stats globales */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                    <Card className="bg-white border-blue-200">
-                        <CardContent className="pt-6">
-                            <div className="flex items-center justify-between mb-4">
-                                <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                                    <Eye className="w-6 h-6 text-blue-600" />
-                                </div>
+                {/* Stats globales - Design amélioré */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <div className="bg-white rounded-2xl shadow-lg border border-blue-100 p-6 hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02]">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="w-14 h-14 bg-gradient-to-br from-blue-400 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
+                                <Eye className="w-7 h-7 text-white" />
                             </div>
-                            <p className="text-3xl font-bold text-gray-900 mb-1">
-                                {globalStats.total_vues.toLocaleString()}
-                            </p>
-                            <p className="text-sm text-gray-600">Vues totales</p>
-                        </CardContent>
-                    </Card>
+                            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                                <TrendingUp className="w-4 h-4 text-blue-600" />
+                            </div>
+                        </div>
+                        <p className="text-3xl font-bold text-gray-900 mb-2">
+                            {globalStats.total_vues.toLocaleString()}
+                        </p>
+                        <p className="text-sm font-medium text-gray-600">Vues totales</p>
+                        <div className="mt-3 h-1 bg-blue-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-gradient-to-r from-blue-400 to-blue-600 rounded-full" style={{ width: '75%' }}></div>
+                        </div>
+                    </div>
 
-                    <Card className="bg-white border-green-200">
-                        <CardContent className="pt-6">
-                            <div className="flex items-center justify-between mb-4">
-                                <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
-                                    <MousePointer className="w-6 h-6 text-green-600" />
-                                </div>
+                    <div className="bg-white rounded-2xl shadow-lg border border-green-100 p-6 hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02]">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="w-14 h-14 bg-gradient-to-br from-green-400 to-green-600 rounded-xl flex items-center justify-center shadow-lg">
+                                <MousePointer className="w-7 h-7 text-white" />
                             </div>
-                            <p className="text-3xl font-bold text-gray-900 mb-1">
-                                {globalStats.total_clics.toLocaleString()}
-                            </p>
-                            <p className="text-sm text-gray-600">Clics</p>
-                        </CardContent>
-                    </Card>
+                            <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                                <TrendingUp className="w-4 h-4 text-green-600" />
+                            </div>
+                        </div>
+                        <p className="text-3xl font-bold text-gray-900 mb-2">
+                            {globalStats.total_clics.toLocaleString()}
+                        </p>
+                        <p className="text-sm font-medium text-gray-600">Clics totaux</p>
+                        <div className="mt-3 h-1 bg-green-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-gradient-to-r from-green-400 to-green-600 rounded-full" style={{ width: '60%' }}></div>
+                        </div>
+                    </div>
 
-                    <Card className="bg-white border-yellow-200">
-                        <CardContent className="pt-6">
-                            <div className="flex items-center justify-between mb-4">
-                                <div className="w-12 h-12 bg-yellow-100 rounded-xl flex items-center justify-center">
-                                    <TrendingUp className="w-6 h-6 text-yellow-600" />
-                                </div>
+                    <div className="bg-white rounded-2xl shadow-lg border border-purple-100 p-6 hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02]">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="w-14 h-14 bg-gradient-to-br from-purple-400 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+                                <TrendingUp className="w-7 h-7 text-white" />
                             </div>
-                            <p className="text-3xl font-bold text-gray-900 mb-1">
-                                {globalStats.taux_conversion_moyen.toFixed(1)}%
-                            </p>
-                            <p className="text-sm text-gray-600">Taux de conversion</p>
-                        </CardContent>
-                    </Card>
+                            <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                                <Activity className="w-4 h-4 text-purple-600" />
+                            </div>
+                        </div>
+                        <p className="text-3xl font-bold text-gray-900 mb-2">
+                            {globalStats.taux_conversion_moyen.toFixed(1)}%
+                        </p>
+                        <p className="text-sm font-medium text-gray-600">Taux de conversion</p>
+                        <div className="mt-3 h-1 bg-purple-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-gradient-to-r from-purple-400 to-purple-600 rounded-full" style={{ width: `${Math.min(100, globalStats.taux_conversion_moyen * 10)}%` }}></div>
+                        </div>
+                    </div>
 
-                    <Card className="bg-white border-red-200">
-                        <CardContent className="pt-6">
-                            <div className="flex items-center justify-between mb-4">
-                                <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
-                                    <DollarSign className="w-6 h-6 text-red-600" />
-                                </div>
+                    <div className="bg-white rounded-2xl shadow-lg border border-red-100 p-6 hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02]">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="w-14 h-14 bg-gradient-to-br from-red-400 to-red-600 rounded-xl flex items-center justify-center shadow-lg">
+                                <DollarSign className="w-7 h-7 text-white" />
                             </div>
-                            <p className="text-3xl font-bold text-gray-900 mb-1">
-                                {globalStats.budget_total_depense.toLocaleString()}
-                            </p>
-                            <p className="text-sm text-gray-600">Budget dépensé</p>
-                        </CardContent>
-                    </Card>
+                            <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
+                                <Activity className="w-4 h-4 text-red-600" />
+                            </div>
+                        </div>
+                        <p className="text-3xl font-bold text-gray-900 mb-2">
+                            {globalStats.budget_total_depense.toLocaleString()}
+                        </p>
+                        <p className="text-sm font-medium text-gray-600">Budget dépensé</p>
+                        <div className="mt-3 h-1 bg-red-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-gradient-to-r from-red-400 to-red-600 rounded-full" style={{ width: '45%' }}></div>
+                        </div>
+                    </div>
                 </div>
 
                 {/* Résumé vidéos */}
@@ -478,27 +502,43 @@ const PubliciteDashboardPage: React.FC = () => {
                                             </div>
                                         </div>
 
-                                        {/* Métriques */}
-                                        <div className="grid grid-cols-4 gap-4 mb-4">
-                                            <div className="text-center">
-                                                <Eye className="w-5 h-5 text-gray-400 mx-auto mb-1" />
-                                                <p className="text-2xl font-bold text-gray-900">{pub.vues}</p>
-                                                <p className="text-xs text-gray-500">vues</p>
+                                        {/* Métriques - Design amélioré */}
+                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                                            <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 border border-blue-200 hover:shadow-md transition-shadow">
+                                                <div className="flex flex-col items-center text-center">
+                                                    <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center mb-2">
+                                                        <Eye className="w-5 h-5 text-white" />
+                                                    </div>
+                                                    <p className="text-2xl font-bold text-blue-900">{pub.vues.toLocaleString()}</p>
+                                                    <p className="text-xs text-blue-700 font-medium">Vues</p>
+                                                </div>
                                             </div>
-                                            <div className="text-center">
-                                                <MousePointer className="w-5 h-5 text-gray-400 mx-auto mb-1" />
-                                                <p className="text-2xl font-bold text-gray-900">{pub.clics}</p>
-                                                <p className="text-xs text-gray-500">clics</p>
+                                            <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 border border-green-200 hover:shadow-md transition-shadow">
+                                                <div className="flex flex-col items-center text-center">
+                                                    <div className="w-10 h-10 bg-green-500 rounded-lg flex items-center justify-center mb-2">
+                                                        <MousePointer className="w-5 h-5 text-white" />
+                                                    </div>
+                                                    <p className="text-2xl font-bold text-green-900">{pub.clics.toLocaleString()}</p>
+                                                    <p className="text-xs text-green-700 font-medium">Clics</p>
+                                                </div>
                                             </div>
-                                            <div className="text-center">
-                                                <TrendingUp className="w-5 h-5 text-gray-400 mx-auto mb-1" />
-                                                <p className="text-2xl font-bold text-gray-900">{pub.conversion_rate.toFixed(1)}%</p>
-                                                <p className="text-xs text-gray-500">taux</p>
+                                            <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4 border border-purple-200 hover:shadow-md transition-shadow">
+                                                <div className="flex flex-col items-center text-center">
+                                                    <div className="w-10 h-10 bg-purple-500 rounded-lg flex items-center justify-center mb-2">
+                                                        <TrendingUp className="w-5 h-5 text-white" />
+                                                    </div>
+                                                    <p className="text-2xl font-bold text-purple-900">{pub.conversion_rate.toFixed(1)}%</p>
+                                                    <p className="text-xs text-purple-700 font-medium">Conversion</p>
+                                                </div>
                                             </div>
-                                            <div className="text-center">
-                                                <Package className="w-5 h-5 text-gray-400 mx-auto mb-1" />
-                                                <p className="text-2xl font-bold text-gray-900">{pub.produits_count}</p>
-                                                <p className="text-xs text-gray-500">produits</p>
+                                            <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl p-4 border border-orange-200 hover:shadow-md transition-shadow">
+                                                <div className="flex flex-col items-center text-center">
+                                                    <div className="w-10 h-10 bg-orange-500 rounded-lg flex items-center justify-center mb-2">
+                                                        <Package className="w-5 h-5 text-white" />
+                                                    </div>
+                                                    <p className="text-2xl font-bold text-orange-900">{pub.produits_count}</p>
+                                                    <p className="text-xs text-orange-700 font-medium">Produits</p>
+                                                </div>
                                             </div>
                                         </div>
 
@@ -540,35 +580,40 @@ const PubliciteDashboardPage: React.FC = () => {
                                             </div>
                                         )}
 
-                                        {/* ✅ Boutons d'action */}
-                                        <div className="flex gap-2 mt-4 pt-4 border-t border-gray-200">
+                                        {/* ✅ Boutons d'action - Design amélioré */}
+                                        <div className="flex gap-3 mt-6 pt-4 border-t border-gray-200">
                                             {pub.status === 'expired' && (
                                                 <Button
                                                     onClick={() => navigate(`/creer-publicite?relanceId=${pub.id}`)}
-                                                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                                                    className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02]"
                                                     size="sm"
                                                 >
-                                                    <span className="mr-2">🔄</span>
-                                                    Relancer
+                                                    <RefreshCw className="w-4 h-4 mr-2" />
+                                                    <span className="font-medium">Relancer</span>
                                                 </Button>
                                             )}
                                             <Button
                                                 onClick={() => navigate(`/creer-publicite?publiciteId=${pub.id}`)}
                                                 variant="outline"
-                                                className="flex-1"
+                                                className="flex-1 border-gray-300 hover:border-gray-400 hover:bg-gray-50 transition-all duration-200 h-10"
                                                 size="sm"
                                             >
-                                                <span className="mr-2">✏️</span>
-                                                Modifier
+                                                <Edit3 className="w-4 h-4 mr-2" />
+                                                <span className="font-medium">Modifier</span>
                                             </Button>
                                             <Button
                                                 onClick={() => setSelectedPubliciteForHistory(selectedPubliciteForHistory === pub.id ? null : pub.id)}
-                                                variant="outline"
-                                                className="flex-1"
+                                                variant={selectedPubliciteForHistory === pub.id ? "default" : "outline"}
+                                                className={`flex-1 transition-all duration-200 h-10 ${selectedPubliciteForHistory === pub.id
+                                                    ? 'bg-indigo-600 text-white shadow-lg hover:bg-indigo-700'
+                                                    : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
+                                                    }`}
                                                 size="sm"
                                             >
                                                 <History className="w-4 h-4 mr-2" />
-                                                Historique
+                                                <span className="font-medium">
+                                                    {selectedPubliciteForHistory === pub.id ? 'Masquer' : 'Historique'}
+                                                </span>
                                             </Button>
                                         </div>
 

@@ -77,26 +77,36 @@ const PromotionsBar: React.FC<{ navigate: (route: string) => boolean }> = ({ nav
                 </View>
             </TouchableOpacity>
 
-            {/* Menu déroulant */}
+            {/* ✅ NOUVEAU: Menu déroulant horizontal avec texte entièrement lisible */}
             {showDropdown && (
-                <View style={styles.promoDropdown}>
-                    {promotions.map((promo) => (
-                        <TouchableOpacity
-                            key={promo.id}
-                            style={styles.promoDropdownItem}
-                            onPress={() => {
-                                setShowDropdown(false);
-                                navigate(promo.route);
-                            }}
-                            activeOpacity={0.7}
-                        >
-                            <View style={[styles.promoDropdownIcon, { backgroundColor: `${promo.color}15` }]}>
-                                <SafeIcon name={promo.icon as any} size={18} color={promo.color} />
-                            </View>
-                            <Text style={styles.promoDropdownText}>{promo.title}</Text>
-                            <SafeIcon name="chevron-right" size={16} color="#9CA3AF" />
-                        </TouchableOpacity>
-                    ))}
+                <View style={styles.promoDropdownHorizontal}>
+                    <ScrollView
+                        horizontal={true}
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={styles.promoScrollContent}
+                    >
+                        {promotions.map((promo) => (
+                            <TouchableOpacity
+                                key={promo.id}
+                                style={[styles.promoCardHorizontal, { borderLeftColor: promo.color }]}
+                                onPress={() => {
+                                    setShowDropdown(false);
+                                    navigate(promo.route);
+                                }}
+                                activeOpacity={0.7}
+                            >
+                                <View style={[styles.promoCardIcon, { backgroundColor: `${promo.color}15` }]}>
+                                    <SafeIcon name={promo.icon as any} size={20} color={promo.color} />
+                                </View>
+                                <Text style={styles.promoCardTitle}>{promo.title}</Text>
+                                <View style={styles.promoCardBadge}>
+                                    <Text style={[styles.promoCardBadgeText, { color: promo.color }]}>
+                                        Voir
+                                    </Text>
+                                </View>
+                            </TouchableOpacity>
+                        ))}
+                    </ScrollView>
                 </View>
             )}
         </View>
@@ -676,7 +686,7 @@ const HomeScreen: React.FC = () => {
                         onPress={() => navigate('NavigationScreen')}
                         activeOpacity={0.8}
                     >
-                        <SafeIcon name="navigation" size={20} color="#6366F1" />
+                        <SafeIcon name="navigation" size={16} color="#6366F1" />
                     </TouchableOpacity>
                 </View>
 
@@ -980,11 +990,11 @@ const styles = StyleSheet.create({
     modeSelector: {
         flexDirection: 'row',
         marginHorizontal: 16,
-        marginTop: 8, // ✅ RÉDUIT: De 16 à 8 pour réduire l'espace en haut
-        marginBottom: 8, // ✅ RÉDUIT: De 16 à 8 pour réduire l'espace avec ChatInputMobile
+        marginTop: 4, // ✅ RÉDUIT: De 8 à 4 pour encore moins d'espace
+        marginBottom: 4, // ✅ RÉDUIT: De 8 à 4 pour encore moins d'espace
         backgroundColor: '#F1F5F9',
         borderRadius: 12,
-        padding: 5, // ✅ AUGMENTÉ: De 4 à 5 pour plus d'espace autour des boutons
+        padding: 4, // ✅ RÉDUIT: De 5 à 4 pour compacter
         gap: 4, // ✅ AJOUTÉ: Espacement entre les boutons
     },
     modeButton: {
@@ -1012,12 +1022,12 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFFFFF', // ✅ CORRIGÉ: Fond blanc pur pour plus de gaieté
         marginHorizontal: 16,
         borderRadius: 16,
-        padding: 12, // ✅ RÉDUIT: De 16 à 12 pour compacter davantage
+        padding: 10, // ✅ RÉDUIT: De 12 à 10 pour encore plus de compacité
         marginTop: 0, // ✅ CORRIGÉ: Pas de marge en haut (gérée par modeSelector)
-        marginBottom: 12, // ✅ RÉDUIT: De 16 à 12 pour remonter les éléments
+        marginBottom: 8, // ✅ RÉDUIT: De 12 à 8 pour remonter les éléments
     },
     inputContainer: {
-        marginBottom: 4, // ✅ RÉDUIT: De 8 à 4 pour réduire l'espace avec les promotions
+        marginBottom: 2, // ✅ RÉDUIT: De 4 à 2 pour espace minimum
     },
     carouselErrorContainer: {
         padding: 20,
@@ -1033,8 +1043,8 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
     promoBarContainer: {
-        marginTop: 12,
-        marginBottom: 12,
+        marginTop: 8, // ✅ RÉDUIT: De 12 à 8 pour moins d'espace
+        marginBottom: 8, // ✅ RÉDUIT: De 12 à 8 pour moins d'espace
     },
     promoBarButton: {
         flexDirection: 'row',
@@ -1087,6 +1097,70 @@ const styles = StyleSheet.create({
         elevation: 3,
         overflow: 'hidden',
     },
+    // ✅ NOUVEAU: Styles pour la disposition horizontale
+    promoDropdownHorizontal: {
+        marginTop: 8,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
+        paddingVertical: 8,
+    },
+    promoScrollContent: {
+        paddingHorizontal: 8,
+        gap: 12,
+    },
+    promoCardHorizontal: {
+        flexDirection: 'column',
+        alignItems: 'center',
+        backgroundColor: '#FFFFFF',
+        borderRadius: 12,
+        borderWidth: 2,
+        borderColor: '#E5E7EB',
+        paddingVertical: 16,
+        paddingHorizontal: 12,
+        minWidth: 100,
+        maxWidth: 120,
+        borderLeftWidth: 4,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+        elevation: 2,
+    },
+    promoCardIcon: {
+        width: 40,
+        height: 40,
+        borderRadius: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    promoCardTitle: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: '#374151',
+        textAlign: 'center',
+        marginBottom: 8,
+        flexShrink: 1, // ✅ Permet au texte de s'adapter si nécessaire
+    },
+    promoCardBadge: {
+        backgroundColor: '#F9FAFB',
+        borderRadius: 6,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+    },
+    promoCardBadgeText: {
+        fontSize: 11,
+        fontWeight: '600',
+    },
     promoDropdownItem: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -1136,8 +1210,8 @@ const styles = StyleSheet.create({
         color: '#374151',
     },
     specializedServicesContainer: {
-        marginTop: 16, // ✅ RÉDUIT: De 24 à 16 pour remonter les éléments
-        marginBottom: 12, // ✅ RÉDUIT: De 16 à 12 pour équilibrer
+        marginTop: 12, // ✅ RÉDUIT: De 16 à 12 pour encore plus d'espace
+        marginBottom: 8, // ✅ RÉDUIT: De 12 à 8 pour équilibrer
     },
     specializedServicesTitle: {
         fontSize: 17, // ✅ AUGMENTÉ: De 15 à 17 pour meilleure visibilité
@@ -1146,16 +1220,16 @@ const styles = StyleSheet.create({
         marginBottom: 12, // ✅ AUGMENTÉ: De 8 à 12 pour plus d'espace
         marginTop: 4, // ✅ AJOUTÉ: Marge en haut pour séparation
     },
-    // ✅ NOUVEAU: Styles pour l'icône Navigation Intelligente
+    // ✅ NOUVEAU: Styles pour l'icône Navigation Intelligente - OPTIMISÉ
     navigationIconContainer: {
         alignItems: 'flex-end',
         paddingHorizontal: 16,
-        marginBottom: 8,
+        marginBottom: 4, // ✅ RÉDUIT: De 8 à 4 pour moins d'espace
     },
     navigationIconButton: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
+        width: 32, // ✅ RÉDUIT: De 40 à 32 pour moins d'encombrement
+        height: 32, // ✅ RÉDUIT: De 40 à 32 pour moins d'encombrement
+        borderRadius: 16, // ✅ RÉDUIT: De 20 à 16 pour proportion
         backgroundColor: '#EEF2FF',
         justifyContent: 'center',
         alignItems: 'center',
