@@ -178,3 +178,125 @@ pub async fn video_overview(
         "data": overview,
     })))
 }
+
+pub async fn content_analytics(
+    State(_state): State<Arc<AppState>>,
+    Query(params): Query<ContentAnalyticsQuery>,
+) -> AppResult<Json<serde_json::Value>> {
+    let _days = params.days.unwrap_or(7);
+    let _limit = params.limit.unwrap_or(20);
+
+    // Simuler des données d'analytics de contenu pour le moment
+    let content_data = json!({
+        "summary": {
+            "impressions": 15420,
+            "clicks": 892,
+            "ctr": 0.0578,
+            "avg_view_duration_ms": 45230
+        },
+        "breakdown": [
+            {
+                "content_type": "paid",
+                "impressions": 8920,
+                "ctr": 0.0642,
+                "avg_view_duration_ms": 51200
+            },
+            {
+                "content_type": "organic",
+                "impressions": 6500,
+                "ctr": 0.0485,
+                "avg_view_duration_ms": 38200
+            }
+        ],
+        "top_content": [
+            {
+                "content_id": "video_123",
+                "content_type": "paid",
+                "impressions": 3420,
+                "ctr": 0.0723,
+                "avg_view_duration_ms": 62100,
+                "likes": 128,
+                "saves": 45,
+                "clicks": 247,
+                "last_seen": "2026-03-06T10:30:00Z"
+            },
+            {
+                "content_id": "video_456",
+                "content_type": "organic",
+                "impressions": 2156,
+                "ctr": 0.0534,
+                "avg_view_duration_ms": 41800,
+                "likes": 89,
+                "saves": 23,
+                "clicks": 115,
+                "last_seen": "2026-03-06T09:15:00Z"
+            }
+        ]
+    });
+
+    Ok(Json(json!({
+        "success": true,
+        "data": content_data
+    })))
+}
+
+pub async fn live_analytics(
+    State(_state): State<Arc<AppState>>,
+    Query(params): Query<LiveAnalyticsQuery>,
+) -> AppResult<Json<serde_json::Value>> {
+    let _limit = params.limit.unwrap_or(10);
+
+    // Simuler des données d'analytics live pour le moment
+    let live_data = vec![
+        json!({
+            "session": {
+                "id": "live_001",
+                "title": "Session Live - Produits Tech",
+                "start_at": "2026-03-06T08:00:00Z",
+                "status": "live"
+            },
+            "metrics": {
+                "total_viewers": 1247,
+                "hls_viewers": 892,
+                "webrtc_viewers": 355,
+                "total_watch_time_seconds": 45230,
+                "average_watch_time_seconds": 36.2,
+                "conversions": 23,
+                "revenue_cfa": 45600
+            }
+        }),
+        json!({
+            "session": {
+                "id": "live_002",
+                "title": "Demo Service Client",
+                "start_at": "2026-03-06T07:30:00Z",
+                "status": "ended"
+            },
+            "metrics": {
+                "total_viewers": 892,
+                "hls_viewers": 623,
+                "webrtc_viewers": 269,
+                "total_watch_time_seconds": 28450,
+                "average_watch_time_seconds": 31.9,
+                "conversions": 15,
+                "revenue_cfa": 31200
+            }
+        }),
+    ];
+
+    Ok(Json(json!({
+        "success": true,
+        "data": live_data
+    })))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ContentAnalyticsQuery {
+    pub days: Option<i64>,
+    pub limit: Option<i64>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct LiveAnalyticsQuery {
+    pub limit: Option<i64>,
+}

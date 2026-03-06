@@ -43,6 +43,7 @@ pub mod kyc_admin_routes;
 pub mod kyc_webhook_routes;
 pub mod live_ai_routes;
 pub mod live_routes;
+pub mod media_analytics_routes; // ✅ NOUVEAU: Routes pour analytics média (vidéo, etc.)
 pub mod media_routes;
 pub mod metrics_routes;
 pub mod metrics_tracking_routes;

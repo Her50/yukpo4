@@ -411,6 +411,10 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
             get(publicite_controller::compare_publicite_versions),
         );
 
+    // ✅ NOUVEAU: Routes pour analytics média (vidéo, etc.)
+    let media_analytics_routes_merged =
+        crate::routes::media_analytics_routes::media_analytics_routes();
+
     // Combinaison des routes
     public_routes
         .merge(protected_routes)
@@ -422,6 +426,7 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .merge(service_team_routes_merged)
         .merge(image_search_routes_merged)
         .merge(publicite_routes_inline)
+        .merge(media_analytics_routes_merged)
         .with_state(state)
 }
 

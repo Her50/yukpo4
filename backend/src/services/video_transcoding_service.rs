@@ -4,7 +4,7 @@
 use crate::core::types::{AppError, AppResult};
 use crate::utils::log::{log_error, log_info};
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
+use sqlx::{PgPool, Row};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::Arc;
@@ -399,7 +399,7 @@ impl VideoTranscodingService {
         let qualities_json = serde_json::to_string(&transcoded.qualities)
             .map_err(|e| AppError::Internal(format!("Erreur sérialisation qualités: {}", e)))?;
 
-        sqlx::query!(
+        sqlx::query(
             r#"
             INSERT INTO video_transcoding (
                 video_id, original_path, hls_path, dash_path, 
@@ -415,16 +415,16 @@ impl VideoTranscodingService {
                 file_size_mb = EXCLUDED.file_size_mb,
                 updated_at = NOW()
             "#,
-            video_id,
-            transcoded.original_path,
-            transcoded.hls_path,
-            transcoded.dash_path,
-            qualities_json,
-            transcoded.thumbnail_path,
-            transcoded.duration_seconds,
-            transcoded.file_size_mb,
-            transcoded.created_at
         )
+        .bind(video_id)
+        .bind(&transcoded.original_path)
+        .bind(&transcoded.hls_path)
+        .bind(&transcoded.dash_path)
+        .bind(&qualities_json)
+        .bind(&transcoded.thumbnail_path)
+        .bind(transcoded.duration_seconds)
+        .bind(transcoded.file_size_mb)
+        .bind(transcoded.created_at)
         .execute(&*self.pool)
         .await
         .map_err(|e| AppError::Database(format!("Erreur sauvegarde transcodage: {}", e)))?;
@@ -434,20 +434,21 @@ impl VideoTranscodingService {
 
     /// Vérifie si une vidéo est déjà transcodée
     pub async fn is_transcoded(&self, video_id: i32) -> AppResult<bool> {
-        let result = sqlx::query!(
-            "SELECT video_id FROM video_transcoding WHERE video_id = $1",
-            video_id
-        )
-        .fetch_optional(&*self.pool)
-        .await
-        .map_err(|e| AppError::Database(format!("Erreur vérification transcodage: {}", e)))?;
+        let result: Option<sqlx::postgres::PgRow> =
+            sqlx::query("SELECT video_id FROM video_transcoding WHERE video_id = $1")
+                .bind(video_id)
+                .fetch_optional(&*self.pool)
+                .await
+                .map_err(|e| {
+                    AppError::Database(format!("Erreur vérification transcodage: {}", e))
+                })?;
 
         Ok(result.is_some())
     }
 
     /// Obtient les URLs transcoded pour une vidéo
     pub async fn get_transcoded_urls(&self, video_id: i32) -> AppResult<Option<TranscodedVideo>> {
-        let row = sqlx::query!(
+        let row: Option<sqlx::postgres::PgRow> = sqlx::query(
             r#"
             SELECT original_path, hls_path, dash_path, qualities, 
                    thumbnail_path, duration_seconds, file_size_mb, 
@@ -455,27 +456,34 @@ impl VideoTranscodingService {
             FROM video_transcoding 
             WHERE video_id = $1
             "#,
-            video_id
         )
+        .bind(video_id)
         .fetch_optional(&*self.pool)
         .await
         .map_err(|e| AppError::Database(format!("Erreur récupération URLs transcodées: {}", e)))?;
 
         if let Some(row) = row {
+            let qualities_str: &str = row.try_get("qualities").unwrap_or("[]");
             let qualities: Vec<VideoQuality> =
-                serde_json::from_str(&row.qualities).map_err(|e| {
+                serde_json::from_str(qualities_str).map_err(|e| {
                     AppError::Internal(format!("Erreur désérialisation qualités: {}", e))
                 })?;
 
             Ok(Some(TranscodedVideo {
-                original_path: row.original_path,
-                hls_path: row.hls_path,
-                dash_path: row.dash_path,
+                original_path: row
+                    .try_get::<&str, _>("original_path")
+                    .unwrap_or_default()
+                    .to_string(),
+                hls_path: row.try_get::<&str, _>("hls_path").unwrap_or_default().to_string(),
+                dash_path: row.try_get::<&str, _>("dash_path").unwrap_or_default().to_string(),
                 qualities,
-                thumbnail_path: row.thumbnail_path,
-                duration_seconds: row.duration_seconds,
-                file_size_mb: row.file_size_mb,
-                created_at: row.created_at,
+                thumbnail_path: row
+                    .try_get::<&str, _>("thumbnail_path")
+                    .unwrap_or_default()
+                    .to_string(),
+                duration_seconds: row.try_get("duration_seconds").unwrap_or(0.0) as i32,
+                file_size_mb: row.try_get("file_size_mb").unwrap_or(0.0),
+                created_at: row.try_get("created_at").unwrap_or_else(|_| chrono::Utc::now()),
             }))
         } else {
             Ok(None)

@@ -30,16 +30,44 @@ export const useDeepLinkRedirect = () => {
             return;
         }
 
-        // ✅ MODIFIÉ: NE PAS rediriger automatiquement les partenaires vers leur écran spécialisé
-        // Les partenaires doivent accéder à HomeScreen et utiliser le bouton "Mes Services" pour la gestion
+        // ✅ RÉACTIVÉ: Rediriger automatiquement les partenaires vers leur écran spécialisé
         const handlePartnerRedirect = () => {
-            // ✅ DÉSACTIVÉ: Plus de redirection automatique pour les partenaires
-            // Les partenaires restent sur HomeScreen et utilisent "Mes Services" dans la TabBar
-            if (user?.role === 'partenaire') {
-                console.log(`[useDeepLinkRedirect] 🏢 Partenaire identifié: type="${user.partner_type}" - Pas de redirection automatique`);
-                console.log('[useDeepLinkRedirect] ℹ️ Le partenaire accède à HomeScreen et utilise "Mes Services" pour la gestion');
-                return; // Ne faire aucune redirection
+            if (user?.role === 'partenaire' && user.partner_type) {
+                console.log(`[useDeepLinkRedirect] 🏢 Partenaire identifié: type="${user.partner_type}" - Redirection vers écran spécialisé`);
+
+                // Mapping des types de partenaires vers leurs écrans spécialisés
+                const partnerTypeToScreen: Record<string, string> = {
+                    'pharmacie': 'GestionServicesSpecialises',
+                    'hopital': 'GestionServicesSpecialises',
+                    'laboratoire': 'GestionServicesSpecialises',
+                    'agence_voyage': 'GestionServicesSpecialises',
+                    'covoiturage': 'GestionServicesSpecialises',
+                    'taxi': 'GestionServicesSpecialises',
+                    'hotel': 'ImmobilierForm',
+                    'meuble': 'ImmobilierForm',
+                    'chauffeur': 'TaxiForm',
+                    'supermarche': 'SupermarketHome',
+                    'livraison_courses_marche': 'MesServicesSpecialises',
+                    // Types génériques vers MesServicesSpecialises
+                    'restaurant': 'MesServicesSpecialises',
+                    'ecommerce': 'MesServicesSpecialises',
+                    'prestataire': 'MesServicesSpecialises',
+                    'service': 'MesServicesSpecialises',
+                };
+
+                const targetScreen = partnerTypeToScreen[user.partner_type];
+
+                if (targetScreen) {
+                    console.log(`[useDeepLinkRedirect] � Redirection partenaire ${user.partner_type} → ${targetScreen}`);
+                    navNavigate(targetScreen as any);
+                    return true; // Redirection effectuée
+                } else {
+                    console.warn(`[useDeepLinkRedirect] ⚠️ Type partenaire non mappé: ${user.partner_type}, redirection vers MesServicesSpecialises`);
+                    navNavigate('MesServicesSpecialises' as any);
+                    return true;
+                }
             }
+            return false; // Pas de redirection nécessaire
         };
 
         // Vérifier s'il y a un deep link en attente seulement si l'utilisateur vient de se connecter
@@ -50,13 +78,19 @@ export const useDeepLinkRedirect = () => {
                     if (redirected) {
                         console.log('✅ Redirection vers deep link en attente effectuée');
                     } else {
-                        // ✅ NOUVEAU: Si pas de deep link, vérifier si c'est un partenaire à rediriger
-                        handlePartnerRedirect();
+                        // ✅ Si pas de deep link, vérifier si c'est un partenaire à rediriger
+                        const partnerRedirected = handlePartnerRedirect();
+                        if (!partnerRedirected) {
+                            console.log('[useDeepLinkRedirect] ℹ️ Utilisateur connecté, pas de deep link ni redirection partenaire nécessaire');
+                        }
                     }
                 } catch (error) {
                     console.error('❌ Erreur redirection deep link:', error);
-                    // ✅ NOUVEAU: En cas d'erreur, essayer quand même la redirection partenaire
-                    handlePartnerRedirect();
+                    // ✅ En cas d'erreur, essayer quand même la redirection partenaire
+                    const partnerRedirected = handlePartnerRedirect();
+                    if (!partnerRedirected) {
+                        console.log('[useDeepLinkRedirect] ⚠️ Erreur deep link et pas de redirection partenaire possible');
+                    }
                 }
             };
 

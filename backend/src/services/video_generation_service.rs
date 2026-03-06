@@ -82,7 +82,7 @@ async fn create_media_entry_for_ai_video(
 ) -> AppResult<i32> {
     let media_type = "video";
 
-    let result = sqlx::query!(
+    let result: sqlx::postgres::PgRow = sqlx::query(
         r#"
         INSERT INTO media (
             service_id, 
@@ -95,23 +95,25 @@ async fn create_media_entry_for_ai_video(
         ) VALUES ($1, $2, $3, $4, $5, $6, NOW())
         RETURNING id
         "#,
-        service_id,
-        product_index,
-        video_url,
-        media_type,
-        media_type,
+    )
+    .bind(service_id)
+    .bind(product_index)
+    .bind(video_url)
+    .bind(media_type)
+    .bind(media_type)
+    .bind(
         serde_json::json!({
             "type": "ai_generated_video",
             "product_name": product_name,
             "progress_steps": progress_steps
         })
-        .to_string()
+        .to_string(),
     )
     .fetch_one(pg)
     .await
     .map_err(|e| AppError::Database(format!("Failed to create media entry for AI video: {}", e)))?;
 
-    Ok(result.id)
+    Ok(result.get("id"))
 }
 
 /// Select a curated audio track based on mode and hint

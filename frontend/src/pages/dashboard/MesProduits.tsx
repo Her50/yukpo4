@@ -5,11 +5,13 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/buttons/Button';
 import { Card, CardContent } from '@/components/ui/card';
+import { useUser } from '@/hooks/useUser';
+import { ROUTES } from '@/routes/AppRoutesRegistry';
+import { productsService } from '@/services/productsService';
 import {
     Edit2,
     Eye,
     Filter,
-    Package,
     Plus,
     RefreshCw,
     Share2,
@@ -21,9 +23,6 @@ import {
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { ROUTES } from '@/routes/AppRoutesRegistry';
-import { productsService } from '@/services/productsService';
-import { useUser } from '@/hooks/useUser';
 
 interface Product {
     id: string;
@@ -67,10 +66,10 @@ const MesProduits: React.FC = () => {
 
             // ✅ PHASE 5: Charger les produits depuis l'API (plus de fallback JSONB)
             const allProducts: Product[] = [];
-            
+
             // Utiliser l'endpoint API pour récupérer tous les produits de l'utilisateur
             const products = await productsService.getProductsByUser(user.id);
-            
+
             products.forEach((product) => {
                 allProducts.push({
                     ...product.product_data,
@@ -81,7 +80,7 @@ const MesProduits: React.FC = () => {
                     createdAt: product.created_at
                 });
             });
-            
+
             console.log('[MesProduits] ✅ Produits chargés depuis API:', allProducts.length);
 
             // Trier par date
@@ -228,8 +227,7 @@ const MesProduits: React.FC = () => {
                     <div className="flex items-center justify-between">
                         <div>
                             <h1 className="text-3xl font-bold flex items-center gap-2">
-                                <Package className="w-8 h-8" />
-                                Mes Produits
+                                📦 Mes Produits
                             </h1>
                             <p className="mt-2 text-blue-100">
                                 {products.length} produit{products.length > 1 ? 's' : ''}
@@ -281,7 +279,7 @@ const MesProduits: React.FC = () => {
                 {filteredProducts.length === 0 ? (
                     <Card>
                         <CardContent className="flex flex-col items-center justify-center py-16">
-                            <Package className="w-16 h-16 text-gray-400 mb-4" />
+                            <div className="text-6xl mb-4">📦</div>
                             <h3 className="text-xl font-semibold text-gray-900 mb-2">
                                 Aucun produit
                             </h3>

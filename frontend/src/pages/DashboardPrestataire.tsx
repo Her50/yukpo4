@@ -375,7 +375,7 @@ const DashboardPrestataire: React.FC = () => {
             {/* Analytics détaillées */}
             <Button
               onClick={() => window.location.href = '/provider/analytics'}
-              className="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02] h-16 group"
+              className="bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02] h-16 group"
             >
               <div className="flex flex-col items-center gap-2">
                 <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center group-hover:bg-white/30 transition-colors">
@@ -383,7 +383,7 @@ const DashboardPrestataire: React.FC = () => {
                 </div>
                 <div className="text-center">
                   <span className="font-semibold text-sm">Analytics</span>
-                  <span className="text-xs text-purple-100 block mt-1">Statistiques</span>
+                  <span className="text-xs text-indigo-100 block mt-1">Statistiques détaillées</span>
                 </div>
               </div>
             </Button>

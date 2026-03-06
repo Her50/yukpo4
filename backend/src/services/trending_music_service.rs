@@ -625,7 +625,7 @@ impl TrendingMusicService {
     /// Récupère une boucle curée basée sur le mode et hint
     pub async fn get_curated_loop(
         &self,
-        mode: Option<&str>,
+        _mode: Option<&str>,
         _hint: Option<&str>,
     ) -> Option<audio_library_service::CuratedAudioLoop> {
         // Since CuratedAudioLoop expects &'static str, we need to use a different approach
@@ -647,13 +647,13 @@ impl TrendingMusicService {
 
         // Calculer les métadonnées
         let track_count = track_ids.len() as i32;
-        let total_duration: i32 = sqlx::query_scalar!(
+        let total_duration: i32 = sqlx::query_scalar(
             "SELECT COALESCE(SUM(duration_seconds), 0) FROM music_tracks WHERE id = ANY($1)",
         )
         .bind(&track_ids)
         .fetch_one(self.pool.as_ref())
         .await
-        .map_err(|e| {
+        .map_err(|e: sqlx::Error| {
             error!("[TrendingMusic] Erreur calcul durée playlist: {}", e);
             AppError::Database(e.to_string())
         })?;

@@ -981,25 +981,31 @@ const DeliveryShoppingFlow = () => {
 // ⚠️ IMPORTANT: Les hooks doivent être appelés inconditionnellement (pas dans try-catch)
 // ✅ SIMPLIFICATION: Ne pas utiliser useNavigation() directement ici, laisser useDeepLinkRedirect gérer
 const MainStackWithDeepLinks = (props: any) => {
-  // ✅ MODIFIÉ: Désactiver la redirection automatique des partenaires
-  // Les partenaires accèdent directement à HomeScreen sans redirection
+  // ✅ RÉACTIVÉ: Gérer la redirection automatique des partenaires
   const [partnerRedirectPending, setPartnerRedirectPending] = React.useState(false);
 
   useDeepLinkRedirect();
 
-  // ✅ DÉSACTIVÉ: Plus de délai de redirection pour les partenaires
+  // ✅ RÉACTIVÉ: Afficher un indicateur de chargement pendant la redirection partenaire
   React.useEffect(() => {
-    // Ne plus gérer partnerRedirectPending car les partenaires ne sont plus redirigés
-    return undefined;
-  }, []);
+    if (user?.role === 'partenaire' && user.partner_type) {
+      console.log('[AppNavigator] 🏢 Partenaire détecté, redirection gérée par useDeepLinkRedirect');
+      setPartnerRedirectPending(true);
+      // Masquer l'indicateur après un court délai pour éviter un flash permanent
+      const timer = setTimeout(() => setPartnerRedirectPending(false), 300);
+      return () => clearTimeout(timer);
+    } else {
+      setPartnerRedirectPending(false);
+    }
+  }, [user?.role, user?.partner_type]);
 
-  // ✅ DÉSACTIVÉ: Plus d'écran de chargement pour les partenaires
-  if (false && partnerRedirectPending) {
+  // ✅ RÉACTIVÉ: Afficher un indicateur de chargement pendant la redirection partenaire
+  if (partnerRedirectPending) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFFFFF' }}>
         <ActivityIndicator size="large" color={modernColors.primary} />
         <Text style={{ marginTop: 12, fontSize: 15, color: modernColors.textSecondary, fontWeight: '500' }}>
-          Préparation de votre espace...
+          Préparation de votre espace partenaire...
         </Text>
       </View>
     );
@@ -2015,7 +2021,7 @@ const AppNavigator: React.FC = () => {
   }
 
   // ✅ Si connecté: Charger TOUS les providers nécessaires
-  // La redirection des partenaires vers leur écran spécialisé est gérée par useDeepLinkRedirect dans MainStackWithDeepLinks
+  // La redirection des partenaires vers leur écran spécialisé est RÉACTIVÉE via useDeepLinkRedirect dans MainStackWithDeepLinks
   console.log('[AppNavigator] 👤 Mode Connecté - Chargement des providers');
   return <AuthenticatedApp />;
 };

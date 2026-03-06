@@ -624,12 +624,6 @@ const MesServices = () => {
                 📦 Mes Produits
               </Button>
               <Button
-                onClick={() => navigate('/creer-publicite')}
-                className="bg-yellow-600 hover:bg-yellow-700 text-white px-6 py-3 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
-              >
-                ⚡ Créer une publicité
-              </Button>
-              <Button
                 onClick={() => navigate('/dashboard-publicite')}
                 className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
               >
