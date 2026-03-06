@@ -397,10 +397,10 @@ async fn get_routes(
                         .iter()
                         .filter_map(|m| m.as_str())
                         .map(|s| match s {
-                            "DRIVING" => "voiture",
-                            "WALKING" => "à pied",
-                            "BICYCLING" => "vélo",
-                            "TRANSIT" => "transport en commun",
+                            "DRIVING" => "voiture".to_string(),
+                            "WALKING" => "à pied".to_string(),
+                            "BICYCLING" => "vélo".to_string(),
+                            "TRANSIT" => "transport en commun".to_string(),
                             _ => s.to_lowercase(),
                         })
                         .collect();

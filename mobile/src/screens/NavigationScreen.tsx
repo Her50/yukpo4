@@ -1163,21 +1163,7 @@ const NavigationScreen: React.FC = () => {
                     showsVerticalScrollIndicator={true}
                     scrollEnabled={!isHorizontalScrolling}
                     keyboardShouldPersistTaps="handled"
-        <SafeNativeView style={styles.container}>
-                    <KeyboardAvoidingView
-                        style={styles.keyboardContainer}
-                        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                        keyboardVerticalOffset={KEYBOARD_OFFSET}
-                    >
-                        <ScrollView
-                            ref={scrollViewRef}
-                            style={styles.scrollView}
-                            contentContainerStyle={dynamicStyles.scrollContentDynamic}
-                            nestedScrollEnabled={true}
-                            showsVerticalScrollIndicator={true}
-                            scrollEnabled={!isHorizontalScrolling}
-                            keyboardShouldPersistTaps="handled"
-                        >
+                >
                             {/* ━━ Header avec icône ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
                             <View style={styles.header}>
                                 <View style={styles.headerLeft}>
@@ -1213,9 +1199,8 @@ const NavigationScreen: React.FC = () => {
                                     </View>
                                 </View>
                             )}
-                        </View>
 
-                        {loadingActivity ? (
+                            {loadingActivity ? (
                             <NativeCard style={styles.statsCard}><ActivityIndicator size="small" color={modernColors.primary} /></NativeCard>
                         ) : activitySummary?.summary ? (
                             <>
