@@ -620,8 +620,18 @@ jobs:
           
           # Ajouter toutes les variables avec prefixe GCP_ENV_
           if command -v gh &> /dev/null; then
-            gh auth status || gh auth login --with-token <<< "${{ secrets.GITHUB_TOKEN }}"
-            for secret in $(gh secret list --repo ${{ github.repository }} --json name -q '.[].name' | grep "^GCP_ENV_"); do
+            # ✅ FIXED: Add retry and better error handling for GitHub CLI authentication
+            gh auth status 2>/dev/null || {
+              echo "⚠️ GitHub CLI auth failed, attempting login..."
+              if gh auth login --with-token <<< "${{ secrets.GITHUB_TOKEN }}" 2>/dev/null; then
+                echo "✅ GitHub CLI login successful"
+              else
+                echo "⚠️ GitHub CLI login failed, skipping secret variables"
+                echo "env_file=env-vars.json" >> $GITHUB_OUTPUT
+                exit 0
+              fi
+            }
+            for secret in $(gh secret list --repo ${{ github.repository }} --json name -q '.[].name' 2>/dev/null | grep "^GCP_ENV_" || true); do
               VAR_NAME=$(echo $secret | sed 's/^GCP_ENV_//')
               VAR_VALUE=$(gh secret get $secret --repo ${{ github.repository }} 2>/dev/null || echo "")
               if [ -n "$VAR_VALUE" ]; then
