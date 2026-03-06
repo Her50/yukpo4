@@ -94,15 +94,15 @@ export const KeyboardAwareScreen: React.FC<KeyboardAwareScreenProps> = ({
       ref={innerRef}
       style={[styles.scrollView, style]}
       contentContainerStyle={[styles.contentContainer, contentContainerStyle]}
-      // ✅ CORRIGÉ 2026-02-10: Configuration optimisée pour que l'écran monte au lieu que le clavier masque
+      // ✅ CORRIGÉ 2026-03-06: Configuration optimisée pour les formulaires avec variations de prix
       enableOnAndroid={true}
       // ✅ CORRIGÉ: Activer le scroll automatique pour que l'écran monte avec le clavier
       enableAutomaticScroll={true}
       // ✅ CORRIGÉ: Augmenter les valeurs pour que l'écran monte suffisamment au-dessus du clavier
       // extraHeight: espace supplémentaire au-dessus du clavier (Android)
-      extraHeight={Platform.OS === 'android' ? 200 : 0} // ✅ AUGMENTÉ: 200px pour Android pour que l'écran monte suffisamment
+      extraHeight={Platform.OS === 'android' ? 250 : 0} // ✅ AUGMENTÉ: 250px pour Android pour les formulaires complexes
       // extraScrollHeight: espace supplémentaire pour le scroll (iOS)
-      extraScrollHeight={Platform.OS === 'ios' ? Math.max(extraScrollHeight, 150) : 0} // ✅ AUGMENTÉ: Minimum 150px pour iOS
+      extraScrollHeight={Platform.OS === 'ios' ? Math.max(extraScrollHeight, 200) : 0} // ✅ AUGMENTÉ: Minimum 200px pour iOS
       // ✅ Configuration iOS
       enableResetScrollToCoords={false}
       keyboardOpeningTime={0}
@@ -118,12 +118,6 @@ export const KeyboardAwareScreen: React.FC<KeyboardAwareScreenProps> = ({
       // ✅ CORRIGÉ: Désactiver scrollToOverflowEnabled pour éviter le scroll excessif
       viewIsInsideTabBar={false}
       scrollToOverflowEnabled={false}
-      // ✅ NOUVEAU: Activer le scroll vers le champ actif
-      enableResetKeyboardOnBlur={false}
-      // ✅ CORRECTION CRITIQUE: S'assurer que le clavier peut s'afficher
-      keyboardOpeningTime={0}
-      // ✅ CORRIGÉ: Ne pas forcer le scroll à revenir en haut, laisser le composant gérer automatiquement
-      enableResetScrollToCoords={false}
     >
       {children}
     </KeyboardAwareScrollView>
@@ -139,8 +133,8 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     flexGrow: 1,
-    // ✅ CORRIGÉ 2026-02-10: Augmenter le paddingBottom pour que l'écran monte suffisamment au-dessus du clavier
-    paddingBottom: Platform.OS === 'android' ? 250 : 200, // ✅ AUGMENTÉ: 250px pour Android, 200px pour iOS pour que l'écran monte au-dessus du clavier
+    // ✅ CORRIGÉ 2026-03-06: Padding augmenté pour les formulaires avec variations de prix
+    paddingBottom: Platform.OS === 'android' ? 300 : 250, // ✅ AUGMENTÉ: 300px pour Android, 250px pour iOS pour les formulaires complexes
   },
 });
 

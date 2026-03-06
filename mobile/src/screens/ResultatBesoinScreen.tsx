@@ -1,11 +1,13 @@
 ﻿// @ts-nocheck
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { Video } from 'expo-av';
 import React, { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
+    FlatList,
     Linking,
-    ScrollView,
+    RefreshControl,
     Share,
     StyleSheet,
     Text,
@@ -80,7 +82,10 @@ const ResultatBesoinScreen: React.FC = () => {
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [prestataires, setPrestataires] = useState<Map<string, Prestataire>>(new Map());
-    const prestatairesRef = useRef<Map<string, Prestataire>>(new Map()); // ✅ NOUVEAU: Ref pour mémoriser la Map
+    // ✅ CORRIGÉ 2026-03-06: Ref pour suivre les vidéos actives et les arrêter proprement
+    const activeVideoRefs = useRef<Map<string, Video>>(new Map());
+    const isScrollingRef = useRef(false);
+    const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [prestatairesLoaded, setPrestatairesLoaded] = useState(false);
     const [showChatModal, setShowChatModal] = useState(false);
     const [showGalleryModal, setShowGalleryModal] = useState(false);
@@ -243,6 +248,20 @@ const ResultatBesoinScreen: React.FC = () => {
             score += 40; // Bonus élevé si TOUS les mots significatifs correspondent
         } else if (matchingWords.length >= Math.ceil(queryWords.length / 2)) {
             score += 15; // Bonus partiel si au moins la moitié correspond
+        }
+
+        // ✅ CORRIGÉ 2026-03-06: Ajouter un score minimal pour les produits avec données de base
+        // Évite que le premier produit créé (avec données parfois incomplètes) soit filtré out
+        if (score === 0) {
+            // Vérifier si le produit a des données de base minimales
+            const hasBasicData = productData.id || productData.product_id ||
+                Array.isArray(productData.images) && productData.images.length > 0 ||
+                Array.isArray(productData.videos) && productData.videos.length > 0;
+
+            if (hasBasicData) {
+                score = 1; // Score minimal pour éviter d'être filtré complètement
+                if (__DEV__) console.log('[ResultatBesoinScreen] ⚠️ Score minimal appliqué pour produit avec données de base mais pas de texte:', { id: productData.id, hasImages: Array.isArray(productData.images) && productData.images.length > 0 });
+            }
         }
 
         return score;
@@ -883,11 +902,48 @@ const ResultatBesoinScreen: React.FC = () => {
                         // (ex: "jus de fruit" quand on cherche "beignets")
                         let filteredServiceProduits = serviceProduits;
                         if (searchQuery) {
-                            const scoredProducts = serviceProduits.map((p: any) => ({
-                                product: p,
-                                relevanceScore: calculateProductRelevanceScore(p, searchQuery),
-                            }));
+                            const scoredProducts = serviceProduits.map((p: any) => {
+                                const score = calculateProductRelevanceScore(p, searchQuery);
+                                // ✅ DEBUG 2026-03-06: Logger les détails du premier produit pour diagnostiquer
+                                if (__DEV__ && (p.product_index === 0 || score === 0)) {
+                                    const productData = p.product_data || p;
+                                    console.log(`🔍 [ResultatBesoinScreen] DEBUG Score produit (index=${p.product_index}):`, {
+                                        score,
+                                        nom_produit: productData.nom_produit,
+                                        product_name: productData.product_name,
+                                        nom: productData.nom,
+                                        name: productData.name,
+                                        description: productData.description_produit || productData.description,
+                                        hasImages: Array.isArray(productData.images) && productData.images.length > 0,
+                                        imagesCount: Array.isArray(productData.images) ? productData.images.length : 0,
+                                        id: productData.id,
+                                        product_id: productData.product_id,
+                                    });
+                                }
+                                return {
+                                    product: p,
+                                    relevanceScore: score,
+                                };
+                            });
                             const relevant = scoredProducts.filter((sp: any) => sp.relevanceScore > 0);
+
+                            // ✅ DEBUG 2026-03-06: Logger les produits filtrés pour voir si le premier est éliminé
+                            if (__DEV__) {
+                                const firstProduct = serviceProduits.find(p => p.product_index === 0);
+                                const firstProductScore = firstProduct ? scoredProducts.find(sp => sp.product === firstProduct)?.relevanceScore : null;
+
+                                console.log(`🎯 [ResultatBesoinScreen] Service ${service.id}: Filtrage recherche "${searchQuery}"`, {
+                                    totalProducts: serviceProduits.length,
+                                    relevantCount: relevant.length,
+                                    firstProductScore,
+                                    firstProductFilteredOut: firstProductScore === 0,
+                                    filteredProducts: relevant.map(sp => ({
+                                        index: sp.product.product_index,
+                                        score: sp.relevanceScore,
+                                        nom: getProductName(sp.product.product_data || sp.product)
+                                    }))
+                                });
+                            }
                             if (relevant.length > 0) {
                                 // ✅ CORRIGÉ 2026-03-05: Trier par score de pertinence DÉCROISSANT
                                 // Avant: les produits gardaient l'ordre d'insertion API (ex: "salle à manger" avant "beignets")
@@ -1410,6 +1466,51 @@ const ResultatBesoinScreen: React.FC = () => {
             }
         };
     }, [initialResults?.length]); // ✅ CORRECTION: Dépendre seulement de la longueur, pas de l'objet complet
+
+    // ✅ CORRIGÉ 2026-03-06: Fonction pour arrêter toutes les vidéos actuelles
+    const stopAllVideos = useCallback(() => {
+        activeVideoRefs.current.forEach((videoRef, key) => {
+            if (videoRef) {
+                videoRef.pauseAsync().catch(() => {
+                    console.log(`[ResultatBesoinScreen] Vidéo ${key} déjà arrêtée ou inaccessible`);
+                });
+            }
+        });
+        activeVideoRefs.current.clear();
+    }, []);
+
+    // ✅ CORRIGÉ 2026-03-06: Gestion du scroll pour arrêter les vidéos
+    const handleScrollBegin = useCallback(() => {
+        isScrollingRef.current = true;
+        stopAllVideos();
+
+        // Annuler le timeout précédent
+        if (scrollTimeoutRef.current) {
+            clearTimeout(scrollTimeoutRef.current);
+        }
+    }, [stopAllVideos]);
+
+    const handleScrollEnd = useCallback(() => {
+        isScrollingRef.current = false;
+
+        // Marquer la fin du scroll après un délai
+        scrollTimeoutRef.current = setTimeout(() => {
+            isScrollingRef.current = false;
+        }, 500);
+    }, []);
+
+    // ✅ CORRIGÉ 2026-03-06: Nettoyer les timeouts et vidéos au démontage
+    useEffect(() => {
+        return () => {
+            if (updateTimeoutRef.current) {
+                clearTimeout(updateTimeoutRef.current);
+            }
+            if (scrollTimeoutRef.current) {
+                clearTimeout(scrollTimeoutRef.current);
+            }
+            stopAllVideos();
+        };
+    }, [stopAllVideos]);
 
     // ✅ CORRECTION: Gestionnaires pour les services
     const handleContactPress = (service: Service) => {
@@ -2035,12 +2136,13 @@ const ResultatBesoinScreen: React.FC = () => {
         const serviceId = product._serviceId || service?.id || 'unknown';
 
         return (
-            <ProductCard
+            <MemoizedProductCard
                 key={`product-${serviceId}-${productName}`}
                 product={product}
                 service={service}
                 prestataire={prestataire}
                 userLocation={userLocationMemo}
+                isScrolling={isScrollingRef.current}
                 onPress={() => {
                     // ✅ CORRIGÉ 2026-02-25: Naviguer vers la boutique du prestataire pour afficher TOUS ses produits
                     if (service?.user_id) {
@@ -2097,12 +2199,13 @@ const ResultatBesoinScreen: React.FC = () => {
         };
 
         return (
-            <ProductCard
+            <MemoizedProductCard
                 key={`service-${service.id}`}
                 product={serviceAsProduct}
                 service={service}
                 prestataire={prestataire}
                 userLocation={userLocationMemo}
+                isScrolling={isScrollingRef.current}
                 onPress={() => {
                     // ✅ CORRIGÉ 2026-02-25: Naviguer vers la boutique du prestataire pour afficher TOUS ses produits
                     if (service?.user_id) {
@@ -2155,56 +2258,24 @@ const ResultatBesoinScreen: React.FC = () => {
         return item.key || `item-${index}`;
     }, []);
 
-    // ✅ CORRECTION 2025-01-02: Composant mémorisé pour éviter les re-renders inutiles
-    const ServiceCardComponent = React.memo(({ service }: { service: Service }) => {
-        // ✅ Utiliser ref pour éviter les re-renders lors des changements de prestataires
-        // Note: Utilisation directe de prestatairesRef.current car React.memo isole le composant
-        const prestataire = prestatairesRef.current.get(service.user_id);
-        const isOnline = prestataire?.isOnline || false;
-        const lastSeen = prestataire?.lastSeen ? new Date(prestataire.lastSeen) : null;
-
-        // Normaliser le service pour notre nouveau composant
-        const normalizedService = {
-            ...service,
-            prestataire: prestataire ? {
-                id: prestataire.userId,
-                nom: prestataire.name || prestataire.nom || prestataire.nom_complet || 'Prestataire',
-                email: prestataire.email || '',
-                avatar: prestataire.avatar
-            } : service.prestataire,
-            // Ajouter des statistiques par défaut si manquantes
-            views: service.views || 0,
-            likes: service.likes || 0,
-            comments: service.comments || 0,
-            isNew: service.isNew || false
-        };
-
+    // ✅ CORRIGÉ 2026-03-06: Composants optimisés avec React.memo
+    const MemoizedProductCard = React.memo(ProductCard, (prevProps, nextProps) => {
         return (
-            <UltraModernServiceCard
-                service={normalizedService}
-                prestataireInfo={prestataire}
-                user={user}
-                onPress={() => handleServiceClick(service.id)}
-                onContact={handleContact}
-                onShare={(service) => {
-                    Alert.alert('Partage', `Partager le service: ${service.titre}`);
-                }}
-                onFavorite={(service) => {
-                    Alert.alert('Favoris', `Service ${service.titre} ajouté aux favoris`);
-                }}
-                onGallery={(service) => {
-                    Alert.alert('Galerie', 'Ouverture de la galerie du service');
-                }}
-                onReview={(service) => {
-                    Alert.alert('Avis', 'Ouverture du formulaire d\'avis');
-                }}
-            />
+            prevProps.product?.id === nextProps.product?.id &&
+            prevProps.product?.product_id === nextProps.product?.product_id &&
+            prevProps.service?.id === nextProps.service?.id &&
+            prevProps.isScrolling === nextProps.isScrolling &&
+            prevProps.userLocation?.latitude === nextProps.userLocation?.latitude &&
+            prevProps.userLocation?.longitude === nextProps.userLocation?.longitude
         );
-    }, (prevProps, nextProps) => {
-        // ✅ Comparaison personnalisée pour éviter les re-renders inutiles
-        return prevProps.service.id === nextProps.service.id &&
-            prevProps.service.score === nextProps.service.score &&
-            prevProps.service.distance === nextProps.service.distance;
+    });
+
+    const MemoizedServiceCard = React.memo(UltraModernServiceCard, (prevProps, nextProps) => {
+        return (
+            prevProps.service?.id === nextProps.service?.id &&
+            prevProps.service?.score === nextProps.service?.score &&
+            prevProps.service?.distance === nextProps.service?.distance
+        );
     });
 
     if (loading) {
@@ -2480,19 +2551,42 @@ const ResultatBesoinScreen: React.FC = () => {
                             initialFilters={categoryFilters}
                         />
 
-                        {/* ✅ CORRIGÉ 2026-02-25: Remplacer FlatList par .map() car FlatList dans un ScrollView
-                            (KeyboardAwareScreen) cause un conflit de gestes tactiles qui verrouille l'écran.
-                            Les boutons de ProductCard deviennent inactionnables car le ScrollView parent
-                            capture tous les événements tactiles avant le FlatList interne.
-                            Solution: .map() simple dans le ScrollView parent (données déjà en mémoire). */}
+                        {/* ✅ CORRIGÉ 2026-03-06: FlatList optimisée avec gestion des vidéos */}
                         {allResults.length > 0 ? (
-                            <View style={[styles.servicesContainer, styles.servicesContainerContent]}>
-                                {allResults.map((item) => (
-                                    <View key={item.key}>
-                                        {renderListItem({ item })}
-                                    </View>
-                                ))}
-                            </View>
+                            <FlatList
+                                data={allResults}
+                                renderItem={renderListItem}
+                                keyExtractor={keyExtractor}
+                                contentContainerStyle={styles.servicesContainer}
+                                showsVerticalScrollIndicator={false}
+                                onScrollBeginDrag={handleScrollBegin}
+                                onScrollEndDrag={handleScrollEnd}
+                                onMomentumScrollBegin={handleScrollBegin}
+                                onMomentumScrollEnd={handleScrollEnd}
+                                removeClippedSubviews={true}
+                                maxToRenderPerBatch={10}
+                                updateCellsBatchingPeriod={50}
+                                initialNumToRender={5}
+                                windowSize={10}
+                                getItemLayout={(data, index) => ({
+                                    length: 300, // Hauteur approximative d'une ProductCard
+                                    offset: 300 * index,
+                                    index,
+                                })}
+                                refreshControl={
+                                    <RefreshControl
+                                        refreshing={refreshing}
+                                        onRefresh={() => {
+                                            setRefreshing(true);
+                                            // Recharger les données
+                                            setTimeout(() => {
+                                                setRefreshing(false);
+                                            }, 1000);
+                                        }}
+                                        colors={[theme.colors.primary]}
+                                    />
+                                }
+                            />
                         ) : (
                             <View style={styles.emptyState}>
                                 <SafeIcon name="package" size={48} color="#D1D5DB" />
@@ -2545,6 +2639,8 @@ const styles = StyleSheet.create({
     },
     scrollContent: {
         flexGrow: 1,
+        paddingTop: 0, // ✅ RÉDUIT: Éliminer l'espacement excessif en haut
+        paddingBottom: 20,
     },
     loadingContainer: {
         flex: 1,
@@ -2576,9 +2672,10 @@ const styles = StyleSheet.create({
         color: theme.colors.primary,
     },
     searchContainer: {
-        paddingHorizontal: 16, // ✅ RÉDUIT: De padding: 16 à paddingHorizontal: 16
-        paddingVertical: 8, // ✅ AJOUTÉ: paddingVertical explicite et réduit
+        paddingHorizontal: 16,
+        paddingVertical: 4, // ✅ RÉDUIT: De 8 à 4 pour compacter l'espacement vertical
         backgroundColor: 'white',
+        marginBottom: 8, // ✅ AJOUTÉ: Margin bottom explicite et réduit
         borderBottomWidth: 1,
         borderBottomColor: theme.colors.border,
     },
@@ -2964,8 +3061,8 @@ const styles = StyleSheet.create({
     modernFiltersContainer: {
         backgroundColor: '#FFFFFF',
         marginHorizontal: 16,
-        marginTop: 4, // ✅ RÉDUIT: De 12 à 4 pour éliminer le vide excessif en haut
-        marginBottom: 8, // ✅ RÉDUIT: De 12 à 8 pour compacter l'espacement
+        marginTop: 0, // ✅ RÉDUIT: De 4 à 0 pour éliminer complètement le vide excessif en haut
+        marginBottom: 8, // ✅ RÉDUIT: De 8 à 8 inchangé
         borderRadius: 16,
         padding: 16,
         shadowColor: '#000',

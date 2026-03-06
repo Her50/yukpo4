@@ -55,6 +55,8 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
     const [isValidating, setIsValidating] = useState(false);
     const [isValidated, setIsValidated] = useState(false);
     const [validatedRowsSnapshot, setValidatedRowsSnapshot] = useState<SubCharacteristicRow[]>([]); // ✅ NOUVEAU: Snapshot des lignes validées
+    const [isSaving, setIsSaving] = useState(false); // ✅ NOUVEAU: État pour le feedback visuel de sauvegarde
+    const [lastSavedCount, setLastSavedCount] = useState(0); // ✅ NOUVEAU: Compteur pour le feedback
     const scrollViewRef = useRef<ScrollView>(null);
     const labelInputRef = useRef<TextInput>(null);
     const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -272,6 +274,8 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
     const saveEditing = () => {
         if (editingIndex === null) return;
 
+        setIsSaving(true); // ✅ NOUVEAU: Activer le feedback visuel
+
         const newRows = [...rows];
         if (editingIndex >= 0 && editingIndex < newRows.length) {
             newRows[editingIndex] = {
@@ -283,6 +287,19 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
         setEditingIndex(null);
         setEditingLabel('');
         setEditingValue('');
+
+        // ✅ NOUVEAU: Feedback visuel pour la modification
+        if (toaster) {
+            toaster.success('Modification enregistrée');
+        }
+
+        // ✅ NOUVEAU: Mettre à jour le compteur pour le feedback
+        setLastSavedCount(newRows.filter(row => row.label.trim() && row.value.trim()).length);
+
+        // ✅ NOUVEAU: Désactiver le feedback après un court délai
+        setTimeout(() => {
+            setIsSaving(false);
+        }, 1000);
 
         // ✅ NOUVEAU: Réactiver le bouton si on modifie après validation
         if (isValidated) {
@@ -308,6 +325,11 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
         const newRows = rows.filter((_, i) => i !== index);
         setRows(newRows);
 
+        // ✅ NOUVEAU: Feedback visuel pour la suppression
+        if (toaster) {
+            toaster.info('Ligne supprimée');
+        }
+
         // ✅ NOUVEAU: Réactiver le bouton si on supprime après validation
         if (isValidated) {
             setIsValidated(false);
@@ -329,6 +351,11 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
         setEditingIndex(newIndex);
         setEditingLabel('');
         setEditingValue('');
+
+        // ✅ NOUVEAU: Feedback visuel pour l'ajout
+        if (toaster) {
+            toaster.info('Nouvelle ligne ajoutée');
+        }
 
         // ✅ NOUVEAU: Réactiver le bouton si on ajoute après validation
         if (isValidated) {

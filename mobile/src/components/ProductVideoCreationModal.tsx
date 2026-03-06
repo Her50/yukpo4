@@ -14,8 +14,8 @@ import {
     View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { config } from '../config/environment';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 import { apiGet, iaApi, mediaApi } from '../services/api';
 import { uploadToCloud } from '../services/cloudUpload';
 import { studioService, type VideoDependency } from '../services/studioService';
@@ -4720,10 +4720,6 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         }
     };
 
-    // ✅ NOUVEAU: Fonction pour marquer une étape comme complétée
-    const markStepCompleted = useCallback((stepNum: ModalStep) => {
-        setCompletedSteps((prev) => new Set([...prev, stepNum]));
-    }, []);
 
     // ✅ NOUVEAU: Validation avant navigation vers étape suivante
     const validateStepCompletion = useCallback((stepNum: ModalStep): { canProceed: boolean; error?: string } => {

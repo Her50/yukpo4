@@ -1,0 +1,12 @@
+# ✅ Configuration WhatsApp Business - Réutilisation secrets Twilio existants
+WHATSAPP_ENABLED=true
+WHATSAPP_PROVIDER=twilio
+# ✅ RÉUTILISER les mêmes secrets que le service SMS existant
+TWILIO_ACCOUNT_SID=twilio-account-sid
+TWILIO_AUTH_TOKEN=twilio-auth-token
+TWILIO_WHATSAPP_NUMBER=whatsapp:+237697490661
+WHATSAPP_WEBHOOK_URL=https://yukpo-backend-376093909298.europe-west1.run.app/api/whatsapp/webhook
+WHATSAPP_DEFAULT_GROUP_ID=yukpo_main
+
+# ✅ Note: Les secrets twilio-account-sid et twilio-auth-token 
+# devraient déjà exister dans GCP Secret Manager pour le service SMS

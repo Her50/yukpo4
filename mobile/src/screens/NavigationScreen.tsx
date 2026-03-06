@@ -16,7 +16,7 @@ import {
     View
 } from 'react-native';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE, Region } from 'react-native-maps';
-// ✅ FIX 2026-03-04: Remplacé KeyboardAwareScrollView par ScrollView simple
+// ✅ FIX 2026-03-06: Remplacé KeyboardAwareScrollView par ScrollView simple + nestedScrollEnabled
 // KeyboardAwareScrollView bloquait le scroll horizontal des cartes de routes
 import LocationSelector, { LocationObject } from '../components/LocationSelector';
 import { NativeCard } from '../components/NativeDesign';
@@ -262,7 +262,13 @@ const NavigationScreen: React.FC = () => {
     const [showMap, setShowMap] = useState(true);
     const [loadingCheckpoints, setLoadingCheckpoints] = useState(false);
     const [showAllSteps, setShowAllSteps] = useState(false);
+    const [showReportHelp, setShowReportHelp] = useState(false);
     const mapRef = useRef<MapView>(null);
+
+    // ✅ FIX 2026-03-06: Refs pour la gestion du scroll imbriqué
+    const scrollViewRef = useRef<ScrollView>(null);
+    const horizontalScrollRef = useRef<ScrollView>(null);
+    const [isHorizontalScrolling, setIsHorizontalScrolling] = useState(false);
 
     // ✅ FIX 2026-03-03: Ref pour éviter les closures obsolètes dans les callbacks asynchrones
     const searchRoutesRef = useRef<() => void>(() => { });
@@ -1116,542 +1122,582 @@ const NavigationScreen: React.FC = () => {
         accident: { label: 'Accident', icon: '🚨', color: '#F59E0B' },
         danger: { label: 'Danger', icon: '⚠️', color: '#EF4444' },
         road_works: { label: 'Travaux', icon: '🚧', color: '#F97316' },
-        speed_bump: { label: 'Ralentisseur', icon: '🔶', color: '#8B5CF6' },
     };
+}, []);
 
-    // ── Styles calculés pour le clavier ─────────────────────────────────────
-    const dynamicStyles = useMemo(() => ({
-        scrollContentDynamic: {
-            ...styles.scrollContent,
-            paddingBottom: isKeyboardVisible ? Math.max(100, keyboardHeight + 50) : 100
-        },
-        locationSelectorDynamic: {
-            ...styles.locationSelector,
-            maxHeight: isKeyboardVisible ? 200 : undefined // Limiter la hauteur quand le clavier est ouvert
-        }
-    }), [isKeyboardVisible, keyboardHeight]);
+// ── Labels checkpoint ──────────────────────────────────────────────────
+const CHECKPOINT_LABELS: Record<string, { label: string; icon: string; color: string }> = {
+    radar: { label: 'Radar', icon: '📸', color: '#EF4444' },
+    police: { label: 'Contrôle police', icon: '👮', color: '#3B82F6' },
+    accident: { label: 'Accident', icon: '🚨', color: '#F59E0B' },
+    danger: { label: 'Danger', icon: '⚠️', color: '#EF4444' },
+    road_works: { label: 'Travaux', icon: '🚧', color: '#F97316' },
+    speed_bump: { label: 'Ralentisseur', icon: '🔶', color: '#8B5CF6' },
+};
 
-    // ── Rendu ──────────────────────────────────────────────────────────────
-    return (
+// ── Styles calculés pour le clavier ─────────────────────────────────────
+const dynamicStyles = useMemo(() => ({
+    scrollContent: {
+        padding: 16,
+        paddingBottom: isKeyboardVisible && isLocationSelectorFocused ? Math.max(100, keyboardHeight + 100) : 100
+    },
+    locationSelectorDynamic: {
+        ...styles.locationSelector,
+        maxHeight: isKeyboardVisible && isLocationSelectorFocused ? Math.min(300, height - keyboardHeight - 200) : undefined,
+        zIndex: isKeyboardVisible && isLocationSelectorFocused ? 1000 : 1,
+        backgroundColor: isKeyboardVisible && isLocationSelectorFocused ? modernColors.surface : 'transparent',
+        borderRadius: isKeyboardVisible && isLocationSelectorFocused ? 12 : 0,
+        borderWidth: isKeyboardVisible && isLocationSelectorFocused ? 1 : 0,
+        borderColor: modernColors.border,
+        shadowColor: isKeyboardVisible && isLocationSelectorFocused ? '#000' : 'transparent',
+        shadowOffset: isKeyboardVisible && isLocationSelectorFocused ? { width: 0, height: 2 } : { width: 0, height: 0 },
+        shadowOpacity: isKeyboardVisible && isLocationSelectorFocused ? 0.1 : 0,
+        shadowRadius: isKeyboardVisible && isLocationSelectorFocused ? 4 : 0,
+        elevation: isKeyboardVisible && isLocationSelectorFocused ? 4 : 0
+    }
+}), [isKeyboardVisible, keyboardHeight]);
+
+// ── Rendu ──────────────────────────────────────────────────────────────
+return (
+    <SafeNativeView style={styles.container}>
+        <KeyboardAvoidingView
+            style={styles.keyboardContainer}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            keyboardVerticalOffset={KEYBOARD_OFFSET}
+        >
+            <ScrollView
+                ref={scrollViewRef}
+                style={styles.scrollView}
+                contentContainerStyle={dynamicStyles.scrollContent}
+                nestedScrollEnabled={true}
+                showsVerticalScrollIndicator={true}
+                scrollEnabled={!isHorizontalScrolling}
+                keyboardShouldPersistTaps="handled"
         <SafeNativeView style={styles.container}>
-            <KeyboardAvoidingView
-                style={styles.keyboardContainer}
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                keyboardVerticalOffset={KEYBOARD_OFFSET}
-            >
-                <ScrollView
-                    style={styles.scrollView}
-                    contentContainerStyle={dynamicStyles.scrollContentDynamic}
-                    keyboardShouldPersistTaps="handled"
-                    scrollEnabled={parentScrollEnabled}
-                    showsVerticalScrollIndicator={true}
-                    nestedScrollEnabled={true}
+                <KeyboardAvoidingView
+                    style={styles.keyboardContainer}
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    keyboardVerticalOffset={KEYBOARD_OFFSET}
                 >
-                    {/* ━━ Header avec icône ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-                    <View style={styles.header}>
-                        <View style={styles.headerLeft}>
-                            <View style={styles.headerIconWrap}>
-                                <SafeIcon name="Navigation" size={20} color="#FFFFFF" />
+                    <ScrollView
+                        ref={scrollViewRef}
+                        style={styles.scrollView}
+                        contentContainerStyle={dynamicStyles.scrollContentDynamic}
+                        nestedScrollEnabled={true}
+                        showsVerticalScrollIndicator={true}
+                        scrollEnabled={!isHorizontalScrolling}
+                        keyboardShouldPersistTaps="handled"
+                    >
+                        {/* ━━ Header avec icône ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+                        <View style={styles.header}>
+                            <View style={styles.headerLeft}>
+                                <View style={styles.headerIconWrap}>
+                                    <SafeIcon name="Navigation" size={20} color="#FFFFFF" />
+                                </View>
+                                <View>
+                                    <Text style={styles.title}>Navigation intelligente</Text>
+                                    <Text style={styles.subtitle}>Itinéraires optimisés en temps réel</Text>
+                                </View>
                             </View>
-                            <View>
-                                <Text style={styles.title}>Navigation intelligente</Text>
-                                <Text style={styles.subtitle}>Itinéraires optimisés en temps réel</Text>
-                            </View>
+                            <TouchableOpacity
+                                style={styles.statsButton}
+                                onPress={() => setShowActivityDashboard(!showActivityDashboard)}
+                            >
+                                <SafeIcon name={showActivityDashboard ? "X" : "Activity"} size={18} color={modernColors.text} />
+                            </TouchableOpacity>
                         </View>
-                        <TouchableOpacity style={styles.statsButton} onPress={() => { const next = !showActivityStats; setShowActivityStats(next); if (next) loadActivityStats(activityPeriod); }}>
-                            <SafeIcon name="BarChart2" size={22} color={showActivityStats ? modernColors.primary : modernColors.textSecondary} />
-                        </TouchableOpacity>
+
+                        {/* ━━ Statistiques intelligentes (pliable) ━━━━━━━━━━━━━━━━━━ */}
+                        {showActivityStats && (
+                            <View style={styles.activityDashboard}>
+                                {/* Sélecteur de période */}
+                                <View style={styles.periodRow}>
+                                    {(['week', 'month', 'year'] as const).map((p) => (
+                                        <TouchableOpacity key={p} style={[styles.periodBtn, activityPeriod === p && styles.periodBtnActive]}
+                                            onPress={() => { setActivityPeriod(p); loadActivityStats(p); }}>
+                                            <Text style={[styles.periodBtnText, activityPeriod === p && styles.periodBtnTextActive]}>
+                                                {p === 'week' ? 'Semaine' : p === 'month' ? 'Mois' : 'Année'}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                            </View>
+                        )}
                     </View>
 
-                    {/* ━━ Statistiques intelligentes (pliable) ━━━━━━━━━━━━━━━━━━ */}
-                    {showActivityStats && (
-                        <View style={styles.activityDashboard}>
-                            {/* Sélecteur de période */}
-                            <View style={styles.periodRow}>
-                                {(['week', 'month', 'year'] as const).map((p) => (
-                                    <TouchableOpacity key={p} style={[styles.periodBtn, activityPeriod === p && styles.periodBtnActive]}
-                                        onPress={() => { setActivityPeriod(p); loadActivityStats(p); }}>
-                                        <Text style={[styles.periodBtnText, activityPeriod === p && styles.periodBtnTextActive]}>
-                                            {p === 'week' ? 'Semaine' : p === 'month' ? 'Mois' : 'Année'}
-                                        </Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
+                    {loadingActivity ? (
+                        <NativeCard style={styles.statsCard}><ActivityIndicator size="small" color={modernColors.primary} /></NativeCard>
+                    ) : activitySummary?.summary ? (
+                        <>
+                            {/* Métriques principales */}
+                            <NativeCard style={styles.statsCard}>
+                                <View style={styles.statsRow}>
+                                    <View style={styles.statItem}>
+                                        <Text style={styles.statValue}>{activitySummary.summary.total_sessions}</Text>
+                                        <Text style={styles.statLabel}>Sessions</Text>
+                                    </View>
+                                    <View style={styles.statDivider} />
+                                    <View style={styles.statItem}>
+                                        <Text style={styles.statValue}>{activitySummary.summary.total_distance_km?.toFixed(1)}</Text>
+                                        <Text style={styles.statLabel}>km</Text>
+                                    </View>
+                                    <View style={styles.statDivider} />
+                                    <View style={styles.statItem}>
+                                        <Text style={styles.statValue}>{Math.round(activitySummary.summary.total_duration_minutes || 0)}</Text>
+                                        <Text style={styles.statLabel}>minutes</Text>
+                                    </View>
+                                </View>
+                            </NativeCard>
 
-                            {loadingActivity ? (
-                                <NativeCard style={styles.statsCard}><ActivityIndicator size="small" color={modernColors.primary} /></NativeCard>
-                            ) : activitySummary?.summary ? (
+                            {/* Santé & Calories */}
+                            <NativeCard style={styles.healthCard}>
+                                <View style={styles.healthHeader}>
+                                    <SafeIcon name="Heart" size={18} color="#EF4444" />
+                                    <Text style={styles.healthTitle}>Santé & Performance</Text>
+                                </View>
+                                <View style={styles.healthGrid}>
+                                    <View style={styles.healthItem}>
+                                        <Text style={styles.healthEmoji}>🔥</Text>
+                                        <Text style={styles.healthValue}>{Math.round(activitySummary.summary.total_calories || 0)}</Text>
+                                        <Text style={styles.healthLabel}>calories</Text>
+                                    </View>
+                                    <View style={styles.healthItem}>
+                                        <Text style={styles.healthEmoji}>⚡</Text>
+                                        <Text style={styles.healthValue}>{(activitySummary.summary.avg_speed_kmh || 0).toFixed(1)}</Text>
+                                        <Text style={styles.healthLabel}>km/h moy</Text>
+                                    </View>
+                                    <View style={styles.healthItem}>
+                                        <Text style={styles.healthEmoji}>🏆</Text>
+                                        <Text style={styles.healthValue}>{(activitySummary.summary.max_speed_kmh || 0).toFixed(0)}</Text>
+                                        <Text style={styles.healthLabel}>km/h max</Text>
+                                    </View>
+                                    <View style={styles.healthItem}>
+                                        <Text style={styles.healthEmoji}>⭐</Text>
+                                        <Text style={styles.healthValue}>{Math.round(activitySummary.summary.avg_quality_score || 0)}</Text>
+                                        <Text style={styles.healthLabel}>qualité /100</Text>
+                                    </View>
+                                </View>
+                                {/* Indicateurs de santé */}
+                                <View style={styles.healthIndicators}>
+                                    {(() => {
+                                        const cal = activitySummary.summary.total_calories || 0;
+                                        const dist = activitySummary.summary.total_distance_km || 0;
+                                        const dur = activitySummary.summary.total_duration_minutes || 0;
+                                        const quality = activitySummary.summary.avg_quality_score || 0;
+                                        const indicators: { label: string; value: string; color: string; icon: string }[] = [];
+                                        // Objectif calories hebdo (2000 kcal/semaine = référence OMS activité modérée)
+                                        const calTarget = activityPeriod === 'week' ? 2000 : activityPeriod === 'month' ? 8000 : 100000;
+                                        const calPct = Math.min(100, (cal / calTarget) * 100);
+                                        indicators.push({ label: 'Objectif calories', value: `${Math.round(calPct)}%`, color: calPct >= 80 ? '#10B981' : calPct >= 50 ? '#F59E0B' : '#EF4444', icon: calPct >= 80 ? '💪' : '🎯' });
+                                        // Activité physique (OMS: 150min/semaine d'activité modérée)
+                                        const durTarget = activityPeriod === 'week' ? 150 : activityPeriod === 'month' ? 600 : 7800;
+                                        const durPct = Math.min(100, (dur / durTarget) * 100);
+                                        indicators.push({ label: 'Activité physique', value: `${Math.round(durPct)}%`, color: durPct >= 80 ? '#10B981' : durPct >= 50 ? '#F59E0B' : '#EF4444', icon: durPct >= 80 ? '🏃' : '🚶' });
+                                        // Score qualité
+                                        indicators.push({ label: 'Régularité', value: quality >= 70 ? 'Excellent' : quality >= 50 ? 'Bon' : 'À améliorer', color: quality >= 70 ? '#10B981' : quality >= 50 ? '#F59E0B' : '#EF4444', icon: quality >= 70 ? '🌟' : '📊' });
+                                        return indicators.map((ind, i) => (
+                                            <View key={i} style={styles.healthIndicatorRow}>
+                                                <Text style={styles.healthIndicatorIcon}>{ind.icon}</Text>
+                                                <Text style={styles.healthIndicatorLabel}>{ind.label}</Text>
+                                                <View style={styles.healthBarBg}>
+                                                    <View style={[styles.healthBarFill, { width: `${isNaN(parseInt(ind.value)) ? 50 : parseInt(ind.value)}%` as any, backgroundColor: ind.color }]} />
+                                                </View>
+                                                <Text style={[styles.healthIndicatorValue, { color: ind.color }]}>{ind.value}</Text>
+                                            </View>
+                                        ));
+                                    })()}
+                                </View>
+                            </NativeCard>
+
+                            {/* Meilleure session */}
+                            {activitySummary.best_session && (
+                                <NativeCard style={styles.bestSessionCard}>
+                                    <View style={styles.bestSessionHeader}>
+                                        <Text style={styles.bestSessionEmoji}>🏅</Text>
+                                        <Text style={styles.bestSessionTitle}>Meilleure session</Text>
+                                    </View>
+                                    <View style={styles.bestSessionRow}>
+                                        <Text style={styles.bestSessionStat}>{activitySummary.best_session.distance_km?.toFixed(1)} km</Text>
+                                        <Text style={styles.bestSessionStat}>{Math.round(activitySummary.best_session.duration_minutes || 0)} min</Text>
+                                        <Text style={styles.bestSessionStat}>⭐ {Math.round(activitySummary.best_session.quality_score)}/100</Text>
+                                    </View>
+                                    <Text style={styles.bestSessionDate}>{activitySummary.best_session.date}</Text>
+                                </NativeCard>
+                            )}
+
+                            {/* Par mode de transport */}
+                            {activitySummary.by_mode && activitySummary.by_mode.length > 0 && (
+                                <NativeCard style={styles.modeCard}>
+                                    <Text style={styles.modeCardTitle}>Par mode de transport</Text>
+                                    {activitySummary.by_mode.map((m: any, i: number) => (
+                                        <View key={i} style={styles.modeRow}>
+                                            <Text style={styles.modeIcon}>
+                                                {m.mode === 'walking' ? '🚶' : m.mode === 'bicycling' ? '🚲' : m.mode === 'transit' ? '🚌' : '🚗'}
+                                            </Text>
+                                            <Text style={styles.modeName}>
+                                                {m.mode === 'walking' ? 'Marche' : m.mode === 'bicycling' ? 'Vélo' : m.mode === 'transit' ? 'Transport' : 'Voiture'}
+                                            </Text>
+                                            <Text style={styles.modeCount}>{m.count}x</Text>
+                                            <Text style={styles.modeDist}>{m.distance_km?.toFixed(1)} km</Text>
+                                        </View>
+                                    ))}
+                                </NativeCard>
+                            )}
+
+                            {/* Destinations les plus visitées */}
+                            {activitySummary.top_destinations && activitySummary.top_destinations.length > 0 && (
+                                <NativeCard style={styles.destCard}>
+                                    <View style={styles.destCardHeader}>
+                                        <SafeIcon name="MapPin" size={16} color={modernColors.primary} />
+                                        <Text style={styles.destCardTitle}>Lieux les plus visités</Text>
+                                    </View>
+                                    {activitySummary.top_destinations.slice(0, 5).map((d: any, i: number) => (
+                                        <View key={i} style={styles.destRow}>
+                                            <View style={styles.destRank}><Text style={styles.destRankText}>{i + 1}</Text></View>
+                                            <Text style={styles.destName} numberOfLines={1}>{d.address}</Text>
+                                            <Text style={styles.destVisits}>{d.visits}x</Text>
+                                        </View>
+                                    ))}
+                                </NativeCard>
+                            )}
+
+                            {/* Historique récent */}
+                            {activityHistory.length > 0 && (
+                                <NativeCard style={styles.historyCard}>
+                                    <Text style={styles.historyTitle}>Activités récentes</Text>
+                                    {activityHistory.slice(0, 5).map((a: any, i: number) => (
+                                        <View key={i} style={styles.historyRow}>
+                                            <Text style={styles.historyIcon}>
+                                                {a.travel_mode === 'walking' ? '🚶' : a.travel_mode === 'bicycling' ? '🚲' : a.travel_mode === 'transit' ? '🚌' : '🚗'}
+                                            </Text>
+                                            <View style={styles.historyInfo}>
+                                                <Text style={styles.historyDest} numberOfLines={1}>{a.destination || 'Trajet'}</Text>
+                                                <Text style={styles.historyMeta}>
+                                                    {a.distance_km?.toFixed(1)} km · {Math.round(a.duration_minutes || 0)} min · 🔥 {Math.round(a.calories || 0)} cal
+                                                </Text>
+                                            </View>
+                                            <View style={styles.historyQuality}>
+                                                <Text style={[styles.historyScore, { color: (a.quality_score || 0) >= 70 ? '#10B981' : (a.quality_score || 0) >= 50 ? '#F59E0B' : '#EF4444' }]}>
+                                                    {Math.round(a.quality_score || 0)}
+                                                </Text>
+                                                <Text style={styles.historyScoreLabel}>/100</Text>
+                                            </View>
+                                        </View>
+                                    ))}
+                                </NativeCard>
+                            )}
+
+                            {/* ━━━━━━ COACH IA & ANALYSE AVANCÉE ━━━━━━ */}
+                            {aiInsights && (
                                 <>
-                                    {/* Métriques principales */}
-                                    <NativeCard style={styles.statsCard}>
-                                        <View style={styles.statsRow}>
-                                            <View style={styles.statItem}>
-                                                <Text style={styles.statValue}>{activitySummary.summary.total_sessions}</Text>
-                                                <Text style={styles.statLabel}>Sessions</Text>
-                                            </View>
-                                            <View style={styles.statDivider} />
-                                            <View style={styles.statItem}>
-                                                <Text style={styles.statValue}>{activitySummary.summary.total_distance_km?.toFixed(1)}</Text>
-                                                <Text style={styles.statLabel}>km</Text>
-                                            </View>
-                                            <View style={styles.statDivider} />
-                                            <View style={styles.statItem}>
-                                                <Text style={styles.statValue}>{Math.round(activitySummary.summary.total_duration_minutes || 0)}</Text>
-                                                <Text style={styles.statLabel}>minutes</Text>
-                                            </View>
-                                        </View>
-                                    </NativeCard>
+                                    {/* Bouton partage performances */}
+                                    <View style={styles.sharePerformanceRow}>
+                                        <Text style={styles.coachTitle}>🤖 Coach IA</Text>
+                                        <TouchableOpacity onPress={sharePerformance} style={styles.sharePerformanceBtn}>
+                                            <SafeIcon name="Share2" size={14} color="#fff" />
+                                            <Text style={styles.sharePerformanceTxt}>Partager</Text>
+                                        </TouchableOpacity>
+                                    </View>
 
-                                    {/* Santé & Calories */}
-                                    <NativeCard style={styles.healthCard}>
-                                        <View style={styles.healthHeader}>
-                                            <SafeIcon name="Heart" size={18} color="#EF4444" />
-                                            <Text style={styles.healthTitle}>Santé & Performance</Text>
-                                        </View>
-                                        <View style={styles.healthGrid}>
-                                            <View style={styles.healthItem}>
-                                                <Text style={styles.healthEmoji}>🔥</Text>
-                                                <Text style={styles.healthValue}>{Math.round(activitySummary.summary.total_calories || 0)}</Text>
-                                                <Text style={styles.healthLabel}>calories</Text>
+                                    {/* Score de santé global */}
+                                    {aiInsights.health_score && (
+                                        <NativeCard style={[styles.healthCard, { borderLeftWidth: 4, borderLeftColor: aiInsights.health_score.score >= 80 ? '#10B981' : aiInsights.health_score.score >= 60 ? '#F59E0B' : aiInsights.health_score.score >= 40 ? '#FF6B35' : '#EF4444' }]}>
+                                            <View style={styles.healthHeader}>
+                                                <Text style={{ fontSize: 22 }}>🫀</Text>
+                                                <Text style={styles.healthTitle}>Score de Santé Global</Text>
                                             </View>
-                                            <View style={styles.healthItem}>
-                                                <Text style={styles.healthEmoji}>⚡</Text>
-                                                <Text style={styles.healthValue}>{(activitySummary.summary.avg_speed_kmh || 0).toFixed(1)}</Text>
-                                                <Text style={styles.healthLabel}>km/h moy</Text>
+                                            <View style={{ alignItems: 'center', marginVertical: 12 }}>
+                                                <View style={[styles.aiScoreCircle, { borderColor: aiInsights.health_score.score >= 80 ? '#10B981' : aiInsights.health_score.score >= 60 ? '#F59E0B' : '#EF4444' }]}>
+                                                    <Text style={[styles.aiScoreValue, { color: aiInsights.health_score.score >= 80 ? '#10B981' : aiInsights.health_score.score >= 60 ? '#F59E0B' : '#EF4444' }]}>
+                                                        {aiInsights.health_score.score}
+                                                    </Text>
+                                                    <Text style={styles.aiScoreMax}>/100</Text>
+                                                </View>
+                                                <Text style={[styles.aiScoreLabel, { color: aiInsights.health_score.score >= 80 ? '#10B981' : aiInsights.health_score.score >= 60 ? '#F59E0B' : '#EF4444' }]}>
+                                                    {aiInsights.health_score.label}
+                                                </Text>
                                             </View>
-                                            <View style={styles.healthItem}>
-                                                <Text style={styles.healthEmoji}>🏆</Text>
-                                                <Text style={styles.healthValue}>{(activitySummary.summary.max_speed_kmh || 0).toFixed(0)}</Text>
-                                                <Text style={styles.healthLabel}>km/h max</Text>
-                                            </View>
-                                            <View style={styles.healthItem}>
-                                                <Text style={styles.healthEmoji}>⭐</Text>
-                                                <Text style={styles.healthValue}>{Math.round(activitySummary.summary.avg_quality_score || 0)}</Text>
-                                                <Text style={styles.healthLabel}>qualité /100</Text>
-                                            </View>
-                                        </View>
-                                        {/* Indicateurs de santé */}
-                                        <View style={styles.healthIndicators}>
-                                            {(() => {
-                                                const cal = activitySummary.summary.total_calories || 0;
-                                                const dist = activitySummary.summary.total_distance_km || 0;
-                                                const dur = activitySummary.summary.total_duration_minutes || 0;
-                                                const quality = activitySummary.summary.avg_quality_score || 0;
-                                                const indicators: { label: string; value: string; color: string; icon: string }[] = [];
-                                                // Objectif calories hebdo (2000 kcal/semaine = référence OMS activité modérée)
-                                                const calTarget = activityPeriod === 'week' ? 2000 : activityPeriod === 'month' ? 8000 : 100000;
-                                                const calPct = Math.min(100, (cal / calTarget) * 100);
-                                                indicators.push({ label: 'Objectif calories', value: `${Math.round(calPct)}%`, color: calPct >= 80 ? '#10B981' : calPct >= 50 ? '#F59E0B' : '#EF4444', icon: calPct >= 80 ? '💪' : '🎯' });
-                                                // Activité physique (OMS: 150min/semaine d'activité modérée)
-                                                const durTarget = activityPeriod === 'week' ? 150 : activityPeriod === 'month' ? 600 : 7800;
-                                                const durPct = Math.min(100, (dur / durTarget) * 100);
-                                                indicators.push({ label: 'Activité physique', value: `${Math.round(durPct)}%`, color: durPct >= 80 ? '#10B981' : durPct >= 50 ? '#F59E0B' : '#EF4444', icon: durPct >= 80 ? '🏃' : '🚶' });
-                                                // Score qualité
-                                                indicators.push({ label: 'Régularité', value: quality >= 70 ? 'Excellent' : quality >= 50 ? 'Bon' : 'À améliorer', color: quality >= 70 ? '#10B981' : quality >= 50 ? '#F59E0B' : '#EF4444', icon: quality >= 70 ? '🌟' : '📊' });
-                                                return indicators.map((ind, i) => (
-                                                    <View key={i} style={styles.healthIndicatorRow}>
-                                                        <Text style={styles.healthIndicatorIcon}>{ind.icon}</Text>
-                                                        <Text style={styles.healthIndicatorLabel}>{ind.label}</Text>
-                                                        <View style={styles.healthBarBg}>
-                                                            <View style={[styles.healthBarFill, { width: `${isNaN(parseInt(ind.value)) ? 50 : parseInt(ind.value)}%` as any, backgroundColor: ind.color }]} />
+                                            <View style={styles.aiBreakdownGrid}>
+                                                {[
+                                                    { label: 'Activité', pts: aiInsights.health_score.breakdown?.activity || 0, max: 30, emoji: '🏃' },
+                                                    { label: 'Qualité', pts: aiInsights.health_score.breakdown?.quality || 0, max: 20, emoji: '⭐' },
+                                                    { label: 'Série', pts: aiInsights.health_score.breakdown?.streak || 0, max: 15, emoji: '🔥' },
+                                                    { label: 'Éco', pts: aiInsights.health_score.breakdown?.eco || 0, max: 10, emoji: '🌍' },
+                                                    { label: 'Fitness', pts: aiInsights.health_score.breakdown?.fitness || 0, max: 15, emoji: '❤️' },
+                                                    { label: 'Diversité', pts: aiInsights.health_score.breakdown?.diversity || 0, max: 10, emoji: '🎯' },
+                                                ].map((item, i) => (
+                                                    <View key={i} style={styles.aiBreakdownItem}>
+                                                        <Text style={{ fontSize: 14 }}>{item.emoji}</Text>
+                                                        <View style={styles.aiBreakdownBar}>
+                                                            <View style={[styles.aiBreakdownFill, { width: `${(item.pts / item.max * 100)}%` as any, backgroundColor: item.pts >= item.max * 0.7 ? '#10B981' : '#F59E0B' }]} />
                                                         </View>
-                                                        <Text style={[styles.healthIndicatorValue, { color: ind.color }]}>{ind.value}</Text>
+                                                        <Text style={styles.aiBreakdownPts}>{item.pts}/{item.max}</Text>
                                                     </View>
-                                                ));
-                                            })()}
-                                        </View>
-                                    </NativeCard>
-
-                                    {/* Meilleure session */}
-                                    {activitySummary.best_session && (
-                                        <NativeCard style={styles.bestSessionCard}>
-                                            <View style={styles.bestSessionHeader}>
-                                                <Text style={styles.bestSessionEmoji}>🏅</Text>
-                                                <Text style={styles.bestSessionTitle}>Meilleure session</Text>
+                                                ))}
                                             </View>
-                                            <View style={styles.bestSessionRow}>
-                                                <Text style={styles.bestSessionStat}>{activitySummary.best_session.distance_km?.toFixed(1)} km</Text>
-                                                <Text style={styles.bestSessionStat}>{Math.round(activitySummary.best_session.duration_minutes || 0)} min</Text>
-                                                <Text style={styles.bestSessionStat}>⭐ {Math.round(activitySummary.best_session.quality_score)}/100</Text>
-                                            </View>
-                                            <Text style={styles.bestSessionDate}>{activitySummary.best_session.date}</Text>
                                         </NativeCard>
                                     )}
 
-                                    {/* Par mode de transport */}
-                                    {activitySummary.by_mode && activitySummary.by_mode.length > 0 && (
-                                        <NativeCard style={styles.modeCard}>
-                                            <Text style={styles.modeCardTitle}>Par mode de transport</Text>
-                                            {activitySummary.by_mode.map((m: any, i: number) => (
-                                                <View key={i} style={styles.modeRow}>
-                                                    <Text style={styles.modeIcon}>
-                                                        {m.mode === 'walking' ? '🚶' : m.mode === 'bicycling' ? '🚲' : m.mode === 'transit' ? '🚌' : '🚗'}
-                                                    </Text>
-                                                    <Text style={styles.modeName}>
-                                                        {m.mode === 'walking' ? 'Marche' : m.mode === 'bicycling' ? 'Vélo' : m.mode === 'transit' ? 'Transport' : 'Voiture'}
-                                                    </Text>
-                                                    <Text style={styles.modeCount}>{m.count}x</Text>
-                                                    <Text style={styles.modeDist}>{m.distance_km?.toFixed(1)} km</Text>
+                                    {/* Recommandations IA personnalisées */}
+                                    {aiInsights.ai_tips && aiInsights.ai_tips.length > 0 && (
+                                        <NativeCard style={[styles.healthCard, { borderLeftWidth: 4, borderLeftColor: '#8B5CF6' }]}>
+                                            <View style={styles.healthHeader}>
+                                                <Text style={{ fontSize: 22 }}>🤖</Text>
+                                                <Text style={[styles.healthTitle, { color: '#8B5CF6' }]}>Coach IA Yukpo</Text>
+                                            </View>
+                                            {aiInsights.ai_tips.map((tip: any, i: number) => (
+                                                <View key={i} style={[styles.aiTipCard, { borderLeftColor: tip.priority === 'critical' ? '#EF4444' : tip.priority === 'high' ? '#F59E0B' : tip.priority === 'positive' ? '#10B981' : '#6B7280' }]}>
+                                                    <View style={styles.aiTipHeader}>
+                                                        <Text style={{ fontSize: 18 }}>{tip.emoji}</Text>
+                                                        <Text style={styles.aiTipTitle}>{tip.title}</Text>
+                                                    </View>
+                                                    <Text style={styles.aiTipMessage}>{tip.message}</Text>
                                                 </View>
                                             ))}
                                         </NativeCard>
                                     )}
 
-                                    {/* Destinations les plus visitées */}
-                                    {activitySummary.top_destinations && activitySummary.top_destinations.length > 0 && (
-                                        <NativeCard style={styles.destCard}>
-                                            <View style={styles.destCardHeader}>
-                                                <SafeIcon name="MapPin" size={16} color={modernColors.primary} />
-                                                <Text style={styles.destCardTitle}>Lieux les plus visités</Text>
+                                    {/* Streak & Gamification */}
+                                    {aiInsights.gamification && (
+                                        <NativeCard style={[styles.healthCard, { borderLeftWidth: 4, borderLeftColor: '#F59E0B' }]}>
+                                            <View style={styles.healthHeader}>
+                                                <Text style={{ fontSize: 22 }}>🎮</Text>
+                                                <Text style={styles.healthTitle}>Gamification</Text>
                                             </View>
-                                            {activitySummary.top_destinations.slice(0, 5).map((d: any, i: number) => (
-                                                <View key={i} style={styles.destRow}>
-                                                    <View style={styles.destRank}><Text style={styles.destRankText}>{i + 1}</Text></View>
-                                                    <Text style={styles.destName} numberOfLines={1}>{d.address}</Text>
-                                                    <Text style={styles.destVisits}>{d.visits}x</Text>
+                                            <View style={styles.aiStreakRow}>
+                                                <View style={styles.aiStreakItem}>
+                                                    <Text style={styles.aiStreakEmoji}>🔥</Text>
+                                                    <Text style={styles.aiStreakValue}>{aiInsights.gamification.current_streak}</Text>
+                                                    <Text style={styles.aiStreakLabel}>jours d'affilée</Text>
                                                 </View>
-                                            ))}
+                                                <View style={styles.aiStreakItem}>
+                                                    <Text style={styles.aiStreakEmoji}>🏆</Text>
+                                                    <Text style={styles.aiStreakValue}>{aiInsights.gamification.max_streak}</Text>
+                                                    <Text style={styles.aiStreakLabel}>record</Text>
+                                                </View>
+                                                <View style={styles.aiStreakItem}>
+                                                    <Text style={styles.aiStreakEmoji}>⭐</Text>
+                                                    <Text style={styles.aiStreakValue}>{aiInsights.gamification.total_points}</Text>
+                                                    <Text style={styles.aiStreakLabel}>points</Text>
+                                                </View>
+                                            </View>
+                                            {aiInsights.gamification.badges && aiInsights.gamification.badges.length > 0 && (
+                                                <View style={styles.aiBadgesWrap}>
+                                                    {aiInsights.gamification.badges.map((b: any, i: number) => (
+                                                        <View key={i} style={styles.aiBadge}>
+                                                            <Text style={{ fontSize: 20 }}>{b.emoji}</Text>
+                                                            <Text style={styles.aiBadgeLabel} numberOfLines={1}>{b.label}</Text>
+                                                        </View>
+                                                    ))}
+                                                </View>
+                                            )}
+                                            {aiInsights.gamification.new_badges && aiInsights.gamification.new_badges.length > 0 && (
+                                                <View style={[styles.aiNewBadgeBanner]}>
+                                                    <Text style={styles.aiNewBadgeTitle}>🎉 Nouveaux badges !</Text>
+                                                    {aiInsights.gamification.new_badges.map((b: any, i: number) => (
+                                                        <Text key={i} style={styles.aiNewBadgeText}>{b.emoji} {b.label}</Text>
+                                                    ))}
+                                                </View>
+                                            )}
                                         </NativeCard>
                                     )}
 
-                                    {/* Historique récent */}
-                                    {activityHistory.length > 0 && (
-                                        <NativeCard style={styles.historyCard}>
-                                            <Text style={styles.historyTitle}>Activités récentes</Text>
-                                            {activityHistory.slice(0, 5).map((a: any, i: number) => (
-                                                <View key={i} style={styles.historyRow}>
-                                                    <Text style={styles.historyIcon}>
-                                                        {a.travel_mode === 'walking' ? '🚶' : a.travel_mode === 'bicycling' ? '🚲' : a.travel_mode === 'transit' ? '🚌' : '🚗'}
+                                    {/* Défis hebdomadaires */}
+                                    {aiInsights.challenges && aiInsights.challenges.length > 0 && (
+                                        <NativeCard style={[styles.healthCard, { borderLeftWidth: 4, borderLeftColor: '#3B82F6' }]}>
+                                            <View style={styles.healthHeader}>
+                                                <Text style={{ fontSize: 22 }}>🎯</Text>
+                                                <Text style={styles.healthTitle}>Défis de la semaine</Text>
+                                            </View>
+                                            {aiInsights.challenges.map((c: any, i: number) => (
+                                                <View key={i} style={styles.aiChallengeRow}>
+                                                    <View style={styles.aiChallengeHeader}>
+                                                        <Text style={{ fontSize: 16 }}>{c.emoji}</Text>
+                                                        <Text style={styles.aiChallengeLabel} numberOfLines={1}>{c.label}</Text>
+                                                        {c.completed && <Text style={styles.aiChallengeCheck}>✅</Text>}
+                                                    </View>
+                                                    <View style={styles.aiChallengeBarBg}>
+                                                        <View style={[styles.aiChallengeBarFill, { width: `${c.progress}%` as any, backgroundColor: c.completed ? '#10B981' : '#3B82F6' }]} />
+                                                    </View>
+                                                    <Text style={styles.aiChallengeProgress}>
+                                                        {c.type === 'sessions' ? `${Math.round(c.current)}/${Math.round(c.target)}` : `${c.current?.toFixed(1)}/${c.target?.toFixed(0)}`} — {Math.round(c.progress)}%
                                                     </Text>
-                                                    <View style={styles.historyInfo}>
-                                                        <Text style={styles.historyDest} numberOfLines={1}>{a.destination || 'Trajet'}</Text>
-                                                        <Text style={styles.historyMeta}>
-                                                            {a.distance_km?.toFixed(1)} km · {Math.round(a.duration_minutes || 0)} min · 🔥 {Math.round(a.calories || 0)} cal
-                                                        </Text>
-                                                    </View>
-                                                    <View style={styles.historyQuality}>
-                                                        <Text style={[styles.historyScore, { color: (a.quality_score || 0) >= 70 ? '#10B981' : (a.quality_score || 0) >= 50 ? '#F59E0B' : '#EF4444' }]}>
-                                                            {Math.round(a.quality_score || 0)}
-                                                        </Text>
-                                                        <Text style={styles.historyScoreLabel}>/100</Text>
-                                                    </View>
                                                 </View>
                                             ))}
                                         </NativeCard>
                                     )}
 
-                                    {/* ━━━━━━ COACH IA & ANALYSE AVANCÉE ━━━━━━ */}
-                                    {aiInsights && (
-                                        <>
-                                            {/* Bouton partage performances */}
-                                            <View style={styles.sharePerformanceRow}>
-                                                <Text style={styles.coachTitle}>🤖 Coach IA</Text>
-                                                <TouchableOpacity onPress={sharePerformance} style={styles.sharePerformanceBtn}>
-                                                    <SafeIcon name="Share2" size={14} color="#fff" />
-                                                    <Text style={styles.sharePerformanceTxt}>Partager</Text>
-                                                </TouchableOpacity>
+                                    {/* Impact CO2 & Économies */}
+                                    {aiInsights.co2_impact && (
+                                        <NativeCard style={[styles.healthCard, { borderLeftWidth: 4, borderLeftColor: '#10B981' }]}>
+                                            <View style={styles.healthHeader}>
+                                                <Text style={{ fontSize: 22 }}>🌍</Text>
+                                                <Text style={styles.healthTitle}>Impact Environnemental</Text>
                                             </View>
+                                            <View style={styles.healthGrid}>
+                                                <View style={styles.healthItem}>
+                                                    <Text style={styles.healthEmoji}>💨</Text>
+                                                    <Text style={styles.healthValue}>{aiInsights.co2_impact.emitted_kg?.toFixed(1)}</Text>
+                                                    <Text style={styles.healthLabel}>kg CO2 émis</Text>
+                                                </View>
+                                                <View style={styles.healthItem}>
+                                                    <Text style={styles.healthEmoji}>🌱</Text>
+                                                    <Text style={[styles.healthValue, { color: '#10B981' }]}>{aiInsights.co2_impact.saved_kg?.toFixed(1)}</Text>
+                                                    <Text style={styles.healthLabel}>kg CO2 économisé</Text>
+                                                </View>
+                                                <View style={styles.healthItem}>
+                                                    <Text style={styles.healthEmoji}>🌳</Text>
+                                                    <Text style={styles.healthValue}>{aiInsights.co2_impact.trees_equivalent?.toFixed(1)}</Text>
+                                                    <Text style={styles.healthLabel}>arbres plantés</Text>
+                                                </View>
+                                                <View style={styles.healthItem}>
+                                                    <Text style={styles.healthEmoji}>💰</Text>
+                                                    <Text style={[styles.healthValue, { color: '#10B981' }]}>{Math.round(aiInsights.co2_impact.fuel_cost_saved || aiInsights.co2_impact.fuel_cost_saved_fcfa || 0)}</Text>
+                                                    <Text style={styles.healthLabel}>{aiInsights.co2_impact.currency_symbol || aiInsights.geo_context?.currency_symbol || 'FCFA'} économisés</Text>
+                                                </View>
+                                            </View>
+                                        </NativeCard>
+                                    )}
 
-                                            {/* Score de santé global */}
-                                            {aiInsights.health_score && (
-                                                <NativeCard style={[styles.healthCard, { borderLeftWidth: 4, borderLeftColor: aiInsights.health_score.score >= 80 ? '#10B981' : aiInsights.health_score.score >= 60 ? '#F59E0B' : aiInsights.health_score.score >= 40 ? '#FF6B35' : '#EF4444' }]}>
-                                                    <View style={styles.healthHeader}>
-                                                        <Text style={{ fontSize: 22 }}>🫀</Text>
-                                                        <Text style={styles.healthTitle}>Score de Santé Global</Text>
+                                    {/* Niveau de fitness (VO2max) */}
+                                    {aiInsights.fitness && aiInsights.fitness.vo2max_estimate > 0 && (
+                                        <NativeCard style={[styles.healthCard, { borderLeftWidth: 4, borderLeftColor: '#EF4444' }]}>
+                                            <View style={styles.healthHeader}>
+                                                <Text style={{ fontSize: 22 }}>❤️</Text>
+                                                <Text style={styles.healthTitle}>Condition Physique</Text>
+                                            </View>
+                                            <View style={{ alignItems: 'center', marginVertical: 8 }}>
+                                                <Text style={styles.aiFitnessVO2}>{aiInsights.fitness.vo2max_estimate}</Text>
+                                                <Text style={styles.aiFitnessUnit}>VO2max (ml/kg/min)</Text>
+                                                <View style={[styles.aiFitnessLevel, { backgroundColor: aiInsights.fitness.level === 'Excellent' ? '#10B98120' : aiInsights.fitness.level === 'Très bon' ? '#3B82F620' : '#F59E0B20' }]}>
+                                                    <Text style={[styles.aiFitnessLevelText, { color: aiInsights.fitness.level === 'Excellent' ? '#10B981' : aiInsights.fitness.level === 'Très bon' ? '#3B82F6' : '#F59E0B' }]}>
+                                                        {aiInsights.fitness.level}
+                                                    </Text>
+                                                </View>
+                                            </View>
+                                            <View style={styles.healthIndicators}>
+                                                <View style={styles.healthIndicatorRow}>
+                                                    <Text style={styles.healthIndicatorIcon}>🏃</Text>
+                                                    <Text style={styles.healthIndicatorLabel}>Objectif OMS (150 min/sem)</Text>
+                                                    <View style={styles.healthBarBg}>
+                                                        <View style={[styles.healthBarFill, { width: `${aiInsights.fitness.oms_progress_pct}%` as any, backgroundColor: aiInsights.fitness.oms_progress_pct >= 100 ? '#10B981' : '#F59E0B' }]} />
                                                     </View>
-                                                    <View style={{ alignItems: 'center', marginVertical: 12 }}>
-                                                        <View style={[styles.aiScoreCircle, { borderColor: aiInsights.health_score.score >= 80 ? '#10B981' : aiInsights.health_score.score >= 60 ? '#F59E0B' : '#EF4444' }]}>
-                                                            <Text style={[styles.aiScoreValue, { color: aiInsights.health_score.score >= 80 ? '#10B981' : aiInsights.health_score.score >= 60 ? '#F59E0B' : '#EF4444' }]}>
-                                                                {aiInsights.health_score.score}
+                                                    <Text style={[styles.healthIndicatorValue, { color: aiInsights.fitness.oms_progress_pct >= 100 ? '#10B981' : '#F59E0B' }]}>
+                                                        {aiInsights.fitness.oms_progress_pct}%
+                                                    </Text>
+                                                </View>
+                                            </View>
+                                        </NativeCard>
+                                    )}
+
+                                    {/* Records personnels */}
+                                    {aiInsights.records && (
+                                        <NativeCard style={[styles.healthCard, { borderLeftWidth: 4, borderLeftColor: '#FFD700' }]}>
+                                            <View style={styles.healthHeader}>
+                                                <Text style={{ fontSize: 22 }}>🏅</Text>
+                                                <Text style={styles.healthTitle}>Records Personnels</Text>
+                                            </View>
+                                            <View style={styles.aiRecordsList}>
+                                                {aiInsights.records.longest_session && (
+                                                    <View style={styles.aiRecordRow}>
+                                                        <Text style={styles.aiRecordEmoji}>📏</Text>
+                                                        <View style={styles.aiRecordInfo}>
+                                                            <Text style={styles.aiRecordTitle}>Plus longue session</Text>
+                                                            <Text style={styles.aiRecordValue}>
+                                                                {aiInsights.records.longest_session.distance_km?.toFixed(1)} km · {Math.round(aiInsights.records.longest_session.duration_minutes)} min
                                                             </Text>
-                                                            <Text style={styles.aiScoreMax}>/100</Text>
                                                         </View>
-                                                        <Text style={[styles.aiScoreLabel, { color: aiInsights.health_score.score >= 80 ? '#10B981' : aiInsights.health_score.score >= 60 ? '#F59E0B' : '#EF4444' }]}>
-                                                            {aiInsights.health_score.label}
-                                                        </Text>
+                                                        <Text style={styles.aiRecordDate}>{aiInsights.records.longest_session.date}</Text>
                                                     </View>
-                                                    <View style={styles.aiBreakdownGrid}>
-                                                        {[
-                                                            { label: 'Activité', pts: aiInsights.health_score.breakdown?.activity || 0, max: 30, emoji: '🏃' },
-                                                            { label: 'Qualité', pts: aiInsights.health_score.breakdown?.quality || 0, max: 20, emoji: '⭐' },
-                                                            { label: 'Série', pts: aiInsights.health_score.breakdown?.streak || 0, max: 15, emoji: '🔥' },
-                                                            { label: 'Éco', pts: aiInsights.health_score.breakdown?.eco || 0, max: 10, emoji: '🌍' },
-                                                            { label: 'Fitness', pts: aiInsights.health_score.breakdown?.fitness || 0, max: 15, emoji: '❤️' },
-                                                            { label: 'Diversité', pts: aiInsights.health_score.breakdown?.diversity || 0, max: 10, emoji: '🎯' },
-                                                        ].map((item, i) => (
-                                                            <View key={i} style={styles.aiBreakdownItem}>
-                                                                <Text style={{ fontSize: 14 }}>{item.emoji}</Text>
-                                                                <View style={styles.aiBreakdownBar}>
-                                                                    <View style={[styles.aiBreakdownFill, { width: `${(item.pts / item.max * 100)}%` as any, backgroundColor: item.pts >= item.max * 0.7 ? '#10B981' : '#F59E0B' }]} />
-                                                                </View>
-                                                                <Text style={styles.aiBreakdownPts}>{item.pts}/{item.max}</Text>
+                                                )}
+                                                {aiInsights.records.fastest_km && (
+                                                    <View style={styles.aiRecordRow}>
+                                                        <Text style={styles.aiRecordEmoji}>⚡</Text>
+                                                        <View style={styles.aiRecordInfo}>
+                                                            <Text style={styles.aiRecordTitle}>Meilleur km</Text>
+                                                            <Text style={styles.aiRecordValue}>{aiInsights.records.fastest_km.pace_display}</Text>
+                                                        </View>
+                                                        <Text style={styles.aiRecordDate}>{aiInsights.records.fastest_km.date}</Text>
+                                                    </View>
+                                                )}
+                                                {aiInsights.records.best_quality && (
+                                                    <View style={styles.aiRecordRow}>
+                                                        <Text style={styles.aiRecordEmoji}>⭐</Text>
+                                                        <View style={styles.aiRecordInfo}>
+                                                            <Text style={styles.aiRecordTitle}>Meilleure qualité</Text>
+                                                            <Text style={styles.aiRecordValue}>{Math.round(aiInsights.records.best_quality.score)}/100</Text>
+                                                        </View>
+                                                        <Text style={styles.aiRecordDate}>{aiInsights.records.best_quality.date}</Text>
+                                                    </View>
+                                                )}
+                                                {aiInsights.records.most_calories && (
+                                                    <View style={styles.aiRecordRow}>
+                                                        <Text style={styles.aiRecordEmoji}>🔥</Text>
+                                                        <View style={styles.aiRecordInfo}>
+                                                            <Text style={styles.aiRecordTitle}>Max calories</Text>
+                                                            <Text style={styles.aiRecordValue}>{Math.round(aiInsights.records.most_calories.calories)} cal</Text>
+                                                        </View>
+                                                        <Text style={styles.aiRecordDate}>{aiInsights.records.most_calories.date}</Text>
+                                                    </View>
+                                                )}
+                                                {aiInsights.records.max_speed && (
+                                                    <View style={styles.aiRecordRow}>
+                                                        <Text style={styles.aiRecordEmoji}>🚀</Text>
+                                                        <View style={styles.aiRecordInfo}>
+                                                            <Text style={styles.aiRecordTitle}>Vitesse max</Text>
+                                                            <Text style={styles.aiRecordValue}>{aiInsights.records.max_speed.speed_kmh?.toFixed(1)} km/h</Text>
+                                                        </View>
+                                                        <Text style={styles.aiRecordDate}>{aiInsights.records.max_speed.date}</Text>
+                                                    </View>
+                                                )}
+                                            </View>
+                                            <View style={styles.aiRecordsTotals}>
+                                                <Text style={styles.aiRecordTotal}>Total: {aiInsights.records.total_km?.toFixed(0)} km · {aiInsights.records.total_sessions} sessions · {Math.round(aiInsights.records.total_calories || 0)} cal</Text>
+                                            </View>
+                                        </NativeCard>
+                                    )}
+
+                                    {/* Commute Insights */}
+                                    {aiInsights.commute?.frequent_routes && aiInsights.commute.frequent_routes.length > 0 && (
+                                        <NativeCard style={[styles.healthCard, { borderLeftWidth: 4, borderLeftColor: '#6366F1' }]}>
+                                            <View style={styles.healthHeader}>
+                                                <Text style={{ fontSize: 22 }}>🏠</Text>
+                                                <Text style={styles.healthTitle}>Trajets Habituels</Text>
+                                            </View>
+                                            {aiInsights.commute.frequent_routes.map((r: any, i: number) => (
+                                                <View key={i} style={styles.aiCommuteRow}>
+                                                    <Text style={styles.aiCommuteFrom} numberOfLines={1}>{r.from}</Text>
+                                                    <Text style={styles.aiCommuteArrow}>→</Text>
+                                                    <Text style={styles.aiCommuteTo} numberOfLines={1}>{r.to}</Text>
+                                                    <Text style={styles.aiCommuteMeta}>{r.trips}x · {Math.round(r.avg_duration_minutes)} min</Text>
+                                                </View>
+                                            ))}
+                                            {aiInsights.commute.peak_hours && aiInsights.commute.peak_hours.length > 0 && (
+                                                <View style={styles.aiPeakHours}>
+                                                    <Text style={styles.aiPeakTitle}>🕐 Heures de départ fréquentes</Text>
+                                                    <View style={styles.aiPeakRow}>
+                                                        {aiInsights.commute.peak_hours.slice(0, 4).map((h: any, i: number) => (
+                                                            <View key={i} style={styles.aiPeakBadge}>
+                                                                <Text style={styles.aiPeakHour}>{h.hour}h</Text>
+                                                                <Text style={styles.aiPeakCount}>{h.trips}x</Text>
                                                             </View>
                                                         ))}
                                                     </View>
-                                                </NativeCard>
+                                                </View>
                                             )}
-
-                                            {/* Recommandations IA personnalisées */}
-                                            {aiInsights.ai_tips && aiInsights.ai_tips.length > 0 && (
-                                                <NativeCard style={[styles.healthCard, { borderLeftWidth: 4, borderLeftColor: '#8B5CF6' }]}>
-                                                    <View style={styles.healthHeader}>
-                                                        <Text style={{ fontSize: 22 }}>🤖</Text>
-                                                        <Text style={[styles.healthTitle, { color: '#8B5CF6' }]}>Coach IA Yukpo</Text>
-                                                    </View>
-                                                    {aiInsights.ai_tips.map((tip: any, i: number) => (
-                                                        <View key={i} style={[styles.aiTipCard, { borderLeftColor: tip.priority === 'critical' ? '#EF4444' : tip.priority === 'high' ? '#F59E0B' : tip.priority === 'positive' ? '#10B981' : '#6B7280' }]}>
-                                                            <View style={styles.aiTipHeader}>
-                                                                <Text style={{ fontSize: 18 }}>{tip.emoji}</Text>
-                                                                <Text style={styles.aiTipTitle}>{tip.title}</Text>
-                                                            </View>
-                                                            <Text style={styles.aiTipMessage}>{tip.message}</Text>
-                                                        </View>
-                                                    ))}
-                                                </NativeCard>
-                                            )}
-
-                                            {/* Streak & Gamification */}
-                                            {aiInsights.gamification && (
-                                                <NativeCard style={[styles.healthCard, { borderLeftWidth: 4, borderLeftColor: '#F59E0B' }]}>
-                                                    <View style={styles.healthHeader}>
-                                                        <Text style={{ fontSize: 22 }}>🎮</Text>
-                                                        <Text style={styles.healthTitle}>Gamification</Text>
-                                                    </View>
-                                                    <View style={styles.aiStreakRow}>
-                                                        <View style={styles.aiStreakItem}>
-                                                            <Text style={styles.aiStreakEmoji}>🔥</Text>
-                                                            <Text style={styles.aiStreakValue}>{aiInsights.gamification.current_streak}</Text>
-                                                            <Text style={styles.aiStreakLabel}>jours d'affilée</Text>
-                                                        </View>
-                                                        <View style={styles.aiStreakItem}>
-                                                            <Text style={styles.aiStreakEmoji}>🏆</Text>
-                                                            <Text style={styles.aiStreakValue}>{aiInsights.gamification.max_streak}</Text>
-                                                            <Text style={styles.aiStreakLabel}>record</Text>
-                                                        </View>
-                                                        <View style={styles.aiStreakItem}>
-                                                            <Text style={styles.aiStreakEmoji}>⭐</Text>
-                                                            <Text style={styles.aiStreakValue}>{aiInsights.gamification.total_points}</Text>
-                                                            <Text style={styles.aiStreakLabel}>points</Text>
-                                                        </View>
-                                                    </View>
-                                                    {aiInsights.gamification.badges && aiInsights.gamification.badges.length > 0 && (
-                                                        <View style={styles.aiBadgesWrap}>
-                                                            {aiInsights.gamification.badges.map((b: any, i: number) => (
-                                                                <View key={i} style={styles.aiBadge}>
-                                                                    <Text style={{ fontSize: 20 }}>{b.emoji}</Text>
-                                                                    <Text style={styles.aiBadgeLabel} numberOfLines={1}>{b.label}</Text>
-                                                                </View>
-                                                            ))}
-                                                        </View>
-                                                    )}
-                                                    {aiInsights.gamification.new_badges && aiInsights.gamification.new_badges.length > 0 && (
-                                                        <View style={[styles.aiNewBadgeBanner]}>
-                                                            <Text style={styles.aiNewBadgeTitle}>🎉 Nouveaux badges !</Text>
-                                                            {aiInsights.gamification.new_badges.map((b: any, i: number) => (
-                                                                <Text key={i} style={styles.aiNewBadgeText}>{b.emoji} {b.label}</Text>
-                                                            ))}
-                                                        </View>
-                                                    )}
-                                                </NativeCard>
-                                            )}
-
-                                            {/* Défis hebdomadaires */}
-                                            {aiInsights.challenges && aiInsights.challenges.length > 0 && (
-                                                <NativeCard style={[styles.healthCard, { borderLeftWidth: 4, borderLeftColor: '#3B82F6' }]}>
-                                                    <View style={styles.healthHeader}>
-                                                        <Text style={{ fontSize: 22 }}>🎯</Text>
-                                                        <Text style={styles.healthTitle}>Défis de la semaine</Text>
-                                                    </View>
-                                                    {aiInsights.challenges.map((c: any, i: number) => (
-                                                        <View key={i} style={styles.aiChallengeRow}>
-                                                            <View style={styles.aiChallengeHeader}>
-                                                                <Text style={{ fontSize: 16 }}>{c.emoji}</Text>
-                                                                <Text style={styles.aiChallengeLabel} numberOfLines={1}>{c.label}</Text>
-                                                                {c.completed && <Text style={styles.aiChallengeCheck}>✅</Text>}
-                                                            </View>
-                                                            <View style={styles.aiChallengeBarBg}>
-                                                                <View style={[styles.aiChallengeBarFill, { width: `${c.progress}%` as any, backgroundColor: c.completed ? '#10B981' : '#3B82F6' }]} />
-                                                            </View>
-                                                            <Text style={styles.aiChallengeProgress}>
-                                                                {c.type === 'sessions' ? `${Math.round(c.current)}/${Math.round(c.target)}` : `${c.current?.toFixed(1)}/${c.target?.toFixed(0)}`} — {Math.round(c.progress)}%
-                                                            </Text>
-                                                        </View>
-                                                    ))}
-                                                </NativeCard>
-                                            )}
-
-                                            {/* Impact CO2 & Économies */}
-                                            {aiInsights.co2_impact && (
-                                                <NativeCard style={[styles.healthCard, { borderLeftWidth: 4, borderLeftColor: '#10B981' }]}>
-                                                    <View style={styles.healthHeader}>
-                                                        <Text style={{ fontSize: 22 }}>🌍</Text>
-                                                        <Text style={styles.healthTitle}>Impact Environnemental</Text>
-                                                    </View>
-                                                    <View style={styles.healthGrid}>
-                                                        <View style={styles.healthItem}>
-                                                            <Text style={styles.healthEmoji}>💨</Text>
-                                                            <Text style={styles.healthValue}>{aiInsights.co2_impact.emitted_kg?.toFixed(1)}</Text>
-                                                            <Text style={styles.healthLabel}>kg CO2 émis</Text>
-                                                        </View>
-                                                        <View style={styles.healthItem}>
-                                                            <Text style={styles.healthEmoji}>🌱</Text>
-                                                            <Text style={[styles.healthValue, { color: '#10B981' }]}>{aiInsights.co2_impact.saved_kg?.toFixed(1)}</Text>
-                                                            <Text style={styles.healthLabel}>kg CO2 économisé</Text>
-                                                        </View>
-                                                        <View style={styles.healthItem}>
-                                                            <Text style={styles.healthEmoji}>🌳</Text>
-                                                            <Text style={styles.healthValue}>{aiInsights.co2_impact.trees_equivalent?.toFixed(1)}</Text>
-                                                            <Text style={styles.healthLabel}>arbres plantés</Text>
-                                                        </View>
-                                                        <View style={styles.healthItem}>
-                                                            <Text style={styles.healthEmoji}>💰</Text>
-                                                            <Text style={[styles.healthValue, { color: '#10B981' }]}>{Math.round(aiInsights.co2_impact.fuel_cost_saved || aiInsights.co2_impact.fuel_cost_saved_fcfa || 0)}</Text>
-                                                            <Text style={styles.healthLabel}>{aiInsights.co2_impact.currency_symbol || aiInsights.geo_context?.currency_symbol || 'FCFA'} économisés</Text>
-                                                        </View>
-                                                    </View>
-                                                </NativeCard>
-                                            )}
-
-                                            {/* Niveau de fitness (VO2max) */}
-                                            {aiInsights.fitness && aiInsights.fitness.vo2max_estimate > 0 && (
-                                                <NativeCard style={[styles.healthCard, { borderLeftWidth: 4, borderLeftColor: '#EF4444' }]}>
-                                                    <View style={styles.healthHeader}>
-                                                        <Text style={{ fontSize: 22 }}>❤️</Text>
-                                                        <Text style={styles.healthTitle}>Condition Physique</Text>
-                                                    </View>
-                                                    <View style={{ alignItems: 'center', marginVertical: 8 }}>
-                                                        <Text style={styles.aiFitnessVO2}>{aiInsights.fitness.vo2max_estimate}</Text>
-                                                        <Text style={styles.aiFitnessUnit}>VO2max (ml/kg/min)</Text>
-                                                        <View style={[styles.aiFitnessLevel, { backgroundColor: aiInsights.fitness.level === 'Excellent' ? '#10B98120' : aiInsights.fitness.level === 'Très bon' ? '#3B82F620' : '#F59E0B20' }]}>
-                                                            <Text style={[styles.aiFitnessLevelText, { color: aiInsights.fitness.level === 'Excellent' ? '#10B981' : aiInsights.fitness.level === 'Très bon' ? '#3B82F6' : '#F59E0B' }]}>
-                                                                {aiInsights.fitness.level}
-                                                            </Text>
-                                                        </View>
-                                                    </View>
-                                                    <View style={styles.healthIndicators}>
-                                                        <View style={styles.healthIndicatorRow}>
-                                                            <Text style={styles.healthIndicatorIcon}>🏃</Text>
-                                                            <Text style={styles.healthIndicatorLabel}>Objectif OMS (150 min/sem)</Text>
-                                                            <View style={styles.healthBarBg}>
-                                                                <View style={[styles.healthBarFill, { width: `${aiInsights.fitness.oms_progress_pct}%` as any, backgroundColor: aiInsights.fitness.oms_progress_pct >= 100 ? '#10B981' : '#F59E0B' }]} />
-                                                            </View>
-                                                            <Text style={[styles.healthIndicatorValue, { color: aiInsights.fitness.oms_progress_pct >= 100 ? '#10B981' : '#F59E0B' }]}>
-                                                                {aiInsights.fitness.oms_progress_pct}%
-                                                            </Text>
-                                                        </View>
-                                                    </View>
-                                                </NativeCard>
-                                            )}
-
-                                            {/* Records personnels */}
-                                            {aiInsights.records && (
-                                                <NativeCard style={[styles.healthCard, { borderLeftWidth: 4, borderLeftColor: '#FFD700' }]}>
-                                                    <View style={styles.healthHeader}>
-                                                        <Text style={{ fontSize: 22 }}>🏅</Text>
-                                                        <Text style={styles.healthTitle}>Records Personnels</Text>
-                                                    </View>
-                                                    <View style={styles.aiRecordsList}>
-                                                        {aiInsights.records.longest_session && (
-                                                            <View style={styles.aiRecordRow}>
-                                                                <Text style={styles.aiRecordEmoji}>📏</Text>
-                                                                <View style={styles.aiRecordInfo}>
-                                                                    <Text style={styles.aiRecordTitle}>Plus longue session</Text>
-                                                                    <Text style={styles.aiRecordValue}>
-                                                                        {aiInsights.records.longest_session.distance_km?.toFixed(1)} km · {Math.round(aiInsights.records.longest_session.duration_minutes)} min
-                                                                    </Text>
-                                                                </View>
-                                                                <Text style={styles.aiRecordDate}>{aiInsights.records.longest_session.date}</Text>
-                                                            </View>
-                                                        )}
-                                                        {aiInsights.records.fastest_km && (
-                                                            <View style={styles.aiRecordRow}>
-                                                                <Text style={styles.aiRecordEmoji}>⚡</Text>
-                                                                <View style={styles.aiRecordInfo}>
-                                                                    <Text style={styles.aiRecordTitle}>Meilleur km</Text>
-                                                                    <Text style={styles.aiRecordValue}>{aiInsights.records.fastest_km.pace_display}</Text>
-                                                                </View>
-                                                                <Text style={styles.aiRecordDate}>{aiInsights.records.fastest_km.date}</Text>
-                                                            </View>
-                                                        )}
-                                                        {aiInsights.records.best_quality && (
-                                                            <View style={styles.aiRecordRow}>
-                                                                <Text style={styles.aiRecordEmoji}>⭐</Text>
-                                                                <View style={styles.aiRecordInfo}>
-                                                                    <Text style={styles.aiRecordTitle}>Meilleure qualité</Text>
-                                                                    <Text style={styles.aiRecordValue}>{Math.round(aiInsights.records.best_quality.score)}/100</Text>
-                                                                </View>
-                                                                <Text style={styles.aiRecordDate}>{aiInsights.records.best_quality.date}</Text>
-                                                            </View>
-                                                        )}
-                                                        {aiInsights.records.most_calories && (
-                                                            <View style={styles.aiRecordRow}>
-                                                                <Text style={styles.aiRecordEmoji}>🔥</Text>
-                                                                <View style={styles.aiRecordInfo}>
-                                                                    <Text style={styles.aiRecordTitle}>Max calories</Text>
-                                                                    <Text style={styles.aiRecordValue}>{Math.round(aiInsights.records.most_calories.calories)} cal</Text>
-                                                                </View>
-                                                                <Text style={styles.aiRecordDate}>{aiInsights.records.most_calories.date}</Text>
-                                                            </View>
-                                                        )}
-                                                        {aiInsights.records.max_speed && (
-                                                            <View style={styles.aiRecordRow}>
-                                                                <Text style={styles.aiRecordEmoji}>🚀</Text>
-                                                                <View style={styles.aiRecordInfo}>
-                                                                    <Text style={styles.aiRecordTitle}>Vitesse max</Text>
-                                                                    <Text style={styles.aiRecordValue}>{aiInsights.records.max_speed.speed_kmh?.toFixed(1)} km/h</Text>
-                                                                </View>
-                                                                <Text style={styles.aiRecordDate}>{aiInsights.records.max_speed.date}</Text>
-                                                            </View>
-                                                        )}
-                                                    </View>
-                                                    <View style={styles.aiRecordsTotals}>
-                                                        <Text style={styles.aiRecordTotal}>Total: {aiInsights.records.total_km?.toFixed(0)} km · {aiInsights.records.total_sessions} sessions · {Math.round(aiInsights.records.total_calories || 0)} cal</Text>
-                                                    </View>
-                                                </NativeCard>
-                                            )}
-
-                                            {/* Commute Insights */}
-                                            {aiInsights.commute?.frequent_routes && aiInsights.commute.frequent_routes.length > 0 && (
-                                                <NativeCard style={[styles.healthCard, { borderLeftWidth: 4, borderLeftColor: '#6366F1' }]}>
-                                                    <View style={styles.healthHeader}>
-                                                        <Text style={{ fontSize: 22 }}>🏠</Text>
-                                                        <Text style={styles.healthTitle}>Trajets Habituels</Text>
-                                                    </View>
-                                                    {aiInsights.commute.frequent_routes.map((r: any, i: number) => (
-                                                        <View key={i} style={styles.aiCommuteRow}>
-                                                            <Text style={styles.aiCommuteFrom} numberOfLines={1}>{r.from}</Text>
-                                                            <Text style={styles.aiCommuteArrow}>→</Text>
-                                                            <Text style={styles.aiCommuteTo} numberOfLines={1}>{r.to}</Text>
-                                                            <Text style={styles.aiCommuteMeta}>{r.trips}x · {Math.round(r.avg_duration_minutes)} min</Text>
-                                                        </View>
-                                                    ))}
-                                                    {aiInsights.commute.peak_hours && aiInsights.commute.peak_hours.length > 0 && (
-                                                        <View style={styles.aiPeakHours}>
-                                                            <Text style={styles.aiPeakTitle}>🕐 Heures de départ fréquentes</Text>
-                                                            <View style={styles.aiPeakRow}>
-                                                                {aiInsights.commute.peak_hours.slice(0, 4).map((h: any, i: number) => (
-                                                                    <View key={i} style={styles.aiPeakBadge}>
-                                                                        <Text style={styles.aiPeakHour}>{h.hour}h</Text>
-                                                                        <Text style={styles.aiPeakCount}>{h.trips}x</Text>
-                                                                    </View>
-                                                                ))}
-                                                            </View>
-                                                        </View>
-                                                    )}
-                                                </NativeCard>
-                                            )}
-                                        </>
+                                        </NativeCard>
                                     )}
                                 </>
-                            ) : (
-                                <NativeCard style={styles.statsCard}>
-                                    <Text style={{ textAlign: 'center', color: modernColors.textSecondary, fontSize: 14, padding: 20 }}>
-                                        Aucune activité enregistrée. Démarrez un suivi pour voir vos statistiques !
-                                    </Text>
-                                </NativeCard>
                             )}
-                        </View>
+                        </>
+                    ) : (
+                        <NativeCard style={styles.statsCard}>
+                            <Text style={{ textAlign: 'center', color: modernColors.textSecondary, fontSize: 14, padding: 20 }}>
+                                Aucune activité enregistrée. Démarrez un suivi pour voir vos statistiques !
+                            </Text>
+                        </NativeCard>
                     )}
+                )}
 
                     {/* ━━ Mode de transport ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
                     <View style={styles.travelModeRow}>
@@ -1677,9 +1723,30 @@ const NavigationScreen: React.FC = () => {
                             horizontal showsHorizontalScrollIndicator={false}
                             style={styles.favoritesScroll} contentContainerStyle={styles.favoritesContent}
                             nestedScrollEnabled={true}
-                            onScrollBeginDrag={() => setParentScrollEnabled(false)}
-                            onScrollEndDrag={() => setParentScrollEnabled(true)}
-                            onMomentumScrollEnd={() => setParentScrollEnabled(true)}
+                            onScrollBeginDrag={() => {
+                                setIsHorizontalScrolling(true);
+                                if (scrollViewRef.current) {
+                                    scrollViewRef.current.setNativeProps({ scrollEnabled: false });
+                                }
+                            }}
+                            onScrollEndDrag={() => {
+                                setIsHorizontalScrolling(false);
+                                if (scrollViewRef.current) {
+                                    scrollViewRef.current.setNativeProps({ scrollEnabled: true });
+                                }
+                            }}
+                            onMomentumScrollBegin={() => {
+                                setIsHorizontalScrolling(true);
+                                if (scrollViewRef.current) {
+                                    scrollViewRef.current.setNativeProps({ scrollEnabled: false });
+                                }
+                            }}
+                            onMomentumScrollEnd={() => {
+                                setIsHorizontalScrolling(false);
+                                if (scrollViewRef.current) {
+                                    scrollViewRef.current.setNativeProps({ scrollEnabled: true });
+                                }
+                            }}
                         >
                             {savedDestinations.slice(0, 5).map((dest) => (
                                 <TouchableOpacity key={dest.id} style={styles.favoriteChip}
@@ -1722,20 +1789,12 @@ const NavigationScreen: React.FC = () => {
                                             });
                                         }
                                     }}
-                                    onFocusChange={(focused: boolean) => {
-                                        setIsLocationSelectorFocused(focused);
-                                        // Désactiver le scroll parent quand le clavier est ouvert pour éviter les conflits
-                                        setParentScrollEnabled(!focused);
-                                        // Optionnellement, faire défiler vers le haut quand le clavier s'ouvre
-                                        if (focused && isKeyboardVisible) {
-                                            setTimeout(() => {
-                                                // Le scroll sera géré par le ScrollView parent
-                                            }, 100);
-                                        }
                                     }}
-                                    placeholder="Où allez-vous ?"
-                                    scope="all"
-                                    style={dynamicStyles.locationSelectorDynamic}
+                                placeholder="Où allez-vous ?"
+                                scope="all"
+                                style={dynamicStyles.locationSelectorDynamic}
+                                onFocus={() => setIsLocationSelectorFocused(true)}
+                                onBlur={() => setIsLocationSelectorFocused(false)}
                                 />
                             </View>
                         </View>
@@ -1905,12 +1964,40 @@ const NavigationScreen: React.FC = () => {
                                 )}
                             </View>
                             <ScrollView
-                                horizontal showsHorizontalScrollIndicator={false}
-                                nestedScrollEnabled={true} contentContainerStyle={{ paddingRight: 16 }}
-                                snapToInterval={routeCardWidth} snapToAlignment="start" decelerationRate="fast"
-                                onScrollBeginDrag={() => setParentScrollEnabled(false)}
-                                onScrollEndDrag={() => setParentScrollEnabled(true)}
-                                onMomentumScrollEnd={() => setParentScrollEnabled(true)}
+                                ref={horizontalScrollRef}
+                                horizontal
+                                showsHorizontalScrollIndicator={false}
+                                nestedScrollEnabled={true}
+                                contentContainerStyle={{ paddingRight: 16 }}
+                                snapToInterval={routeCardWidth}
+                                snapToAlignment="start"
+                                decelerationRate="fast"
+                                onScrollBeginDrag={() => {
+                                    setIsHorizontalScrolling(true);
+                                    // Désactiver temporairement le scroll vertical du parent
+                                    if (scrollViewRef.current) {
+                                        scrollViewRef.current.setNativeProps({ scrollEnabled: false });
+                                    }
+                                }}
+                                onScrollEndDrag={() => {
+                                    setIsHorizontalScrolling(false);
+                                    // Réactiver le scroll vertical du parent
+                                    if (scrollViewRef.current) {
+                                        scrollViewRef.current.setNativeProps({ scrollEnabled: true });
+                                    }
+                                }}
+                                onMomentumScrollBegin={() => {
+                                    setIsHorizontalScrolling(true);
+                                    if (scrollViewRef.current) {
+                                        scrollViewRef.current.setNativeProps({ scrollEnabled: false });
+                                    }
+                                }}
+                                onMomentumScrollEnd={() => {
+                                    setIsHorizontalScrolling(false);
+                                    if (scrollViewRef.current) {
+                                        scrollViewRef.current.setNativeProps({ scrollEnabled: true });
+                                    }
+                                }}
                             >
                                 {routes.map((item, index) => {
                                     const isSelected = selectedRoute?.id === item.id;
@@ -2236,19 +2323,65 @@ const NavigationScreen: React.FC = () => {
                                 </View>
                             </NativeCard>
 
-                            {/* Boutons de signalement rapide */}
-                            <View style={styles.reportRow}>
-                                <Text style={styles.reportLabel}>Signaler :</Text>
-                                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.reportBtnsContainer}>
-                                    {Object.entries(CHECKPOINT_LABELS).map(([key, val]) => (
-                                        <TouchableOpacity key={key} style={[styles.reportBtn, { backgroundColor: val.color + '15' }]}
-                                            onPress={() => reportCheckpoint(key)}>
-                                            <Text style={styles.reportBtnIcon}>{val.icon}</Text>
-                                            <Text style={[styles.reportBtnText, { color: val.color }]}>{val.label}</Text>
+                            {/* ✅ AMÉLIORÉ: Section signalement communautaire plus visible */}
+                            <NativeCard style={styles.reportSectionCard}>
+                                <View style={styles.reportSectionHeader}>
+                                    <SafeIcon name="AlertTriangle" size={16} color="#F59E0B" />
+                                    <Text style={styles.reportSectionTitle}>Signalement communautaire</Text>
+                                    <TouchableOpacity
+                                        onPress={() => setShowReportHelp(!showReportHelp)}
+                                        style={styles.reportHelpBtn}
+                                    >
+                                        <SafeIcon name={showReportHelp ? "ChevronUp" : "Info"} size={14} color={modernColors.textSecondary} />
+                                    </TouchableOpacity>
+                                </View>
+
+                                {showReportHelp && (
+                                    <View style={styles.reportHelpContent}>
+                                        <Text style={styles.reportHelpText}>
+                                            Signalez les radars, accidents, travaux et autres dangers pour aider la communauté à conduire plus en sécurité.
+                                        </Text>
+                                        <Text style={styles.reportHelpSubtext}>
+                                            Vos signalements sont visibles par tous les utilisateurs sur ce trajet.
+                                        </Text>
+                                    </View>
+                                )}
+
+                                <View style={styles.reportRow}>
+                                    <Text style={styles.reportLabel}>Signaler un danger:</Text>
+                                    <ScrollView
+                                        horizontal
+                                        showsHorizontalScrollIndicator={false}
+                                        contentContainerStyle={styles.reportBtnsContainer}
+                                        nestedScrollEnabled={true}
+                                    >
+                                        <TouchableOpacity style={[styles.reportBtn, { backgroundColor: '#EF444420' }]} onPress={() => reportCheckpoint('radar')}>
+                                            <Text style={styles.reportBtnIcon}>🚓</Text>
+                                            <Text style={styles.reportBtnText}>Radar</Text>
                                         </TouchableOpacity>
-                                    ))}
-                                </ScrollView>
-                            </View>
+                                        <TouchableOpacity style={[styles.reportBtn, { backgroundColor: '#3B82F620' }]} onPress={() => reportCheckpoint('police')}>
+                                            <Text style={styles.reportBtnIcon}>👮</Text>
+                                            <Text style={styles.reportBtnText}>Police</Text>
+                                        </TouchableOpacity>
+                                        <TouchableOpacity style={[styles.reportBtn, { backgroundColor: '#F59E0B20' }]} onPress={() => reportCheckpoint('accident')}>
+                                            <Text style={styles.reportBtnIcon}>🚗</Text>
+                                            <Text style={styles.reportBtnText}>Accident</Text>
+                                        </TouchableOpacity>
+                                        <TouchableOpacity style={[styles.reportBtn, { backgroundColor: '#EF444420' }]} onPress={() => reportCheckpoint('danger')}>
+                                            <Text style={styles.reportBtnIcon}>⚠️</Text>
+                                            <Text style={styles.reportBtnText}>Danger</Text>
+                                        </TouchableOpacity>
+                                        <TouchableOpacity style={[styles.reportBtn, { backgroundColor: '#F59E0B20' }]} onPress={() => reportCheckpoint('road_works')}>
+                                            <Text style={styles.reportBtnIcon}>🚧</Text>
+                                            <Text style={styles.reportBtnText}>Travaux</Text>
+                                        </TouchableOpacity>
+                                        <TouchableOpacity style={[styles.reportBtn, { backgroundColor: '#6B728020' }]} onPress={() => reportCheckpoint('speed_bump')}>
+                                            <Text style={styles.reportBtnIcon}>🔺</Text>
+                                            <Text style={styles.reportBtnText}>Ralentisseur</Text>
+                                        </TouchableOpacity>
+                                    </ScrollView>
+                                </View>
+                            </NativeCard>
 
                             {/* Bouton arrêter le suivi */}
                             <TouchableOpacity style={styles.stopTrackingBtn} onPress={stopTracking}>
@@ -2434,9 +2567,9 @@ const NavigationScreen: React.FC = () => {
                         </View>
                     )}
                 </ScrollView>
-            </KeyboardAvoidingView>
-        </SafeNativeView>
-    );
+        </KeyboardAvoidingView >
+    </SafeNativeView >
+);
 };
 
 // ── Styles ─────────────────────────────────────────────────────────────────
@@ -2639,6 +2772,15 @@ const styles = StyleSheet.create({
     reportBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 20 },
     reportBtnIcon: { fontSize: 14 },
     reportBtnText: { fontSize: 11, fontWeight: '600' },
+
+    // ✅ NOUVEAUX: Styles section signalement améliorée
+    reportSectionCard: { marginBottom: 16, padding: 16, backgroundColor: '#FEF3C7', borderRadius: 12, borderWidth: 1, borderColor: '#F59E0B' },
+    reportSectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
+    reportSectionTitle: { fontSize: 16, fontWeight: '700', color: '#92400E', marginLeft: 8 },
+    reportHelpBtn: { padding: 4, borderRadius: 4 },
+    reportHelpContent: { marginBottom: 12, padding: 12, backgroundColor: '#FFF7ED', borderRadius: 8, borderLeftWidth: 3, borderLeftColor: '#F59E0B' },
+    reportHelpText: { fontSize: 13, color: '#92400E', lineHeight: 18, marginBottom: 4 },
+    reportHelpSubtext: { fontSize: 11, color: '#A16207', fontStyle: 'italic' },
 
     // Stop tracking
     stopTrackingBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 12, borderRadius: 12, borderWidth: 1.5, borderColor: '#EF4444', backgroundColor: '#FEF2F2' },

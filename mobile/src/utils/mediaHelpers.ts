@@ -124,6 +124,7 @@ export const orderImagesWithPrimary = (
         };
     }
 
+    // ✅ CORRECTION: Si currentPrimary est défini et est dans la liste, le maintenir comme principale
     if (currentPrimary && sanitized.includes(currentPrimary)) {
         const filtered = sanitized.filter((image) => image !== currentPrimary);
         return {
@@ -132,6 +133,8 @@ export const orderImagesWithPrimary = (
         };
     }
 
+    // ✅ CORRECTION: Si aucune image principale n'est définie, utiliser la première image
+    // Cela garantit que l'image de mediaData (qui est en première position) reste principale
     return {
         images: sanitized,
         primary: sanitized[0],

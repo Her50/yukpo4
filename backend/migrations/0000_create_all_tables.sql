@@ -485,10 +485,21 @@ CREATE TABLE IF NOT EXISTS service_products (
     -- Métadonnées générées
     product_name TEXT GENERATED ALWAYS AS (
         COALESCE(
+            -- Cas 1: nom.valeur (format formulaire dynamique)
             product_data->'nom'->>'valeur',
-            product_data->>'nom',
+            -- Cas 2: nom_produit.valeur (format formulaire dynamique)
             product_data->'nom_produit'->>'valeur',
+            -- Cas 3: nom direct (format simple)
+            product_data->>'nom',
+            -- Cas 4: nom_produit direct (format simple)
             product_data->>'nom_produit',
+            -- Cas 5: titre (fallback)
+            product_data->>'titre',
+            -- Cas 6: title (fallback anglais)
+            product_data->>'title',
+            -- Cas 7: name (fallback anglais)
+            product_data->>'name',
+            -- Fallback final
             'Produit sans nom'
         )
     ) STORED,

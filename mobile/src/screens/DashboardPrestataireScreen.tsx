@@ -1,10 +1,11 @@
 // @ts-nocheck
-// Remplacement des Ionicons par des emojis pour �viter les crashes
+// Remplacement des Ionicons par des emojis pour éviter les crashes
 import { useNavigation } from '@react-navigation/native';
 import * as React from 'react';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 // react-native-paper retiré pour éviter le crash useNavigation
+import SafeIcon from '../components/SafeIcon';
 import { useAuth } from '../contexts/AuthContext';
 import { userApi } from '../services/api';
 import { theme } from '../theme/theme';
@@ -175,7 +176,7 @@ const DashboardPrestataireScreen: React.FC = () => {
   if (!dashboardData) {
     return (
       <View style={styles.errorContainer}>
-        <Text style={styles.errorIcon}>??</Text>
+        <SafeIcon name="inbox" size={48} color="#D1D5DB" />
         <Text style={styles.errorText}>Aucune donn�e disponible</Text>
         <TouchableOpacity style={styles.retryButton} onPress={loadDashboardData}>
           <Text style={styles.retryButtonText}>R�essayer</Text>
@@ -254,6 +255,42 @@ const DashboardPrestataireScreen: React.FC = () => {
             <Text style={styles.statNumber}>{formatCurrency(dashboardData.budgetConsumed)}</Text>
             <Text style={styles.statLabel}>Budget utilisé</Text>
           </View>
+        </View>
+      </View>
+
+      {/* Actions rapides */}
+      <View style={styles.actionsSection}>
+        <Text style={styles.sectionTitle}>Actions rapides</Text>
+        <View style={styles.actionsGrid}>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => (navigation as any).navigate('CreatePublicite')}
+            activeOpacity={0.8}
+          >
+            <View style={[styles.actionButtonIcon, { backgroundColor: '#D1FAE5' }]}>
+              <SafeIcon name="plus-circle" size={28} color="#10B981" />
+            </View>
+            <Text style={styles.actionButtonTitle}>Nouvelle</Text>
+            <Text style={styles.actionButtonSubtitle}>Publicité</Text>
+            <View style={styles.actionButtonArrow}>
+              <SafeIcon name="chevron-right" size={16} color="#10B981" />
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => (navigation as any).navigate('VideoAnalytics')}
+            activeOpacity={0.8}
+          >
+            <View style={[styles.actionButtonIcon, { backgroundColor: '#DBEAFE' }]}>
+              <SafeIcon name="bar-chart-2" size={28} color="#6366F1" />
+            </View>
+            <Text style={styles.actionButtonTitle}>Analytics</Text>
+            <Text style={styles.actionButtonSubtitle}>Vidéos</Text>
+            <View style={styles.actionButtonArrow}>
+              <SafeIcon name="chevron-right" size={16} color="#6366F1" />
+            </View>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -551,19 +588,59 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: theme.colors.textSecondary,
   },
-  actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    backgroundColor: theme.colors.surface,
-    borderRadius: 8,
-    marginBottom: 8,
+  actionsSection: {
+    marginBottom: 32,
+    paddingHorizontal: 16,
   },
-  actionButtonText: {
-    marginLeft: 12,
+  actionsGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 16,
+  },
+  actionButton: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
+    padding: 20,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  actionButtonIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  actionButtonTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 4,
+  },
+  actionButtonSubtitle: {
     fontSize: 14,
-    color: theme.colors.text,
-    fontWeight: '500',
+    color: '#6B7280',
+    marginBottom: 12,
+  },
+  actionButtonArrow: {
+    position: 'absolute',
+    bottom: 16,
+    right: 16,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   liveButton: {
     backgroundColor: '#DC2626',

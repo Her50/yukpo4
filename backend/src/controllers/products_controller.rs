@@ -1141,13 +1141,15 @@ pub async fn share_product_redirect(
         * { box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            margin: 0; padding: 20px;
+            margin: 0; padding: 0;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh; display: flex; align-items: center; justify-content: center;
         }
         .container {
             background: white; border-radius: 16px; padding: 32px;
-            max-width: 600px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 600px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            margin: 20px;
+            text-align: left;
         }
         h1 { color: #1f2937; margin: 0 0 16px 0; font-size: 28px; }
         .price { font-size: 24px; font-weight: bold; color: #10b981; margin: 16px 0; }
@@ -1664,13 +1666,15 @@ pub async fn share_service_redirect(
         * { box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            margin: 0; padding: 20px;
+            margin: 0; padding: 0;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh; display: flex; align-items: center; justify-content: center;
         }
         .container {
             background: white; border-radius: 16px; padding: 32px;
-            max-width: 600px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 600px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            margin: 20px;
+            text-align: left;
         }
         h1 { color: #1f2937; margin: 0 0 16px 0; font-size: 28px; }
         .price { font-size: 24px; font-weight: bold; color: #10b981; margin: 16px 0; }
@@ -1890,13 +1894,15 @@ pub async fn share_tracking_redirect(
         * { box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            margin: 0; padding: 20px;
+            margin: 0; padding: 0;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh; display: flex; align-items: center; justify-content: center;
         }
         .container {
             background: white; border-radius: 16px; padding: 32px;
-            max-width: 600px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 600px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            margin: 20px;
+            text-align: left;
         }
         h1 { color: #1f2937; margin: 0 0 16px 0; font-size: 24px; }
         .status-badge {

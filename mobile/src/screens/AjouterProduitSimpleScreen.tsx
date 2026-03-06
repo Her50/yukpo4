@@ -720,7 +720,10 @@ const AjouterProduitSimpleScreen: React.FC = () => {
         lieu_produit: lieu_produit ? 'OUI' : 'NON'
     });
 
-    const [primaryProductImage, setPrimaryProductImage] = useState<string | null>(initialProductImages[0] || null);
+    // ✅ CORRECTION: S'assurer que l'image de mediaData est définie comme principale si elle existe
+    const [primaryProductImage, setPrimaryProductImage] = useState<string | null>(
+        mediaDataImages.length > 0 ? mediaDataImages[0] : (initialProductImages[0] || null)
+    );
 
     const initialPriceVariant = prefillPriceVariant || iaPriceVariant || null;
     const variantCurrency = getCurrencyFromVariant(initialPriceVariant);
@@ -1035,6 +1038,49 @@ const AjouterProduitSimpleScreen: React.FC = () => {
             });
         }
     }, [mode, prefill, initialFormValues]);
+
+    // ✅ NOUVEAU: Fonction utilitaire pour vérifier les configurations de livraison existantes
+    const checkExistingDeliveryConfigs = async (serviceId: number) => {
+        try {
+            console.log('[AjouterProduitSimple] 🔍 Vérification configs livraison existantes pour service:', serviceId);
+            const response = await apiGet(`/api/delivery/product-config/list/${serviceId}`);
+
+            if (response.success && response.data && Array.isArray(response.data.products) && response.data.products.length > 0) {
+                const products = response.data.products;
+                // Trouver les produits configurés avec une adresse de pickup
+                const configuredProducts = products.filter(p => p.is_configured && p.has_pickup_address);
+
+                if (configuredProducts.length > 0) {
+                    // Prendre le premier produit configuré (trié par index)
+                    const latestConfig = configuredProducts[0];
+
+                    console.log('[AjouterProduitSimple] ✅ Config existante trouvée:', {
+                        productIndex: latestConfig.index,
+                        productName: latestConfig.name
+                    });
+
+                    setExistingDeliveryConfig({
+                        hasConfig: true,
+                        productName: latestConfig.name,
+                        productIndex: latestConfig.index
+                    });
+                    return true;
+                } else {
+                    console.log('[AjouterProduitSimple] ℹ️ Aucune config valide trouvée');
+                    setExistingDeliveryConfig(null);
+                    return false;
+                }
+            } else {
+                console.log('[AjouterProduitSimple] ℹ️ Aucune config livraison existante');
+                setExistingDeliveryConfig(null);
+                return false;
+            }
+        } catch (error) {
+            console.error('[AjouterProduitSimple] ❌ Erreur vérification config livraison:', error);
+            setExistingDeliveryConfig(null);
+            return false;
+        }
+    };
 
     const [formValues, setFormValues] = useState<any>(initialFormValues);
 
@@ -2082,6 +2128,9 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                         const finalProductIndex = jobResult.productIndex;
                                         const productName = formValues.nom_produit || 'Nouveau produit';
 
+                                        // ✅ NOUVEAU: Vérifier s'il existe une configuration de livraison précédente
+                                        checkExistingDeliveryConfigs(finalServiceId);
+
                                         // Afficher la modal de confirmation
                                         setSuccessModalData({
                                             serviceId: finalServiceId,
@@ -2131,6 +2180,9 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                     const finalServiceId = typeof serviceId === 'string' ? parseInt(serviceId, 10) : serviceId;
                                     const finalProductIndex = typeof productIndexResult === 'number' ? productIndexResult : parseInt(String(productIndexResult), 10);
                                     const productName = formValues.nom_produit || 'Nouveau produit';
+
+                                    // ✅ NOUVEAU: Vérifier s'il existe une configuration de livraison précédente
+                                    checkExistingDeliveryConfigs(finalServiceId);
 
                                     // Afficher la modal de confirmation
                                     setSuccessModalData({
@@ -2368,7 +2420,16 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                 value={formValues.description_produit}
                                 onChangeText={(value) => handleFieldChange('description_produit', value)}
                                 multiline
+                                numberOfLines={3}
                                 minLines={3}
+                                maxLines={10}
+                                blurOnSubmit={false}
+                                returnKeyType="default"
+                                textAlignVertical="top"
+                                autoCorrect={true}
+                                autoCapitalize="sentences"
+                                scrollEnabled={false}
+                                textBreakStrategy="highQuality"
                                 style={styles.textareaInput}
                                 inputStyle={styles.descriptionInputText}
                             />
@@ -3146,8 +3207,11 @@ const styles = StyleSheet.create({
         minHeight: 52,
     },
     textareaInput: {
-        minHeight: 0,
+        minHeight: 100,
         paddingVertical: 12,
+        textAlignVertical: 'top',
+        flexWrap: 'wrap',
+        overflow: 'hidden',
     },
     descriptionInputText: {
         lineHeight: 22,

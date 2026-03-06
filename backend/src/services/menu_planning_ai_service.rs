@@ -1405,7 +1405,7 @@ IMPORTANT :
 
     /// Crée un menu de fallback en cas d'erreur
     fn create_fallback_menu(&self, profile: &FamilyProfile, week_start: &str) -> WeeklyMenu {
-        let day_names = vec![
+        let day_names = [
             "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche",
         ];
         let meals: Vec<DailyMeal> = (1..=7)

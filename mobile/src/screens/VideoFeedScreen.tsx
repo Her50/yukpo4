@@ -58,15 +58,34 @@ const formatCount = (count: number): string => {
 };
 
 const normalizeVideoUrl = (url: any): string | null => {
-    if (!url) return null;
+    console.debug(`[VideoFeedScreen] normalizeVideoUrl appelé avec:`, url, typeof url);
+
+    if (!url) {
+        console.debug(`[VideoFeedScreen] normalizeVideoUrl: url est falsy`);
+        return null;
+    }
+
     const urlStr = typeof url === 'string' ? url : String(url);
-    if (!urlStr || typeof urlStr !== 'string') return null;
+    if (!urlStr || typeof urlStr !== 'string') {
+        console.debug(`[VideoFeedScreen] normalizeVideoUrl: urlStr invalide`);
+        return null;
+    }
+
     const trimmed = urlStr.trim();
-    if (!trimmed) return null;
+    if (!trimmed) {
+        console.debug(`[VideoFeedScreen] normalizeVideoUrl: trimmed est vide`);
+        return null;
+    }
+
     if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:')) {
+        console.debug(`[VideoFeedScreen] normalizeVideoUrl: URL directe retournée:`, trimmed);
         return trimmed;
     }
-    return mediaService.getVideoUrl(trimmed) || trimmed;
+
+    const cdnUrl = mediaService.getVideoUrl(trimmed);
+    const result = cdnUrl || trimmed;
+    console.debug(`[VideoFeedScreen] normalizeVideoUrl: CDN URL générée:`, cdnUrl, 'résultat final:', result);
+    return result;
 };
 
 // ✅ CORRIGÉ 2026-03-04: Helper pour extraire une vidéo depuis un champ qui peut être:
@@ -89,6 +108,8 @@ const normalizeFeed = (raw: any[]): FeedItem[] => {
         console.warn('[VideoFeedScreen] normalizeFeed: raw n\'est pas un tableau', typeof raw, raw);
         return [];
     }
+    console.log(`[VideoFeedScreen] normalizeFeed: ${raw.length} items bruts à traiter`);
+
     return raw
         .map((item, index) => {
             // ✅ CORRIGÉ 2026-03-04: Chercher la vidéo dans tous les formats possibles
@@ -99,10 +120,24 @@ const normalizeFeed = (raw: any[]): FeedItem[] => {
                 item?.data?.video ||
                 extractVideoFromField(item?.data?.videos) ||
                 extractVideoFromField(item?.videos);
-            if (!rawVideo) return null;
+
+            if (!rawVideo) {
+                console.debug(`[VideoFeedScreen] Item ${index} ignoré: aucune vidéo trouvée`, {
+                    videoUrl: item?.videoUrl,
+                    video: item?.video,
+                    dataVideoUrl: item?.data?.videoUrl,
+                    dataVideo: item?.data?.video,
+                    dataVideos: item?.data?.videos,
+                    videos: item?.videos
+                });
+                return null;
+            }
 
             const video = normalizeVideoUrl(rawVideo);
-            if (!video) return null;
+            if (!video) {
+                console.debug(`[VideoFeedScreen] Item ${index} ignoré: normalizeVideoUrl a retourné null pour`, rawVideo);
+                return null;
+            }
 
             const title =
                 item?.titre ||
@@ -200,17 +235,29 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
             const endpoint = showOnlyMyVideos
                 ? '/api/videos/my-videos'
                 : `/api/content/mixed?limit=20&page=${pageNum}&format=video${userIdParam}`;
+            console.log(`[VideoFeedScreen] Appel API: ${endpoint}`);
             const response = await apiGet(endpoint);
+            console.log(`[VideoFeedScreen] Réponse API brute:`, response);
+
             let data: any[] = [];
             const responseData = response?.data as any;
 
             if (responseData && typeof responseData === 'object' && !Array.isArray(responseData)) {
                 data = responseData.data || responseData.items || [];
+                console.log(`[VideoFeedScreen] Données extraites de l'objet: ${data.length} items`);
             } else if (responseData && Array.isArray(responseData)) {
                 data = responseData;
+                console.log(`[VideoFeedScreen] Données extraites du tableau: ${data.length} items`);
             } else {
                 data = [];
+                console.warn(`[VideoFeedScreen] Format de réponse inattendu:`, typeof responseData, responseData);
             }
+
+            // Afficher le premier item pour debug
+            if (data.length > 0) {
+                console.log(`[VideoFeedScreen] Premier item brut:`, data[0]);
+            }
+
             const normalized = normalizeFeed(data);
             console.log(`[VideoFeedScreen] Feed chargé: ${normalized.length} vidéos (page ${pageNum})`);
 

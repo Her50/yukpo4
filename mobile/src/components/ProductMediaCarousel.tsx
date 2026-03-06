@@ -29,6 +29,9 @@ interface ProductMediaCarouselProps {
     onImagePress?: (index: number) => void;
     onMediaChange?: (currentIndex: number, totalMedia: number) => void; // ✅ NOUVEAU: Callback pour tracker navigation médias
     onAllMediaViewed?: () => void; // ✅ NOUVEAU: Callback quand tous les médias ont été vus
+    onVideoRef?: (videoRef: Video, mediaKey: string) => void; // ✅ NOUVEAU: Callback pour enregistrer les refs vidéos
+    onStopVideo?: (mediaKey: string) => void; // ✅ NOUVEAU: Callback pour arrêter une vidéo spécifique
+    isScrolling?: boolean; // ✅ NOUVEAU: Indicateur de scroll pour arrêter les vidéos
 }
 
 const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
@@ -38,6 +41,9 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
     onImagePress,
     onMediaChange,
     onAllMediaViewed,
+    onVideoRef,
+    onStopVideo,
+    isScrolling = false,
 }) => {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [playingVideoIndex, setPlayingVideoIndex] = useState<number | null>(null);
@@ -178,6 +184,25 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
         }
     }, [fullscreenMedia]);
 
+    // ✅ CORRIGÉ 2026-03-06: Arrêter les vidéos lors du scroll
+    useEffect(() => {
+        if (isScrolling && playingVideoIndex !== null) {
+            // Arrêter la vidéo en cours de lecture
+            const currentVideoRef = videoRefs.current.get(playingVideoIndex);
+            if (currentVideoRef) {
+                currentVideoRef.pauseAsync().catch(() => undefined);
+            }
+
+            // Notifier le parent
+            const mediaKey = allMedia[playingVideoIndex]?.uri;
+            if (mediaKey && onStopVideo) {
+                onStopVideo(mediaKey);
+            }
+
+            setPlayingVideoIndex(null);
+        }
+    }, [isScrolling, playingVideoIndex, allMedia, onStopVideo]);
+
     // ✅ CORRIGÉ 2026-03-02: Auto-scroll continu à travers tous les médias
     // Scroll toutes les 4s pour les images, pause quand l'utilisateur interagit ou qu'une vidéo joue
     useEffect(() => {
@@ -258,6 +283,11 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
                             ref={(ref) => {
                                 if (ref) {
                                     videoRefs.current.set(index, ref);
+                                    // ✅ NOUVEAU 2026-03-06: Enregistrer la ref auprès du parent
+                                    const mediaKey = media.uri;
+                                    if (onVideoRef && mediaKey) {
+                                        onVideoRef(ref, mediaKey);
+                                    }
                                 } else {
                                     videoRefs.current.delete(index);
                                 }
@@ -265,7 +295,7 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
                             source={{ uri: media.uri }}
                             style={styles.media}
                             resizeMode={ResizeMode.COVER} // ✅ CORRIGÉ: COVER au lieu de CONTAIN pour éviter les espaces noirs
-                            shouldPlay={playingVideoIndex === index}
+                            shouldPlay={playingVideoIndex === index && !isScrolling}
                             isLooping
                             isMuted={playingVideoIndex !== index}
                             useNativeControls={false}

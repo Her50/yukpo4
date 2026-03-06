@@ -121,10 +121,12 @@ use crate::routes::{
     webhook_routes::webhook_routes,
     webrtc_routes::webrtc_routes,
 };
-use crate::state::AppState;
 use crate::websocket::chat_websocket::create_chat_websocket_router;
 use crate::websocket::flash_sale_websocket::create_flash_sale_websocket_router;
 use crate::websocket::websocket_handler::create_websocket_router;
+use crate::{
+    routes::whatsapp_routes, services::whatsapp_service::WhatsAppService, state::AppState,
+};
 use axum::{extract::State, routing::get, Json, Router};
 use std::sync::Arc;
 use tower_http::compression::CompressionLayer;
@@ -329,6 +331,9 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
     let assurance = assurance_routes(state.clone()); // ✅ NOUVEAU: Routes assurance dédiées (recherche, devis IA, comparaison)
     let followers = followers_routes(state.clone()); // ✅ NOUVEAU 2026-03-05: Routes pour système de suivi vendeurs
 
+    // ✅ NOUVEAU 2026-03-06: Configuration WhatsApp Business
+    let whatsapp = whatsapp_routes::create_whatsapp_routes(state.clone());
+
     let app = Router::new()
         .route("/healthz", get(healthz))
         .route("/health", get(healthz)) // ✅ Route pour ALB health checks
@@ -416,6 +421,7 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .merge(hotel_management) // ✅ 2026-03-01: Routes gestion hôtels/meublés (chambres, réservations, QR)
         .merge(assurance) // ✅ NOUVEAU: Routes assurance dédiées (recherche, devis IA, comparaison)
         .merge(followers) // ✅ NOUVEAU 2026-03-05: Routes pour système de suivi vendeurs
+        .merge(whatsapp) // ✅ NOUVEAU 2026-03-06: Routes WhatsApp Business API
         .merge(mobile_logs)
         .merge(navigation) // ✅ NOUVEAU: Routes navigation intelligente
         .merge(phone_verification) // ✅ NOUVEAU 2026-02-25: Routes vérification OTP téléphone

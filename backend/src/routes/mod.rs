@@ -101,6 +101,7 @@ pub mod video_routes;
 pub mod weather_routes;
 pub mod webhook_routes;
 pub mod webrtc_routes; // ✅ Routes WebRTC pour appels // ✅ NOUVEAU: Routes pour feature flags
+pub mod whatsapp_routes; // ✅ NOUVEAU 2026-03-06: Routes WhatsApp Business API
 
 // === Routes d'Optimisation IA ===
 // pub mod ia_routes_optimized; // Temporairement d?sactiv?

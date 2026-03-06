@@ -2280,27 +2280,11 @@ const MesProduitsScreen: React.FC = () => {
             },
         },
         {
-            label: 'Analytics des videos',
-            icon: 'bar-chart-2',
-            onPress: () => {
-                setShowMenuModal(false);
-                (navigation as any).navigate('VideoAnalytics');
-            },
-        },
-        {
             label: 'Mes Publicités',
             icon: 'megaphone',
             onPress: () => {
                 setShowMenuModal(false);
                 (navigation as any).navigate('PubliciteDashboard');
-            },
-        },
-        {
-            label: 'Nouvelle Publicité',
-            icon: 'plus-circle',
-            onPress: () => {
-                setShowMenuModal(false);
-                (navigation as any).navigate('CreatePublicite');
             },
         },
         {

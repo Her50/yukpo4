@@ -1820,7 +1820,7 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
 
                     // ✅ NOUVEAU 2026-01-29: Afficher les détails de la migration 0
                     if migrations_table_exists {
-                        if let Ok(migration_info) = sqlx::query_as::<_, (i64, String, String, bool)>(
+                        if let Ok(Some((version, desc, checksum_hex, success))) = sqlx::query_as::<_, (i64, String, String, bool)>(
                         "SELECT version, description, encode(checksum, 'hex') as checksum_hex, success 
                          FROM _sqlx_migrations 
                          WHERE version = 0"
@@ -1828,7 +1828,6 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
                     .fetch_optional(&pg_pool)
                     .await
                     {
-                        if let Some((version, desc, checksum_hex, success)) = migration_info {
                             log::error!("   Version: {}", version);
                             log::error!("   Description (en base): {}", desc);
                             log::error!("   Checksum actuel (en base): {}", checksum_hex);
@@ -1847,7 +1846,6 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
                                 log::error!("   💡 Elle supprimera l'entrée incorrecte de migration 0 pour permettre la réapplication correcte");
                             } else {
                                 log::error!("   ⚠️ Le checksum d'une migration a changé depuis l'application");
-                            }
                         }
                     }
 
@@ -2296,7 +2294,7 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
             redis_url.push_str("/0");
             log::info!("✅ Redis: Numéro de base de données ajouté (/0)");
         } else if redis_url.ends_with('/') {
-            redis_url.push_str("0");
+            redis_url.push('0');
             log::info!("✅ Redis: Numéro de base de données ajouté (0)");
         }
     }
@@ -2886,7 +2884,7 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
     // ✅ PHASE 6: Lancer la désactivation automatique des produits (tous les jours à minuit)
     // Utilise maintenant service_products au lieu de JSONB
     let state_clone_products = app_state.clone();
-    let _ = tokio::spawn(async move {
+    std::mem::drop(tokio::spawn(async move {
         use tokio::time::{interval, Duration};
         let mut interval = interval(Duration::from_secs(86400)); // 24 heures
 
@@ -2903,34 +2901,34 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
                 Err(e) => log::error!("❌ Erreur désactivation produits: {}", e),
             }
         }
-    });
+    }));
 
     // ✅ Lancer la tâche de désactivation des publicités expirées (toutes les heures)
     let pool_clone_pub = Arc::new(app_state.pg.clone());
-    let _ = tokio::spawn(async move {
+    std::mem::drop(tokio::spawn(async move {
         yukpomnang_backend::tasks::publicite_expiration::start_publicite_expiration_task(
             pool_clone_pub,
         )
         .await;
-    });
+    }));
 
     // ✅ NOUVEAU 2025-01-28: Lancer la tâche de notifications pour nouveaux matchings emploi (toutes les 6 heures)
     let pool_clone_matching = Arc::new(app_state.pg.clone());
-    let _ = tokio::spawn(async move {
+    std::mem::drop(tokio::spawn(async move {
         yukpomnang_backend::tasks::matching_emploi_notifications::start_matching_notifications_task(
             pool_clone_matching,
         )
         .await;
-    });
+    }));
 
     // ✅ NOUVEAU 2025-12-30: Nettoyage automatique du cache audio (tous les jours)
     let pool_clone_audio = Arc::new(app_state.pg.clone());
-    let _ = tokio::spawn(async move {
+    std::mem::drop(tokio::spawn(async move {
         yukpomnang_backend::tasks::audio_cache_cleanup::start_audio_cache_cleanup_task(
             pool_clone_audio,
         )
         .await;
-    });
+    }));
 
     // ✅ NOUVEAU 2026-01-02: Démarrer le worker de la queue de création de produits
     use yukpomnang_backend::services::product_creation_queue::ProductCreationQueueService;
@@ -2969,11 +2967,11 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
             Arc::new(app_state.pg.clone()),
             cache_for_worker,
         );
-        let _ = tokio::spawn(async move {
+        std::mem::drop(tokio::spawn(async move {
             if let Err(e) = worker.start().await {
                 log::error!("❌ Flash Sale Queue Worker error: {:?}", e);
             }
-        });
+        }));
         log::info!("✅ Flash Sale Queue Worker démarré");
     } else {
         log::warn!("⚠️ Flash Sale Queue Worker non démarré (cache ou queue non disponible)");
@@ -2986,11 +2984,11 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
             redis_client_arc,
             Arc::new(app_state.pg.clone()),
         );
-        let _ = tokio::spawn(async move {
+        std::mem::drop(tokio::spawn(async move {
             if let Err(e) = worker.start().await {
                 log::error!("❌ Notification Queue Worker error: {:?}", e);
             }
-        });
+        }));
         log::info!("✅ Notification Queue Worker démarré");
     } else {
         log::warn!("⚠️ Notification Queue Worker non démarré (queue non disponible)");
@@ -3020,9 +3018,9 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
     // ✅ Phase 7: Tâche d'optimisation périodique
     let pool_clone_optimization = Arc::new(app_state.pg.clone());
     let app_state_clone_optimization = app_state.clone();
-    let _ = tokio::spawn(async move {
+    std::mem::drop(tokio::spawn(async move {
         start_optimization_task(pool_clone_optimization, app_state_clone_optimization).await;
-    });
+    }));
     // ✅ Scheduler pour les campagnes promos globales (Black Friday, etc.)
     tasks::global_promo_scheduler::start_global_promo_scheduler(app_state.clone());
     // ✅ Worker pipeline health (alerting interne)
@@ -3032,12 +3030,12 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
     // ✅ Surveillance SLA
     tasks::delivery_sla_monitor::start_delivery_sla_monitor(app_state.clone());
     // ✅ Monitor des timeouts de validation d'étapes
-    let _ = tokio::spawn(
+    std::mem::drop(tokio::spawn(
         tasks::delivery_timeout_monitor::start_delivery_timeout_monitor(app_state.clone()),
-    );
+    ));
     // ✅ Monitor des timeouts de validation de commandes
-    let _ = tokio::spawn(tasks::order_timeout_monitor::start_order_timeout_monitor(
-        app_state.clone(),
+    std::mem::drop(tokio::spawn(
+        tasks::order_timeout_monitor::start_order_timeout_monitor(app_state.clone()),
     ));
 
     // ✅ NOUVEAU 2026-02-14: Démarrer le monitoring GPU si configuré
@@ -3410,8 +3408,8 @@ fn validate_redis_url(url: &str) -> bool {
     }
 
     // Vérifier qu'il y a au moins un ':' après le protocole
-    let after_proto = if url.starts_with("rediss://") {
-        &url[9..]
+    let after_proto = if let Some(stripped) = url.strip_prefix("rediss://") {
+        stripped
     } else {
         &url[8..]
     };

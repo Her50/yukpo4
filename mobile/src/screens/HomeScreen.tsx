@@ -26,7 +26,6 @@ import {
 } from 'react-native';
 import ChatHistoryModal from '../components/ChatHistoryModal';
 import ChatInputMobile from '../components/ChatInputMobile';
-import LanguageSelector from '../components/LanguageSelector';
 import ModernGPSModal from '../components/ModernGPSModal';
 import NotificationHistoryModal from '../components/NotificationHistoryModal';
 import SafeIcon from '../components/SafeIcon';
@@ -124,6 +123,31 @@ const HomeScreen: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [showGPSModal, setShowGPSModal] = useState(false);
     const [showNotificationModal, setShowNotificationModal] = useState(false);
+
+    // ✅ NOUVEAU: Réinitialiser le mode sur "recherche" à chaque fois que l'écran reçoit le focus
+    // ✅ AMÉLIORÉ: Garantir que le bouton "recherche" est toujours sélectionné par défaut
+    useFocusEffect(
+        useCallback(() => {
+            console.log('[HomeScreen] ✅ Focus reçu - Réinitialisation du mode sur "recherche"');
+
+            // Forcer le mode recherche peu importe d'où l'on vient
+            setIsCreateService(false);
+
+            // ✅ SÉCURITÉ: Forcer une deuxième réinitialisation après un court délai
+            // pour garantir que le mode soit bien appliqué même si le composant se re-render
+            const timeoutId = setTimeout(() => {
+                setIsCreateService(false);
+                console.log('[HomeScreen] ✅ Deuxième réinitialisation du mode sur "recherche" (sécurité)');
+            }, 100);
+
+            return () => {
+                // Nettoyer le timeout si l'écran perd le focus
+                if (timeoutId) {
+                    clearTimeout(timeoutId);
+                }
+            };
+        }, [])
+    );
     const [showChatModal, setShowChatModal] = useState(false);
     const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null);
     // ✅ NOUVEAU: Nombre de notifications non lues
@@ -590,7 +614,7 @@ const HomeScreen: React.FC = () => {
         <SafeNativeView style={styles.container}>
             {/* Header fixe avec avatar, langue, trophée et branding Yukpo */}
             <View style={[styles.header, { paddingTop: headerPaddingTop }]}>
-                {/* Colonne gauche: Avatar + Langue + Trophée */}
+                {/* Colonne gauche: Avatar + Navigation */}
                 <View style={styles.headerLeft}>
                     <View style={styles.avatarContainer}>
                         <UserAvatarMenu
@@ -599,11 +623,13 @@ const HomeScreen: React.FC = () => {
                             weatherLocation={selectedLocation}
                         />
                     </View>
-                    <LanguageSelector
-                        selectedLanguage={language}
-                        onLanguageChange={setLanguage}
-                        compact={true}
-                    />
+                    <TouchableOpacity
+                        style={styles.navigationButton}
+                        onPress={() => navigate('NavigationScreen')}
+                        activeOpacity={0.8}
+                    >
+                        <SafeIcon name="navigation" size={22} color="#6366F1" />
+                    </TouchableOpacity>
                 </View>
 
                 {/* Titre centré avec branding Yukpo */}
@@ -617,7 +643,7 @@ const HomeScreen: React.FC = () => {
                 {/* Colonne droite: Livraison + Chat + Notifications */}
                 <View style={styles.headerRight}>
                     <TouchableOpacity
-                        style={styles.deliveryButton}
+                        style={styles.headerButton}
                         onPress={() => {
                             // ✅ DÉSACTIVÉ: Haptic feedback désactivé pour navigation fluide
                             // hapticPress();
@@ -638,7 +664,7 @@ const HomeScreen: React.FC = () => {
                             setShowChatModal(true);
                         }}
                     >
-                        <SafeIcon name="message-circle" size={20} color="#6B7280" />
+                        <SafeIcon name="message-circle" size={22} color="#6B7280" />
                         {/* ✅ NOUVEAU: Badge rouge avec le nombre de messages chat non lus */}
                         {unreadChatCount > 0 && (
                             <View style={styles.notificationBadge}>
@@ -656,7 +682,7 @@ const HomeScreen: React.FC = () => {
                             setShowNotificationModal(true);
                         }}
                     >
-                        <SafeIcon name="bell" size={20} color="#6B7280" />
+                        <SafeIcon name="bell" size={22} color="#6B7280" />
                         {/* ✅ NOUVEAU: Badge rouge avec le nombre de notifications non lues */}
                         {unreadNotificationsCount > 0 && (
                             <View style={styles.notificationBadge}>
@@ -676,19 +702,8 @@ const HomeScreen: React.FC = () => {
                 // ✅ CRITIQUE: S'assurer que le ScrollView respecte le paddingTop du SafeNativeView
                 contentInsetAdjustmentBehavior="automatic"
             >
-                {/* ✅ AJOUTÉ: Espace pour compenser la hauteur de l'en-tète fixe */}
-                <View style={{ height: headerTotalHeight }} />
-
-                {/* ✅ NOUVEAU: Icône Navigation Intelligente */}
-                <View style={styles.navigationIconContainer}>
-                    <TouchableOpacity
-                        style={styles.navigationIconButton}
-                        onPress={() => navigate('NavigationScreen')}
-                        activeOpacity={0.8}
-                    >
-                        <SafeIcon name="navigation" size={16} color="#6366F1" />
-                    </TouchableOpacity>
-                </View>
+                {/* ✅ ESPACE POUR COMPENSER L'ENTÊTE FIXE - RÉDUIT */}
+                <View style={{ height: headerTotalHeight - 8 }} />
 
                 {/* Sélecteur de mode */}
                 <View style={styles.modeSelector}>
@@ -906,17 +921,17 @@ const styles = StyleSheet.create({
         minWidth: 0,
     },
     avatarContainer: {
-        width: 36,
-        height: 36,
+        width: 40, // ✅ AUGMENTÉ: De 32 à 40 pour uniformiser avec headerButton
+        height: 40, // ✅ AUGMENTÉ: De 32 à 40 pour uniformiser avec headerButton
         justifyContent: 'center',
         alignItems: 'center',
     },
     headerCenter: {
         flex: 1,
-        alignItems: 'flex-start',
+        alignItems: 'center',
         justifyContent: 'center',
         paddingLeft: 0,
-        paddingRight: 16,
+        paddingRight: 0,
     },
     brandTitle: {
         fontSize: 26,
@@ -941,9 +956,9 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
     },
     headerButton: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
+        width: 40, // ✅ AUGMENTÉ: De 32 à 40 pour plus grandes icônes
+        height: 40, // ✅ AUGMENTÉ: De 32 à 40 pour plus grandes icônes
+        borderRadius: 20, // ✅ AUGMENTÉ: De 16 à 20 pour proportion
         backgroundColor: '#F3F4F6',
         justifyContent: 'center',
         alignItems: 'center',
@@ -953,33 +968,40 @@ const styles = StyleSheet.create({
     },
     notificationBadge: {
         position: 'absolute',
-        top: -4,
-        right: -4,
+        top: -4, // ✅ AJUSTÉ: Pour bouton plus grand
+        right: -4, // ✅ AJUSTÉ: Pour bouton plus grand
         backgroundColor: '#EF4444', // Rouge vif
-        borderRadius: 10,
-        minWidth: 18,
-        height: 18,
+        borderRadius: 10, // ✅ AUGMENTÉ: De 8 à 10 pour proportion
+        minWidth: 20, // ✅ AUGMENTÉ: De 16 à 20 pour proportion
+        height: 20, // ✅ AUGMENTÉ: De 16 à 20 pour proportion
         justifyContent: 'center',
         alignItems: 'center',
-        paddingHorizontal: 4,
-        borderWidth: 2,
+        paddingHorizontal: 4, // ✅ AUGMENTÉ: De 3 à 4 pour proportion
+        borderWidth: 2, // ✅ AUGMENTÉ: De 1.5 à 2 pour proportion
         borderColor: '#FFFFFF',
         zIndex: 10,
     },
     notificationBadgeText: {
         color: '#FFFFFF',
-        fontSize: 10,
+        fontSize: 11, // ✅ AUGMENTÉ: De 9 à 11 pour proportion
         fontWeight: 'bold',
         textAlign: 'center',
     },
-    deliveryButton: {
-        width: 40, // ✅ CORRIGÉ: Mème taille que les autres boutons
-        height: 40, // ✅ CORRIGÉ: Mème taille que les autres boutons
-        borderRadius: 20,
-        backgroundColor: '#F3F4F6', // ✅ CORRIGÉ: Mème fond que les autres boutons (chat/notification)
+    // ✅ NOUVEAU: Bouton Navigation dans l'entête
+    navigationButton: {
+        width: 40, // ✅ AUGMENTÉ: Même taille que les autres boutons
+        height: 40, // ✅ AUGMENTÉ: Même taille que les autres boutons
+        borderRadius: 20, // ✅ AUGMENTÉ: Même proportion que les autres boutons
+        backgroundColor: '#EEF2FF',
         justifyContent: 'center',
         alignItems: 'center',
-        // ✅ SUPPRIMÉ: borderWidth, borderColor, shadowColor spécifiques
+        borderWidth: 1,
+        borderColor: '#C7D2FE',
+        shadowColor: '#6366F1',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
+        elevation: 2,
     },
     deliveryButtonIcon: {
         fontSize: 22, // ✅ Taille de l'emoji coursier
@@ -990,8 +1012,8 @@ const styles = StyleSheet.create({
     modeSelector: {
         flexDirection: 'row',
         marginHorizontal: 16,
-        marginTop: 4, // ✅ RÉDUIT: De 8 à 4 pour encore moins d'espace
-        marginBottom: 4, // ✅ RÉDUIT: De 8 à 4 pour encore moins d'espace
+        marginTop: 8, // ✅ RÉTABLI: De 4 à 8 pour équilibrer l'espace
+        marginBottom: 8, // ✅ RÉTABLI: De 4 à 8 pour équilibrer l'espace
         backgroundColor: '#F1F5F9',
         borderRadius: 12,
         padding: 4, // ✅ RÉDUIT: De 5 à 4 pour compacter
@@ -1022,12 +1044,12 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFFFFF', // ✅ CORRIGÉ: Fond blanc pur pour plus de gaieté
         marginHorizontal: 16,
         borderRadius: 16,
-        padding: 10, // ✅ RÉDUIT: De 12 à 10 pour encore plus de compacité
+        padding: 12, // ✅ RÉTABLI: De 10 à 12 pour équilibre
         marginTop: 0, // ✅ CORRIGÉ: Pas de marge en haut (gérée par modeSelector)
-        marginBottom: 8, // ✅ RÉDUIT: De 12 à 8 pour remonter les éléments
+        marginBottom: 12, // ✅ RÉTABLI: De 8 à 12 pour équilibre
     },
     inputContainer: {
-        marginBottom: 2, // ✅ RÉDUIT: De 4 à 2 pour espace minimum
+        marginBottom: 8, // ✅ RÉTABLI: De 2 à 8 pour équilibre
     },
     carouselErrorContainer: {
         padding: 20,
@@ -1043,8 +1065,8 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
     promoBarContainer: {
-        marginTop: 8, // ✅ RÉDUIT: De 12 à 8 pour moins d'espace
-        marginBottom: 8, // ✅ RÉDUIT: De 12 à 8 pour moins d'espace
+        marginTop: 12, // ✅ RÉTABLI: De 8 à 12 pour équilibre
+        marginBottom: 12, // ✅ RÉTABLI: De 8 à 12 pour équilibre
     },
     promoBarButton: {
         flexDirection: 'row',
@@ -1210,8 +1232,8 @@ const styles = StyleSheet.create({
         color: '#374151',
     },
     specializedServicesContainer: {
-        marginTop: 12, // ✅ RÉDUIT: De 16 à 12 pour encore plus d'espace
-        marginBottom: 8, // ✅ RÉDUIT: De 12 à 8 pour équilibrer
+        marginTop: 16, // ✅ RÉTABLI: De 12 à 16 pour équilibre
+        marginBottom: 12, // ✅ RÉTABLI: De 8 à 12 pour équilibre
     },
     specializedServicesTitle: {
         fontSize: 17, // ✅ AUGMENTÉ: De 15 à 17 pour meilleure visibilité
@@ -1219,27 +1241,6 @@ const styles = StyleSheet.create({
         color: '#111827',
         marginBottom: 12, // ✅ AUGMENTÉ: De 8 à 12 pour plus d'espace
         marginTop: 4, // ✅ AJOUTÉ: Marge en haut pour séparation
-    },
-    // ✅ NOUVEAU: Styles pour l'icône Navigation Intelligente - OPTIMISÉ
-    navigationIconContainer: {
-        alignItems: 'flex-end',
-        paddingHorizontal: 16,
-        marginBottom: 4, // ✅ RÉDUIT: De 8 à 4 pour moins d'espace
-    },
-    navigationIconButton: {
-        width: 32, // ✅ RÉDUIT: De 40 à 32 pour moins d'encombrement
-        height: 32, // ✅ RÉDUIT: De 40 à 32 pour moins d'encombrement
-        borderRadius: 16, // ✅ RÉDUIT: De 20 à 16 pour proportion
-        backgroundColor: '#EEF2FF',
-        justifyContent: 'center',
-        alignItems: 'center',
-        borderWidth: 1,
-        borderColor: '#C7D2FE',
-        shadowColor: '#6366F1',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
-        elevation: 2,
     },
 });
 

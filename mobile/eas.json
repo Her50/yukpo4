@@ -39,11 +39,8 @@
             },
             "android": {
                 "buildType": "apk",
-                "gradleCommand": ":app:assembleRelease",
                 "credentialsSource": "remote",
-                "image": "latest",
-                "withoutCredentials": false,
-                "prebuildCommand": "rm -rf android/app/build android/build android/.gradle || true"
+                "image": "latest"
             }
         },
         "production": {

@@ -2475,20 +2475,22 @@ const styles = StyleSheet.create({
     stepHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 24, // ✅ AUGMENTÉ: De 20 à 24
-        paddingVertical: 20, // ✅ AUGMENTÉ: De 16 à 20
+        paddingHorizontal: 24,
+        paddingVertical: 16, // ✅ RÉDUIT: De 20 à 16 pour moins d'espace vertical
         borderBottomWidth: StyleSheet.hairlineWidth,
         borderBottomColor: modernColors.border,
-        minHeight: 70, // ✅ AJOUTÉ: Hauteur minimale
+        minHeight: 60, // ✅ RÉDUIT: De 70 à 60 pour compacter
     },
     stepHeaderText: {
         flex: 1,
-        alignItems: 'center',
+        alignItems: 'center', // Gardé pour centrer le contenu
     },
     stepHeaderContent: {
         flex: 1,
         alignItems: 'center',
-        gap: 8,
+        justifyContent: 'center', // ✅ AJOUTÉ: Centrer verticalement
+        gap: 6, // ✅ RÉDUIT: De 8 à 6 pour compacter
+        minHeight: 40, // ✅ AJOUTÉ: Hauteur minimale pour le contenu
     },
     headerSkeletonPrimary: {
         marginBottom: 6,
@@ -2497,11 +2499,17 @@ const styles = StyleSheet.create({
     stepService: {
         fontSize: 14,
         color: modernColors.textSecondary,
+        textAlign: 'center', // ✅ AJOUTÉ: Centrer le texte
+        flex: 1, // ✅ AJOUTÉ: Utiliser toute la largeur disponible
+        flexWrap: 'wrap', // ✅ AJOUTÉ: Permettre le retour à la ligne si nécessaire
     },
     stepTitle: {
-        fontSize: 19, // ✅ AUGMENTÉ: De 16 à 19
+        fontSize: 18, // ✅ RÉDUIT: De 19 à 18 pour mieux s'adapter
         fontWeight: '700',
         color: modernColors.text,
+        textAlign: 'center', // ✅ AJOUTÉ: Centrer le texte
+        flex: 1, // ✅ AJOUTÉ: Utiliser toute la largeur disponible
+        flexWrap: 'wrap', // ✅ AJOUTÉ: Permettre le retour à la ligne si nécessaire
     },
     scrollView: {
         flex: 1,

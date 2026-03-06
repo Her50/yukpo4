@@ -981,6 +981,9 @@ const DeliveryShoppingFlow = () => {
 // ⚠️ IMPORTANT: Les hooks doivent être appelés inconditionnellement (pas dans try-catch)
 // ✅ SIMPLIFICATION: Ne pas utiliser useNavigation() directement ici, laisser useDeepLinkRedirect gérer
 const MainStackWithDeepLinks = (props: any) => {
+  // ✅ CORRECTION CRASH: Ajouter useAuth pour accéder à l'objet user
+  const { user } = useAuth();
+
   // ✅ RÉACTIVÉ: Gérer la redirection automatique des partenaires
   const [partnerRedirectPending, setPartnerRedirectPending] = React.useState(false);
 

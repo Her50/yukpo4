@@ -315,7 +315,10 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   };
 
   const [mediaFiles, setMediaFiles] = useState<MediaFiles>(initialMediaState);
-  const [primaryProductImage, setPrimaryProductImage] = useState<string | null>(initialMediaState.images[0] || null);
+  // ✅ CORRECTION: S'assurer que l'image de mediaData est définie comme principale si elle existe
+  const [primaryProductImage, setPrimaryProductImage] = useState<string | null>(
+    mediaDataImages.length > 0 ? mediaDataImages[0] : (initialMediaState.images[0] || null)
+  );
   const [gps, setGps] = useState<string | undefined>(undefined);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [successData, setSuccessData] = useState<ServiceData | null>(null);
@@ -1139,6 +1142,36 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       } as any);
     }
 
+    // ✅ NOUVEAU: S'assurer que le bloc informations générales a toujours le champ titre_service obligatoire
+    const generalBlock = blocksWithFixedOnes.find(b => b.id === 'general');
+    if (generalBlock) {
+      const hasTitreService = generalBlock.fields.some(f => f.name === 'titre_service');
+      if (!hasTitreService) {
+        // Ajouter le champ titre_service comme obligatoire au début du bloc
+        generalBlock.fields.unshift({
+          name: 'titre_service',
+          type: 'text',
+          typeDonnee: 'string',
+          label: 'Nom de votre structure',
+          required: true, // ✅ OBLIGATOIRE
+          placeholder: 'Ex: Restaurant Le Gourmet, Garage Auto Pro, Ecole Primaire Saint Joseph...',
+          multiline: true,
+          minLines: 1,
+          isStructureName: true // ✅ NOUVEAU: Marquer comme champ spécial pour le nom de structure
+        } as DynamicField);
+        console.log('[FormulaireYukpoIntelligentScreen] ✅ Champ titre_service ajouté comme obligatoire dans le bloc général');
+      } else {
+        // ✅ S'assurer que le champ existant est bien marqué comme obligatoire
+        const titreServiceField = generalBlock.fields.find(f => f.name === 'titre_service');
+        if (titreServiceField && !titreServiceField.required) {
+          titreServiceField.required = true;
+          titreServiceField.label = 'Nom de votre structure';
+          titreServiceField.isStructureName = true;
+          console.log('[FormulaireYukpoIntelligentScreen] ✅ Champ titre_service existant marqué comme obligatoire');
+        }
+      }
+    }
+
     // S'assurer que le bloc contact a toujours les champs de contact minimaux
     const contactBlock = blocksWithFixedOnes.find(b => b.id === 'contact');
     if (contactBlock) {
@@ -1382,7 +1415,31 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     // ✅ CORRIGÉ 2026-03-03: Validation OBLIGATOIRE du champ "Nom de votre structure"
     // Ce champ n'est JAMAIS pré-rempli par l'IA — l'utilisateur DOIT le saisir lui-même
     const titreServiceValue = valeursFormulaire.titre_service;
-    const titreServiceEmpty = !titreServiceValue || (typeof titreServiceValue === 'string' && titreServiceValue.trim() === '');
+
+    // ✅ CORRECTION CRITIQUE: Extraire la valeur correctement (comme dans validateField)
+    const extractStringValue = (val: any): string => {
+      if (!val) return '';
+      if (typeof val === 'string') return val;
+      if (typeof val === 'object' && val !== null) {
+        if ('valeur' in val && typeof val.valeur === 'string') return val.valeur;
+        if ('raw' in val && typeof val.raw === 'string') return val.raw;
+        // Dernier recours: convertir en string
+        try {
+          return String(val);
+        } catch {
+          return '';
+        }
+      }
+      try {
+        return String(val);
+      } catch {
+        return '';
+      }
+    };
+
+    const titreServiceStringValue = extractStringValue(titreServiceValue);
+    const titreServiceEmpty = titreServiceStringValue.trim() === '';
+
     if (titreServiceEmpty) {
       Alert.alert(
         '⚠️ Champ obligatoire',
@@ -3550,7 +3607,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               multiline={true}
               numberOfLines={linesMinimum}
               textAlignVertical="top"
-              debounceMs={0}
+              autoCorrect={true}
+              autoCapitalize="sentences"
               scrollEnabled={false}
               textBreakStrategy="highQuality"
               blurOnSubmit={false}
@@ -6437,9 +6495,12 @@ const styles = StyleSheet.create({
     paddingTop: 14,
     paddingBottom: 14,
     textAlignVertical: 'top',
+    flexWrap: 'wrap',
+    overflow: 'hidden',
   },
   productDescriptionInput: {
     minHeight: 150,
+    maxHeight: 300, // ✅ AJOUTÉ: Limiter la hauteur maximale pour éviter le scroll excessif
   },
   navigationButtons: {
     flexDirection: 'row',

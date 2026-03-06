@@ -464,6 +464,9 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                         valeur={value && value.length > 0 ? value[0] : undefined}
                         productLabels={productLabels}
                         onRowsChange={(rows) => {
+                            // ✅ CORRECTION CRITIQUE: Mettre à jour tableRows pour que les modifications soient visibles
+                            setTableRows(rows);
+
                             // ✅ CORRECTION CRITIQUE: Utiliser les lignes du tableau directement
                             // au lieu de chercher par label dans orderedLabels (les labels peuvent avoir été modifiés)
                             const validRows = rows.filter(row =>
@@ -489,6 +492,14 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
 
                                 onChange([modality], updatedSousCaracs);
                                 console.log('[LinearAutocompleteEditor] 💾 Modifications sauvegardées automatiquement (lignes directes du tableau)');
+                                console.log('[LinearAutocompleteEditor] ✅ tableRows mis à jour:', rows.length, 'lignes');
+
+                                // ✅ NOUVEAU: Feedback visuel pour les modifications
+                                console.log('[LinearAutocompleteEditor] ✅ Sous-caractéristiques mises à jour avec succès');
+                            } else {
+                                // ✅ CORRECTION: Si aucune ligne valide, mettre à jour avec un tableau vide
+                                onChange([], {});
+                                console.log('[LinearAutocompleteEditor] 🗑️ Tableau vidé, aucune modification sauvegardée');
                             }
                         }}
                     />

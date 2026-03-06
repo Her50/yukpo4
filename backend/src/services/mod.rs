@@ -277,4 +277,5 @@ pub mod transcoding_service; // ✅ NOUVEAU Phase 2.3: Service de transcodage vi
 pub mod trending_music_service; // ✅ NOUVEAU 2026-03-05: Service de musique trending TikTok/Shorts
 pub mod video_transcoding_service; // ✅ NOUVEAU 2026-03-05: Service de transcodage vidéo HLS/DASH (TikTok/Shorts)
 pub mod watermark_service; // ✅ NOUVEAU 2025-01-27: Service de watermark Yukpo pour branding vidéo
+pub mod whatsapp_service; // ✅ NOUVEAU 2026-03-06: Service WhatsApp Business avec routing automatique
 pub mod youtube_audio_service; // ✅ NOUVEAU Phase 2.2: Service YouTube Audio Library // ✅ NOUVEAU Phase 3.2 Améliorations: Service de rendu 3D complet

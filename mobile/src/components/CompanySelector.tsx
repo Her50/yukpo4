@@ -34,7 +34,7 @@ interface CompanySelectorProps {
 
 const CompanySelector: React.FC<CompanySelectorProps> = ({
     label,
-    selected,
+    selected = [], // ✅ CORRECTION CRASH: Valeur par défaut pour éviter undefined
     onSelectionChange,
     allowCustom = true,
     placeholder = 'Ajouter une compagnie',

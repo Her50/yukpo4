@@ -346,104 +346,110 @@ const OffresEmploiHomeScreen: React.FC = () => {
             </View>
 
             {/* ✅ NOUVEAU: Filtres par type de contrat */}
-            <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 8, gap: 8 }}
-            >
-                {CONTRACT_FILTERS.map(f => (
-                    <TouchableOpacity
-                        key={f.id}
-                        style={{
-                            flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 8,
-                            borderRadius: 20, gap: 6,
-                            backgroundColor: activeContractFilter === f.id ? '#6366F1' : '#F3F4F6',
-                        }}
-                        onPress={() => handleContractFilter(f.id)}
-                    >
-                        <SafeIcon name={f.icon} size={14} color={activeContractFilter === f.id ? '#FFFFFF' : '#6B7280'} type="lucide" />
-                        <Text style={{ fontSize: 13, fontWeight: '600', color: activeContractFilter === f.id ? '#FFFFFF' : '#374151' }}>
-                            {f.label}
-                        </Text>
-                    </TouchableOpacity>
-                ))}
-            </ScrollView>
+            <View style={styles.filtersContainer}>
+                <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.filtersScrollContent}
+                >
+                    {CONTRACT_FILTERS.map(f => (
+                        <TouchableOpacity
+                            key={f.id}
+                            style={[
+                                styles.filterChip,
+                                activeContractFilter === f.id && styles.filterChipActive
+                            ]}
+                            onPress={() => handleContractFilter(f.id)}
+                        >
+                            <SafeIcon name={f.icon} size={14} color={activeContractFilter === f.id ? '#FFFFFF' : '#6B7280'} type="lucide" />
+                            <Text style={[
+                                styles.filterChipText,
+                                activeContractFilter === f.id && styles.filterChipTextActive
+                            ]}>
+                                {f.label}
+                            </Text>
+                        </TouchableOpacity>
+                    ))}
+                </ScrollView>
+            </View>
 
             {/* Contenu : Liste des offres */}
-            {loading && offres.length === 0 ? (
-                <View style={styles.centerContainer}>
-                    <ActivityIndicator size="large" color={modernColors.primary} />
-                    <Text style={styles.loadingText}>Recherche d'offres...</Text>
-                </View>
-            ) : error && offres.length === 0 ? (
-                <View style={styles.centerContainer}>
-                    <SafeIcon name="briefcase" size={64} color="#9CA3AF" />
-                    <Text style={styles.errorText}>{error}</Text>
-                    <TouchableOpacity
-                        style={styles.retryButton}
-                        onPress={() => loadOffres(true)}
-                    >
-                        <Text style={styles.retryButtonText}>Réessayer</Text>
-                    </TouchableOpacity>
-                </View>
-            ) : (
-                <FlatList
-                    data={filteredOffres}
-                    keyExtractor={(item) => item.id.toString()}
-                    renderItem={({ item }) => (
-                        <View>
-                            <OffreCard
-                                offre={item}
-                                onPress={() => navigation.navigate('OffreDetails' as never, { offreId: item.id } as never)}
-                                onApply={() => {
-                                    hapticPress();
-                                    navigation.navigate('CreateCandidature' as never, { offreId: item.id } as never);
-                                }}
-                                formatSalary={formatSalary}
-                            />
-                            {/* ✅ NOUVEAU: Boutons d'action rapide */}
-                            <View style={{ flexDirection: 'row', paddingHorizontal: 16, paddingBottom: 8, gap: 8, marginTop: -4 }}>
-                                <TouchableOpacity
-                                    style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: savedOffers.has(item.id.toString()) ? '#EEF2FF' : '#F9FAFB', borderRadius: 8, paddingVertical: 8, borderWidth: 1, borderColor: savedOffers.has(item.id.toString()) ? '#C7D2FE' : '#E5E7EB' }}
-                                    onPress={() => handleToggleSaveOffer(item)}
-                                >
-                                    <SafeIcon name="bookmark" size={14} color={savedOffers.has(item.id.toString()) ? '#6366F1' : '#9CA3AF'} type="lucide" />
-                                    <Text style={{ marginLeft: 4, fontSize: 12, color: savedOffers.has(item.id.toString()) ? '#6366F1' : '#6B7280' }}>
-                                        {savedOffers.has(item.id.toString()) ? 'Sauvegardé' : 'Sauvegarder'}
-                                    </Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFF7ED', borderRadius: 8, paddingVertical: 8, borderWidth: 1, borderColor: '#FED7AA' }}
-                                    onPress={() => handleInlineSalaryEstimate(item)}
-                                >
-                                    <SafeIcon name="trending-up" size={14} color="#F59E0B" type="lucide" />
-                                    <Text style={{ marginLeft: 4, fontSize: 12, color: '#D97706' }}>Estimer salaire</Text>
-                                </TouchableOpacity>
+            <View style={styles.contentContainer}>
+                {loading && offres.length === 0 ? (
+                    <View style={styles.centerContainer}>
+                        <ActivityIndicator size="large" color={modernColors.primary} />
+                        <Text style={styles.loadingText}>Recherche d'offres...</Text>
+                    </View>
+                ) : error && offres.length === 0 ? (
+                    <View style={styles.centerContainer}>
+                        <SafeIcon name="briefcase" size={64} color="#9CA3AF" />
+                        <Text style={styles.errorText}>{error}</Text>
+                        <TouchableOpacity
+                            style={styles.retryButton}
+                            onPress={() => loadOffres(true)}
+                        >
+                            <Text style={styles.retryButtonText}>Réessayer</Text>
+                        </TouchableOpacity>
+                    </View>
+                ) : (
+                    <FlatList
+                        data={filteredOffres}
+                        keyExtractor={(item) => item.id.toString()}
+                        renderItem={({ item }) => (
+                            <View>
+                                <OffreCard
+                                    offre={item}
+                                    onPress={() => navigation.navigate('OffreDetails' as never, { offreId: item.id } as never)}
+                                    onApply={() => {
+                                        hapticPress();
+                                        navigation.navigate('CreateCandidature' as never, { offreId: item.id } as never);
+                                    }}
+                                    formatSalary={formatSalary}
+                                />
+                                <View style={styles.quickActionsRow}>
+                                    <TouchableOpacity
+                                        style={[styles.quickActionRowButton, savedOffers.has(item.id.toString()) && styles.quickActionRowButtonSaved]}
+                                        onPress={() => handleToggleSaveOffer(item)}
+                                    >
+                                        <SafeIcon name="bookmark" size={14} color={savedOffers.has(item.id.toString()) ? '#6366F1' : '#9CA3AF'} type="lucide" />
+                                        <Text style={[styles.quickActionRowButtonText, savedOffers.has(item.id.toString()) && styles.quickActionRowButtonTextSaved]}>
+                                            {savedOffers.has(item.id.toString()) ? 'Sauvegardé' : 'Sauvegarder'}
+                                        </Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={styles.quickActionRowButtonEstimate}
+                                        onPress={() => handleInlineSalaryEstimate(item)}
+                                    >
+                                        <SafeIcon name="trending-up" size={14} color="#F59E0B" type="lucide" />
+                                        <Text style={styles.quickActionRowButtonTextEstimate}>Estimer salaire</Text>
+                                    </TouchableOpacity>
+                                </View>
                             </View>
-                        </View>
-                    )}
-                    contentContainerStyle={styles.listContent}
-                    refreshControl={
-                        <RefreshControl
-                            refreshing={refreshing}
-                            onRefresh={() => {
-                                setRefreshing(true);
-                                loadOffres(false);
-                            }}
-                            colors={[modernColors.primary]}
-                        />
-                    }
-                    ListEmptyComponent={
-                        <View style={styles.emptyContainer}>
-                            <SafeIcon name="briefcase" size={64} color="#9CA3AF" />
-                            <Text style={styles.emptyText}>Aucune offre trouvée</Text>
-                            <Text style={styles.emptySubtext}>
-                                Essayez de modifier vos critères de recherche
-                            </Text>
-                        </View>
-                    }
-                />
-            )}
+                        )}
+                        contentContainerStyle={styles.listContent}
+                        refreshControl={
+                            <RefreshControl
+                                refreshing={refreshing}
+                                onRefresh={() => {
+                                    setRefreshing(true);
+                                    loadOffres(false);
+                                }}
+                                colors={[modernColors.primary]}
+                            />
+                        }
+                        ListEmptyComponent={
+                            <View style={styles.emptyContainer}>
+                                <SafeIcon name="briefcase" size={64} color="#9CA3AF" />
+                                <Text style={styles.emptyText}>Aucune offre trouvée</Text>
+                                <Text style={styles.emptySubtext}>
+                                    Essayez de modifier vos critères de recherche
+                                </Text>
+                            </View>
+                        }
+                        style={styles.flatList}
+                    />
+                )}
+            </View>
 
             {/* Modal IA */}
             {showAIModal && (
@@ -1040,7 +1046,84 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         padding: 32,
     },
+    filtersContainer: {
+        backgroundColor: '#FFFFFF',
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderBottomWidth: 1,
+        borderBottomColor: '#E5E7EB',
+    },
+    filtersScrollContent: {
+        paddingHorizontal: 0,
+        paddingVertical: 8,
+        gap: 8,
+    },
+    filterChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 14,
+        paddingVertical: 8,
+        borderRadius: 20,
+        gap: 6,
+        backgroundColor: '#F3F4F6',
+    },
+    filterChipActive: {
+        backgroundColor: '#6366F1',
+    },
+    filterChipText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#374151',
+    },
+    filterChipTextActive: {
+        color: '#FFFFFF',
+    },
+    contentContainer: {
+        flex: 1,
+        backgroundColor: '#F9FAFB',
+    },
+    quickActionsRow: {
+        flexDirection: 'row',
+        paddingHorizontal: 16,
+        paddingBottom: 8,
+        gap: 8,
+        marginTop: -4,
+    },
+    quickActionRowButton: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#F9FAFB',
+        borderRadius: 8,
+        paddingVertical: 8,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        gap: 4,
+    },
+    quickActionRowButtonText: {
+        fontSize: 12,
+        color: '#6B7280',
+        fontWeight: '500',
+    },
+    quickActionRowButtonSaved: {
+        backgroundColor: '#EEF2FF',
+        borderColor: '#C7D2FE',
+    },
+    quickActionRowButtonTextSaved: {
+        color: '#6366F1',
+    },
+    quickActionRowButtonEstimate: {
+        backgroundColor: '#FFF7ED',
+        borderColor: '#FED7AA',
+        borderWidth: 1,
+    },
+    quickActionRowButtonTextEstimate: {
+        color: '#D97706',
+    },
+    flatList: {
+        flex: 1,
+    },
 });
 
 export default OffresEmploiHomeScreen;
-

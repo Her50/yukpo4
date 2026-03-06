@@ -10885,10 +10885,21 @@ pub async fn ensure_service_products_table(pool: &PgPool) -> Result<(), sqlx::Er
                 -- Métadonnées générées
                 product_name TEXT GENERATED ALWAYS AS (
                     COALESCE(
+                        -- Cas 1: nom.valeur (format formulaire dynamique)
                         product_data->'nom'->>'valeur',
-                        product_data->>'nom',
+                        -- Cas 2: nom_produit.valeur (format formulaire dynamique)
                         product_data->'nom_produit'->>'valeur',
+                        -- Cas 3: nom direct (format simple)
+                        product_data->>'nom',
+                        -- Cas 4: nom_produit direct (format simple)
                         product_data->>'nom_produit',
+                        -- Cas 5: titre (fallback)
+                        product_data->>'titre',
+                        -- Cas 6: title (fallback anglais)
+                        product_data->>'title',
+                        -- Cas 7: name (fallback anglais)
+                        product_data->>'name',
+                        -- Fallback final
                         'Produit sans nom'
                     )
                 ) STORED,
@@ -10969,6 +10980,9 @@ pub async fn ensure_service_products_table(pool: &PgPool) -> Result<(), sqlx::Er
 
         info!("✅ Table service_products créée avec succès !");
     }
+
+    // ✅ NOUVEAU 2026-03-06: Migration des product_name existants pour corriger le bug du premier produit
+    migrate_product_name_generation(pool).await?;
 
     Ok(())
 }
@@ -18601,5 +18615,94 @@ pub async fn ensure_video_analytics_tables(pool: &PgPool) -> Result<(), sqlx::Er
     .await?;
 
     info!("✅ Tables video_analytics vérifiées/créées avec succès");
+    Ok(())
+}
+
+/// ✅ NOUVEAU 2026-03-06: Migration pour corriger la génération de product_name
+/// Corrige le bug où le premier produit créé lors de la création du service
+/// avait un product_name = 'Produit sans nom' car la colonne générée ne gérait
+/// pas tous les cas de structure de données
+pub async fn migrate_product_name_generation(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification de la migration product_name...");
+
+    // Vérifier si la colonne product_name existe avec l'ancienne définition
+    let column_exists = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_name = 'service_products' 
+            AND column_name = 'product_name'
+        )",
+    )
+    .fetch_one(pool)
+    .await?;
+
+    if !column_exists {
+        info!("ℹ️ Colonne product_name non trouvée, migration non nécessaire");
+        return Ok(());
+    }
+
+    // Vérifier si des produits ont 'Produit sans nom' mais avec des données de nom disponibles
+    let products_to_fix = sqlx::query_scalar::<_, i64>(
+        r#"
+        SELECT COUNT(*) 
+        FROM service_products 
+        WHERE product_name = 'Produit sans nom' 
+        AND (
+            product_data->'nom' IS NOT NULL 
+            OR product_data->'nom_produit' IS NOT NULL
+            OR product_data->>'nom' IS NOT NULL
+            OR product_data->>'nom_produit' IS NOT NULL
+            OR product_data->>'titre' IS NOT NULL
+            OR product_data->>'title' IS NOT NULL
+            OR product_data->>'name' IS NOT NULL
+        )
+        "#,
+    )
+    .fetch_one(pool)
+    .await?;
+
+    if products_to_fix > 0 {
+        info!(
+            "🔧 Correction de {} products avec product_name = 'Produit sans nom'",
+            products_to_fix
+        );
+
+        // Mettre à jour les product_name avec une extraction plus robuste
+        let result = sqlx::query(
+            r#"
+            UPDATE service_products 
+            SET product_name = COALESCE(
+                product_data->'nom'->>'valeur',
+                product_data->'nom_produit'->>'valeur',
+                product_data->>'nom',
+                product_data->>'nom_produit',
+                product_data->>'titre',
+                product_data->>'title',
+                product_data->>'name',
+                'Produit sans nom'
+            )
+            WHERE product_name = 'Produit sans nom' 
+            AND (
+                product_data->'nom' IS NOT NULL 
+                OR product_data->'nom_produit' IS NOT NULL
+                OR product_data->>'nom' IS NOT NULL
+                OR product_data->>'nom_produit' IS NOT NULL
+                OR product_data->>'titre' IS NOT NULL
+                OR product_data->>'title' IS NOT NULL
+                OR product_data->>'name' IS NOT NULL
+            )
+            "#,
+        )
+        .execute(pool)
+        .await?;
+
+        info!(
+            "✅ {} product_name corrigés avec succès",
+            result.rows_affected()
+        );
+    } else {
+        info!("✅ Aucun product_name à corriger");
+    }
+
     Ok(())
 }

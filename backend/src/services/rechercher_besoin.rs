@@ -1393,9 +1393,11 @@ pub async fn rechercher_besoin_direct(
                                     }
                                 }
 
-                                if !merged_images.is_empty() {
-                                    obj.insert("images".to_string(), json!(merged_images));
-                                }
+                                // ✅ DEBUG 2026-03-06: Logger les médias avant et après fusion
+                                log_info(&format!(
+                                    "[MediaProduct] DEBUG - Service {}, Product {}: existing_images={}, images_cdn={}, merged_images={}",
+                                    service_id, product_index.unwrap_or(0), existing_images.len(), images_cdn.len(), merged_images.len()
+                                ));
 
                                 // Fusionner les vidéos
                                 let existing_videos: Vec<String> = obj
@@ -1408,6 +1410,16 @@ pub async fn rechercher_besoin_direct(
                                     if !merged_videos.contains(&vid) {
                                         merged_videos.push(vid);
                                     }
+                                }
+
+                                // ✅ DEBUG 2026-03-06: Logger les vidéos avant et après fusion
+                                log_info(&format!(
+                                    "[MediaProduct] DEBUG - Service {}, Product {}: existing_videos={}, videos_cdn={}, merged_videos={}",
+                                    service_id, product_index.unwrap_or(0), existing_videos.len(), videos_cdn.len(), merged_videos.len()
+                                ));
+
+                                if !merged_images.is_empty() {
+                                    obj.insert("images".to_string(), json!(merged_images));
                                 }
 
                                 if !merged_videos.is_empty() {

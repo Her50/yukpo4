@@ -41,6 +41,7 @@ interface ProductCardProps {
   userLocation?: { latitude: number; longitude: number } | null;
   onPress?: () => void;
   onChatPress?: () => void;
+  isScrolling?: boolean; // ✅ NOUVEAU 2026-03-06: Indicateur de scroll pour arrêter les vidéos
 }
 
 const REACTIONS = [
@@ -252,13 +253,14 @@ const normalizeNewlines = (text: string): string => {
     .replace(/\r/g, '\n');   // Normaliser CR en LF
 };
 
-const ProductCard: React.FC<ProductCardProps> = React.memo(({
+const ProductCard: React.FC<ProductCardProps> = ({
   product,
   service,
-  prestataire: prestataireFromProps,
-  userLocation = null,
+  prestataire,
+  userLocation,
   onPress,
   onChatPress,
+  isScrolling = false,
 }) => {
   const navigation = useNavigation();
   // ✅ NOUVEAU: Utiliser useLocation pour calculer la distance si nécessaire
@@ -286,7 +288,23 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
     targetUserName?: string;
     targetAvatar?: string | null;
   } | null>(null);
+  const [imageError, setImageError] = useState(false);
   const [showGallery, setShowGallery] = useState(false);
+  const [showOrderModal, setShowOrderModal] = useState(false);
+  const [showDeliveryModal, setShowDeliveryModal] = useState(false);
+
+  // ✅ NOUVEAU 2026-03-06: Gestion des vidéos pour arrêter lors du scroll
+  const videoRefs = useRef<Map<string, Video>>(new Map());
+
+  const handleVideoRef = useCallback((videoRef: Video, mediaKey: string) => {
+    videoRefs.current.set(mediaKey, videoRef);
+  }, []);
+
+  const handleStopVideo = useCallback((mediaKey: string) => {
+    // La vidéo est déjà arrêtée par le parent, on nettoie juste la ref
+    videoRefs.current.delete(mediaKey);
+  }, []);
+
   const [reactions, setReactions] = useState<Record<string, { count: number; hasReacted: boolean }>>({});
   const [loadingReactions, setLoadingReactions] = useState(false);
   const [pendingReaction, setPendingReaction] = useState<string | null>(null);
@@ -739,32 +757,45 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
     .map((vid: any) => normalizeMediaUrl(vid, 'video'))
     .filter((vid): vid is string => vid !== null && vid !== '');
 
-  // ✅ DEBUG 2026-01-23: Logger pour diagnostiquer les problèmes de médias depuis la table media
+  // ✅ DEBUG 2026-03-06: Analyse complète des sources de médias pour diagnostiquer la limitation à 2
   useEffect(() => {
-    // ✅ AMÉLIORÉ: Toujours logger pour voir pourquoi les médias ne s'affichent pas
-    const hasAnyMedia = rawImages.length > 0 || rawVideos.length > 0 || images.length > 0 || videos.length > 0;
     if (__DEV__) {
-      console.log(`[ProductCard] 📸 Médias extraits pour service ${serviceId}, produit ${productIndex}:`, {
-        rawImagesCount: rawImages.length,
-        rawVideosCount: rawVideos.length,
-        imagesCount: images.length,
-        videosCount: videos.length,
-        hasMedia: hasAnyMedia,
-        // ✅ NOUVEAU: Vérifier toutes les sources possibles
-        productImages: Array.isArray(product.images) ? product.images.length : (product.images ? 'non-array' : 'absent'),
-        productVideos: Array.isArray(product.videos) ? product.videos.length : (product.videos ? 'non-array' : 'absent'),
-        productDataImages: Array.isArray(productData.images) ? productData.images.length : (productData.images ? 'non-array' : 'absent'),
-        productDataVideos: Array.isArray(productData.videos) ? productData.videos.length : (productData.videos ? 'non-array' : 'absent'),
-        productProductDataImages: Array.isArray(product.product_data?.images) ? product.product_data.images.length : 'absent',
-        productProductDataVideos: Array.isArray(product.product_data?.videos) ? product.product_data.videos.length : 'absent',
-        // ✅ NOUVEAU: Vérifier si les URLs sont des URLs CDN
-        firstImageUrl: images[0]?.substring(0, 100),
-        firstVideoUrl: videos[0]?.substring(0, 100),
-        isFirstImageCDN: images[0]?.startsWith('http://') || images[0]?.startsWith('https://'),
-        isFirstVideoCDN: videos[0]?.startsWith('http://') || videos[0]?.startsWith('https://'),
-      });
+      console.log(`[ProductCard] 🔍 ANALYSE MÉDIA COMPLÈTE - Service ${serviceId}, Produit ${productIndex}:`);
+      console.log(`[ProductCard] 📊 Sources brutes:`);
+      console.log(`  - product.images:`, product.images);
+      console.log(`  - product.videos:`, product.videos);
+      console.log(`  - product.product_data?.images:`, product.product_data?.images);
+      console.log(`  - product.product_data?.videos:`, product.product_data?.videos);
+      console.log(`  - productData.images:`, productData.images);
+      console.log(`  - productData.videos:`, productData.videos);
+      console.log(`  - productData.data?.images:`, productData.data?.images);
+      console.log(`  - productData.data?.videos:`, productData.data?.videos);
+
+      console.log(`[ProductCard] 🔄 Extraction asMediaArray:`);
+      console.log(`  - asMediaArray(product.images):`, asMediaArray(product.images));
+      console.log(`  - asMediaArray(product.videos):`, asMediaArray(product.videos));
+      console.log(`  - asMediaArray(product.product_data?.images):`, asMediaArray(product.product_data?.images));
+      console.log(`  - asMediaArray(product.product_data?.videos):`, asMediaArray(product.product_data?.videos));
+
+      console.log(`[ProductCard] 📈 Résultats finaux:`);
+      console.log(`  - rawImages (${rawImages.length}):`, rawImages);
+      console.log(`  - rawVideos (${rawVideos.length}):`, rawVideos);
+      console.log(`  - images (${images.length}):`, images);
+      console.log(`  - videos (${videos.length}):`, videos);
+      console.log(`  - variantImage:`, normalizedVariantImage);
+      console.log(`  - totalMedia:`, images.length + videos.length + (normalizedVariantImage ? 1 : 0));
+
+      // 🚨 ALERTE si limitation à 2 détectée
+      const totalRawMedia = rawImages.length + rawVideos.length;
+      const totalProcessedMedia = images.length + videos.length;
+      if (totalRawMedia > 2 && totalProcessedMedia === 2) {
+        console.warn(`[ProductCard] 🚨 LIMITATION À 2 DÉTECTÉE!`);
+        console.warn(`[ProductCard]   - Brut: ${totalRawMedia} médias`);
+        console.warn(`[ProductCard]   - Traités: ${totalProcessedMedia} médias`);
+        console.warn(`[ProductCard]   - Perte: ${totalRawMedia - totalProcessedMedia} médias`);
+      }
     }
-  }, [rawImages.length, rawVideos.length, images.length, videos.length, serviceId, productIndex, product.images, product.videos, productData.images, productData.videos]);
+  }, [serviceId, productIndex, product.images, product.videos, product.product_data, productData.images, productData.videos, rawImages, rawVideos, images, videos, normalizedVariantImage]);
 
   const selectedVariant = selectedVariantIndex !== null && variants[selectedVariantIndex]
     ? variants[selectedVariantIndex]
@@ -1614,6 +1645,9 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({
                   onImagePress={() => {
                     setShowGallery(true);
                   }}
+                  onVideoRef={handleVideoRef}
+                  onStopVideo={handleStopVideo}
+                  isScrolling={isScrolling}
                 />
 
                 {/* ✅ SUPPRIMÉ 2026-01-14: Drapeau déplacé après l'adresse textuelle */}

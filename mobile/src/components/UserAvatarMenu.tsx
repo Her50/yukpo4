@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Dimensions, Image, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 import { theme } from '../theme/theme';
 import { isAdminUser } from '../utils/roleHelpers'; // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
 import WeatherWidget from './WeatherWidget';
@@ -13,6 +14,7 @@ interface UserAvatarMenuProps {
 
 const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0, weatherLocation }) => {
     const { user, logout } = useAuth();
+    const { language, setLanguage } = useLanguageSafe();
     const [showMenu, setShowMenu] = useState(false);
 
     // ✅ AMÉLIORATION UX ADMIN: Menu simplifié pour les administrateurs
@@ -64,7 +66,15 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0
         }
     ] : [
         // ✅ MENU UTILISATEUR STANDARD: Pour les non-admins
-        // ✅ NOUVEAU 2026-01-XX: Navigation intelligente en premier pour visibilité maximale
+        // ✅ NOUVEAU: Langue en premier (drapeau)
+        {
+            title: language === 'fr' ? '🇫🇷 Français' : language === 'en' ? '🇬🇧 English' : language === 'es' ? '🇪🇸 Español' : '🌐 Langue',
+            icon: language === 'fr' ? '🇫🇷' : language === 'en' ? '🇬🇧' : language === 'es' ? '🇪🇸' : '🌐',
+            route: 'language',
+            description: language === 'fr' ? 'Changer la langue' : language === 'en' ? 'Change language' : language === 'es' ? 'Cambiar idioma' : 'Change language',
+            isLanguageSelector: true
+        },
+        // ✅ NOUVEAU 2026-01-XX: Navigation intelligente en deuxième position
         {
             title: 'Navigation intelligente',
             icon: '🧭',
@@ -116,6 +126,20 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0
 
         if (item.route === 'logout') {
             logout();
+        } else if (item.route === 'language') {
+            // ✅ NOUVEAU: Gérer le changement de langue
+            const languages = [
+                { code: 'fr', name: '🇫🇷 Français', flag: '🇫🇷' },
+                { code: 'en', name: '🇬🇧 English', flag: '🇬🇧' },
+                { code: 'es', name: '🇪🇸 Español', flag: '🇪🇸' }
+            ];
+
+            // Trouver la langue suivante dans la liste
+            const currentIndex = languages.findIndex(lang => lang.code === language);
+            const nextIndex = (currentIndex + 1) % languages.length;
+            const nextLanguage = languages[nextIndex];
+
+            setLanguage(nextLanguage.code);
         } else if (item.route === 'BlackFridayAdminConfig') {
             // ✅ NOUVEAU : Navigation vers la configuration de lancement Black Friday (admin)
             onNavigate('GlobalPromoManager');
@@ -296,24 +320,37 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0
                                             style={[
                                                 styles.menuItem,
                                                 item.route === 'logout' && styles.logoutItem,
-                                                item.highlighted && styles.highlightedItem
+                                                item.highlighted && styles.highlightedItem,
+                                                item.isLanguageSelector && styles.languageSelectorItem
                                             ]}
                                             onPress={() => handleMenuItemPress(item)}
                                         >
-                                            <Text style={styles.menuItemIcon}>{item.icon}</Text>
+                                            <Text style={[
+                                                styles.menuItemIcon,
+                                                item.isLanguageSelector && styles.languageSelectorIcon
+                                            ]}>{item.icon}</Text>
                                             <View style={styles.menuItemContent}>
                                                 <Text style={[
                                                     styles.menuItemTitle,
                                                     item.route === 'logout' && styles.logoutText,
-                                                    item.highlighted && styles.highlightedText
+                                                    item.highlighted && styles.highlightedText,
+                                                    item.isLanguageSelector && styles.languageSelectorText
                                                 ]}>
                                                     {item.title}
                                                 </Text>
-                                                <Text style={styles.menuItemDescription}>{item.description}</Text>
+                                                <Text style={[
+                                                    styles.menuItemDescription,
+                                                    item.isLanguageSelector && styles.languageSelectorDescription
+                                                ]}>{item.description}</Text>
                                             </View>
                                             {item.highlighted && (
                                                 <View style={styles.highlightedBadge}>
                                                     <Text style={styles.highlightedBadgeText}>⚡</Text>
+                                                </View>
+                                            )}
+                                            {item.isLanguageSelector && (
+                                                <View style={styles.languageSelectorBadge}>
+                                                    <Text style={styles.languageSelectorBadgeText}>↻</Text>
                                                 </View>
                                             )}
                                         </TouchableOpacity>
@@ -509,6 +546,35 @@ const styles = StyleSheet.create({
         backgroundColor: '#E5E7EB',
         marginVertical: 8,
         marginHorizontal: 20,
+    },
+    // ✅ Styles pour le sélecteur de langue
+    languageSelectorItem: {
+        backgroundColor: '#EFF6FF',
+        borderLeftWidth: 4,
+        borderLeftColor: '#3B82F6',
+    },
+    languageSelectorIcon: {
+        fontSize: 20,
+    },
+    languageSelectorText: {
+        color: '#1D4ED8',
+        fontWeight: '700',
+    },
+    languageSelectorDescription: {
+        color: '#3B82F6',
+        fontWeight: '500',
+    },
+    languageSelectorBadge: {
+        backgroundColor: '#3B82F6',
+        borderRadius: 12,
+        paddingHorizontal: 6,
+        paddingVertical: 3,
+        marginLeft: 8,
+    },
+    languageSelectorBadgeText: {
+        fontSize: 12,
+        color: '#FFFFFF',
+        fontWeight: 'bold',
     },
 });
 
