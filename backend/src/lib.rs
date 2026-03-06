@@ -23,6 +23,7 @@ use crate::routers::router_yukpo::router_yukpo;
 use crate::routes::echange_routes;
 #[cfg(feature = "image_search")]
 use crate::routes::image_search_routes::image_search_routes;
+use crate::routes::whatsapp_routes;
 use crate::routes::{
     admin_user_routes::admin_user_routes,
     advanced_analytics_routes::advanced_analytics_routes, // ✅ NOUVEAU: Routes analytics avancés
@@ -124,9 +125,6 @@ use crate::routes::{
 use crate::websocket::chat_websocket::create_chat_websocket_router;
 use crate::websocket::flash_sale_websocket::create_flash_sale_websocket_router;
 use crate::websocket::websocket_handler::create_websocket_router;
-use crate::{
-    routes::whatsapp_routes, services::whatsapp_service::WhatsAppService, state::AppState,
-};
 use axum::{extract::State, routing::get, Json, Router};
 use std::sync::Arc;
 use tower_http::compression::CompressionLayer;

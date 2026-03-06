@@ -1386,8 +1386,8 @@ pub async fn rechercher_besoin_direct(
                                     .map(|v| extract_media_urls_rb(v))
                                     .unwrap_or_default();
 
-                                let mut merged_images = existing_images;
-                                for img in images_cdn {
+                                let mut merged_images = existing_images.clone();
+                                for img in &images_cdn {
                                     if !merged_images.contains(&img) {
                                         merged_images.push(img);
                                     }
@@ -1405,8 +1405,8 @@ pub async fn rechercher_besoin_direct(
                                     .map(|v| extract_media_urls_rb(v))
                                     .unwrap_or_default();
 
-                                let mut merged_videos = existing_videos;
-                                for vid in videos_cdn {
+                                let mut merged_videos = existing_videos.clone();
+                                for vid in &videos_cdn {
                                     if !merged_videos.contains(&vid) {
                                         merged_videos.push(vid);
                                     }
