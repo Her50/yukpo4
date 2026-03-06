@@ -622,9 +622,6 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
     // ✅ NOUVEAU: Auto-Storyboard Toggle (depuis Wizard)
     const [autoStoryboard, setAutoStoryboard] = useState<boolean>(true);
 
-    // ✅ NOUVEAU: Completed Steps Tracking (depuis Wizard)
-    const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
-
     // ✅ NOUVEAU: Story Templates Serveur (depuis Wizard)
     const [storyTemplates, setStoryTemplates] = useState<import('../types/VideoGeneration').StoryTemplateSpec[]>([]);
     const [storyTemplatesLoading, setStoryTemplatesLoading] = useState<boolean>(false);

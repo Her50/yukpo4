@@ -481,7 +481,7 @@ impl VideoTranscodingService {
                     .try_get::<&str, _>("thumbnail_path")
                     .unwrap_or_default()
                     .to_string(),
-                duration_seconds: row.try_get("duration_seconds").unwrap_or(0.0),
+                duration_seconds: row.try_get::<f64, _>("duration_seconds").unwrap_or(0.0),
                 file_size_mb: row.try_get("file_size_mb").unwrap_or(0.0),
                 created_at: row.try_get("created_at").unwrap_or_else(|_| chrono::Utc::now()),
             }))
