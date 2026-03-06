@@ -1757,7 +1757,7 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             }
             Err(e) => {
-                let error_str: String = e.to_string();
+                let error_str = e.to_string();
                 log::error!(
                     "❌ ERREUR DÉTAILLÉE lors de l'application des migrations SQLx standard:"
                 );
