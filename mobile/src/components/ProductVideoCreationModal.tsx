@@ -3022,7 +3022,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                             <Text style={styles.sectionTitle}>🚚 Configuration de livraison</Text>
                         </View>
                         <Text style={styles.sectionSubtitle}>
-                            Activez la livraison pour permettre aux clients de commander directement depuis la vidéo (bouton "Me livrer").
+                            Activez la livraison pour permettre aux clients de commander directement depuis la vidéo (bouton "Commander").
                         </Text>
                         <View style={styles.toggleRow}>
                             <View style={styles.toggleText}>
@@ -3051,7 +3051,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                     <View style={styles.deliveryConfigStatus}>
                                         <SafeIcon name="check-circle" size={16} color="#10B981" />
                                         <Text style={styles.deliveryConfigStatusText}>
-                                            ✅ Configuration complète - Le bouton "Me livrer" apparaîtra sur la vidéo
+                                            ✅ Configuration complète - Le bouton "Commander" apparaîtra sur la vidéo
                                         </Text>
                                         {deliveryConfig?.pickup_address && (
                                             <Text style={styles.deliveryConfigAddress}>
@@ -3072,7 +3072,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                     <View style={styles.deliveryConfigHint}>
                                         <SafeIcon name="info" size={16} color={modernColors.primary} />
                                         <Text style={styles.deliveryConfigHintText}>
-                                            ⚠️ Configuration incomplète - Configurez les détails de livraison pour activer le bouton "Me livrer"
+                                            ⚠️ Configuration incomplète - Configurez les détails de livraison pour activer le bouton "Commander"
                                         </Text>
                                         <TouchableOpacity
                                             style={styles.configureButton}

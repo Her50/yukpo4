@@ -1209,7 +1209,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                             <SafeIcon name="FolderOpen" size={18} color="#8B5CF6" type="lucide" />
                         </TouchableOpacity>
 
-                        {/* ✅ NOUVEAU 2026-01-23: Bouton "Me livrer" avec texte (comme ProductCard) */}
+                        {/* ✅ NOUVEAU 2026-01-23: Bouton "Commander" avec texte (comme ProductCard) */}
                         {/* ✅ Utilise maintenant l'API /api/services/:id/products au lieu de l'ancien format JSONB */}
                         {/* ✅ Vérifie la configuration de livraison et prend en compte le prix négocié */}
                         {service?.id && (
@@ -1290,7 +1290,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                     styles.deliveryButtonText,
                                     !deliveryEnabled && styles.deliveryButtonTextDisabled
                                 ]}>
-                                    Me livrer
+                                    Commander
                                 </Text>
                             </TouchableOpacity>
                         )}
@@ -2167,7 +2167,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
-    // ✅ NOUVEAU 2026-01-23: Style pour le bouton "Me livrer" (comme ProductCard)
+    // ✅ NOUVEAU 2026-01-23: Style pour le bouton "Commander" (comme ProductCard)
     deliveryButton: {
         flexDirection: 'row',
         alignItems: 'center',

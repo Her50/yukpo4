@@ -356,6 +356,8 @@ async fn get_routes(
         }
     }
 
+    println!("[navigation] Google Directions API request: URL={}", url);
+
     let client = reqwest::Client::new();
     let response = client
         .get(&url)
@@ -371,9 +373,11 @@ async fn get_routes(
 
     let api_status = data.get("status").and_then(|s| s.as_str()).unwrap_or("UNKNOWN");
     let error_message = data.get("error_message").and_then(|s| s.as_str());
+    let routes_count = data.get("routes").and_then(|r| r.as_array()).map(|a| a.len()).unwrap_or(0);
+
     println!(
-        "[navigation] Google Directions API: status={}, mode={}, error={:?}, origin={},{}, dest={},{}",
-        api_status, travel_mode,
+        "[navigation] Google Directions API response: status={}, mode={}, routes_count={}, error={:?}, origin={},{}, dest={},{}",
+        api_status, travel_mode, routes_count,
         error_message,
         request.origin.lat, request.origin.lng,
         request.destination.lat, request.destination.lng
@@ -382,6 +386,51 @@ async fn get_routes(
     if let Some(status) = data.get("status").and_then(|s| s.as_str()) {
         if status != "OK" {
             let detail = error_message.unwrap_or("Pas de détail");
+
+            // Cas spécial : ZERO_RESULTS - vérifier les modes disponibles
+            if status == "ZERO_RESULTS" {
+                // Vérifier si Google a retourné des modes alternatifs
+                if let Some(available_modes) =
+                    data.get("available_travel_modes").and_then(|m| m.as_array())
+                {
+                    let modes_str: Vec<String> = available_modes
+                        .iter()
+                        .filter_map(|m| m.as_str())
+                        .map(|s| match s {
+                            "DRIVING" => "voiture",
+                            "WALKING" => "à pied",
+                            "BICYCLING" => "vélo",
+                            "TRANSIT" => "transport en commun",
+                            _ => s.to_lowercase(),
+                        })
+                        .collect();
+
+                    if !modes_str.is_empty() {
+                        return Err(AppError::Internal(format!(
+                            "Mode {} non disponible pour cette région. Modes disponibles: {}",
+                            match travel_mode {
+                                "bicycling" => "vélo",
+                                "transit" => "transport en commun",
+                                "walking" => "marche",
+                                _ => travel_mode,
+                            },
+                            modes_str.join(", ")
+                        )));
+                    }
+                }
+
+                return Err(AppError::Internal(format!(
+                    "Aucun itinéraire trouvé pour le mode {} - {}",
+                    match travel_mode {
+                        "bicycling" => "vélo",
+                        "transit" => "transport en commun",
+                        "walking" => "marche",
+                        _ => travel_mode,
+                    },
+                    detail
+                )));
+            }
+
             return Err(AppError::Internal(format!(
                 "Google Directions: {} - {}",
                 status, detail

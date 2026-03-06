@@ -2059,7 +2059,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                       styles.actionButtonDeliveryTextCompact,
                       !deliveryEnabled && styles.actionButtonDeliveryTextDisabled
                     ]}>
-                      Me livrer
+                      Commander
                     </Text>
                   </TouchableOpacity>
                 )}

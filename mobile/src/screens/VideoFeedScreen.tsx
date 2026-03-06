@@ -19,9 +19,11 @@ import {
     Text,
     TouchableOpacity,
     View,
-    ViewToken,
+    ViewToken
 } from 'react-native';
+import OrderDeliveryModal from '../components/delivery/OrderDeliveryModal';
 import ProductCommentsSection from '../components/ProductCommentsSection';
+import ProductDescriptionSection from '../components/ProductDescriptionSection';
 import SafeIcon from '../components/SafeIcon';
 import { SafeNativeView } from '../components/SafeNativeView';
 import { useAuth } from '../contexts/AuthContext';
@@ -49,6 +51,7 @@ type FeedItem = {
     sellerAvatar?: string;
     category?: string;
     hashtags?: string[];
+    hasDelivery?: boolean; // ✅ AJOUT: Support pour la livraison automatique
 };
 
 const formatCount = (count: number): string => {
@@ -58,33 +61,33 @@ const formatCount = (count: number): string => {
 };
 
 const normalizeVideoUrl = (url: any): string | null => {
-    console.debug(`[VideoFeedScreen] normalizeVideoUrl appelé avec:`, url, typeof url);
+    console.log(`🎯 [VideoFeedScreen] normalizeVideoUrl appelé avec:`, url, typeof url);
 
     if (!url) {
-        console.debug(`[VideoFeedScreen] normalizeVideoUrl: url est falsy`);
+        console.log(`❌ [VideoFeedScreen] normalizeVideoUrl: url est falsy`);
         return null;
     }
 
     const urlStr = typeof url === 'string' ? url : String(url);
     if (!urlStr || typeof urlStr !== 'string') {
-        console.debug(`[VideoFeedScreen] normalizeVideoUrl: urlStr invalide`);
+        console.log(`❌ [VideoFeedScreen] normalizeVideoUrl: urlStr invalide`);
         return null;
     }
 
     const trimmed = urlStr.trim();
     if (!trimmed) {
-        console.debug(`[VideoFeedScreen] normalizeVideoUrl: trimmed est vide`);
+        console.log(`❌ [VideoFeedScreen] normalizeVideoUrl: trimmed est vide`);
         return null;
     }
 
     if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:')) {
-        console.debug(`[VideoFeedScreen] normalizeVideoUrl: URL directe retournée:`, trimmed);
+        console.log(`✅ [VideoFeedScreen] normalizeVideoUrl: URL directe retournée:`, trimmed.substring(0, 100) + '...');
         return trimmed;
     }
 
     const cdnUrl = mediaService.getVideoUrl(trimmed);
     const result = cdnUrl || trimmed;
-    console.debug(`[VideoFeedScreen] normalizeVideoUrl: CDN URL générée:`, cdnUrl, 'résultat final:', result);
+    console.log(`🌐 [VideoFeedScreen] normalizeVideoUrl: CDN URL générée:`, cdnUrl, 'résultat final:', result);
     return result;
 };
 
@@ -104,14 +107,18 @@ const extractVideoFromField = (field: any): string | null => {
 };
 
 const normalizeFeed = (raw: any[]): FeedItem[] => {
+    console.log(`🚀 [VideoFeedScreen] normalizeFeed START - ${raw.length} items bruts`);
+
     if (!Array.isArray(raw)) {
-        console.warn('[VideoFeedScreen] normalizeFeed: raw n\'est pas un tableau', typeof raw, raw);
+        console.warn(`❌ [VideoFeedScreen] normalizeFeed: raw n'est pas un tableau`, typeof raw, raw);
         return [];
     }
-    console.log(`[VideoFeedScreen] normalizeFeed: ${raw.length} items bruts à traiter`);
+    console.log(`📊 [VideoFeedScreen] normalizeFeed: ${raw.length} items bruts à traiter`);
 
-    return raw
+    const results = raw
         .map((item, index) => {
+            console.log(`\n🔍 [VideoFeedScreen] Traitement item ${index}:`, item?.data?.nom || 'Sans nom');
+
             // ✅ CORRIGÉ 2026-03-04: Chercher la vidéo dans tous les formats possibles
             const rawVideo =
                 item?.videoUrl ||
@@ -121,8 +128,14 @@ const normalizeFeed = (raw: any[]): FeedItem[] => {
                 extractVideoFromField(item?.data?.videos) ||
                 extractVideoFromField(item?.videos);
 
+            console.log(`📹 [VideoFeedScreen] rawVideo trouvé:`, rawVideo ? 'OUI' : 'NON');
+            if (rawVideo) {
+                console.log(`📹 [VideoFeedScreen] rawVideo type:`, typeof rawVideo);
+                console.log(`📹 [VideoFeedScreen] rawVideo preview:`, String(rawVideo).substring(0, 100) + '...');
+            }
+
             if (!rawVideo) {
-                console.debug(`[VideoFeedScreen] Item ${index} ignoré: aucune vidéo trouvée`, {
+                console.log(`❌ [VideoFeedScreen] Item ${index} ignoré: aucune vidéo trouvée`, {
                     videoUrl: item?.videoUrl,
                     video: item?.video,
                     dataVideoUrl: item?.data?.videoUrl,
@@ -134,8 +147,10 @@ const normalizeFeed = (raw: any[]): FeedItem[] => {
             }
 
             const video = normalizeVideoUrl(rawVideo);
+            console.log(`🎬 [VideoFeedScreen] normalizeVideoUrl result:`, video ? 'VALID' : 'NULL');
+
             if (!video) {
-                console.debug(`[VideoFeedScreen] Item ${index} ignoré: normalizeVideoUrl a retourné null pour`, rawVideo);
+                console.log(`❌ [VideoFeedScreen] Item ${index} ignoré: normalizeVideoUrl a retourné null pour`, rawVideo);
                 return null;
             }
 
@@ -160,7 +175,22 @@ const normalizeFeed = (raw: any[]): FeedItem[] => {
                 ? (normalizeVideoUrl(rawThumbnail) || mediaService.getImageUrl(String(rawThumbnail)) || String(rawThumbnail))
                 : undefined;
 
-            return {
+            // ✅ DÉTECTER LA LIVRAISON AUTOMATIQUE
+            const serviceData = item?.data?.service?.data;
+            const hasDelivery = !!(
+                serviceData?.delivery_config ||
+                serviceData?.delivery_enabled ||
+                serviceData?.has_delivery ||
+                serviceData?.delivery_type ||
+                serviceData?.livraison_config ||
+                serviceData?.livraison_enabled ||
+                serviceData?.has_livraison ||
+                serviceData?.livraison_type
+            );
+
+            console.log(`🚚 [VideoFeedScreen] Livraison détectée: ${hasDelivery ? 'OUI' : 'NON'}`);
+
+            const result = {
                 id: String(id),
                 contentId: String(item?.content_id || id),
                 titre: String(title),
@@ -178,9 +208,16 @@ const normalizeFeed = (raw: any[]): FeedItem[] => {
                 sellerAvatar: item?.seller_avatar || item?.data?.seller_avatar,
                 category: item?.category || item?.data?.category,
                 hashtags: item?.hashtags || item?.data?.hashtags || [],
+                hasDelivery: hasDelivery, // ✅ AJOUT: Information de livraison
             } as FeedItem;
+
+            console.log(`✅ [VideoFeedScreen] Item ${index} validé: ${result.titre}`);
+            return result;
         })
         .filter((item): item is FeedItem => item !== null && item !== undefined) as FeedItem[];
+
+    console.log(`🎯 [VideoFeedScreen] normalizeFeed END - ${results.length} items validés`);
+    return results;
 };
 
 const REACTIONS = [
@@ -219,8 +256,11 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
     const [pendingReaction, setPendingReaction] = useState<string | null>(null);
     const [bufferingMap, setBufferingMap] = useState<Record<string, boolean>>({});
     const [followMap, setFollowMap] = useState<Record<string, boolean>>({});
+    const [expandedDescriptions, setExpandedDescriptions] = useState<Record<string, boolean>>({});
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
+    const [showDeliveryModal, setShowDeliveryModal] = useState(false);
+    const [selectedDeliveryItem, setSelectedDeliveryItem] = useState<FeedItem | null>(null);
     const viewedSet = useRef<Set<string>>(new Set());
     const spinAnim = useRef(new Animated.Value(0)).current;
     const videoRefs = useRef<Map<number, Video | null>>(new Map());
@@ -622,11 +662,40 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
         }
     }, []);
 
+    const toggleDescription = useCallback((contentId: string) => {
+        setExpandedDescriptions((prev) => ({ ...prev, [contentId]: !prev[contentId] }));
+    }, []);
+
     const handleViewProduct = useCallback((item: FeedItem) => {
         if (item.serviceId) {
             (navigation as any).navigate('ServiceDetailShared', { serviceId: item.serviceId });
         } else {
             Alert.alert('Information', 'Aucun produit associé à cette vidéo.');
+        }
+    }, [navigation]);
+
+    // ✅ AJOUT: Gérer le clic sur le bouton de livraison
+    const handleDeliveryOrder = useCallback((item: FeedItem) => {
+        if (item.serviceId && item.hasDelivery) {
+            console.log(`🚚 [VideoFeedScreen] Ouverture modal de livraison pour le service ${item.serviceId}`);
+            setSelectedDeliveryItem(item);
+            setShowDeliveryModal(true);
+        } else {
+            Alert.alert('Information', 'Service de livraison non disponible pour ce produit.');
+        }
+    }, []);
+
+    // ✅ AJOUT: Gérer la réussite de la commande de livraison
+    const handleDeliverySuccess = useCallback((deliveryId: string) => {
+        console.log(`🎯 [VideoFeedScreen] Livraison créée avec succès: ${deliveryId}`);
+        setShowDeliveryModal(false);
+        setSelectedDeliveryItem(null);
+
+        // Naviguer vers l'écran de suivi comme dans ProductCard
+        try {
+            (navigation as any).navigate('DeliveryShoppingTracking', { deliveryId });
+        } catch (error) {
+            console.error('Erreur navigation vers DeliveryShoppingTracking:', error);
         }
     }, [navigation]);
 
@@ -832,11 +901,19 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                     <Text numberOfLines={2} style={styles.title}>
                         {item.titre}
                     </Text>
-                    {item.description ? (
-                        <Text numberOfLines={2} style={styles.description}>
-                            {item.description}
-                        </Text>
-                    ) : null}
+
+                    <ProductDescriptionSection
+                        description={item.description || ''}
+                        contentId={contentId}
+                        expandedDescriptions={expandedDescriptions}
+                        onToggleDescription={toggleDescription}
+                        textColor="rgba(255,255,255,0.8)"
+                        seeMoreColor="#FF2D55"
+                        fontSize={13}
+                        maxHeightCollapsed={36}
+                        maxHeightExpanded={120}
+                        showSeeMoreThreshold={100}
+                    />
 
                     {Array.isArray(item.hashtags) && item.hashtags.length > 0 && (
                         <Text style={styles.hashtags} numberOfLines={1}>
@@ -844,7 +921,18 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                         </Text>
                     )}
 
-                    {/* ✅ Bouton CTA flottant toujours visible */}
+                    {/* ✅ Indicateur de lecture (comme TikTok) */}
+                    {isActive && (
+                        <View style={styles.playIndicator}>
+                            <Text style={styles.playIndicatorText}>
+                                {playCount[contentId] === 1 ? '🔄' : '▶️'} {playCount[contentId] || 1}/2
+                            </Text>
+                        </View>
+                    )}
+                </View>
+
+                {/* ✅ Boutons d'action flottants */}
+                <View style={styles.actionButtonsContainer}>
                     {item.serviceId && (
                         <TouchableOpacity
                             style={styles.ctaButton}
@@ -856,13 +944,16 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                         </TouchableOpacity>
                     )}
 
-                    {/* ✅ Indicateur de lecture (comme TikTok) */}
-                    {isActive && (
-                        <View style={styles.playIndicator}>
-                            <Text style={styles.playIndicatorText}>
-                                {playCount[contentId] === 1 ? '🔄' : '▶️'} {playCount[contentId] || 1}/2
-                            </Text>
-                        </View>
+                    {/* ✅ Bouton de livraison si le service a configuré la livraison automatique */}
+                    {item.serviceId && item.hasDelivery && (
+                        <TouchableOpacity
+                            style={styles.deliveryButton}
+                            onPress={() => handleDeliveryOrder(item)}
+                            activeOpacity={0.8}
+                        >
+                            <SafeIcon name="truck" size={14} color="#fff" type="lucide" />
+                            <Text style={styles.deliveryText}>Commander</Text>
+                        </TouchableOpacity>
                     )}
                 </View>
 
@@ -1053,9 +1144,27 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                     </View>
                 </View>
             </Modal>
+
+            {/* ✅ Modal de livraison - Même composant que ProductCard */}
+            {showDeliveryModal && selectedDeliveryItem?.serviceId && (
+                <OrderDeliveryModal
+                    visible={showDeliveryModal}
+                    onClose={() => {
+                        setShowDeliveryModal(false);
+                        setSelectedDeliveryItem(null);
+                    }}
+                    serviceId={selectedDeliveryItem.serviceId}
+                    productIndex={selectedDeliveryItem.productIndex}
+                    productName={selectedDeliveryItem.titre}
+                    initialProductPrice={0} // ✅ CORRECTION: Mettre 0 par défaut, le prix sera récupéré depuis le service
+                    onSuccess={handleDeliverySuccess}
+                    clientUserId={parseInt(user?.id || '0', 10)} // ✅ CORRECTION: Convertir string en number avec base 10
+                />
+            )}
         </SafeNativeView>
     );
 };
+/* ... */
 
 const styles = StyleSheet.create({
     container: {
@@ -1224,10 +1333,11 @@ const styles = StyleSheet.create({
     },
     bottomInfo: {
         position: 'absolute',
-        bottom: 100, // ✅ AJOUT: Plus haut pour être visible avec le bouton "Voir le produit"
+        bottom: 160, // ✅ RÉAJUSTÉ: Plus bas pour laisser de la place au CTA
         left: 16,
         right: 72,
-        gap: 6,
+        gap: 8,
+        maxHeight: 280, // ✅ AJOUT: Limiter la hauteur pour éviter les débordements
     },
     sellerRow: {
         flexDirection: 'row',
@@ -1303,36 +1413,61 @@ const styles = StyleSheet.create({
     ctaButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 6, // ✅ RÉDUIT: De 8 à 6 pour compacter
-        alignSelf: 'flex-start',
-        paddingHorizontal: 12, // ✅ RÉDUIT: De 16 à 12 pour compacter
-        paddingVertical: 8, // ✅ RÉDUIT: De 10 à 8 pour compacter
-        borderRadius: 20, // ✅ RÉDUIT: De 50 à 20 pour moins d'encombrement
+        gap: 6,
+        paddingHorizontal: 14,
+        paddingVertical: 8,
+        borderRadius: 20,
         backgroundColor: 'rgba(255,45,85,0.95)',
-        marginTop: 4,
-        // ✅ REPOSITIONNÉ: Plus bas pour éviter les chevauchements
-        position: 'absolute',
-        bottom: 12, // ✅ RÉDUIT: De 20 à 12 pour plus d'espace
-        left: 12, // ✅ RÉDUIT: De 16 à 12 pour plus d'espace
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.3,
         shadowRadius: 4,
         elevation: 6,
-        zIndex: 25,
         borderWidth: 1,
         borderColor: 'rgba(255,255,255,0.2)',
     },
     ctaText: {
         color: '#fff',
-        fontSize: 12, // ✅ RÉDUIT: De 13 à 12 pour compacter
+        fontSize: 12,
+        fontWeight: '700',
+    },
+    // ✅ AJOUT: Conteneur pour les boutons d'action
+    actionButtonsContainer: {
+        position: 'absolute',
+        bottom: 20,
+        left: 16,
+        right: 72,
+        flexDirection: 'row',
+        gap: 8,
+        zIndex: 25,
+    },
+    // ✅ AJOUT: Bouton de livraison
+    deliveryButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: 14,
+        paddingVertical: 8,
+        borderRadius: 20,
+        backgroundColor: 'rgba(34,197,94,0.95)', // Vert pour la livraison
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+        elevation: 6,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.2)',
+    },
+    deliveryText: {
+        color: '#fff',
+        fontSize: 12,
         fontWeight: '700',
     },
     actions: {
         position: 'absolute',
-        right: 8,
-        bottom: 140, // ✅ RÉDUIT: De 120 à 140 pour plus d'espace avec le spinning disc
-        gap: 14, // ✅ RÉDUIT: De 16 à 14 pour compacter
+        right: 12,
+        bottom: 80, // ✅ RÉAJUSTÉ: Plus haut pour éviter le chevauchement avec le CTA
+        gap: 12,
         alignItems: 'center',
     },
     actionButton: {
@@ -1440,11 +1575,11 @@ const styles = StyleSheet.create({
     },
     spinningDisc: {
         position: 'absolute',
-        right: 8, // ✅ RÉDUIT: De 10 à 8 pour plus d'espace
-        bottom: 70, // ✅ AUGMENTÉ: De 20 à 70 pour éviter le chevauchement avec le CTA
-        width: 38, // ✅ RÉDUIT: De 44 à 38 pour moins d'encombrement
-        height: 38, // ✅ RÉDUIT: De 44 à 38 pour moins d'encombrement
-        borderRadius: 19, // ✅ RÉDUIT: De 22 à 19 pour proportion
+        right: 12,
+        bottom: 20, // ✅ RÉAJUSTÉ: Juste au-dessus du CTA
+        width: 40,
+        height: 40,
+        borderRadius: 20,
         borderWidth: 2,
         borderColor: 'rgba(255,255,255,0.3)',
         backgroundColor: '#1a1a1a',
@@ -1452,16 +1587,16 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     spinningDiscInner: {
-        width: 30, // ✅ RÉDUIT: De 36 à 30 pour proportion
-        height: 30, // ✅ RÉDUIT: De 36 à 30 pour proportion
-        borderRadius: 15, // ✅ RÉDUIT: De 18 à 15 pour proportion
+        width: 32,
+        height: 32,
+        borderRadius: 16,
         backgroundColor: '#333',
         alignItems: 'center',
         justifyContent: 'center',
     },
     spinningDiscText: {
         color: '#fff',
-        fontSize: 14, // ✅ RÉDUIT: De 16 à 14 pour proportion
+        fontSize: 15,
         fontWeight: '800',
     },
     // ✅ AJOUT: Indicateur de lecture style TikTok
