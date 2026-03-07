@@ -1177,9 +1177,9 @@ const NavigationScreen: React.FC = () => {
                         </View>
                         <TouchableOpacity
                             style={styles.statsButton}
-                            onPress={() => setShowActivityDashboard(!showActivityDashboard)}
+                            onPress={() => setShowActivityStats(!showActivityStats)}
                         >
-                            <SafeIcon name={showActivityDashboard ? "X" : "Activity"} size={18} color={modernColors.text} />
+                            <SafeIcon name={showActivityStats ? "X" : "Activity"} size={18} color={modernColors.text} />
                         </TouchableOpacity>
                     </View>
 

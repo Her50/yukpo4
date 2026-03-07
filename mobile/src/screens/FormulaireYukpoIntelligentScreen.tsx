@@ -2396,9 +2396,13 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   // Sinon chaque frappe clavier → handleFieldBlur → setValeursFormulaire → setBlocks → re-render complet → perte de focus (curseur saute)
   useEffect(() => {
     if (composants.length > 0) {
-      const organizedBlocks = organizeFieldsIntoBlocks(composants, valeursFormulaire);
-      setBlocks(organizedBlocks);
-      console.log('[FormulaireYukpoIntelligentScreen] Blocs organisés:', organizedBlocks.map(b => b.id));
+      // ✅ CORRECTION CRITIQUE: Utiliser une ref pour éviter les stale closures avec valeursFormulaire
+      // Ne pas réorganiser les blocs à chaque changement de valeur - seulement quand les composants changent
+      if (blocks.length === 0) {
+        const organizedBlocks = organizeFieldsIntoBlocks(composants, {});
+        setBlocks(organizedBlocks);
+        console.log('[FormulaireYukpoIntelligentScreen] Blocs organisés initialement:', organizedBlocks.map(b => b.id));
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [composants]); // ✅ UNIQUEMENT composants — les blocs ne changent pas quand les valeurs changent
@@ -2627,7 +2631,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     delete pendingValuesRef.current[fieldName];
   }, []);
 
-  // ✅ NOUVEAU: Handler pour le blur des champs texte - met à jour valeursFormulaire
+  // ✅ NOUVEAU: Handler pour le blur des champs texte - met à jour valeursFormulaire avec retardement
   const handleFieldBlur = React.useCallback((fieldName: string) => {
     // Si une valeur temporaire existe, la sauvegarder dans valeursFormulaire
     if (pendingValuesRef.current[fieldName] !== undefined) {
@@ -2635,22 +2639,22 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
       // ✅ Convertir automatiquement les prix en nombres au blur
       if (fieldName === 'prix' && typeof value === 'string' && value.trim() !== '') {
-        const numericValue = parseFloat(value);
-        if (!isNaN(numericValue)) {
-          value = numericValue;
+        const numValue = parseFloat(value.replace(/[^\d.-]/g, ''));
+        if (!isNaN(numValue)) {
+          value = numValue;
         }
       }
 
-      setValeursFormulaire(prev => {
-        if (prev[fieldName] === value) {
-          return prev;
-        }
-        return {
+      // ✅ CORRECTION CRITIQUE: Retarder la mise à jour pour éviter les re-rends immédiats
+      // Utiliser setTimeout pour que la mise à jour se fasse après que le focus soit complètement perdu
+      setTimeout(() => {
+        setValeursFormulaire(prev => ({
           ...prev,
-          [fieldName]: value
-        };
-      });
-      // Nettoyer la valeur temporaire
+          [fieldName]: value,
+        }));
+      }, 0); // Exécuter au prochain tick
+
+      // Nettoyer la valeur temporaire immédiatement
       delete pendingValuesRef.current[fieldName];
     }
   }, []);

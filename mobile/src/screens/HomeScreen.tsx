@@ -928,10 +928,10 @@ const styles = StyleSheet.create({
     },
     headerCenter: {
         flex: 1,
-        alignItems: 'center',
+        alignItems: 'flex-start', // Changé de 'center' à 'flex-start' pour décaler vers la gauche
         justifyContent: 'center',
-        paddingLeft: 0,
-        paddingRight: 0,
+        paddingLeft: 20, // Ajout de padding pour équilibrer
+        paddingRight: 40, // Plus d'espace à droite pour éviter la collision avec l'icône vélo
     },
     brandTitle: {
         fontSize: 26,

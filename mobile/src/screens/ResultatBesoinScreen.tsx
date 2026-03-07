@@ -8,6 +8,7 @@ import {
     FlatList,
     Linking,
     RefreshControl,
+    ScrollView,
     Share,
     StyleSheet,
     Text,
