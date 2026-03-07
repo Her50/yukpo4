@@ -137,7 +137,6 @@ const NavigationScreen: React.FC = () => {
     const checkpointsRef = useRef(checkpoints);
     checkpointsRef.current = checkpoints;
     const checkpointRefreshRef = useRef<ReturnType<typeof setInterval> | null>(null);
-    const checkpointRefreshIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const trackingUpdateIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const trackingStartTimeRef = useRef<string | null>(null);
     const speedSamplesRef = useRef<number[]>([]);
@@ -386,7 +385,7 @@ const NavigationScreen: React.FC = () => {
 
     useEffect(() => {
         return () => {
-            if (locationSubscriptionRef.current) { try { locationSubscriptionRef.current.remove(); } catch { } } if (checkpointRefreshIntervalRef.current) { try { clearInterval(checkpointRefreshIntervalRef.current); } catch { } } if (trackingUpdateIntervalRef.current) { try { clearInterval(trackingUpdateIntervalRef.current); } catch { } }
+            if (locationSubscriptionRef.current) { try { locationSubscriptionRef.current.remove(); } catch { } } if (checkpointRefreshRef.current) { try { clearInterval(checkpointRefreshRef.current); } catch { } } if (trackingUpdateIntervalRef.current) { try { clearInterval(trackingUpdateIntervalRef.current); } catch { } }
         };
     }, []);
 

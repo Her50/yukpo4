@@ -92,6 +92,11 @@ pub struct AssuranceAIService {
     app_ia: Arc<AppIA>,
 }
 
+/// Nettoie la réponse JSON (enlève markdown code blocks) - version publique
+pub fn clean_json_response_pub(response: &str) -> String {
+    clean_json_response(response)
+}
+
 /// Nettoie la réponse JSON (enlève markdown code blocks)
 fn clean_json_response(response: &str) -> String {
     let trimmed = response.trim();

@@ -402,7 +402,7 @@ const OffresEmploiHomeScreen: React.FC = () => {
                                     onPress={() => navigation.navigate('OffreDetails' as never, { offreId: item.id } as never)}
                                     onApply={() => {
                                         hapticPress();
-                                        navigation.navigate('CreateCandidature' as never, { offreId: item.id } as never);
+                                        navigation.navigate('OffreDetails' as never, { offreId: item.id } as never);
                                     }}
                                     formatSalary={formatSalary}
                                 />

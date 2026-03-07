@@ -86,7 +86,7 @@ const PushNotificationManager: React.FC = () => {
                             text: 'Voir',
                             onPress: () => {
                                 if (data.delivery_id) {
-                                    (navigation as any).navigate('DeliveryTracking', {
+                                    (navigation as any).navigate('DeliveryShoppingTracking', {
                                         deliveryId: data.delivery_id,
                                         showAcceptButton: true,
                                     });
@@ -112,7 +112,7 @@ const PushNotificationManager: React.FC = () => {
                             text: buttonText,
                             onPress: () => {
                                 if (data.live_session_id) {
-                                    (navigation as any).navigate('LiveStream', {
+                                    (navigation as any).navigate('LiveViewerScreen', {
                                         sessionId: data.live_session_id,
                                         serviceId: data.primary_service_id,
                                     });
@@ -142,7 +142,7 @@ const PushNotificationManager: React.FC = () => {
                             text: buttonText,
                             onPress: () => {
                                 if (data.live_session_id) {
-                                    (navigation as any).navigate('LiveStream', {
+                                    (navigation as any).navigate('LiveViewerScreen', {
                                         sessionId: data.live_session_id,
                                         serviceId: data.primary_service_id,
                                         highlightFlashSale: data.flash_sale_id,
@@ -223,7 +223,7 @@ const PushNotificationManager: React.FC = () => {
 
                 // Naviguer vers l'écran de suivi de livraison
                 if (data.delivery_id) {
-                    (navigation as any).navigate('DeliveryTracking', {
+                    (navigation as any).navigate('DeliveryShoppingTracking', {
                         deliveryId: data.delivery_id,
                         showAcceptButton: true,
                     });
@@ -233,7 +233,7 @@ const PushNotificationManager: React.FC = () => {
             else if (data?.event === 'live_scheduled' || data?.event === 'live_live_now' || data?.event === 'live_replay_ready') {
                 console.log('[PushNotificationManager] 🎥 Tap notification Live:', data.event);
                 if (data.live_session_id) {
-                    (navigation as any).navigate('LiveStream', {
+                    (navigation as any).navigate('LiveViewerScreen', {
                         sessionId: data.live_session_id,
                         serviceId: data.primary_service_id,
                     });
@@ -245,7 +245,7 @@ const PushNotificationManager: React.FC = () => {
             else if (data?.event === 'live_flash_sale_scheduled' || data?.event === 'live_flash_sale_live' || data?.event === 'live_flash_sale_ending' || data?.event === 'live_flash_sale_commentary') {
                 console.log('[PushNotificationManager] ⚡ Tap notification Flash Promo:', data.event);
                 if (data.live_session_id) {
-                    (navigation as any).navigate('LiveStream', {
+                    (navigation as any).navigate('LiveViewerScreen', {
                         sessionId: data.live_session_id,
                         serviceId: data.primary_service_id,
                         highlightFlashSale: data.flash_sale_id,

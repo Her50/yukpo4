@@ -1,5 +1,5 @@
 import { useNavigation, useRoute } from '@react-navigation/native';
-import React, { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -86,8 +86,11 @@ export default function StartLiveScreen() {
 
       const response = await liveStreamingService.startLiveSession(payload);
 
-      if (response.success && response.data) {
-        const sessionData = response.data as any;
+      const backendResp = response.data as any;
+      const innerData = backendResp?.data || backendResp;
+      const session = innerData?.session || innerData;
+
+      if ((response.success || backendResp?.success) && session?.id) {
         Alert.alert(
           'Live démarré!',
           'Votre session live est maintenant active. Vous pouvez commencer à diffuser.',
@@ -96,17 +99,17 @@ export default function StartLiveScreen() {
               text: 'OK',
               onPress: () => {
                 // Navigate to live host view or streaming interface
-                navigation.navigate('LiveHostScreen' as any, {
-                  sessionId: sessionData.id,
-                  streamKey: sessionData.stream_key,
-                  rtmpUrl: sessionData.fallback_rtmp_url,
+                navigation.navigate('LiveHost' as any, {
+                  sessionId: session.id,
+                  streamKey: session.stream_key,
+                  rtmpUrl: session.fallback_rtmp_url,
                 });
               },
             },
           ]
         );
       } else {
-        throw new Error(response.error || 'Échec du démarrage du live');
+        throw new Error(backendResp?.error || (response as any).error || 'Échec du démarrage du live');
       }
     } catch (error: any) {
       console.error('[StartLiveScreen] Erreur démarrage live:', error);

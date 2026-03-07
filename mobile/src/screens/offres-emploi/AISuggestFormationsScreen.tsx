@@ -39,8 +39,9 @@ const AISuggestFormationsScreen: React.FC = () => {
             setLoadingProfile(true);
             const response = await offreEmploiService.getProfil();
 
-            if (response.success && response.data) {
-                const profil = response.data;
+            const backendData = (response?.data as any);
+            const profil = backendData?.data || backendData;
+            if (response.success && profil) {
                 setHasProfile(true);
                 // Si le profil a des compétences manquantes identifiées, les utiliser
                 if (profil.competences_manquantes && Array.isArray(profil.competences_manquantes)) {
@@ -72,14 +73,16 @@ const AISuggestFormationsScreen: React.FC = () => {
         try {
             setLoading(true);
             const response = await offreEmploiService.suggestFormations(
+                user?.id || 0,
+                [],
                 competencesManquantes,
                 objectifCarriere.trim() || undefined
             );
+            const resData = (response?.data as any);
+            const suggestionsResult = resData?.data?.suggestions || resData?.suggestions || (response as any)?.suggestions;
 
-            if (response.success && response.suggestions) {
-                setSuggestions(response.suggestions);
-            } else if (response.success && response.data?.suggestions) {
-                setSuggestions(response.data.suggestions);
+            if (response.success && suggestionsResult) {
+                setSuggestions(suggestionsResult);
             } else {
                 Alert.alert(
                     'Erreur',

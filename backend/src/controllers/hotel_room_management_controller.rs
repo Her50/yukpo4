@@ -179,14 +179,14 @@ pub async fn request_hotel_reservation(
     let nb_nuits = {
         let arr =
             chrono::NaiveDate::parse_from_str(&payload.date_arrivee, "%Y-%m-%d").map_err(|_| {
-                AppError::Validation("Format date arrivée invalide (AAAA-MM-JJ)".to_string())
+                AppError::BadRequest("Format date arrivée invalide (AAAA-MM-JJ)".to_string())
             })?;
         let dep =
             chrono::NaiveDate::parse_from_str(&payload.date_depart, "%Y-%m-%d").map_err(|_| {
-                AppError::Validation("Format date départ invalide (AAAA-MM-JJ)".to_string())
+                AppError::BadRequest("Format date départ invalide (AAAA-MM-JJ)".to_string())
             })?;
         if dep <= arr {
-            return Err(AppError::Validation(
+            return Err(AppError::BadRequest(
                 "La date de départ doit être après l'arrivée".to_string(),
             ));
         }

@@ -352,6 +352,8 @@ impl LiveStreamingService {
             status: session_status,
             start_at: details.session.start_at,
             host_identity: details.session.livekit_participant_identity.clone(),
+            livekit_room_name: details.session.livekit_room_name.clone(),
+            participant_identity: Some(identity),
             webrtc_token,
             webrtc_url: details.session.webrtc_url.clone(),
             hls_url: details.session.hls_url.clone(),

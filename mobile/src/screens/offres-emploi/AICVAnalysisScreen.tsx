@@ -38,8 +38,9 @@ const AICVAnalysisScreen: React.FC = () => {
             setLoadingCV(true);
             const response = await offreEmploiService.getProfil();
 
-            if (response.success && response.data) {
-                const profil = response.data;
+            const backendData = (response?.data as any);
+            const profil = backendData?.data || backendData;
+            if (response.success && profil) {
                 if (profil.cv_url && profil.cv_url.trim()) {
                     setCvUrl(profil.cv_url);
                     setHasCV(true);
@@ -77,12 +78,12 @@ const AICVAnalysisScreen: React.FC = () => {
 
         try {
             setLoading(true);
-            const response = await offreEmploiService.analyzeCV(cvUrl);
+            const response = await offreEmploiService.analyzeCV(user?.id || 0, '', cvUrl);
+            const resData = (response?.data as any);
+            const analysisResult = resData?.analysis || resData?.data?.analysis || (response as any)?.analysis;
 
-            if (response.success && response.analysis) {
-                setAnalysis(response.analysis);
-            } else if (response.success && response.data?.analysis) {
-                setAnalysis(response.data.analysis);
+            if (response.success && analysisResult) {
+                setAnalysis(analysisResult);
             } else {
                 Alert.alert('Erreur', response.message || 'Impossible d\'analyser le CV. L\'IA n\'est peut-être pas encore opérationnelle.');
             }

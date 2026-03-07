@@ -8919,6 +8919,12 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Err(e) => error!("❌ Erreur migration auto generative_video_jobs: {}", e),
     }
 
+    // ✅ NOUVEAU 2026-03-07 : Tables digitalisation complète assurance (produits, polices, sinistres)
+    match ensure_insurance_digitalization_tables(pool).await {
+        Ok(_) => info!("✅ Migration auto: insurance digitalization tables OK"),
+        Err(e) => error!("❌ Erreur migration auto insurance digitalization: {}", e),
+    }
+
     info!("✅ Migrations automatiques terminées");
 }
 
@@ -9738,7 +9744,7 @@ pub async fn ensure_navigation_saved_destinations_table(pool: &PgPool) -> Result
             created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
             updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
             
-            CONSTRAINT navigation_saved_destinations_user_label_unique UNIQUE(user_id, label)
+            CONSTRAINT navigation_saved_destinations_user_label_custom_unique UNIQUE(user_id, label, custom_label)
         )
     "#,
     )
@@ -9762,6 +9768,30 @@ pub async fn ensure_navigation_saved_destinations_table(pool: &PgPool) -> Result
     )
     .execute(pool)
     .await?;
+
+    // ✅ FIX: Remplacer la contrainte UNIQUE(user_id, label) par UNIQUE(user_id, label, custom_label)
+    // pour permettre plusieurs destinations 'autre' avec des custom_labels différents
+    sqlx::query(
+        "ALTER TABLE navigation_saved_destinations DROP CONSTRAINT IF EXISTS navigation_saved_destinations_user_label_unique",
+    )
+    .execute(pool)
+    .await
+    .ok(); // Ignorer l'erreur si la contrainte n'existe pas
+
+    sqlx::query(
+        r#"DO $$ BEGIN
+            IF NOT EXISTS (
+                SELECT 1 FROM pg_constraint WHERE conname = 'navigation_saved_destinations_user_label_custom_unique'
+            ) THEN
+                ALTER TABLE navigation_saved_destinations
+                ADD CONSTRAINT navigation_saved_destinations_user_label_custom_unique
+                UNIQUE(user_id, label, custom_label);
+            END IF;
+        END $$"#,
+    )
+    .execute(pool)
+    .await
+    .ok();
 
     info!("✅ Table navigation_saved_destinations créée/vérifiée avec succès");
     Ok(())
@@ -18859,5 +18889,247 @@ pub async fn migrate_product_name_generation(pool: &PgPool) -> Result<(), sqlx::
         info!("✅ Aucun product_name à corriger");
     }
 
+    Ok(())
+}
+
+/// ✅ 2026-03-07 : Tables pour digitalisation complète des compagnies d'assurance
+/// - insurance_products: Catalogue produits d'assurance paramétrable
+/// - insurance_policies: Polices/contrats émis aux clients
+/// - insurance_claims: Déclarations de sinistres avec suivi temps réel
+/// - insurance_claim_documents: Documents joints aux sinistres
+/// - insurance_policy_documents: Documents des polices (conditions générales, attestations)
+pub async fn ensure_insurance_digitalization_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification/création des tables digitalisation assurance...");
+
+    // 1. Table insurance_products — Catalogue produits paramétrable par l'assureur
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS insurance_products (
+            id SERIAL PRIMARY KEY,
+            service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+            assureur_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            nom_produit TEXT NOT NULL,
+            type_assurance TEXT NOT NULL CHECK (type_assurance IN ('vie','non_vie')),
+            sous_categorie TEXT NOT NULL,
+            description TEXT,
+            compagnie TEXT,
+            prime_mensuelle NUMERIC(12,2),
+            prime_trimestrielle NUMERIC(12,2),
+            prime_semestrielle NUMERIC(12,2),
+            prime_annuelle NUMERIC(12,2),
+            devise TEXT DEFAULT 'XAF',
+            couverture_max NUMERIC(14,2),
+            franchise_montant NUMERIC(12,2) DEFAULT 0,
+            franchise_pourcentage NUMERIC(5,2) DEFAULT 0,
+            duree_contrat_mois INTEGER DEFAULT 12,
+            age_min INTEGER DEFAULT 18,
+            age_max INTEGER DEFAULT 70,
+            garanties JSONB DEFAULT '[]'::jsonb,
+            exclusions JSONB DEFAULT '[]'::jsonb,
+            conditions_generales TEXT,
+            avantages JSONB DEFAULT '[]'::jsonb,
+            options_supplementaires JSONB DEFAULT '[]'::jsonb,
+            documents_requis JSONB DEFAULT '[]'::jsonb,
+            delai_carence_jours INTEGER DEFAULT 0,
+            taux_commission NUMERIC(5,2) DEFAULT 0,
+            is_active BOOLEAN DEFAULT true,
+            is_featured BOOLEAN DEFAULT false,
+            souscriptions_count INTEGER DEFAULT 0,
+            note_moyenne NUMERIC(3,2) DEFAULT 0,
+            metadata JSONB DEFAULT '{}'::jsonb,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            updated_at TIMESTAMPTZ DEFAULT NOW()
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    // Index produits
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_insurance_products_service ON insurance_products(service_id)")
+        .execute(pool).await?;
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_insurance_products_assureur ON insurance_products(assureur_user_id)")
+        .execute(pool).await?;
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_insurance_products_type ON insurance_products(type_assurance, sous_categorie)")
+        .execute(pool).await?;
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_insurance_products_active ON insurance_products(is_active) WHERE is_active = true")
+        .execute(pool).await?;
+
+    // 2. Table insurance_policies — Polices/contrats émis
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS insurance_policies (
+            id SERIAL PRIMARY KEY,
+            product_id INTEGER NOT NULL REFERENCES insurance_products(id) ON DELETE RESTRICT,
+            assureur_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            client_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            numero_police TEXT NOT NULL UNIQUE,
+            client_nom TEXT NOT NULL,
+            client_prenom TEXT,
+            client_telephone TEXT,
+            client_email TEXT,
+            client_adresse TEXT,
+            client_date_naissance DATE,
+            client_profession TEXT,
+            beneficiaires JSONB DEFAULT '[]'::jsonb,
+            date_effet DATE NOT NULL,
+            date_expiration DATE NOT NULL,
+            prime_totale NUMERIC(12,2) NOT NULL,
+            devise TEXT DEFAULT 'XAF',
+            frequence_paiement TEXT DEFAULT 'annuel' CHECK (frequence_paiement IN ('mensuel','trimestriel','semestriel','annuel','unique')),
+            statut TEXT DEFAULT 'active' CHECK (statut IN ('brouillon','en_attente','active','suspendue','resiliee','expiree','annulee')),
+            garanties_souscrites JSONB DEFAULT '[]'::jsonb,
+            options_souscrites JSONB DEFAULT '[]'::jsonb,
+            conditions_particulieres TEXT,
+            objet_assure JSONB DEFAULT '{}'::jsonb,
+            franchise_applicable NUMERIC(12,2) DEFAULT 0,
+            plafond_indemnisation NUMERIC(14,2),
+            dernier_paiement_at TIMESTAMPTZ,
+            prochain_paiement_at TIMESTAMPTZ,
+            motif_resiliation TEXT,
+            renouvellement_auto BOOLEAN DEFAULT true,
+            metadata JSONB DEFAULT '{}'::jsonb,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            updated_at TIMESTAMPTZ DEFAULT NOW()
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    // Index polices
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_insurance_policies_product ON insurance_policies(product_id)")
+        .execute(pool).await?;
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_insurance_policies_assureur ON insurance_policies(assureur_user_id)")
+        .execute(pool).await?;
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_insurance_policies_client ON insurance_policies(client_user_id)")
+        .execute(pool).await?;
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_insurance_policies_numero ON insurance_policies(numero_police)")
+        .execute(pool).await?;
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_insurance_policies_statut ON insurance_policies(statut)",
+    )
+    .execute(pool)
+    .await?;
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_insurance_policies_expiration ON insurance_policies(date_expiration)")
+        .execute(pool).await?;
+
+    // 3. Table insurance_claims — Déclarations de sinistres
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS insurance_claims (
+            id SERIAL PRIMARY KEY,
+            policy_id INTEGER NOT NULL REFERENCES insurance_policies(id) ON DELETE RESTRICT,
+            assureur_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            declarant_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            numero_sinistre TEXT NOT NULL UNIQUE,
+            type_sinistre TEXT NOT NULL,
+            date_sinistre DATE NOT NULL,
+            lieu_sinistre TEXT,
+            gps_sinistre TEXT,
+            description_sinistre TEXT NOT NULL,
+            circonstances TEXT,
+            temoins JSONB DEFAULT '[]'::jsonb,
+            dommages_estimes NUMERIC(14,2),
+            montant_reclame NUMERIC(14,2),
+            montant_indemnise NUMERIC(14,2),
+            devise TEXT DEFAULT 'XAF',
+            statut TEXT DEFAULT 'declare' CHECK (statut IN (
+                'declare','en_cours_instruction','expertise_demandee','expertise_en_cours',
+                'en_attente_documents','approuve','partiellement_approuve',
+                'refuse','indemnise','clos','conteste'
+            )),
+            priorite TEXT DEFAULT 'normale' CHECK (priorite IN ('basse','normale','haute','urgente')),
+            agent_traitant TEXT,
+            expert_assigne TEXT,
+            date_expertise DATE,
+            rapport_expertise TEXT,
+            motif_refus TEXT,
+            date_indemnisation DATE,
+            mode_indemnisation TEXT CHECK (mode_indemnisation IN ('virement','cheque','mobile_money','reparation_directe')),
+            reference_paiement TEXT,
+            notes_internes TEXT,
+            historique_statuts JSONB DEFAULT '[]'::jsonb,
+            ai_analysis JSONB DEFAULT '{}'::jsonb,
+            fraud_score NUMERIC(5,2),
+            metadata JSONB DEFAULT '{}'::jsonb,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            updated_at TIMESTAMPTZ DEFAULT NOW()
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    // Index sinistres
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_insurance_claims_policy ON insurance_claims(policy_id)",
+    )
+    .execute(pool)
+    .await?;
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_insurance_claims_assureur ON insurance_claims(assureur_user_id)")
+        .execute(pool).await?;
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_insurance_claims_declarant ON insurance_claims(declarant_user_id)")
+        .execute(pool).await?;
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_insurance_claims_statut ON insurance_claims(statut)",
+    )
+    .execute(pool)
+    .await?;
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_insurance_claims_numero ON insurance_claims(numero_sinistre)")
+        .execute(pool).await?;
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_insurance_claims_date ON insurance_claims(date_sinistre DESC)")
+        .execute(pool).await?;
+
+    // 4. Table insurance_claim_documents — Pièces jointes sinistres
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS insurance_claim_documents (
+            id SERIAL PRIMARY KEY,
+            claim_id INTEGER NOT NULL REFERENCES insurance_claims(id) ON DELETE CASCADE,
+            uploaded_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            type_document TEXT NOT NULL,
+            nom_fichier TEXT NOT NULL,
+            url_fichier TEXT NOT NULL,
+            taille_octets BIGINT,
+            mime_type TEXT,
+            description TEXT,
+            is_verified BOOLEAN DEFAULT false,
+            verified_by INTEGER REFERENCES users(id),
+            verified_at TIMESTAMPTZ,
+            created_at TIMESTAMPTZ DEFAULT NOW()
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_claim_documents_claim ON insurance_claim_documents(claim_id)")
+        .execute(pool).await?;
+
+    // 5. Table insurance_policy_documents — Documents des polices
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS insurance_policy_documents (
+            id SERIAL PRIMARY KEY,
+            policy_id INTEGER NOT NULL REFERENCES insurance_policies(id) ON DELETE CASCADE,
+            uploaded_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            type_document TEXT NOT NULL,
+            nom_fichier TEXT NOT NULL,
+            url_fichier TEXT NOT NULL,
+            taille_octets BIGINT,
+            mime_type TEXT,
+            description TEXT,
+            created_at TIMESTAMPTZ DEFAULT NOW()
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_policy_documents_policy ON insurance_policy_documents(policy_id)")
+        .execute(pool).await?;
+
+    info!("✅ Tables digitalisation assurance créées avec succès (insurance_products, insurance_policies, insurance_claims, documents)");
     Ok(())
 }

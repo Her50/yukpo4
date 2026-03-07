@@ -698,8 +698,13 @@ const MesServicesScreen: React.FC = () => {
               return newMap;
             });
 
-            toaster.error(
-              `Solde insuffisant (${currentBalance} FCFA). Coût: ${activationCost} FCFA`
+            Alert.alert(
+              '💸 Solde insuffisant',
+              `Coût de réactivation : ${activationCost.toLocaleString()} FCFA\nVotre solde : ${currentBalance.toLocaleString()} FCFA\n\nVeuillez recharger votre compte.`,
+              [
+                { text: 'Annuler', style: 'cancel' },
+                { text: 'Recharger', onPress: () => (navigation as any).navigate('RechargeTokens') },
+              ]
             );
             return;
           }

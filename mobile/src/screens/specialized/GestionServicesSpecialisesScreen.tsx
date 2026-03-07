@@ -1289,6 +1289,9 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                                 'meuble': { screen: 'HotelDashboard', label: 'Gérer mon meublé' },
                                 'chauffeur': { screen: 'TaxiForm', label: 'Créer mon profil chauffeur' },
                                 'supermarche': { screen: 'SupermarketHome', label: 'Gérer mon supermarché' },
+                                'offres_emploi': { screen: 'CreateOffre', label: 'Publier une offre d\'emploi' },
+                                'recruteur': { screen: 'CreateOffre', label: 'Publier une offre d\'emploi' },
+                                'employeur': { screen: 'CreateOffre', label: 'Publier une offre d\'emploi' },
                             };
                             const formInfo = user.partner_type ? partnerFormMap[user.partner_type] : null;
                             const targetScreen = formInfo?.screen || 'MesServicesSpecialises';

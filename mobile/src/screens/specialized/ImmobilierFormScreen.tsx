@@ -39,6 +39,8 @@ const TYPES_BIEN = [
     { key: 'terrain', label: 'Terrain', icon: 'map' },
     { key: 'bureau', label: 'Bureau', icon: 'briefcase' },
     { key: 'local_commercial', label: 'Local commercial', icon: 'store' },
+    { key: 'hotel', label: 'Hôtel', icon: 'building' },
+    { key: 'meuble', label: 'Meublé / Location meublée', icon: 'home' },
 ];
 const STATUTS = [
     { key: 'vente', label: 'Vente', icon: 'tag' },
@@ -56,9 +58,10 @@ const ImmobilierFormScreen: React.FC = () => {
     const [serviceId, setServiceId] = useState<number | null>((route.params as any)?.serviceId || null);
     const propertyId = (route.params as any)?.propertyId as number | undefined;
     const mode = (route.params as any)?.mode as string | undefined;
+    const initialTypeBien = (route.params as any)?.initialTypeBien as string | undefined;
 
     const [formData, setFormData] = useState({
-        titre: '', description: '', type_bien: 'maison', statut: 'vente',
+        titre: '', description: '', type_bien: initialTypeBien || 'maison', statut: initialTypeBien === 'hotel' || initialTypeBien === 'meuble' ? 'location' : 'vente',
         adresse: '', quartier: null as LocationObject | null, ville: null as LocationObject | null,
         superficie_m2: '', nb_chambres: '', nb_salles_bain: '',
         standing: '', etat_general: '',

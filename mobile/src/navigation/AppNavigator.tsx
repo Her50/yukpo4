@@ -183,6 +183,7 @@ import BusReturnRequestFormScreen from '../screens/specialized/BusReturnRequestF
 import BusReturnRequestsScreen from '../screens/specialized/BusReturnRequestsScreen';
 // ✅ NOUVEAU 2026-01-27: Écrans hôtels/meublés (réservation séjour + paiement + QR scanner)
 import HotelBookingPaymentScreen from '../screens/specialized/HotelBookingPaymentScreen';
+import HotelBookingScreen from '../screens/specialized/HotelBookingScreen';
 import HotelDashboardScreen from '../screens/specialized/HotelDashboardScreen';
 import HotelQRScannerScreen from '../screens/specialized/HotelQRScannerScreen';
 // ✅ NOUVEAU 2025-01-28: Écrans Bourse du livre scolaire
@@ -221,6 +222,7 @@ import TrocMatchingScreen from '../screens/specialized/TrocMatchingScreen';
 import AICVAnalysisScreen from '../screens/offres-emploi/AICVAnalysisScreen';
 import AISalaryPredictionScreen from '../screens/offres-emploi/AISalaryPredictionScreen';
 import AISuggestFormationsScreen from '../screens/offres-emploi/AISuggestFormationsScreen';
+import AlertesEmploiScreen from '../screens/offres-emploi/AlertesEmploiScreen';
 import CreateOffreScreen from '../screens/offres-emploi/CreateOffreScreen';
 import MesOffresScreen from '../screens/offres-emploi/MesOffresScreen';
 import OffreCandidaturesScreen from '../screens/offres-emploi/OffreCandidaturesScreen';
@@ -245,13 +247,16 @@ import AutoServicesResultsScreen from '../screens/specialized/AutoServicesResult
 import AutoServicesSearchScreen from '../screens/specialized/AutoServicesSearchScreen';
 import BayamSelamResultsScreen from '../screens/specialized/BayamSelamResultsScreen';
 import BayamSelamSearchScreen from '../screens/specialized/BayamSelamSearchScreen';
+import DeclarationSinistreScreen from '../screens/specialized/DeclarationSinistreScreen';
 import InsuranceQuoteRequestScreen from '../screens/specialized/InsuranceQuoteRequestScreen';
 import InsuranceServicesResultsScreen from '../screens/specialized/InsuranceServicesResultsScreen';
 import InsuranceServicesSearchScreen from '../screens/specialized/InsuranceServicesSearchScreen';
 import MenuWeekCalendarScreen from '../screens/specialized/MenuWeekCalendarScreen';
+import MesPolicesAssuranceScreen from '../screens/specialized/MesPolicesAssuranceScreen';
 import OrientationPartnerDashboardScreen from '../screens/specialized/OrientationPartnerDashboardScreen';
 import RecipeDetailsScreen from '../screens/specialized/RecipeDetailsScreen';
 import ShoppingListScreen from '../screens/specialized/ShoppingListScreen';
+import SuiviSinistreScreen from '../screens/specialized/SuiviSinistreScreen';
 import SupermarketHomeScreen from '../screens/specialized/SupermarketHomeScreen';
 import SupermarketPartnerDashboardScreen from '../screens/specialized/SupermarketPartnerDashboardScreen';
 import VideoCreationIntroScreen from '../screens/video/VideoCreationIntroScreen';
@@ -446,6 +451,9 @@ const withDashboardErrorBoundary = (ScreenComponent: React.ComponentType<any>, s
 };
 // ✅ NOUVEAU: Dashboards partenaires manquants (avec ErrorBoundary)
 const AssuranceDashboardScreenWithSafeArea = withNavigatorSafeArea(withDashboardErrorBoundary(AssuranceDashboardScreen, 'Dashboard Assurance'));
+const MesPolicesAssuranceScreenWithSafeArea = withNavigatorSafeArea(MesPolicesAssuranceScreen);
+const DeclarationSinistreScreenWithSafeArea = withNavigatorSafeArea(DeclarationSinistreScreen);
+const SuiviSinistreScreenWithSafeArea = withNavigatorSafeArea(SuiviSinistreScreen);
 const SupermarketPartnerDashboardScreenWithSafeArea = withNavigatorSafeArea(withDashboardErrorBoundary(SupermarketPartnerDashboardScreen, 'Dashboard Supermarché'));
 const OrientationPartnerDashboardScreenWithSafeArea = withNavigatorSafeArea(withDashboardErrorBoundary(OrientationPartnerDashboardScreen, 'Dashboard Établissement'));
 
@@ -1296,17 +1304,16 @@ const SecondaryStack = () => {
       {/* ✅ NOUVEAU 2025-01-28: Orientation scolaire */}
       <Stack.Screen
         name="OrientationScolaireHub"
-        component={OrientationScolaireHomeScreenWithSafeArea}
+        component={OrientationScolaireHubScreenWithSafeArea}
         options={{
           headerShown: false,
         }}
       />
       <Stack.Screen
-        name="OrientationScolaireHubAdvanced"
-        component={OrientationScolaireHubScreenWithSafeArea}
+        name="OrientationScolaireHome"
+        component={OrientationScolaireHomeScreenWithSafeArea}
         options={{
-          ...defaultScreenOptions,
-          title: 'Orientation Scolaire',
+          headerShown: false,
         }}
       />
       <Stack.Screen
@@ -1492,17 +1499,16 @@ const SecondaryStack = () => {
       {/* ✅ NOUVEAU 2025-01-28: Routes offres d'emploi */}
       <Stack.Screen
         name="OffresEmploiHub"
-        component={OffresEmploiHomeScreenWithSafeArea}
+        component={OffresEmploiHubScreenWithSafeArea}
         options={{
           headerShown: false,
         }}
       />
       <Stack.Screen
-        name="OffresEmploiHubAdvanced"
-        component={OffresEmploiHubScreenWithSafeArea}
+        name="OffresEmploiHome"
+        component={OffresEmploiHomeScreenWithSafeArea}
         options={{
-          ...defaultScreenOptions,
-          title: 'Hub Emploi',
+          headerShown: false,
         }}
       />
       <Stack.Screen
@@ -1559,6 +1565,13 @@ const SecondaryStack = () => {
         options={{
           ...defaultScreenOptions,
           title: 'Mon Profil Candidat',
+        }}
+      />
+      <Stack.Screen
+        name="AlertesEmploi"
+        component={withNavigatorSafeArea(AlertesEmploiScreen)}
+        options={{
+          headerShown: false,
         }}
       />
       <Stack.Screen
@@ -1699,6 +1712,21 @@ const SecondaryStack = () => {
         name="InsuranceServicesResults"
         component={InsuranceServicesResultsScreenWithSafeArea}
         options={{ title: 'Résultats Assurance' }}
+      />
+      <Stack.Screen
+        name="MesPolicesAssurance"
+        component={MesPolicesAssuranceScreenWithSafeArea}
+        options={{ title: 'Mes polices d\'assurance', headerShown: false }}
+      />
+      <Stack.Screen
+        name="DeclarationSinistre"
+        component={DeclarationSinistreScreenWithSafeArea}
+        options={{ title: 'Déclaration de sinistre', headerShown: false }}
+      />
+      <Stack.Screen
+        name="SuiviSinistre"
+        component={SuiviSinistreScreenWithSafeArea}
+        options={{ title: 'Suivi des sinistres', headerShown: false }}
       />
       <Stack.Screen
         name="AutoServicesResults"

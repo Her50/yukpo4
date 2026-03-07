@@ -536,6 +536,16 @@ pub async fn duplicate_product(
     Ok(Json(response))
 }
 
+/// ✅ CORRIGÉ 2026-03-08: Échapper les caractères spéciaux pour les attributs HTML
+/// CRITIQUE pour les URLs pré-signées qui contiennent & dans les query params
+/// Sans cet échappement, og:image est tronqué par les crawlers sociaux (WhatsApp, Facebook, Twitter)
+fn html_attr_escape(s: &str) -> String {
+    s.replace('&', "&amp;")
+        .replace('"', "&quot;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+}
+
 /// Structure pour les paramètres de requête de partage
 #[derive(Debug, Deserialize)]
 pub struct ShareQueryParams {
@@ -559,19 +569,24 @@ fn build_media_gallery(
         all_media.push((i.as_str(), false));
     }
 
+    // ✅ CORRIGÉ 2026-03-08: Échapper les URLs et textes dans les attributs HTML
+    // Les URLs pré-signées contiennent & qui doit être &amp; dans les attributs src/alt
+    let escaped_name = html_attr_escape(item_name);
+
     let gallery_html = if all_media.is_empty() {
         String::new()
     } else if all_media.len() == 1 {
         let (url, is_vid) = all_media[0];
+        let escaped_url = html_attr_escape(url);
         if is_vid {
             format!(
                 r#"<div class="media-hero"><video src="{}" autoplay muted loop playsinline></video></div>"#,
-                url
+                escaped_url
             )
         } else {
             format!(
                 r#"<div class="media-hero"><img src="{}" alt="{}" /></div>"#,
-                url, item_name
+                escaped_url, escaped_name
             )
         }
     } else {
@@ -586,25 +601,34 @@ fn build_media_gallery(
         } else {
             ""
         };
-        let vid_src = if first_is_vid { first_url } else { "" };
-        let img_src = if first_is_vid { "" } else { first_url };
+        let vid_src = if first_is_vid {
+            html_attr_escape(first_url)
+        } else {
+            String::new()
+        };
+        let img_src = if first_is_vid {
+            String::new()
+        } else {
+            html_attr_escape(first_url)
+        };
 
         let main_html = format!(
             r#"<div class="gallery-main"><video id="main-video" src="{}" autoplay muted loop playsinline{}></video><img id="main-image" src="{}" alt="{}"{} /></div>"#,
-            vid_src, vid_style, img_src, item_name, img_style
+            vid_src, vid_style, img_src, escaped_name, img_style
         );
 
         let thumbs: String = all_media.iter().enumerate().map(|(idx, (url, is_vid))| {
             let active = if idx == 0 { " active" } else { "" };
+            let escaped_url = html_attr_escape(url);
             if *is_vid {
                 format!(
                     r#"<div class="thumb-wrap{}" onclick="showMedia({})"><video src="{}" class="thumb-media" muted preload="metadata"></video><div class="play-badge">&#9654;</div></div>"#,
-                    active, idx, url
+                    active, idx, escaped_url
                 )
             } else {
                 format!(
                     r#"<div class="thumb-wrap{}" onclick="showMedia({})"><img src="{}" alt="{}" class="thumb-media" /></div>"#,
-                    active, idx, url, item_name
+                    active, idx, escaped_url, escaped_name
                 )
             }
         }).collect::<Vec<_>>().join("\n            ");
@@ -756,7 +780,8 @@ pub async fn share_product_redirect(
 
     // ✅ CORRIGÉ 2026-03-03: Récupérer toutes les images du produit depuis la table media
     // Utiliser des URLs pré-signées car le bucket GCS n'est PAS public (build_public_url retourne des 404)
-    let product_image_paths: Vec<String> = sqlx::query_scalar::<_, Option<String>>(
+    // ✅ CORRIGÉ 2026-03-08: Logger les erreurs SQL au lieu de les avaler silencieusement avec .ok()
+    let product_image_paths: Vec<String> = match sqlx::query_scalar::<_, Option<String>>(
         r#"
         SELECT path
         FROM media
@@ -774,11 +799,13 @@ pub async fn share_product_redirect(
     .bind(final_product_index)
     .fetch_all(&state.pg)
     .await
-    .ok()
-    .unwrap_or_default()
-    .into_iter()
-    .flatten()
-    .collect();
+    {
+        Ok(rows) => rows.into_iter().flatten().collect(),
+        Err(e) => {
+            log::error!("❌ [share_product_redirect] Erreur SQL images produit service_id={}, product_index={}: {}", final_service_id, final_product_index, e);
+            Vec::new()
+        }
+    };
 
     // ✅ AMÉLIORÉ: Utiliser des URLs pré-signées plus longues pour les vidéos (30 jours)
     // Les crawlers sociaux mettent en cache les previews pendant longtemps
@@ -790,10 +817,13 @@ pub async fn share_product_redirect(
         let url = if path.starts_with("http://") || path.starts_with("https://") {
             path.clone()
         } else if state.media_storage.is_remote() {
-            // ✅ URL pré-signée (7 jours pour images) — les crawlers sociaux mettent en cache l'image
+            // ✅ CORRIGÉ 2026-03-08: Logger les erreurs de presigned URL au lieu de fallback silencieux
             match state.media_storage.generate_presigned_url(path, image_expiry_seconds).await {
                 Ok(presigned) => presigned,
-                Err(_) => state.media_storage.build_public_url(path),
+                Err(e) => {
+                    log::warn!("⚠️ [share_product_redirect] Échec presigned URL pour image '{}': {} — fallback build_public_url", path, e);
+                    state.media_storage.build_public_url(path)
+                }
             }
         } else {
             state.media_storage.build_public_url(path)
@@ -841,7 +871,10 @@ pub async fn share_product_redirect(
         } else if state.media_storage.is_remote() {
             match state.media_storage.generate_presigned_url(&img, image_expiry_seconds).await {
                 Ok(presigned) => presigned,
-                Err(_) => state.media_storage.build_public_url(&img),
+                Err(e) => {
+                    log::warn!("⚠️ [share_product_redirect] Échec presigned URL pour image product_data '{}': {}", img, e);
+                    state.media_storage.build_public_url(&img)
+                }
             }
         } else {
             state.media_storage.build_public_url(&img)
@@ -850,7 +883,8 @@ pub async fn share_product_redirect(
     }
 
     // ✅ AJOUTÉ: Récupérer les VIDÉOS du produit depuis la table media
-    let product_video_paths: Vec<String> = sqlx::query_scalar::<_, Option<String>>(
+    // ✅ CORRIGÉ 2026-03-08: Logger les erreurs SQL
+    let product_video_paths: Vec<String> = match sqlx::query_scalar::<_, Option<String>>(
         r#"
         SELECT path FROM media
         WHERE service_id = $1
@@ -864,11 +898,13 @@ pub async fn share_product_redirect(
     .bind(final_product_index)
     .fetch_all(&state.pg)
     .await
-    .ok()
-    .unwrap_or_default()
-    .into_iter()
-    .flatten()
-    .collect();
+    {
+        Ok(rows) => rows.into_iter().flatten().collect(),
+        Err(e) => {
+            log::error!("❌ [share_product_redirect] Erreur SQL vidéos produit service_id={}, product_index={}: {}", final_service_id, final_product_index, e);
+            Vec::new()
+        }
+    };
 
     let mut all_product_videos: Vec<String> = Vec::new();
     for path in &product_video_paths {
@@ -877,7 +913,14 @@ pub async fn share_product_redirect(
         } else if state.media_storage.is_remote() {
             match state.media_storage.generate_presigned_url(path, video_expiry_seconds).await {
                 Ok(presigned) => presigned,
-                Err(_) => state.media_storage.build_public_url(path),
+                Err(e) => {
+                    log::warn!(
+                        "⚠️ [share_product_redirect] Échec presigned URL pour vidéo '{}': {}",
+                        path,
+                        e
+                    );
+                    state.media_storage.build_public_url(path)
+                }
             }
         } else {
             state.media_storage.build_public_url(path)
@@ -915,7 +958,10 @@ pub async fn share_product_redirect(
         } else if state.media_storage.is_remote() {
             match state.media_storage.generate_presigned_url(&vid, video_expiry_seconds).await {
                 Ok(presigned) => presigned,
-                Err(_) => state.media_storage.build_public_url(&vid),
+                Err(e) => {
+                    log::warn!("⚠️ [share_product_redirect] Échec presigned URL pour vidéo product_data '{}': {}", vid, e);
+                    state.media_storage.build_public_url(&vid)
+                }
             }
         } else {
             state.media_storage.build_public_url(&vid)
@@ -1029,44 +1075,50 @@ pub async fn share_product_redirect(
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>"#,
     );
-    html.push_str(product_name);
+    // ✅ CORRIGÉ 2026-03-08: Échapper TOUS les textes et URLs dans les attributs HTML
+    // CRITIQUE: Les URLs pré-signées contiennent & qui tronque og:image pour les crawlers sociaux
+    let escaped_product_name = html_attr_escape(product_name);
+    let escaped_product_description = html_attr_escape(&product_description);
+    html.push_str(&escaped_product_name);
     html.push_str(
         r#" - Yukpomnang</title>
     <meta name="description" content=""#,
     );
-    html.push_str(&product_description);
+    html.push_str(&escaped_product_description);
     html.push_str(
         r#"" />
     <meta property="og:type" content="product" />
     <meta property="og:title" content=""#,
     );
-    html.push_str(product_name);
+    html.push_str(&escaped_product_name);
     html.push_str(
         r#"" />
     <meta property="og:description" content=""#,
     );
-    html.push_str(&product_description);
+    html.push_str(&escaped_product_description);
     html.push_str(r#"" />"#);
     // ✅ CORRIGÉ 2026-03-03: og:image uniquement si une vraie image existe (pas SVG placeholder)
-    // Les crawlers sociaux (Facebook, WhatsApp, Twitter) ne supportent PAS SVG
+    // ✅ CORRIGÉ 2026-03-08: html_attr_escape pour que & devienne &amp; dans les URLs pré-signées
     if let Some(ref og_img) = og_image_url {
+        let escaped_og_img = html_attr_escape(og_img);
         html.push_str("\n    <meta property=\"og:image\" content=\"");
-        html.push_str(og_img);
+        html.push_str(&escaped_og_img);
         html.push_str("\" />\n    <meta property=\"og:image:width\" content=\"1200\" />\n    <meta property=\"og:image:height\" content=\"630\" />\n    <meta property=\"og:image:alt\" content=\"");
-        html.push_str(product_name);
+        html.push_str(&escaped_product_name);
         html.push_str("\" />");
     }
     // ✅ AJOUTÉ: og:video pour les crawlers sociaux (WhatsApp, Facebook, Twitter)
     if let Some(ref vid_url) = first_video_url {
+        let escaped_vid_url = html_attr_escape(vid_url);
         html.push_str("\n    <meta property=\"og:video\" content=\"");
-        html.push_str(vid_url);
+        html.push_str(&escaped_vid_url);
         html.push_str("\" />\n    <meta property=\"og:video:type\" content=\"video/mp4\" />\n    <meta property=\"og:video:width\" content=\"1280\" />\n    <meta property=\"og:video:height\" content=\"720\" />");
     }
     html.push_str(
         r#"
     <meta property="og:url" content=""#,
     );
-    html.push_str(&share_url);
+    html.push_str(&html_attr_escape(&share_url));
     html.push_str(
         r#"" />
     <meta property="og:site_name" content="Yukpomnang" />
@@ -1075,15 +1127,16 @@ pub async fn share_product_redirect(
     );
     html.push_str(&price_og_html);
     html.push_str("\n    <meta name=\"twitter:card\" content=\"summary_large_image\" />\n    <meta name=\"twitter:title\" content=\"");
-    html.push_str(product_name);
+    html.push_str(&escaped_product_name);
     html.push_str("\" />\n    <meta name=\"twitter:description\" content=\"");
-    html.push_str(&product_description);
+    html.push_str(&escaped_product_description);
     html.push_str("\" />");
     if let Some(ref og_img) = og_image_url {
+        let escaped_og_img = html_attr_escape(og_img);
         html.push_str("\n    <meta name=\"twitter:image\" content=\"");
-        html.push_str(og_img);
+        html.push_str(&escaped_og_img);
         html.push_str("\" />\n    <meta name=\"twitter:image:alt\" content=\"");
-        html.push_str(product_name);
+        html.push_str(&escaped_product_name);
         html.push_str("\" />");
     }
     html.push_str("\n    <meta name=\"twitter:site\" content=\"@yukpomnang\" />");
@@ -1095,17 +1148,18 @@ pub async fn share_product_redirect(
         "@type": "Product",
         "name": ""#,
     );
-    html.push_str(product_name);
+    // ✅ CORRIGÉ 2026-03-08: Échapper les guillemets dans JSON-LD
+    html.push_str(&product_name.replace('\\', "\\\\").replace('"', "\\\""));
     html.push_str(
         r#"",
         "description": ""#,
     );
-    html.push_str(&product_description);
+    html.push_str(&product_description.replace('\\', "\\\\").replace('"', "\\\""));
     html.push_str(
         r#"",
         "image": ""#,
     );
-    html.push_str(&display_image_url);
+    html.push_str(&display_image_url.replace('\\', "\\\\").replace('"', "\\\""));
     html.push_str(
         r#"",
         "offers": {
@@ -1176,7 +1230,7 @@ pub async fn share_product_redirect(
     <div class="container">
         <h1>"#,
     );
-    html.push_str(product_name);
+    html.push_str(&escaped_product_name);
     html.push_str(
         r#"</h1>
         "#,
@@ -1187,7 +1241,7 @@ pub async fn share_product_redirect(
         r#"
         <div class="description">"#,
     );
-    html.push_str(&product_description);
+    html.push_str(&escaped_product_description);
     html.push_str("</div>\n");
     html.push_str("        <a id=\"open-app-btn\" class=\"button\" href=\"#\">\u{1F4F1} Ouvrir dans l'app Yukpomnang</a>\n");
     html.push_str("        <a class=\"button button-secondary\" href=\"https://play.google.com/store/apps/details?id=com.yukpomnang.mobile\" target=\"_blank\">\u{1F4E5} T\u{00E9}l\u{00E9}charger l'app</a>\n");
@@ -1342,7 +1396,8 @@ pub async fn share_service_redirect(
     };
 
     // ✅ CORRIGÉ: Récupérer TOUTES les images du service (pas LIMIT 1)
-    let service_image_paths: Vec<String> = sqlx::query_scalar::<_, Option<String>>(
+    // ✅ CORRIGÉ 2026-03-08: Logger les erreurs SQL au lieu de .ok().unwrap_or_default()
+    let service_image_paths: Vec<String> = match sqlx::query_scalar::<_, Option<String>>(
         r#"SELECT path FROM media
            WHERE service_id = $1 AND (type = 'image' OR media_type = 'image')
            ORDER BY COALESCE(is_main_image, FALSE) DESC, COALESCE(display_order, 0) ASC, id ASC"#,
@@ -1350,11 +1405,17 @@ pub async fn share_service_redirect(
     .bind(service_id)
     .fetch_all(&state.pg)
     .await
-    .ok()
-    .unwrap_or_default()
-    .into_iter()
-    .flatten()
-    .collect();
+    {
+        Ok(rows) => rows.into_iter().flatten().collect(),
+        Err(e) => {
+            log::error!(
+                "❌ [share_service_redirect] Erreur SQL images service_id={}: {}",
+                service_id,
+                e
+            );
+            Vec::new()
+        }
+    };
 
     let mut all_service_images: Vec<String> = Vec::with_capacity(service_image_paths.len());
     for path in &service_image_paths {
@@ -1363,7 +1424,14 @@ pub async fn share_service_redirect(
         } else if state.media_storage.is_remote() {
             match state.media_storage.generate_presigned_url(path, 7 * 24 * 3600).await {
                 Ok(presigned) => presigned,
-                Err(_) => state.media_storage.build_public_url(path),
+                Err(e) => {
+                    log::warn!(
+                        "⚠️ [share_service_redirect] Échec presigned URL pour image '{}': {}",
+                        path,
+                        e
+                    );
+                    state.media_storage.build_public_url(path)
+                }
             }
         } else {
             state.media_storage.build_public_url(path)
@@ -1433,7 +1501,10 @@ pub async fn share_service_redirect(
             } else if state.media_storage.is_remote() {
                 match state.media_storage.generate_presigned_url(&img, 7 * 24 * 3600).await {
                     Ok(presigned) => presigned,
-                    Err(_) => state.media_storage.build_public_url(&img),
+                    Err(e) => {
+                        log::warn!("⚠️ [share_service_redirect] Échec presigned URL pour image fallback '{}': {}", img, e);
+                        state.media_storage.build_public_url(&img)
+                    }
                 }
             } else {
                 state.media_storage.build_public_url(&img)
@@ -1443,7 +1514,8 @@ pub async fn share_service_redirect(
     }
 
     // ✅ AJOUTÉ: Récupérer les VIDÉOS du service depuis la table media
-    let service_video_paths: Vec<String> = sqlx::query_scalar::<_, Option<String>>(
+    // ✅ CORRIGÉ 2026-03-08: Logger les erreurs SQL
+    let service_video_paths: Vec<String> = match sqlx::query_scalar::<_, Option<String>>(
         r#"SELECT path FROM media
            WHERE service_id = $1 AND (type = 'video' OR media_type = 'video')
            ORDER BY COALESCE(display_order, 0) ASC, id ASC"#,
@@ -1451,11 +1523,17 @@ pub async fn share_service_redirect(
     .bind(service_id)
     .fetch_all(&state.pg)
     .await
-    .ok()
-    .unwrap_or_default()
-    .into_iter()
-    .flatten()
-    .collect();
+    {
+        Ok(rows) => rows.into_iter().flatten().collect(),
+        Err(e) => {
+            log::error!(
+                "❌ [share_service_redirect] Erreur SQL vidéos service_id={}: {}",
+                service_id,
+                e
+            );
+            Vec::new()
+        }
+    };
 
     let mut all_service_videos: Vec<String> = Vec::new();
     for path in &service_video_paths {
@@ -1464,7 +1542,14 @@ pub async fn share_service_redirect(
         } else if state.media_storage.is_remote() {
             match state.media_storage.generate_presigned_url(path, 7 * 24 * 3600).await {
                 Ok(presigned) => presigned,
-                Err(_) => state.media_storage.build_public_url(path),
+                Err(e) => {
+                    log::warn!(
+                        "⚠️ [share_service_redirect] Échec presigned URL pour vidéo '{}': {}",
+                        path,
+                        e
+                    );
+                    state.media_storage.build_public_url(path)
+                }
             }
         } else {
             state.media_storage.build_public_url(path)
@@ -1521,7 +1606,10 @@ pub async fn share_service_redirect(
             } else if state.media_storage.is_remote() {
                 match state.media_storage.generate_presigned_url(&vid, 7 * 24 * 3600).await {
                     Ok(presigned) => presigned,
-                    Err(_) => state.media_storage.build_public_url(&vid),
+                    Err(e) => {
+                        log::warn!("⚠️ [share_service_redirect] Échec presigned URL pour vidéo fallback '{}': {}", vid, e);
+                        state.media_storage.build_public_url(&vid)
+                    }
                 }
             } else {
                 state.media_storage.build_public_url(&vid)
@@ -1589,53 +1677,59 @@ pub async fn share_service_redirect(
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>"#,
     );
-    html.push_str(&service_titre);
+    // ✅ CORRIGÉ 2026-03-08: Échapper TOUS les textes et URLs dans les attributs HTML
+    let escaped_service_titre = html_attr_escape(&service_titre);
+    let escaped_service_description = html_attr_escape(&service_description);
+    html.push_str(&escaped_service_titre);
     html.push_str(
         r#" - Yukpomnang</title>
     <meta name="description" content=""#,
     );
-    html.push_str(&service_description);
+    html.push_str(&escaped_service_description);
     html.push_str(
         r#"" />
     <meta property="og:type" content="product" />
     <meta property="og:title" content=""#,
     );
-    html.push_str(&service_titre);
+    html.push_str(&escaped_service_titre);
     html.push_str(
         r#"" />
     <meta property="og:description" content=""#,
     );
-    html.push_str(&service_description);
+    html.push_str(&escaped_service_description);
     html.push_str("\" />");
+    // ✅ CORRIGÉ 2026-03-08: html_attr_escape pour que & devienne &amp; dans les URLs pré-signées
     if let Some(ref og_img) = og_image_url {
+        let escaped_og_img = html_attr_escape(og_img);
         html.push_str("\n    <meta property=\"og:image\" content=\"");
-        html.push_str(og_img);
+        html.push_str(&escaped_og_img);
         html.push_str("\" />\n    <meta property=\"og:image:width\" content=\"1200\" />\n    <meta property=\"og:image:height\" content=\"630\" />\n    <meta property=\"og:image:alt\" content=\"");
-        html.push_str(&service_titre);
+        html.push_str(&escaped_service_titre);
         html.push_str("\" />");
     }
     // ✅ AJOUTÉ: og:video pour les crawlers sociaux avec meta tags enrichis (services)
     if let Some(ref vid_url) = first_video_url {
+        let escaped_vid_url = html_attr_escape(vid_url);
         html.push_str("\n    <meta property=\"og:video\" content=\"");
-        html.push_str(vid_url);
+        html.push_str(&escaped_vid_url);
         html.push_str("\" />\n    <meta property=\"og:video:type\" content=\"video/mp4\" />\n    <meta property=\"og:video:width\" content=\"1280\" />\n    <meta property=\"og:video:height\" content=\"720\" />");
 
         // ✅ AJOUTÉ: Meta tags supplémentaires pour Facebook
         html.push_str("\n    <meta property=\"og:video:secure_url\" content=\"");
-        html.push_str(vid_url);
+        html.push_str(&escaped_vid_url);
         html.push_str("\" />\n    <meta property=\"og:video:duration\" content=\"30\" />");
 
         // ✅ AJOUTÉ: Twitter video player
         html.push_str("\n    <meta name=\"twitter:player\" content=\"");
-        html.push_str(vid_url);
+        html.push_str(&escaped_vid_url);
         html.push_str("\" />\n    <meta name=\"twitter:player:width\" content=\"1280\" />\n    <meta name=\"twitter:player:height\" content=\"720\" />\n    <meta name=\"twitter:stream\" content=\"");
-        html.push_str(vid_url);
+        html.push_str(&escaped_vid_url);
         html.push_str(
             "\" />\n    <meta name=\"twitter:stream:content_type\" content=\"video/mp4\" />",
         );
     }
     html.push_str("\n    <meta property=\"og:url\" content=\"");
-    html.push_str(&share_url);
+    html.push_str(&html_attr_escape(&share_url));
     html.push_str(
         r#"" />
     <meta property="og:site_name" content="Yukpomnang" />
@@ -1644,15 +1738,16 @@ pub async fn share_service_redirect(
     );
     html.push_str(&price_og_html);
     html.push_str("\n    <meta name=\"twitter:card\" content=\"summary_large_image\" />\n    <meta name=\"twitter:title\" content=\"");
-    html.push_str(&service_titre);
+    html.push_str(&escaped_service_titre);
     html.push_str("\" />\n    <meta name=\"twitter:description\" content=\"");
-    html.push_str(&service_description);
+    html.push_str(&escaped_service_description);
     html.push_str("\" />");
     if let Some(ref og_img) = og_image_url {
+        let escaped_og_img = html_attr_escape(og_img);
         html.push_str("\n    <meta name=\"twitter:image\" content=\"");
-        html.push_str(og_img);
+        html.push_str(&escaped_og_img);
         html.push_str("\" />\n    <meta name=\"twitter:image:alt\" content=\"");
-        html.push_str(&service_titre);
+        html.push_str(&escaped_service_titre);
         html.push_str("\" />");
     }
     html.push_str("\n    <meta name=\"twitter:site\" content=\"@yukpomnang\" />");
@@ -1698,7 +1793,7 @@ pub async fn share_service_redirect(
     <div class="container">
         <h1>"#,
     );
-    html.push_str(&service_titre);
+    html.push_str(&html_attr_escape(&service_titre));
     html.push_str("</h1>\n");
     html.push_str(&price_html);
     html.push_str(&media_gallery_html);
@@ -1706,7 +1801,7 @@ pub async fn share_service_redirect(
         r#"
         <div class="description">"#,
     );
-    html.push_str(&service_description);
+    html.push_str(&html_attr_escape(&service_description));
     html.push_str("</div>\n");
     html.push_str("        <a id=\"open-app-btn\" class=\"button\" href=\"#\">\u{1F4F1} Ouvrir dans l'app Yukpomnang</a>\n");
     html.push_str("        <a class=\"button button-secondary\" href=\"https://play.google.com/store/apps/details?id=com.yukpomnang.mobile\" target=\"_blank\">\u{1F4E5} T\u{00E9}l\u{00E9}charger l'app</a>\n");

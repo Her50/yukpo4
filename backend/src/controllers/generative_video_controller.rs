@@ -1,7 +1,7 @@
 // ✅ NOUVEAU Phase 3.1: Contrôleur pour génération vidéo IA complète
 
 use axum::{
-    extract::{Path, State},
+    extract::{Extension, Path, State},
     Json,
 };
 use log::info;
@@ -9,6 +9,7 @@ use std::sync::Arc;
 
 use crate::{
     core::types::{AppError, AppResult},
+    middlewares::jwt::AuthenticatedUser,
     models::generative_video_model::{GenerateVideoRequest, GenerateVideoResponse, GenerativeJob},
     services::generative_video_service::GenerativeVideoService,
     state::AppState,
@@ -16,11 +17,11 @@ use crate::{
 
 /// Démarre une génération vidéo complète depuis texte
 pub async fn generate_video(
+    Extension(user): Extension<AuthenticatedUser>,
     State(state): State<Arc<AppState>>,
     axum::extract::Json(request): axum::extract::Json<GenerateVideoRequest>,
 ) -> AppResult<Json<GenerateVideoResponse>> {
-    // TODO: Récupérer user_id depuis le token JWT
-    let user_id = 1; // Placeholder
+    let user_id = user.id;
 
     let generative_service =
         GenerativeVideoService::new(Arc::new(state.pg.clone()), state.ia.clone());
@@ -39,11 +40,11 @@ pub async fn generate_video(
 
 /// Récupère le statut d'un job de génération
 pub async fn get_generation_status(
+    Extension(user): Extension<AuthenticatedUser>,
     State(state): State<Arc<AppState>>,
     Path(job_id): Path<String>,
 ) -> AppResult<Json<GenerativeJob>> {
-    // TODO: Récupérer user_id depuis le token JWT
-    let user_id = 1; // Placeholder
+    let user_id = user.id;
 
     let generative_service =
         GenerativeVideoService::new(Arc::new(state.pg.clone()), state.ia.clone());
@@ -57,14 +58,36 @@ pub async fn get_generation_status(
 
 /// Annule un job de génération
 pub async fn cancel_generation(
-    State(_state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    State(state): State<Arc<AppState>>,
     Path(job_id): Path<String>,
 ) -> AppResult<Json<serde_json::Value>> {
-    // TODO: Récupérer user_id depuis le token JWT
-    let _user_id = 1; // Placeholder - TODO: Récupérer depuis JWT
+    let user_id = user.id;
 
-    // TODO: Implémenter l'annulation
-    info!("[GenerativeVideo] Annulation job: {}", job_id);
+    info!(
+        "[GenerativeVideo] Annulation job: {} par user {}",
+        job_id, user_id
+    );
+
+    let result = sqlx::query(
+        r#"UPDATE generative_video_jobs 
+        SET status = 'failed', error_message = 'Annulé par l''utilisateur', updated_at = NOW()
+        WHERE job_id = $1 AND user_id = $2 AND status NOT IN ('completed', 'failed')"#,
+    )
+    .bind(&job_id)
+    .bind(user_id)
+    .execute(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur annulation job: {}", e)))?;
+
+    if result.rows_affected() == 0 {
+        return Err(AppError::NotFound(format!(
+            "Job {} non trouvé ou déjà terminé",
+            job_id
+        )));
+    }
+
+    info!("[GenerativeVideo] ✅ Job {} annulé avec succès", job_id);
 
     Ok(Json(serde_json::json!({
         "success": true,

@@ -1,7 +1,8 @@
 // ✅ Écran Calendrier Semaine - Planification Menus (VERSION TABLEAU)
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import * as Location from 'expo-location';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -14,20 +15,19 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { NativeButton, NativeCard, NativeInput } from '../../components/SafeNativeDesign';
+import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 import SafeIcon from '../../components/SafeIcon';
-import { DailyMeal, FamilyProfile, GeneratedRecipe, menuPlanningService, WeeklyMenu } from '../../services/menuPlanningService';
-import { modernColors } from '../../theme/modernTheme';
-import { useShoppingContext } from '../../contexts/ShoppingContext';
-import { generateAndDownloadMenuPDF, shareMenuPDF } from '../../utils/menuPdfGenerator';
-import { generateAndDownloadShoppingListPDF, shareShoppingListPDF } from '../../utils/shoppingListPdfGenerator';
-import { generateAndDownloadRecipePDF, shareRecipePDF } from '../../utils/recipePdfGenerator';
+import { NativeButton, NativeCard, NativeInput } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLocation } from '../../contexts/LocationContext';
+import { useShoppingContext } from '../../contexts/ShoppingContext';
 import { deliveryApi, userApi } from '../../services/api';
-import * as Location from 'expo-location';
-import LocationSelector, { LocationObject } from '../../components/LocationSelector';
+import { DailyMeal, GeneratedRecipe, menuPlanningService, WeeklyMenu } from '../../services/menuPlanningService';
 import { PlaceScope } from '../../services/placesService';
+import { modernColors } from '../../theme/modernTheme';
+import { generateAndDownloadMenuPDF, shareMenuPDF } from '../../utils/menuPdfGenerator';
+import { generateAndDownloadRecipePDF, shareRecipePDF } from '../../utils/recipePdfGenerator';
+import { generateAndDownloadShoppingListPDF, shareShoppingListPDF } from '../../utils/shoppingListPdfGenerator';
 
 const { width, height } = Dimensions.get('window');
 
@@ -74,7 +74,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
         times: number; // Nombre de fois de consommation
     }>>([]);
     const [familyProfile, setFamilyProfile] = useState<{ total_members: number } | null>(null);
-    
+
     // ✅ NOUVEAU: États pour commande coursier
     const [showOrderModal, setShowOrderModal] = useState(false);
     // ✅ NOUVEAU: État pour le marché sélectionné via Google Places
@@ -89,7 +89,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
     const [loadingBalance, setLoadingBalance] = useState(false);
     const [creatingOrder, setCreatingOrder] = useState(false);
     const { location: userLocation } = useLocation();
-    
+
     // ✅ NOUVEAU: États pour modal ajouter repas
     const [showAddMealModal, setShowAddMealModal] = useState(false);
     const [newMealDay, setNewMealDay] = useState<string>('Lundi');
@@ -138,7 +138,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
     // ✅ CORRIGÉ: Initialiser le tableau intermédiaire depuis le menu avec repas_du_jour
     const initializeMealItems = () => {
         if (!menu) return;
-        
+
         const items: Array<{
             id: string;
             day: string;
@@ -230,20 +230,20 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
         const familyMembers = familyProfile?.total_members || 1;
         const adultsCount = familyProfile?.adults_count || familyMembers;
         const childrenCount = familyProfile?.children_count || 0;
-        
+
         // ✅ CORRIGÉ: Calculer le coût en tenant compte des portions (servings) et du nombre de fois (times)
         // Le coût de base est déjà pour le nombre de portions (servings), on multiplie par le nombre de fois
         return baseCost * item.times;
     };
-    
+
     // ✅ NOUVEAU: Mettre à jour le total de la liste de courses éditable
     const updateShoppingListTotal = useCallback(() => {
         if (editableShoppingList.length === 0) return;
-        
+
         const total = editableShoppingList.reduce((sum, item) => {
             return sum + (item.actual_price || item.estimated_price || 0);
         }, 0);
-        
+
         setGeneratedShoppingList((prev: any) => ({
             ...prev,
             total_estimated_cost: total,
@@ -279,19 +279,19 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
         }
 
         const shoppingCost = generatedShoppingList.total_estimated_cost;
-        
+
         // Frais de service : 15% plafonné à 2000
         const serviceFeePercent = 0.15;
         const serviceFeeMax = 2000;
         const serviceFee = Math.min(shoppingCost * serviceFeePercent, serviceFeeMax);
-        
+
         // Frais de livraison moto (estimation basée sur distance)
         // Pour l'instant, on utilise une estimation fixe de 500 FCFA pour les courses
         // TODO: Calculer dynamiquement selon la distance marché -> domicile
         const deliveryFee = 500;
-        
+
         const total = shoppingCost + serviceFee + deliveryFee;
-        
+
         return { shoppingCost, serviceFee, deliveryFee, total };
     };
 
@@ -303,7 +303,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
         }
 
         setShowOrderModal(true);
-        
+
         // ✅ CORRIGÉ: Plus besoin de charger les coursiers manuellement, le backend fera le matching automatique
         // Vérifier seulement le solde
         await checkUserBalance();
@@ -318,7 +318,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
         }
 
         const fees = calculateTotalFees();
-        
+
         // Vérifier le solde
         if (userBalance < fees.total) {
             Alert.alert(
@@ -326,8 +326,8 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                 `Votre solde (${formatPrice(userBalance)}) est insuffisant pour cette commande (${formatPrice(fees.total)}). Veuillez recharger votre compte.`,
                 [
                     { text: 'Annuler', style: 'cancel' },
-                    { 
-                        text: 'Recharger', 
+                    {
+                        text: 'Recharger',
                         onPress: () => {
                             // TODO: Naviguer vers l'écran de recharge
                             navigation.navigate('RechargeTokens' as never);
@@ -364,13 +364,13 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
 
             // ✅ CORRIGÉ: Utiliser la liste éditable si disponible, sinon la liste générée
             const itemsToUse = editableShoppingList.length > 0 ? editableShoppingList : generatedShoppingList.items;
-            
+
             // ✅ CORRIGÉ: Utiliser le marché sélectionné par l'utilisateur via Google Places
             if (!selectedMarket) {
                 Alert.alert('Erreur', 'Veuillez sélectionner un marché');
                 return;
             }
-            
+
             let pickupLat = selectedMarket.latitude;
             let pickupLng = selectedMarket.longitude;
             let pickupAddress = selectedMarket.address;
@@ -430,7 +430,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                                 setShowOrderModal(false);
                                 setShowShoppingListModal(false);
                                 // ✅ Naviguer vers l'écran de suivi de livraison
-                                navigation.navigate('DeliveryTracking' as never, { deliveryId } as never);
+                                navigation.navigate('DeliveryShoppingTracking' as never, { deliveryId } as never);
                             }
                         }
                     ]
@@ -459,7 +459,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
     // ✅ NOUVEAU: Mettre à jour le nombre de fois pour un item
     const updateItemTimes = (id: string, times: number) => {
         if (times < 1) return;
-        setMealItems(items => items.map(item => 
+        setMealItems(items => items.map(item =>
             item.id === id ? { ...item, times } : item
         ));
     };
@@ -511,7 +511,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
 
         setMealItems(items => [...items, newItem]);
         setShowAddMealModal(false);
-        
+
         // Réinitialiser les champs
         setNewMealDay('Lundi');
         setNewMealDayNumber(1);
@@ -535,7 +535,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
 
         try {
             setGeneratingShoppingList(true);
-            
+
             const mealItemsForAI = mealItems.map(item => ({
                 recipeName: item.recipeName,
                 times: item.times,
@@ -548,7 +548,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
             const familyMembers = familyProfile?.total_members || 1;
             const adultsCount = familyProfile?.adults_count || familyMembers;
             const childrenCount = familyProfile?.children_count || 0;
-            
+
             const response = await menuPlanningService.generateIntelligentShoppingList(
                 mealItemsForAI,
                 familyMembers,
@@ -596,7 +596,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
     const handleExportPDF = async () => {
         try {
             setExportingPDF(true);
-            
+
             // Calculer les dates de fin
             const weekStartDate = new Date(menu.week_start);
             const weekEndDate = new Date(weekStartDate);
@@ -684,7 +684,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
         try {
             setLoadingRecipe(true);
             const response = await menuPlanningService.generateRecipe(recipeRequest.trim());
-            
+
             if (response.success && response.data?.recipe) {
                 setGeneratedRecipe(response.data.recipe);
                 setShowRecipeModal(false);
@@ -865,70 +865,70 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                                 bounces={true}
                             >
                                 <View style={styles.table}>
-                                {/* En-tête du tableau */}
-                                <View style={styles.tableHeader}>
-                                    <View style={[styles.tableHeaderCell, styles.tableHeaderCellDay]}>
-                                        <Text style={styles.tableHeaderText}>Jour</Text>
-                                    </View>
-                                    <View style={styles.tableHeaderCell}>
-                                        <SafeIcon name="Sunrise" size={14} color="#F59E0B" type="lucide" />
-                                        <Text style={styles.tableHeaderText}>Petit-déj</Text>
-                                    </View>
-                                    <View style={styles.tableHeaderCell}>
-                                        <SafeIcon name="UtensilsCrossed" size={14} color="#10B981" type="lucide" />
-                                        <Text style={styles.tableHeaderText}>Repas du jour</Text>
-                                    </View>
-                                </View>
-
-                                {/* Lignes du tableau */}
-                                {DAYS.map((dayName, index) => {
-                                    const dayNumber = index + 1;
-                                    const dayMeal = getDayMeal(dayNumber);
-                                    // ✅ CORRIGÉ: Utiliser repas_du_jour - le coût est déjà pour midi ET soir (pas de multiplication)
-                                    const dayTotal = (dayMeal?.petit_dejeuner?.estimated_cost || 0) +
-                                                   (dayMeal?.repas_du_jour?.estimated_cost || 0) + // Coût déjà pour les 2 repas (midi + soir)
-                                                   (dayMeal?.gouter?.estimated_cost || 0);
-                                    
-                                    return (
-                                        <View key={dayNumber} style={styles.tableRow}>
-                                            <View style={[styles.tableCell, styles.tableCellDay]}>
-                                                <Text style={styles.tableCellDayName}>{dayName}</Text>
-                                                <Text style={styles.tableCellDayTotal}>
-                                                    {formatPrice(dayTotal)}
-                                                </Text>
-                                            </View>
-                                            {renderMealCell(dayMeal?.petit_dejeuner, 'petit_dejeuner', dayNumber)}
-                                            {renderMealCell(dayMeal?.repas_du_jour, 'repas_du_jour', dayNumber)}
+                                    {/* En-tête du tableau */}
+                                    <View style={styles.tableHeader}>
+                                        <View style={[styles.tableHeaderCell, styles.tableHeaderCellDay]}>
+                                            <Text style={styles.tableHeaderText}>Jour</Text>
                                         </View>
-                                    );
-                                })}
-                                
-                                {/* ✅ NOUVEAU: Ligne de totaux par jour */}
-                                <View style={[styles.tableRow, styles.tableRowTotal]}>
-                                    <View style={[styles.tableCell, styles.tableCellDay, styles.tableCellTotal]}>
-                                        <Text style={styles.tableCellTotalText}>Total</Text>
+                                        <View style={styles.tableHeaderCell}>
+                                            <SafeIcon name="Sunrise" size={14} color="#F59E0B" type="lucide" />
+                                            <Text style={styles.tableHeaderText}>Petit-déj</Text>
+                                        </View>
+                                        <View style={styles.tableHeaderCell}>
+                                            <SafeIcon name="UtensilsCrossed" size={14} color="#10B981" type="lucide" />
+                                            <Text style={styles.tableHeaderText}>Repas du jour</Text>
+                                        </View>
                                     </View>
-                                    {DAYS.map((_, index) => {
+
+                                    {/* Lignes du tableau */}
+                                    {DAYS.map((dayName, index) => {
                                         const dayNumber = index + 1;
                                         const dayMeal = getDayMeal(dayNumber);
-                                        // ✅ CORRIGÉ: Utiliser repas_du_jour - le coût est déjà pour midi ET soir
+                                        // ✅ CORRIGÉ: Utiliser repas_du_jour - le coût est déjà pour midi ET soir (pas de multiplication)
                                         const dayTotal = (dayMeal?.petit_dejeuner?.estimated_cost || 0) +
-                                                       (dayMeal?.repas_du_jour?.estimated_cost || 0) + // Coût déjà pour les 2 repas
-                                                       (dayMeal?.gouter?.estimated_cost || 0);
+                                            (dayMeal?.repas_du_jour?.estimated_cost || 0) + // Coût déjà pour les 2 repas (midi + soir)
+                                            (dayMeal?.gouter?.estimated_cost || 0);
+
                                         return (
-                                            <View key={`total-${dayNumber}`} style={[styles.tableCell, styles.tableCellTotal]}>
-                                                <Text style={styles.tableCellTotalValue}>
-                                                    {formatPrice(dayTotal)}
-                                                </Text>
+                                            <View key={dayNumber} style={styles.tableRow}>
+                                                <View style={[styles.tableCell, styles.tableCellDay]}>
+                                                    <Text style={styles.tableCellDayName}>{dayName}</Text>
+                                                    <Text style={styles.tableCellDayTotal}>
+                                                        {formatPrice(dayTotal)}
+                                                    </Text>
+                                                </View>
+                                                {renderMealCell(dayMeal?.petit_dejeuner, 'petit_dejeuner', dayNumber)}
+                                                {renderMealCell(dayMeal?.repas_du_jour, 'repas_du_jour', dayNumber)}
                                             </View>
                                         );
                                     })}
+
+                                    {/* ✅ NOUVEAU: Ligne de totaux par jour */}
+                                    <View style={[styles.tableRow, styles.tableRowTotal]}>
+                                        <View style={[styles.tableCell, styles.tableCellDay, styles.tableCellTotal]}>
+                                            <Text style={styles.tableCellTotalText}>Total</Text>
+                                        </View>
+                                        {DAYS.map((_, index) => {
+                                            const dayNumber = index + 1;
+                                            const dayMeal = getDayMeal(dayNumber);
+                                            // ✅ CORRIGÉ: Utiliser repas_du_jour - le coût est déjà pour midi ET soir
+                                            const dayTotal = (dayMeal?.petit_dejeuner?.estimated_cost || 0) +
+                                                (dayMeal?.repas_du_jour?.estimated_cost || 0) + // Coût déjà pour les 2 repas
+                                                (dayMeal?.gouter?.estimated_cost || 0);
+                                            return (
+                                                <View key={`total-${dayNumber}`} style={[styles.tableCell, styles.tableCellTotal]}>
+                                                    <Text style={styles.tableCellTotalValue}>
+                                                        {formatPrice(dayTotal)}
+                                                    </Text>
+                                                </View>
+                                            );
+                                        })}
+                                    </View>
                                 </View>
-                            </View>
                             </ScrollView>
                         </ScrollView>
                     </View>
-                    
+
                     {/* ✅ NOUVEAU: Actions pour vue tableau */}
                     <View style={styles.tableActionsContainer}>
                         <TouchableOpacity
@@ -970,7 +970,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                                     )}
                                 </Text>
                             </View>
-                            
+
                             <View style={styles.listMealsContainer}>
                                 {dayMeal.petit_dejeuner && (
                                     <View style={styles.listMealItem}>
@@ -986,7 +986,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                                                 </Text>
                                             )}
                                             <Text style={styles.listMealInfo}>
-                                                {formatPrice(dayMeal.petit_dejeuner.estimated_cost)} • 
+                                                {formatPrice(dayMeal.petit_dejeuner.estimated_cost)} •
                                                 👥 {dayMeal.petit_dejeuner.servings} portion{dayMeal.petit_dejeuner.servings > 1 ? 's' : ''}
                                             </Text>
                                             <TouchableOpacity
@@ -999,7 +999,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                                         </View>
                                     </View>
                                 )}
-                                
+
                                 {/* ✅ CORRIGÉ: Utiliser repas_du_jour au lieu de dejeuner/diner */}
                                 {dayMeal.repas_du_jour && (
                                     <View style={styles.listMealItem}>
@@ -1015,7 +1015,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                                                 </Text>
                                             )}
                                             <Text style={styles.listMealInfo}>
-                                                {formatPrice(dayMeal.repas_du_jour.estimated_cost || 0)} • 
+                                                {formatPrice(dayMeal.repas_du_jour.estimated_cost || 0)} •
                                                 👥 {dayMeal.repas_du_jour.servings} portion{dayMeal.repas_du_jour.servings > 1 ? 's' : ''} (midi + soir)
                                             </Text>
                                             <TouchableOpacity
@@ -1028,7 +1028,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                                         </View>
                                     </View>
                                 )}
-                                
+
                                 {/* ✅ Compatibilité: Si ancien format avec dejeuner/diner, les afficher aussi */}
                                 {!dayMeal.repas_du_jour && (dayMeal.dejeuner || dayMeal.diner) && (
                                     <>
@@ -1041,7 +1041,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                                                 <View style={styles.listMealRight}>
                                                     <Text style={styles.listMealName}>{dayMeal.dejeuner.recipe_name}</Text>
                                                     <Text style={styles.listMealInfo}>
-                                                        {formatPrice(dayMeal.dejeuner.estimated_cost)} • 
+                                                        {formatPrice(dayMeal.dejeuner.estimated_cost)} •
                                                         👥 {dayMeal.dejeuner.servings} portion{dayMeal.dejeuner.servings > 1 ? 's' : ''}
                                                     </Text>
                                                     <TouchableOpacity
@@ -1063,7 +1063,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                                                 <View style={styles.listMealRight}>
                                                     <Text style={styles.listMealName}>{dayMeal.diner.recipe_name}</Text>
                                                     <Text style={styles.listMealInfo}>
-                                                        {formatPrice(dayMeal.diner.estimated_cost)} • 
+                                                        {formatPrice(dayMeal.diner.estimated_cost)} •
                                                         👥 {dayMeal.diner.servings} portion{dayMeal.diner.servings > 1 ? 's' : ''}
                                                     </Text>
                                                     <TouchableOpacity
@@ -1138,7 +1138,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
 
                         <ScrollView style={styles.modalBody}>
                             <Text style={styles.modalHint}>
-                                Entrez le nom d'un plat pour générer sa recette complète. 
+                                Entrez le nom d'un plat pour générer sa recette complète.
                                 Vous pouvez demander un plat de votre menu ou un autre plat.
                             </Text>
 
@@ -1350,14 +1350,14 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                                 title={exportingRecipePDF ? 'Génération...' : 'Partager en PDF'}
                                 onPress={async () => {
                                     if (!generatedRecipe) return;
-                                    
+
                                     try {
                                         setExportingRecipePDF(true);
                                         const pdfUri = await generateAndDownloadRecipePDF({
                                             recipe: generatedRecipe,
                                             currency: currency === 'XAF' || currency === 'FCFA' ? 'FCFA' : currency,
                                         });
-                                        
+
                                         await shareRecipePDF(pdfUri, generatedRecipe.recipe_name);
                                         Alert.alert('Succès', 'Recette partagée avec succès !');
                                     } catch (error: any) {
@@ -1434,7 +1434,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                                     <Text style={[styles.shoppingTableHeaderCell, { flex: 1.5 }]}>Coût</Text>
                                     <Text style={[styles.shoppingTableHeaderCell, { flex: 0.8 }]}>Action</Text>
                                 </View>
-                                
+
                                 {mealItems.map((item) => (
                                     <View key={item.id} style={styles.shoppingTableRow}>
                                         <Text style={[styles.shoppingTableCell, { flex: 1.2, fontWeight: '600' }]}>
@@ -1579,7 +1579,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                                     <Text style={[styles.shoppingTableHeaderCell, { flex: 1.5 }]}>Coût</Text>
                                     <Text style={[styles.shoppingTableHeaderCell, { flex: 0.8 }]}>Action</Text>
                                 </View>
-                                
+
                                 {mealItems.map((item) => (
                                     <View key={item.id} style={styles.shoppingTableRow}>
                                         <Text style={[styles.shoppingTableCell, { flex: 1.2, fontWeight: '600' }]}>
@@ -1705,7 +1705,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                                         <Text style={[styles.shoppingListTableHeaderCell, { flex: 2 }]}>Repas</Text>
                                         <Text style={[styles.shoppingListTableHeaderCell, { flex: 0.8, textAlign: 'center' }]}>Action</Text>
                                     </View>
-                                    
+
                                     {editableShoppingList.length > 0 ? editableShoppingList.map((item: any, index: number) => (
                                         <View key={item.id || index} style={styles.shoppingListTableRow}>
                                             <View style={[styles.shoppingListTableCell, { flex: 2 }]}>
@@ -1781,7 +1781,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                                             </Text>
                                         </View>
                                     ))}
-                                    
+
                                     {/* ✅ NOUVEAU: Bouton pour ajouter un ingrédient */}
                                     <TouchableOpacity
                                         style={styles.addIngredientButton}
@@ -1822,7 +1822,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                                 onPress={async () => {
                                     try {
                                         if (!generatedShoppingList) return;
-                                        
+
                                         const pdfUri = await generateAndDownloadShoppingListPDF({
                                             items: generatedShoppingList.items,
                                             total_estimated_cost: generatedShoppingList.total_estimated_cost,

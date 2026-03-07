@@ -948,15 +948,15 @@ async fn get_stats(
     .await
     .map_err(|e| AppError::Internal(format!("Erreur récupération stats: {}", e)))?;
 
-    // Lieux les plus visités
+    // Lieux les plus visités (utilise activity_log pour avoir les vraies adresses)
     let most_visited = sqlx::query_as::<_, (Option<String>, i64)>(
         r#"
         SELECT 
-            destination_lat || ',' || destination_lng as place_key,
+            COALESCE(destination_address, destination_lat || ',' || destination_lng) as place_name,
             COUNT(*)::bigint as visit_count
-        FROM navigation_trips
-        WHERE user_id = $1
-        GROUP BY destination_lat, destination_lng
+        FROM navigation_activity_log
+        WHERE user_id = $1 AND destination_address IS NOT NULL
+        GROUP BY destination_address, destination_lat, destination_lng
         ORDER BY visit_count DESC
         LIMIT 5
         "#,
@@ -964,27 +964,79 @@ async fn get_stats(
     .bind(user_id as i32)
     .fetch_all(&state.pg)
     .await
-    .map_err(|e| AppError::Internal(format!("Erreur récupération lieux: {}", e)))?;
+    .unwrap_or_default();
 
-    let most_visited_places = most_visited
-        .into_iter()
-        .map(|(place_key, visit_count)| MostVisitedPlace {
-            name: format!("Destination {}", place_key.unwrap_or_default()),
-            visit_count,
-        })
-        .collect();
+    let most_visited_places = if most_visited.is_empty() {
+        // Fallback sur navigation_trips si pas encore d'activités loguées
+        let trips_visited = sqlx::query_as::<_, (Option<String>, i64)>(
+            r#"
+            SELECT 
+                destination_lat || ',' || destination_lng as place_key,
+                COUNT(*)::bigint as visit_count
+            FROM navigation_trips
+            WHERE user_id = $1
+            GROUP BY destination_lat, destination_lng
+            ORDER BY visit_count DESC
+            LIMIT 5
+            "#,
+        )
+        .bind(user_id as i32)
+        .fetch_all(&state.pg)
+        .await
+        .unwrap_or_default();
+        trips_visited
+            .into_iter()
+            .map(|(place_key, visit_count)| MostVisitedPlace {
+                name: place_key.unwrap_or_else(|| "Destination inconnue".to_string()),
+                visit_count,
+            })
+            .collect()
+    } else {
+        most_visited
+            .into_iter()
+            .map(|(place_name, visit_count)| MostVisitedPlace {
+                name: place_name.unwrap_or_else(|| "Destination inconnue".to_string()),
+                visit_count,
+            })
+            .collect()
+    };
 
-    // Types de POI favoris (à partir des waypoints visités)
-    let favorite_poi_types = vec![
-        FavoritePOIType {
-            poi_type: "pharmacy".to_string(),
-            count: 0,
-        },
-        FavoritePOIType {
-            poi_type: "restaurant".to_string(),
-            count: 0,
-        },
-    ];
+    // Types de POI favoris (basé sur les modes de transport les plus utilisés dans activity_log)
+    let poi_favorites = sqlx::query_as::<_, (String, i64)>(
+        r#"
+        SELECT travel_mode, COUNT(*)::bigint as mode_count
+        FROM navigation_activity_log
+        WHERE user_id = $1
+        GROUP BY travel_mode
+        ORDER BY mode_count DESC
+        LIMIT 5
+        "#,
+    )
+    .bind(user_id as i32)
+    .fetch_all(&state.pg)
+    .await
+    .unwrap_or_default();
+
+    let favorite_poi_types = if poi_favorites.is_empty() {
+        vec![
+            FavoritePOIType {
+                poi_type: "pharmacy".to_string(),
+                count: 0,
+            },
+            FavoritePOIType {
+                poi_type: "restaurant".to_string(),
+                count: 0,
+            },
+        ]
+    } else {
+        poi_favorites
+            .into_iter()
+            .map(|(mode, count)| FavoritePOIType {
+                poi_type: mode,
+                count,
+            })
+            .collect()
+    };
 
     Ok(Json(NavigationStats {
         total_trips: stats.0,
@@ -1073,17 +1125,29 @@ async fn save_destination(
     }
 
     // Marquer comme défaut si c'est le premier de ce type
-    let existing = sqlx::query_as::<_, SavedDestinationIdRow>(
-        "SELECT id FROM navigation_saved_destinations WHERE user_id = $1 AND label = $2",
-    )
-    .bind(user_id as i32)
-    .bind(&request.label)
-    .fetch_optional(&state.pg)
-    .await?;
+    // Pour 'autre', chercher par (label, custom_label) pour permettre plusieurs favoris personnalisés
+    let existing = if request.label == "autre" {
+        sqlx::query_as::<_, SavedDestinationIdRow>(
+            "SELECT id FROM navigation_saved_destinations WHERE user_id = $1 AND label = $2 AND custom_label = $3",
+        )
+        .bind(user_id as i32)
+        .bind(&request.label)
+        .bind(&request.custom_label)
+        .fetch_optional(&state.pg)
+        .await?
+    } else {
+        sqlx::query_as::<_, SavedDestinationIdRow>(
+            "SELECT id FROM navigation_saved_destinations WHERE user_id = $1 AND label = $2",
+        )
+        .bind(user_id as i32)
+        .bind(&request.label)
+        .fetch_optional(&state.pg)
+        .await?
+    };
 
     let is_default = existing.is_none();
 
-    // Si un autre existe, le mettre à jour (ou le supprimer et créer le nouveau)
+    // Si un autre existe avec le même label (et custom_label pour 'autre'), le mettre à jour
     if let Some(existing_row) = existing {
         let result = sqlx::query_as::<_, SavedDestinationIdRow>(
             r#"
@@ -3353,7 +3417,7 @@ async fn share_navigation_performance(
         r#"SELECT COALESCE(SUM(distance_meters),0)::float8,
                   COUNT(*)::bigint,
                   COALESCE(SUM(calories_burned),0)::float8,
-                  COALESCE(AVG(average_speed_kmh),0)::float8,
+                  COALESCE(AVG(avg_speed_kmh),0)::float8,
                   COALESCE(MAX(max_speed_kmh),0)::float8
            FROM navigation_activity_log WHERE user_id = $1"#,
     )
@@ -4250,10 +4314,10 @@ pub fn navigation_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             "/api/navigation/checkpoints/ai-analysis",
             get(get_checkpoint_ai_analysis).layer(middleware::from_fn(jwt_auth)),
         )
-        // ✅ NOUVEAU: Push notifications périodiques navigation (cron/scheduler)
+        // ✅ NOUVEAU: Push notifications périodiques navigation (cron/scheduler) — protégé par JWT
         .route(
             "/api/navigation/push-alerts/check",
-            get(check_and_send_navigation_push_alerts),
+            get(check_and_send_navigation_push_alerts).layer(middleware::from_fn(jwt_auth)),
         )
         // ✅ NOUVEAU: Page publique de partage performances (pas d'auth, accessible par tous)
         .route(

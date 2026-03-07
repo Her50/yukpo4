@@ -1,5 +1,5 @@
 import { useNavigation } from '@react-navigation/native';
-import React, { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Dimensions,
@@ -34,9 +34,12 @@ export default function LivesListScreen() {
     try {
       const response = await liveStreamingService.getUpcomingLives(20);
 
-      if (response.success && response.data) {
+      const backendResp = response.data as any;
+      const sessionsArray = backendResp?.data || backendResp;
+
+      if (Array.isArray(sessionsArray)) {
         const now = new Date();
-        const lives = (response.data as LiveSessionRecord[]).map((live: LiveSessionRecord) => ({
+        const lives = (sessionsArray as LiveSessionRecord[]).map((live: LiveSessionRecord) => ({
           ...live,
           isLiveNow: new Date(live.start_at) <= now && (!live.end_at || new Date(live.end_at) > now),
           timeUntilStart: getTimeUntilStart(live.start_at),

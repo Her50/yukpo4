@@ -45,12 +45,13 @@ export const LiveStreamPlayer: React.FC<LiveStreamPlayerProps> = ({
             onLoadStart?.();
 
             // Récupérer les informations de connexion
-            const info = await liveStreamingService.getJoinInformation(sessionId, {
+            const response = await liveStreamingService.getJoinInformation(sessionId, {
                 viewer_user_id: userId,
                 allow_publish: false,
             });
 
-            setJoinInfo(info);
+            const info = (response as any)?.data || response;
+            setJoinInfo(info as LiveJoinInformationRecord);
 
             // Prioriser HLS (meilleur pour live streaming)
             const streamUrl = info.hls_url || info.fallback_hls_url || info.webrtc_url;

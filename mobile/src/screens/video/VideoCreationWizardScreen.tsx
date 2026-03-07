@@ -1010,6 +1010,21 @@ const VideoCreationWizardScreen: React.FC = () => {
 
             if (estimation) {
                 setCostEstimation(estimation);
+                // ✅ Vérifier si le solde est suffisant
+                if (estimation.affordable === false) {
+                    const balanceStr = estimation.current_balance_fcfa != null
+                        ? `${Math.round(estimation.current_balance_fcfa).toLocaleString()} FCFA`
+                        : 'inconnu';
+                    const costStr = `${Math.round(estimation.total_cost_local).toLocaleString()} ${estimation.local_currency}`;
+                    Alert.alert(
+                        '💸 Solde insuffisant',
+                        `Coût estimé : ${costStr}\nVotre solde : ${balanceStr}\n\nVeuillez recharger votre compte pour générer cette vidéo.`,
+                        [
+                            { text: 'Annuler', style: 'cancel' },
+                            { text: 'Recharger', onPress: () => (navigation as any).navigate('RechargeTokens') },
+                        ]
+                    );
+                }
                 // ✅ CORRECTION: Marquer étape 1 complétée et passer à l'étape 2
                 markStepCompleted(1);
                 setStep(2);
@@ -1349,6 +1364,23 @@ const VideoCreationWizardScreen: React.FC = () => {
             return;
         }
 
+        // ✅ Vérifier le solde avant de lancer la génération
+        if (costEstimation && costEstimation.affordable === false) {
+            const balanceStr = costEstimation.current_balance_fcfa != null
+                ? `${Math.round(costEstimation.current_balance_fcfa).toLocaleString()} FCFA`
+                : 'inconnu';
+            const costStr = `${Math.round(costEstimation.total_cost_local).toLocaleString()} ${costEstimation.local_currency}`;
+            Alert.alert(
+                '💸 Solde insuffisant',
+                `Coût de la vidéo : ${costStr}\nVotre solde : ${balanceStr}\n\nVeuillez recharger votre compte avant de lancer la génération.`,
+                [
+                    { text: 'Annuler', style: 'cancel' },
+                    { text: 'Recharger', onPress: () => (navigation as any).navigate('RechargeTokens') },
+                ]
+            );
+            return;
+        }
+
         const orderedOverrides: { media_id: number; scene_index: number }[] = [];
         let nonOptionalIndex = 0;
 
@@ -1460,18 +1492,32 @@ const VideoCreationWizardScreen: React.FC = () => {
                 errorMessage.toLowerCase().includes('timeout') ||
                 errorMessage.toLowerCase().includes('fetch');
 
+            // ✅ Détecter erreur solde insuffisant (402)
+            const isBalanceError = error?.response?.status === 402 ||
+                errorMessage.toLowerCase().includes('solde insuffisant') ||
+                errorMessage.toLowerCase().includes('insufficient');
+
+            const alertButtons: any[] = [{ text: 'OK' }];
+            if (isBalanceError) {
+                alertButtons.push({
+                    text: '💳 Recharger',
+                    onPress: () => (navigation as any).navigate('RechargeTokens'),
+                });
+            } else {
+                alertButtons.push({
+                    text: 'Réessayer',
+                    onPress: () => handleGenerate(),
+                });
+            }
+
             Alert.alert(
-                isNetworkError ? 'Problème de connexion' : t('videoWizard.alert.renderFailedTitle'),
-                isNetworkError
-                    ? 'Impossible de lancer la génération vidéo. Vérifiez votre connexion internet et réessayez.\n\nVotre brouillon a été sauvegardé automatiquement.'
-                    : `${errorMessage}\n\nVotre brouillon a été sauvegardé automatiquement.`,
-                [
-                    { text: 'OK' },
-                    {
-                        text: 'Réessayer',
-                        onPress: () => handleGenerate(),
-                    },
-                ]
+                isBalanceError ? '💸 Solde insuffisant' : (isNetworkError ? 'Problème de connexion' : t('videoWizard.alert.renderFailedTitle')),
+                isBalanceError
+                    ? 'Votre solde est insuffisant pour générer cette vidéo. Veuillez recharger votre compte.'
+                    : (isNetworkError
+                        ? 'Impossible de lancer la génération vidéo. Vérifiez votre connexion internet et réessayez.\n\nVotre brouillon a été sauvegardé automatiquement.'
+                        : `${errorMessage}\n\nVotre brouillon a été sauvegardé automatiquement.`),
+                alertButtons
             );
         }
     };

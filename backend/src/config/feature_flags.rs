@@ -88,7 +88,9 @@ impl FeatureFlagService {
     }
 
     pub fn is_enabled_key(&self, key: &str) -> bool {
-        self.inner.flags.get(key).copied().unwrap_or(false)
+        // ✅ CORRIGÉ: GlobalPromos activé par défaut pour éviter le blocage du catalogue Black Friday
+        let default_value = key == KnownFlag::GlobalPromos.as_key();
+        self.inner.flags.get(key).copied().unwrap_or(default_value)
     }
 
     pub fn is_enabled(&self, flag: KnownFlag) -> bool {

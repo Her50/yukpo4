@@ -1493,7 +1493,10 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                 Alert.alert(
                     '💸 Solde insuffisant',
                     `Coût d'ajout de produit : ${effectiveCost.toLocaleString()} FCFA\nVotre solde : ${soldeActuel.toLocaleString()} FCFA\n\nVeuillez recharger votre compte pour ajouter ce produit.`,
-                    [{ text: 'OK' }]
+                    [
+                        { text: 'Annuler', style: 'cancel' },
+                        { text: 'Recharger', onPress: () => (navigation as any).navigate('RechargeTokens') },
+                    ]
                 );
                 return;
             }

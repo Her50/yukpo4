@@ -1589,13 +1589,20 @@ const MesProduitsScreen: React.FC = () => {
     const activeProducts = productsArray.filter((p) => p.is_active).length;
     const inactiveProducts = Math.max(totalProducts - activeProducts, 0);
 
+    // ✅ UX AMÉLIORÉ: Stats enrichies avec vues/partages/favoris totaux
+    const totalViews = productsArray.reduce((sum, p) => sum + (p.views || 0), 0);
+    const totalShares = productsArray.reduce((sum, p) => sum + (p.shares || 0), 0);
+    const totalSaves = productsArray.reduce((sum, p) => sum + (p.saves || 0), 0);
+
     const headerSummary = useMemo(() => (
         [
-            { label: 'Produits', value: totalProducts, accentColor: '#4F46E5' },
-            { label: 'Actifs', value: activeProducts, accentColor: '#10B981' },
-            { label: 'En pause', value: inactiveProducts, accentColor: '#F97316' },
+            { label: 'Produits', value: totalProducts, accentColor: '#4F46E5', icon: 'package' },
+            { label: 'Actifs', value: activeProducts, accentColor: '#10B981', icon: 'check' },
+            { label: 'Vues', value: totalViews, accentColor: '#3B82F6', icon: 'eye' },
+            { label: 'Partages', value: totalShares, accentColor: '#8B5CF6', icon: 'share-2' },
+            { label: 'Favoris', value: totalSaves, accentColor: '#EF4444', icon: 'heart' },
         ]
-    ), [totalProducts, activeProducts, inactiveProducts]);
+    ), [totalProducts, activeProducts, totalViews, totalShares, totalSaves]);
 
     const buildProductPrefill = (product: ManagedProduct) => {
         // ✅ CORRECTION CRITIQUE: Extraire les valeurs depuis les objets structurés si nécessaire
@@ -2185,44 +2192,34 @@ const MesProduitsScreen: React.FC = () => {
                     </TouchableOpacity>
                 </View>
 
+                {/* ✅ UX AMÉLIORÉ: Menu contextuel labelé au lieu de 6 icônes mystérieuses */}
                 <View style={styles.secondaryActions}>
                     <TouchableOpacity
-                        style={styles.iconButton}
+                        style={styles.contextMenuRow}
                         onPress={() => handleShareProduct(product)}
                     >
-                        <SafeIcon name="share-2" size={16} color="#3B82F6" />
+                        <SafeIcon name="share-2" size={15} color="#3B82F6" />
+                        <Text style={[styles.contextMenuLabel, { color: '#3B82F6' }]}>Partager</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                        style={styles.iconButton}
-                        onPress={() => handleDuplicateProduct(product)}
+                        style={styles.contextMenuRow}
+                        onPress={() => {
+                            Alert.alert(
+                                'Plus d\'actions',
+                                `Actions pour "${product.nom || 'ce produit'}"`,
+                                [
+                                    { text: '📋 Dupliquer', onPress: () => handleDuplicateProduct(product) },
+                                    { text: '📊 Statistiques', onPress: () => handleViewStats(product) },
+                                    { text: '📢 Promouvoir', onPress: () => handlePromoteProduct(product) },
+                                    { text: '🚚 Livraison', onPress: () => handleOpenDeliveryConfig(product) },
+                                    { text: '🗑️ Supprimer', style: 'destructive', onPress: () => handleDeleteProduct(product) },
+                                    { text: 'Annuler', style: 'cancel' },
+                                ]
+                            );
+                        }}
                     >
-                        <SafeIcon name="copy" size={16} color="#8B5CF6" />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={styles.iconButton}
-                        onPress={() => handleViewStats(product)}
-                    >
-                        <SafeIcon name="bar-chart-2" size={16} color="#10B981" />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={styles.iconButton}
-                        onPress={() => handlePromoteProduct(product)}
-                    >
-                        <SafeIcon name="trending-up" size={16} color="#F59E0B" />
-                    </TouchableOpacity>
-                    {/* ✅ NOUVEAU: Bouton configuration livraison par produit */}
-                    <TouchableOpacity
-                        style={styles.iconButton}
-                        onPress={() => handleOpenDeliveryConfig(product)}
-                    >
-                        <SafeIcon name="truck" size={16} color="#6366F1" />
-                    </TouchableOpacity>
-                    {/* ✅ CORRECTION: Bouton suppression toujours visible */}
-                    <TouchableOpacity
-                        style={styles.iconButton}
-                        onPress={() => handleDeleteProduct(product)}
-                    >
-                        <SafeIcon name="trash-2" size={16} color="#EF4444" />
+                        <SafeIcon name="more-vertical" size={15} color="#6B7280" />
+                        <Text style={[styles.contextMenuLabel, { color: '#6B7280' }]}>Plus</Text>
                     </TouchableOpacity>
                 </View>
             </NativeCard>
@@ -2247,36 +2244,27 @@ const MesProduitsScreen: React.FC = () => {
         setShowDeliveryConfigModal(true);
     };
 
-    // ✅ Menu regroupant toutes les actions
+    // ✅ UX AMÉLIORÉ: Menu regroupant toutes les actions (y compris celles retirées du header)
     const menuActions = [
         {
-            label: 'Configuration livraison',
-            icon: 'truck',
-            onPress: () => {
-                setShowMenuModal(false);
-                if (filteredProducts && filteredProducts.length > 0) {
-                    // Prendre le premier produit actif, sinon le premier disponible
-                    const firstProduct = filteredProducts.find(p => p.is_active) || filteredProducts[0];
-                    handleOpenDeliveryConfig(firstProduct);
-                } else {
-                    Alert.alert('Aucun produit', 'Vous devez d\'abord créer un produit pour configurer la livraison.');
-                }
-            },
-        },
-        {
-            label: 'Membres',
-            icon: 'users',
-            onPress: () => {
-                setShowMenuModal(false);
-                handleManageMembers();
-            },
-        },
-        {
-            label: 'Mes videos',
+            label: 'Créer une vidéo',
             icon: 'video',
             onPress: () => {
                 setShowMenuModal(false);
-                (navigation as any).navigate('VideoFeed');
+                openVideoCreatorGlobal();
+            },
+        },
+        {
+            label: 'Galerie médias',
+            icon: 'image',
+            onPress: () => {
+                setShowMenuModal(false);
+                if (services && services.length > 0) {
+                    setSelectedServiceForGallery(services[0]);
+                    setShowMediaGallery(true);
+                } else {
+                    Alert.alert('Aucun service', 'Vous devez d\'abord créer un service pour accéder à la galerie médias.');
+                }
             },
         },
         {
@@ -2288,11 +2276,60 @@ const MesProduitsScreen: React.FC = () => {
             },
         },
         {
-            label: 'Statistiques',
-            icon: 'trending-up',
+            label: 'Flash Promo',
+            icon: 'zap',
             onPress: () => {
                 setShowMenuModal(false);
-                handleViewGlobalStats();
+                if (!products || products.length === 0) {
+                    Alert.alert('Aucun produit', 'Vous devez d\'abord créer des produits avant de créer un flash promo.');
+                    return;
+                }
+                const firstProduct = products.find(p => p.is_active) || products[0];
+                if (firstProduct && firstProduct.serviceId) {
+                    (navigation as any).navigate('CreateFlashPromo', {
+                        serviceId: parseInt(String(firstProduct.serviceId), 10),
+                        productIndex: firstProduct.product_index ?? 0,
+                    });
+                } else {
+                    Alert.alert('Erreur', 'Impossible de créer un flash promo : service ID manquant.');
+                }
+            },
+        },
+        {
+            label: 'Promo Black Friday',
+            icon: 'gift',
+            onPress: () => {
+                setShowMenuModal(false);
+                (navigation as any).navigate('GlobalPromoSubmission');
+            },
+        },
+        {
+            label: 'Configuration livraison',
+            icon: 'truck',
+            onPress: () => {
+                setShowMenuModal(false);
+                if (filteredProducts && filteredProducts.length > 0) {
+                    const firstProduct = filteredProducts.find(p => p.is_active) || filteredProducts[0];
+                    handleOpenDeliveryConfig(firstProduct);
+                } else {
+                    Alert.alert('Aucun produit', 'Vous devez d\'abord créer un produit pour configurer la livraison.');
+                }
+            },
+        },
+        {
+            label: 'Gérer les membres',
+            icon: 'users',
+            onPress: () => {
+                setShowMenuModal(false);
+                handleManageMembers();
+            },
+        },
+        {
+            label: 'Mes vidéos',
+            icon: 'play-circle',
+            onPress: () => {
+                setShowMenuModal(false);
+                (navigation as any).navigate('VideoFeed');
             },
         },
         {
@@ -2333,64 +2370,19 @@ const MesProduitsScreen: React.FC = () => {
                             subtitle={`${filteredProducts.length} produit${filteredProducts.length > 1 ? 's' : ''}`}
                             rightSlot={(
                                 <View style={styles.headerActions}>
-                                    {/* ✅ ORDRE CORRIGÉ : Vidéo → Galerie médias → Black Friday → Menu (trois points) */}
+                                    {/* ✅ UX AMÉLIORÉ: Seulement 3 boutons — ajouter, stats, menu */}
                                     <TouchableOpacity
-                                        style={styles.headerIconButton}
-                                        onPress={openVideoCreatorGlobal}
+                                        style={[styles.headerIconButton, { backgroundColor: '#EEF2FF', borderColor: '#C7D2FE' }]}
+                                        onPress={handleCreateNewProduct}
                                     >
-                                        <SafeIcon name="video" size={18} color={modernColors.primary} />
+                                        <SafeIcon name="plus" size={20} color={modernColors.primary} />
                                     </TouchableOpacity>
-                                    {/* ✅ NOUVEAU : Bouton galerie médias des produits */}
                                     <TouchableOpacity
-                                        style={styles.headerIconButton}
-                                        onPress={() => {
-                                            if (services && services.length > 0) {
-                                                setSelectedServiceForGallery(services[0]);
-                                                setShowMediaGallery(true);
-                                            } else {
-                                                Alert.alert('Aucun service', 'Vous devez d\'abord créer un service pour accéder à la galerie médias.');
-                                            }
-                                        }}
-                                    >
-                                        <SafeIcon name="image" size={18} color={modernColors.primary} />
-                                    </TouchableOpacity>
-                                    {/* ✅ NOUVEAU : Bouton participation Black Friday */}
-                                    <TouchableOpacity
-                                        style={styles.headerBlackFridayButton}
-                                        onPress={() => (navigation as any).navigate('GlobalPromoSubmission')}
-                                    >
-                                        <Text style={styles.headerBlackFridayIcon}>🔥</Text>
-                                    </TouchableOpacity>
-                                    {/* ✅ NOUVEAU : Bouton Configuration Flash Promo */}
-                                    <TouchableOpacity
-                                        style={[styles.headerIconButton, { backgroundColor: 'rgba(245, 158, 11, 0.15)', borderWidth: 1, borderColor: 'rgba(245, 158, 11, 0.3)' }]}
-                                        onPress={() => {
-                                            if (!products || products.length === 0) {
-                                                Alert.alert('Aucun produit', 'Vous devez d\'abord créer des produits avant de créer un flash promo.');
-                                                return;
-                                            }
-                                            // Prendre le premier produit actif, sinon le premier disponible
-                                            const firstProduct = products.find(p => p.is_active) || products[0];
-                                            if (firstProduct && firstProduct.serviceId) {
-                                                (navigation as any).navigate('CreateFlashPromo', {
-                                                    serviceId: parseInt(String(firstProduct.serviceId), 10),
-                                                    productIndex: firstProduct.product_index ?? 0,
-                                                });
-                                            } else {
-                                                Alert.alert('Erreur', 'Impossible de créer un flash promo : service ID manquant.');
-                                            }
-                                        }}
-                                    >
-                                        <SafeIcon name="zap" size={18} color="#F59E0B" type="lucide" />
-                                    </TouchableOpacity>
-                                    {/* ✅ NOUVEAU 2026-03-03: Bouton Dashboard stats global */}
-                                    <TouchableOpacity
-                                        style={[styles.headerIconButton, { backgroundColor: 'rgba(99, 102, 241, 0.12)', borderWidth: 1, borderColor: 'rgba(99, 102, 241, 0.25)' }]}
+                                        style={[styles.headerIconButton, { backgroundColor: 'rgba(99, 102, 241, 0.12)', borderColor: 'rgba(99, 102, 241, 0.25)' }]}
                                         onPress={handleViewGlobalStats}
                                     >
                                         <SafeIcon name="bar-chart-2" size={18} color="#6366F1" />
                                     </TouchableOpacity>
-                                    {/* ✅ Menu (trois points) à la fin */}
                                     <TouchableOpacity
                                         style={styles.headerMenuButton}
                                         onPress={() => setShowMenuModal(true)}
@@ -2408,8 +2400,9 @@ const MesProduitsScreen: React.FC = () => {
                             showsHorizontalScrollIndicator={false}
                             contentContainerStyle={styles.statsRowContent}
                         >
-                            {(headerSummary || []).map((item) => (
+                            {(headerSummary || []).map((item: any) => (
                                 <View key={item.label} style={styles.miniStatCard}>
+                                    <SafeIcon name={item.icon} size={14} color={item.accentColor} />
                                     <Text
                                         style={[
                                             styles.miniStatValue,
@@ -2439,8 +2432,8 @@ const MesProduitsScreen: React.FC = () => {
                                         styles.filterChipText,
                                         filter === filterOption && styles.filterChipTextActive
                                     ]}>
-                                        {filterOption === 'tous' ? '📦 Tous' :
-                                            filterOption === 'actif' ? '✅ Actifs' : '⏸️ Inactifs'}
+                                        {filterOption === 'tous' ? `Tous (${totalProducts})` :
+                                            filterOption === 'actif' ? `Actifs (${activeProducts})` : `En pause (${inactiveProducts})`}
                                     </Text>
                                 </TouchableOpacity>
                             ))}
@@ -3006,13 +2999,28 @@ const styles = StyleSheet.create({
     },
     secondaryActions: {
         flexDirection: 'row',
-        justifyContent: 'space-around',
+        justifyContent: 'flex-start',
         alignItems: 'center',
         marginTop: 12,
         paddingTop: 12,
         borderTopWidth: 1,
         borderTopColor: '#E5E7EB',
-        gap: 4,
+        gap: 16,
+    },
+    contextMenuRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingVertical: 6,
+        paddingHorizontal: 12,
+        borderRadius: 20,
+        backgroundColor: '#F9FAFB',
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+    },
+    contextMenuLabel: {
+        fontSize: 13,
+        fontWeight: '600',
     },
     iconButton: {
         width: 34,

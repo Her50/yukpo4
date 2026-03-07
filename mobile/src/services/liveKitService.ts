@@ -59,14 +59,21 @@ class LiveKitService {
     /**
      * Récupère un token LiveKit pour rejoindre une session
      */
-    async getJoinToken(sessionId: string, userId: number): Promise<LiveKitTokenResponse> {
+    async getJoinToken(sessionId: string, userId: number, isHost: boolean = false): Promise<LiveKitTokenResponse> {
         try {
-            const response = await apiGet<{ data: LiveKitTokenResponse }>(
-                `/api/live/${sessionId}/join?viewer_user_id=${userId}&allow_publish=false`
+            const allowPublish = isHost ? 'true' : 'false';
+            const response = await apiGet<any>(
+                `/api/live/${sessionId}/join?viewer_user_id=${userId}&allow_publish=${allowPublish}`
             );
 
-            if (response.data) {
-                return response.data;
+            const info = response?.data || response;
+            if (info) {
+                return {
+                    token: info.webrtc_token || info.token || '',
+                    url: info.webrtc_url || info.url || '',
+                    room_name: info.livekit_room_name || info.room_name || info.session_id || sessionId,
+                    participant_identity: info.participant_identity || info.host_identity || `viewer-${userId}`,
+                };
             }
 
             throw new Error('Token LiveKit non disponible');
@@ -85,11 +92,12 @@ class LiveKitService {
         userId: number,
         onMessage?: (message: LiveKitChatMessage) => void,
         onParticipantJoin?: (identity: string) => void,
-        onParticipantLeave?: (identity: string) => void
+        onParticipantLeave?: (identity: string) => void,
+        isHost: boolean = false
     ): Promise<void> {
         try {
             // Récupérer le token
-            const tokenData = await this.getJoinToken(sessionId, userId);
+            const tokenData = await this.getJoinToken(sessionId, userId, isHost);
             this.roomName = tokenData.room_name;
             this.participantIdentity = tokenData.participant_identity;
 
@@ -117,10 +125,16 @@ class LiveKitService {
             }
 
             // ✅ INTÉGRÉ: Créer et rejoindre la room LiveKit
+            if (!Room || !RoomEvent) {
+                console.warn('[LiveKitService] SDK LiveKit non disponible, mode chat API uniquement');
+                console.log('[LiveKitService] Room configurée (mode fallback):', tokenData.room_name);
+                return;
+            }
+
             this.room = new Room();
 
             // Écouter les événements de données (chat)
-            this.room.on(RoomEvent.DataReceived, (payload: Uint8Array, participant?: RemoteParticipant) => {
+            this.room.on(RoomEvent.DataReceived, (payload: Uint8Array, participant?: any) => {
                 try {
                     const messageData = JSON.parse(new TextDecoder().decode(payload));
                     const chatMessage: LiveKitChatMessage = {
@@ -140,19 +154,22 @@ class LiveKitService {
             });
 
             // Écouter les participants qui rejoignent
-            this.room.on(RoomEvent.ParticipantConnected, (participant: RemoteParticipant) => {
+            this.room.on(RoomEvent.ParticipantConnected, (participant: any) => {
                 this.onParticipantJoinCallbacks.forEach(callback => callback(participant.identity));
             });
 
             // Écouter les participants qui partent
-            this.room.on(RoomEvent.ParticipantDisconnected, (participant: RemoteParticipant) => {
+            this.room.on(RoomEvent.ParticipantDisconnected, (participant: any) => {
                 this.onParticipantLeaveCallbacks.forEach(callback => callback(participant.identity));
             });
 
             // Rejoindre la room
-            await this.room.connect(tokenData.url, tokenData.token);
-
-            console.log('[LiveKitService] Room joinée:', tokenData.room_name);
+            if (tokenData.url && tokenData.token) {
+                await this.room.connect(tokenData.url, tokenData.token);
+                console.log('[LiveKitService] Room joinée:', tokenData.room_name);
+            } else {
+                console.warn('[LiveKitService] URL ou token manquant, connexion LiveKit ignorée');
+            }
         } catch (error) {
             console.error('[LiveKitService] Erreur join room:', error);
             throw error;
@@ -164,12 +181,11 @@ class LiveKitService {
      * ✅ INTÉGRÉ: Utilise le SDK LiveKit pour envoyer des données
      */
     async sendChatMessage(message: string, type: 'text' | 'emoji' | 'gift' | 'reaction' = 'text'): Promise<void> {
-        if (!this.room || !this.roomName || !this.participantIdentity) {
+        if (!this.roomName || !this.participantIdentity) {
             throw new Error('Pas connecté à une room');
         }
 
         try {
-            // ✅ INTÉGRÉ: Envoyer via LiveKit Data Channel
             const messageData = {
                 participant_identity: this.participantIdentity,
                 message,
@@ -177,10 +193,16 @@ class LiveKitService {
                 timestamp: Date.now(),
             };
 
-            const encoder = new TextEncoder();
-            const data = encoder.encode(JSON.stringify(messageData));
-
-            await this.room.localParticipant?.publishData(data, DataPacket_Kind.RELIABLE);
+            // Envoyer via LiveKit Data Channel si disponible
+            if (this.room && DataPacket_Kind) {
+                try {
+                    const encoder = new TextEncoder();
+                    const data = encoder.encode(JSON.stringify(messageData));
+                    await this.room.localParticipant?.publishData(data, DataPacket_Kind.RELIABLE);
+                } catch (lkError) {
+                    console.warn('[LiveKitService] Envoi LiveKit échoué, fallback API:', lkError);
+                }
+            }
 
             // Fallback: Envoyer aussi via API backend pour persistance
             try {

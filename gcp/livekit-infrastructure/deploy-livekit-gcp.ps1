@@ -177,6 +177,7 @@ $newEnvVars = @(
     "LIVEKIT_INGRESS_ROOM=live-events",
     "LIVE_FALLBACK_ENABLED=true",
     "LIVE_RECORDING_ENABLED=true",
+    "FEATURE_FLAG_CONNECTORS_LIVEKIT=true",
     "SRS_HLS_URL=http://${instanceIp}:8080/live",
     "SRS_RTMP_URL=rtmp://${instanceIp}:1935/live"
     # NOTE: VIDEO_RENDERER_RPC_URL n'est PAS ici car le renderer tourne sur le GPU worker GCP (34.140.79.59:8080)

@@ -1,9 +1,8 @@
 // ✅ Écran de recherche de pharmacies (Mobile) - VERSION REFONDUE
-import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState } from 'react';
 import {
-    Alert,
     StyleSheet,
     Switch,
     Text,
@@ -11,15 +10,15 @@ import {
     View
 } from 'react-native';
 import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
+import { LocationObject } from '../../components/LocationSelector';
 import ModernGPSModal from '../../components/ModernGPSModal';
 import PharmacyAIFeatures from '../../components/PharmacyAIFeatures';
-import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeInput } from '../../components/SafeNativeDesign';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useLocation } from '../../contexts/LocationContext';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
-import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 
 interface PharmacieSearchFilters {
     ville?: string;
@@ -89,7 +88,7 @@ const PharmacieSearchScreen: React.FC = () => {
             if (maxDistance > 0) filters.max_distance_km = maxDistance;
             if (availableOnly) filters.available_only = true;
             // Navigation vers recherche de produits
-            navigation.navigate('PharmacieProductsList' as never, { filters } as never);
+            navigation.navigate('PharmacieList' as never, { filters } as never);
             return;
         }
 
@@ -104,7 +103,7 @@ const PharmacieSearchScreen: React.FC = () => {
             }
             if (maxDistance > 0) filters.max_distance_km = maxDistance;
             // Navigation vers pharmacies de garde
-            navigation.navigate('PharmaciesOnDutyList' as never, { filters } as never);
+            navigation.navigate('PharmacieList' as never, { filters } as never);
             return;
         }
 
@@ -273,7 +272,7 @@ const PharmacieSearchScreen: React.FC = () => {
                     <Text style={styles.sectionDescription}>
                         Recherchez des médicaments ou produits pharmaceutiques disponibles
                     </Text>
-                    
+
                     {/* Recherche de produits (PRIORITAIRE) */}
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>
@@ -292,7 +291,7 @@ const PharmacieSearchScreen: React.FC = () => {
                     <Text style={styles.sectionDescription}>
                         Ajoutez votre position pour trouver des produits à proximité
                     </Text>
-                    
+
                     {/* GPS */}
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>
@@ -467,7 +466,7 @@ const PharmacieSearchScreen: React.FC = () => {
                     {/* Options */}
                     <View style={styles.optionsSection}>
                         <Text style={styles.sectionTitle}>⚙️ Options de recherche</Text>
-                        
+
                         <View style={styles.optionCard}>
                             <View style={styles.optionContent}>
                                 <View style={styles.optionIconContainer}>

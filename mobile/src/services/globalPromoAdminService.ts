@@ -51,11 +51,26 @@ export const fetchGlobalPromoEvents = async (includeArchived = false): Promise<G
 };
 
 export const createGlobalPromoEvent = async (payload: CreateGlobalPromoEventPayload): Promise<GlobalPromoEvent> => {
-    const response = await apiPost<GlobalPromoEvent>('/api/global-promos/events', payload);
+    // ✅ CORRIGÉ: Convertir camelCase → snake_case pour le backend Rust
+    const backendPayload: Record<string, any> = {
+        slug: payload.slug,
+        theme: payload.theme,
+        display_name: payload.displayName,
+        starts_at: payload.startsAt,
+        ends_at: payload.endsAt,
+    };
+    if (payload.description !== undefined) backendPayload.description = payload.description;
+    if (payload.recurrenceRule !== undefined) backendPayload.recurrence_rule = payload.recurrenceRule;
+    if (payload.config !== undefined) backendPayload.config = payload.config;
+
+    const response = await apiPost<GlobalPromoEvent>('/api/global-promos/events', backendPayload);
     if (response.success && response.data) {
         return mapEvent(response.data);
     }
-    throw new Error(response.error || 'Impossible de créer la campagne');
+    const errMsg = typeof response.error === 'object' && response.error !== null
+        ? (response.error as any).message || JSON.stringify(response.error)
+        : response.error || 'Impossible de créer la campagne';
+    throw new Error(errMsg);
 };
 
 export const fetchGlobalPromoEntries = async (eventId: string): Promise<GlobalPromoEntry[]> => {
@@ -70,11 +85,29 @@ export const upsertGlobalPromoEntry = async (
     eventId: string,
     payload: UpsertGlobalPromoEntryPayload,
 ): Promise<GlobalPromoEntry> => {
-    const response = await apiPost<GlobalPromoEntry>(`/api/global-promos/events/${eventId}/entries`, payload);
+    // ✅ CORRIGÉ: Convertir camelCase → snake_case pour le backend Rust
+    const backendPayload: Record<string, any> = {
+        service_id: payload.serviceId,
+        availability: payload.availability || 'online',
+    };
+    if (payload.liveSessionId !== undefined) backendPayload.live_session_id = payload.liveSessionId;
+    if (payload.discountPercentage !== undefined) backendPayload.discount_percentage = payload.discountPercentage;
+    if (payload.promoPriceCfa !== undefined) backendPayload.promo_price_cfa = payload.promoPriceCfa;
+    if (payload.stockCap !== undefined) backendPayload.stock_cap = payload.stockCap;
+    if (payload.status !== undefined) backendPayload.status = payload.status;
+    if (payload.metadata !== undefined) backendPayload.metadata = payload.metadata;
+    if (payload.highlighted !== undefined) backendPayload.highlighted = payload.highlighted;
+    if (payload.priorityScore !== undefined) backendPayload.priority_score = payload.priorityScore;
+    if (payload.snapshot !== undefined) backendPayload.snapshot = payload.snapshot;
+
+    const response = await apiPost<GlobalPromoEntry>(`/api/global-promos/events/${eventId}/entries`, backendPayload);
     if (response.success && response.data) {
         return mapEntry(response.data);
     }
-    throw new Error(response.error || 'Impossible de créer/mettre à jour l\'entrée');
+    const errMsg = typeof response.error === 'object' && response.error !== null
+        ? (response.error as any).message || JSON.stringify(response.error)
+        : response.error || 'Impossible de créer/mettre à jour l\'entrée';
+    throw new Error(errMsg);
 };
 
 export const reviewGlobalPromoEntry = async (
@@ -91,7 +124,10 @@ export const reviewGlobalPromoEntry = async (
     if (response.success && response.data) {
         return mapEntry(response.data);
     }
-    throw new Error(response.error || 'Impossible de réviser l\'entrée');
+    const errMsg = typeof response.error === 'object' && response.error !== null
+        ? (response.error as any).message || JSON.stringify(response.error)
+        : response.error || 'Impossible de réviser l\'entrée';
+    throw new Error(errMsg);
 };
 
 export const reviewGlobalPromoEntriesBulk = async (
@@ -108,6 +144,9 @@ export const reviewGlobalPromoEntriesBulk = async (
     if (response.success && Array.isArray(response.data)) {
         return response.data.map(mapEntry);
     }
-    throw new Error(response.error || 'Impossible de réviser les entrées en masse');
+    const errMsg = typeof response.error === 'object' && response.error !== null
+        ? (response.error as any).message || JSON.stringify(response.error)
+        : response.error || 'Impossible de réviser les entrées en masse';
+    throw new Error(errMsg);
 };
 

@@ -10,8 +10,8 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiGet, apiPost } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
@@ -72,7 +72,7 @@ const OrientationScolaireHubScreen: React.FC = () => {
             Alert.alert('Profil requis', 'Veuillez d\'abord créer votre profil étudiant');
             return;
         }
-        navigation.navigate('EtablissementSuggest');
+        navigation.navigate('EtablissementSearch');
     };
 
     const handleComparePrograms = () => {
@@ -80,8 +80,7 @@ const OrientationScolaireHubScreen: React.FC = () => {
             Alert.alert('Profil requis', 'Veuillez d\'abord créer votre profil étudiant');
             return;
         }
-        // TODO: Navigation vers écran de comparaison
-        Alert.alert('À venir', 'Fonctionnalité de comparaison de programmes à implémenter');
+        navigation.navigate('OrientationAIComparePrograms');
     };
 
     const etablissementTypes = [
@@ -128,13 +127,13 @@ const OrientationScolaireHubScreen: React.FC = () => {
             id: 'programmes',
             name: 'Programmes',
             icon: '📖',
-            route: 'ProgrammesSearch',
+            route: 'ProgrammesList',
         },
         {
             id: 'fournitures',
             name: 'Fournitures',
             icon: '✏️',
-            route: 'FournituresSearch',
+            route: 'FournituresList',
         },
     ];
 

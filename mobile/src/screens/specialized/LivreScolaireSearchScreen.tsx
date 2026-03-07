@@ -109,7 +109,7 @@ const LivreScolaireSearchScreen: React.FC = () => {
             description: 'Trouver un échange',
             action: () => {
                 hapticPress();
-                navigation.navigate('BookTrading' as never);
+                navigation.navigate('MesTrocs' as never);
             }
         },
         {
@@ -471,7 +471,7 @@ const LivreScolaireSearchScreen: React.FC = () => {
                                 style={styles.exchangeButton}
                                 onPress={() => {
                                     hapticPress();
-                                    navigation.navigate('BookTrading' as never, {
+                                    navigation.navigate('MesTrocs' as never, {
                                         classeActuelle,
                                         classeSouhaitee,
                                         matiere,

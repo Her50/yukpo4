@@ -228,11 +228,24 @@ const MesServicesSpecialisesScreen: React.FC = () => {
                 }
 
                 // ✅ CORRECTION: Afficher un message d'erreur plus détaillé
-                const detailedMessage = errorMessage.includes('Solde insuffisant')
+                const isSoldeInsuffisant = errorMessage.includes('Solde insuffisant') || errorMessage.includes('solde insuffisant');
+                const detailedMessage = isSoldeInsuffisant
                     ? `${errorMessage}\n\nVeuillez recharger vos tokens pour créer un service.`
                     : errorMessage.includes('Champs obligatoires')
                         ? `${errorMessage}\n\nVeuillez vérifier que tous les champs requis sont remplis.`
                         : `${errorMessage}\n\nSi le problème persiste, veuillez contacter le support.`;
+
+                if (isSoldeInsuffisant) {
+                    Alert.alert(
+                        '💸 Solde insuffisant',
+                        detailedMessage,
+                        [
+                            { text: 'Annuler', style: 'cancel' },
+                            { text: 'Recharger', onPress: () => (navigation as any).navigate('RechargeTokens') },
+                        ]
+                    );
+                    return;
+                }
 
                 Alert.alert(
                     'Erreur de création',

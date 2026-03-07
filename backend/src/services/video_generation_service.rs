@@ -783,7 +783,7 @@ pub async fn generate_product_video(
             )
         })?;
 
-        match generative_service.generate_video(user.id as i64, request).await {
+        match generative_service.generate_video(user.id as i32, request).await {
             Ok(gen_job_id) => {
                 info!(
                     "[VideoGeneration] ✅ Job génératif créé: {} pour user {}",

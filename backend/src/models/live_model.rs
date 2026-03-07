@@ -173,6 +173,10 @@ pub struct LiveJoinInformation {
     pub start_at: DateTime<Utc>,
     pub host_identity: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub livekit_room_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub participant_identity: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub webrtc_token: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub webrtc_url: Option<String>,

@@ -160,10 +160,8 @@ pub async fn list_global_promo_catalog(
     if !state.feature_flags.is_enabled(KnownFlag::GlobalPromos) {
         return Ok(Json(json!({
             "success": false,
-            "error": {
-                "code": "feature_disabled",
-                "message": "La fonctionnalité Global Promo est désactivée sur cet environnement."
-            }
+            "error": "La fonctionnalité Global Promo est désactivée sur cet environnement.",
+            "code": "feature_disabled"
         })));
     }
     // ✅ NOUVEAU: Utiliser le cache si disponible

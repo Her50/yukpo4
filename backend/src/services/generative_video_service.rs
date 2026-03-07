@@ -1,16 +1,28 @@
 // ✅ NOUVEAU Phase 3.1: Service de génération vidéo complète depuis texte
 
 use crate::models::generative_video_model::{
-    GenerateVideoRequest, GeneratedClip, GenerativeJob, GenerativeProvider, Storyboard,
-    StoryboardScene,
+    GenerateVideoRequest, GeneratedClip, GenerativeJob, GenerativeJobProgress, GenerativeJobStatus,
+    GenerativeProvider, Storyboard, StoryboardScene,
 };
 use crate::services::app_ia::{extract_json_block, AppIA};
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use log::{error, info, warn};
 use serde_json::json;
-use sqlx::PgPool;
+use sqlx::{FromRow, PgPool};
 use std::sync::Arc;
 use uuid::Uuid;
+
+#[derive(Debug, FromRow)]
+struct GenerativeJobRow {
+    job_id: String,
+    user_id: i64,
+    status: String,
+    request_payload: Option<serde_json::Value>,
+    result_payload: Option<serde_json::Value>,
+    error_message: Option<String>,
+    created_at: DateTime<Utc>,
+    updated_at: DateTime<Utc>,
+}
 
 pub struct GenerativeVideoService {
     pool: Arc<PgPool>,
@@ -42,7 +54,7 @@ impl GenerativeVideoService {
     /// Démarre une génération vidéo complète depuis texte
     pub async fn generate_video(
         &self,
-        user_id: i64,
+        user_id: i32,
         request: GenerateVideoRequest,
     ) -> Result<String, String> {
         let job_id = Uuid::new_v4().to_string();
@@ -282,7 +294,7 @@ IMPORTANT:
         app_ia: Arc<AppIA>,
         http: reqwest::Client,
         job_id: String,
-        user_id: i64,
+        user_id: i32,
         request: GenerateVideoRequest,
     ) -> Result<(), String> {
         info!(
@@ -290,11 +302,15 @@ IMPORTANT:
             job_id, user_id
         );
 
-        // Mettre à jour le statut en DB
+        // Créer le job en DB s'il n'existe pas, ou mettre à jour le statut
         let _ = sqlx::query(
-            "UPDATE generative_video_jobs SET status = 'processing', updated_at = NOW() WHERE job_id = $1"
+            r#"INSERT INTO generative_video_jobs (job_id, user_id, status, request_payload, created_at, updated_at)
+            VALUES ($1, $2, 'processing', $3, NOW(), NOW())
+            ON CONFLICT (job_id) DO UPDATE SET status = 'processing', updated_at = NOW()"#
         )
         .bind(&job_id)
+        .bind(user_id)
+        .bind(serde_json::to_value(&request).unwrap_or_default())
         .execute(pool.as_ref())
         .await;
 
@@ -620,10 +636,87 @@ IMPORTANT:
     pub async fn get_job_status(
         &self,
         job_id: &str,
-        _user_id: i64,
+        user_id: i32,
     ) -> Result<GenerativeJob, String> {
-        // TODO: Récupérer depuis la DB
-        Err(format!("Job {} non trouvé", job_id))
+        let row = sqlx::query_as::<_, GenerativeJobRow>(
+            r#"SELECT job_id, user_id, status, request_payload, result_payload, error_message, created_at, updated_at
+            FROM generative_video_jobs
+            WHERE job_id = $1 AND user_id = $2"#
+        )
+        .bind(job_id)
+        .bind(user_id)
+        .fetch_optional(self.pool.as_ref())
+        .await
+        .map_err(|e| format!("Erreur DB get_job_status: {}", e))?
+        .ok_or_else(|| format!("Job {} non trouvé", job_id))?;
+
+        let status = match row.status.as_str() {
+            "queued" => GenerativeJobStatus::Queued,
+            "processing" | "generating_storyboard" => GenerativeJobStatus::GeneratingStoryboard,
+            "generating_clips" => GenerativeJobStatus::GeneratingClips,
+            "assembling" => GenerativeJobStatus::Assembling,
+            "completed" => GenerativeJobStatus::Completed,
+            "failed" => GenerativeJobStatus::Failed,
+            _ => GenerativeJobStatus::Queued,
+        };
+
+        let request: GenerateVideoRequest = row
+            .request_payload
+            .as_ref()
+            .and_then(|v| serde_json::from_value(v.clone()).ok())
+            .unwrap_or(GenerateVideoRequest {
+                description: String::new(),
+                duration_seconds: None,
+                style: None,
+                mood: None,
+                aspect_ratio: None,
+                provider: None,
+                music_style: None,
+                resolution: None,
+            });
+
+        let final_video_url = row
+            .result_payload
+            .as_ref()
+            .and_then(|v| v.get("video_url"))
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string());
+
+        let progress_pct = match &status {
+            GenerativeJobStatus::Queued => 0.0,
+            GenerativeJobStatus::GeneratingStoryboard => 20.0,
+            GenerativeJobStatus::GeneratingClips => 50.0,
+            GenerativeJobStatus::Assembling => 80.0,
+            GenerativeJobStatus::Completed => 100.0,
+            GenerativeJobStatus::Failed => 0.0,
+        };
+
+        Ok(GenerativeJob {
+            job_id: row.job_id,
+            user_id: row.user_id as i64,
+            request,
+            status: status.clone(),
+            progress: GenerativeJobProgress {
+                progress: progress_pct,
+                stage: status,
+                current_scene: None,
+                total_scenes: None,
+                message: row.error_message.clone(),
+                estimated_time_remaining: None,
+            },
+            storyboard: None,
+            generated_clips: vec![],
+            final_video_url,
+            final_timeline_id: None,
+            error: row.error_message,
+            created_at: row.created_at,
+            updated_at: row.updated_at,
+            completed_at: if progress_pct >= 100.0 {
+                Some(row.updated_at)
+            } else {
+                None
+            },
+        })
     }
 }
 

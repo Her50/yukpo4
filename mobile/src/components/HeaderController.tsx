@@ -113,7 +113,7 @@ const HeaderController: React.FC = () => {
   };
 
   const handleProfilePress = () => {
-    navigation.navigate('UserProfile' as never);
+    navigation.navigate('Profile' as never);
   };
 
   // Fallback : solde du JWT ou AsyncStorage

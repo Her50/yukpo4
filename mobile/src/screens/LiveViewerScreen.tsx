@@ -65,8 +65,16 @@ export default function LiveViewerScreen() {
         try {
             setLoading(true);
             const resp = await liveStreamingService.getLiveSession(sessionId);
-            if (resp.success && resp.data) {
-                setSession(resp.data);
+            const backendResp = resp.data as any;
+            const innerData = backendResp?.data || backendResp;
+            if (innerData) {
+                const sessionObj = innerData.session || innerData;
+                setSession({
+                    ...sessionObj,
+                    linked_services: innerData.linked_services || sessionObj.linked_services,
+                    flash_sales: innerData.flash_sales || sessionObj.flash_sales,
+                    replay: innerData.replay || sessionObj.replay,
+                });
             }
         } catch (error) {
             console.error('[LiveViewerScreen] Erreur chargement session:', error);

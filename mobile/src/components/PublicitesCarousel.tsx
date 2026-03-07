@@ -331,10 +331,10 @@ const PublicitesCarousel: React.FC<PublicitesCarouselProps> = ({ userId, userBeh
                                 try {
                                     const produitsA = Array.isArray(a.produits) ? a.produits : [];
                                     const produitsB = Array.isArray(b.produits) ? b.produits : [];
-                                    const scoreA = produitsA.filter((p: any) => 
+                                    const scoreA = produitsA.filter((p: any) =>
                                         p && typeof p === 'object' && userBehavior.includes(p.type)
                                     ).length;
-                                    const scoreB = produitsB.filter((p: any) => 
+                                    const scoreB = produitsB.filter((p: any) =>
                                         p && typeof p === 'object' && userBehavior.includes(p.type)
                                     ).length;
                                     return scoreB - scoreA;
@@ -578,10 +578,9 @@ const PublicitesCarousel: React.FC<PublicitesCarouselProps> = ({ userId, userBeh
                                 productIndex: firstProduct.productIndex,
                             });
                         } else if (firstProduct.id) {
-                            // Fallback vers ChatModal si productIndex n'est pas disponible
-                            (navigation as any).navigate('ChatModal', {
+                            // Fallback vers ServiceDetail si productIndex n'est pas disponible
+                            (navigation as any).navigate('ServiceDetail', {
                                 serviceId: firstProduct.serviceId,
-                                productId: firstProduct.id,
                             });
                         }
                     }

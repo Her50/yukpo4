@@ -109,10 +109,10 @@ const BusReturnRequestsScreen: React.FC = () => {
                 {
                     text: 'Confirmer',
                     onPress: () => {
-                        navigation.navigate('BusReturnConfirm' as never, {
-                            requestId: request.id,
+                        navigation.navigate('BusTicketBooking' as never, {
                             productId: request.matched_product_id,
                             numberOfSeats: request.number_of_seats,
+                            returnRequestId: request.id,
                         } as never);
                     },
                 },

@@ -44,6 +44,8 @@ export interface LiveJoinInformationRecord {
     status: string;
     start_at: string;
     host_identity?: string | null;
+    livekit_room_name?: string | null;
+    participant_identity?: string | null;
     webrtc_token?: string | null;
     webrtc_url?: string | null;
     hls_url?: string | null;

@@ -3805,6 +3805,14 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
     const buttons: any[] = [{ text: 'OK' }];
 
+    // Si solde insuffisant (402), ajouter bouton Recharger
+    if (error?.response?.status === 402 || title.includes('Solde insuffisant')) {
+      buttons.push({
+        text: '💳 Recharger',
+        onPress: () => (navigation as any).navigate('RechargeTokens'),
+      });
+    }
+
     if (retryFn) {
       buttons.push({
         text: '🔄 Réessayer',

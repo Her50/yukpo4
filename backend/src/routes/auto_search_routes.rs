@@ -129,6 +129,9 @@ pub struct AutoProductResult {
     pub quartier: Option<String>,
     pub distance_km: Option<f64>,
     pub vendeur_nom: Option<String>,
+    pub vendeur_user_id: Option<i32>,
+    pub vendeur_telephone: Option<String>,
+    pub vendeur_whatsapp: Option<String>,
     pub created_at: Option<String>,
 }
 
@@ -275,6 +278,7 @@ fn extract_images(data: &Value) -> Vec<String> {
 }
 
 /// Catégories automobiles reconnues (flexible matching)
+#[allow(dead_code)]
 const AUTO_CATEGORIES: &[&str] = &[
     "automobile",
     "vehicule",
@@ -307,6 +311,7 @@ const AUTO_CATEGORIES: &[&str] = &[
     "accessoires auto",
 ];
 
+#[allow(dead_code)]
 fn is_auto_category(cat: &str) -> bool {
     let lower = cat.to_lowercase();
     AUTO_CATEGORIES.iter().any(|c| lower.contains(c))
@@ -889,6 +894,7 @@ pub async fn search_auto_products(
             s.data as service_data,
             s.gps as service_gps,
             s.user_id,
+            u.phone as vendeur_phone,
             {},
             u.name as vendeur_nom
         FROM service_products sp
@@ -999,6 +1005,14 @@ pub async fn search_auto_products(
 
         let distance_km: Option<f64> = row.try_get("distance_km").unwrap_or(None);
         let vendeur_nom: Option<String> = row.try_get("vendeur_nom").unwrap_or(None);
+        let vendeur_user_id: Option<i32> = row.try_get("user_id").unwrap_or(None);
+        let vendeur_phone: Option<String> = row.try_get("vendeur_phone").unwrap_or(None);
+
+        // Extraire téléphone/whatsapp depuis service_data (prioritaire) ou users.phone (fallback)
+        let vendeur_telephone = extract_text_field(&service_data, &["telephone", "phone", "tel"])
+            .or_else(|| vendeur_phone.clone());
+        let vendeur_whatsapp = extract_text_field(&service_data, &["whatsapp", "whatsapp_number"])
+            .or_else(|| vendeur_phone.clone());
 
         let created_at: Option<chrono::DateTime<chrono::Utc>> =
             row.try_get("created_at").unwrap_or(None);
@@ -1025,6 +1039,9 @@ pub async fn search_auto_products(
             quartier,
             distance_km,
             vendeur_nom,
+            vendeur_user_id,
+            vendeur_telephone,
+            vendeur_whatsapp,
             created_at: created_at.map(|d| d.to_rfc3339()),
         });
     }

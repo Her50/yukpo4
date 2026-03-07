@@ -1,5 +1,5 @@
 import { useNavigation, useRoute } from '@react-navigation/native';
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Alert,
   BackHandler,
@@ -72,10 +72,10 @@ export default function LiveHostScreen() {
 
   const startLive = async () => {
     try {
-      // Connect to LiveKit as host
+      // Connect to LiveKit as host (isHost=true for publish permission)
       if (sessionId) {
         const hostUserId = user?.id ? (typeof user.id === 'string' ? parseInt(user.id, 10) : user.id) : 0;
-        await liveKitService.joinRoom(sessionId, hostUserId);
+        await liveKitService.joinRoom(sessionId, hostUserId, undefined, undefined, undefined, true);
         setIsConnected(true);
         setIsLive(true);
         startTimeRef.current = Date.now();
@@ -84,8 +84,11 @@ export default function LiveHostScreen() {
         viewerIntervalRef.current = setInterval(async () => {
           try {
             const resp = await liveStreamingService.getLiveSession(sessionId);
-            if (resp.success && resp.data) {
-              setViewerCount((resp.data as any).current_viewers || 0);
+            const backendResp = (resp as any).data || resp;
+            const innerData = backendResp?.data || backendResp;
+            const sessionObj = innerData?.session || innerData;
+            if (sessionObj) {
+              setViewerCount(sessionObj.current_viewers || 0);
             }
           } catch (_e) { /* silently ignore polling errors */ }
         }, 5000);

@@ -73,8 +73,9 @@ const ProfilCandidatScreen: React.FC = () => {
         try {
             setLoadingData(true);
             const response = await offreEmploiService.getProfil();
-            if (response.success && response.data) {
-                const profil = response.data;
+            const backendData = (response?.data as any);
+            const profil = backendData?.data || backendData;
+            if (response.success && profil) {
                 setFormData({
                     nom: profil.nom || '',
                     prenom: profil.prenom || '',

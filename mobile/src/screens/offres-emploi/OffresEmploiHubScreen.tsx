@@ -3,13 +3,12 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import React, { useCallback, useState } from 'react';
 import {
     ActivityIndicator,
-    Alert,
     RefreshControl,
     ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
-    View,
+    View
 } from 'react-native';
 import SafeIcon from '../../components/SafeIcon';
 import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
@@ -129,10 +128,7 @@ const OffresEmploiHubScreen: React.FC = () => {
                     </Text>
                     <NativeButton
                         title="Analyser mon CV"
-                        onPress={() => {
-                            // TODO: Navigation vers écran d'analyse CV
-                            Alert.alert('À venir', 'Fonctionnalité d\'analyse CV IA à implémenter');
-                        }}
+                        onPress={() => (navigation as any).navigate('AICVAnalysis')}
                         variant="primary"
                         style={styles.aiButton}
                     />
@@ -148,10 +144,7 @@ const OffresEmploiHubScreen: React.FC = () => {
                     </Text>
                     <NativeButton
                         title="Voir les formations"
-                        onPress={() => {
-                            // TODO: Navigation vers écran suggestions formations
-                            Alert.alert('À venir', 'Fonctionnalité de suggestions formations IA à implémenter');
-                        }}
+                        onPress={() => (navigation as any).navigate('AISuggestFormations')}
                         variant="secondary"
                         style={styles.aiButton}
                     />
@@ -167,10 +160,7 @@ const OffresEmploiHubScreen: React.FC = () => {
                     </Text>
                     <NativeButton
                         title="Estimer mon salaire"
-                        onPress={() => {
-                            // TODO: Navigation vers écran prédiction salaire
-                            Alert.alert('À venir', 'Fonctionnalité de prédiction salaire IA à implémenter');
-                        }}
+                        onPress={() => (navigation as any).navigate('AISalaryPrediction')}
                         variant="outline"
                         style={styles.aiButton}
                     />
@@ -182,7 +172,7 @@ const OffresEmploiHubScreen: React.FC = () => {
                 <Text style={styles.sectionTitle}>👤 Espace Candidat</Text>
                 <NativeCard style={styles.actionCard}>
                     <TouchableOpacity
-                        onPress={() => (navigation as any).navigate('OffreMatching')}
+                        onPress={() => (navigation as any).navigate('OffresEmploiHome')}
                         style={styles.actionButton}
                     >
                         <SafeIcon name="target" size={24} color="#6366F1" type="lucide" />
@@ -195,7 +185,7 @@ const OffresEmploiHubScreen: React.FC = () => {
 
                 <NativeCard style={styles.actionCard}>
                     <TouchableOpacity
-                        onPress={() => (navigation as any).navigate('MesCandidatures')}
+                        onPress={() => (navigation as any).navigate('OffresEmploiHome')}
                         style={styles.actionButton}
                     >
                         <SafeIcon name="file-text" size={24} color="#10B981" type="lucide" />
@@ -251,7 +241,7 @@ const OffresEmploiHubScreen: React.FC = () => {
 
                 <NativeCard style={styles.actionCard}>
                     <TouchableOpacity
-                        onPress={() => (navigation as any).navigate('DashboardEmploi')}
+                        onPress={() => (navigation as any).navigate('MesOffres')}
                         style={styles.actionButton}
                     >
                         <SafeIcon name="bar-chart" size={24} color="#06B6D4" type="lucide" />

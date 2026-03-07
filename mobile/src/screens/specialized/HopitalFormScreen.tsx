@@ -400,7 +400,7 @@ const HopitalFormScreen: React.FC = () => {
             <View style={s.analyticsCard}>
                 <View style={s.analyticsHdr}><SafeIcon name="sparkles" size={22} color="#F59E0B" /><Text style={s.analyticsTitle}>Intelligence Artificielle</Text></View>
                 <Text style={s.analyticsEmpty}>Triage IA, recommandations et recherche par pathologie disponibles.</Text>
-                <NativeButton title="Triage IA" onPress={() => (navigation as any).navigate('HospitalAITriage')} style={{ marginTop: 12, backgroundColor: '#F59E0B' }} />
+                <NativeButton title="Triage IA" onPress={() => (navigation as any).navigate('HospitalAIRecommendations')} style={{ marginTop: 12, backgroundColor: '#F59E0B' }} />
             </View>
         </ScrollView>
     );

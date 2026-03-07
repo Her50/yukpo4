@@ -75,13 +75,7 @@ pub async fn list_upcoming_sessions(
         .feature_flags
         .is_enabled(crate::config::feature_flags::KnownFlag::ConnectorsLivekit)
     {
-        return Ok(Json(json!({
-            "success": false,
-            "error": {
-                "code": "feature_disabled",
-                "message": "La fonctionnalité Live / LiveKit est désactivée sur cet environnement."
-            }
-        })));
+        log::info!("Feature flag connectors_livekit non activé, listing des lives autorisé en mode fallback");
     }
     let limit = query.limit.unwrap_or(10);
     let sessions = LiveStreamingService::list_upcoming_sessions(&state.pg, limit).await?;
@@ -101,9 +95,7 @@ pub async fn start_live_session(
         .feature_flags
         .is_enabled(crate::config::feature_flags::KnownFlag::ConnectorsLivekit)
     {
-        return Err(AppError::Forbidden(
-            "Création de live désactivée sur cet environnement.".into(),
-        ));
+        log::info!("Feature flag connectors_livekit non activé, création de live autorisée en mode fallback SRS");
     }
     let response = LiveStreamingService::create_session(state.clone(), payload).await?;
 

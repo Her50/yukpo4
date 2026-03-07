@@ -14,6 +14,8 @@ import {
 import SafeIcon from '../../components/SafeIcon';
 import { NativeButton } from '../../components/SafeNativeDesign';
 import { SafeNativeView } from '../../components/SafeNativeView';
+import { useAuth } from '../../contexts/AuthContext';
+import { userApi } from '../../services/api';
 import { immobilierService } from '../../services/immobilierService';
 import { modernColors } from '../../theme/modernTheme';
 
@@ -26,6 +28,7 @@ type RouteParams = {
 const HotelBookingPaymentScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute<RouteProp<{ params: RouteParams }, 'params'>>();
+    const { user } = useAuth();
     const reservationId = route.params?.reservationId;
     const montantTotal = route.params?.montantTotal;
     const propertyName = route.params?.propertyName || 'Bien';
@@ -34,6 +37,20 @@ const HotelBookingPaymentScreen: React.FC = () => {
     const [paymentMethod, setPaymentMethod] = useState<string>('mobile_money');
     const [loading, setLoading] = useState(false);
     const [devise, setDevise] = useState('FCFA');
+    const [userBalance, setUserBalance] = useState<number>(user?.credits || 0);
+
+    // Charger le solde utilisateur
+    React.useEffect(() => {
+        const loadBalance = async () => {
+            try {
+                const response = await (userApi as any).getTokensBalance();
+                const backendData = (response?.data as any);
+                const balance = backendData?.data?.remaining || backendData?.remaining || user?.credits || 0;
+                setUserBalance(balance);
+            } catch { setUserBalance(user?.credits || 0); }
+        };
+        loadBalance();
+    }, []);
 
     const montantAvance = montantTotal * 0.3; // 30% par défaut
     const montantRestant = montantTotal - montantAvance;
@@ -42,9 +59,27 @@ const HotelBookingPaymentScreen: React.FC = () => {
         return `${(price / 1000).toFixed(0)}K ${devise}`;
     };
 
+    const montantAPayer = paymentType === 'advance' ? montantAvance : montantTotal;
+
     const handlePayment = async () => {
         if (!reservationId) {
             Alert.alert('Erreur', 'ID de réservation manquant');
+            return;
+        }
+
+        // Vérifier le solde avant paiement
+        if (userBalance < montantAPayer) {
+            Alert.alert(
+                'Solde insuffisant',
+                `Votre solde (${userBalance.toLocaleString()} ${devise}) est insuffisant pour ce paiement (${montantAPayer.toLocaleString()} ${devise}). Veuillez recharger votre compte.`,
+                [
+                    { text: 'Annuler', style: 'cancel' },
+                    {
+                        text: 'Recharger',
+                        onPress: () => (navigation as any).navigate('RechargeTokens'),
+                    },
+                ]
+            );
             return;
         }
 
@@ -109,6 +144,25 @@ const HotelBookingPaymentScreen: React.FC = () => {
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
             >
+                {/* Solde utilisateur */}
+                <View style={[styles.section, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
+                    <View>
+                        <Text style={{ fontSize: 13, color: '#6B7280' }}>Votre solde</Text>
+                        <Text style={{ fontSize: 18, fontWeight: '700', color: userBalance >= montantAPayer ? '#10B981' : '#EF4444' }}>
+                            {userBalance.toLocaleString()} {devise}
+                        </Text>
+                    </View>
+                    {userBalance < montantAPayer && (
+                        <TouchableOpacity
+                            style={{ backgroundColor: '#EF4444', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 6 }}
+                            onPress={() => (navigation as any).navigate('RechargeTokens')}
+                        >
+                            <SafeIcon name="wallet" size={16} color="#FFFFFF" />
+                            <Text style={{ color: '#FFFFFF', fontWeight: '600', fontSize: 13 }}>Recharger</Text>
+                        </TouchableOpacity>
+                    )}
+                </View>
+
                 {/* Résumé réservation */}
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>📋 Réservation</Text>

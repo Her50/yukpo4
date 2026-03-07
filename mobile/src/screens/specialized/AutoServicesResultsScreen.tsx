@@ -1,6 +1,6 @@
 // ✅ Écran Résultats Recherche Automobile/Véhicules
 // ✅ AMÉLIORÉ 2026-03-07: Recherche au niveau PRODUIT via /api/auto/search
-// Affiche images véhicule, specs détaillées, tri, filtres actifs, pagination
+// ✅ AMÉLIORÉ 2026-03-07: Communication vendeur (chat, WhatsApp, appel, partage)
 import { useNavigation, useRoute } from '@react-navigation/native';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
@@ -9,16 +9,21 @@ import {
     Dimensions,
     FlatList,
     Image,
+    Linking,
     RefreshControl,
     ScrollView,
+    Share,
     StyleSheet,
     Text,
     TouchableOpacity,
     View,
 } from 'react-native';
+import ProductCommentsSection from '../../components/ProductCommentsSection';
 import SafeIcon from '../../components/SafeIcon';
-import { apiGet } from '../../services/api';
+import { useAuth } from '../../contexts/AuthContext';
+import { apiGet, apiPost } from '../../services/api';
 import { hapticPress } from '../../utils/hapticFeedback';
+import { generateSmartShareLink } from '../../utils/productShareHelper';
 
 const ACCENT_COLOR = '#1E3A5F';
 const ACCENT_LIGHT = '#2563EB';
@@ -46,6 +51,9 @@ interface AutoProduct {
     quartier: string | null;
     distance_km: number | null;
     vendeur_nom: string | null;
+    vendeur_user_id: number | null;
+    vendeur_telephone: string | null;
+    vendeur_whatsapp: string | null;
     created_at: string | null;
 }
 
@@ -67,6 +75,7 @@ const SORT_OPTIONS = [
 const AutoServicesResultsScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
+    const { user } = useAuth();
     const params = route.params as { filters?: any } | undefined;
     const initialFilters = params?.filters || {};
 
@@ -79,6 +88,7 @@ const AutoServicesResultsScreen: React.FC = () => {
     const [hasMore, setHasMore] = useState(true);
     const [currentSort, setCurrentSort] = useState(initialFilters.sort || 'recent');
     const [showSortMenu, setShowSortMenu] = useState(false);
+    const [expandedComments, setExpandedComments] = useState<Set<number>>(new Set());
 
     const loadResults = useCallback(async (pageNum: number = 0, append: boolean = false) => {
         try {
@@ -275,13 +285,217 @@ const AutoServicesResultsScreen: React.FC = () => {
                     <View style={styles.cardBottom}>
                         <Text style={styles.priceText}>{formatPrice(item.prix, item.devise)}</Text>
                         {item.vendeur_nom && (
-                            <Text style={styles.vendeurText} numberOfLines={1}>{item.vendeur_nom}</Text>
+                            <TouchableOpacity
+                                onPress={() => {
+                                    if (item.vendeur_user_id) {
+                                        (navigation as any).navigate('PrestataireBoutique', {
+                                            userId: item.vendeur_user_id,
+                                            user_id: item.vendeur_user_id,
+                                            prestataireName: item.vendeur_nom,
+                                            name: item.vendeur_nom,
+                                        });
+                                    }
+                                }}
+                                activeOpacity={0.7}
+                            >
+                                <View style={styles.vendeurRow}>
+                                    <SafeIcon name="store" size={10} color="#6366F1" />
+                                    <Text style={styles.vendeurText} numberOfLines={1}>{item.vendeur_nom}</Text>
+                                </View>
+                            </TouchableOpacity>
                         )}
+                    </View>
+
+                    {/* ✅ Section avis/commentaires pour éviter les fraudes */}
+                    <TouchableOpacity
+                        style={styles.reviewsToggle}
+                        onPress={() => {
+                            hapticPress();
+                            setExpandedComments(prev => {
+                                const next = new Set(prev);
+                                if (next.has(item.product_id)) next.delete(item.product_id);
+                                else next.add(item.product_id);
+                                return next;
+                            });
+                        }}
+                        activeOpacity={0.7}
+                    >
+                        <SafeIcon name="star" size={14} color="#F59E0B" />
+                        <Text style={styles.reviewsToggleText}>
+                            {expandedComments.has(item.product_id) ? 'Masquer les avis' : 'Voir les avis & commentaires'}
+                        </Text>
+                        <SafeIcon
+                            name={expandedComments.has(item.product_id) ? 'chevron-up' : 'chevron-down'}
+                            size={14}
+                            color="#94A3B8"
+                        />
+                    </TouchableOpacity>
+
+                    {expandedComments.has(item.product_id) && (
+                        <View style={styles.commentsContainer}>
+                            <ProductCommentsSection
+                                serviceId={item.service_id}
+                                productIndex={item.product_index}
+                                serviceTitle={item.nom}
+                                onOpenChat={(userId, userName, userAvatar) => {
+                                    if (!user) {
+                                        Alert.alert('Connexion requise', 'Veuillez vous connecter pour discuter', [
+                                            { text: 'Annuler', style: 'cancel' },
+                                            { text: 'Se connecter', onPress: () => (navigation as any).navigate('Login') },
+                                        ]);
+                                        return;
+                                    }
+                                    (navigation as any).navigate('ServiceDetail', {
+                                        serviceId: item.service_id,
+                                        openChat: true,
+                                    });
+                                }}
+                                mode="inline"
+                                compact={true}
+                                displayLimit={3}
+                            />
+                        </View>
+                    )}
+
+                    {/* ✅ Boutons de communication vendeur */}
+                    <View style={styles.actionButtonsRow}>
+                        {/* Chat in-app */}
+                        <TouchableOpacity
+                            style={styles.actionBtn}
+                            onPress={() => handleChat(item)}
+                            activeOpacity={0.7}
+                        >
+                            <SafeIcon name="message-circle" size={16} color={ACCENT_LIGHT} />
+                            <Text style={styles.actionBtnText}>Chat</Text>
+                        </TouchableOpacity>
+
+                        {/* WhatsApp */}
+                        {item.vendeur_whatsapp && (
+                            <TouchableOpacity
+                                style={[styles.actionBtn, styles.actionBtnWhatsapp]}
+                                onPress={() => handleWhatsApp(item)}
+                                activeOpacity={0.7}
+                            >
+                                <SafeIcon name="message-circle" size={16} color="#25D366" />
+                                <Text style={[styles.actionBtnText, { color: '#25D366' }]}>WhatsApp</Text>
+                            </TouchableOpacity>
+                        )}
+
+                        {/* Appeler */}
+                        {item.vendeur_telephone && (
+                            <TouchableOpacity
+                                style={styles.actionBtn}
+                                onPress={() => handleCall(item)}
+                                activeOpacity={0.7}
+                            >
+                                <SafeIcon name="phone" size={16} color="#3B82F6" />
+                                <Text style={[styles.actionBtnText, { color: '#3B82F6' }]}>Appeler</Text>
+                            </TouchableOpacity>
+                        )}
+
+                        {/* Partager */}
+                        <TouchableOpacity
+                            style={styles.actionBtn}
+                            onPress={() => handleShare(item)}
+                            activeOpacity={0.7}
+                        >
+                            <SafeIcon name="share-2" size={16} color="#8B5CF6" />
+                            <Text style={[styles.actionBtnText, { color: '#8B5CF6' }]}>Partager</Text>
+                        </TouchableOpacity>
                     </View>
                 </View>
             </TouchableOpacity>
         );
     };
+
+    // ===== Communication handlers =====
+
+    const handleChat = useCallback((item: AutoProduct) => {
+        if (!user) {
+            Alert.alert('Connexion requise', 'Veuillez vous connecter pour contacter le vendeur', [
+                { text: 'Annuler', style: 'cancel' },
+                { text: 'Se connecter', onPress: () => (navigation as any).navigate('Login') },
+            ]);
+            return;
+        }
+        // Naviguer vers le service detail avec ouverture chat
+        (navigation as any).navigate('ServiceDetail', {
+            serviceId: item.service_id,
+            openChat: true,
+        });
+    }, [user, navigation]);
+
+    const handleWhatsApp = useCallback(async (item: AutoProduct) => {
+        if (!item.vendeur_whatsapp) return;
+        try {
+            const phoneNumber = item.vendeur_whatsapp.replace(/\s+/g, '');
+            const message = `Bonjour, je suis intéressé par votre véhicule "${item.nom}"${item.prix ? ` à ${item.prix.toLocaleString('fr-FR')} ${item.devise}` : ''}. Est-il toujours disponible ?`;
+            const whatsappUrl = `whatsapp://send?phone=${phoneNumber}&text=${encodeURIComponent(message)}`;
+            const canOpen = await Linking.canOpenURL(whatsappUrl);
+            if (canOpen) {
+                await Linking.openURL(whatsappUrl);
+                // Notification au vendeur
+                if (user && item.vendeur_user_id) {
+                    apiPost('/api/notifications', {
+                        user_id: item.vendeur_user_id,
+                        title: `📱 ${user.name} vous contacte sur WhatsApp`,
+                        message: `Au sujet de: ${item.nom}`,
+                        type: 'whatsapp_contact',
+                        priority: 'high',
+                    }).catch(() => { });
+                }
+            } else {
+                Alert.alert('Erreur', "WhatsApp n'est pas installé sur cet appareil");
+            }
+        } catch (error) {
+            console.error('[AutoResults] Erreur WhatsApp:', error);
+            Alert.alert('Erreur', "Impossible d'ouvrir WhatsApp");
+        }
+    }, [user]);
+
+    const handleCall = useCallback(async (item: AutoProduct) => {
+        if (!item.vendeur_telephone) return;
+        try {
+            const phoneNumber = item.vendeur_telephone.replace(/\s+/g, '');
+            const telUrl = `tel:${phoneNumber}`;
+            const canOpen = await Linking.canOpenURL(telUrl);
+            if (canOpen) {
+                await Linking.openURL(telUrl);
+                // Notification au vendeur
+                if (user && item.vendeur_user_id) {
+                    apiPost('/api/notifications', {
+                        user_id: item.vendeur_user_id,
+                        title: `📞 ${user.name} souhaite vous appeler`,
+                        message: `Au sujet de: ${item.nom}`,
+                        type: 'phone_call',
+                        priority: 'high',
+                    }).catch(() => { });
+                }
+            } else {
+                Alert.alert('Erreur', "Impossible d'ouvrir le téléphone");
+            }
+        } catch (error) {
+            console.error('[AutoResults] Erreur appel:', error);
+        }
+    }, [user]);
+
+    const handleShare = useCallback(async (item: AutoProduct) => {
+        try {
+            const productName = item.nom || 'Véhicule';
+            const specs = [item.marque, item.modele, item.annee ? `${item.annee}` : null, item.carburant].filter(Boolean).join(' · ');
+            const priceStr = item.prix ? `${item.prix.toLocaleString('fr-FR')} ${item.devise}` : 'Prix sur demande';
+            const smartLink = generateSmartShareLink(item.product_index, item.service_id);
+            const message = `🚗 ${productName}\n${specs ? `📋 ${specs}\n` : ''}💰 ${priceStr}\n\n${smartLink}`;
+
+            await Share.share({
+                message,
+                title: productName,
+                url: smartLink,
+            });
+        } catch (error) {
+            console.error('[AutoResults] Erreur partage:', error);
+        }
+    }, []);
 
     const currentSortLabel = SORT_OPTIONS.find(s => s.key === currentSort)?.label || 'Récent';
 
@@ -519,7 +733,26 @@ const styles = StyleSheet.create({
         marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: '#F1F5F9',
     },
     priceText: { fontSize: 17, fontWeight: '800', color: ACCENT_COLOR },
-    vendeurText: { fontSize: 12, color: '#94A3B8', maxWidth: 120 },
+    vendeurRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+    vendeurText: { fontSize: 12, color: '#6366F1', maxWidth: 120, fontWeight: '500' },
+    actionButtonsRow: {
+        flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10,
+        paddingTop: 10, borderTopWidth: 1, borderTopColor: '#F1F5F9',
+    },
+    actionBtn: {
+        flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4,
+        paddingVertical: 8, borderRadius: 8, backgroundColor: '#F1F5F9',
+    },
+    actionBtnWhatsapp: { backgroundColor: '#F0FFF4' },
+    actionBtnText: { fontSize: 11, fontWeight: '600', color: ACCENT_LIGHT },
+    reviewsToggle: {
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+        paddingVertical: 10, marginTop: 10, borderTopWidth: 1, borderTopColor: '#F1F5F9',
+    },
+    reviewsToggleText: { fontSize: 13, color: '#64748B', fontWeight: '500' },
+    commentsContainer: {
+        marginTop: 4, paddingTop: 4, borderTopWidth: 1, borderTopColor: '#F1F5F9',
+    },
     loadingMoreContainer: {
         flexDirection: 'row', justifyContent: 'center', alignItems: 'center', padding: 16, gap: 8,
     },

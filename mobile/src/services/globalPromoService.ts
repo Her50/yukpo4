@@ -101,22 +101,28 @@ export const fetchGlobalPromoCatalog = async (params?: {
 
         const response = await apiGet<ApiResponse<GlobalPromoCatalogPage>>(url);
         const payload = response.data || response;
-        
+
         // ✅ CORRIGÉ: Gestion robuste des erreurs et réponses invalides
         if (payload && typeof payload === 'object') {
             if ('success' in payload && payload.success === false) {
-                const errorMessage = payload.error || payload.message || 'Erreur lors de la récupération du catalogue';
+                // ✅ CORRIGÉ: payload.error peut être un objet {code, message} ou une string
+                let errorMessage: string;
+                if (typeof payload.error === 'object' && payload.error !== null) {
+                    errorMessage = (payload.error as any).message || (payload.error as any).code || JSON.stringify(payload.error);
+                } else {
+                    errorMessage = (payload.error as string) || payload.message || 'Erreur lors de la récupération du catalogue';
+                }
                 throw new Error(errorMessage);
             }
             if ('data' in payload && payload.data) {
-                return payload.data;
+                return payload.data as GlobalPromoCatalogPage;
             }
             // Si payload est directement un GlobalPromoCatalogPage
             if ('items' in payload && Array.isArray(payload.items)) {
                 return payload as GlobalPromoCatalogPage;
             }
         }
-        
+
         // Fallback: retourner une page vide
         return { items: [], page: 1, pageSize: 24, total: 0, hasMore: false };
     } catch (error: any) {
@@ -136,11 +142,38 @@ export const fetchGlobalPromoEvents = async (includeArchived: boolean = false): 
         const response = await apiGet<ApiResponse<GlobalPromoEvent[]>>(`/api/global-promos/events${query}`);
         const payload = response.data || response;
         if (payload.success === false) {
-            throw new Error(payload.error || payload.message || 'Erreur lors de la récupération des événements');
+            const errMsg = typeof payload.error === 'object' && payload.error !== null
+                ? (payload.error as any).message || JSON.stringify(payload.error)
+                : (payload.error as string) || payload.message || 'Erreur lors de la récupération des événements';
+            throw new Error(errMsg);
         }
-        return payload.data || [];
+        return (payload.data || []) as GlobalPromoEvent[];
     } catch (error: any) {
         console.error('[globalPromoService] Erreur fetchGlobalPromoEvents:', error);
+        throw error;
+    }
+};
+
+/**
+ * Récupère les événements et entrées du prestataire connecté (authentifié)
+ */
+export const fetchMyGlobalPromoEvents = async (): Promise<{ events: any[]; entries: any[] }> => {
+    try {
+        const response = await apiGet<any>('/api/me/global-promos/events');
+        const payload = response.data || response;
+        if (payload.success === false) {
+            const errMsg = typeof payload.error === 'object' && payload.error !== null
+                ? (payload.error as any).message || JSON.stringify(payload.error)
+                : (payload.error as string) || payload.message || 'Erreur lors de la récupération';
+            throw new Error(errMsg);
+        }
+        const data = payload.data || payload;
+        return {
+            events: Array.isArray(data.events) ? data.events : [],
+            entries: Array.isArray(data.entries) ? data.entries : [],
+        };
+    } catch (error: any) {
+        console.error('[globalPromoService] Erreur fetchMyGlobalPromoEvents:', error);
         throw error;
     }
 };
@@ -155,23 +188,36 @@ export const submitGlobalPromoEntry = async (
         discountPercentage?: number;
         promoPriceCfa?: number;
         stockCap?: number;
-        availability: 'online' | 'live' | 'both';
+        availability?: 'online' | 'live' | 'both';
         metadata?: Record<string, unknown>;
     }
 ): Promise<GlobalPromoEntry> => {
     try {
+        // ✅ CORRIGÉ: Convertir camelCase → snake_case pour le backend Rust
+        const backendPayload: Record<string, any> = {
+            service_id: payload.serviceId,
+            availability: payload.availability || 'online',
+        };
+        if (payload.discountPercentage !== undefined) backendPayload.discount_percentage = payload.discountPercentage;
+        if (payload.promoPriceCfa !== undefined) backendPayload.promo_price_cfa = payload.promoPriceCfa;
+        if (payload.stockCap !== undefined) backendPayload.stock_cap = payload.stockCap;
+        if (payload.metadata !== undefined) backendPayload.metadata = payload.metadata;
+
         const response = await apiPost<ApiResponse<GlobalPromoEntry>>(
             `/api/me/global-promos/events/${eventId}/entries`,
-            payload
+            backendPayload
         );
         const payloadResponse = response.data || response;
         if (payloadResponse.success === false) {
-            throw new Error(payloadResponse.error || payloadResponse.message || 'Erreur lors de la soumission');
+            const errMsg = typeof payloadResponse.error === 'object' && payloadResponse.error !== null
+                ? (payloadResponse.error as any).message || JSON.stringify(payloadResponse.error)
+                : (payloadResponse.error as string) || payloadResponse.message || 'Erreur lors de la soumission';
+            throw new Error(errMsg);
         }
         if (!payloadResponse.data) {
             throw new Error('Réponse invalide');
         }
-        return payloadResponse.data;
+        return payloadResponse.data as GlobalPromoEntry;
     } catch (error: any) {
         console.error('[globalPromoService] Erreur submitGlobalPromoEntry:', error);
         throw error;

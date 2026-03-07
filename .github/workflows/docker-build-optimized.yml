@@ -545,6 +545,7 @@ jobs:
                 "LIVEKIT_INGRESS_ROOM": "live-events",
                 "LIVE_FALLBACK_ENABLED": "true",
                 "LIVE_RECORDING_ENABLED": "true",
+                "FEATURE_FLAG_CONNECTORS_LIVEKIT": "true",
 
                 "EMAIL_ENABLED": "true",
                 "EMAIL_PROVIDER": "sendgrid",
@@ -607,6 +608,7 @@ jobs:
             "LIVEKIT_INGRESS_REGION": "europe-west1",
             "LIVE_FALLBACK_ENABLED": "true",
             "LIVE_RECORDING_ENABLED": "true",
+            "FEATURE_FLAG_CONNECTORS_LIVEKIT": "true",
             "S3_BUCKET": "yukpo-project-yukpo-backend-media",
             "S3_REGION": "europe-west1",
             "S3_ENDPOINT": "https://storage.googleapis.com",

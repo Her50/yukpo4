@@ -457,7 +457,7 @@ const ServicesScreen: React.FC = () => {
           setSortBy(sortOptions[nextIndex] as any);
         }}
       >
-        <SafeIcon name="sort" size={16} color={modernColors.primary} />
+        <SafeIcon name="arrow-up-down" size={16} color={modernColors.primary} />
         <Text style={styles.sortButtonText}>
           Trier par: {sortBy === 'date' ? 'Date' :
             sortBy === 'views' ? 'Vues' :

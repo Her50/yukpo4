@@ -1,24 +1,24 @@
 // ✅ Écran de recherche de laboratoires (Mobile) - VERSION REFONDUE
-import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState } from 'react';
 import {
-    Alert,
+    ScrollView,
     StyleSheet,
     Switch,
     Text,
     TouchableOpacity,
-    View,
+    View
 } from 'react-native';
 import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
+import { LocationObject } from '../../components/LocationSelector';
 import ModernGPSModal from '../../components/ModernGPSModal';
-import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeInput } from '../../components/SafeNativeDesign';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useLocation } from '../../contexts/LocationContext';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
-import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 
 interface LaboratoireSearchFilters {
     ville?: string;
@@ -86,7 +86,7 @@ const LaboratoireSearchScreen: React.FC = () => {
             if (rdvEnLigne) filters.rdv_en_ligne = true;
             if (availableOnly) filters.available_only = true;
             // Navigation vers recherche d'examens
-            navigation.navigate('LaboratoryExaminationsList' as never, { filters } as never);
+            navigation.navigate('LaboratoireList' as never, { filters } as never);
             return;
         }
 
@@ -107,7 +107,7 @@ const LaboratoireSearchScreen: React.FC = () => {
 
     const typesEtablissement = ['Laboratoire', 'Centre d\'imagerie', 'Les deux'];
     const prestationsAnalyses = [
-        'Biologie', 'Hématologie', 'Biochimie', 'Microbiologie', 
+        'Biologie', 'Hématologie', 'Biochimie', 'Microbiologie',
         'Sérologie', 'Immunologie', 'Radiologie', 'Échographie'
     ];
     // ✅ NOUVEAU: Types d'examens détaillés
@@ -196,7 +196,7 @@ const LaboratoireSearchScreen: React.FC = () => {
                     style={styles.myExaminationsBanner}
                     onPress={() => {
                         hapticPress();
-                        navigation.navigate('MyExaminations' as never);
+                        navigation.navigate('MyLabExaminations' as never);
                     }}
                 >
                     <LinearGradient
@@ -250,7 +250,7 @@ const LaboratoireSearchScreen: React.FC = () => {
                     <Text style={styles.sectionDescription}>
                         Recherchez un type d'examen médical spécifique
                     </Text>
-                    
+
                     {/* Type d'examen recherché (PRIORITAIRE) */}
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>
@@ -269,7 +269,7 @@ const LaboratoireSearchScreen: React.FC = () => {
                     <Text style={styles.sectionDescription}>
                         Ajoutez votre position pour trouver des examens à proximité
                     </Text>
-                    
+
                     {/* GPS */}
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>
@@ -447,7 +447,7 @@ const LaboratoireSearchScreen: React.FC = () => {
                     {/* Options */}
                     <View style={styles.optionsSection}>
                         <Text style={styles.sectionTitle}>⚙️ Options de recherche</Text>
-                        
+
                         <View style={styles.optionCard}>
                             <View style={styles.optionContent}>
                                 <View style={styles.optionIconContainer}>

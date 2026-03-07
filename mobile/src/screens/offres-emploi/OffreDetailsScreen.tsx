@@ -152,7 +152,7 @@ const OffreDetailsScreen: React.FC = () => {
             const response = await offreEmploiService.createCandidature(params.offreId);
             if (response.success) {
                 Alert.alert('Succès', 'Candidature envoyée avec succès ! Votre CV a été transmis à l\'employeur.', [
-                    { text: 'OK', onPress: () => (navigation as any).navigate('MesCandidatures') },
+                    { text: 'OK', onPress: () => navigation.goBack() },
                 ]);
             } else {
                 Alert.alert('Erreur', response.message || 'Erreur lors de la candidature');

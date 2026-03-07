@@ -1,6 +1,6 @@
 // ✅ Écran de recherche de taxis (Mobile) - VERSION REFONDUE
-import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState } from 'react';
 import {
     Alert,
@@ -11,14 +11,13 @@ import {
     View
 } from 'react-native';
 import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
+import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 import ModernGPSModal from '../../components/ModernGPSModal';
-import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useLocation } from '../../contexts/LocationContext';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
-import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 
 interface TaxiSearchFilters {
     zone?: string;
@@ -70,7 +69,7 @@ const TaxiSearchScreen: React.FC = () => {
         const lieuStr = typeof lieu === 'string' ? lieu : (lieu as LocationObject)?.place_name || (lieu as LocationObject)?.raw || '';
         const villeStr = typeof lieu === 'string' ? '' : (lieu as LocationObject)?.components?.ville || '';
         const quartierStr = typeof lieu === 'string' ? '' : (lieu as LocationObject)?.components?.quartier || '';
-        
+
         if (!lieuStr.trim() && !zone.trim() && !gpsData) {
             Alert.alert('Erreur', 'Veuillez renseigner un lieu, une zone ou sélectionner un point GPS');
             return;
@@ -171,7 +170,7 @@ const TaxiSearchScreen: React.FC = () => {
                     style={styles.aiFeaturesBanner}
                     onPress={() => {
                         hapticPress();
-                        navigation.navigate('TaxiAIFeatures' as never);
+                        navigation.navigate('TaxiIntelligentSearch' as never);
                     }}
                 >
                     <LinearGradient
@@ -222,7 +221,7 @@ const TaxiSearchScreen: React.FC = () => {
                 {/* Formulaire de recherche */}
                 <View style={styles.searchFormCard}>
                     <Text style={styles.sectionTitle}>📍 Localisation</Text>
-                    
+
                     {/* Lieu (universel : ville, quartier, établissement, point GPS) */}
                     <View style={styles.inputGroup}>
                         <LocationSelector
@@ -344,7 +343,7 @@ const TaxiSearchScreen: React.FC = () => {
                     {/* Options */}
                     <View style={styles.optionsSection}>
                         <Text style={styles.sectionTitle}>⚙️ Options de recherche</Text>
-                        
+
                         <View style={styles.optionCard}>
                             <View style={styles.optionContent}>
                                 <View style={styles.optionIconContainer}>

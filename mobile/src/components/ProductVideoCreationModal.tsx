@@ -1780,6 +1780,21 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             if (estimation) {
                 setCostEstimation(estimation);
                 setShowCostEstimation(true);
+                // ✅ Vérifier si le solde est suffisant
+                if (estimation.affordable === false) {
+                    const balanceStr = estimation.current_balance_fcfa != null
+                        ? `${Math.round(estimation.current_balance_fcfa).toLocaleString()} FCFA`
+                        : 'inconnu';
+                    const costStr = `${Math.round(estimation.total_cost_local).toLocaleString()} ${estimation.local_currency}`;
+                    Alert.alert(
+                        '💸 Solde insuffisant',
+                        `Coût estimé : ${costStr}\nVotre solde : ${balanceStr}\n\nVeuillez recharger votre compte pour générer cette vidéo.`,
+                        [
+                            { text: 'Annuler', style: 'cancel' },
+                            { text: 'Recharger', onPress: () => navigation?.navigate('RechargeTokens' as never) },
+                        ]
+                    );
+                }
             } else {
                 Alert.alert('Estimation impossible', 'Impossible d\'estimer le coût pour le moment. Réessayez plus tard.');
             }
@@ -1787,13 +1802,28 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             console.error('[ProductVideoCreationModal] Erreur estimation coût:', error);
             let message = error?.message || 'Erreur serveur.';
 
-            if (error?.message?.includes('network') || error?.message?.includes('fetch')) {
+            // ✅ Détecter erreur solde insuffisant (402)
+            const isBalanceError = error?.response?.status === 402 ||
+                (message && (message.toLowerCase().includes('solde insuffisant') || message.toLowerCase().includes('insufficient')));
+
+            if (isBalanceError) {
+                Alert.alert(
+                    '💸 Solde insuffisant',
+                    'Votre solde est insuffisant pour générer cette vidéo. Veuillez recharger votre compte.',
+                    [
+                        { text: 'Annuler', style: 'cancel' },
+                        { text: 'Recharger', onPress: () => navigation?.navigate('RechargeTokens' as never) },
+                    ]
+                );
+            } else if (error?.message?.includes('network') || error?.message?.includes('fetch')) {
                 message = 'Erreur de connexion. Vérifiez votre accès Internet.';
+                Alert.alert('Erreur d\'estimation', message);
             } else if (error?.message?.includes('timeout')) {
                 message = 'Le délai d\'attente a expiré. Réessayez.';
+                Alert.alert('Erreur d\'estimation', message);
+            } else {
+                Alert.alert('Erreur d\'estimation', message);
             }
-
-            Alert.alert('Erreur d\'estimation', message);
         } finally {
             setCostLoading(false);
         }
@@ -1934,15 +1964,15 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             setSelectedLinkedSessions([]);
             setCompletedSteps(new Set());
         } else {
-            // ✅ NOUVEAU: Tracking UX (depuis Wizard)
+            // ✅ NOUVEAU: Tracking UX (depuis Wizard) - uniquement à l'ouverture
             trackUxEvent('wizard_open', {
                 device: 'mobile',
                 serviceId: selectedProduct?.serviceId ? Number(selectedProduct.serviceId) : undefined,
                 productIndex: selectedProduct?.product_index,
-                step: activeStep,
+                step: 1,
             });
         }
-    }, [visible, selectedProduct, activeStep]);
+    }, [visible, selectedProduct]);
 
     // ✅ CORRIGÉ 2025-12-24: Scroller vers le haut automatiquement lors du changement d'étape
     useEffect(() => {
@@ -2382,44 +2412,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
     }, [productMedia, serviceMedia, selectedProduct, subtitleLang, voiceoverLang]);
 
     useEffect(() => {
-        if (!visible) {
-            setSelectedProduct(primaryProduct);
-            setSelectedRelatedProducts(new Set());
-            setSelectedMediaIds(new Set());
-            setStylePreset('tiktok');
-            setDuration('28');
-            setScriptNotes('');
-            setIncludePrice(true);
-            setIncludeContact(true);
-            setUseProductGallery(true);
-            setUseMediatechLibrary(true);
-            setIncludePubliciteAssets(true);
-            setPublishToChat(true);
-            setPublishToProductCard(true);
-            setMusicMode('pulse');
-            setMusicVolume('0.28');
-            setVoiceoverEnabled(false);
-            setVoiceoverScript('');
-            setVoiceoverLang('fr');
-            setSubtitleLang('fr');
-            setGenerateSquareVariant(true);
-            setGenerateLandscapeVariant(false);
-            setSelectedMusicTrackId(null);
-            setAvailableAudioTracks([]);
-            setSelectedChannels(new Set(['chat', 'product']));
-            setBriefVariants([]);
-            setVariantPickerVisible(false);
-            setStyleSuggestion(null);
-            setSelectedEffects(new Set());
-            setSelectedTransitions(new Set());
-            setSelectedOverlayTips(new Set());
-            setColorPalette('');
-            setStyleMusicHint('');
-            setMediaAnalysis({});
-            setDistributionPlan(null);
-            return;
-        }
-
+        // ✅ CORRIGÉ: Réinitialisation commune (dédupliquée)
         setSelectedProduct(primaryProduct);
         setSelectedRelatedProducts(new Set());
         setSelectedMediaIds(new Set());
@@ -2444,6 +2437,20 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         setSelectedMusicTrackId(null);
         setAvailableAudioTracks([]);
         setSelectedChannels(new Set(['chat', 'product']));
+
+        if (!visible) {
+            // Réinitialisation supplémentaire à la fermeture
+            setBriefVariants([]);
+            setVariantPickerVisible(false);
+            setStyleSuggestion(null);
+            setSelectedEffects(new Set());
+            setSelectedTransitions(new Set());
+            setSelectedOverlayTips(new Set());
+            setColorPalette('');
+            setStyleMusicHint('');
+            setMediaAnalysis({});
+            setDistributionPlan(null);
+        }
     }, [visible, primaryProduct]);
 
     useEffect(() => {
@@ -3013,6 +3020,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         // ✅ ÉTAPE 1 NETTOYÉE : Sélection produit + Configuration livraison uniquement
         return (
             <>
+                {renderStepTip(1)}
                 {renderProductSelection()}
 
                 {/* ✅ Configuration de livraison */}
@@ -3096,21 +3104,52 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         );
     };
 
+    const renderStepTip = (step: ModalStep) => {
+        const tips: Record<number, { icon: string; text: string }> = {
+            1: { icon: 'package', text: 'Choisissez le produit vedette de votre vidéo. Vous pourrez ajouter des produits complémentaires.' },
+            2: { icon: 'image', text: 'Plus vous ajoutez de médias de qualité, plus la vidéo sera professionnelle. Astuce : 4 à 8 images fonctionnent le mieux.' },
+            3: { icon: 'palette', text: 'Le style définit l\'ambiance visuelle. TikTok Boost est idéal pour les réseaux sociaux, Ciné Premium pour les produits haut de gamme.' },
+            4: { icon: 'file-text', text: 'Chaque ligne du script = une scène. Soyez concis et percutant. L\'IA peut vous aider à rédiger un script optimisé.' },
+            5: { icon: 'headphones', text: 'La musique augmente l\'engagement de 80%. La voix off est idéale pour les vidéos explicatives.' },
+            6: { icon: 'check-circle', text: 'Vérifiez votre récapitulatif et choisissez vos canaux de diffusion. Tout est prêt !' },
+        };
+        const tip = tips[step];
+        if (!tip) return null;
+        return (
+            <View style={styles.stepTipContainer}>
+                <SafeIcon name={tip.icon as any} size={16} color="#3B82F6" />
+                <Text style={styles.stepTipText}>{tip.text}</Text>
+            </View>
+        );
+    };
+
+    const renderEmptyProductState = (stepName: string) => (
+        <NativeCard style={styles.sectionCard}>
+            <View style={styles.emptyProductState}>
+                <SafeIcon name="alert-circle" size={32} color="#F59E0B" />
+                <Text style={styles.emptyProductTitle}>Produit requis</Text>
+                <Text style={styles.emptyProductSubtitle}>
+                    Sélectionnez un produit à l'étape 1 avant d'accéder à « {stepName} ».
+                </Text>
+                <NativeButton
+                    title="← Retour à l'étape 1"
+                    variant="outline"
+                    size="small"
+                    onPress={() => setActiveStep(1)}
+                />
+            </View>
+        </NativeCard>
+    );
+
     const renderStep2 = () => {
         // Étape 2 : Sélection médias uniquement
         if (!selectedProduct) {
-            return (
-                <NativeCard style={styles.sectionCard}>
-                    <Text style={styles.sectionTitle}>Sélectionnez d'abord un produit</Text>
-                    <Text style={styles.sectionSubtitle}>
-                        Retournez à l'étape 1 pour sélectionner un produit.
-                    </Text>
-                </NativeCard>
-            );
+            return renderEmptyProductState('Sélection des médias');
         }
 
         return (
             <NativeCard style={styles.sectionCard}>
+                {renderStepTip(2)}
                 <View style={styles.sectionHeader}>
                     <Text style={styles.sectionTitle}>📸 Sélection des médias</Text>
                     <TouchableOpacity
@@ -3341,18 +3380,12 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
     const renderStep3 = () => {
         // Étape 3 : Style et effets uniquement
         if (!selectedProduct) {
-            return (
-                <NativeCard style={styles.sectionCard}>
-                    <Text style={styles.sectionTitle}>Sélectionnez d'abord un produit</Text>
-                    <Text style={styles.sectionSubtitle}>
-                        Retournez à l'étape 1 pour sélectionner un produit.
-                    </Text>
-                </NativeCard>
-            );
+            return renderEmptyProductState('Style et effets');
         }
 
         return (
             <NativeCard style={styles.sectionCard}>
+                {renderStepTip(3)}
                 <View style={styles.sectionHeader}>
                     <Text style={styles.sectionTitle}>🎨 Style et effets</Text>
                     <TouchableOpacity
@@ -3502,18 +3535,12 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
     const renderStep4 = () => {
         // Étape 4 : Script et timeline uniquement
         if (!selectedProduct) {
-            return (
-                <NativeCard style={styles.sectionCard}>
-                    <Text style={styles.sectionTitle}>Sélectionnez d'abord un produit</Text>
-                    <Text style={styles.sectionSubtitle}>
-                        Retournez à l'étape 1 pour sélectionner un produit.
-                    </Text>
-                </NativeCard>
-            );
+            return renderEmptyProductState('Script de montage');
         }
 
         return (
             <>
+                {renderStepTip(4)}
                 {/* ✅ Templates Narratifs Serveur (déplacé depuis étape 1) */}
                 {selectedProduct && storyTemplates.length > 0 && (
                     <NativeCard style={styles.sectionCard}>
@@ -3672,17 +3699,56 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     </View>
                     <View style={styles.durationRow}>
                         <Text style={styles.fieldLabel}>Durée cible</Text>
+                        <View style={styles.durationPresetsRow}>
+                            {[
+                                { value: '15', label: '15s', hint: 'Story' },
+                                { value: '28', label: '28s', hint: 'Reels' },
+                                { value: '45', label: '45s', hint: 'TikTok' },
+                                { value: '60', label: '60s', hint: 'YouTube' },
+                            ].map((preset) => {
+                                const isActive = duration === preset.value;
+                                return (
+                                    <TouchableOpacity
+                                        key={preset.value}
+                                        style={[styles.durationPreset, isActive && styles.durationPresetActive]}
+                                        onPress={() => setDuration(preset.value)}
+                                    >
+                                        <Text style={[styles.durationPresetValue, isActive && styles.durationPresetValueActive]}>
+                                            {preset.label}
+                                        </Text>
+                                        <Text style={[styles.durationPresetHint, isActive && styles.durationPresetHintActive]}>
+                                            {preset.hint}
+                                        </Text>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </View>
+                        <View style={styles.durationSliderRow}>
+                            <Text style={styles.durationSliderLabel}>10s</Text>
+                            <View style={styles.durationSliderTrack}>
+                                <View style={[styles.durationSliderFill, { width: `${Math.min(100, Math.max(0, ((Number(duration) || 28) - 10) / 80 * 100))}%` }]} />
+                                <View style={[styles.durationSliderThumb, { left: `${Math.min(100, Math.max(0, ((Number(duration) || 28) - 10) / 80 * 100))}%` }]} />
+                            </View>
+                            <Text style={styles.durationSliderLabel}>90s</Text>
+                        </View>
                         <View style={styles.durationInputRow}>
                             <NativeInput
                                 value={duration}
-                                onChangeText={setDuration}
+                                onChangeText={(val) => {
+                                    const num = parseInt(val, 10);
+                                    if (val === '' || (Number.isFinite(num) && num >= 0 && num <= 90)) {
+                                        setDuration(val);
+                                    }
+                                }}
                                 keyboardType="numeric"
                                 style={styles.durationInput}
                             />
                             <Text style={styles.durationUnit}>secondes</Text>
                         </View>
                         <Text style={styles.durationHint}>
-                            Astuce : 25-35s performe mieux sur les réseaux sociaux.
+                            {Number(duration) >= 25 && Number(duration) <= 35
+                                ? '🎯 Durée optimale pour les réseaux sociaux !'
+                                : 'Astuce : 25-35s performe mieux sur les réseaux sociaux.'}
                         </Text>
                     </View>
                 </NativeCard>
@@ -3938,18 +4004,12 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
     const renderStep5 = () => {
         // Étape 5 : Audio uniquement (musique + voiceover)
         if (!selectedProduct) {
-            return (
-                <NativeCard style={styles.sectionCard}>
-                    <Text style={styles.sectionTitle}>Sélectionnez d'abord un produit</Text>
-                    <Text style={styles.sectionSubtitle}>
-                        Retournez à l'étape 1 pour sélectionner un produit.
-                    </Text>
-                </NativeCard>
-            );
+            return renderEmptyProductState('Audio et musique');
         }
 
         return (
             <>
+                {renderStepTip(5)}
                 <NativeCard style={styles.sectionCard}>
                     <Text style={styles.sectionTitle}>🎵 Ambiance musicale</Text>
                     <Text style={styles.sectionSubtitle}>
@@ -3984,12 +4044,40 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     </View>
                     {musicMode !== 'none' && (
                         <View style={styles.fieldGroup}>
-                            <Text style={styles.fieldLabel}>Volume musique (0.10 - 0.60)</Text>
-                            <NativeInput
-                                value={musicVolume}
-                                onChangeText={setMusicVolume}
-                                keyboardType="decimal-pad"
-                            />
+                            <View style={styles.volumeHeaderRow}>
+                                <Text style={styles.fieldLabel}>Volume musique</Text>
+                                <Text style={styles.volumeValueBadge}>
+                                    {Math.round((Number(musicVolume) || 0.28) * 100)}%
+                                </Text>
+                            </View>
+                            <View style={styles.volumePresetsRow}>
+                                {[
+                                    { value: '0.10', label: 'Discret', icon: 'volume' },
+                                    { value: '0.28', label: 'Normal', icon: 'volume-1' },
+                                    { value: '0.45', label: 'Fort', icon: 'volume-2' },
+                                ].map((preset) => {
+                                    const isActive = musicVolume === preset.value;
+                                    return (
+                                        <TouchableOpacity
+                                            key={preset.value}
+                                            style={[styles.volumePreset, isActive && styles.volumePresetActive]}
+                                            onPress={() => setMusicVolume(preset.value)}
+                                        >
+                                            <SafeIcon name={preset.icon as any} size={16} color={isActive ? '#FFFFFF' : modernColors.primary} />
+                                            <Text style={[styles.volumePresetText, isActive && styles.volumePresetTextActive]}>
+                                                {preset.label}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                            </View>
+                            <View style={styles.volumeSliderRow}>
+                                <SafeIcon name="volume" size={14} color={modernColors.textSecondary} />
+                                <View style={styles.volumeSliderTrack}>
+                                    <View style={[styles.volumeSliderFill, { width: `${Math.min(100, Math.max(0, ((Number(musicVolume) || 0.28) - 0.05) / 0.65 * 100))}%` }]} />
+                                </View>
+                                <SafeIcon name="volume-2" size={14} color={modernColors.textSecondary} />
+                            </View>
                             <View style={styles.audioActionsRow}>
                                 <TouchableOpacity
                                     style={styles.audioImportButton}
@@ -4216,52 +4304,69 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
         // Étape 6 : Publication et distribution
         if (!selectedProduct) {
-            return (
-                <NativeCard style={styles.sectionCard}>
-                    <Text style={styles.sectionTitle}>Sélectionnez d'abord un produit</Text>
-                    <Text style={styles.sectionSubtitle}>
-                        Retournez à l'étape 1 pour sélectionner un produit.
-                    </Text>
-                </NativeCard>
-            );
+            return renderEmptyProductState('Publication');
         }
 
         return (
             <>
-                {/* ✅ ESSENTIEL: Options de publication principales */}
-                <NativeCard style={styles.sectionCard}>
+                {renderStepTip(6)}
+                {/* ✅ NOUVEAU: Récapitulatif visuel avant génération (comme TikTok/Canva) */}
+                <NativeCard style={[styles.sectionCard, styles.recapCard]}>
                     <View style={styles.sectionHeader}>
-                        <Text style={styles.sectionTitle}>📤 Publication</Text>
+                        <Text style={styles.sectionTitle}>📋 Récapitulatif</Text>
                     </View>
-                    <Text style={styles.sectionSubtitle}>
-                        Choisissez où votre vidéo sera automatiquement publiée après sa génération.
-                    </Text>
-                    <View style={styles.toggleRow}>
-                        <View style={styles.toggleText}>
-                            <Text style={styles.toggleLabel}>Envoyer dans le Chat Commerce</Text>
-                            <Text style={styles.toggleDescription}>
-                                Permet à vos prospects de visionner la vidéo directement dans la conversation.
+                    <View style={styles.recapGrid}>
+                        <View style={styles.recapItem}>
+                            <SafeIcon name="package" size={16} color={modernColors.primary} />
+                            <Text style={styles.recapLabel}>Produit</Text>
+                            <Text style={styles.recapValue} numberOfLines={1}>
+                                {normalizeProductName(selectedProduct)}
                             </Text>
                         </View>
-                        <Switch
-                            value={publishToChat}
-                            onValueChange={setPublishToChat}
-                            trackColor={{ true: '#6366F1' }}
-                        />
-                    </View>
-                    <View style={styles.toggleRow}>
-                        <View style={styles.toggleText}>
-                            <Text style={styles.toggleLabel}>Afficher sur la carte produit</Text>
-                            <Text style={styles.toggleDescription}>
-                                Ajoute la vidéo dans la galerie principale du produit (mobile & web).
+                        <View style={styles.recapItem}>
+                            <SafeIcon name="clock" size={16} color="#F59E0B" />
+                            <Text style={styles.recapLabel}>Durée</Text>
+                            <Text style={styles.recapValue}>{duration}s</Text>
+                        </View>
+                        <View style={styles.recapItem}>
+                            <SafeIcon name="film" size={16} color="#8B5CF6" />
+                            <Text style={styles.recapLabel}>Style</Text>
+                            <Text style={styles.recapValue} numberOfLines={1}>
+                                {VIDEO_STYLE_OPTIONS.find(o => o.key === stylePreset)?.label || stylePreset}
                             </Text>
                         </View>
-                        <Switch
-                            value={publishToProductCard}
-                            onValueChange={setPublishToProductCard}
-                            trackColor={{ true: '#6366F1' }}
-                        />
+                        <View style={styles.recapItem}>
+                            <SafeIcon name="image" size={16} color="#10B981" />
+                            <Text style={styles.recapLabel}>Médias</Text>
+                            <Text style={styles.recapValue}>
+                                {selectedMediaIds.size > 0 ? `${selectedMediaIds.size} sélectionné(s)` : 'Auto'}
+                            </Text>
+                        </View>
+                        <View style={styles.recapItem}>
+                            <SafeIcon name="music" size={16} color="#EC4899" />
+                            <Text style={styles.recapLabel}>Audio</Text>
+                            <Text style={styles.recapValue} numberOfLines={1}>
+                                {musicMode === 'none' ? 'Aucun' : MUSIC_MODE_OPTIONS.find(o => o.key === musicMode)?.label || musicMode}
+                                {voiceoverEnabled ? ' + Voix off' : ''}
+                            </Text>
+                        </View>
+                        <View style={styles.recapItem}>
+                            <SafeIcon name="send" size={16} color="#3B82F6" />
+                            <Text style={styles.recapLabel}>Diffusion</Text>
+                            <Text style={styles.recapValue} numberOfLines={1}>
+                                {selectedChannels.size} canal{selectedChannels.size > 1 ? 'ux' : ''}
+                            </Text>
+                        </View>
                     </View>
+                    {scriptNotes.trim().length > 0 && (
+                        <View style={styles.recapScriptPreview}>
+                            <Text style={styles.recapScriptLabel}>Script :</Text>
+                            <Text style={styles.recapScriptText} numberOfLines={2}>
+                                {scriptNotes.trim().split('\n')[0]}
+                                {scriptNotes.trim().split('\n').length > 1 ? ` (+${scriptNotes.trim().split('\n').length - 1} lignes)` : ''}
+                            </Text>
+                        </View>
+                    )}
                 </NativeCard>
 
                 {/* ✅ CORRIGÉ 2025-11-30: Prévisualisation de la timeline générée à l'étape 6 */}
@@ -4280,16 +4385,22 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                     setIsGeneratingTimeline(true);
                                     try {
                                         const availableMedia = [
-                                            ...productMedia.map(m => ({
-                                                id: m.id.toString(),
-                                                url: m.path ? `${config.API_BASE_URL}/${m.path}` : undefined,
-                                                media_type: (m.type || m.media_type || 'image') === 'image' ? 'image' : 'video',
-                                            })),
-                                            ...serviceMedia.map(m => ({
-                                                id: m.id.toString(),
-                                                url: m.path ? `${config.API_BASE_URL}/${m.path}` : undefined,
-                                                media_type: (m.type || m.media_type || 'image') === 'image' ? 'image' : 'video',
-                                            })),
+                                            ...productMedia
+                                                .filter(m => m.path && m.path.trim().length > 0)
+                                                .map(m => ({
+                                                    id: m.id.toString(),
+                                                    url: m.path ? buildMediaUrl(m.path) : undefined,
+                                                    media_type: (m.type || m.media_type || 'image') === 'image' ? 'image' : 'video',
+                                                }))
+                                                .filter(m => m.url && m.url.trim().length > 0),
+                                            ...serviceMedia
+                                                .filter(m => m.path && m.path.trim().length > 0)
+                                                .map(m => ({
+                                                    id: m.id.toString(),
+                                                    url: m.path ? buildMediaUrl(m.path) : undefined,
+                                                    media_type: (m.type || m.media_type || 'image') === 'image' ? 'image' : 'video',
+                                                }))
+                                                .filter(m => m.url && m.url.trim().length > 0),
                                         ];
                                         const selectedBrief = briefVariants[0];
                                         const timelineResponse = await mediaApi.generateVideoTimeline({
@@ -5192,11 +5303,11 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                         style: 'cancel',
                     },
                     {
-                        text: isAffordable ? 'Confirmer et générer' : 'Recharger des tokens',
+                        text: isAffordable ? 'Confirmer et générer' : '💳 Recharger',
                         onPress: async () => {
                             if (!isAffordable) {
-                                // Rediriger vers la page de recharge
-                                Alert.alert('Solde insuffisant', 'Veuillez recharger vos tokens avant de générer la vidéo.');
+                                // ✅ Naviguer vers l'écran de recharge de tokens
+                                navigation?.navigate('RechargeTokens' as never);
                                 return;
                             }
                             // Continuer avec la génération
@@ -5210,11 +5321,27 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             setCostLoading(false);
             console.error('[ProductVideoCreationModal] Erreur estimation coût:', error);
 
+            // ✅ Détecter erreur solde insuffisant (402)
+            const msg = error?.message?.toLowerCase() || '';
+            const isBalanceError = error?.response?.status === 402 ||
+                msg.includes('solde insuffisant') || msg.includes('insufficient');
+
+            if (isBalanceError) {
+                Alert.alert(
+                    '💸 Solde insuffisant',
+                    'Votre solde est insuffisant pour générer cette vidéo. Veuillez recharger votre compte.',
+                    [
+                        { text: 'Annuler', style: 'cancel' },
+                        { text: 'Recharger', onPress: () => { onClose(); navigation?.navigate('RechargeTokens' as never); } },
+                    ]
+                );
+                return;
+            }
+
             // ✅ CORRIGÉ: Messages d'erreur améliorés
             let errorMessage = 'Erreur lors de l\'estimation du coût.';
 
             if (error?.message) {
-                const msg = error.message.toLowerCase();
                 if (msg.includes('500') || msg.includes('internal') || msg.includes('erreur 500')) {
                     errorMessage = 'Erreur serveur temporaire.\n\n' +
                         'Le serveur a rencontré une erreur lors de l\'estimation.\n\n' +
@@ -5962,22 +6089,30 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                     Assemblez en 30 secondes une vidéo verticale prête pour TikTok, Reels et votre fiche
                                     produit.
                                 </Text>
-                                {/* ✅ NOUVEAU: Indicateur d'étapes */}
+                                {/* ✅ AMÉLIORÉ: Indicateur d'étapes avec labels */}
                                 <View style={styles.stepIndicator}>
-                                    {/* ✅ NOUVEAU: Indicateur visuel des étapes */}
                                     <View style={styles.stepsIndicator}>
-                                        {[1, 2, 3, 4, 5, 6].map((stepNum) => {
+                                        {([
+                                            { num: 1, label: 'Produit' },
+                                            { num: 2, label: 'Médias' },
+                                            { num: 3, label: 'Style' },
+                                            { num: 4, label: 'Script' },
+                                            { num: 5, label: 'Audio' },
+                                            { num: 6, label: 'Publier' },
+                                        ] as const).map(({ num: stepNum, label }) => {
                                             const isCompleted = completedSteps.has(stepNum as ModalStep);
                                             const isActive = activeStep === stepNum;
 
                                             return (
                                                 <View key={stepNum} style={styles.stepContainer}>
-                                                    <View
+                                                    <TouchableOpacity
                                                         style={[
                                                             styles.stepDot,
                                                             isCompleted && styles.stepDotCompleted,
                                                             isActive && styles.stepDotActive,
                                                         ]}
+                                                        onPress={() => handleStepChange(stepNum as ModalStep)}
+                                                        activeOpacity={0.7}
                                                     >
                                                         <Text
                                                             style={[
@@ -5988,7 +6123,12 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                                         >
                                                             {isCompleted ? '✓' : stepNum}
                                                         </Text>
-                                                    </View>
+                                                    </TouchableOpacity>
+                                                    <Text style={[
+                                                        styles.stepLabel,
+                                                        isActive && styles.stepLabelActive,
+                                                        isCompleted && styles.stepLabelCompleted,
+                                                    ]}>{label}</Text>
                                                     {stepNum < 6 && (
                                                         <View
                                                             style={[
@@ -6102,8 +6242,6 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                     onPress={() => {
                                         if (selectedProduct) {
                                             markStepCompleted(1);
-                                            // Tracking step completion
-                                            markStepCompleted(1);
                                         }
                                         handleStepChange(2);
                                     }}
@@ -6173,18 +6311,38 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                 </View>
                             )}
                             {activeStep === 6 && (
-                                <View style={styles.navigationRow}>
-                                    <NativeButton
-                                        title="Précédent"
-                                        variant="secondary"
-                                        onPress={() => handleStepChange(5)}
-                                    />
-                                    <NativeButton
-                                        title={isSubmitting ? 'Génération en cours...' : 'Générer la vidéo'}
-                                        variant="primary"
-                                        onPress={handleSubmit}
-                                        disabled={isSubmitting || !selectedProduct}
-                                    />
+                                <View style={styles.step6BottomContainer}>
+                                    <View style={styles.generateInfoRow}>
+                                        <View style={styles.generateInfoItem}>
+                                            <SafeIcon name="clock" size={12} color={modernColors.textSecondary} />
+                                            <Text style={styles.generateInfoText}>~{duration}s</Text>
+                                        </View>
+                                        <View style={styles.generateInfoItem}>
+                                            <SafeIcon name="film" size={12} color={modernColors.textSecondary} />
+                                            <Text style={styles.generateInfoText}>
+                                                {VIDEO_STYLE_OPTIONS.find(o => o.key === stylePreset)?.label || stylePreset}
+                                            </Text>
+                                        </View>
+                                        {selectedMediaIds.size > 0 && (
+                                            <View style={styles.generateInfoItem}>
+                                                <SafeIcon name="image" size={12} color={modernColors.textSecondary} />
+                                                <Text style={styles.generateInfoText}>{selectedMediaIds.size} média(s)</Text>
+                                            </View>
+                                        )}
+                                    </View>
+                                    <View style={styles.navigationRow}>
+                                        <NativeButton
+                                            title="Précédent"
+                                            variant="secondary"
+                                            onPress={() => handleStepChange(5)}
+                                        />
+                                        <NativeButton
+                                            title={isSubmitting ? 'Génération en cours...' : '🎬 Générer ma vidéo'}
+                                            variant="primary"
+                                            onPress={handleSubmit}
+                                            disabled={isSubmitting || !selectedProduct}
+                                        />
+                                    </View>
                                 </View>
                             )}
                             {/* ✅ SUPPRIMÉ: Doublon de boutons pour l'étape 4 - Les boutons sont déjà gérés au-dessus */}
@@ -6923,10 +7081,12 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 4,
+        marginBottom: 16,
     },
     stepContainer: {
         flexDirection: 'row',
         alignItems: 'center',
+        position: 'relative',
     },
     stepDot: {
         width: 24,
@@ -6968,6 +7128,26 @@ const styles = StyleSheet.create({
     },
     stepConnectorCompleted: {
         backgroundColor: '#10B981',
+    },
+    stepLabel: {
+        fontSize: 9,
+        color: '#9CA3AF',
+        fontWeight: '500',
+        marginTop: 2,
+        position: 'absolute',
+        top: 26,
+        textAlign: 'center',
+        width: 48,
+        left: -12,
+    },
+    stepLabelActive: {
+        color: '#3B82F6',
+        fontWeight: '700',
+        fontSize: 10,
+    },
+    stepLabelCompleted: {
+        color: '#10B981',
+        fontWeight: '600',
     },
     // ✅ NOUVEAU: Barre de progression globale
     globalProgressContainer: {
@@ -7528,8 +7708,258 @@ const styles = StyleSheet.create({
         fontWeight: '500',
         color: modernColors.text,
     },
+    // ✅ NOUVEAU: Tips contextuels par étape (onboarding style TikTok/Canva)
+    stepTipContainer: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: 10,
+        padding: 12,
+        marginBottom: 14,
+        backgroundColor: '#EFF6FF',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#BFDBFE',
+    },
+    stepTipText: {
+        flex: 1,
+        fontSize: 13,
+        color: '#1E40AF',
+        lineHeight: 18,
+    },
+    // ✅ NOUVEAU: Empty product state amélioré
+    emptyProductState: {
+        alignItems: 'center',
+        paddingVertical: 24,
+        gap: 10,
+    },
+    emptyProductTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#92400E',
+    },
+    emptyProductSubtitle: {
+        fontSize: 13,
+        color: '#B45309',
+        textAlign: 'center',
+        lineHeight: 18,
+        marginBottom: 8,
+    },
+    // ✅ NOUVEAU: Récapitulatif visuel avant génération
+    recapCard: {
+        backgroundColor: '#F8FAFC',
+        borderColor: '#CBD5E1',
+    },
+    recapGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+        marginTop: 8,
+    },
+    recapItem: {
+        width: '47%',
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        paddingVertical: 8,
+        paddingHorizontal: 10,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+    },
+    recapLabel: {
+        fontSize: 11,
+        color: modernColors.textSecondary,
+        fontWeight: '500',
+    },
+    recapValue: {
+        fontSize: 12,
+        color: modernColors.text,
+        fontWeight: '600',
+        flex: 1,
+    },
+    recapScriptPreview: {
+        marginTop: 10,
+        padding: 10,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+    },
+    recapScriptLabel: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: modernColors.textSecondary,
+        marginBottom: 4,
+    },
+    recapScriptText: {
+        fontSize: 12,
+        color: modernColors.text,
+        lineHeight: 16,
+    },
+    // ✅ NOUVEAU: Presets durée visuels (style TikTok/CapCut)
+    durationPresetsRow: {
+        flexDirection: 'row',
+        gap: 8,
+        marginTop: 8,
+        marginBottom: 12,
+    },
+    durationPreset: {
+        flex: 1,
+        alignItems: 'center',
+        paddingVertical: 10,
+        paddingHorizontal: 6,
+        borderRadius: 12,
+        borderWidth: 1.5,
+        borderColor: '#E2E8F0',
+        backgroundColor: '#F8FAFC',
+    },
+    durationPresetActive: {
+        borderColor: '#3B82F6',
+        backgroundColor: '#EFF6FF',
+    },
+    durationPresetValue: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#64748B',
+    },
+    durationPresetValueActive: {
+        color: '#3B82F6',
+    },
+    durationPresetHint: {
+        fontSize: 10,
+        color: '#94A3B8',
+        marginTop: 2,
+    },
+    durationPresetHintActive: {
+        color: '#3B82F6',
+    },
+    durationSliderRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 8,
+    },
+    durationSliderLabel: {
+        fontSize: 11,
+        color: '#94A3B8',
+        fontWeight: '500',
+        width: 24,
+        textAlign: 'center',
+    },
+    durationSliderTrack: {
+        flex: 1,
+        height: 6,
+        backgroundColor: '#E2E8F0',
+        borderRadius: 3,
+        position: 'relative',
+        overflow: 'visible',
+    },
+    durationSliderFill: {
+        height: '100%',
+        backgroundColor: '#3B82F6',
+        borderRadius: 3,
+    },
+    durationSliderThumb: {
+        position: 'absolute',
+        top: -5,
+        width: 16,
+        height: 16,
+        borderRadius: 8,
+        backgroundColor: '#3B82F6',
+        borderWidth: 2,
+        borderColor: '#FFFFFF',
+        marginLeft: -8,
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.2,
+        shadowRadius: 2,
+    },
+    // ✅ NOUVEAU: Volume slider visuel (style TikTok/CapCut)
+    volumeHeaderRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 8,
+    },
+    volumeValueBadge: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#3B82F6',
+        backgroundColor: '#EFF6FF',
+        paddingHorizontal: 10,
+        paddingVertical: 3,
+        borderRadius: 8,
+        overflow: 'hidden',
+    },
+    volumePresetsRow: {
+        flexDirection: 'row',
+        gap: 8,
+        marginBottom: 12,
+    },
+    volumePreset: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        paddingVertical: 10,
+        borderRadius: 10,
+        borderWidth: 1.5,
+        borderColor: '#E2E8F0',
+        backgroundColor: '#F8FAFC',
+    },
+    volumePresetActive: {
+        borderColor: '#3B82F6',
+        backgroundColor: '#3B82F6',
+    },
+    volumePresetText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#64748B',
+    },
+    volumePresetTextActive: {
+        color: '#FFFFFF',
+    },
+    volumeSliderRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 12,
+    },
+    volumeSliderTrack: {
+        flex: 1,
+        height: 6,
+        backgroundColor: '#E2E8F0',
+        borderRadius: 3,
+        overflow: 'hidden',
+    },
+    volumeSliderFill: {
+        height: '100%',
+        backgroundColor: '#3B82F6',
+        borderRadius: 3,
+    },
+    // ✅ NOUVEAU: Step 6 bottom generate container
+    step6BottomContainer: {
+        gap: 8,
+    },
+    generateInfoRow: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        gap: 16,
+        paddingVertical: 6,
+    },
+    generateInfoItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+    },
+    generateInfoText: {
+        fontSize: 11,
+        color: modernColors.textSecondary,
+        fontWeight: '500',
+    },
 });
 
 export default ProductVideoCreationModal;
-
-

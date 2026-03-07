@@ -544,7 +544,7 @@ const OrientationScolaireHomeScreen: React.FC = () => {
                     renderItem={({ item }) => (
                         <ProgrammeCard
                             programme={item}
-                            onPress={() => navigation.navigate('ProgrammeDetails' as never, { programmeId: item.id } as never)}
+                            onPress={() => navigation.navigate('ProgrammesList' as never)}
                         />
                     )}
                     contentContainerStyle={styles.listContent}
@@ -574,7 +574,7 @@ const OrientationScolaireHomeScreen: React.FC = () => {
                     renderItem={({ item }) => (
                         <ConcoursCard
                             concours={item}
-                            onPress={() => navigation.navigate('ConcoursDetails' as never, { concoursId: item.id } as never)}
+                            onPress={() => navigation.navigate('ConcoursList' as never)}
                         />
                     )}
                     contentContainerStyle={styles.listContent}
@@ -604,7 +604,7 @@ const OrientationScolaireHomeScreen: React.FC = () => {
                     renderItem={({ item }) => (
                         <ConferenceCard
                             conference={item}
-                            onPress={() => navigation.navigate('ConferenceDetails' as never, { conferenceId: item.id } as never)}
+                            onPress={() => navigation.navigate('ConferencesList' as never)}
                         />
                     )}
                     contentContainerStyle={styles.listContent}
@@ -634,7 +634,7 @@ const OrientationScolaireHomeScreen: React.FC = () => {
                     renderItem={({ item }) => (
                         <FournituresCard
                             fournitures={item}
-                            onPress={() => navigation.navigate('FournituresDetails' as never, { fournituresId: item.id } as never)}
+                            onPress={() => navigation.navigate('FournituresList' as never)}
                         />
                     )}
                     contentContainerStyle={styles.listContent}
