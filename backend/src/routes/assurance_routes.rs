@@ -76,11 +76,11 @@ pub fn assurance_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
                 .get(assurance_controller::list_insurance_products),
         )
         .route(
-            "/api/assurance/products/:id",
+            "/api/assurance/products/{id}",
             put(assurance_controller::update_insurance_product),
         )
         .route(
-            "/api/assurance/products/:id/toggle",
+            "/api/assurance/products/{id}/toggle",
             post(assurance_controller::toggle_insurance_product),
         )
         // Polices
@@ -93,7 +93,7 @@ pub fn assurance_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             get(assurance_controller::get_client_policies),
         )
         .route(
-            "/api/assurance/policies/:id/status",
+            "/api/assurance/policies/{id}/status",
             put(assurance_controller::update_policy_status),
         )
         // Sinistres
@@ -106,11 +106,11 @@ pub fn assurance_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             get(assurance_controller::get_client_claims),
         )
         .route(
-            "/api/assurance/claims/:id/status",
+            "/api/assurance/claims/{id}/status",
             put(assurance_controller::update_claim_status),
         )
         .route(
-            "/api/assurance/claims/:id/ai-analyze",
+            "/api/assurance/claims/{id}/ai-analyze",
             post(assurance_controller::ai_analyze_claim),
         )
         // Dashboard

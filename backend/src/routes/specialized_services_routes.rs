@@ -358,11 +358,11 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
         )
         // TODO: Implémenter ces fonctions
         // .route(
-        //     "/api/reservations/:id/insurance",
+        //     "/api/reservations/{id}/insurance",
         //     post(specialized_services_controller::create_reservation_insurance),
         // )
         // .route(
-        //     "/api/reservations/:id/qr-code",
+        //     "/api/reservations/{id}/qr-code",
         //     post(specialized_services_controller::generate_reservation_qr_code),
         // )
         // .route(
@@ -370,7 +370,7 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
         //     post(specialized_services_controller::validate_qr_code),
         // )
         // .route(
-        //     "/api/reservations/:id/schedule-notifications",
+        //     "/api/reservations/{id}/schedule-notifications",
         //     post(specialized_services_controller::schedule_proactive_notifications),
         // )
         // ✅ INTÉGRATION TAXI - Fonctionnalités covoiturage
@@ -380,12 +380,12 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
         //     post(specialized_services_controller::taxi_intelligent_matching),
         // )
         // .route(
-        //     "/api/taxis/:id/verify-driver",
+        //     "/api/taxis/{id}/verify-driver",
         //     post(specialized_services_controller::verify_taxi_driver),
         // )
         // TODO: Implémenter get_taxi_details_enhanced
         // .route(
-        //     "/api/taxis/:id/details-enhanced",
+        //     "/api/taxis/{id}/details-enhanced",
         //     get(specialized_services_controller::get_taxi_details_enhanced),
         // )
         .route(
