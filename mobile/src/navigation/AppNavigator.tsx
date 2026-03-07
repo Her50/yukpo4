@@ -1,38 +1,11 @@
-// Navigation ULTRA-SIMPLIFIÉE avec TOUS les providers nécessaires
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-// ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
-import { createStackNavigator } from '@react-navigation/stack';
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
-// ✅ RÉACTIVÉ: react-native-reanimated avec configuration correcte
-import SafeIcon from '../components/SafeIcon';
-import { SafeNativeView } from '../components/SafeNativeView';
-import { modernColors } from '../theme/modernTheme';
-import SafeStorage from '../utils/safeStorage';
-import { defaultScreenOptions, transitionConfig } from './transitions'; // ✅ PHASE 3: Transitions personnalisées
-import { markNavigatorSafeAreaHandled, withNavigatorSafeArea } from './withNavigatorSafeArea';
+// ✅ VERSION AVEC DYNAMIC LOADING POUR ÉVITER LE CRASH
+// Compatible React Native - pas de React.lazy
 
-// ✅ Context minimal au démarrage
-import { useAuth } from '../contexts/AuthContext';
-import { LanguageProvider } from '../contexts/LanguageContext';
-import { LocationProvider } from '../contexts/LocationContext';
-import { useDeepLinkRedirect } from '../hooks/useDeepLinkRedirect';
+export { default } from './AppNavigator.dynamic';
 
-// ✅ IMPORTS DIRECTS - Écrans d'authentification
-import LoginScreen from '../screens/auth/LoginScreen';
-import OtpVerificationScreen from '../screens/auth/OtpVerificationScreen';
-import PartnerRegisterScreen from '../screens/auth/PartnerRegisterScreen';
-import RegisterScreen from '../screens/auth/RegisterScreen';
-
-// ✅ IMPORTS DIRECTS - Écrans principaux
-import HomeScreen from '../screens/HomeScreen';
-import MesInteractionsScreen from '../screens/MesInteractionsScreen';
-import MesServicesScreen from '../screens/MesServicesScreen';
-import ProfileScreen from '../screens/ProfileScreen';
-import GestionServicesSpecialisesScreen from '../screens/specialized/GestionServicesSpecialisesScreen';
-import ServicesDashboard from '../screens/specialized/ServicesDashboard';
-
+// ✅ LAZY LOADING - Tous les autres écrans seront chargés à la demande pour éviter le crash
+// Les imports ci-dessous sont temporairement désactivés pour résoudre le crash au démarrage
+/*
 // ✅ IMPORTS DIRECTS - Écrans Flash Sales et Promos
 import CreateFlashPromoScreen from '../screens/CreateFlashPromoScreen';
 import FlashPromosActiveScreen from '../screens/FlashPromosActiveScreen';
@@ -48,6 +21,7 @@ import BusBoardingManagementScreen from '../screens/BusBoardingManagementScreen'
 import ContactScreen from '../screens/ContactScreen';
 import CreatePubliciteScreen from '../screens/CreatePubliciteScreen';
 import CreatorAnalyticsScreen from '../screens/CreatorAnalyticsScreen';
+*/
 import AnalyticsDashboardScreen from '../screens/dashboard/AnalyticsDashboardScreen'; // ✅ Phase 10 - Analytics Dashboard
 import DashboardPrestataireScreen from '../screens/DashboardPrestataireScreen'; // ✅ Dashboard Prestataire
 import DashboardScreen from '../screens/DashboardScreen'; // ✅ Ancien Dashboard
