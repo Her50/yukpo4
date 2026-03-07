@@ -446,6 +446,50 @@ async fn fetch_video_feed_from_media(
 ) -> AppResult<Vec<ContentItem>> {
     let pool = &state.pg;
 
+    // ✅ NOUVEAU: Log de diagnostic - vérifier d'abord combien de médias existent
+    let total_media_count: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM media WHERE path IS NOT NULL AND path != ''")
+            .fetch_one(pool)
+            .await
+            .unwrap_or(0);
+
+    log_info(&format!(
+        "[MixedContent] 📊 Total médias avec path non-null: {}",
+        total_media_count
+    ));
+
+    // ✅ NOUVEAU: Log de diagnostic - vérifier les vidéos potentielles
+    let potential_videos_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM media WHERE (type = 'video' OR media_type = 'video' OR path LIKE '%.mp4' OR path LIKE '%.mov' OR path LIKE '%.avi') AND path IS NOT NULL AND path != ''"
+    )
+    .fetch_one(pool)
+    .await
+    .unwrap_or(0);
+
+    log_info(&format!(
+        "[MixedContent] 🎬 Médias potentiellement vidéos: {}",
+        potential_videos_count
+    ));
+
+    // ✅ NOUVEAU: Log de diagnostic - voir quelques exemples de médias
+    let sample_media: Vec<(String, String, String)> = sqlx::query_as(
+        "SELECT type, media_type, path FROM media WHERE path IS NOT NULL AND path != '' ORDER BY uploaded_at DESC LIMIT 5"
+    )
+    .fetch_all(pool)
+    .await
+    .unwrap_or_default();
+
+    log_info(&format!("[MixedContent] 📋 Exemples de médias récents:"));
+    for (i, (media_type, media_type_col, path)) in sample_media.iter().enumerate() {
+        log_info(&format!(
+            "[MixedContent]   {}: type='{}', media_type='{}', path='{}'",
+            i + 1,
+            media_type,
+            media_type_col,
+            path
+        ));
+    }
+
     let rows = sqlx::query(
         r#"
         SELECT 
@@ -480,7 +524,7 @@ async fn fetch_video_feed_from_media(
         FROM media m
         INNER JOIN services s ON s.id = m.service_id AND s.is_active = true
         LEFT JOIN users u ON u.id = s.user_id
-        WHERE m.type = 'video'
+        WHERE (m.type = 'video' OR m.media_type = 'video' OR m.path LIKE '%.mp4' OR m.path LIKE '%.mov' OR m.path LIKE '%.avi')
         AND m.path IS NOT NULL
         AND m.path != ''
         ORDER BY m.uploaded_at DESC
@@ -494,6 +538,11 @@ async fn fetch_video_feed_from_media(
         log_error(&format!("[MixedContent] Erreur fetch video feed: {}", e));
         AppError::Internal(format!("Erreur fetch video feed: {}", e))
     })?;
+
+    log_info(&format!(
+        "[MixedContent] 🎯 Requête vidéo retournée {} lignes",
+        rows.len()
+    ));
 
     let mut content = Vec::new();
 
