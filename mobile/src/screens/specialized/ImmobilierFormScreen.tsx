@@ -24,7 +24,7 @@ import { getCurrencyFromGPS, useCurrencyDetection } from '../../hooks/useCurrenc
 import { clearSavedFormData, useFormAutoSave } from '../../hooks/useFormAutoSave';
 import { useFormValidation } from '../../hooks/useFormValidation';
 import { usePartnerData } from '../../hooks/usePartnerData';
-import { apiPost, servicesApi } from '../../services/api';
+import { apiPut, servicesApi } from '../../services/api';
 import { googlePlacesMediaService } from '../../services/googlePlacesMediaService';
 import { immobilierService } from '../../services/immobilierService';
 import { uploadFiles } from '../../services/uploadApi';
@@ -191,7 +191,7 @@ const ImmobilierFormScreen: React.FC = () => {
             };
             let resp;
             if (mode === 'edit' && propertyId) {
-                resp = await apiPost(`/api/immobilier/biens/${propertyId}`, payload);
+                resp = await apiPut(`/api/immobilier/biens/${propertyId}`, payload);
             } else {
                 resp = await immobilierService.createProperty(payload);
             }

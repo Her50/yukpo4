@@ -46,8 +46,10 @@ const MesOffresScreen: React.FC = () => {
         try {
             setLoading(true);
             const response = await offreEmploiService.getMesOffres();
-            if (response.success && response.data) {
-                setOffres(response.data);
+            const backendData = (response?.data as any);
+            const offresData = backendData?.data || backendData;
+            if (response.success && Array.isArray(offresData)) {
+                setOffres(offresData);
             }
         } catch (error: any) {
             console.error('[MesOffresScreen] Erreur:', error);

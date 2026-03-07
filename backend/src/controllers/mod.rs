@@ -13,6 +13,7 @@ pub mod plugin_controller; // ✅ NOUVEAU Phase 2: Controller pour gestion des p
 pub mod prestataire_controller;
 pub mod service_controller;
 pub mod stock_media_controller; // ✅ NOUVEAU Phase 2: Controller pour Stock Media Integration
+pub mod supermarket_controller; // ✅ NOUVEAU: Contrôleur supermarché dédié (produits, comparaison, promotions)
 pub mod token_pack_controller;
 pub mod upload_controller; // ✅ NOUVEAU: Contrôleur pour upload préalable de fichiers
 pub mod user_controller;

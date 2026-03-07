@@ -1615,6 +1615,91 @@ pub async fn create_property(
     ))
 }
 
+/// PUT /api/immobilier/biens/{id}
+/// Mettre à jour un bien immobilier
+pub async fn update_property(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Path(property_id): Path<i32>,
+    Json(payload): Json<CreatePropertyRequest>,
+) -> AppResult<impl IntoResponse> {
+    info!(
+        "[update_property] Mise à jour bien id={} pour user_id={}",
+        property_id, user_id
+    );
+
+    // Vérifier que le bien existe et appartient à l'utilisateur
+    let owner_check: Option<i32> =
+        sqlx::query_scalar("SELECT id FROM real_estate_properties WHERE id = $1 AND user_id = $2")
+            .bind(property_id)
+            .bind(user_id)
+            .fetch_optional(&state.pg)
+            .await
+            .map_err(|e| {
+                error!("[update_property] Erreur vérification propriétaire: {}", e);
+                AppError::Internal(format!("Erreur vérification: {}", e))
+            })?;
+
+    if owner_check.is_none() {
+        return Err(AppError::NotFound(
+            "Bien non trouvé ou n'appartient pas à l'utilisateur".to_string(),
+        ));
+    }
+
+    use rust_decimal::Decimal;
+    let prix_vente = payload.prix_vente.map(|p| Decimal::from_f64_retain(p).unwrap_or_default());
+    let prix_location = payload
+        .prix_location_mensuel
+        .map(|p| Decimal::from_f64_retain(p).unwrap_or_default());
+    let superficie = payload.superficie_m2.map(|s| Decimal::from_f64_retain(s).unwrap_or_default());
+
+    sqlx::query(
+        r#"
+        UPDATE real_estate_properties SET
+            titre = $1, description = $2, type_bien = $3, statut = $4,
+            adresse = $5, quartier = $6, ville = $7, gps = $8, superficie_m2 = $9,
+            nb_chambres = $10, nb_salles_bain = $11, standing = $12, etat_general = $13,
+            prix_vente = $14, prix_location_mensuel = $15, photos = $16,
+            updated_at = NOW()
+        WHERE id = $17 AND user_id = $18
+        "#,
+    )
+    .bind(&payload.titre)
+    .bind(payload.description.as_deref())
+    .bind(&payload.type_bien)
+    .bind(&payload.statut)
+    .bind(payload.adresse.as_deref())
+    .bind(payload.quartier.as_deref())
+    .bind(payload.ville.as_deref())
+    .bind(payload.gps.as_deref())
+    .bind(superficie.as_ref())
+    .bind(payload.nb_chambres)
+    .bind(payload.nb_salles_bain)
+    .bind(payload.standing.as_deref())
+    .bind(payload.etat_general.as_deref())
+    .bind(prix_vente.as_ref())
+    .bind(prix_location.as_ref())
+    .bind(payload.photos.as_deref())
+    .bind(property_id)
+    .bind(user_id)
+    .execute(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[update_property] Erreur mise à jour: {}", e);
+        AppError::Internal(format!("Erreur mise à jour bien: {}", e))
+    })?;
+
+    info!("[update_property] Bien id={} mis à jour", property_id);
+
+    Ok(Json(json!({
+        "success": true,
+        "data": {
+            "id": property_id,
+            "service_id": payload.service_id
+        }
+    })))
+}
+
 // Helper functions
 fn parse_gps(gps_str: &str) -> Option<(f64, f64)> {
     let parts: Vec<&str> = gps_str.split(',').collect();

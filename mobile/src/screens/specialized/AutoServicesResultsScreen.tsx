@@ -1,195 +1,412 @@
 // ✅ Écran Résultats Recherche Automobile/Véhicules
+// ✅ AMÉLIORÉ 2026-03-07: Recherche au niveau PRODUIT via /api/auto/search
+// Affiche images véhicule, specs détaillées, tri, filtres actifs, pagination
 import { useNavigation, useRoute } from '@react-navigation/native';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
+    Dimensions,
     FlatList,
+    Image,
     RefreshControl,
+    ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
     View,
 } from 'react-native';
 import SafeIcon from '../../components/SafeIcon';
-import { NativeCard } from '../../components/SafeNativeDesign';
 import { apiGet } from '../../services/api';
-import { modernColors } from '../../theme/modernTheme';
+import { hapticPress } from '../../utils/hapticFeedback';
 
-interface AutoResult {
-    id: number;
-    name: string;
-    description?: string;
-    category?: string;
-    address?: string;
-    phone?: string;
-    price?: number;
-    distance_km?: number;
-    rating?: number;
+const ACCENT_COLOR = '#1E3A5F';
+const ACCENT_LIGHT = '#2563EB';
+const SCREEN_WIDTH = Dimensions.get('window').width;
+
+interface AutoProduct {
+    product_id: number;
+    service_id: number;
+    product_index: number;
+    nom: string;
+    description: string;
+    prix: number | null;
+    devise: string;
+    marque: string | null;
+    modele: string | null;
+    type_vehicule: string | null;
+    annee: number | null;
+    kilometrage: number | null;
+    carburant: string | null;
+    transmission: string | null;
+    couleur: string | null;
+    etat: string | null;
+    images: string[];
+    ville: string | null;
+    quartier: string | null;
+    distance_km: number | null;
+    vendeur_nom: string | null;
+    created_at: string | null;
 }
+
+interface SearchResponse {
+    products: AutoProduct[];
+    total: number;
+    page: number;
+    limit: number;
+    filters_applied: any;
+}
+
+const SORT_OPTIONS = [
+    { key: 'recent', label: 'Récent', icon: 'clock' },
+    { key: 'price_asc', label: 'Prix croissant', icon: 'trending-up' },
+    { key: 'price_desc', label: 'Prix décroissant', icon: 'trending-down' },
+    { key: 'year_desc', label: 'Année récente', icon: 'calendar' },
+];
 
 const AutoServicesResultsScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
     const params = route.params as { filters?: any } | undefined;
-    const filters = params?.filters || {};
+    const initialFilters = params?.filters || {};
 
-    const [results, setResults] = useState<AutoResult[]>([]);
+    const [results, setResults] = useState<AutoProduct[]>([]);
+    const [total, setTotal] = useState(0);
     const [loading, setLoading] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
+    const [page, setPage] = useState(0);
+    const [hasMore, setHasMore] = useState(true);
+    const [currentSort, setCurrentSort] = useState(initialFilters.sort || 'recent');
+    const [showSortMenu, setShowSortMenu] = useState(false);
 
-    useEffect(() => {
-        loadResults();
-    }, []);
-
-    const loadResults = async () => {
+    const loadResults = useCallback(async (pageNum: number = 0, append: boolean = false) => {
         try {
-            setLoading(true);
+            if (pageNum === 0) setLoading(true);
+            else setLoadingMore(true);
+
+            // Construire les query params depuis les filtres
             const queryParams = new URLSearchParams();
-            queryParams.append('category', 'automobile');
-            queryParams.append('actif', 'true');
-            if (filters.prix_min) queryParams.append('min_price', filters.prix_min.toString());
-            if (filters.prix_max) queryParams.append('max_price', filters.prix_max.toString());
+            if (initialFilters.q) queryParams.append('q', initialFilters.q);
+            if (initialFilters.marque) queryParams.append('marque', initialFilters.marque);
+            if (initialFilters.type_vehicule) queryParams.append('type_vehicule', initialFilters.type_vehicule);
+            if (initialFilters.carburant) queryParams.append('carburant', initialFilters.carburant);
+            if (initialFilters.transmission) queryParams.append('transmission', initialFilters.transmission);
+            if (initialFilters.couleur) queryParams.append('couleur', initialFilters.couleur);
+            if (initialFilters.etat) queryParams.append('etat', initialFilters.etat);
+            if (initialFilters.prix_min) queryParams.append('prix_min', initialFilters.prix_min.toString());
+            if (initialFilters.prix_max) queryParams.append('prix_max', initialFilters.prix_max.toString());
+            if (initialFilters.annee_min) queryParams.append('annee_min', initialFilters.annee_min.toString());
+            if (initialFilters.annee_max) queryParams.append('annee_max', initialFilters.annee_max.toString());
+            if (initialFilters.km_max) queryParams.append('km_max', initialFilters.km_max.toString());
+            if (initialFilters.gps_lat) queryParams.append('gps_lat', initialFilters.gps_lat.toString());
+            if (initialFilters.gps_lon) queryParams.append('gps_lon', initialFilters.gps_lon.toString());
+            if (initialFilters.rayon_km) queryParams.append('rayon_km', initialFilters.rayon_km.toString());
+            queryParams.append('sort', currentSort);
+            queryParams.append('page', pageNum.toString());
+            queryParams.append('limit', '20');
 
-            const response = await apiGet(`/services/filter?${queryParams.toString()}`);
-            // response.data contains the backend JSON (array of {id, data, is_active})
+            const response = await apiGet<SearchResponse>(`/api/auto/search?${queryParams.toString()}`);
             const backendData = response?.data as any;
-            let rawResults = Array.isArray(backendData) ? backendData : [];
 
-            // Transformer en format affichable + filtrage client-side
-            let mapped = rawResults.map((item: any) => {
-                const d = item.data || {};
-                return {
-                    id: item.id,
-                    name: d.titre_service || d.nom || d.title || 'Service automobile',
-                    description: d.description || d.details || '',
-                    category: d.sous_categorie || d.type_vehicule || d.category || 'automobile',
-                    address: d.adresse || d.ville || '',
-                    phone: d.telephone || d.phone || '',
-                    price: parseFloat(d.price || d.prix || '0') || undefined,
-                    ville: (d.ville || '').toLowerCase(),
-                    quartier: (d.quartier || '').toLowerCase(),
-                    marque: (d.marque_modele || d.marque || '').toLowerCase(),
-                    type_vehicule: (d.type_vehicule || '').toLowerCase(),
-                    annee: parseInt(d.annee || '0') || undefined,
-                    occasion: d.occasion,
-                };
-            });
-
-            // Filtrage client-side pour les champs non supportés par le backend
-            if (filters.ville) mapped = mapped.filter((s: any) => s.ville.includes(filters.ville.toLowerCase()));
-            if (filters.quartier) mapped = mapped.filter((s: any) => s.quartier.includes(filters.quartier.toLowerCase()));
-            if (filters.marque_modele) mapped = mapped.filter((s: any) => s.marque.includes(filters.marque_modele.toLowerCase()));
-            if (filters.type_vehicule) mapped = mapped.filter((s: any) => s.type_vehicule.includes(filters.type_vehicule.toLowerCase()));
-            if (filters.annee_min) mapped = mapped.filter((s: any) => !s.annee || s.annee >= filters.annee_min);
-            if (filters.annee_max) mapped = mapped.filter((s: any) => !s.annee || s.annee <= filters.annee_max);
-            if (filters.occasion !== undefined && filters.occasion !== null) mapped = mapped.filter((s: any) => s.occasion === filters.occasion);
-
-            setResults(mapped);
+            if (backendData && backendData.products) {
+                const newProducts = backendData.products as AutoProduct[];
+                if (append) {
+                    setResults(prev => [...prev, ...newProducts]);
+                } else {
+                    setResults(newProducts);
+                }
+                setTotal(backendData.total || 0);
+                setHasMore(newProducts.length >= 20);
+                setPage(pageNum);
+            } else {
+                if (!append) {
+                    setResults([]);
+                    setTotal(0);
+                }
+                setHasMore(false);
+            }
         } catch (error: any) {
-            console.error('[AutoServicesResults] Erreur:', error);
-            Alert.alert('Erreur', 'Impossible de charger les résultats');
+            console.error('[AutoResults] Erreur:', error);
+            if (!append) {
+                Alert.alert('Erreur', 'Impossible de charger les résultats');
+            }
         } finally {
             setLoading(false);
+            setLoadingMore(false);
             setRefreshing(false);
         }
-    };
+    }, [initialFilters, currentSort]);
+
+    useEffect(() => {
+        loadResults(0, false);
+    }, [loadResults]);
 
     const handleRefresh = () => {
         setRefreshing(true);
-        loadResults();
+        loadResults(0, false);
     };
 
-    const formatPrice = (price?: number) => {
-        if (!price) return 'Prix sur demande';
-        return `${price.toLocaleString('fr-FR')} FCFA`;
+    const handleLoadMore = () => {
+        if (!loadingMore && hasMore && !loading) {
+            loadResults(page + 1, true);
+        }
     };
 
-    const renderItem = ({ item }: { item: AutoResult }) => (
-        <TouchableOpacity
-            onPress={() => navigation.navigate('ServiceDetail' as never, { serviceId: item.id } as never)}
-            activeOpacity={0.7}
-        >
-            <NativeCard style={styles.resultCard}>
-                <View style={styles.cardHeader}>
-                    <View style={styles.iconContainer}>
-                        <SafeIcon name="car" size={24} color="#DC2626" type="lucide" />
-                    </View>
-                    <View style={styles.cardHeaderText}>
-                        <Text style={styles.resultName} numberOfLines={2}>{item.name}</Text>
-                        {item.category && (
-                            <View style={styles.categoryBadge}>
-                                <Text style={styles.categoryText}>{item.category}</Text>
-                            </View>
+    const handleSortChange = (sortKey: string) => {
+        hapticPress();
+        setCurrentSort(sortKey);
+        setShowSortMenu(false);
+        setPage(0);
+        // loadResults will be called by the useEffect on currentSort change
+    };
+
+    const formatPrice = (price: number | null, devise: string) => {
+        if (!price || price === 0) return 'Prix sur demande';
+        return `${price.toLocaleString('fr-FR')} ${devise}`;
+    };
+
+    const formatKm = (km: number | null) => {
+        if (!km) return null;
+        if (km >= 1000) return `${(km / 1000).toFixed(0)}k km`;
+        return `${km} km`;
+    };
+
+    // Active filters as chips
+    const activeFiltersList = Object.entries(initialFilters)
+        .filter(([key, val]) => val && key !== 'sort' && key !== 'gps_lat' && key !== 'gps_lon' && key !== 'rayon_km')
+        .map(([key, val]) => {
+            const labels: Record<string, string> = {
+                q: 'Recherche', marque: 'Marque', type_vehicule: 'Type', carburant: 'Carburant',
+                transmission: 'Transmission', couleur: 'Couleur', etat: 'État',
+                prix_min: 'Prix min', prix_max: 'Prix max', annee_min: 'Depuis', annee_max: "Jusqu'à",
+                km_max: 'Km max', ville: 'Ville', quartier: 'Quartier',
+            };
+            return { key, label: labels[key] || key, value: String(val) };
+        });
+
+    const renderVehicleCard = ({ item }: { item: AutoProduct }) => {
+        const hasImage = item.images && item.images.length > 0;
+        const displayTitle = item.nom || [item.marque, item.modele].filter(Boolean).join(' ') || 'Véhicule';
+        const specs = [
+            item.annee ? `${item.annee}` : null,
+            formatKm(item.kilometrage),
+            item.carburant,
+            item.transmission,
+        ].filter(Boolean);
+
+        return (
+            <TouchableOpacity
+                style={styles.vehicleCard}
+                onPress={() => navigation.navigate('ServiceDetail' as never, { serviceId: item.service_id } as never)}
+                activeOpacity={0.7}
+            >
+                {/* Image */}
+                <View style={styles.imageContainer}>
+                    {hasImage ? (
+                        <Image
+                            source={{ uri: item.images[0] }}
+                            style={styles.vehicleImage}
+                            resizeMode="cover"
+                        />
+                    ) : (
+                        <View style={styles.noImageContainer}>
+                            <SafeIcon name="car" size={36} color="#CBD5E1" type="lucide" />
+                            <Text style={styles.noImageText}>Pas de photo</Text>
+                        </View>
+                    )}
+                    {/* Badge état */}
+                    {item.etat && (
+                        <View style={[styles.etatBadge, item.etat.toLowerCase().includes('neuf') ? styles.etatNeuf : styles.etatOccasion]}>
+                            <Text style={styles.etatText}>{item.etat}</Text>
+                        </View>
+                    )}
+                    {/* Badge distance */}
+                    {item.distance_km != null && item.distance_km > 0 && (
+                        <View style={styles.distanceBadge}>
+                            <SafeIcon name="navigation" size={10} color="#FFFFFF" type="lucide" />
+                            <Text style={styles.distanceText}>{item.distance_km.toFixed(1)} km</Text>
+                        </View>
+                    )}
+                    {/* Image count badge */}
+                    {item.images.length > 1 && (
+                        <View style={styles.imageCountBadge}>
+                            <SafeIcon name="camera" size={10} color="#FFFFFF" type="lucide" />
+                            <Text style={styles.imageCountText}>{item.images.length}</Text>
+                        </View>
+                    )}
+                </View>
+
+                {/* Info */}
+                <View style={styles.cardInfo}>
+                    <Text style={styles.vehicleTitle} numberOfLines={2}>{displayTitle}</Text>
+
+                    {/* Specs row */}
+                    {specs.length > 0 && (
+                        <View style={styles.specsRow}>
+                            {specs.map((spec, i) => (
+                                <React.Fragment key={i}>
+                                    {i > 0 && <Text style={styles.specSep}>·</Text>}
+                                    <Text style={styles.specText}>{spec}</Text>
+                                </React.Fragment>
+                            ))}
+                        </View>
+                    )}
+
+                    {/* Couleur */}
+                    {item.couleur && (
+                        <View style={styles.detailRow}>
+                            <SafeIcon name="palette" size={12} color="#94A3B8" type="lucide" />
+                            <Text style={styles.detailText}>{item.couleur}</Text>
+                        </View>
+                    )}
+
+                    {/* Location */}
+                    {(item.ville || item.quartier) && (
+                        <View style={styles.detailRow}>
+                            <SafeIcon name="map-pin" size={12} color="#94A3B8" type="lucide" />
+                            <Text style={styles.detailText} numberOfLines={1}>
+                                {[item.quartier, item.ville].filter(Boolean).join(', ')}
+                            </Text>
+                        </View>
+                    )}
+
+                    {/* Bottom: Price + Vendeur */}
+                    <View style={styles.cardBottom}>
+                        <Text style={styles.priceText}>{formatPrice(item.prix, item.devise)}</Text>
+                        {item.vendeur_nom && (
+                            <Text style={styles.vendeurText} numberOfLines={1}>{item.vendeur_nom}</Text>
                         )}
                     </View>
                 </View>
-                {item.description && (
-                    <Text style={styles.resultDescription} numberOfLines={2}>{item.description}</Text>
-                )}
-                <View style={styles.cardFooter}>
-                    {item.address && (
-                        <View style={styles.footerItem}>
-                            <SafeIcon name="map-pin" size={14} color="#6B7280" type="lucide" />
-                            <Text style={styles.footerText} numberOfLines={1}>{item.address}</Text>
-                        </View>
-                    )}
-                    {item.distance_km !== undefined && (
-                        <View style={styles.footerItem}>
-                            <SafeIcon name="navigation" size={14} color="#6B7280" type="lucide" />
-                            <Text style={styles.footerText}>{item.distance_km.toFixed(1)} km</Text>
-                        </View>
-                    )}
-                    <Text style={styles.priceText}>{formatPrice(item.price)}</Text>
-                </View>
-            </NativeCard>
-        </TouchableOpacity>
-    );
+            </TouchableOpacity>
+        );
+    };
 
-    const filterSummary = [
-        filters.type_vehicule,
-        filters.marque_modele,
-        filters.ville,
-        filters.occasion === true ? 'Occasion' : filters.occasion === false ? 'Neuf' : null,
-    ].filter(Boolean).join(' · ') || 'Tous les résultats';
+    const currentSortLabel = SORT_OPTIONS.find(s => s.key === currentSort)?.label || 'Récent';
 
     return (
         <View style={styles.container}>
+            {/* Header */}
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                    <SafeIcon name="arrow-left" size={24} color="#111827" />
+                    <SafeIcon name="arrow-left" size={22} color="#0F172A" />
                 </TouchableOpacity>
-                <View style={styles.headerTextContainer}>
-                    <Text style={styles.title}>Résultats Automobile</Text>
-                    <Text style={styles.subtitle} numberOfLines={1}>{filterSummary}</Text>
+                <View style={styles.headerCenter}>
+                    <Text style={styles.title}>Résultats</Text>
+                    <Text style={styles.subtitle}>
+                        {loading ? 'Recherche...' : `${total} véhicule${total > 1 ? 's' : ''}`}
+                    </Text>
                 </View>
+                <TouchableOpacity onPress={() => { hapticPress(); setShowSortMenu(!showSortMenu); }} style={styles.sortButton}>
+                    <SafeIcon name="sliders" size={20} color={ACCENT_COLOR} type="lucide" />
+                </TouchableOpacity>
             </View>
 
+            {/* Sort menu dropdown */}
+            {showSortMenu && (
+                <View style={styles.sortMenu}>
+                    {SORT_OPTIONS.map(opt => (
+                        <TouchableOpacity
+                            key={opt.key}
+                            style={[styles.sortOption, currentSort === opt.key && styles.sortOptionActive]}
+                            onPress={() => handleSortChange(opt.key)}
+                        >
+                            <SafeIcon name={opt.icon} size={16} color={currentSort === opt.key ? ACCENT_LIGHT : '#64748B'} type="lucide" />
+                            <Text style={[styles.sortOptionText, currentSort === opt.key && styles.sortOptionTextActive]}>
+                                {opt.label}
+                            </Text>
+                            {currentSort === opt.key && (
+                                <SafeIcon name="check" size={16} color={ACCENT_LIGHT} type="lucide" />
+                            )}
+                        </TouchableOpacity>
+                    ))}
+                </View>
+            )}
+
+            {/* Active filters chips */}
+            {activeFiltersList.length > 0 && (
+                <View style={styles.activeFiltersContainer}>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.activeFiltersScroll}>
+                        {activeFiltersList.map(f => (
+                            <View key={f.key} style={styles.activeChip}>
+                                <Text style={styles.activeChipLabel}>{f.label}:</Text>
+                                <Text style={styles.activeChipValue}>{f.value}</Text>
+                            </View>
+                        ))}
+                        <TouchableOpacity style={styles.editFiltersChip} onPress={() => navigation.goBack()}>
+                            <SafeIcon name="edit-2" size={12} color={ACCENT_LIGHT} type="lucide" />
+                            <Text style={styles.editFiltersText}>Modifier</Text>
+                        </TouchableOpacity>
+                    </ScrollView>
+                </View>
+            )}
+
+            {/* Sort indicator */}
+            <View style={styles.sortIndicator}>
+                <Text style={styles.sortIndicatorText}>Tri: {currentSortLabel}</Text>
+            </View>
+
+            {/* Content */}
             {loading && !refreshing ? (
                 <View style={styles.centerContainer}>
-                    <ActivityIndicator size="large" color={modernColors.primary} />
-                    <Text style={styles.loadingText}>Recherche en cours...</Text>
+                    <ActivityIndicator size="large" color={ACCENT_LIGHT} />
+                    <Text style={styles.loadingText}>Recherche de véhicules...</Text>
                 </View>
             ) : results.length === 0 ? (
                 <View style={styles.centerContainer}>
-                    <SafeIcon name="search-x" size={64} color="#D1D5DB" type="lucide" />
-                    <Text style={styles.emptyTitle}>Aucun résultat</Text>
-                    <Text style={styles.emptyText}>Essayez d'élargir vos critères de recherche</Text>
+                    <View style={styles.emptyIcon}>
+                        <SafeIcon name="car" size={48} color="#CBD5E1" type="lucide" />
+                    </View>
+                    <Text style={styles.emptyTitle}>Aucun véhicule trouvé</Text>
+                    <Text style={styles.emptyText}>
+                        Essayez d'élargir vos critères de recherche ou de modifier les filtres.
+                    </Text>
                     <TouchableOpacity style={styles.retryButton} onPress={() => navigation.goBack()}>
-                        <Text style={styles.retryText}>Modifier la recherche</Text>
+                        <SafeIcon name="sliders" size={18} color="#FFFFFF" type="lucide" />
+                        <Text style={styles.retryText}>Modifier les filtres</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.viewAllButton} onPress={() => {
+                        hapticPress();
+                        // Reload with no filters
+                        setResults([]);
+                        setTotal(0);
+                        setPage(0);
+                        const queryParams = new URLSearchParams();
+                        queryParams.append('sort', currentSort);
+                        queryParams.append('page', '0');
+                        queryParams.append('limit', '20');
+                        apiGet<SearchResponse>(`/api/auto/search?${queryParams.toString()}`).then(resp => {
+                            const bd = resp?.data as any;
+                            if (bd?.products) {
+                                setResults(bd.products);
+                                setTotal(bd.total || 0);
+                            }
+                        }).catch(() => { });
+                    }}>
+                        <Text style={styles.viewAllText}>Voir tous les véhicules</Text>
                     </TouchableOpacity>
                 </View>
             ) : (
                 <FlatList
                     data={results}
-                    renderItem={renderItem}
-                    keyExtractor={(item) => item.id.toString()}
+                    renderItem={renderVehicleCard}
+                    keyExtractor={(item) => `${item.service_id}-${item.product_index}`}
                     contentContainerStyle={styles.listContent}
                     refreshControl={
-                        <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[modernColors.primary]} />
+                        <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[ACCENT_LIGHT]} />
                     }
-                    ListHeaderComponent={
-                        <Text style={styles.resultCount}>{results.length} résultat(s) trouvé(s)</Text>
+                    onEndReached={handleLoadMore}
+                    onEndReachedThreshold={0.5}
+                    ListFooterComponent={
+                        loadingMore ? (
+                            <View style={styles.loadingMoreContainer}>
+                                <ActivityIndicator size="small" color={ACCENT_LIGHT} />
+                                <Text style={styles.loadingMoreText}>Chargement...</Text>
+                            </View>
+                        ) : !hasMore && results.length > 0 ? (
+                            <Text style={styles.endText}>Tous les résultats affichés</Text>
+                        ) : null
                     }
                 />
             )}
@@ -198,32 +415,116 @@ const AutoServicesResultsScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#F9FAFB' },
-    header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
-    backButton: { marginRight: 12 },
-    headerTextContainer: { flex: 1 },
-    title: { fontSize: 18, fontWeight: '700', color: '#111827' },
-    subtitle: { fontSize: 13, color: '#6B7280', marginTop: 2 },
-    centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
-    loadingText: { marginTop: 12, fontSize: 14, color: '#6B7280' },
-    emptyTitle: { fontSize: 18, fontWeight: '600', color: '#374151', marginTop: 16 },
-    emptyText: { fontSize: 14, color: '#6B7280', textAlign: 'center', marginTop: 8 },
-    retryButton: { marginTop: 20, paddingHorizontal: 24, paddingVertical: 12, backgroundColor: '#DC2626', borderRadius: 8 },
-    retryText: { color: '#fff', fontWeight: '600' },
+    container: { flex: 1, backgroundColor: '#F8FAFC' },
+    header: {
+        flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12,
+        backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderBottomColor: '#E2E8F0',
+    },
+    backButton: { padding: 4, marginRight: 8 },
+    headerCenter: { flex: 1 },
+    title: { fontSize: 18, fontWeight: '700', color: '#0F172A' },
+    subtitle: { fontSize: 13, color: '#64748B', marginTop: 1 },
+    sortButton: {
+        width: 40, height: 40, borderRadius: 12, backgroundColor: '#F1F5F9',
+        justifyContent: 'center', alignItems: 'center',
+    },
+    sortMenu: {
+        backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderBottomColor: '#E2E8F0',
+        paddingHorizontal: 16, paddingVertical: 8,
+    },
+    sortOption: {
+        flexDirection: 'row', alignItems: 'center', paddingVertical: 10, gap: 10,
+    },
+    sortOptionActive: {},
+    sortOptionText: { flex: 1, fontSize: 14, color: '#334155', fontWeight: '500' },
+    sortOptionTextActive: { color: ACCENT_LIGHT, fontWeight: '600' },
+    activeFiltersContainer: {
+        backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderBottomColor: '#E2E8F0',
+        paddingVertical: 8,
+    },
+    activeFiltersScroll: { paddingHorizontal: 16, gap: 8 },
+    activeChip: {
+        flexDirection: 'row', alignItems: 'center', backgroundColor: '#EFF6FF',
+        paddingHorizontal: 10, paddingVertical: 6, borderRadius: 16, gap: 4,
+    },
+    activeChipLabel: { fontSize: 11, color: '#64748B', fontWeight: '500' },
+    activeChipValue: { fontSize: 12, color: ACCENT_COLOR, fontWeight: '600' },
+    editFiltersChip: {
+        flexDirection: 'row', alignItems: 'center', backgroundColor: '#F1F5F9',
+        paddingHorizontal: 10, paddingVertical: 6, borderRadius: 16, gap: 4,
+        borderWidth: 1, borderColor: '#E2E8F0',
+    },
+    editFiltersText: { fontSize: 12, color: ACCENT_LIGHT, fontWeight: '600' },
+    sortIndicator: {
+        paddingHorizontal: 16, paddingVertical: 6, backgroundColor: '#F8FAFC',
+    },
+    sortIndicatorText: { fontSize: 12, color: '#94A3B8', fontWeight: '500' },
+    centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
+    loadingText: { marginTop: 12, fontSize: 15, color: '#64748B' },
+    emptyIcon: {
+        width: 80, height: 80, borderRadius: 20, backgroundColor: '#F1F5F9',
+        justifyContent: 'center', alignItems: 'center', marginBottom: 16,
+    },
+    emptyTitle: { fontSize: 20, fontWeight: '700', color: '#0F172A', marginBottom: 8 },
+    emptyText: { fontSize: 14, color: '#64748B', textAlign: 'center', lineHeight: 20, marginBottom: 20, maxWidth: 280 },
+    retryButton: {
+        flexDirection: 'row', alignItems: 'center', gap: 8,
+        paddingHorizontal: 24, paddingVertical: 14, backgroundColor: ACCENT_COLOR, borderRadius: 12,
+    },
+    retryText: { color: '#FFFFFF', fontWeight: '600', fontSize: 15 },
+    viewAllButton: { marginTop: 12, paddingVertical: 10 },
+    viewAllText: { fontSize: 14, color: ACCENT_LIGHT, fontWeight: '600' },
     listContent: { padding: 16 },
-    resultCount: { fontSize: 14, color: '#6B7280', marginBottom: 12 },
-    resultCard: { padding: 16, marginBottom: 12 },
-    cardHeader: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 8 },
-    iconContainer: { width: 44, height: 44, borderRadius: 12, backgroundColor: '#FEE2E2', justifyContent: 'center', alignItems: 'center', marginRight: 12 },
-    cardHeaderText: { flex: 1 },
-    resultName: { fontSize: 16, fontWeight: '600', color: '#111827' },
-    categoryBadge: { backgroundColor: '#FEF2F2', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4, alignSelf: 'flex-start', marginTop: 4 },
-    categoryText: { fontSize: 12, color: '#DC2626', fontWeight: '500' },
-    resultDescription: { fontSize: 13, color: '#6B7280', lineHeight: 18, marginBottom: 8 },
-    cardFooter: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 12, marginTop: 4 },
-    footerItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-    footerText: { fontSize: 12, color: '#6B7280', maxWidth: 150 },
-    priceText: { fontSize: 14, fontWeight: '700', color: '#DC2626', marginLeft: 'auto' },
+    vehicleCard: {
+        backgroundColor: '#FFFFFF', borderRadius: 14, marginBottom: 14,
+        shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06,
+        shadowRadius: 6, elevation: 2, overflow: 'hidden',
+    },
+    imageContainer: {
+        width: '100%', height: 180, backgroundColor: '#F1F5F9', position: 'relative',
+    },
+    vehicleImage: { width: '100%', height: '100%' },
+    noImageContainer: {
+        flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F1F5F9',
+    },
+    noImageText: { fontSize: 12, color: '#94A3B8', marginTop: 6 },
+    etatBadge: {
+        position: 'absolute', top: 10, left: 10, paddingHorizontal: 10, paddingVertical: 4,
+        borderRadius: 6,
+    },
+    etatNeuf: { backgroundColor: '#059669' },
+    etatOccasion: { backgroundColor: '#D97706' },
+    etatText: { fontSize: 11, fontWeight: '700', color: '#FFFFFF', textTransform: 'uppercase' },
+    distanceBadge: {
+        position: 'absolute', top: 10, right: 10, flexDirection: 'row', alignItems: 'center',
+        backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 8, paddingVertical: 4,
+        borderRadius: 6, gap: 4,
+    },
+    distanceText: { fontSize: 11, color: '#FFFFFF', fontWeight: '600' },
+    imageCountBadge: {
+        position: 'absolute', bottom: 10, right: 10, flexDirection: 'row', alignItems: 'center',
+        backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 8, paddingVertical: 4,
+        borderRadius: 6, gap: 4,
+    },
+    imageCountText: { fontSize: 11, color: '#FFFFFF', fontWeight: '600' },
+    cardInfo: { padding: 14 },
+    vehicleTitle: { fontSize: 16, fontWeight: '700', color: '#0F172A', marginBottom: 6 },
+    specsRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', marginBottom: 6 },
+    specText: { fontSize: 13, color: '#64748B', fontWeight: '500' },
+    specSep: { fontSize: 13, color: '#CBD5E1', marginHorizontal: 6 },
+    detailRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
+    detailText: { fontSize: 12, color: '#64748B' },
+    cardBottom: {
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+        marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: '#F1F5F9',
+    },
+    priceText: { fontSize: 17, fontWeight: '800', color: ACCENT_COLOR },
+    vendeurText: { fontSize: 12, color: '#94A3B8', maxWidth: 120 },
+    loadingMoreContainer: {
+        flexDirection: 'row', justifyContent: 'center', alignItems: 'center', padding: 16, gap: 8,
+    },
+    loadingMoreText: { fontSize: 13, color: '#64748B' },
+    endText: { textAlign: 'center', fontSize: 13, color: '#94A3B8', padding: 16 },
 });
 
 export default AutoServicesResultsScreen;

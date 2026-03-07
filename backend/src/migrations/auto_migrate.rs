@@ -14933,6 +14933,36 @@ pub async fn ensure_specialized_services_tables(pool: &PgPool) -> Result<(), sql
         info!("✅ Table pharmacies créée directement");
     }
 
+    // 1b. PHARMACIES: Colonnes supplémentaires pour UX moderne
+    let pharma_columns_to_add = vec![
+        ("description", "TEXT"),
+        ("logo_url", "TEXT"),
+        ("note_moyenne", "REAL DEFAULT 0"),
+        ("nombre_avis", "INTEGER DEFAULT 0"),
+        ("site_web", "VARCHAR(255)"),
+        ("is_verified", "BOOLEAN DEFAULT FALSE"),
+        ("specialites", "TEXT[]"),
+    ];
+    for (col, col_type) in &pharma_columns_to_add {
+        let check = format!(
+            "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name='pharmacies' AND column_name='{}')",
+            col
+        );
+        let exists: bool =
+            sqlx::query_scalar::<_, bool>(&check).fetch_one(pool).await.unwrap_or(true);
+        if !exists {
+            let alter = format!("ALTER TABLE pharmacies ADD COLUMN {} {}", col, col_type);
+            if let Err(e) = sqlx::query(&alter).execute(pool).await {
+                warn!(
+                    "⚠️ Impossible d'ajouter colonne {} à pharmacies: {}",
+                    col, e
+                );
+            } else {
+                info!("✅ Colonne {} ajoutée à pharmacies", col);
+            }
+        }
+    }
+
     // 2. HOPITAUX_CLINIQUES
     if !hopitaux_exists {
         warn!("⚠️ Table hopitaux_cliniques manquante, création directe...");
@@ -15004,6 +15034,38 @@ pub async fn ensure_specialized_services_tables(pool: &PgPool) -> Result<(), sql
         info!("✅ Table hopitaux_cliniques créée directement");
     }
 
+    // 2b. HOPITAUX_CLINIQUES: Colonnes supplémentaires pour UX moderne
+    let hopital_columns_to_add = vec![
+        ("description", "TEXT"),
+        ("logo_url", "TEXT"),
+        ("note_moyenne", "REAL DEFAULT 0"),
+        ("nombre_avis", "INTEGER DEFAULT 0"),
+        ("is_verified", "BOOLEAN DEFAULT FALSE"),
+        ("specialites", "TEXT[]"),
+    ];
+    for (col, col_type) in &hopital_columns_to_add {
+        let check = format!(
+            "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name='hopitaux_cliniques' AND column_name='{}')",
+            col
+        );
+        let exists: bool =
+            sqlx::query_scalar::<_, bool>(&check).fetch_one(pool).await.unwrap_or(true);
+        if !exists {
+            let alter = format!(
+                "ALTER TABLE hopitaux_cliniques ADD COLUMN {} {}",
+                col, col_type
+            );
+            if let Err(e) = sqlx::query(&alter).execute(pool).await {
+                warn!(
+                    "⚠️ Impossible d'ajouter colonne {} à hopitaux_cliniques: {}",
+                    col, e
+                );
+            } else {
+                info!("✅ Colonne {} ajoutée à hopitaux_cliniques", col);
+            }
+        }
+    }
+
     // 3. LABORATOIRES_IMAGERIE
     if !laboratoires_exists {
         warn!("⚠️ Table laboratoires_imagerie manquante, création directe...");
@@ -15062,6 +15124,39 @@ pub async fn ensure_specialized_services_tables(pool: &PgPool) -> Result<(), sql
         .await?;
 
         info!("✅ Table laboratoires_imagerie créée directement");
+    }
+
+    // 3b. LABORATOIRES_IMAGERIE: Colonnes supplémentaires pour UX moderne
+    let labo_columns_to_add = vec![
+        ("description", "TEXT"),
+        ("logo_url", "TEXT"),
+        ("note_moyenne", "REAL DEFAULT 0"),
+        ("nombre_avis", "INTEGER DEFAULT 0"),
+        ("site_web", "VARCHAR(255)"),
+        ("is_verified", "BOOLEAN DEFAULT FALSE"),
+        ("specialites", "TEXT[]"),
+    ];
+    for (col, col_type) in &labo_columns_to_add {
+        let check = format!(
+            "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name='laboratoires_imagerie' AND column_name='{}')",
+            col
+        );
+        let exists: bool =
+            sqlx::query_scalar::<_, bool>(&check).fetch_one(pool).await.unwrap_or(true);
+        if !exists {
+            let alter = format!(
+                "ALTER TABLE laboratoires_imagerie ADD COLUMN {} {}",
+                col, col_type
+            );
+            if let Err(e) = sqlx::query(&alter).execute(pool).await {
+                warn!(
+                    "⚠️ Impossible d'ajouter colonne {} à laboratoires_imagerie: {}",
+                    col, e
+                );
+            } else {
+                info!("✅ Colonne {} ajoutée à laboratoires_imagerie", col);
+            }
+        }
     }
 
     // 4. AGENCES_VOYAGE
@@ -15328,6 +15423,35 @@ pub async fn ensure_banques_sang_table(pool: &PgPool) -> Result<(), sqlx::Error>
         info!("✅ Table banques_sang créée");
     } else {
         info!("✅ Table banques_sang déjà présente");
+    }
+
+    // Colonnes supplémentaires pour UX moderne
+    let bs_columns_to_add = vec![
+        ("description", "TEXT"),
+        ("logo_url", "TEXT"),
+        ("note_moyenne", "REAL DEFAULT 0"),
+        ("nombre_avis", "INTEGER DEFAULT 0"),
+        ("site_web", "VARCHAR(255)"),
+        ("is_verified", "BOOLEAN DEFAULT FALSE"),
+    ];
+    for (col, col_type) in &bs_columns_to_add {
+        let check = format!(
+            "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name='banques_sang' AND column_name='{}')",
+            col
+        );
+        let exists: bool =
+            sqlx::query_scalar::<_, bool>(&check).fetch_one(pool).await.unwrap_or(true);
+        if !exists {
+            let alter = format!("ALTER TABLE banques_sang ADD COLUMN {} {}", col, col_type);
+            if let Err(e) = sqlx::query(&alter).execute(pool).await {
+                warn!(
+                    "⚠️ Impossible d'ajouter colonne {} à banques_sang: {}",
+                    col, e
+                );
+            } else {
+                info!("✅ Colonne {} ajoutée à banques_sang", col);
+            }
+        }
     }
 
     Ok(())

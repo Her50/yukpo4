@@ -9,7 +9,7 @@
  * - POST /api/assurance/ai/estimate-premium - Estimation prime IA
  */
 
-import { apiGet, apiPost, ApiResponse } from './api';
+import { apiGet, apiPost } from './api';
 
 // ═══════════════════════════════════════════════════════════════
 // TYPES
@@ -136,7 +136,7 @@ const assuranceService = {
             if (filters.limit) params.append('limit', filters.limit.toString());
             if (filters.offset) params.append('offset', filters.offset.toString());
 
-            const response: ApiResponse<any> = await apiGet(`/assurance/search?${params.toString()}`);
+            const response = await apiGet(`/api/assurance/search?${params.toString()}`);
             const backendData = response?.data as any;
             return backendData?.results || [];
         } catch (error) {
@@ -154,7 +154,7 @@ const assuranceService = {
         couverturesSouhaitees?: string[],
     ): Promise<InsuranceQuote | null> => {
         try {
-            const response: ApiResponse<any> = await apiPost('/assurance/ai/quote', {
+            const response = await apiPost('/api/assurance/ai/quote', {
                 type_assurance: typeAssurance,
                 profile: profile || {},
                 couvertures_souhaitees: couverturesSouhaitees || [],
@@ -176,7 +176,7 @@ const assuranceService = {
         profile?: InsuranceProfile,
     ): Promise<InsuranceComparison | null> => {
         try {
-            const response: ApiResponse<any> = await apiPost('/assurance/ai/compare', {
+            const response = await apiPost('/api/assurance/ai/compare', {
                 type_assurance: typeAssurance,
                 produits,
                 profile: profile || {},
@@ -197,7 +197,7 @@ const assuranceService = {
         limit?: number,
     ): Promise<InsuranceRecommendation[]> => {
         try {
-            const response: ApiResponse<any> = await apiPost('/assurance/ai/recommendations', {
+            const response = await apiPost('/api/assurance/ai/recommendations', {
                 profile: profile || {},
                 limit: limit || 5,
             });
@@ -218,7 +218,7 @@ const assuranceService = {
         profile?: InsuranceProfile,
     ): Promise<PremiumEstimate | null> => {
         try {
-            const response: ApiResponse<any> = await apiPost('/assurance/ai/estimate-premium', {
+            const response = await apiPost('/api/assurance/ai/estimate-premium', {
                 type_assurance: typeAssurance,
                 produit,
                 profile: profile || {},

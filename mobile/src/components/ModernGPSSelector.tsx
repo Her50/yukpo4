@@ -12,9 +12,9 @@ import {
 } from 'react-native';
 import { modernColors, modernStyles } from '../theme/modernTheme';
 import InteractiveMapView, { InteractiveMapViewRef } from './InteractiveMapView';
-import { NativeButton, NativeCard } from './SafeNativeDesign';
-import SafeIcon from './SafeIcon';
 import LocationSelector, { LocationObject } from './LocationSelector';
+import SafeIcon from './SafeIcon';
+import { NativeButton, NativeCard } from './SafeNativeDesign';
 
 const { width, height } = Dimensions.get('window');
 
@@ -113,7 +113,7 @@ const ModernGPSSelector: React.FC<ModernGPSSelectorProps> = ({
         try {
             let coords = location.coordinates;
             let locationToUse = location;
-            
+
             // ✅ NOUVEAU: Si les coordonnées ne sont pas disponibles, géocoder le lieu
             if (!coords?.lat || !coords?.lng) {
                 const locationText = location.raw || location.place_name || '';
@@ -152,7 +152,7 @@ const ModernGPSSelector: React.FC<ModernGPSSelectorProps> = ({
                     return;
                 }
             }
-            
+
             if (coords?.lat && coords?.lng) {
                 const newLocation = {
                     lat: coords.lat,
@@ -161,7 +161,7 @@ const ModernGPSSelector: React.FC<ModernGPSSelectorProps> = ({
                 setSelectedLocation(newLocation);
                 setSearchLocation(locationToUse);
                 setSelectedAddress(locationToUse.raw || locationToUse.place_name || '');
-                
+
                 // ✅ AMÉLIORÉ: Repositionner la carte automatiquement avec zoom adapté
                 // Le zoom sera adapté selon le type de lieu (établissement, quartier, ville, pays)
                 setTimeout(() => {
@@ -176,16 +176,16 @@ const ModernGPSSelector: React.FC<ModernGPSSelectorProps> = ({
                             const neighborhoodTypes = ['sublocality', 'sublocality_level_1', 'neighborhood'];
                             const cityTypes = ['locality', 'administrative_area_level_2'];
                             const countryTypes = ['country', 'administrative_area_level_1'];
-                            
+
                             if (googleTypes.some(type => establishmentTypes.includes(type))) return 'establishment';
                             if (googleTypes.some(type => neighborhoodTypes.includes(type))) return 'neighborhood';
                             if (googleTypes.some(type => cityTypes.includes(type))) return 'city';
                             if (googleTypes.some(type => countryTypes.includes(type))) return 'country';
                             return 'city';
                         };
-                        
+
                         // ✅ Utiliser types Google Places si disponibles, sinon fallback sur détection manuelle
-                        const placeType = locationToUse.google_types 
+                        const placeType = locationToUse.google_types
                             ? mapGoogleTypesToLocalType(locationToUse.google_types)
                             : (() => {
                                 // Fallback: détection manuelle si types non disponibles
@@ -198,11 +198,11 @@ const ModernGPSSelector: React.FC<ModernGPSSelectorProps> = ({
                                 if (isPays) return 'country';
                                 return 'city';
                             })();
-                        
+
                         // ✅ Calcul du zoom selon le type de lieu (utilise types Google)
                         let latitudeDelta: number;
                         let longitudeDelta: number;
-                        
+
                         switch (placeType) {
                             case 'establishment':
                                 // Établissement : zoom très proche (~200m) pour position précise
@@ -229,13 +229,13 @@ const ModernGPSSelector: React.FC<ModernGPSSelectorProps> = ({
                                 latitudeDelta = 0.01;
                                 longitudeDelta = 0.01;
                         }
-                        
+
                         console.log('[ModernGPSSelector] Recentrage carte:', {
                             coords,
-                            type: isEstablishment ? 'établissement' : isQuartier ? 'quartier' : isVille ? 'ville' : isPays ? 'pays' : 'autre',
+                            type: placeType,
                             zoom: { latitudeDelta, longitudeDelta }
                         });
-                        
+
                         mapRef.current.animateToRegion({
                             latitude: coords.lat,
                             longitude: coords.lng,

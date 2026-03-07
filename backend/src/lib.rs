@@ -35,6 +35,7 @@ use crate::routes::{
     ar_routes::ar_routes, // ✅ NOUVEAU Phase 3.2: Routes pour preview AR/VR
     assurance_routes::assurance_routes, // ✅ NOUVEAU: Routes assurance dédiées (recherche, devis IA, comparaison)
     auth_routes::auth_routes,
+    auto_search_routes::auto_search_routes, // ✅ NOUVEAU 2026-03-07: Routes recherche automobile intelligente
     autocomplete_routes::autocomplete_routes,
     bourse_livre_routes::bourse_livre_routes, // ✅ NOUVEAU 2025-01-27: Routes pour upload médias chat vers S3/Wasabi
     chat_reactions_routes::create_chat_reactions_router,
@@ -109,6 +110,7 @@ use crate::routes::{
     specialized_services_routes::specialized_services_routes,
     stock_media_routes::stock_media_routes, // ✅ NOUVEAU Phase 2: Routes Stock Media Integration
     studio_routes::studio_routes, // ✅ NOUVEAU: Routes Studio pour création vidéo immersive
+    supermarket_routes::supermarket_routes, // ✅ NOUVEAU: Routes supermarché dédiées (produits, comparaison, promotions)
     system_health_routes::system_health_routes,
     token_pack_routes::token_pack_routes,
     token_stats_routes::token_stats_routes,
@@ -328,6 +330,8 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
     let gpu = crate::routes::gpu_routes::gpu_routes(state.clone()); // ✅ NOUVEAU 2026-02-14: Routes pour gestion GPU GCP
     let hotel_management = hotel_room_management_routes(state.clone()); // ✅ 2026-03-01: Routes gestion hôtels/meublés (chambres, réservations, QR)
     let assurance = assurance_routes(state.clone()); // ✅ NOUVEAU: Routes assurance dédiées (recherche, devis IA, comparaison)
+    let auto_search = auto_search_routes(state.clone()); // ✅ NOUVEAU 2026-03-07: Routes recherche automobile intelligente
+    let supermarket = supermarket_routes(state.clone()); // ✅ NOUVEAU: Routes supermarché dédiées (produits, comparaison, promotions)
     let followers = followers_routes(state.clone()); // ✅ NOUVEAU 2026-03-05: Routes pour système de suivi vendeurs
 
     // ✅ NOUVEAU 2026-03-06: Configuration WhatsApp Business
@@ -419,6 +423,8 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .merge(gpu) // ✅ NOUVEAU 2026-02-14: Routes pour gestion GPU GCP
         .merge(hotel_management) // ✅ 2026-03-01: Routes gestion hôtels/meublés (chambres, réservations, QR)
         .merge(assurance) // ✅ NOUVEAU: Routes assurance dédiées (recherche, devis IA, comparaison)
+        .merge(auto_search) // ✅ NOUVEAU 2026-03-07: Routes recherche automobile intelligente
+        .merge(supermarket) // ✅ NOUVEAU: Routes supermarché dédiées (produits, comparaison, promotions)
         .merge(followers) // ✅ NOUVEAU 2026-03-05: Routes pour système de suivi vendeurs
         .merge(whatsapp) // ✅ NOUVEAU 2026-03-06: Routes WhatsApp Business API
         .merge(mobile_logs)

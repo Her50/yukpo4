@@ -505,29 +505,31 @@ const ProductCard: React.FC<ProductCardProps> = ({
     ? chosenLocationRaw.trim()
     : '';
 
-  // ✅ DEBUG 2026-01-21: Logger l'extraction de la localisation avec quartier/ville
+  // ✅ CORRIGÉ 2026-03-07: Logger uniquement en dev
   useEffect(() => {
-    if (chosenLocation) {
-      console.log('[ProductCard] 📍 Localisation extraite:', {
-        chosenLocation,
-        quartier,
-        ville,
-        hasLieuProduitComposants: !!lieuProduitComposants,
-        hasLocationVector: locationVector.length > 0,
-        locationVector,
-        hasProductDataChosenLocation: !!productData.chosen_location,
-        hasServiceAdresse: !!service?.data?.adresse?.valeur,
-      });
-    } else {
-      console.log('[ProductCard] ⚠️ Aucune localisation trouvée:', {
-        quartier,
-        ville,
-        hasLieuProduitComposants: !!lieuProduitComposants,
-        hasProductDataChosenLocation: !!productData.chosen_location,
-        locationVectorLength: locationVector.length,
-        hasProductDataAdresse: !!productData.adresse,
-        hasServiceAdresse: !!service?.data?.adresse?.valeur,
-      });
+    if (__DEV__) {
+      if (chosenLocation) {
+        console.log('[ProductCard] 📍 Localisation extraite:', {
+          chosenLocation,
+          quartier,
+          ville,
+          hasLieuProduitComposants: !!lieuProduitComposants,
+          hasLocationVector: locationVector.length > 0,
+          locationVector,
+          hasProductDataChosenLocation: !!productData.chosen_location,
+          hasServiceAdresse: !!service?.data?.adresse?.valeur,
+        });
+      } else {
+        console.log('[ProductCard] ⚠️ Aucune localisation trouvée:', {
+          quartier,
+          ville,
+          hasLieuProduitComposants: !!lieuProduitComposants,
+          hasProductDataChosenLocation: !!productData.chosen_location,
+          locationVectorLength: locationVector.length,
+          hasProductDataAdresse: !!productData.adresse,
+          hasServiceAdresse: !!service?.data?.adresse?.valeur,
+        });
+      }
     }
   }, [chosenLocation, quartier, ville, locationVector.length]);
 
@@ -608,9 +610,8 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
           hasVariant = variants.length > 0;
 
-          if (unwrappedVariationPrix.variable) {
-            productData.variant_dimension = unwrappedVariationPrix.variable;
-          }
+          // ✅ CORRIGÉ 2026-03-07: Ne PAS muter productData (prop) pendant le render
+          // variant_dimension est stocké dans une variable locale à la place
 
           console.log('[ProductCard] ✅ variation_prix transformé en variants:', variants.length);
         }
@@ -1095,6 +1096,17 @@ const ProductCard: React.FC<ProductCardProps> = ({
     return 'XAF';
   };
 
+  // ✅ CORRIGÉ 2026-03-07: Extraire variant_dimension sans muter productData
+  const variantDimension = productData.variant_dimension || ((() => {
+    const vp = productData.variation_prix || productData.variabilite_prix || productData.price_variant
+      || product.variation_prix || product.variabilite_prix || product.price_variant;
+    if (vp && typeof vp === 'object' && !Array.isArray(vp)) {
+      const unwrapped = (vp.origine_champs && vp.valeur && typeof vp.valeur === 'object' && !Array.isArray(vp.valeur)) ? vp.valeur : vp;
+      return unwrapped.variable || '';
+    }
+    return '';
+  })()) || 'variante';
+
   const devise = extractDevise(productData) || extractDevise(product) || variants[0]?.devise || 'XAF';
 
   // ✅ CORRIGÉ 2025-01-01: Mémoriser le calcul de distance pour éviter les recalculs à chaque render
@@ -1193,27 +1205,29 @@ const ProductCard: React.FC<ProductCardProps> = ({
   const pays = paysFromService || paysFromLocationComponents || paysFromLocation || paysFromVector || paysFromProduct || null;
   const countryFlag = pays && pays.trim() !== '' ? getCountryFlag(pays) : '';
 
-  // ✅ DEBUG 2026-01-20: Logger l'extraction du pays et du drapeau
+  // ✅ CORRIGÉ 2026-03-07: Logger uniquement en dev
   useEffect(() => {
-    if (pays || countryFlag) {
-      console.log('[ProductCard] 🏳️ Pays et drapeau extraits:', {
-        pays,
-        countryFlag,
-        paysFromService,
-        paysFromLocationComponents,
-        paysFromLocation,
-        paysFromVector,
-        paysFromProduct
-      });
-    } else {
-      console.log('[ProductCard] ⚠️ Aucun pays trouvé:', {
-        hasPaysFromService: !!paysFromService,
-        hasPaysFromLocationComponents: !!paysFromLocationComponents,
-        hasPaysFromLocation: !!paysFromLocation,
-        hasPaysFromVector: !!paysFromVector,
-        hasPaysFromProduct: !!paysFromProduct,
-        chosenLocation
-      });
+    if (__DEV__) {
+      if (pays || countryFlag) {
+        console.log('[ProductCard] 🏳️ Pays et drapeau extraits:', {
+          pays,
+          countryFlag,
+          paysFromService,
+          paysFromLocationComponents,
+          paysFromLocation,
+          paysFromVector,
+          paysFromProduct
+        });
+      } else {
+        console.log('[ProductCard] ⚠️ Aucun pays trouvé:', {
+          hasPaysFromService: !!paysFromService,
+          hasPaysFromLocationComponents: !!paysFromLocationComponents,
+          hasPaysFromLocation: !!paysFromLocation,
+          hasPaysFromVector: !!paysFromVector,
+          hasPaysFromProduct: !!paysFromProduct,
+          chosenLocation
+        });
+      }
     }
   }, [pays, countryFlag]);
 
@@ -1961,7 +1975,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                   <View style={styles.sectionHeader}>
                     <SafeIcon name="dollar-sign" size={12} color="#6B7280" />
                     <Text style={styles.sectionTitle}>
-                      Prix selon {filterBooleanValue(productData.variant_dimension, 'variante')}
+                      Prix selon {filterBooleanValue(variantDimension, 'variante')}
                     </Text>
                   </View>
 
@@ -2000,7 +2014,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                       >
                         {variant.image && (
                           <Image
-                            source={{ uri: variant.image.startsWith('data:') ? variant.image : `data:image/jpeg;base64,${variant.image}` }}
+                            source={{ uri: normalizeMediaUrl(variant.image, 'image') || undefined }}
                             style={styles.variantCardImage}
                             resizeMode="cover"
                           />
@@ -2009,7 +2023,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                           {filterBooleanValue(variant.value || variant.valeur, 'Variante')}
                         </Text>
                         <Text style={styles.variantCardPrice}>
-                          {variant.prix?.toLocaleString() || '0'} {variant.devise || devise}
+                          {(typeof variant.prix === 'number' ? variant.prix : (parseFloat(variant.prix) || 0)).toLocaleString()} {variant.devise || devise}
                         </Text>
                         <View style={[
                           styles.variantCardStock,
@@ -2157,13 +2171,15 @@ export default React.memo(ProductCard, (prevProps, nextProps) => {
   const nextLocation = nextProps.userLocation ? `${nextProps.userLocation.latitude},${nextProps.userLocation.longitude}` : null;
 
   // ✅ Ne re-render que si les valeurs clés changent
+  // ✅ CORRIGÉ 2026-03-07: Ajouter isScrolling pour que les vidéos s'arrêtent pendant le scroll
   return (
     prevProductId === nextProductId &&
     prevServiceId === nextServiceId &&
     prevPrestataireId === nextPrestataireId &&
     prevLocation === nextLocation &&
     prevProps.onPress === nextProps.onPress &&
-    prevProps.onChatPress === nextProps.onChatPress
+    prevProps.onChatPress === nextProps.onChatPress &&
+    prevProps.isScrolling === nextProps.isScrolling
   );
 });
 

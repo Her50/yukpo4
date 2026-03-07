@@ -29,6 +29,10 @@ pub fn hotel_room_management_routes(_state: Arc<AppState>) -> Router<Arc<AppStat
             post(hotel_room_management_controller::create_manual_reservation),
         )
         .route(
+            "/api/hotel/reservations/request",
+            post(hotel_room_management_controller::request_hotel_reservation),
+        )
+        .route(
             "/api/hotel/reservations/scan-qr",
             post(hotel_room_management_controller::scan_reservation_qr),
         )

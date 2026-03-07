@@ -699,54 +699,50 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                     </View>
                 </View>
 
-                <TouchableWithoutFeedback onPress={() => setShowSuggestions(false)}>
-                    <View style={styles.content}>
-                        {/* ✅ SUPPRIMÉ: Barre gauche pour maximiser l'espace carte */}
-                        {/* Les coordonnées sont maintenant affichées en haut */}
-
-                        {/* Carte interactive - PLUS D'ESPACE */}
-                        <View style={styles.mapContainer}>
-                            <ErrorBoundary
-                                fallback={
-                                    <View style={[styles.map, styles.mapErrorContainer]}>
-                                        <SafeIcon name="alert-circle" size={48} color="#EF4444" />
-                                        <Text style={styles.mapErrorText}>
-                                            Impossible de charger la carte
-                                        </Text>
-                                        <Text style={styles.mapErrorSubtext}>
-                                            Vérifiez votre connexion internet et les permissions GPS
-                                        </Text>
-                                        <TouchableOpacity
-                                            style={styles.retryButton}
-                                            onPress={() => {
-                                                onClose();
-                                                // Recharger en rouvrant
-                                            }}
-                                        >
-                                            <SafeIcon name="refresh-cw" size={16} color="#FFFFFF" />
-                                            <Text style={styles.retryButtonText}>Réessayer</Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                }
-                            >
-                                <InteractiveMapView
-                                    selectedLocation={selectedLocation}
-                                    onLocationSelect={handleLocationSelect}
-                                    mapStyle={mapStyle}
-                                    zoneType={zoneType}
-                                    polygonPoints={selectedPolygon}
-                                    onPolygonPointsChange={handlePolygonPointsChange}
-                                    initialRegion={userLocation?.coords?.latitude && userLocation?.coords?.longitude ? {
-                                        latitude: userLocation.coords.latitude,
-                                        longitude: userLocation.coords.longitude,
-                                        latitudeDelta: 0.01,
-                                        longitudeDelta: 0.01,
-                                    } : undefined}
-                                />
-                            </ErrorBoundary>
-                        </View>
+                {/* ✅ FIX 2026-03-07: Suppression de TouchableWithoutFeedback qui empêchait */}
+                {/* le rendu natif de MapView sur Android (interception des événements tactiles) */}
+                <View style={styles.content}>
+                    {/* Carte interactive - PLEIN ESPACE */}
+                    <View style={styles.mapContainer}>
+                        <ErrorBoundary
+                            fallback={
+                                <View style={[styles.map, styles.mapErrorContainer]}>
+                                    <SafeIcon name="alert-circle" size={48} color="#EF4444" />
+                                    <Text style={styles.mapErrorText}>
+                                        Impossible de charger la carte
+                                    </Text>
+                                    <Text style={styles.mapErrorSubtext}>
+                                        Vérifiez votre connexion internet et les permissions GPS
+                                    </Text>
+                                    <TouchableOpacity
+                                        style={styles.retryButton}
+                                        onPress={() => {
+                                            onClose();
+                                        }}
+                                    >
+                                        <SafeIcon name="refresh-cw" size={16} color="#FFFFFF" />
+                                        <Text style={styles.retryButtonText}>Réessayer</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            }
+                        >
+                            <InteractiveMapView
+                                selectedLocation={selectedLocation}
+                                onLocationSelect={handleLocationSelect}
+                                mapStyle={mapStyle}
+                                zoneType={zoneType}
+                                polygonPoints={selectedPolygon}
+                                onPolygonPointsChange={handlePolygonPointsChange}
+                                initialRegion={userLocation?.coords?.latitude && userLocation?.coords?.longitude ? {
+                                    latitude: userLocation.coords.latitude,
+                                    longitude: userLocation.coords.longitude,
+                                    latitudeDelta: 0.01,
+                                    longitudeDelta: 0.01,
+                                } : undefined}
+                            />
+                        </ErrorBoundary>
                     </View>
-                </TouchableWithoutFeedback>
+                </View>
 
                 {/* ✅ FIX 2026-03-03: Suggestions autocomplete rendues APRÈS la carte */}
                 {/* Sur Android, les MapView natives ont leur propre surface de rendu qui */}
@@ -1039,7 +1035,7 @@ const styles = StyleSheet.create({
     },
     content: {
         flex: 1,
-        flexDirection: 'row',
+        flexDirection: 'column',
     },
     // Overlay pour les suggestions autocomplete
     suggestionsOverlay: {

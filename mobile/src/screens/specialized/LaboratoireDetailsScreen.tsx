@@ -1,1053 +1,504 @@
-// ✅ Phase 3: Détails d'un laboratoire avec boutons d'action
+// ✅ REFONTE 2026-03-07: LaboratoireDetailsScreen → UX moderne
+// Hero gradient teal, quick actions, examens, IA symptômes, chat, partage, pull-to-refresh
 import { useNavigation, useRoute } from '@react-navigation/native';
-import React, { useEffect, useState } from 'react';
+import { LinearGradient } from 'expo-linear-gradient';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
     Linking,
     Modal,
+    Platform,
+    RefreshControl,
     ScrollView,
+    Share,
     StyleSheet,
     Text,
+    TextInput,
     TouchableOpacity,
-    View
+    View,
 } from 'react-native';
 import ChatModalMobile from '../../components/ChatModalMobile';
 import ProductCommentsSection from '../../components/ProductCommentsSection';
 import SafeIcon from '../../components/SafeIcon';
-import { NativeButton, NativeCard, NativeInput } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiGet, apiPost } from '../../services/api';
 import { ExaminationType, labService } from '../../services/labService';
-import { modernColors } from '../../theme/modernTheme';
 
 interface LaboratoireDetails {
     id: number;
     service_id: number;
     user_id: number;
     nom: string;
+    description?: string;
     type_laboratoire: string;
     adresse?: string;
     quartier?: string;
     ville?: string;
     gps?: string;
     is_available_now: boolean;
+    is_verified?: boolean;
+    note_moyenne?: number;
+    nombre_avis?: number;
     analyses_disponibles?: string[];
     imagerie_disponible?: string[];
+    specialites?: string[];
     rdv_requis: boolean;
     resultats_en_ligne: boolean;
     telephone?: string;
     whatsapp?: string;
     email?: string;
-}
-
-interface LaboratoireDetailsScreenParams {
-    laboratoryId: number;
+    site_web?: string;
+    logo_url?: string;
 }
 
 const LaboratoireDetailsScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
     const { user } = useAuth();
-    const params = route.params as LaboratoireDetailsScreenParams;
+    const params = route.params as any;
 
     const [laboratoire, setLaboratoire] = useState<LaboratoireDetails | null>(null);
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
     const [booking, setBooking] = useState(false);
-    // ✅ 2025-01-27: Nouvelles fonctionnalités
+
     const [examinationTypes, setExaminationTypes] = useState<ExaminationType[]>([]);
     const [loadingTypes, setLoadingTypes] = useState(false);
     const [showBookingModal, setShowBookingModal] = useState(false);
     const [selectedExamination, setSelectedExamination] = useState<ExaminationType | null>(null);
     const [bookingNotes, setBookingNotes] = useState('');
     const [bookingExamination, setBookingExamination] = useState(false);
-    // ✅ 2025-01-27: Chat et Avis
+
     const [showChat, setShowChat] = useState(false);
     const [conversationId, setConversationId] = useState<string | null>(null);
     const [prestataireInfo, setPrestataireInfo] = useState<any>(null);
     const [ratingStats, setRatingStats] = useState<any>(null);
-    // ✅ IA: Recherche pathologie
+
     const [symptomInput, setSymptomInput] = useState('');
     const [symptoms, setSymptoms] = useState<string[]>([]);
     const [pathologyResult, setPathologyResult] = useState<any>(null);
     const [searchingPathology, setSearchingPathology] = useState(false);
 
-    useEffect(() => {
-        loadLaboratoireDetails();
-    }, []);
-
-    // ✅ 2025-01-27: Charger les types d'examens disponibles
-    useEffect(() => {
-        if (laboratoire) {
-            loadExaminationTypes();
-            loadPrestataireInfo();
-            loadRatingStats();
-        }
-    }, [laboratoire]);
+    useEffect(() => { loadLaboratoireDetails(); }, []);
+    useEffect(() => { if (laboratoire) { loadExaminationTypes(); loadPrestataireInfo(); loadRatingStats(); } }, [laboratoire]);
 
     const loadLaboratoireDetails = async () => {
         try {
             setLoading(true);
             const response = await apiGet(`/api/laboratoires/${params.laboratoryId}`);
+            if (response.success && response.data) setLaboratoire(response.data as LaboratoireDetails);
+            else { Alert.alert('Erreur', 'Impossible de charger les détails'); navigation.goBack(); }
+        } catch (error: any) { Alert.alert('Erreur', error.message || 'Impossible de charger'); navigation.goBack(); }
+        finally { setLoading(false); }
+    };
 
-            if (response.success && response.data) {
-                setLaboratoire(response.data as LaboratoireDetails);
-            } else {
-                Alert.alert('Erreur', 'Impossible de charger les détails du laboratoire');
-                navigation.goBack();
-            }
-        } catch (error: any) {
-            console.error('[LaboratoireDetailsScreen] Erreur:', error);
-            Alert.alert('Erreur', error.message || 'Impossible de charger les détails');
-            navigation.goBack();
-        } finally {
-            setLoading(false);
-        }
+    const handleRefresh = useCallback(async () => { setRefreshing(true); await loadLaboratoireDetails(); setRefreshing(false); }, []);
+
+    const handleCall = () => { if (laboratoire?.telephone) Linking.openURL(`tel:${laboratoire.telephone}`); };
+    const handleWhatsApp = () => {
+        const num = laboratoire?.whatsapp || laboratoire?.telephone;
+        if (num) Linking.openURL(`https://wa.me/${num.replace(/[^0-9+]/g, '')}`);
+    };
+    const handleEmail = () => { if (laboratoire?.email) Linking.openURL(`mailto:${laboratoire.email}`); };
+    const handleWebsite = () => {
+        if (laboratoire?.site_web) { const url = laboratoire.site_web.startsWith('http') ? laboratoire.site_web : `https://${laboratoire.site_web}`; Linking.openURL(url); }
+    };
+    const handleShare = async () => {
+        if (!laboratoire) return;
+        try {
+            await Share.share({
+                message: `${laboratoire.nom} (${laboratoire.type_laboratoire})${laboratoire.adresse ? ' - ' + laboratoire.adresse : ''}${laboratoire.ville ? ', ' + laboratoire.ville : ''}${laboratoire.telephone ? '\nTel: ' + laboratoire.telephone : ''}${laboratoire.resultats_en_ligne ? '\nRésultats en ligne' : ''}\nVia Yukpo`,
+                title: laboratoire.nom,
+            });
+        } catch { }
     };
 
     const handleBook = async () => {
-        if (!user) {
-            Alert.alert('Connexion requise', 'Veuillez vous connecter pour réserver un rendez-vous');
-            navigation.navigate('Login' as never);
-            return;
-        }
-
+        if (!user) { Alert.alert('Connexion requise', 'Veuillez vous connecter'); navigation.navigate('Login' as never); return; }
         try {
             setBooking(true);
-            const response = await apiPost(`/api/laboratoires/${params.laboratoryId}/book`, {
-                notes: 'Réservation depuis l\'application mobile',
-            });
-
-            if (response.success) {
-                Alert.alert(
-                    'Réservation créée',
-                    'Votre demande de rendez-vous a été envoyée. Le laboratoire vous contactera.',
-                    [
-                        {
-                            text: 'OK',
-                            onPress: () => navigation.goBack(),
-                        },
-                    ]
-                );
-            } else {
-                Alert.alert('Erreur', response.error || 'Impossible de créer la réservation');
-            }
-        } catch (error: any) {
-            console.error('[LaboratoireDetailsScreen] Erreur réservation:', error);
-            Alert.alert('Erreur', error.message || 'Impossible de créer la réservation');
-        } finally {
-            setBooking(false);
-        }
+            const response = await apiPost(`/api/laboratoires/${params.laboratoryId}/book`, { notes: 'Réservation depuis l\'application mobile' });
+            if (response.success) Alert.alert('Réservation créée', 'Votre demande a été envoyée.', [{ text: 'OK', onPress: () => navigation.goBack() }]);
+            else Alert.alert('Erreur', response.error || 'Impossible de réserver');
+        } catch (error: any) { Alert.alert('Erreur', error.message || 'Impossible de réserver'); }
+        finally { setBooking(false); }
     };
 
-    const handleCall = () => {
-        if (laboratoire?.telephone) {
-            Linking.openURL(`tel:${laboratoire.telephone}`);
-        }
-    };
-
-    // ✅ 2025-01-27: Charger les types d'examens disponibles
     const loadExaminationTypes = async () => {
         try {
             setLoadingTypes(true);
             const response = await labService.getExaminationTypes(params.laboratoryId);
-
-            if (response.success && response.data) {
-                setExaminationTypes(response.data.examination_types);
-            } else {
-                console.warn('[LaboratoireDetailsScreen] Impossible de charger les types d\'examens:', response.error);
-            }
-        } catch (error: any) {
-            console.error('[LaboratoireDetailsScreen] Erreur chargement types d\'examens:', error);
-        } finally {
-            setLoadingTypes(false);
-        }
+            if (response.success && response.data) setExaminationTypes(response.data.examination_types);
+        } catch { } finally { setLoadingTypes(false); }
     };
 
-    // ✅ 2025-01-27: Réserver un examen
-    const handleBookExamination = async (examinationType: ExaminationType) => {
-        if (!user) {
-            Alert.alert('Connexion requise', 'Veuillez vous connecter pour réserver un examen');
-            navigation.navigate('Login' as never);
-            return;
-        }
-
+    const handleBookExamination = (examinationType: ExaminationType) => {
+        if (!user) { Alert.alert('Connexion requise', 'Veuillez vous connecter'); navigation.navigate('Login' as never); return; }
         setSelectedExamination(examinationType);
         setShowBookingModal(true);
     };
 
     const handleConfirmBooking = async () => {
         if (!selectedExamination) return;
-
         try {
             setBookingExamination(true);
-            const response = await labService.bookExamination(
-                params.laboratoryId,
-                {
-                    examination_type_id: selectedExamination.id,
-                    notes: bookingNotes.trim() || undefined,
-                }
-            );
-
-            if (response.success && response.data) {
-                Alert.alert(
-                    'Réservation réussie',
-                    `Votre réservation d'examen (ID: ${response.data.examination_id}) a été créée avec succès.`,
-                    [
-                        {
-                            text: 'OK',
-                            onPress: () => {
-                                setShowBookingModal(false);
-                                setSelectedExamination(null);
-                                setBookingNotes('');
-                            },
-                        },
-                    ]
-                );
-            } else {
-                Alert.alert('Erreur', response.error || 'Impossible de créer la réservation');
-            }
-        } catch (error: any) {
-            console.error('[LaboratoireDetailsScreen] Erreur réservation examen:', error);
-            Alert.alert('Erreur', error.message || 'Impossible de créer la réservation');
-        } finally {
-            setBookingExamination(false);
-        }
+            const response = await labService.bookExamination(params.laboratoryId, { examination_type_id: selectedExamination.id, notes: bookingNotes.trim() || undefined });
+            if (response.success && response.data) Alert.alert('Réservation réussie', `Examen réservé (ID: ${response.data.examination_id})`, [{ text: 'OK', onPress: () => { setShowBookingModal(false); setSelectedExamination(null); setBookingNotes(''); } }]);
+            else Alert.alert('Erreur', response.error || 'Impossible de réserver');
+        } catch (error: any) { Alert.alert('Erreur', error.message || 'Impossible de réserver'); }
+        finally { setBookingExamination(false); }
     };
 
-    const handleViewMyExaminations = () => {
-        if (!user) {
-            Alert.alert('Connexion requise', 'Veuillez vous connecter pour voir vos examens');
-            navigation.navigate('Login' as never);
-            return;
-        }
-        navigation.navigate('MyLabExaminations' as never);
-    };
-
-    // ✅ 2025-01-27: Navigation vers analytics (prestataire uniquement)
-    const handleViewAnalytics = () => {
-        if (!user) {
-            Alert.alert('Connexion requise', 'Veuillez vous connecter pour voir les analytics');
-            navigation.navigate('Login' as never);
-            return;
-        }
-        navigation.navigate('LabAnalytics' as never, {
-            laboratoryId: params.laboratoryId,
-        } as never);
-    };
-
-    // ✅ 2025-01-27: Charger infos prestataire
     const loadPrestataireInfo = async () => {
         if (!laboratoire?.user_id) return;
-        try {
-            const response = await apiGet(`/api/users/${laboratoire.user_id}`);
-            if (response.success && response.data) {
-                setPrestataireInfo(response.data);
-            }
-        } catch (error: any) {
-            console.warn('[LaboratoireDetailsScreen] Impossible de charger prestataire:', error);
-        }
+        try { const r = await apiGet(`/api/users/${laboratoire.user_id}`); if (r.success && r.data) setPrestataireInfo(r.data); } catch { }
     };
-
-    // ✅ 2025-01-27: Charger statistiques ratings
     const loadRatingStats = async () => {
         if (!laboratoire?.service_id) return;
-        try {
-            const response = await apiGet(`/api/specialized-services/${laboratoire.service_id}/ratings/stats`);
-            if (response.success && response.data) {
-                const data = response.data as any;
-                setRatingStats(data.stats || data);
-            }
-        } catch (error: any) {
-            console.warn('[LaboratoireDetailsScreen] Impossible de charger stats ratings:', error);
-        }
+        try { const r = await apiGet(`/api/specialized-services/${laboratoire.service_id}/ratings/stats`); if (r.success && r.data) { const d = r.data as any; setRatingStats(d.stats || d); } } catch { }
     };
 
-    // ✅ 2025-01-27: Ouvrir chat
     const handleOpenChat = () => {
-        if (!user) {
-            Alert.alert('Connexion requise', 'Veuillez vous connecter pour contacter le laboratoire');
-            navigation.navigate('Login' as never);
-            return;
-        }
+        if (!user) { Alert.alert('Connexion requise', 'Veuillez vous connecter'); navigation.navigate('Login' as never); return; }
         setShowChat(true);
     };
 
-    // ✅ IA: Recherche pathologie pour suggérer examens
     const handleSearchPathology = async () => {
-        if (symptoms.length === 0) {
-            Alert.alert('Erreur', 'Ajoutez au moins un sympt\u00f4me');
-            return;
-        }
+        if (symptoms.length === 0) { Alert.alert('Erreur', 'Ajoutez au moins un symptôme'); return; }
         try {
             setSearchingPathology(true);
             const response = await labService.searchPathology(symptoms);
-            if (response.success) {
-                const resData = (response as any).data?.data || (response as any).data;
-                setPathologyResult(resData);
-            } else {
-                Alert.alert('IA non disponible', 'La recherche par sympt\u00f4mes n\'est pas encore op\u00e9rationnelle.');
-            }
-        } catch (error: any) {
-            console.warn('[LaboratoireDetailsScreen] Erreur recherche pathologie:', error);
-            Alert.alert('Erreur', 'Impossible d\'analyser les sympt\u00f4mes');
-        } finally {
-            setSearchingPathology(false);
-        }
+            if (response.success) { const resData = (response as any).data?.data || (response as any).data; setPathologyResult(resData); }
+            else Alert.alert('IA non disponible', 'La recherche par symptômes n\'est pas encore opérationnelle.');
+        } catch { Alert.alert('Erreur', 'Impossible d\'analyser les symptômes'); }
+        finally { setSearchingPathology(false); }
     };
 
-    const addSymptom = () => {
-        const s = symptomInput.trim();
-        if (s && !symptoms.includes(s)) {
-            setSymptoms([...symptoms, s]);
-            setSymptomInput('');
-        }
-    };
+    const addSymptom = () => { const s = symptomInput.trim(); if (s && !symptoms.includes(s)) { setSymptoms([...symptoms, s]); setSymptomInput(''); } };
+    const removeSymptom = (sym: string) => { setSymptoms(symptoms.filter(s => s !== sym)); setPathologyResult(null); };
 
-    const removeSymptom = (sym: string) => {
-        setSymptoms(symptoms.filter(s => s !== sym));
-        setPathologyResult(null);
-    };
-
-    // Vérifier si l'utilisateur est le propriétaire
     const isOwner = user && laboratoire && String(user.id) === String(laboratoire.user_id);
+    const rating = laboratoire?.note_moyenne || (ratingStats?.average_rating as number) || 0;
+    const reviewCount = laboratoire?.nombre_avis || (ratingStats?.total_ratings as number) || 0;
 
-    if (loading) {
-        return (
-            <View style={styles.centerContainer}>
-                <ActivityIndicator size="large" color={modernColors.primary} />
-                <Text style={styles.loadingText}>Chargement...</Text>
-            </View>
-        );
-    }
+    if (loading) return (<View style={st.center}><ActivityIndicator size="large" color="#0D9488" /><Text style={st.centerText}>Chargement...</Text></View>);
+    if (!laboratoire) return (<View style={st.center}><SafeIcon name="alert-circle" size={48} color="#EF4444" /><Text style={st.centerText}>Laboratoire non trouvé</Text></View>);
 
-    if (!laboratoire) {
-        return (
-            <View style={styles.centerContainer}>
-                <Text style={styles.errorText}>Laboratoire non trouvé</Text>
-            </View>
-        );
-    }
+    const isOpen = laboratoire.is_available_now;
+    const starsFull = Math.floor(rating);
+    const starsHalf = rating - starsFull >= 0.5;
+    const analyses = laboratoire.analyses_disponibles || [];
+    const imagerie = laboratoire.imagerie_disponible || [];
 
     return (
-        <View style={styles.container}>
-            <View style={styles.header}>
-                <TouchableOpacity
-                    onPress={() => navigation.goBack()}
-                    style={styles.backButton}
-                >
-                    <SafeIcon name="arrow-left" size={24} color="#111827" />
-                </TouchableOpacity>
-                <Text style={styles.title}>Détails du laboratoire</Text>
-            </View>
-
-            <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
-                <NativeCard style={styles.card}>
-                    <View style={styles.statusRow}>
-                        <View style={styles.titleContainer}>
-                            <Text style={styles.nom}>{laboratoire.nom}</Text>
-                            <Text style={styles.type}>{laboratoire.type_laboratoire}</Text>
+        <View style={st.container}>
+            {/* Hero Gradient Header */}
+            <LinearGradient colors={['#0F766E', '#0D9488', '#2DD4BF']} style={st.hero}>
+                <View style={st.heroTop}>
+                    <TouchableOpacity onPress={() => navigation.goBack()} style={st.heroBtn}><SafeIcon name="arrow-left" size={22} color="#fff" /></TouchableOpacity>
+                    <TouchableOpacity onPress={handleShare} style={st.heroBtn}><SafeIcon name="share-2" size={22} color="#fff" /></TouchableOpacity>
+                </View>
+                <View style={st.heroContent}>
+                    <View style={st.heroIconWrap}><SafeIcon name="microscope" size={28} color="#0D9488" /></View>
+                    <Text style={st.heroTitle} numberOfLines={2}>{laboratoire.nom}</Text>
+                    <Text style={st.heroType}>{laboratoire.type_laboratoire}</Text>
+                    {laboratoire.description ? <Text style={st.heroDesc} numberOfLines={2}>{laboratoire.description}</Text> : null}
+                    <View style={st.heroBadges}>
+                        <View style={[st.badge, { backgroundColor: isOpen ? 'rgba(255,255,255,0.25)' : 'rgba(239,68,68,0.3)' }]}>
+                            <View style={[st.badgeDot, { backgroundColor: isOpen ? '#fff' : '#FCA5A5' }]} />
+                            <Text style={st.badgeText}>{isOpen ? 'Ouvert' : 'Fermé'}</Text>
                         </View>
-                        <View style={[styles.statusBadge, laboratoire.is_available_now && styles.statusBadgeAvailable]}>
-                            <Text style={[styles.statusText, laboratoire.is_available_now && styles.statusTextAvailable]}>
-                                {laboratoire.is_available_now ? 'Disponible' : 'Indisponible'}
-                            </Text>
-                        </View>
-                    </View>
-
-                    {(laboratoire.adresse || laboratoire.ville || laboratoire.quartier) && (
-                        <View style={styles.infoRow}>
-                            <SafeIcon name="map-pin" size={20} color={modernColors.textSecondary} />
-                            <View style={styles.infoTextContainer}>
-                                {laboratoire.adresse && <Text style={styles.infoText}>{laboratoire.adresse}</Text>}
-                                <Text style={styles.infoSubtext}>
-                                    {[laboratoire.quartier, laboratoire.ville].filter(Boolean).join(', ')}
-                                </Text>
-                            </View>
-                        </View>
-                    )}
-
-                    {laboratoire.gps && (
-                        <View style={styles.infoRow}>
-                            <SafeIcon name="map-pin" size={20} color={modernColors.textSecondary} />
-                            <Text style={styles.infoText}>{laboratoire.gps}</Text>
-                        </View>
-                    )}
-
-                    {laboratoire.telephone && (
-                        <View style={styles.infoRow}>
-                            <SafeIcon name="phone" size={20} color={modernColors.textSecondary} />
-                            <Text style={styles.infoText}>{laboratoire.telephone}</Text>
-                        </View>
-                    )}
-
-                    {laboratoire.email && (
-                        <View style={styles.infoRow}>
-                            <SafeIcon name="mail" size={20} color={modernColors.textSecondary} />
-                            <Text style={styles.infoText}>{laboratoire.email}</Text>
-                        </View>
-                    )}
-
-                    {laboratoire.analyses_disponibles && laboratoire.analyses_disponibles.length > 0 && (
-                        <View style={styles.section}>
-                            <Text style={styles.sectionTitle}>Analyses disponibles</Text>
-                            <View style={styles.chipsContainer}>
-                                {laboratoire.analyses_disponibles.map((anal, idx) => (
-                                    <View key={idx} style={styles.analyseChip}>
-                                        <Text style={styles.analyseChipText}>{anal}</Text>
-                                    </View>
-                                ))}
-                            </View>
-                        </View>
-                    )}
-
-                    {laboratoire.imagerie_disponible && laboratoire.imagerie_disponible.length > 0 && (
-                        <View style={styles.section}>
-                            <Text style={styles.sectionTitle}>Imagerie disponible</Text>
-                            <View style={styles.chipsContainer}>
-                                {laboratoire.imagerie_disponible.map((img, idx) => (
-                                    <View key={idx} style={styles.imagerieChip}>
-                                        <Text style={styles.imagerieChipText}>{img}</Text>
-                                    </View>
-                                ))}
-                            </View>
-                        </View>
-                    )}
-
-                    <View style={styles.badgesContainer}>
                         {laboratoire.rdv_requis && (
-                            <View style={styles.rdvBadge}>
-                                <Text style={styles.rdvBadgeText}>Rendez-vous requis</Text>
+                            <View style={[st.badge, { backgroundColor: 'rgba(245,158,11,0.3)' }]}>
+                                <SafeIcon name="calendar" size={12} color="#fff" />
+                                <Text style={st.badgeText}>RDV requis</Text>
                             </View>
                         )}
                         {laboratoire.resultats_en_ligne && (
-                            <View style={styles.resultatsBadge}>
-                                <SafeIcon name="check-circle" size={16} color="#059669" />
-                                <Text style={styles.resultatsText}>Résultats en ligne disponible</Text>
+                            <View style={[st.badge, { backgroundColor: 'rgba(16,185,129,0.3)' }]}>
+                                <SafeIcon name="wifi" size={12} color="#fff" />
+                                <Text style={st.badgeText}>Résultats en ligne</Text>
+                            </View>
+                        )}
+                        {laboratoire.is_verified && (
+                            <View style={[st.badge, { backgroundColor: 'rgba(255,255,255,0.25)' }]}>
+                                <SafeIcon name="check-circle" size={12} color="#fff" />
+                                <Text style={st.badgeText}>Vérifié</Text>
                             </View>
                         )}
                     </View>
-                </NativeCard>
-
-                {/* ✅ 2025-01-27: Section Types d'Examens Disponibles */}
-                {loadingTypes ? (
-                    <NativeCard style={styles.card}>
-                        <ActivityIndicator size="small" color={modernColors.primary} />
-                        <Text style={styles.loadingText}>Chargement des types d'examens...</Text>
-                    </NativeCard>
-                ) : examinationTypes.length > 0 && (
-                    <NativeCard style={styles.card}>
-                        <Text style={styles.sectionTitle}>🔬 Types d'examens disponibles</Text>
-                        {examinationTypes.map((type) => (
-                            <TouchableOpacity
-                                key={type.id}
-                                style={styles.examinationTypeRow}
-                                onPress={() => handleBookExamination(type)}
-                            >
-                                <View style={styles.examinationTypeInfo}>
-                                    <Text style={styles.examinationTypeName}>{type.name}</Text>
-                                    {type.category && (
-                                        <Text style={styles.examinationTypeCategory}>
-                                            Catégorie: {type.category}
-                                        </Text>
-                                    )}
-                                    {type.description && (
-                                        <Text style={styles.examinationTypeDescription} numberOfLines={2}>
-                                            {type.description}
-                                        </Text>
-                                    )}
-                                    <View style={styles.examinationTypeDetails}>
-                                        {type.price && (
-                                            <Text style={styles.examinationTypePrice}>
-                                                {type.price} XAF
-                                            </Text>
-                                        )}
-                                        {type.duration_minutes && (
-                                            <Text style={styles.examinationTypeDuration}>
-                                                ⏱️ {type.duration_minutes} min
-                                            </Text>
-                                        )}
-                                    </View>
-                                    {type.requires_fasting && (
-                                        <Text style={styles.fastingWarning}>
-                                            ⚠️ Jeûne requis
-                                        </Text>
-                                    )}
-                                </View>
-                                <NativeButton
-                                    title="Réserver"
-                                    onPress={() => handleBookExamination(type)}
-                                    variant="outline"
-                                    size="small"
-                                />
-                            </TouchableOpacity>
+                    <View style={st.ratingRow}>
+                        {[1, 2, 3, 4, 5].map(i => (
+                            <SafeIcon key={i} name="star" size={16} color={i <= starsFull || (i === starsFull + 1 && starsHalf) ? '#FCD34D' : 'rgba(255,255,255,0.3)'} />
                         ))}
-                    </NativeCard>
+                        <Text style={st.ratingText}>{rating > 0 ? rating.toFixed(1) : '--'} ({reviewCount} avis)</Text>
+                    </View>
+                    {(laboratoire.adresse || laboratoire.quartier || laboratoire.ville) && (
+                        <View style={st.heroLoc}><SafeIcon name="map-pin" size={14} color="rgba(255,255,255,0.8)" /><Text style={st.heroLocText} numberOfLines={1}>{[laboratoire.adresse, laboratoire.quartier, laboratoire.ville].filter(Boolean).join(', ')}</Text></View>
+                    )}
+                </View>
+            </LinearGradient>
+
+            <ScrollView style={st.scroll} contentContainerStyle={{ paddingBottom: 100 }}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={['#0D9488']} />}>
+
+                {/* Quick Actions */}
+                <View style={st.quickRow}>
+                    {[
+                        laboratoire.telephone && { icon: 'phone', label: 'Appeler', color: '#0D9488', onPress: handleCall },
+                        { icon: 'message-circle', label: 'WhatsApp', color: '#25D366', onPress: handleWhatsApp },
+                        { icon: 'message-square', label: 'Chat', color: '#8B5CF6', onPress: handleOpenChat },
+                        { icon: 'calendar', label: 'RDV', color: '#F59E0B', onPress: handleBook },
+                        laboratoire.email && { icon: 'mail', label: 'Email', color: '#3B82F6', onPress: handleEmail },
+                        laboratoire.site_web && { icon: 'globe', label: 'Site', color: '#6366F1', onPress: handleWebsite },
+                    ].filter(Boolean).map((a: any, i) => (
+                        <TouchableOpacity key={i} style={st.quickAction} onPress={a.onPress}>
+                            <View style={[st.quickIcon, { backgroundColor: a.color + '15' }]}><SafeIcon name={a.icon} size={20} color={a.color} /></View>
+                            <Text style={st.quickLabel}>{a.label}</Text>
+                        </TouchableOpacity>
+                    ))}
+                </View>
+
+                {/* Analyses disponibles */}
+                {analyses.length > 0 && (
+                    <View style={st.section}>
+                        <View style={st.sectionHeader}><SafeIcon name="test-tube" size={18} color="#7C3AED" /><Text style={st.sectionTitle}>Analyses disponibles</Text></View>
+                        <View style={st.chipWrap}>
+                            {analyses.map((a, i) => (
+                                <View key={i} style={[st.chip, { backgroundColor: '#F3E8FF' }]}><Text style={[st.chipText, { color: '#7C3AED' }]}>{a}</Text></View>
+                            ))}
+                        </View>
+                    </View>
                 )}
 
-                {/* ✅ IA: Recherche par symptômes */}
-                <NativeCard style={styles.card}>
-                    <Text style={styles.sectionTitle}>🧠 Recherche IA par symptômes</Text>
-                    <Text style={{ fontSize: 13, color: '#6B7280', marginBottom: 10 }}>
-                        Décrivez vos symptômes et l'IA suggérera les examens pertinents
-                    </Text>
+                {/* Imagerie disponible */}
+                {imagerie.length > 0 && (
+                    <View style={st.section}>
+                        <View style={st.sectionHeader}><SafeIcon name="scan" size={18} color="#3B82F6" /><Text style={st.sectionTitle}>Imagerie disponible</Text></View>
+                        <View style={st.chipWrap}>
+                            {imagerie.map((im, i) => (
+                                <View key={i} style={[st.chip, { backgroundColor: '#DBEAFE' }]}><Text style={[st.chipText, { color: '#1E40AF' }]}>{im}</Text></View>
+                            ))}
+                        </View>
+                    </View>
+                )}
+
+                {/* Types d'examens */}
+                {loadingTypes ? (
+                    <View style={st.section}><ActivityIndicator size="small" color="#0D9488" /></View>
+                ) : examinationTypes.length > 0 && (
+                    <View style={st.section}>
+                        <View style={st.sectionHeader}><SafeIcon name="flask-conical" size={18} color="#0D9488" /><Text style={st.sectionTitle}>Types d'examens</Text></View>
+                        {examinationTypes.map((type) => (
+                            <TouchableOpacity key={type.id} style={st.examRow} onPress={() => handleBookExamination(type)}>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={st.examName}>{type.name}</Text>
+                                    {type.category && <Text style={st.examCat}>{type.category}</Text>}
+                                    {type.description && <Text style={st.examDesc} numberOfLines={2}>{type.description}</Text>}
+                                    <View style={{ flexDirection: 'row', gap: 12, marginTop: 4 }}>
+                                        {type.price && <Text style={st.examPrice}>{type.price} XAF</Text>}
+                                        {type.duration_minutes && <Text style={st.examDur}>{type.duration_minutes} min</Text>}
+                                    </View>
+                                    {type.requires_fasting && <Text style={st.examFasting}>Jeûne requis</Text>}
+                                </View>
+                                <View style={st.examBookBtn}><SafeIcon name="calendar-plus" size={18} color="#0D9488" /></View>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                )}
+
+                {/* IA Symptômes */}
+                <View style={st.section}>
+                    <View style={st.sectionHeader}><SafeIcon name="brain" size={18} color="#7C3AED" /><Text style={st.sectionTitle}>IA - Examens par symptômes</Text></View>
+                    <Text style={{ fontSize: 13, color: '#6B7280', marginBottom: 10 }}>Décrivez vos symptômes et l'IA suggérera les examens pertinents</Text>
                     <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
-                        <NativeInput
-                            placeholder="Ex: fatigue, douleur abdominale..."
-                            value={symptomInput}
-                            onChangeText={setSymptomInput}
-                            onSubmitEditing={addSymptom}
-                            style={{ flex: 1 }}
-                        />
-                        <NativeButton
-                            title="+"
-                            onPress={addSymptom}
-                            variant="outline"
-                            size="small"
-                            disabled={!symptomInput.trim()}
-                        />
+                        <TextInput style={[st.searchInput, { flex: 1 }]} placeholder="Ex: fatigue, douleur..." placeholderTextColor="#9CA3AF" value={symptomInput} onChangeText={setSymptomInput} onSubmitEditing={addSymptom} />
+                        <TouchableOpacity style={[st.addBtn, !symptomInput.trim() && { opacity: 0.4 }]} disabled={!symptomInput.trim()} onPress={addSymptom}>
+                            <SafeIcon name="plus" size={20} color="#fff" />
+                        </TouchableOpacity>
                     </View>
                     {symptoms.length > 0 && (
                         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
                             {symptoms.map((s, i) => (
-                                <TouchableOpacity
-                                    key={i}
-                                    style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#EFF6FF', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 }}
-                                    onPress={() => removeSymptom(s)}
-                                >
-                                    <Text style={{ fontSize: 13, color: '#1D4ED8', marginRight: 4 }}>{s}</Text>
-                                    <SafeIcon name="x" size={12} color="#1D4ED8" />
+                                <TouchableOpacity key={i} style={st.symptomChip} onPress={() => removeSymptom(s)}>
+                                    <Text style={{ fontSize: 13, color: '#0D9488', marginRight: 4 }}>{s}</Text>
+                                    <SafeIcon name="x" size={12} color="#0D9488" />
                                 </TouchableOpacity>
                             ))}
                         </View>
                     )}
-                    <NativeButton
-                        title={searchingPathology ? 'Analyse en cours...' : 'Analyser les symptômes'}
-                        onPress={handleSearchPathology}
-                        variant="primary"
-                        disabled={symptoms.length === 0 || searchingPathology}
-                    />
+                    <TouchableOpacity style={[st.analyzeBtn, (symptoms.length === 0 || searchingPathology) && { opacity: 0.5 }]} disabled={symptoms.length === 0 || searchingPathology} onPress={handleSearchPathology}>
+                        {searchingPathology ? <ActivityIndicator size="small" color="#fff" /> : <><SafeIcon name="search" size={16} color="#fff" /><Text style={st.analyzeBtnText}>Analyser</Text></>}
+                    </TouchableOpacity>
+
                     {pathologyResult && (
-                        <View style={{ marginTop: 12, padding: 12, backgroundColor: '#F0FDF4', borderRadius: 10, borderWidth: 1, borderColor: '#BBF7D0' }}>
+                        <View style={[st.resultCard, { borderLeftColor: '#7C3AED' }]}>
                             {pathologyResult.urgency_level && (
-                                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
-                                    <SafeIcon name="alert-circle" size={16} color={
-                                        pathologyResult.urgency_level === 'critical' ? '#DC2626' :
-                                            pathologyResult.urgency_level === 'high' ? '#F59E0B' : '#059669'
-                                    } />
-                                    <Text style={{ marginLeft: 6, fontWeight: '600', color: '#111827' }}>
-                                        Urgence: {pathologyResult.urgency_level}
-                                    </Text>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                                    <SafeIcon name="alert-circle" size={14} color={pathologyResult.urgency_level === 'critical' ? '#DC2626' : pathologyResult.urgency_level === 'high' ? '#F59E0B' : '#059669'} />
+                                    <Text style={{ fontWeight: '600', color: '#111827', fontSize: 13 }}>Urgence: {pathologyResult.urgency_level}</Text>
                                 </View>
                             )}
-                            {pathologyResult.suggested_examinations && pathologyResult.suggested_examinations.length > 0 && (
+                            {pathologyResult.suggested_examinations?.length > 0 && (
                                 <View style={{ marginBottom: 8 }}>
-                                    <Text style={{ fontWeight: '600', color: '#111827', marginBottom: 4 }}>Examens suggérés:</Text>
+                                    <Text style={{ fontWeight: '600', color: '#111827', marginBottom: 4, fontSize: 13 }}>Examens suggérés:</Text>
                                     {pathologyResult.suggested_examinations.map((exam: string, idx: number) => (
-                                        <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 8, marginBottom: 2 }}>
-                                            <SafeIcon name="check" size={12} color="#059669" />
-                                            <Text style={{ marginLeft: 6, fontSize: 13, color: '#374151' }}>{exam}</Text>
+                                        <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginLeft: 8, marginBottom: 2 }}>
+                                            <SafeIcon name="check" size={12} color="#059669" /><Text style={{ fontSize: 13, color: '#374151' }}>{exam}</Text>
                                         </View>
                                     ))}
                                 </View>
                             )}
-                            {pathologyResult.possible_pathologies && pathologyResult.possible_pathologies.length > 0 && (
+                            {pathologyResult.possible_pathologies?.length > 0 && (
                                 <View style={{ marginBottom: 8 }}>
-                                    <Text style={{ fontWeight: '600', color: '#111827', marginBottom: 4 }}>Pathologies possibles:</Text>
+                                    <Text style={{ fontWeight: '600', color: '#111827', marginBottom: 4, fontSize: 13 }}>Pathologies possibles:</Text>
                                     {pathologyResult.possible_pathologies.map((p: string, idx: number) => (
                                         <Text key={idx} style={{ marginLeft: 8, fontSize: 13, color: '#374151' }}>• {p}</Text>
                                     ))}
                                 </View>
                             )}
                             {pathologyResult.recommendations && (
-                                <Text style={{ fontSize: 13, color: '#6B7280', fontStyle: 'italic' }}>
-                                    {pathologyResult.recommendations}
-                                </Text>
+                                <Text style={{ fontSize: 13, color: '#6B7280', fontStyle: 'italic' }}>{pathologyResult.recommendations}</Text>
                             )}
                         </View>
                     )}
-                </NativeCard>
+                </View>
 
-                <View style={styles.actionsContainer}>
-                    <NativeButton
-                        title="📅 Réserver un rendez-vous"
-                        onPress={handleBook}
-                        disabled={booking || !laboratoire.is_available_now}
-                        variant="primary"
-                        style={styles.bookButton}
-                    />
-                    {/* ✅ 2025-01-27: Bouton Contacter */}
-                    <NativeButton
-                        title="💬 Contacter"
-                        onPress={handleOpenChat}
-                        variant="outline"
-                        style={styles.contactButton}
-                    />
-                    <NativeButton
-                        title="📋 Mes examens"
-                        onPress={handleViewMyExaminations}
-                        variant="outline"
-                        style={styles.myExaminationsButton}
-                    />
-                    {/* ✅ 2025-01-27: Bouton Analytics (prestataire uniquement) */}
+                {/* Action buttons */}
+                <View style={st.section}>
+                    <TouchableOpacity style={[st.fullBtn, { backgroundColor: '#F0FDFA', borderLeftColor: '#0D9488', borderLeftWidth: 3 }]} onPress={handleBook} disabled={booking || !isOpen}>
+                        <SafeIcon name="calendar" size={18} color="#0D9488" />
+                        <Text style={[st.fullBtnText, { color: '#0F766E' }]}>{booking ? 'Réservation...' : 'Réserver un rendez-vous'}</Text>
+                        <SafeIcon name="chevron-right" size={18} color="#5EEAD4" />
+                    </TouchableOpacity>
+                    <TouchableOpacity style={st.fullBtn} onPress={() => {
+                        if (!user) { Alert.alert('Connexion requise', 'Veuillez vous connecter'); navigation.navigate('Login' as never); return; }
+                        navigation.navigate('MyLabExaminations' as never);
+                    }}>
+                        <SafeIcon name="clipboard-list" size={18} color="#0D9488" />
+                        <Text style={st.fullBtnText}>Mes examens</Text>
+                        <SafeIcon name="chevron-right" size={18} color="#9CA3AF" />
+                    </TouchableOpacity>
                     {isOwner && (
-                        <NativeButton
-                            title="📊 Analytics"
-                            onPress={handleViewAnalytics}
-                            variant="outline"
-                            style={styles.analyticsButton}
-                        />
-                    )}
-                    {laboratoire.telephone && (
-                        <NativeButton
-                            title="📞 Appeler"
-                            onPress={handleCall}
-                            variant="outline"
-                            style={styles.callButton}
-                        />
+                        <TouchableOpacity style={st.fullBtn} onPress={() => navigation.navigate('LabAnalytics' as never, { laboratoryId: params.laboratoryId } as never)}>
+                            <SafeIcon name="bar-chart-2" size={18} color="#F59E0B" />
+                            <Text style={st.fullBtnText}>Analytics</Text>
+                            <SafeIcon name="chevron-right" size={18} color="#9CA3AF" />
+                        </TouchableOpacity>
                     )}
                 </View>
 
-                {/* ✅ 2025-01-27: Section Avis et Commentaires */}
+                {/* Avis */}
                 {laboratoire.service_id && (
-                    <ProductCommentsSection
-                        serviceId={laboratoire.service_id}
-                        serviceTitle={laboratoire.nom}
-                        onOpenChat={handleOpenChat}
-                        mode="inline"
-                    />
+                    <View style={st.section}>
+                        <ProductCommentsSection serviceId={laboratoire.service_id} serviceTitle={laboratoire.nom} onOpenChat={handleOpenChat} mode="inline" />
+                    </View>
                 )}
             </ScrollView>
 
-            {/* ✅ 2025-01-27: Modal Chat */}
+            {/* Chat */}
             {user && (
-                <ChatModalMobile
-                    visible={showChat}
-                    onClose={() => setShowChat(false)}
-                    service={{
-                        id: laboratoire.service_id,
-                        nom: laboratoire.nom,
-                        type: 'laboratoire',
-                    }}
-                    prestataireInfo={prestataireInfo || {
-                        id: laboratoire.user_id,
-                        nom: laboratoire.nom,
-                    }}
-                    user={user}
-                    conversationId={conversationId}
-                />
+                <ChatModalMobile visible={showChat} onClose={() => setShowChat(false)}
+                    service={{ id: laboratoire.service_id, nom: laboratoire.nom, type: 'laboratoire' }}
+                    prestataireInfo={prestataireInfo || { id: laboratoire.user_id, nom: laboratoire.nom }}
+                    user={user} conversationId={conversationId} />
             )}
 
-            {/* Modal pour réserver un examen */}
-            <Modal
-                animationType="slide"
-                transparent={true}
-                visible={showBookingModal}
-                onRequestClose={() => {
-                    setShowBookingModal(false);
-                    setSelectedExamination(null);
-                    setBookingNotes('');
-                }}
-            >
-                <View style={styles.modalBackground}>
-                    <ScrollView style={styles.modalContainer} contentContainerStyle={styles.modalScrollContent}>
-                        <Text style={styles.modalTitle}>Réserver un examen</Text>
-
+            {/* Booking Modal */}
+            <Modal animationType="slide" transparent visible={showBookingModal} onRequestClose={() => { setShowBookingModal(false); setSelectedExamination(null); setBookingNotes(''); }}>
+                <View style={st.modalBg}>
+                    <View style={st.modalCard}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                            <Text style={{ fontSize: 18, fontWeight: '700', color: '#111827' }}>Réserver un examen</Text>
+                            <TouchableOpacity onPress={() => { setShowBookingModal(false); setSelectedExamination(null); setBookingNotes(''); }}>
+                                <SafeIcon name="x" size={22} color="#6B7280" />
+                            </TouchableOpacity>
+                        </View>
                         {selectedExamination && (
-                            <View style={styles.examinationBookingInfo}>
-                                <Text style={styles.examinationBookingName}>{selectedExamination.name}</Text>
-                                {selectedExamination.category && (
-                                    <Text style={styles.examinationBookingCategory}>
-                                        Catégorie: {selectedExamination.category}
-                                    </Text>
-                                )}
-                                {selectedExamination.price && (
-                                    <Text style={styles.examinationBookingPrice}>
-                                        Prix: {selectedExamination.price} XAF
-                                    </Text>
-                                )}
-                                {selectedExamination.requires_fasting && (
-                                    <Text style={styles.examinationBookingFasting}>
-                                        ⚠️ Jeûne requis avant l'examen
-                                    </Text>
-                                )}
+                            <View style={{ backgroundColor: '#F0FDFA', borderRadius: 12, padding: 14, marginBottom: 16, borderLeftWidth: 3, borderLeftColor: '#0D9488' }}>
+                                <Text style={{ fontSize: 16, fontWeight: '600', color: '#111827', marginBottom: 4 }}>{selectedExamination.name}</Text>
+                                {selectedExamination.category && <Text style={{ fontSize: 13, color: '#6B7280', marginBottom: 4 }}>Catégorie: {selectedExamination.category}</Text>}
+                                {selectedExamination.price && <Text style={{ fontSize: 15, fontWeight: '600', color: '#059669', marginBottom: 4 }}>{selectedExamination.price} XAF</Text>}
+                                {selectedExamination.requires_fasting && <Text style={{ fontSize: 13, color: '#F59E0B', fontStyle: 'italic', marginTop: 4 }}>Jeûne requis avant l'examen</Text>}
                                 {selectedExamination.preparation_instructions && (
-                                    <View style={styles.preparationInstructions}>
-                                        <Text style={styles.preparationTitle}>Instructions de préparation:</Text>
-                                        <Text style={styles.preparationText}>
-                                            {selectedExamination.preparation_instructions}
-                                        </Text>
+                                    <View style={{ marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: '#D1FAE5' }}>
+                                        <Text style={{ fontSize: 13, fontWeight: '600', color: '#111827', marginBottom: 4 }}>Instructions:</Text>
+                                        <Text style={{ fontSize: 13, color: '#374151', lineHeight: 18 }}>{selectedExamination.preparation_instructions}</Text>
                                     </View>
                                 )}
                             </View>
                         )}
-
-                        <View style={styles.notesContainer}>
-                            <Text style={styles.notesLabel}>Notes (optionnel)</Text>
-                            <NativeInput
-                                placeholder="Ajoutez des notes pour le laboratoire..."
-                                value={bookingNotes}
-                                onChangeText={setBookingNotes}
-                                multiline
-                                style={styles.notesInput}
-                            />
-                        </View>
-
-                        <View style={styles.modalActions}>
-                            <NativeButton
-                                title="Annuler"
-                                onPress={() => {
-                                    setShowBookingModal(false);
-                                    setSelectedExamination(null);
-                                    setBookingNotes('');
-                                }}
-                                variant="ghost"
-                            />
-                            <NativeButton
-                                title="Confirmer la réservation"
-                                onPress={handleConfirmBooking}
-                                disabled={bookingExamination || !selectedExamination}
-                            />
-                        </View>
-                        {bookingExamination && (
-                            <ActivityIndicator size="small" color={modernColors.primary} style={styles.modalLoading} />
-                        )}
-                    </ScrollView>
+                        <Text style={{ fontSize: 14, fontWeight: '600', color: '#111827', marginBottom: 6 }}>Notes (optionnel)</Text>
+                        <TextInput style={[st.searchInput, { minHeight: 80, marginBottom: 16 }]} placeholder="Ajoutez des notes..." placeholderTextColor="#9CA3AF" value={bookingNotes} onChangeText={setBookingNotes} multiline />
+                        <TouchableOpacity style={[st.analyzeBtn, { backgroundColor: '#0D9488' }, (bookingExamination || !selectedExamination) && { opacity: 0.5 }]} disabled={bookingExamination || !selectedExamination} onPress={handleConfirmBooking}>
+                            {bookingExamination ? <ActivityIndicator size="small" color="#fff" /> : <Text style={st.analyzeBtnText}>Confirmer la réservation</Text>}
+                        </TouchableOpacity>
+                    </View>
                 </View>
             </Modal>
         </View>
     );
 };
 
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#fff',
-    },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: '#E5E7EB',
-    },
-    backButton: {
-        marginRight: 12,
-    },
-    title: {
-        fontSize: 20,
-        fontWeight: '600',
-        color: '#111827',
-    },
-    content: {
-        flex: 1,
-    },
-    contentContainer: {
-        padding: 16,
-    },
-    card: {
-        padding: 20,
-        marginBottom: 16,
-    },
-    statusRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-        marginBottom: 16,
-    },
-    titleContainer: {
-        flex: 1,
-    },
-    nom: {
-        fontSize: 24,
-        fontWeight: '700',
-        color: '#111827',
-        marginBottom: 4,
-    },
-    type: {
-        fontSize: 16,
-        color: modernColors.textSecondary,
-    },
-    statusBadge: {
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 12,
-        backgroundColor: '#FEE2E2',
-    },
-    statusBadgeAvailable: {
-        backgroundColor: '#D1FAE5',
-    },
-    statusText: {
-        fontSize: 12,
-        fontWeight: '600',
-        color: '#DC2626',
-    },
-    statusTextAvailable: {
-        color: '#059669',
-    },
-    infoRow: {
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-        gap: 12,
-        marginBottom: 12,
-    },
-    infoTextContainer: {
-        flex: 1,
-    },
-    infoText: {
-        fontSize: 16,
-        color: '#374151',
-    },
-    infoSubtext: {
-        fontSize: 14,
-        color: modernColors.textSecondary,
-        marginTop: 2,
-    },
-    section: {
-        marginTop: 16,
-        paddingTop: 16,
-        borderTopWidth: 1,
-        borderTopColor: '#E5E7EB',
-    },
-    sectionTitle: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#111827',
-        marginBottom: 12,
-    },
-    chipsContainer: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 8,
-    },
-    analyseChip: {
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 8,
-        backgroundColor: '#F3E8FF',
-    },
-    analyseChipText: {
-        fontSize: 12,
-        color: '#7C3AED',
-    },
-    imagerieChip: {
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 8,
-        backgroundColor: '#DBEAFE',
-    },
-    imagerieChipText: {
-        fontSize: 12,
-        color: '#1E40AF',
-    },
-    badgesContainer: {
-        marginTop: 16,
-        paddingTop: 16,
-        borderTopWidth: 1,
-        borderTopColor: '#E5E7EB',
-        gap: 8,
-    },
-    rdvBadge: {
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 8,
-        backgroundColor: '#FEF3C7',
-        alignSelf: 'flex-start',
-    },
-    rdvBadgeText: {
-        fontSize: 12,
-        fontWeight: '600',
-        color: '#D97706',
-    },
-    resultatsBadge: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-    },
-    resultatsText: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#059669',
-    },
-    actionsContainer: {
-        gap: 12,
-    },
-    bookButton: {
-        marginTop: 8,
-    },
-    callButton: {
-        marginTop: 8,
-    },
-    centerContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 32,
-    },
-    loadingText: {
-        marginTop: 16,
-        fontSize: 14,
-        color: modernColors.textSecondary,
-    },
-    errorText: {
-        fontSize: 16,
-        color: '#DC2626',
-    },
-    // ✅ 2025-01-27: Nouveaux styles pour les fonctionnalités avancées
-    examinationTypeRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-        padding: 16,
-        marginBottom: 12,
-        backgroundColor: '#F9FAFB',
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-    },
-    examinationTypeInfo: {
-        flex: 1,
-        marginRight: 12,
-    },
-    examinationTypeName: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#111827',
-        marginBottom: 4,
-    },
-    examinationTypeCategory: {
-        fontSize: 14,
-        color: modernColors.textSecondary,
-        marginBottom: 4,
-    },
-    examinationTypeDescription: {
-        fontSize: 13,
-        color: modernColors.textSecondary,
-        marginBottom: 8,
-        lineHeight: 18,
-    },
-    examinationTypeDetails: {
-        flexDirection: 'row',
-        gap: 16,
-        marginBottom: 4,
-    },
-    examinationTypePrice: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#059669',
-    },
-    examinationTypeDuration: {
-        fontSize: 14,
-        color: modernColors.textSecondary,
-    },
-    fastingWarning: {
-        fontSize: 13,
-        color: '#F59E0B',
-        marginTop: 4,
-        fontStyle: 'italic',
-    },
-    myExaminationsButton: {
-        marginTop: 8,
-    },
-    analyticsButton: {
-        marginTop: 8,
-        backgroundColor: modernColors.secondary,
-        borderColor: modernColors.secondary,
-    },
-    contactButton: {
-        marginTop: 8,
-    },
-    modalBackground: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    },
-    modalContainer: {
-        width: '90%',
-        maxHeight: '80%',
-        backgroundColor: 'white',
-        borderRadius: 10,
-        padding: 20,
-    },
-    modalScrollContent: {
-        paddingBottom: 20,
-    },
-    modalTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        marginBottom: 15,
-        color: modernColors.text,
-    },
-    modalActions: {
-        flexDirection: 'row',
-        justifyContent: 'space-around',
-        width: '100%',
-        marginTop: 15,
-    },
-    modalLoading: {
-        marginTop: 15,
-    },
-    examinationBookingInfo: {
-        marginBottom: 20,
-        padding: 16,
-        backgroundColor: '#F9FAFB',
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-    },
-    examinationBookingName: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: modernColors.text,
-        marginBottom: 8,
-    },
-    examinationBookingCategory: {
-        fontSize: 14,
-        color: modernColors.textSecondary,
-        marginBottom: 4,
-    },
-    examinationBookingPrice: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#059669',
-        marginBottom: 4,
-    },
-    examinationBookingFasting: {
-        fontSize: 14,
-        color: '#F59E0B',
-        marginTop: 8,
-        fontStyle: 'italic',
-    },
-    preparationInstructions: {
-        marginTop: 12,
-        paddingTop: 12,
-        borderTopWidth: 1,
-        borderTopColor: '#E5E7EB',
-    },
-    preparationTitle: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: modernColors.text,
-        marginBottom: 8,
-    },
-    preparationText: {
-        fontSize: 13,
-        color: modernColors.textSecondary,
-        lineHeight: 18,
-    },
-    notesContainer: {
-        marginBottom: 20,
-    },
-    notesLabel: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: modernColors.text,
-        marginBottom: 8,
-    },
-    notesInput: {
-        minHeight: 100,
-    },
+const st = StyleSheet.create({
+    container: { flex: 1, backgroundColor: '#F0FDFA' },
+    center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F0FDFA' },
+    centerText: { marginTop: 12, fontSize: 15, color: '#6B7280' },
+    // Hero
+    hero: { paddingTop: Platform.OS === 'ios' ? 54 : 40, paddingBottom: 28, paddingHorizontal: 20 },
+    heroTop: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 },
+    heroBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
+    heroContent: { alignItems: 'center' },
+    heroIconWrap: { width: 60, height: 60, borderRadius: 30, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', marginBottom: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 6, elevation: 4 },
+    heroTitle: { fontSize: 24, fontWeight: '800', color: '#fff', textAlign: 'center' },
+    heroType: { fontSize: 14, color: 'rgba(255,255,255,0.8)', marginTop: 2 },
+    heroDesc: { fontSize: 13, color: 'rgba(255,255,255,0.85)', textAlign: 'center', marginTop: 4 },
+    heroBadges: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8, marginTop: 12 },
+    badge: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 },
+    badgeDot: { width: 7, height: 7, borderRadius: 4 },
+    badgeText: { fontSize: 12, color: '#fff', fontWeight: '600' },
+    ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 10 },
+    ratingText: { fontSize: 13, color: 'rgba(255,255,255,0.9)', marginLeft: 4 },
+    heroLoc: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8 },
+    heroLocText: { fontSize: 13, color: 'rgba(255,255,255,0.8)' },
+    // Scroll
+    scroll: { flex: 1 },
+    // Quick actions
+    quickRow: { flexDirection: 'row', justifyContent: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 16, flexWrap: 'wrap' },
+    quickAction: { alignItems: 'center', width: 64 },
+    quickIcon: { width: 48, height: 48, borderRadius: 24, justifyContent: 'center', alignItems: 'center', marginBottom: 6 },
+    quickLabel: { fontSize: 11, color: '#374151', textAlign: 'center', fontWeight: '500' },
+    // Sections
+    section: { paddingHorizontal: 16, marginBottom: 16 },
+    sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
+    sectionTitle: { fontSize: 16, fontWeight: '700', color: '#111827' },
+    // Chips
+    chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    chip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
+    chipText: { fontSize: 13, fontWeight: '500' },
+    // Examination rows
+    examRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 12, padding: 14, marginBottom: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 1 },
+    examName: { fontSize: 15, fontWeight: '600', color: '#111827' },
+    examCat: { fontSize: 12, color: '#6B7280', marginTop: 2 },
+    examDesc: { fontSize: 13, color: '#6B7280', marginTop: 2, lineHeight: 18 },
+    examPrice: { fontSize: 14, fontWeight: '600', color: '#059669' },
+    examDur: { fontSize: 13, color: '#6B7280' },
+    examFasting: { fontSize: 12, color: '#F59E0B', fontStyle: 'italic', marginTop: 4 },
+    examBookBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#F0FDFA', justifyContent: 'center', alignItems: 'center', marginLeft: 10 },
+    // Search / IA
+    searchInput: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14, color: '#111827', minHeight: 44 },
+    addBtn: { width: 44, height: 44, borderRadius: 12, backgroundColor: '#0D9488', justifyContent: 'center', alignItems: 'center' },
+    symptomChip: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F0FDFA', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 16, borderWidth: 1, borderColor: '#99F6E4' },
+    analyzeBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#7C3AED', paddingVertical: 12, borderRadius: 12 },
+    analyzeBtnText: { color: '#fff', fontWeight: '600', fontSize: 14 },
+    resultCard: { backgroundColor: '#fff', borderRadius: 12, borderLeftWidth: 3, borderLeftColor: '#0D9488', padding: 14, marginTop: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 1 },
+    // Full width buttons
+    fullBtn: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#fff', padding: 14, borderRadius: 12, marginBottom: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 1 },
+    fullBtnText: { flex: 1, fontSize: 14, fontWeight: '600', color: '#374151' },
+    // Modal
+    modalBg: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)' },
+    modalCard: { width: '90%', maxHeight: '80%', backgroundColor: '#fff', borderRadius: 16, padding: 20 },
 });
 
 export default LaboratoireDetailsScreen;

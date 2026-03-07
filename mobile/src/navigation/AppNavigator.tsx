@@ -181,7 +181,7 @@ import TicketVoyageHomeScreen from '../screens/specialized/TicketVoyageHomeScree
 // ✅ NOUVEAU: Écrans retour bus (aller-retour)
 import BusReturnRequestFormScreen from '../screens/specialized/BusReturnRequestFormScreen';
 import BusReturnRequestsScreen from '../screens/specialized/BusReturnRequestsScreen';
-// ✅ NOUVEAU 2026-01-27: Écrans hôtels/meublés (paiement réservation + QR scanner)
+// ✅ NOUVEAU 2026-01-27: Écrans hôtels/meublés (réservation séjour + paiement + QR scanner)
 import HotelBookingPaymentScreen from '../screens/specialized/HotelBookingPaymentScreen';
 import HotelDashboardScreen from '../screens/specialized/HotelDashboardScreen';
 import HotelQRScannerScreen from '../screens/specialized/HotelQRScannerScreen';
@@ -501,6 +501,7 @@ const ShoppingListScreenWithSafeArea = withNavigatorSafeArea(ShoppingListScreen)
 const RecipeDetailsScreenWithSafeArea = withNavigatorSafeArea(RecipeDetailsScreen);
 // ✅ NOUVEAU 2026-01-27: Écrans hôtels/meublés avec SafeArea
 const HotelBookingPaymentScreenWithSafeArea = withNavigatorSafeArea(HotelBookingPaymentScreen);
+const HotelBookingScreenWithSafeArea = withNavigatorSafeArea(HotelBookingScreen);
 const HotelDashboardScreenWithSafeArea = withNavigatorSafeArea(HotelDashboardScreen);
 const HotelQRScannerScreenWithSafeArea = withNavigatorSafeArea(HotelQRScannerScreen);
 
@@ -1155,6 +1156,7 @@ const SecondaryStack = () => {
       <Stack.Screen name="ImmobilierPriceAlerts" component={ImmobilierPriceAlertsScreenWithSafeArea} />
       {/* ✅ NOUVEAU 2026-01-27: Écrans hôtels/meublés */}
       <Stack.Screen name="HotelDashboard" component={HotelDashboardScreenWithSafeArea} options={{ title: 'Dashboard Hôtel' }} />
+      <Stack.Screen name="HotelBooking" component={HotelBookingScreenWithSafeArea} options={{ title: 'Réserver un séjour' }} />
       <Stack.Screen name="HotelBookingPayment" component={HotelBookingPaymentScreenWithSafeArea} options={{ title: 'Paiement réservation' }} />
       <Stack.Screen name="HotelQRScanner" component={HotelQRScannerScreenWithSafeArea} options={{ title: 'Scanner QR réservation' }} />
       <Stack.Screen name="HotelReservationQR" component={HotelQRScannerScreenWithSafeArea} options={{ title: 'Mon QR réservation' }} />

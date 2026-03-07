@@ -80,7 +80,8 @@ impl DeliveryVRPSolver {
 
         // Pour un petit nombre de livraisons, utiliser Nearest Neighbor (rapide)
         // Pour un grand nombre, utiliser Genetic Algorithm (optimal)
-        let solution = if deliveries.len() <= 10 {
+        let num_deliveries = deliveries.len();
+        let solution = if num_deliveries <= 10 {
             self.solve_nearest_neighbor(deliveries, courier_positions, max_deliveries_per_courier)
                 .await?
         } else {
@@ -92,10 +93,10 @@ impl DeliveryVRPSolver {
 
         Ok(VRPSolution {
             computation_time_ms: computation_time,
-            algorithm_used: if solution.routes.len() <= 10 {
+            algorithm_used: if num_deliveries <= 10 {
                 "nearest_neighbor".to_string()
             } else {
-                "genetic_algorithm".to_string()
+                "genetic_algorithm_2opt".to_string()
             },
             ..solution
         })

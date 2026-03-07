@@ -60,8 +60,10 @@ const OffreCandidaturesScreen: React.FC = () => {
         try {
             setLoading(true);
             const response = await offreEmploiService.listCandidaturesOffre(offreId);
-            if (response.success && response.data) {
-                setCandidatures(response.data);
+            const backendData = (response?.data as any);
+            const candidaturesData = backendData?.data || backendData;
+            if (response.success && Array.isArray(candidaturesData)) {
+                setCandidatures(candidaturesData);
             }
         } catch (error: any) {
             console.error('[OffreCandidaturesScreen] Erreur:', error);
@@ -75,8 +77,10 @@ const OffreCandidaturesScreen: React.FC = () => {
         try {
             setLoadingMatching(true);
             const response = await offreEmploiService.findMatchingCandidats(offreId);
-            if (response.success && response.data) {
-                setMatchingCandidats(response.data);
+            const matchBackend = (response?.data as any);
+            const matchData = matchBackend?.data || matchBackend;
+            if (response.success && Array.isArray(matchData)) {
+                setMatchingCandidats(matchData);
             }
         } catch (error: any) {
             console.error('[OffreCandidaturesScreen] Erreur matching:', error);
@@ -93,7 +97,7 @@ const OffreCandidaturesScreen: React.FC = () => {
 
         try {
             setAnalyzing(candidature.id);
-            const response = await offreEmploiService.analyzeCV(candidature.candidat_cv_url!, offreId);
+            const response = await offreEmploiService.analyzeCV(candidature.user_id, '', candidature.candidat_cv_url!);
 
             if (response.success && response.data) {
                 setSelectedCandidature({

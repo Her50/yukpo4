@@ -72,31 +72,10 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         }
 
-        // Vérifier le format du QR code
-        try {
-            const qrJson = JSON.parse(data);
-            if (qrJson.type && qrJson.type.includes('BUS_TICKET')) {
-                // QR code valide
-                onScan(data);
-            } else {
-                // Format invalide
-                Alert.alert(
-                    'QR Code invalide',
-                    'Ce QR code n\'est pas un ticket de bus valide',
-                    [
-                        {
-                            text: 'Réessayer',
-                            onPress: () => setScanned(false),
-                        },
-                        { text: 'Annuler', onPress: onClose, style: 'cancel' },
-                    ]
-                );
-            }
-        } catch (error) {
-            // Pas un JSON valide, essayer quand même
-            console.warn('[QRCodeScanner] QR code non-JSON, tentative de scan:', data);
-            onScan(data);
-        }
+        // ✅ CORRIGÉ: Passer toutes les données scannées au callback parent
+        // Le composant parent (ProviderCourierVerification, BusTicketQRScanner, etc.)
+        // est responsable de valider le format du QR code
+        onScan(data);
     };
 
     if (!visible) return null;

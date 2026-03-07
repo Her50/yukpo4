@@ -2,14 +2,14 @@
 import { useNavigation } from '@react-navigation/native';
 import React, { useState } from 'react';
 import {
-    ScrollView,
     StyleSheet,
     Switch,
     Text,
     TextInput,
     TouchableOpacity,
-    View,
+    View
 } from 'react-native';
+import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import { modernColors } from '../../theme/modernTheme';
 

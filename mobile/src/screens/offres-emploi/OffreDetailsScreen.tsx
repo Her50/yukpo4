@@ -73,8 +73,10 @@ const OffreDetailsScreen: React.FC = () => {
         try {
             setLoading(true);
             const response = await offreEmploiService.getOffreDetails(params.offreId);
-            if (response.success && response.data) {
-                setOffre(response.data);
+            const backendData = (response?.data as any);
+            const offreData = backendData?.data || backendData;
+            if (response.success && offreData) {
+                setOffre(offreData);
             } else {
                 Alert.alert('Erreur', 'Impossible de charger l\'offre');
                 navigation.goBack();
@@ -91,8 +93,10 @@ const OffreDetailsScreen: React.FC = () => {
     const loadMatchingScore = async () => {
         try {
             const response = await offreEmploiService.getMatchingOffres(0, 100);
-            if (response.success && response.data) {
-                const match = response.data.find((m: any) => m.offre_id === params.offreId);
+            const matchBackend = (response?.data as any);
+            const matchList = matchBackend?.data || matchBackend;
+            if (response.success && Array.isArray(matchList)) {
+                const match = matchList.find((m: any) => m.offre_id === params.offreId);
                 if (match) {
                     setMatchingScore({
                         score_total: parseFloat(match.score_total) || 0,
@@ -120,8 +124,10 @@ const OffreDetailsScreen: React.FC = () => {
         // ✅ NOUVEAU: Vérifier si l'utilisateur a un profil candidat
         try {
             const profilResponse = await offreEmploiService.getProfil();
-            const hasProfil = profilResponse.success && profilResponse.data;
-            const hasCV = hasProfil && profilResponse.data.cv_url;
+            const profilBackend = (profilResponse?.data as any);
+            const profilData = profilBackend?.data || profilBackend;
+            const hasProfil = profilResponse.success && profilData;
+            const hasCV = hasProfil && profilData?.cv_url;
 
             if (!hasProfil || !hasCV) {
                 Alert.alert(

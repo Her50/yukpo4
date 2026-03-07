@@ -16,7 +16,7 @@ import {
 import SafeIcon from '../../components/SafeIcon';
 import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
-import { apiGet, apiPost } from '../../services/api';
+import { apiGet, apiPatch, apiPost } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 
 interface LivreScolaire {
@@ -73,7 +73,7 @@ const MesLivresScreen: React.FC = () => {
 
     const handleToggleAvailability = async (livre: LivreScolaire) => {
         try {
-            const response = await apiPost(`/api/bourse-livre/${livre.id}/availability`, {
+            const response = await apiPatch(`/api/bourse-livre/${livre.id}/availability`, {
                 is_available: !livre.is_available,
             });
 

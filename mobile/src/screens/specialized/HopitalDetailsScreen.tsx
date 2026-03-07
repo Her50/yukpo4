@@ -1,915 +1,483 @@
-// ✅ Phase 3: Détails d'un hôpital avec boutons d'action
+// ✅ REFONTE 2026-03-07: HopitalDetailsScreen → UX moderne niveau Doctolib/Practo
+// Hero gradient, quick actions, temps d'attente, urgences, IA pathologie, chat, partage, avis
 import { useNavigation, useRoute } from '@react-navigation/native';
-import React, { useEffect, useState } from 'react';
+import { LinearGradient } from 'expo-linear-gradient';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
     Linking,
+    Platform,
+    RefreshControl,
     ScrollView,
+    Share,
     StyleSheet,
     Text,
+    TextInput,
     TouchableOpacity,
-    View
+    View,
 } from 'react-native';
 import ChatModalMobile from '../../components/ChatModalMobile';
 import ProductCommentsSection from '../../components/ProductCommentsSection';
 import SafeIcon from '../../components/SafeIcon';
-import { NativeButton, NativeCard, NativeInput } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiGet, apiPost } from '../../services/api';
 import { EmergencyStatus, hospitalService, WaitTime } from '../../services/hospitalService';
-import { modernColors } from '../../theme/modernTheme';
 
 interface HopitalDetails {
     id: number;
     service_id: number;
     user_id: number;
     nom: string;
+    description?: string;
     type_etablissement: string;
     adresse?: string;
     quartier?: string;
     ville?: string;
     gps?: string;
     is_available_now: boolean;
+    is_verified?: boolean;
+    note_moyenne?: number;
+    nombre_avis?: number;
     urgences_disponible: boolean;
     banque_sang: boolean;
     rdv_en_ligne: boolean;
     prestations_medicales?: string[];
+    specialites?: string[];
     telephone?: string;
     telephone_urgence?: string;
     whatsapp?: string;
     email?: string;
     site_web?: string;
-}
-
-interface HopitalDetailsScreenParams {
-    hospitalId: number;
+    logo_url?: string;
+    heures_ouverture?: string;
+    heures_fermeture?: string;
 }
 
 const HopitalDetailsScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
     const { user } = useAuth();
-    const params = route.params as HopitalDetailsScreenParams;
+    const params = route.params as any;
 
     const [hopital, setHopital] = useState<HopitalDetails | null>(null);
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
     const [booking, setBooking] = useState(false);
-    // ✅ 2025-01-27: Nouvelles fonctionnalités
+
+    // Temps d'attente & urgences
     const [waitTimes, setWaitTimes] = useState<WaitTime[] | null>(null);
     const [emergencyStatus, setEmergencyStatus] = useState<EmergencyStatus | null>(null);
-    const [loadingWaitTimes, setLoadingWaitTimes] = useState(false);
-    const [loadingEmergency, setLoadingEmergency] = useState(false);
-    // ✅ 2025-01-27: Chat et Avis
+
+    // Chat et Avis
     const [showChat, setShowChat] = useState(false);
     const [conversationId, setConversationId] = useState<string | null>(null);
     const [prestataireInfo, setPrestataireInfo] = useState<any>(null);
     const [ratingStats, setRatingStats] = useState<any>(null);
-    // ✅ IA: Recherche pathologie
+
+    // IA: Recherche pathologie
     const [pathologyQuery, setPathologyQuery] = useState('');
     const [pathologyResult, setPathologyResult] = useState<any>(null);
     const [searchingPathology, setSearchingPathology] = useState(false);
 
-    useEffect(() => {
-        loadHopitalDetails();
-    }, []);
-
-    // ✅ 2025-01-27: Charger temps d'attente et statut urgences si disponibles
-    useEffect(() => {
-        if (hopital?.urgences_disponible) {
-            loadEmergencyStatus();
-            loadWaitTimes();
-        }
-    }, [hopital]);
-
-    // ✅ 2025-01-27: Charger infos prestataire et statistiques ratings
-    useEffect(() => {
-        if (hopital) {
-            loadPrestataireInfo();
-            loadRatingStats();
-        }
-    }, [hopital]);
+    useEffect(() => { loadHopitalDetails(); }, []);
+    useEffect(() => { if (hopital?.urgences_disponible) { loadEmergencyStatus(); loadWaitTimes(); } }, [hopital]);
+    useEffect(() => { if (hopital) { loadPrestataireInfo(); loadRatingStats(); } }, [hopital]);
 
     const loadHopitalDetails = async () => {
         try {
             setLoading(true);
             const response = await apiGet(`/api/hopitaux/${params.hospitalId}`);
+            if (response.success && response.data) setHopital(response.data as HopitalDetails);
+            else { Alert.alert('Erreur', 'Impossible de charger les détails'); navigation.goBack(); }
+        } catch (error: any) { Alert.alert('Erreur', error.message || 'Impossible de charger'); navigation.goBack(); }
+        finally { setLoading(false); }
+    };
 
-            if (response.success && response.data) {
-                setHopital(response.data as HopitalDetails);
-            } else {
-                Alert.alert('Erreur', 'Impossible de charger les détails de l\'hôpital');
-                navigation.goBack();
-            }
-        } catch (error: any) {
-            console.error('[HopitalDetailsScreen] Erreur:', error);
-            Alert.alert('Erreur', error.message || 'Impossible de charger les détails');
-            navigation.goBack();
-        } finally {
-            setLoading(false);
-        }
+    const handleRefresh = useCallback(async () => { setRefreshing(true); await loadHopitalDetails(); setRefreshing(false); }, []);
+
+    const handleCall = () => { if (hopital?.telephone) Linking.openURL(`tel:${hopital.telephone}`); };
+    const handleCallUrgence = () => { if (hopital?.telephone_urgence) Linking.openURL(`tel:${hopital.telephone_urgence}`); };
+    const handleWhatsApp = () => {
+        const num = hopital?.whatsapp || hopital?.telephone;
+        if (num) Linking.openURL(`https://wa.me/${num.replace(/[^0-9+]/g, '')}`);
+    };
+    const handleEmail = () => { if (hopital?.email) Linking.openURL(`mailto:${hopital.email}`); };
+    const handleWebsite = () => {
+        if (hopital?.site_web) { const url = hopital.site_web.startsWith('http') ? hopital.site_web : `https://${hopital.site_web}`; Linking.openURL(url); }
+    };
+    const handleShare = async () => {
+        if (!hopital) return;
+        try {
+            await Share.share({
+                message: `${hopital.nom} (${hopital.type_etablissement})${hopital.adresse ? ' - ' + hopital.adresse : ''}${hopital.ville ? ', ' + hopital.ville : ''}${hopital.telephone ? '\nTel: ' + hopital.telephone : ''}${hopital.urgences_disponible ? '\nUrgences disponibles' : ''}\nVia Yukpo`,
+                title: hopital.nom,
+            });
+        } catch { }
     };
 
     const handleBook = async () => {
-        if (!user) {
-            Alert.alert('Connexion requise', 'Veuillez vous connecter pour réserver un rendez-vous');
-            navigation.navigate('Login' as never);
-            return;
-        }
-
+        if (!user) { Alert.alert('Connexion requise', 'Veuillez vous connecter'); navigation.navigate('Login' as never); return; }
         try {
             setBooking(true);
-            const response = await apiPost(`/api/hopitaux/${params.hospitalId}/book`, {
-                notes: 'Réservation depuis l\'application mobile',
-            });
-
-            if (response.success) {
-                Alert.alert(
-                    'Réservation créée',
-                    'Votre demande de rendez-vous a été envoyée. L\'hôpital vous contactera.',
-                    [
-                        {
-                            text: 'OK',
-                            onPress: () => navigation.goBack(),
-                        },
-                    ]
-                );
-            } else {
-                Alert.alert('Erreur', response.error || 'Impossible de créer la réservation');
-            }
-        } catch (error: any) {
-            console.error('[HopitalDetailsScreen] Erreur réservation:', error);
-            Alert.alert('Erreur', error.message || 'Impossible de créer la réservation');
-        } finally {
-            setBooking(false);
-        }
+            const response = await apiPost(`/api/hopitaux/${params.hospitalId}/book`, { notes: 'Réservation depuis l\'application mobile' });
+            if (response.success) Alert.alert('Réservation créée', 'Votre demande de rendez-vous a été envoyée.', [{ text: 'OK', onPress: () => navigation.goBack() }]);
+            else Alert.alert('Erreur', response.error || 'Impossible de réserver');
+        } catch (error: any) { Alert.alert('Erreur', error.message || 'Impossible de réserver'); }
+        finally { setBooking(false); }
     };
 
-    const handleCall = () => {
-        if (hopital?.telephone) {
-            Linking.openURL(`tel:${hopital.telephone}`);
-        }
-    };
-
-    const handleCallUrgence = () => {
-        if (hopital?.telephone_urgence) {
-            Linking.openURL(`tel:${hopital.telephone_urgence}`);
-        }
-    };
-
-    // ✅ 2025-01-27: Charger temps d'attente
     const loadWaitTimes = async () => {
         try {
-            setLoadingWaitTimes(true);
             const response = await hospitalService.getWaitTimes(params.hospitalId);
-            if (response.success && response.data) {
-                setWaitTimes(response.data.wait_times);
-            }
-        } catch (error: any) {
-            console.error('[HopitalDetailsScreen] Erreur chargement temps d\'attente:', error);
-        } finally {
-            setLoadingWaitTimes(false);
-        }
+            if (response.success && response.data) setWaitTimes(response.data.wait_times);
+        } catch { }
     };
-
-    // ✅ 2025-01-27: Charger statut urgences
     const loadEmergencyStatus = async () => {
         try {
-            setLoadingEmergency(true);
             const response = await hospitalService.getEmergencyStatus(params.hospitalId);
-            if (response.success && response.data) {
-                setEmergencyStatus(response.data);
-            }
-        } catch (error: any) {
-            console.error('[HopitalDetailsScreen] Erreur chargement statut urgences:', error);
-        } finally {
-            setLoadingEmergency(false);
-        }
+            if (response.success && response.data) setEmergencyStatus(response.data);
+        } catch { }
     };
-
-    // ✅ 2025-01-27: Recommandations IA
-    const handleAIRecommendations = () => {
-        navigation.navigate('HospitalAIRecommendations' as never, {
-            hospitalId: params.hospitalId,
-        } as never);
-    };
-
-    // ✅ 2025-01-27: Navigation vers mes consultations
-    const handleViewMyConsultations = () => {
-        if (!user) {
-            Alert.alert('Connexion requise', 'Veuillez vous connecter pour voir vos consultations');
-            navigation.navigate('Login' as never);
-            return;
-        }
-        navigation.navigate('MyConsultations' as never);
-    };
-
-    // ✅ 2025-01-27: Navigation vers analytics (prestataire uniquement)
-    const handleViewAnalytics = () => {
-        if (!user) {
-            Alert.alert('Connexion requise', 'Veuillez vous connecter pour voir les analytics');
-            navigation.navigate('Login' as never);
-            return;
-        }
-        navigation.navigate('HospitalAnalytics' as never, {
-            hospitalId: params.hospitalId,
-        } as never);
-    };
-
-    // ✅ 2025-01-27: Charger infos prestataire
     const loadPrestataireInfo = async () => {
         if (!hopital?.user_id) return;
-        try {
-            const response = await apiGet(`/api/users/${hopital.user_id}`);
-            if (response.success && response.data) {
-                setPrestataireInfo(response.data);
-            }
-        } catch (error: any) {
-            console.warn('[HopitalDetailsScreen] Impossible de charger prestataire:', error);
-        }
+        try { const r = await apiGet(`/api/users/${hopital.user_id}`); if (r.success && r.data) setPrestataireInfo(r.data); } catch { }
     };
-
-    // ✅ 2025-01-27: Charger statistiques ratings
     const loadRatingStats = async () => {
         if (!hopital?.service_id) return;
-        try {
-            const response = await apiGet(`/api/specialized-services/${hopital.service_id}/ratings/stats`);
-            if (response.success && response.data) {
-                const data = response.data as any;
-                setRatingStats(data.stats || data);
-            }
-        } catch (error: any) {
-            console.warn('[HopitalDetailsScreen] Impossible de charger stats ratings:', error);
-        }
+        try { const r = await apiGet(`/api/specialized-services/${hopital.service_id}/ratings/stats`); if (r.success && r.data) { const d = r.data as any; setRatingStats(d.stats || d); } } catch { }
     };
 
-    // ✅ 2025-01-27: Ouvrir chat
     const handleOpenChat = () => {
-        if (!user) {
-            Alert.alert('Connexion requise', 'Veuillez vous connecter pour contacter l\'hôpital');
-            navigation.navigate('Login' as never);
-            return;
-        }
+        if (!user) { Alert.alert('Connexion requise', 'Veuillez vous connecter'); navigation.navigate('Login' as never); return; }
         setShowChat(true);
     };
 
-    // ✅ IA: Recherche pathologie pour suggérer services hospitaliers
     const handleSearchPathology = async () => {
-        if (!pathologyQuery.trim()) {
-            Alert.alert('Erreur', 'Veuillez décrire vos symptômes');
-            return;
-        }
+        if (!pathologyQuery.trim()) { Alert.alert('Erreur', 'Décrivez vos symptômes'); return; }
         try {
             setSearchingPathology(true);
-            const response = await hospitalService.searchPathology(
-                pathologyQuery.trim(),
-                undefined,
-                undefined
-            );
-            if (response.success && response.results && response.results.length > 0) {
-                setPathologyResult(response.results[0]);
-            } else {
-                Alert.alert('Aucun résultat', (response as any).message || 'L\'IA n\'a pas trouvé de résultats pour ces symptômes.');
-            }
-        } catch (error: any) {
-            console.warn('[HopitalDetailsScreen] Erreur recherche pathologie:', error);
-            Alert.alert('IA non disponible', 'La recherche IA n\'est pas encore opérationnelle.');
-        } finally {
-            setSearchingPathology(false);
-        }
+            const response = await hospitalService.searchPathology(pathologyQuery.trim(), undefined, undefined);
+            if (response.success && response.results && response.results.length > 0) setPathologyResult(response.results[0]);
+            else Alert.alert('Aucun résultat', (response as any).message || 'Aucun résultat trouvé.');
+        } catch { Alert.alert('IA non disponible', 'La recherche IA n\'est pas encore opérationnelle.'); }
+        finally { setSearchingPathology(false); }
     };
 
-    // Vérifier si l'utilisateur est le propriétaire
     const isOwner = user && hopital && String(user.id) === String(hopital.user_id);
+    const rating = hopital?.note_moyenne || (ratingStats?.average_rating as number) || 0;
+    const reviewCount = hopital?.nombre_avis || (ratingStats?.total_ratings as number) || 0;
 
-    if (loading) {
-        return (
-            <View style={styles.centerContainer}>
-                <ActivityIndicator size="large" color={modernColors.primary} />
-                <Text style={styles.loadingText}>Chargement...</Text>
-            </View>
-        );
-    }
+    if (loading) return (<View style={st.center}><ActivityIndicator size="large" color="#3B82F6" /><Text style={st.centerText}>Chargement...</Text></View>);
+    if (!hopital) return (<View style={st.center}><SafeIcon name="alert-circle" size={48} color="#EF4444" /><Text style={st.centerText}>Hôpital non trouvé</Text></View>);
 
-    if (!hopital) {
-        return (
-            <View style={styles.centerContainer}>
-                <Text style={styles.errorText}>Hôpital non trouvé</Text>
-            </View>
-        );
-    }
+    const isOpen = hopital.is_available_now;
+    const starsFull = Math.floor(rating);
+    const starsHalf = rating - starsFull >= 0.5;
+    const prestations = hopital.prestations_medicales || [];
+
+    const emergencyColor = emergencyStatus?.status === 'saturated' ? '#DC2626' : emergencyStatus?.status === 'busy' ? '#F59E0B' : '#059669';
+    const emergencyLabel = emergencyStatus?.status === 'available' ? 'Disponible' : emergencyStatus?.status === 'busy' ? 'Occupé' : 'Saturé';
 
     return (
-        <View style={styles.container}>
-            <View style={styles.header}>
-                <TouchableOpacity
-                    onPress={() => navigation.goBack()}
-                    style={styles.backButton}
-                >
-                    <SafeIcon name="arrow-left" size={24} color="#111827" />
-                </TouchableOpacity>
-                <Text style={styles.title}>Détails de l'hôpital</Text>
-            </View>
-
-            <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
-                <NativeCard style={styles.card}>
-                    <View style={styles.statusRow}>
-                        <View style={styles.titleContainer}>
-                            <Text style={styles.nom}>{hopital.nom}</Text>
-                            <Text style={styles.type}>{hopital.type_etablissement}</Text>
+        <View style={st.container}>
+            {/* Hero Gradient Header */}
+            <LinearGradient colors={['#1E40AF', '#3B82F6', '#60A5FA']} style={st.hero}>
+                <View style={st.heroTop}>
+                    <TouchableOpacity onPress={() => navigation.goBack()} style={st.heroBtn}><SafeIcon name="arrow-left" size={22} color="#fff" /></TouchableOpacity>
+                    <TouchableOpacity onPress={handleShare} style={st.heroBtn}><SafeIcon name="share-2" size={22} color="#fff" /></TouchableOpacity>
+                </View>
+                <View style={st.heroContent}>
+                    <View style={st.heroIconWrap}><SafeIcon name="building-2" size={28} color="#3B82F6" /></View>
+                    <Text style={st.heroTitle} numberOfLines={2}>{hopital.nom}</Text>
+                    <Text style={st.heroType}>{hopital.type_etablissement}</Text>
+                    {hopital.description ? <Text style={st.heroDesc} numberOfLines={2}>{hopital.description}</Text> : null}
+                    <View style={st.heroBadges}>
+                        <View style={[st.badge, { backgroundColor: isOpen ? 'rgba(255,255,255,0.25)' : 'rgba(239,68,68,0.3)' }]}>
+                            <View style={[st.badgeDot, { backgroundColor: isOpen ? '#fff' : '#FCA5A5' }]} />
+                            <Text style={st.badgeText}>{isOpen ? 'Ouvert' : 'Fermé'}</Text>
                         </View>
-                        <View style={styles.badgesContainer}>
-                            <View style={[styles.statusBadge, hopital.is_available_now && styles.statusBadgeAvailable]}>
-                                <Text style={[styles.statusText, hopital.is_available_now && styles.statusTextAvailable]}>
-                                    {hopital.is_available_now ? 'Disponible' : 'Indisponible'}
-                                </Text>
+                        {hopital.urgences_disponible && (
+                            <View style={[st.badge, { backgroundColor: 'rgba(239,68,68,0.3)' }]}>
+                                <SafeIcon name="alert-circle" size={12} color="#fff" />
+                                <Text style={st.badgeText}>Urgences</Text>
                             </View>
-                            {hopital.urgences_disponible && (
-                                <View style={styles.urgenceBadge}>
-                                    <SafeIcon name="alert-circle" size={12} color="#DC2626" />
-                                    <Text style={styles.urgenceText}>Urgences</Text>
-                                </View>
-                            )}
-                            {hopital.banque_sang && (
-                                <View style={styles.banqueSangBadge}>
-                                    <Text style={styles.banqueSangText}>Banque de sang</Text>
-                                </View>
-                            )}
-                        </View>
-                    </View>
-
-                    {(hopital.adresse || hopital.ville || hopital.quartier) && (
-                        <View style={styles.infoRow}>
-                            <SafeIcon name="map-pin" size={20} color={modernColors.textSecondary} />
-                            <View style={styles.infoTextContainer}>
-                                {hopital.adresse && <Text style={styles.infoText}>{hopital.adresse}</Text>}
-                                <Text style={styles.infoSubtext}>
-                                    {[hopital.quartier, hopital.ville].filter(Boolean).join(', ')}
-                                </Text>
-                            </View>
-                        </View>
-                    )}
-
-                    {hopital.gps && (
-                        <View style={styles.infoRow}>
-                            <SafeIcon name="map-pin" size={20} color={modernColors.textSecondary} />
-                            <Text style={styles.infoText}>{hopital.gps}</Text>
-                        </View>
-                    )}
-
-                    {hopital.telephone && (
-                        <View style={styles.infoRow}>
-                            <SafeIcon name="phone" size={20} color={modernColors.textSecondary} />
-                            <Text style={styles.infoText}>{hopital.telephone}</Text>
-                        </View>
-                    )}
-
-                    {hopital.telephone_urgence && (
-                        <View style={styles.infoRow}>
-                            <SafeIcon name="alert-circle" size={20} color="#DC2626" />
-                            <Text style={[styles.infoText, styles.urgenceText]}>
-                                Urgences: {hopital.telephone_urgence}
-                            </Text>
-                        </View>
-                    )}
-
-                    {hopital.email && (
-                        <View style={styles.infoRow}>
-                            <SafeIcon name="mail" size={20} color={modernColors.textSecondary} />
-                            <Text style={styles.infoText}>{hopital.email}</Text>
-                        </View>
-                    )}
-
-                    {hopital.prestations_medicales && hopital.prestations_medicales.length > 0 && (
-                        <View style={styles.prestationsSection}>
-                            <Text style={styles.sectionTitle}>Prestations médicales</Text>
-                            <View style={styles.prestationsChips}>
-                                {hopital.prestations_medicales.map((prest, idx) => (
-                                    <View key={idx} style={styles.prestationChip}>
-                                        <Text style={styles.prestationChipText}>{prest}</Text>
-                                    </View>
-                                ))}
-                            </View>
-                        </View>
-                    )}
-
-                    {hopital.rdv_en_ligne && (
-                        <View style={styles.rdvBadge}>
-                            <SafeIcon name="check-circle" size={16} color="#059669" />
-                            <Text style={styles.rdvText}>Rendez-vous en ligne disponible</Text>
-                        </View>
-                    )}
-                </NativeCard>
-
-                {/* ✅ 2025-01-27: Section Temps d'attente */}
-                {hopital.urgences_disponible && waitTimes && waitTimes.length > 0 && (
-                    <NativeCard style={styles.card}>
-                        <Text style={styles.sectionTitle}>⏱️ Temps d'attente estimés</Text>
-                        {loadingWaitTimes ? (
-                            <ActivityIndicator size="small" color={modernColors.primary} />
-                        ) : (
-                            waitTimes.map((wt, idx) => (
-                                <View key={idx} style={styles.waitTimeRow}>
-                                    <View style={styles.waitTimeInfo}>
-                                        <Text style={styles.waitTimeSpecialty}>
-                                            {wt.specialty || 'Général'}
-                                        </Text>
-                                        <Text style={styles.waitTimeSubtext}>
-                                            {wt.consultation_count} consultation(s)
-                                        </Text>
-                                    </View>
-                                    <View style={styles.waitTimeValue}>
-                                        <Text style={styles.waitTimeMinutes}>
-                                            {wt.avg_wait_time_minutes
-                                                ? `${String(Math.round(wt.avg_wait_time_minutes))} min`
-                                                : 'N/A'}
-                                        </Text>
-                                        {wt.max_wait_time_minutes && (
-                                            <Text style={styles.waitTimeMax}>
-                                                Max: {String(Math.round(wt.max_wait_time_minutes))} min
-                                            </Text>
-                                        )}
-                                    </View>
-                                </View>
-                            ))
                         )}
-                    </NativeCard>
+                        {hopital.banque_sang && (
+                            <View style={[st.badge, { backgroundColor: 'rgba(219,39,119,0.3)' }]}>
+                                <SafeIcon name="heart" size={12} color="#fff" />
+                                <Text style={st.badgeText}>Banque sang</Text>
+                            </View>
+                        )}
+                        {hopital.rdv_en_ligne && (
+                            <View style={[st.badge, { backgroundColor: 'rgba(16,185,129,0.3)' }]}>
+                                <SafeIcon name="calendar" size={12} color="#fff" />
+                                <Text style={st.badgeText}>RDV en ligne</Text>
+                            </View>
+                        )}
+                        {hopital.is_verified && (
+                            <View style={[st.badge, { backgroundColor: 'rgba(255,255,255,0.25)' }]}>
+                                <SafeIcon name="check-circle" size={12} color="#fff" />
+                                <Text style={st.badgeText}>Vérifié</Text>
+                            </View>
+                        )}
+                    </View>
+                    {/* Rating */}
+                    <View style={st.ratingRow}>
+                        {[1, 2, 3, 4, 5].map(i => (
+                            <SafeIcon key={i} name="star" size={16} color={i <= starsFull || (i === starsFull + 1 && starsHalf) ? '#FCD34D' : 'rgba(255,255,255,0.3)'} />
+                        ))}
+                        <Text style={st.ratingText}>{rating > 0 ? rating.toFixed(1) : '--'} ({reviewCount} avis)</Text>
+                    </View>
+                    {(hopital.adresse || hopital.quartier || hopital.ville) && (
+                        <View style={st.heroLoc}><SafeIcon name="map-pin" size={14} color="rgba(255,255,255,0.8)" /><Text style={st.heroLocText} numberOfLines={1}>{[hopital.adresse, hopital.quartier, hopital.ville].filter(Boolean).join(', ')}</Text></View>
+                    )}
+                </View>
+            </LinearGradient>
+
+            <ScrollView style={st.scroll} contentContainerStyle={{ paddingBottom: 100 }}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={['#3B82F6']} />}>
+
+                {/* Quick Actions */}
+                <View style={st.quickRow}>
+                    {[
+                        hopital.telephone && { icon: 'phone', label: 'Appeler', color: '#3B82F6', onPress: handleCall },
+                        { icon: 'message-circle', label: 'WhatsApp', color: '#25D366', onPress: handleWhatsApp },
+                        { icon: 'message-square', label: 'Chat', color: '#8B5CF6', onPress: handleOpenChat },
+                        hopital.rdv_en_ligne && { icon: 'calendar', label: 'RDV', color: '#10B981', onPress: handleBook },
+                        hopital.email && { icon: 'mail', label: 'Email', color: '#F59E0B', onPress: handleEmail },
+                        hopital.site_web && { icon: 'globe', label: 'Site', color: '#6366F1', onPress: handleWebsite },
+                    ].filter(Boolean).map((a: any, i) => (
+                        <TouchableOpacity key={i} style={st.quickAction} onPress={a.onPress}>
+                            <View style={[st.quickIcon, { backgroundColor: a.color + '15' }]}><SafeIcon name={a.icon} size={20} color={a.color} /></View>
+                            <Text style={st.quickLabel}>{a.label}</Text>
+                        </TouchableOpacity>
+                    ))}
+                </View>
+
+                {/* Urgences status */}
+                {hopital.urgences_disponible && (
+                    <View style={st.section}>
+                        {hopital.telephone_urgence && (
+                            <TouchableOpacity style={[st.infoCard, { backgroundColor: '#FEF2F2', borderLeftColor: '#EF4444' }]} onPress={handleCallUrgence}>
+                                <SafeIcon name="phone" size={16} color="#EF4444" />
+                                <Text style={[st.infoCardText, { color: '#DC2626', fontWeight: '700' }]}>Urgences: {hopital.telephone_urgence}</Text>
+                                <SafeIcon name="chevron-right" size={16} color="#EF4444" />
+                            </TouchableOpacity>
+                        )}
+                        {emergencyStatus && (
+                            <View style={[st.infoCard, { borderLeftColor: emergencyColor }]}>
+                                <SafeIcon name="alert-circle" size={16} color={emergencyColor} />
+                                <Text style={[st.infoCardText, { color: emergencyColor, fontWeight: '700' }]}>Urgences: {emergencyLabel}</Text>
+                            </View>
+                        )}
+                    </View>
                 )}
 
-                {/* ✅ 2025-01-27: Section Statut Urgences */}
-                {hopital.urgences_disponible && emergencyStatus && (
-                    <NativeCard style={styles.card}>
-                        <View style={styles.emergencyStatusHeader}>
-                            <SafeIcon
-                                name="alert-circle"
-                                size={24}
-                                color={
-                                    emergencyStatus.status === 'saturated' ? '#DC2626' :
-                                        emergencyStatus.status === 'busy' ? '#F59E0B' :
-                                            '#059669'
-                                }
-                            />
-                            <View style={styles.emergencyStatusTitleContainer}>
-                                <Text style={styles.emergencyStatusTitle}>
-                                    Statut Urgences: {
-                                        emergencyStatus.status === 'available' ? 'Disponible' :
-                                            emergencyStatus.status === 'busy' ? 'Occupé' :
-                                                'Saturé'
-                                    }
-                                </Text>
-                            </View>
-                        </View>
-                        <View style={styles.emergencyStatsRow}>
-                            <View style={styles.emergencyStat}>
-                                <Text style={styles.emergencyStatLabel}>Patients critiques</Text>
-                                <Text style={[styles.emergencyStatValue, styles.criticalValue]}>
-                                    {emergencyStatus.critical_count}
-                                </Text>
-                            </View>
-                            <View style={styles.emergencyStat}>
-                                <Text style={styles.emergencyStatLabel}>Temps moyen</Text>
-                                <Text style={styles.emergencyStatValue}>
-                                    {emergencyStatus.avg_wait_time_minutes
-                                        ? `${Math.round(emergencyStatus.avg_wait_time_minutes)} min`
-                                        : 'N/A'}
-                                </Text>
-                            </View>
-                            <View style={styles.emergencyStat}>
-                                <Text style={styles.emergencyStatLabel}>Total patients</Text>
-                                <Text style={styles.emergencyStatValue}>
-                                    {emergencyStatus.total_patients}
-                                </Text>
-                            </View>
-                        </View>
-                    </NativeCard>
-                )}
-
-                {/* ✅ IA: Recherche pathologie */}
-                <NativeCard style={styles.card}>
-                    <Text style={styles.sectionTitle}>🧠 Recherche IA par symptômes</Text>
-                    <View style={{ flexDirection: 'row', gap: 8, marginBottom: 10 }}>
-                        <View style={{ flex: 1 }}>
-                            <NativeInput
-                                placeholder="Décrivez vos symptômes (ex: fièvre, toux, maux de tête)"
-                                value={pathologyQuery}
-                                onChangeText={setPathologyQuery}
-                                multiline
-                                style={{ minHeight: 40 }}
-                            />
+                {/* Emergency stats */}
+                {emergencyStatus && (
+                    <View style={st.section}>
+                        <View style={st.sectionHeader}><SafeIcon name="activity" size={18} color="#EF4444" /><Text style={st.sectionTitle}>Statut urgences</Text></View>
+                        <View style={st.statsRow}>
+                            {[
+                                { label: 'Critiques', value: emergencyStatus.critical_count, color: '#EF4444' },
+                                { label: 'Temps moyen', value: emergencyStatus.avg_wait_time_minutes ? `${Math.round(emergencyStatus.avg_wait_time_minutes)}m` : 'N/A', color: '#F59E0B' },
+                                { label: 'Total patients', value: emergencyStatus.total_patients, color: '#3B82F6' },
+                            ].map((s, i) => (
+                                <View key={i} style={st.statCard}>
+                                    <Text style={[st.statValue, { color: s.color }]}>{s.value}</Text>
+                                    <Text style={st.statLabel}>{s.label}</Text>
+                                </View>
+                            ))}
                         </View>
                     </View>
-                    <NativeButton
-                        title={searchingPathology ? 'Analyse en cours...' : 'Analyser'}
-                        onPress={handleSearchPathology}
-                        variant="primary"
-                        disabled={!pathologyQuery.trim() || searchingPathology}
-                    />
+                )}
+
+                {/* Wait times */}
+                {waitTimes && waitTimes.length > 0 && (
+                    <View style={st.section}>
+                        <View style={st.sectionHeader}><SafeIcon name="clock" size={18} color="#3B82F6" /><Text style={st.sectionTitle}>Temps d'attente</Text></View>
+                        {waitTimes.map((wt, idx) => (
+                            <View key={idx} style={st.waitRow}>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={st.waitSpec}>{wt.specialty || 'Général'}</Text>
+                                    <Text style={st.waitSub}>{wt.consultation_count} consultation(s)</Text>
+                                </View>
+                                <View style={{ alignItems: 'flex-end' }}>
+                                    <Text style={st.waitMin}>{wt.avg_wait_time_minutes ? `${Math.round(wt.avg_wait_time_minutes)} min` : 'N/A'}</Text>
+                                    {wt.max_wait_time_minutes && <Text style={st.waitMax}>Max: {Math.round(wt.max_wait_time_minutes)} min</Text>}
+                                </View>
+                            </View>
+                        ))}
+                    </View>
+                )}
+
+                {/* Prestations */}
+                {prestations.length > 0 && (
+                    <View style={st.section}>
+                        <View style={st.sectionHeader}><SafeIcon name="stethoscope" size={18} color="#3B82F6" /><Text style={st.sectionTitle}>Prestations médicales</Text></View>
+                        <View style={st.chipWrap}>
+                            {prestations.map((p, i) => (
+                                <View key={i} style={st.chip}><Text style={st.chipText}>{p}</Text></View>
+                            ))}
+                        </View>
+                    </View>
+                )}
+
+                {/* IA Pathologie */}
+                <View style={st.section}>
+                    <View style={st.sectionHeader}><SafeIcon name="brain" size={18} color="#7C3AED" /><Text style={st.sectionTitle}>Recherche IA par symptômes</Text></View>
+                    <TextInput style={st.searchInput} placeholder="Décrivez vos symptômes (fièvre, toux, douleur...)" placeholderTextColor="#9CA3AF" value={pathologyQuery} onChangeText={setPathologyQuery} multiline />
+                    <TouchableOpacity style={[st.analyzeBtn, (!pathologyQuery.trim() || searchingPathology) && { opacity: 0.5 }]} disabled={!pathologyQuery.trim() || searchingPathology} onPress={handleSearchPathology}>
+                        {searchingPathology ? <ActivityIndicator size="small" color="#fff" /> : <><SafeIcon name="search" size={16} color="#fff" /><Text style={st.analyzeBtnText}>Analyser</Text></>}
+                    </TouchableOpacity>
+
                     {pathologyResult && (
-                        <View style={{ marginTop: 12, padding: 12, backgroundColor: '#F0FDF4', borderRadius: 10, borderWidth: 1, borderColor: '#BBF7D0' }}>
-                            <Text style={{ fontWeight: '700', fontSize: 15, color: '#111827', marginBottom: 6 }}>
-                                {pathologyResult.pathology_name || 'Résultat'}
-                            </Text>
-                            {pathologyResult.description && (
-                                <Text style={{ fontSize: 13, color: '#374151', marginBottom: 8 }}>
-                                    {pathologyResult.description}
-                                </Text>
-                            )}
+                        <View style={[st.resultCard, { borderLeftColor: '#7C3AED' }]}>
+                            <Text style={{ fontWeight: '700', fontSize: 15, color: '#111827', marginBottom: 6 }}>{pathologyResult.pathology_name || 'Résultat'}</Text>
+                            {pathologyResult.description && <Text style={{ fontSize: 13, color: '#374151', marginBottom: 8, lineHeight: 20 }}>{pathologyResult.description}</Text>}
                             {pathologyResult.urgency_level && (
-                                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
-                                    <SafeIcon name="alert-circle" size={16} color={
-                                        pathologyResult.urgency_level === 'critical' ? '#DC2626' :
-                                            pathologyResult.urgency_level === 'high' ? '#F59E0B' : '#059669'
-                                    } />
-                                    <Text style={{ marginLeft: 6, fontWeight: '600', color: '#111827' }}>
-                                        Urgence: {pathologyResult.urgency_level}
-                                    </Text>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                                    <SafeIcon name="alert-circle" size={14} color={pathologyResult.urgency_level === 'critical' ? '#DC2626' : pathologyResult.urgency_level === 'high' ? '#F59E0B' : '#059669'} />
+                                    <Text style={{ fontWeight: '600', color: '#111827', fontSize: 13 }}>Urgence: {pathologyResult.urgency_level}</Text>
                                 </View>
                             )}
-                            {pathologyResult.recommended_services && pathologyResult.recommended_services.length > 0 && (
+                            {pathologyResult.recommended_services?.length > 0 && (
                                 <View style={{ marginBottom: 8 }}>
-                                    <Text style={{ fontWeight: '600', color: '#111827', marginBottom: 4 }}>Services recommandés:</Text>
+                                    <Text style={{ fontWeight: '600', color: '#111827', marginBottom: 4, fontSize: 13 }}>Services recommandés:</Text>
                                     {pathologyResult.recommended_services.map((svc: string, idx: number) => (
-                                        <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 8, marginBottom: 2 }}>
-                                            <SafeIcon name="check" size={12} color="#059669" />
-                                            <Text style={{ marginLeft: 6, fontSize: 13, color: '#374151' }}>{svc}</Text>
+                                        <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginLeft: 8, marginBottom: 2 }}>
+                                            <SafeIcon name="check" size={12} color="#059669" /><Text style={{ fontSize: 13, color: '#374151' }}>{svc}</Text>
                                         </View>
                                     ))}
                                 </View>
                             )}
-                            {pathologyResult.recommended_examinations && pathologyResult.recommended_examinations.length > 0 && (
+                            {pathologyResult.recommended_examinations?.length > 0 && (
                                 <View style={{ marginBottom: 8 }}>
-                                    <Text style={{ fontWeight: '600', color: '#111827', marginBottom: 4 }}>Examens recommandés:</Text>
-                                    {pathologyResult.recommended_examinations.map((exam: string, idx: number) => (
-                                        <Text key={idx} style={{ marginLeft: 8, fontSize: 13, color: '#374151' }}>• {exam}</Text>
+                                    <Text style={{ fontWeight: '600', color: '#111827', marginBottom: 4, fontSize: 13 }}>Examens recommandés:</Text>
+                                    {pathologyResult.recommended_examinations.map((e: string, idx: number) => (
+                                        <Text key={idx} style={{ marginLeft: 8, fontSize: 13, color: '#374151' }}>• {e}</Text>
                                     ))}
                                 </View>
                             )}
-                            {pathologyResult.recommendations && pathologyResult.recommendations.length > 0 && (
-                                <View style={{ marginTop: 4 }}>
-                                    {pathologyResult.recommendations.map((rec: string, idx: number) => (
-                                        <Text key={idx} style={{ fontSize: 13, color: '#6B7280', fontStyle: 'italic' }}>• {rec}</Text>
-                                    ))}
-                                </View>
+                            {pathologyResult.recommendations?.length > 0 && (
+                                <View style={{ marginTop: 4 }}>{pathologyResult.recommendations.map((r: string, idx: number) => (
+                                    <Text key={idx} style={{ fontSize: 13, color: '#6B7280', fontStyle: 'italic' }}>• {r}</Text>
+                                ))}</View>
                             )}
                         </View>
                     )}
-                </NativeCard>
+                </View>
 
-                <View style={styles.actionsContainer}>
-                    <NativeButton
-                        title="Réserver un rendez-vous"
-                        onPress={handleBook}
-                        disabled={booking || !hopital.is_available_now}
-                        variant="primary"
-                        style={styles.bookButton}
-                    />
-                    {/* ✅ 2025-01-27: Bouton Contacter */}
-                    <NativeButton
-                        title="💬 Contacter"
-                        onPress={handleOpenChat}
-                        variant="outline"
-                        style={styles.contactButton}
-                    />
-                    {/* ✅ 2025-01-27: Bouton Recommandations IA */}
-                    <NativeButton
-                        title="🤖 Obtenir recommandations IA"
-                        onPress={handleAIRecommendations}
-                        variant="outline"
-                        style={styles.aiButton}
-                    />
-                    {/* ✅ 2025-01-27: Bouton Mes consultations */}
-                    <NativeButton
-                        title="📋 Mes consultations"
-                        onPress={handleViewMyConsultations}
-                        variant="outline"
-                        style={styles.myConsultationsButton}
-                    />
-                    {/* ✅ 2025-01-27: Bouton Analytics (prestataire uniquement) */}
+                {/* Action buttons */}
+                <View style={st.section}>
+                    {hopital.rdv_en_ligne && (
+                        <TouchableOpacity style={[st.fullBtn, { backgroundColor: '#EFF6FF', borderLeftColor: '#3B82F6', borderLeftWidth: 3 }]} onPress={handleBook} disabled={booking || !isOpen}>
+                            <SafeIcon name="calendar" size={18} color="#3B82F6" />
+                            <Text style={[st.fullBtnText, { color: '#1E40AF' }]}>{booking ? 'Réservation...' : 'Réserver un rendez-vous'}</Text>
+                            <SafeIcon name="chevron-right" size={18} color="#93C5FD" />
+                        </TouchableOpacity>
+                    )}
+                    <TouchableOpacity style={st.fullBtn} onPress={() => navigation.navigate('HospitalAIRecommendations' as never, { hospitalId: params.hospitalId } as never)}>
+                        <SafeIcon name="sparkles" size={18} color="#7C3AED" />
+                        <Text style={st.fullBtnText}>Recommandations IA</Text>
+                        <SafeIcon name="chevron-right" size={18} color="#9CA3AF" />
+                    </TouchableOpacity>
+                    <TouchableOpacity style={st.fullBtn} onPress={() => {
+                        if (!user) { Alert.alert('Connexion requise', 'Veuillez vous connecter'); navigation.navigate('Login' as never); return; }
+                        navigation.navigate('MyConsultations' as never);
+                    }}>
+                        <SafeIcon name="clipboard-list" size={18} color="#3B82F6" />
+                        <Text style={st.fullBtnText}>Mes consultations</Text>
+                        <SafeIcon name="chevron-right" size={18} color="#9CA3AF" />
+                    </TouchableOpacity>
                     {isOwner && (
-                        <NativeButton
-                            title="📊 Analytics"
-                            onPress={handleViewAnalytics}
-                            variant="outline"
-                            style={styles.analyticsButton}
-                        />
-                    )}
-                    {hopital.telephone && (
-                        <NativeButton
-                            title="Appeler"
-                            onPress={handleCall}
-                            variant="outline"
-                            style={styles.callButton}
-                        />
-                    )}
-                    {hopital.telephone_urgence && hopital.urgences_disponible && (
-                        <NativeButton
-                            title="Appeler les urgences"
-                            onPress={handleCallUrgence}
-                            variant="outline"
-                            style={[styles.callButton, styles.urgenceButton]}
-                        />
+                        <TouchableOpacity style={st.fullBtn} onPress={() => navigation.navigate('HospitalAnalytics' as never, { hospitalId: params.hospitalId } as never)}>
+                            <SafeIcon name="bar-chart-2" size={18} color="#F59E0B" />
+                            <Text style={st.fullBtnText}>Analytics</Text>
+                            <SafeIcon name="chevron-right" size={18} color="#9CA3AF" />
+                        </TouchableOpacity>
                     )}
                 </View>
 
-                {/* ✅ 2025-01-27: Section Avis et Commentaires */}
+                {/* Avis */}
                 {hopital.service_id && (
-                    <ProductCommentsSection
-                        serviceId={hopital.service_id}
-                        serviceTitle={hopital.nom}
-                        onOpenChat={handleOpenChat}
-                        mode="inline"
-                    />
+                    <View style={st.section}>
+                        <ProductCommentsSection serviceId={hopital.service_id} serviceTitle={hopital.nom} onOpenChat={handleOpenChat} mode="inline" />
+                    </View>
                 )}
             </ScrollView>
 
-            {/* ✅ 2025-01-27: Modal Chat */}
+            {/* Chat */}
             {user && (
-                <ChatModalMobile
-                    visible={showChat}
-                    onClose={() => setShowChat(false)}
-                    service={{
-                        id: hopital.service_id,
-                        nom: hopital.nom,
-                        type: 'hopital_clinique',
-                    }}
-                    prestataireInfo={prestataireInfo || {
-                        id: hopital.user_id,
-                        nom: hopital.nom,
-                    }}
-                    user={user}
-                    conversationId={conversationId}
-                />
+                <ChatModalMobile visible={showChat} onClose={() => setShowChat(false)}
+                    service={{ id: hopital.service_id, nom: hopital.nom, type: 'hopital_clinique' }}
+                    prestataireInfo={prestataireInfo || { id: hopital.user_id, nom: hopital.nom }}
+                    user={user} conversationId={conversationId} />
             )}
         </View>
     );
 };
 
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#fff',
-    },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: '#E5E7EB',
-    },
-    backButton: {
-        marginRight: 12,
-    },
-    title: {
-        fontSize: 20,
-        fontWeight: '600',
-        color: '#111827',
-    },
-    content: {
-        flex: 1,
-    },
-    contentContainer: {
-        padding: 16,
-    },
-    card: {
-        padding: 20,
-        marginBottom: 16,
-    },
-    statusRow: {
-        marginBottom: 16,
-    },
-    titleContainer: {
-        marginBottom: 12,
-    },
-    nom: {
-        fontSize: 24,
-        fontWeight: '700',
-        color: '#111827',
-        marginBottom: 4,
-    },
-    type: {
-        fontSize: 16,
-        color: modernColors.textSecondary,
-    },
-    badgesContainer: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 8,
-    },
-    statusBadge: {
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 12,
-        backgroundColor: '#FEE2E2',
-    },
-    statusBadgeAvailable: {
-        backgroundColor: '#D1FAE5',
-    },
-    statusText: {
-        fontSize: 12,
-        fontWeight: '600',
-        color: '#DC2626',
-    },
-    statusTextAvailable: {
-        color: '#059669',
-    },
-    urgenceBadge: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-        borderRadius: 12,
-        backgroundColor: '#FEE2E2',
-        gap: 4,
-    },
-    urgenceText: {
-        fontSize: 12,
-        fontWeight: '600',
-        color: '#DC2626',
-    },
-    banqueSangBadge: {
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-        borderRadius: 12,
-        backgroundColor: '#FCE7F3',
-    },
-    banqueSangText: {
-        fontSize: 12,
-        fontWeight: '600',
-        color: '#BE185D',
-    },
-    infoRow: {
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-        gap: 12,
-        marginBottom: 12,
-    },
-    infoTextContainer: {
-        flex: 1,
-    },
-    infoText: {
-        fontSize: 16,
-        color: '#374151',
-    },
-    infoSubtext: {
-        fontSize: 14,
-        color: modernColors.textSecondary,
-        marginTop: 2,
-    },
-    prestationsSection: {
-        marginTop: 16,
-        paddingTop: 16,
-        borderTopWidth: 1,
-        borderTopColor: '#E5E7EB',
-    },
-    sectionTitle: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#111827',
-        marginBottom: 12,
-    },
-    prestationsChips: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 8,
-    },
-    prestationChip: {
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 8,
-        backgroundColor: '#DBEAFE',
-    },
-    prestationChipText: {
-        fontSize: 12,
-        color: '#1E40AF',
-    },
-    rdvBadge: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginTop: 16,
-        paddingTop: 16,
-        borderTopWidth: 1,
-        borderTopColor: '#E5E7EB',
-        gap: 8,
-    },
-    rdvText: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#059669',
-    },
-    actionsContainer: {
-        gap: 12,
-    },
-    bookButton: {
-        marginTop: 8,
-    },
-    callButton: {
-        marginTop: 8,
-    },
-    urgenceButton: {
-        backgroundColor: '#FEE2E2',
-        borderColor: '#DC2626',
-    },
-    centerContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 32,
-    },
-    loadingText: {
-        marginTop: 16,
-        fontSize: 14,
-        color: modernColors.textSecondary,
-    },
-    errorText: {
-        fontSize: 16,
-        color: '#DC2626',
-    },
-    // ✅ 2025-01-27: Nouveaux styles pour temps d'attente et urgences
-    waitTimeRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingVertical: 12,
-        borderBottomWidth: 1,
-        borderBottomColor: '#E5E7EB',
-    },
-    waitTimeInfo: {
-        flex: 1,
-    },
-    waitTimeSpecialty: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#111827',
-    },
-    waitTimeSubtext: {
-        fontSize: 12,
-        color: modernColors.textSecondary,
-        marginTop: 4,
-    },
-    waitTimeValue: {
-        alignItems: 'flex-end',
-    },
-    waitTimeMinutes: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: modernColors.primary,
-    },
-    waitTimeMax: {
-        fontSize: 12,
-        color: modernColors.textSecondary,
-        marginTop: 4,
-    },
-    emergencyStatusHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 16,
-        gap: 12,
-    },
-    emergencyStatusTitleContainer: {
-        flex: 1,
-    },
-    emergencyStatusTitle: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: '#111827',
-    },
-    emergencyStatsRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-around',
-        gap: 16,
-    },
-    emergencyStat: {
-        alignItems: 'center',
-        flex: 1,
-    },
-    emergencyStatLabel: {
-        fontSize: 12,
-        color: modernColors.textSecondary,
-        marginBottom: 4,
-    },
-    emergencyStatValue: {
-        fontSize: 20,
-        fontWeight: '700',
-        color: '#111827',
-    },
-    criticalValue: {
-        color: '#DC2626',
-    },
-    aiButton: {
-        marginTop: 8,
-        borderColor: modernColors.primary,
-    },
-    myConsultationsButton: {
-        marginTop: 8,
-    },
-    analyticsButton: {
-        marginTop: 8,
-        backgroundColor: modernColors.secondary,
-        borderColor: modernColors.secondary,
-    },
-    contactButton: {
-        marginTop: 8,
-    },
+const st = StyleSheet.create({
+    container: { flex: 1, backgroundColor: '#EFF6FF' },
+    center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#EFF6FF' },
+    centerText: { marginTop: 12, fontSize: 15, color: '#6B7280' },
+    // Hero
+    hero: { paddingTop: Platform.OS === 'ios' ? 54 : 40, paddingBottom: 28, paddingHorizontal: 20 },
+    heroTop: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 },
+    heroBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
+    heroContent: { alignItems: 'center' },
+    heroIconWrap: { width: 60, height: 60, borderRadius: 30, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', marginBottom: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 6, elevation: 4 },
+    heroTitle: { fontSize: 24, fontWeight: '800', color: '#fff', textAlign: 'center' },
+    heroType: { fontSize: 14, color: 'rgba(255,255,255,0.8)', marginTop: 2 },
+    heroDesc: { fontSize: 13, color: 'rgba(255,255,255,0.85)', textAlign: 'center', marginTop: 4 },
+    heroBadges: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8, marginTop: 12 },
+    badge: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 },
+    badgeDot: { width: 7, height: 7, borderRadius: 4 },
+    badgeText: { fontSize: 12, color: '#fff', fontWeight: '600' },
+    ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 10 },
+    ratingText: { fontSize: 13, color: 'rgba(255,255,255,0.9)', marginLeft: 4 },
+    heroLoc: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8 },
+    heroLocText: { fontSize: 13, color: 'rgba(255,255,255,0.8)' },
+    // Scroll
+    scroll: { flex: 1 },
+    // Quick actions
+    quickRow: { flexDirection: 'row', justifyContent: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 16, flexWrap: 'wrap' },
+    quickAction: { alignItems: 'center', width: 64 },
+    quickIcon: { width: 48, height: 48, borderRadius: 24, justifyContent: 'center', alignItems: 'center', marginBottom: 6 },
+    quickLabel: { fontSize: 11, color: '#374151', textAlign: 'center', fontWeight: '500' },
+    // Sections
+    section: { paddingHorizontal: 16, marginBottom: 16 },
+    sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
+    sectionTitle: { fontSize: 16, fontWeight: '700', color: '#111827' },
+    // Info card
+    infoCard: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, backgroundColor: '#fff', borderRadius: 12, borderLeftWidth: 3, borderLeftColor: '#3B82F6', marginBottom: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 1 },
+    infoCardText: { fontSize: 14, color: '#374151', fontWeight: '500', flex: 1 },
+    // Stats
+    statsRow: { flexDirection: 'row', gap: 10 },
+    statCard: { flex: 1, backgroundColor: '#fff', borderRadius: 12, padding: 12, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 1 },
+    statValue: { fontSize: 22, fontWeight: '800', color: '#111827' },
+    statLabel: { fontSize: 11, color: '#6B7280', marginTop: 4, textAlign: 'center' },
+    // Wait times
+    waitRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 12, padding: 12, marginBottom: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 1 },
+    waitSpec: { fontSize: 14, fontWeight: '600', color: '#111827' },
+    waitSub: { fontSize: 12, color: '#6B7280', marginTop: 2 },
+    waitMin: { fontSize: 18, fontWeight: '700', color: '#3B82F6' },
+    waitMax: { fontSize: 11, color: '#9CA3AF', marginTop: 2 },
+    // Chips
+    chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    chip: { backgroundColor: '#DBEAFE', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
+    chipText: { fontSize: 13, color: '#1E40AF', fontWeight: '500' },
+    // Search
+    searchInput: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14, color: '#111827', minHeight: 48, marginBottom: 10 },
+    analyzeBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#7C3AED', paddingVertical: 12, borderRadius: 12 },
+    analyzeBtnText: { color: '#fff', fontWeight: '600', fontSize: 14 },
+    // Result card
+    resultCard: { backgroundColor: '#fff', borderRadius: 12, borderLeftWidth: 3, borderLeftColor: '#3B82F6', padding: 14, marginTop: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 1 },
+    // Full width buttons
+    fullBtn: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#fff', padding: 14, borderRadius: 12, marginBottom: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 1 },
+    fullBtnText: { flex: 1, fontSize: 14, fontWeight: '600', color: '#374151' },
 });
 
 export default HopitalDetailsScreen;

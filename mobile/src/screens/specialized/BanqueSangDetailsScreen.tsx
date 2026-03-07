@@ -1,37 +1,52 @@
-// ✅ Détails d'une banque de sang avec boutons d'action (Mobile)
+// ✅ REFONTE 2026-03-07: BanqueSangDetailsScreen → UX moderne
+// Hero gradient rouge, quick actions, stocks sanguins, chat, partage, pull-to-refresh
 import { useNavigation, useRoute } from '@react-navigation/native';
-import React, { useEffect, useState } from 'react';
+import { LinearGradient } from 'expo-linear-gradient';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
     Linking,
+    Platform,
+    RefreshControl,
     ScrollView,
+    Share,
     StyleSheet,
     Text,
     TouchableOpacity,
-    View
+    View,
 } from 'react-native';
 import ChatModalMobile from '../../components/ChatModalMobile';
 import ProductCommentsSection from '../../components/ProductCommentsSection';
 import SafeIcon from '../../components/SafeIcon';
-import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiGet } from '../../services/api';
-import { modernColors } from '../../theme/modernTheme';
 
 interface BanqueSangDetails {
     id: number;
     service_id: number;
     user_id: number;
     nom: string;
+    description?: string;
     adresse?: string;
     quartier?: string;
     ville?: string;
     gps?: string;
     is_available_now: boolean;
+    is_verified?: boolean;
+    note_moyenne?: number;
+    nombre_avis?: number;
+    logo_url?: string;
     stocks?: Record<string, number>;
+    stocks_groupes_sanguins?: Record<string, any>;
+    accepte_dons?: boolean;
+    accepte_demandes?: boolean;
+    urgence_24h?: boolean;
     telephone?: string;
+    telephone_urgence?: string;
+    whatsapp?: string;
     email?: string;
+    site_web?: string;
 }
 
 const BanqueSangDetailsScreen: React.FC = () => {
@@ -42,399 +57,251 @@ const BanqueSangDetailsScreen: React.FC = () => {
 
     const [banque, setBanque] = useState<BanqueSangDetails | null>(null);
     const [loading, setLoading] = useState(true);
-    // ✅ 2025-01-27: Chat et Avis
+    const [refreshing, setRefreshing] = useState(false);
     const [showChat, setShowChat] = useState(false);
     const [conversationId, setConversationId] = useState<string | null>(null);
     const [prestataireInfo, setPrestataireInfo] = useState<any>(null);
     const [ratingStats, setRatingStats] = useState<any>(null);
 
-    useEffect(() => {
-        loadBanqueDetails();
-    }, []);
-
-    // ✅ 2025-01-27: Charger infos prestataire et statistiques ratings
-    useEffect(() => {
-        if (banque) {
-            loadPrestataireInfo();
-            loadRatingStats();
-        }
-    }, [banque]);
+    useEffect(() => { loadBanqueDetails(); }, []);
+    useEffect(() => { if (banque) { loadPrestataireInfo(); loadRatingStats(); } }, [banque]);
 
     const loadBanqueDetails = async () => {
         try {
             setLoading(true);
             const response = await apiGet(`/api/banques-sang/${params.banqueId}`);
-
-            if (response.success && response.data) {
-                setBanque(response.data);
-            } else {
-                Alert.alert('Erreur', 'Impossible de charger les détails de la banque de sang');
-                navigation.goBack();
-            }
-        } catch (error: any) {
-            console.error('[BanqueSangDetailsScreen] Erreur:', error);
-            Alert.alert('Erreur', error.message || 'Impossible de charger les détails');
-            navigation.goBack();
-        } finally {
-            setLoading(false);
-        }
+            if (response.success && response.data) setBanque(response.data as BanqueSangDetails);
+            else { Alert.alert('Erreur', 'Impossible de charger les détails'); navigation.goBack(); }
+        } catch (error: any) { Alert.alert('Erreur', error.message || 'Impossible de charger'); navigation.goBack(); }
+        finally { setLoading(false); }
     };
 
-    const handleCall = () => {
-        if (banque?.telephone) {
-            Linking.openURL(`tel:${banque.telephone}`);
-        }
+    const handleRefresh = useCallback(async () => { setRefreshing(true); await loadBanqueDetails(); setRefreshing(false); }, []);
+
+    const handleCall = () => { if (banque?.telephone) Linking.openURL(`tel:${banque.telephone}`); };
+    const handleCallUrgence = () => { if (banque?.telephone_urgence) Linking.openURL(`tel:${banque.telephone_urgence}`); };
+    const handleWhatsApp = () => {
+        const num = banque?.whatsapp || banque?.telephone;
+        if (num) Linking.openURL(`https://wa.me/${num.replace(/[^0-9+]/g, '')}`);
+    };
+    const handleEmail = () => { if (banque?.email) Linking.openURL(`mailto:${banque.email}`); };
+    const handleShare = async () => {
+        if (!banque) return;
+        try {
+            await Share.share({
+                message: `${banque.nom}${banque.adresse ? ' - ' + banque.adresse : ''}${banque.ville ? ', ' + banque.ville : ''}${banque.telephone ? '\nTel: ' + banque.telephone : ''}${banque.urgence_24h ? '\nUrgence 24h' : ''}\nVia Yukpo`,
+                title: banque.nom,
+            });
+        } catch { }
     };
 
     const handleRequestDonation = () => {
-        if (!user) {
-            Alert.alert('Connexion requise', 'Veuillez vous connecter pour faire une demande de don');
-            navigation.navigate('Login' as never);
-            return;
-        }
+        if (!user) { Alert.alert('Connexion requise', 'Veuillez vous connecter'); navigation.navigate('Login' as never); return; }
         navigation.navigate('BloodDonation' as never);
     };
 
-    // ✅ 2025-01-27: Charger infos prestataire
     const loadPrestataireInfo = async () => {
         if (!banque?.user_id) return;
-        try {
-            const response = await apiGet(`/api/users/${banque.user_id}`);
-            if (response.success && response.data) {
-                setPrestataireInfo(response.data);
-            }
-        } catch (error: any) {
-            console.warn('[BanqueSangDetailsScreen] Impossible de charger prestataire:', error);
-        }
+        try { const r = await apiGet(`/api/users/${banque.user_id}`); if (r.success && r.data) setPrestataireInfo(r.data); } catch { }
     };
-
-    // ✅ 2025-01-27: Charger statistiques ratings
     const loadRatingStats = async () => {
         if (!banque?.service_id) return;
-        try {
-            const response = await apiGet(`/api/specialized-services/${banque.service_id}/ratings/stats`);
-            if (response.success && response.data) {
-                const data = response.data as any;
-                setRatingStats(data.stats || data);
-            }
-        } catch (error: any) {
-            console.warn('[BanqueSangDetailsScreen] Impossible de charger stats ratings:', error);
-        }
+        try { const r = await apiGet(`/api/specialized-services/${banque.service_id}/ratings/stats`); if (r.success && r.data) { const d = r.data as any; setRatingStats(d.stats || d); } } catch { }
     };
 
-    // ✅ 2025-01-27: Ouvrir chat
     const handleOpenChat = () => {
-        if (!user) {
-            Alert.alert('Connexion requise', 'Veuillez vous connecter pour contacter la banque de sang');
-            navigation.navigate('Login' as never);
-            return;
-        }
+        if (!user) { Alert.alert('Connexion requise', 'Veuillez vous connecter'); navigation.navigate('Login' as never); return; }
         setShowChat(true);
     };
 
-    if (loading) {
-        return (
-            <View style={styles.centerContainer}>
-                <ActivityIndicator size="large" color={modernColors.primary} />
-                <Text style={styles.loadingText}>Chargement...</Text>
-            </View>
-        );
-    }
+    const rating = banque?.note_moyenne || (ratingStats?.average_rating as number) || 0;
+    const reviewCount = banque?.nombre_avis || (ratingStats?.total_ratings as number) || 0;
 
-    if (!banque) {
-        return (
-            <View style={styles.centerContainer}>
-                <Text style={styles.errorText}>Banque de sang non trouvée</Text>
-            </View>
-        );
+    if (loading) return (<View style={st.center}><ActivityIndicator size="large" color="#DC2626" /><Text style={st.centerText}>Chargement...</Text></View>);
+    if (!banque) return (<View style={st.center}><SafeIcon name="alert-circle" size={48} color="#EF4444" /><Text style={st.centerText}>Banque de sang non trouvée</Text></View>);
+
+    const isOpen = banque.is_available_now;
+    const starsFull = Math.floor(rating);
+    const starsHalf = rating - starsFull >= 0.5;
+
+    // Parse stocks - handle both formats
+    const stockEntries: [string, number][] = [];
+    if (banque.stocks_groupes_sanguins) {
+        Object.entries(banque.stocks_groupes_sanguins).forEach(([g, v]) => {
+            const qty = typeof v === 'object' ? v?.quantite || 0 : (typeof v === 'number' ? v : 0);
+            stockEntries.push([g, qty]);
+        });
+    } else if (banque.stocks) {
+        Object.entries(banque.stocks).forEach(([g, q]) => stockEntries.push([g, q]));
     }
 
     return (
-        <View style={styles.container}>
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                    <SafeIcon name="arrow-left" size={24} color="#111827" />
-                </TouchableOpacity>
-                <Text style={styles.title}>Détails</Text>
-            </View>
-
-            <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
-                <NativeCard style={styles.detailsCard}>
-                    <View style={styles.titleRow}>
-                        <SafeIcon name="droplet" size={32} color="#DC2626" />
-                        <View style={styles.titleContainer}>
-                            <Text style={styles.nom}>{banque.nom}</Text>
+        <View style={st.container}>
+            {/* Hero Gradient Header */}
+            <LinearGradient colors={['#991B1B', '#DC2626', '#F87171']} style={st.hero}>
+                <View style={st.heroTop}>
+                    <TouchableOpacity onPress={() => navigation.goBack()} style={st.heroBtn}><SafeIcon name="arrow-left" size={22} color="#fff" /></TouchableOpacity>
+                    <TouchableOpacity onPress={handleShare} style={st.heroBtn}><SafeIcon name="share-2" size={22} color="#fff" /></TouchableOpacity>
+                </View>
+                <View style={st.heroContent}>
+                    <View style={st.heroIconWrap}><SafeIcon name="droplet" size={28} color="#DC2626" /></View>
+                    <Text style={st.heroTitle} numberOfLines={2}>{banque.nom}</Text>
+                    {banque.description ? <Text style={st.heroDesc} numberOfLines={2}>{banque.description}</Text> : null}
+                    <View style={st.heroBadges}>
+                        <View style={[st.badge, { backgroundColor: isOpen ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.2)' }]}>
+                            <View style={[st.badgeDot, { backgroundColor: isOpen ? '#fff' : '#FCA5A5' }]} />
+                            <Text style={st.badgeText}>{isOpen ? 'Ouvert' : 'Fermé'}</Text>
                         </View>
-                    </View>
-
-                    <View style={styles.badgesRow}>
-                        <View style={[styles.statusBadge, banque.is_available_now && styles.statusBadgeAvailable]}>
-                            <Text style={[styles.statusText, banque.is_available_now && styles.statusTextAvailable]}>
-                                {banque.is_available_now ? 'Disponible' : 'Indisponible'}
-                            </Text>
-                        </View>
-                    </View>
-
-                    {(banque.adresse || banque.ville || banque.quartier) && (
-                        <View style={styles.infoRow}>
-                            <SafeIcon name="map-pin" size={20} color={modernColors.textSecondary} />
-                            <View style={styles.infoContent}>
-                                {banque.adresse && <Text style={styles.infoText}>{banque.adresse}</Text>}
-                                <Text style={styles.infoSubtext}>
-                                    {[banque.quartier, banque.ville].filter(Boolean).join(', ')}
-                                </Text>
+                        {banque.urgence_24h && (
+                            <View style={[st.badge, { backgroundColor: 'rgba(255,255,255,0.25)' }]}>
+                                <SafeIcon name="clock" size={12} color="#fff" />
+                                <Text style={st.badgeText}>Urgence 24h</Text>
                             </View>
-                        </View>
+                        )}
+                        {banque.accepte_dons && (
+                            <View style={[st.badge, { backgroundColor: 'rgba(16,185,129,0.35)' }]}>
+                                <SafeIcon name="heart" size={12} color="#fff" />
+                                <Text style={st.badgeText}>Dons acceptés</Text>
+                            </View>
+                        )}
+                        {banque.is_verified && (
+                            <View style={[st.badge, { backgroundColor: 'rgba(255,255,255,0.25)' }]}>
+                                <SafeIcon name="check-circle" size={12} color="#fff" />
+                                <Text style={st.badgeText}>Vérifié</Text>
+                            </View>
+                        )}
+                    </View>
+                    <View style={st.ratingRow}>
+                        {[1, 2, 3, 4, 5].map(i => (
+                            <SafeIcon key={i} name="star" size={16} color={i <= starsFull || (i === starsFull + 1 && starsHalf) ? '#FCD34D' : 'rgba(255,255,255,0.3)'} />
+                        ))}
+                        <Text style={st.ratingText}>{rating > 0 ? rating.toFixed(1) : '--'} ({reviewCount} avis)</Text>
+                    </View>
+                    {(banque.adresse || banque.quartier || banque.ville) && (
+                        <View style={st.heroLoc}><SafeIcon name="map-pin" size={14} color="rgba(255,255,255,0.8)" /><Text style={st.heroLocText} numberOfLines={1}>{[banque.adresse, banque.quartier, banque.ville].filter(Boolean).join(', ')}</Text></View>
                     )}
+                </View>
+            </LinearGradient>
 
-                    {banque.gps && (
-                        <View style={styles.infoRow}>
-                            <SafeIcon name="map-pin" size={20} color={modernColors.textSecondary} />
-                            <Text style={styles.infoText}>{banque.gps}</Text>
-                        </View>
-                    )}
+            <ScrollView style={st.scroll} contentContainerStyle={{ paddingBottom: 100 }}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={['#DC2626']} />}>
 
-                    {banque.telephone && (
-                        <TouchableOpacity style={styles.infoRow} onPress={handleCall}>
-                            <SafeIcon name="phone" size={20} color={modernColors.primary} />
-                            <Text style={[styles.infoText, styles.linkText]}>{banque.telephone}</Text>
+                {/* Quick Actions */}
+                <View style={st.quickRow}>
+                    {[
+                        banque.telephone && { icon: 'phone', label: 'Appeler', color: '#DC2626', onPress: handleCall },
+                        { icon: 'message-circle', label: 'WhatsApp', color: '#25D366', onPress: handleWhatsApp },
+                        { icon: 'message-square', label: 'Chat', color: '#8B5CF6', onPress: handleOpenChat },
+                        { icon: 'heart', label: 'Don', color: '#EC4899', onPress: handleRequestDonation },
+                        banque.email && { icon: 'mail', label: 'Email', color: '#3B82F6', onPress: handleEmail },
+                        banque.telephone_urgence && { icon: 'phone-call', label: 'Urgence', color: '#F59E0B', onPress: handleCallUrgence },
+                    ].filter(Boolean).map((a: any, i) => (
+                        <TouchableOpacity key={i} style={st.quickAction} onPress={a.onPress}>
+                            <View style={[st.quickIcon, { backgroundColor: a.color + '15' }]}><SafeIcon name={a.icon} size={20} color={a.color} /></View>
+                            <Text style={st.quickLabel}>{a.label}</Text>
                         </TouchableOpacity>
-                    )}
+                    ))}
+                </View>
 
-                    {banque.email && (
-                        <View style={styles.infoRow}>
-                            <SafeIcon name="mail" size={20} color={modernColors.textSecondary} />
-                            <Text style={styles.infoText}>{banque.email}</Text>
-                        </View>
-                    )}
-
-                    {banque.stocks && Object.keys(banque.stocks).length > 0 && (
-                        <View style={styles.stocksSection}>
-                            <Text style={styles.sectionTitle}>Stocks disponibles</Text>
-                            <View style={styles.stocksGrid}>
-                                {Object.entries(banque.stocks).map(([groupe, qty]) => (
-                                    <View key={groupe} style={styles.stockCard}>
-                                        <Text style={styles.stockGroupe}>{groupe}</Text>
-                                        <Text style={styles.stockQty}>{qty} unités</Text>
+                {/* Stocks sanguins */}
+                {stockEntries.length > 0 && (
+                    <View style={st.section}>
+                        <View style={st.sectionHeader}><SafeIcon name="droplet" size={18} color="#DC2626" /><Text style={st.sectionTitle}>Stocks disponibles</Text></View>
+                        <View style={st.stocksGrid}>
+                            {stockEntries.map(([groupe, qty]) => {
+                                const level = qty > 20 ? 'high' : qty > 5 ? 'medium' : 'low';
+                                const colors = { high: { bg: '#DCFCE7', text: '#166534', border: '#86EFAC' }, medium: { bg: '#FEF9C3', text: '#854D0E', border: '#FDE047' }, low: { bg: '#FEE2E2', text: '#991B1B', border: '#FCA5A5' } };
+                                const c = colors[level];
+                                return (
+                                    <View key={groupe} style={[st.stockCard, { backgroundColor: c.bg, borderColor: c.border }]}>
+                                        <Text style={[st.stockGroupe, { color: c.text }]}>{groupe}</Text>
+                                        <Text style={[st.stockQty, { color: c.text }]}>{qty}</Text>
+                                        <Text style={[st.stockUnit, { color: c.text }]}>unités</Text>
                                     </View>
-                                ))}
-                            </View>
+                                );
+                            })}
                         </View>
-                    )}
-                </NativeCard>
+                    </View>
+                )}
 
-                <View style={styles.actionsContainer}>
-                    <NativeButton onPress={handleRequestDonation} style={styles.actionButton}>
-                        <SafeIcon name="droplet" size={20} color="#FFFFFF" />
-                        <Text style={styles.actionButtonText}>Faire une demande de don</Text>
-                    </NativeButton>
-                    {/* ✅ 2025-01-27: Bouton Contacter */}
-                    <NativeButton
-                        title="💬 Contacter"
-                        onPress={handleOpenChat}
-                        variant="outline"
-                        style={styles.contactButton}
-                    />
-                    {banque.telephone && (
-                        <NativeButton onPress={handleCall} style={[styles.actionButton, styles.actionButtonSecondary]}>
-                            <SafeIcon name="phone" size={20} color="#FFFFFF" />
-                            <Text style={styles.actionButtonText}>Appeler</Text>
-                        </NativeButton>
+                {/* Action buttons */}
+                <View style={st.section}>
+                    <TouchableOpacity style={[st.fullBtn, { backgroundColor: '#FEF2F2', borderLeftColor: '#DC2626', borderLeftWidth: 3 }]} onPress={handleRequestDonation}>
+                        <SafeIcon name="heart" size={18} color="#DC2626" />
+                        <Text style={[st.fullBtnText, { color: '#991B1B' }]}>Faire une demande de don</Text>
+                        <SafeIcon name="chevron-right" size={18} color="#FCA5A5" />
+                    </TouchableOpacity>
+                    {banque.accepte_dons && (
+                        <TouchableOpacity style={st.fullBtn} onPress={() => {
+                            if (!user) { Alert.alert('Connexion requise', 'Veuillez vous connecter'); navigation.navigate('Login' as never); return; }
+                            navigation.navigate('BloodDonation' as never);
+                        }}>
+                            <SafeIcon name="droplet" size={18} color="#DC2626" />
+                            <Text style={st.fullBtnText}>Devenir donneur</Text>
+                            <SafeIcon name="chevron-right" size={18} color="#9CA3AF" />
+                        </TouchableOpacity>
                     )}
                 </View>
 
-                {/* ✅ 2025-01-27: Section Avis et Commentaires */}
+                {/* Avis */}
                 {banque.service_id && (
-                    <ProductCommentsSection
-                        serviceId={banque.service_id}
-                        serviceTitle={banque.nom}
-                        onOpenChat={handleOpenChat}
-                        mode="inline"
-                    />
+                    <View style={st.section}>
+                        <ProductCommentsSection serviceId={banque.service_id} serviceTitle={banque.nom} onOpenChat={handleOpenChat} mode="inline" />
+                    </View>
                 )}
             </ScrollView>
 
-            {/* ✅ 2025-01-27: Modal Chat */}
+            {/* Chat */}
             {user && (
-                <ChatModalMobile
-                    visible={showChat}
-                    onClose={() => setShowChat(false)}
-                    service={{
-                        id: banque.service_id,
-                        nom: banque.nom,
-                        type: 'banque_sang',
-                    }}
-                    prestataireInfo={prestataireInfo || {
-                        id: banque.user_id,
-                        nom: banque.nom,
-                    }}
-                    user={user}
-                    conversationId={conversationId}
-                />
+                <ChatModalMobile visible={showChat} onClose={() => setShowChat(false)}
+                    service={{ id: banque.service_id, nom: banque.nom, type: 'banque_sang' }}
+                    prestataireInfo={prestataireInfo || { id: banque.user_id, nom: banque.nom }}
+                    user={user} conversationId={conversationId} />
             )}
         </View>
     );
 };
 
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#F9FAFB',
-    },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 16,
-        backgroundColor: '#FFFFFF',
-        borderBottomWidth: 1,
-        borderBottomColor: '#E5E7EB',
-    },
-    backButton: {
-        marginRight: 12,
-    },
-    title: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: '#111827',
-    },
-    content: {
-        flex: 1,
-    },
-    contentContainer: {
-        padding: 16,
-    },
-    detailsCard: {
-        padding: 20,
-        marginBottom: 16,
-    },
-    titleRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 16,
-        gap: 12,
-    },
-    titleContainer: {
-        flex: 1,
-    },
-    nom: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        color: '#111827',
-    },
-    badgesRow: {
-        flexDirection: 'row',
-        gap: 8,
-        marginBottom: 20,
-    },
-    statusBadge: {
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 6,
-        backgroundColor: '#F3F4F6',
-    },
-    statusBadgeAvailable: {
-        backgroundColor: '#D1FAE5',
-    },
-    statusText: {
-        fontSize: 14,
-        color: '#6B7280',
-        fontWeight: '600',
-    },
-    statusTextAvailable: {
-        color: '#065F46',
-    },
-    infoRow: {
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-        marginBottom: 16,
-        gap: 12,
-    },
-    infoContent: {
-        flex: 1,
-    },
-    infoText: {
-        fontSize: 16,
-        color: '#111827',
-    },
-    infoSubtext: {
-        fontSize: 14,
-        color: modernColors.textSecondary,
-        marginTop: 4,
-    },
-    linkText: {
-        color: modernColors.primary,
-    },
-    stocksSection: {
-        marginTop: 20,
-        paddingTop: 20,
-        borderTopWidth: 1,
-        borderTopColor: '#E5E7EB',
-    },
-    sectionTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: '#111827',
-        marginBottom: 12,
-    },
-    stocksGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 12,
-    },
-    stockCard: {
-        flex: 1,
-        minWidth: '45%',
-        padding: 16,
-        borderRadius: 8,
-        backgroundColor: '#FEE2E2',
-    },
-    stockGroupe: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#991B1B',
-        marginBottom: 4,
-    },
-    stockQty: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: '#DC2626',
-    },
-    actionsContainer: {
-        gap: 12,
-    },
-    actionButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 8,
-    },
-    actionButtonSecondary: {
-        backgroundColor: modernColors.primary,
-    },
-    actionButtonText: {
-        color: '#FFFFFF',
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    contactButton: {
-        marginTop: 8,
-    },
-    centerContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 32,
-        backgroundColor: '#F9FAFB',
-    },
-    loadingText: {
-        marginTop: 16,
-        fontSize: 16,
-        color: modernColors.textSecondary,
-    },
-    errorText: {
-        fontSize: 16,
-        color: modernColors.textSecondary,
-    },
+const st = StyleSheet.create({
+    container: { flex: 1, backgroundColor: '#FEF2F2' },
+    center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FEF2F2' },
+    centerText: { marginTop: 12, fontSize: 15, color: '#6B7280' },
+    // Hero
+    hero: { paddingTop: Platform.OS === 'ios' ? 54 : 40, paddingBottom: 28, paddingHorizontal: 20 },
+    heroTop: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 },
+    heroBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
+    heroContent: { alignItems: 'center' },
+    heroIconWrap: { width: 60, height: 60, borderRadius: 30, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', marginBottom: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 6, elevation: 4 },
+    heroTitle: { fontSize: 24, fontWeight: '800', color: '#fff', textAlign: 'center' },
+    heroDesc: { fontSize: 13, color: 'rgba(255,255,255,0.85)', textAlign: 'center', marginTop: 4 },
+    heroBadges: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8, marginTop: 12 },
+    badge: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 },
+    badgeDot: { width: 7, height: 7, borderRadius: 4 },
+    badgeText: { fontSize: 12, color: '#fff', fontWeight: '600' },
+    ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 10 },
+    ratingText: { fontSize: 13, color: 'rgba(255,255,255,0.9)', marginLeft: 4 },
+    heroLoc: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8 },
+    heroLocText: { fontSize: 13, color: 'rgba(255,255,255,0.8)' },
+    // Scroll
+    scroll: { flex: 1 },
+    // Quick actions
+    quickRow: { flexDirection: 'row', justifyContent: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 16, flexWrap: 'wrap' },
+    quickAction: { alignItems: 'center', width: 64 },
+    quickIcon: { width: 48, height: 48, borderRadius: 24, justifyContent: 'center', alignItems: 'center', marginBottom: 6 },
+    quickLabel: { fontSize: 11, color: '#374151', textAlign: 'center', fontWeight: '500' },
+    // Sections
+    section: { paddingHorizontal: 16, marginBottom: 16 },
+    sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
+    sectionTitle: { fontSize: 16, fontWeight: '700', color: '#111827' },
+    // Stocks grid
+    stocksGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+    stockCard: { width: '22%', minWidth: 72, padding: 10, borderRadius: 12, alignItems: 'center', borderWidth: 1 },
+    stockGroupe: { fontSize: 14, fontWeight: '700', marginBottom: 2 },
+    stockQty: { fontSize: 20, fontWeight: '800' },
+    stockUnit: { fontSize: 10 },
+    // Full width buttons
+    fullBtn: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#fff', padding: 14, borderRadius: 12, marginBottom: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 1 },
+    fullBtnText: { flex: 1, fontSize: 14, fontWeight: '600', color: '#374151' },
 });
 
 export default BanqueSangDetailsScreen;

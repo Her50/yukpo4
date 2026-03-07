@@ -554,6 +554,28 @@ export const immobilierService = {
         return response;
     },
 
+    // ✅ Réserver un séjour hôtel/meublé (côté utilisateur)
+    bookHotelStay: async (data: {
+        property_id: number;
+        date_arrivee: string;
+        date_depart: string;
+        nombre_adultes: number;
+        nombre_enfants?: number;
+        nombre_chambres: number;
+        nom_client: string;
+        telephone_client: string;
+        email_client?: string;
+        prix_nuitee?: number;
+        prix_total?: number;
+        notes?: string;
+    }) => {
+        const response = await apiPost<{ success: boolean; data: any }>(
+            '/api/hotel/reservations/request',
+            data
+        );
+        return response;
+    },
+
     // ✅ Payer une réservation hôtel (avance ou complet)
     payHotelBooking: async (
         reservationId: number,

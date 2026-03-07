@@ -100,6 +100,8 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
     const [selectedProductIndex, setSelectedProductIndex] = useState<number | null>(null);
     const [availableProducts, setAvailableProducts] = useState<Array<{ index: number, name: string, is_configured: boolean }>>([]);
     const [loadingProducts, setLoadingProducts] = useState(false);
+    // ✅ NOUVEAU: Indique si le formulaire a été pré-rempli depuis un autre produit
+    const [prefilledFromProduct, setPrefilledFromProduct] = useState<string | null>(null);
     // ✅ NOUVEAU: État pour le modal GPS
     const [showGPSModal, setShowGPSModal] = useState(false);
     const [gpsModalForIndex, setGpsModalForIndex] = useState<number | null>(null); // Index de l'adresse en cours de sélection
@@ -131,6 +133,36 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
 
     // ✅ NOUVEAU: État pour stocker les données du produit
     const [productData, setProductData] = useState<any>(null);
+
+    // ✅ CORRECTION: Reset complet des états quand le modal s'ouvre pour un nouveau produit
+    useEffect(() => {
+        if (visible) {
+            setPrefilledFromProduct(null);
+            setUseExistingConfig(false);
+            setSelectedProductIndex(null);
+            setProductData(null);
+            setConfig({
+                required_vehicle_type_id: 0,
+                preparation_time_minutes: '',
+                weight_kg: '',
+                volume_cm3: '',
+                requires_isothermal: false,
+                requires_fragile_handling: false,
+                pickup_availability_schedule: '{}',
+                pickup_instructions: '',
+                billing_mode: 'standard',
+                billing_partner_label: '',
+                storage_location_id: null,
+            });
+            setPickupAddresses([{
+                id: `pickup_reset_${Date.now()}`,
+                address: '',
+                location: null,
+                latitude: 0,
+                longitude: 0,
+            }]);
+        }
+    }, [visible, productIndex]);
 
     // ✅ NOUVEAU: Charger la liste des produits configurés pour proposer la réutilisation
     useEffect(() => {
@@ -536,75 +568,150 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                     storage_location_id: (typeof c.storage_location_id === 'number' ? c.storage_location_id : null) || null // ✅ NOUVEAU: Charger le lieu de stockage
                 });
             } else {
-                // ✅ NOUVEAU: Si pas de config existante, charger lieu_produit depuis product_data si disponible
-                if (productData?.product_data) {
-                    const lieuProduit = productData.product_data.lieu_produit || productData.product_data.lieu_commercial || productData.product_data.lieu_commercialisation;
-                    if (lieuProduit) {
-                        let addressText = '';
-                        let latitude = 0;
-                        let longitude = 0;
-                        let locationObj: LocationObject | null = null;
+                // ✅ CORRECTION CRITIQUE: Si pas de config pour ce produit, chercher une config existante
+                // d'un AUTRE produit du même service pour pré-remplir le formulaire
+                console.log('[ProductDeliveryConfigModal] ℹ️ Pas de config pour ce produit, recherche config existante...');
+                let prefilledFromExisting = false;
 
-                        if (typeof lieuProduit === 'string') {
-                            addressText = lieuProduit;
-                            locationObj = {
-                                raw: lieuProduit,
-                                place_name: lieuProduit,
-                                components: {},
-                            };
-                        } else if (typeof lieuProduit === 'object' && lieuProduit !== null) {
-                            if (lieuProduit.valeur) {
-                                if (typeof lieuProduit.valeur === 'string') {
-                                    addressText = lieuProduit.valeur;
-                                    locationObj = {
-                                        raw: lieuProduit.valeur,
-                                        place_name: lieuProduit.valeur,
-                                        components: lieuProduit.composants || {},
-                                        coordinates: lieuProduit.coordinates || undefined,
-                                    };
+                try {
+                    const listResponse = await deliveryApi.listProductDeliveryConfigs(serviceId);
+                    if (listResponse.success && listResponse.data) {
+                        const listData = listResponse.data as any;
+                        const allProducts = Array.isArray(listData.products) ? listData.products : [];
+                        const configuredOther = allProducts.filter(
+                            (p: any) => p.index !== productIndex && p.is_configured
+                        );
+
+                        if (configuredOther.length > 0) {
+                            const sourceProduct = configuredOther[0];
+                            console.log('[ProductDeliveryConfigModal] ✅ Config trouvée depuis:', sourceProduct.name);
+
+                            const configResponse = await apiGet(`/api/delivery/product-config/${serviceId}/${sourceProduct.index}`);
+                            if (configResponse.success && configResponse.data && typeof configResponse.data === 'object' && 'config' in configResponse.data) {
+                                const cfgData = configResponse.data as any;
+                                const c = cfgData.config;
+
+                                const pickupAddr = (typeof c.pickup_address === 'string' ? c.pickup_address : '') || '';
+                                const pickupLat = (typeof c.pickup_latitude === 'number' ? c.pickup_latitude : 0) || 0;
+                                const pickupLng = (typeof c.pickup_longitude === 'number' ? c.pickup_longitude : 0) || 0;
+
+                                if (pickupAddr) {
+                                    // Préserver l'adresse lieu_produit si déjà définie
+                                    setPickupAddresses(prev => {
+                                        if (prev.length > 0 && prev[0].address && prev[0].address.trim().length > 0) {
+                                            return prev;
+                                        }
+                                        const pickupLocationObj: LocationObject | null = {
+                                            raw: pickupAddr,
+                                            place_name: pickupAddr,
+                                            components: {},
+                                            coordinates: (pickupLat !== 0 && pickupLng !== 0) ? { lat: pickupLat, lng: pickupLng } : undefined
+                                        };
+                                        return [{
+                                            id: `pickup_prefill_${Date.now()}`,
+                                            address: pickupAddr,
+                                            location: pickupLocationObj,
+                                            latitude: pickupLat,
+                                            longitude: pickupLng,
+                                        }];
+                                    });
+                                }
+
+                                setConfig({
+                                    required_vehicle_type_id: (typeof c.required_vehicle_type_id === 'number' ? c.required_vehicle_type_id : 0) || 0,
+                                    preparation_time_minutes: c.preparation_time_minutes ? String(c.preparation_time_minutes) : '0',
+                                    weight_kg: c.weight_kg ? String(c.weight_kg) : '',
+                                    volume_cm3: c.volume_cm3 ? String(c.volume_cm3) : '',
+                                    requires_isothermal: typeof c.requires_isothermal === 'boolean' ? c.requires_isothermal : false,
+                                    requires_fragile_handling: typeof c.requires_fragile_handling === 'boolean' ? c.requires_fragile_handling : false,
+                                    pickup_availability_schedule: JSON.stringify(c.pickup_availability_schedule || {}, null, 2),
+                                    pickup_instructions: (typeof c.pickup_instructions === 'string' ? c.pickup_instructions : '') || '',
+                                    billing_mode: (typeof c.billing_mode === 'string' ? c.billing_mode : 'standard') || 'standard',
+                                    billing_partner_label: (typeof c.billing_partner_label === 'string' ? c.billing_partner_label : '') || '',
+                                    storage_location_id: (typeof c.storage_location_id === 'number' ? c.storage_location_id : null) || null
+                                });
+
+                                setPrefilledFromProduct(sourceProduct.name || 'un autre produit');
+                                prefilledFromExisting = true;
+                                console.log('[ProductDeliveryConfigModal] ✅ Formulaire pré-rempli depuis:', sourceProduct.name);
+                            }
+                        }
+                    }
+                } catch (prefillError) {
+                    console.warn('[ProductDeliveryConfigModal] ⚠️ Erreur pré-remplissage depuis config existante:', prefillError);
+                }
+
+                // Si pas de pré-remplissage depuis un autre produit, essayer lieu_produit
+                if (!prefilledFromExisting) {
+                    if (productData?.product_data) {
+                        const lieuProduit = productData.product_data.lieu_produit || productData.product_data.lieu_commercial || productData.product_data.lieu_commercialisation;
+                        if (lieuProduit) {
+                            let addressText = '';
+                            let latitude = 0;
+                            let longitude = 0;
+                            let locationObj: LocationObject | null = null;
+
+                            if (typeof lieuProduit === 'string') {
+                                addressText = lieuProduit;
+                                locationObj = {
+                                    raw: lieuProduit,
+                                    place_name: lieuProduit,
+                                    components: {},
+                                };
+                            } else if (typeof lieuProduit === 'object' && lieuProduit !== null) {
+                                if (lieuProduit.valeur) {
+                                    if (typeof lieuProduit.valeur === 'string') {
+                                        addressText = lieuProduit.valeur;
+                                        locationObj = {
+                                            raw: lieuProduit.valeur,
+                                            place_name: lieuProduit.valeur,
+                                            components: lieuProduit.composants || {},
+                                            coordinates: lieuProduit.coordinates || undefined,
+                                        };
+                                        if (lieuProduit.coordinates) {
+                                            latitude = lieuProduit.coordinates.lat || 0;
+                                            longitude = lieuProduit.coordinates.lng || 0;
+                                        }
+                                    } else if (typeof lieuProduit.valeur === 'object' && lieuProduit.valeur.raw) {
+                                        addressText = lieuProduit.valeur.raw || lieuProduit.valeur.place_name || '';
+                                        locationObj = lieuProduit.valeur;
+                                        if (lieuProduit.valeur.coordinates) {
+                                            latitude = lieuProduit.valeur.coordinates.lat || 0;
+                                            longitude = lieuProduit.valeur.coordinates.lng || 0;
+                                        }
+                                    }
+                                } else if (lieuProduit.raw || lieuProduit.place_name) {
+                                    addressText = lieuProduit.raw || lieuProduit.place_name || '';
+                                    locationObj = lieuProduit as LocationObject;
                                     if (lieuProduit.coordinates) {
                                         latitude = lieuProduit.coordinates.lat || 0;
                                         longitude = lieuProduit.coordinates.lng || 0;
                                     }
-                                } else if (typeof lieuProduit.valeur === 'object' && lieuProduit.valeur.raw) {
-                                    addressText = lieuProduit.valeur.raw || lieuProduit.valeur.place_name || '';
-                                    locationObj = lieuProduit.valeur;
-                                    if (lieuProduit.valeur.coordinates) {
-                                        latitude = lieuProduit.valeur.coordinates.lat || 0;
-                                        longitude = lieuProduit.valeur.coordinates.lng || 0;
-                                    }
-                                }
-                            } else if (lieuProduit.raw || lieuProduit.place_name) {
-                                addressText = lieuProduit.raw || lieuProduit.place_name || '';
-                                locationObj = lieuProduit as LocationObject;
-                                if (lieuProduit.coordinates) {
-                                    latitude = lieuProduit.coordinates.lat || 0;
-                                    longitude = lieuProduit.coordinates.lng || 0;
                                 }
                             }
-                        }
 
-                        if (addressText) {
-                            setPickupAddresses([{
-                                id: `pickup_product_${Date.now()}`,
-                                address: addressText,
-                                location: locationObj,
-                                latitude,
-                                longitude,
-                            }]);
-                            return; // Sortir car on a initialisé avec lieu_produit
+                            if (addressText) {
+                                setPickupAddresses([{
+                                    id: `pickup_product_${Date.now()}`,
+                                    address: addressText,
+                                    location: locationObj,
+                                    latitude,
+                                    longitude,
+                                }]);
+                                return;
+                            }
                         }
                     }
-                }
 
-                // Si pas de lieu_produit, initialiser avec une adresse vide
-                setPickupAddresses([{
-                    id: `pickup_${Date.now()}`,
-                    address: '',
-                    location: null,
-                    latitude: 0,
-                    longitude: 0,
-                }]);
+                    // Si pas de lieu_produit non plus, initialiser avec une adresse vide
+                    setPickupAddresses([{
+                        id: `pickup_${Date.now()}`,
+                        address: '',
+                        location: null,
+                        latitude: 0,
+                        longitude: 0,
+                    }]);
+                }
             }
         } catch (error) {
             console.error('Erreur chargement configuration:', error);
@@ -966,8 +1073,18 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                         </View>
                     )}
 
+                    {/* ✅ NOUVEAU: Bannière info quand le formulaire est pré-rempli depuis un autre produit */}
+                    {prefilledFromProduct && (
+                        <View style={styles.prefillBanner}>
+                            <SafeIcon name="info" size={18} color="#0369A1" type="lucide" />
+                            <Text style={styles.prefillBannerText}>
+                                Configuration pré-remplie depuis "{prefilledFromProduct}". Vérifiez et modifiez si nécessaire avant d'enregistrer.
+                            </Text>
+                        </View>
+                    )}
+
                     {/* ✅ NOUVEAU: Option de réutilisation de configuration */}
-                    {!isTransversalMode && availableProducts.length > 0 && (
+                    {!isTransversalMode && availableProducts.length > 0 && !prefilledFromProduct && (
                         <View style={styles.section}>
                             <View style={styles.reuseSection}>
                                 <View style={styles.reuseHeader}>
@@ -1524,6 +1641,23 @@ const styles = StyleSheet.create({
     warningText: {
         fontSize: 12,
         color: '#92400E',
+    },
+    prefillBanner: {
+        backgroundColor: '#E0F2FE',
+        borderColor: '#7DD3FC',
+        borderWidth: 1,
+        borderRadius: 8,
+        padding: 12,
+        marginBottom: 16,
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: 8,
+    },
+    prefillBannerText: {
+        fontSize: 13,
+        color: '#0369A1',
+        flex: 1,
+        lineHeight: 18,
     },
     section: {
         marginBottom: 16,

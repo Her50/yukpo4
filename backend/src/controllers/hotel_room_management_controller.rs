@@ -16,11 +16,30 @@ use axum::{
     response::IntoResponse,
     Json,
 };
+use chrono;
 use log::info;
 use serde::Deserialize;
 use serde_json::json;
 use sqlx::Row;
 use std::sync::Arc;
+use uuid;
+
+/// Corps de la requête de réservation côté utilisateur (client)
+#[derive(Debug, Deserialize)]
+pub struct UserReservationRequest {
+    pub property_id: i32,
+    pub date_arrivee: String,
+    pub date_depart: String,
+    pub nombre_adultes: i32,
+    pub nombre_enfants: Option<i32>,
+    pub nombre_chambres: i32,
+    pub nom_client: String,
+    pub telephone_client: String,
+    pub email_client: Option<String>,
+    pub prix_nuitee: Option<f64>,
+    pub prix_total: Option<f64>,
+    pub notes: Option<String>,
+}
 
 /// Corps de la requête de paiement d'une réservation hôtel/meublé
 #[derive(Debug, Deserialize)]
@@ -127,6 +146,121 @@ pub async fn create_manual_reservation(
             "success": true,
             "message": "Réservation manuelle créée avec succès",
             "data": reservation
+        })),
+    ))
+}
+
+/// POST /api/hotel/reservations/request
+/// Créer une demande de réservation côté UTILISATEUR (client)
+pub async fn request_hotel_reservation(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Json(payload): Json<UserReservationRequest>,
+) -> AppResult<impl IntoResponse> {
+    info!(
+        "[request_hotel_reservation] user_id={}, property_id={}",
+        user_id, payload.property_id
+    );
+
+    // Vérifier que la propriété existe
+    let property =
+        sqlx::query("SELECT id, service_id, titre FROM real_estate_properties WHERE id = $1")
+            .bind(payload.property_id)
+            .fetch_optional(&state.pg)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur vérification propriété: {}", e)))?;
+
+    let property =
+        property.ok_or_else(|| AppError::NotFound("Propriété introuvable".to_string()))?;
+
+    let property_name: String = property.get::<String, _>("titre");
+
+    // Calculer prix total si prix nuitée fourni
+    let nb_nuits = {
+        let arr =
+            chrono::NaiveDate::parse_from_str(&payload.date_arrivee, "%Y-%m-%d").map_err(|_| {
+                AppError::Validation("Format date arrivée invalide (AAAA-MM-JJ)".to_string())
+            })?;
+        let dep =
+            chrono::NaiveDate::parse_from_str(&payload.date_depart, "%Y-%m-%d").map_err(|_| {
+                AppError::Validation("Format date départ invalide (AAAA-MM-JJ)".to_string())
+            })?;
+        if dep <= arr {
+            return Err(AppError::Validation(
+                "La date de départ doit être après l'arrivée".to_string(),
+            ));
+        }
+        (dep - arr).num_days().max(1)
+    };
+
+    let prix_nuitee = payload.prix_nuitee.unwrap_or(0.0);
+    let nb_chambres = payload.nombre_chambres.max(1);
+    let prix_total =
+        payload.prix_total.unwrap_or(prix_nuitee * nb_nuits as f64 * nb_chambres as f64);
+
+    // Générer QR code unique
+    let qr_code = format!("HOTEL_{}_{}", payload.property_id, uuid::Uuid::new_v4());
+
+    // Insérer dans hotel_meuble_reservations (table existante utilisée par le service)
+    let reservation_id = sqlx::query_scalar::<_, i32>(
+        r#"
+        INSERT INTO hotel_meuble_reservations (
+            property_id,
+            date_arrivee, date_depart, nombre_adultes, nombre_enfants, nombre_chambres,
+            nom_client, telephone_client, email_client,
+            prix_nuitee, prix_total, montant_total,
+            payment_status,
+            is_manual_reservation, manual_reservation_source, manual_reservation_notes,
+            qr_code, qr_code_expires_at, status, created_by
+        )
+        VALUES (
+            $1,
+            $2::date, $3::date, $4, $5, $6,
+            $7, $8, $9,
+            $10, $11, $12,
+            'pending',
+            FALSE, 'app_user', $13,
+            $14, NOW() + INTERVAL '30 days', 'pending', $15
+        )
+        RETURNING id
+        "#,
+    )
+    .bind(payload.property_id)
+    .bind(&payload.date_arrivee)
+    .bind(&payload.date_depart)
+    .bind(payload.nombre_adultes)
+    .bind(payload.nombre_enfants.unwrap_or(0))
+    .bind(nb_chambres)
+    .bind(&payload.nom_client)
+    .bind(&payload.telephone_client)
+    .bind(&payload.email_client)
+    .bind(prix_nuitee)
+    .bind(prix_total)
+    .bind(prix_total)
+    .bind(&payload.notes)
+    .bind(&qr_code)
+    .bind(user_id)
+    .fetch_one(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur création réservation: {}", e)))?;
+
+    Ok((
+        StatusCode::CREATED,
+        Json(json!({
+            "success": true,
+            "message": format!("Demande de réservation envoyée pour {}", property_name),
+            "data": {
+                "id": reservation_id,
+                "reservation_id": reservation_id,
+                "property_name": property_name,
+                "date_arrivee": payload.date_arrivee,
+                "date_depart": payload.date_depart,
+                "nb_nuits": nb_nuits,
+                "prix_total": prix_total,
+                "qr_code": qr_code,
+                "reservation_status": "pending",
+                "payment_status": "pending"
+            }
         })),
     ))
 }

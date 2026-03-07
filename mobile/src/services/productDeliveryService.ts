@@ -149,7 +149,7 @@ export const productDeliveryService = {
         }
 
         // Vérifier les jours
-        if (!this.isAvailableToday(config.availability_days)) {
+        if (!productDeliveryService.isAvailableToday(config.availability_days)) {
             return false;
         }
 

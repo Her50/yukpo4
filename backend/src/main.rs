@@ -3376,6 +3376,67 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
         log::info!("✅ Port libéré, démarrage serveur complet...");
     }
 
+    // ✅ Diagnostic des services externes au démarrage
+    {
+        let has_google_maps =
+            std::env::var("GOOGLE_MAPS_API_KEY").ok().filter(|k| !k.is_empty()).is_some();
+        let has_openweather =
+            std::env::var("OPENWEATHERMAP_API_KEY").ok().filter(|k| !k.is_empty()).is_some();
+        let has_twilio_sid =
+            std::env::var("TWILIO_ACCOUNT_SID").ok().filter(|k| !k.is_empty()).is_some();
+        let has_sendgrid =
+            std::env::var("SENDGRID_API_KEY").ok().filter(|k| !k.is_empty()).is_some();
+        let has_ml_dir = std::path::Path::new(
+            &std::env::var("ML_MODELS_DIR").unwrap_or_else(|_| "models".to_string()),
+        )
+        .exists();
+
+        log::info!("╔══════════════════════════════════════════════════╗");
+        log::info!("║        DIAGNOSTIC SERVICES EXTERNES              ║");
+        log::info!("╠══════════════════════════════════════════════════╣");
+        log::info!(
+            "║ Google Maps API    : {}",
+            if has_google_maps {
+                "✅ Configuré"
+            } else {
+                "⚠️  Non configuré (fallback Haversine)"
+            }
+        );
+        log::info!(
+            "║ OpenWeatherMap API : {}",
+            if has_openweather {
+                "✅ Configuré"
+            } else {
+                "⚠️  Non configuré (fallback météo normale)"
+            }
+        );
+        log::info!(
+            "║ Twilio SMS         : {}",
+            if has_twilio_sid {
+                "✅ Configuré"
+            } else {
+                "⚠️  Non configuré (SMS désactivé)"
+            }
+        );
+        log::info!(
+            "║ SendGrid Email     : {}",
+            if has_sendgrid {
+                "✅ Configuré"
+            } else {
+                "⚠️  Non configuré (Email désactivé)"
+            }
+        );
+        log::info!(
+            "║ ML Models Dir      : {}",
+            if has_ml_dir {
+                "✅ Répertoire trouvé"
+            } else {
+                "⚠️  Non trouvé (formules optimisées)"
+            }
+        );
+        log::info!("╚══════════════════════════════════════════════════╝");
+    }
+
     log::info!("✅ Serveur lance sur http://{}:{}", host, port);
     println!("✅ Serveur lance sur http://{}:{}", host, port);
 

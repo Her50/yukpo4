@@ -7,17 +7,13 @@
 
 use crate::core::types::AppResult;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::sync::Mutex;
 
-// ✅ Support ONNX Runtime pour modèles réels (toujours activé)
-// Note: Les imports ort sont conditionnels mais utilisés dans le code
-// On les importe toujours pour éviter les erreurs de compilation
-#[allow(unexpected_cfgs)]
-#[cfg(feature = "onnx")]
+// ✅ ONNX Runtime toujours activé (ort en dépendance directe)
 use ort::{
     environment::Environment, session::builder::GraphOptimizationLevel, session::ExecutionProvider,
     session::Session, value::Value,
@@ -91,12 +87,8 @@ pub struct DeliveryMLModelsService {
     ml_predictions: Arc<AtomicU64>,
     fallback_predictions: Arc<AtomicU64>,
     // ✅ Sessions ONNX chargées (toujours activé)
-    #[allow(unexpected_cfgs, dead_code)]
-    #[cfg(feature = "onnx")]
-    onnx_sessions: HashMap<ModelType, Arc<Session>>,
     #[allow(dead_code)]
-    #[cfg(not(feature = "onnx"))]
-    onnx_sessions: HashMap<ModelType, ()>, // Placeholder quand ONNX n'est pas activé
+    onnx_sessions: HashMap<ModelType, Arc<Session>>,
     // ✅ NOUVEAU: Données pour apprentissage automatique
     training_data: Arc<Mutex<TrainingDataStore>>,
 }
@@ -104,31 +96,31 @@ pub struct DeliveryMLModelsService {
 /// Stockage des données d'entraînement pour apprentissage automatique
 #[derive(Debug, Clone)]
 struct TrainingDataStore {
-    eta_samples: Vec<(ETAFeatures, f64)>, // (features, actual_duration)
-    demand_samples: Vec<(ForecastingFeatures, f64)>, // (features, actual_demand)
-    max_samples: usize,                   // Limite pour éviter surcharge mémoire
+    eta_samples: VecDeque<(ETAFeatures, f64)>, // (features, actual_duration)
+    demand_samples: VecDeque<(ForecastingFeatures, f64)>, // (features, actual_demand)
+    max_samples: usize,                        // Limite pour éviter surcharge mémoire
 }
 
 impl TrainingDataStore {
     fn new() -> Self {
         Self {
-            eta_samples: Vec::new(),
-            demand_samples: Vec::new(),
+            eta_samples: VecDeque::new(),
+            demand_samples: VecDeque::new(),
             max_samples: 10000, // Garder max 10k échantillons
         }
     }
 
     fn add_eta_sample(&mut self, features: ETAFeatures, actual: f64) {
-        self.eta_samples.push((features, actual));
+        self.eta_samples.push_back((features, actual));
         if self.eta_samples.len() > self.max_samples {
-            self.eta_samples.remove(0); // FIFO
+            self.eta_samples.pop_front(); // O(1) FIFO
         }
     }
 
     fn add_demand_sample(&mut self, features: ForecastingFeatures, actual: f64) {
-        self.demand_samples.push((features, actual));
+        self.demand_samples.push_back((features, actual));
         if self.demand_samples.len() > self.max_samples {
-            self.demand_samples.remove(0);
+            self.demand_samples.pop_front(); // O(1) FIFO
         }
     }
 
@@ -283,8 +275,6 @@ impl DeliveryMLModelsService {
         self.total_predictions.fetch_add(1, Ordering::Relaxed);
 
         // ✅ Essayer d'abord avec ONNX si disponible (toujours activé)
-        #[allow(unexpected_cfgs)]
-        #[cfg(feature = "onnx")]
         {
             if let Some(session) = self.onnx_sessions.get(&ModelType::ETAPrediction) {
                 match self.predict_eta_with_onnx(session, features).await {
@@ -525,8 +515,6 @@ impl DeliveryMLModelsService {
     /// ✅ Charge les modèles ONNX depuis le disque (toujours activé)
     #[allow(dead_code)]
     async fn load_onnx_models(&mut self) -> AppResult<()> {
-        #[allow(unexpected_cfgs)]
-        #[cfg(feature = "onnx")]
         {
             let env = Arc::new(
                 Environment::builder()
@@ -568,8 +556,7 @@ impl DeliveryMLModelsService {
     }
 
     /// ✅ Prédit ETA avec modèle ONNX (toujours activé)
-    #[allow(unexpected_cfgs)]
-    #[cfg(feature = "onnx")]
+    #[allow(dead_code)]
     async fn predict_eta_with_onnx(
         &self,
         session: &Session,

@@ -20,11 +20,9 @@ import ChatInputMobile from '../components/ChatInputMobile';
 import ChatModalMobile from '../components/ChatModalMobile';
 import { KeyboardAwareScreen } from '../components/KeyboardAwareScreen';
 import ModernGPSModal from '../components/ModernGPSModal';
-import ProductCard from '../components/ProductCard';
 import SafeIcon from '../components/SafeIcon';
 import { SafeNativeView } from '../components/SafeNativeView';
 import ServiceGalleryModal from '../components/ServiceGalleryModal';
-import UltraModernServiceCard from '../components/UltraModernServiceCard';
 import { getCategoryConfig, getCategoryStyle, getCategoryTerminology } from '../config/categoryConfig';
 import { useAuth } from '../contexts/AuthContext';
 import { useLocation } from '../contexts/LocationContext';
@@ -70,6 +68,18 @@ interface Prestataire {
     [key: string]: any;
 }
 
+// ✅ CORRIGÉ 2026-03-07: MemoizedProductCard défini en dehors du composant pour éviter de recréer le wrapper à chaque render
+const MemoizedProductCard = React.memo(ProductCard, (prevProps, nextProps) => {
+    return (
+        prevProps.product?.id === nextProps.product?.id &&
+        prevProps.product?.product_id === nextProps.product?.product_id &&
+        prevProps.service?.id === nextProps.service?.id &&
+        prevProps.isScrolling === nextProps.isScrolling &&
+        prevProps.userLocation?.latitude === nextProps.userLocation?.latitude &&
+        prevProps.userLocation?.longitude === nextProps.userLocation?.longitude
+    );
+});
+
 const ResultatBesoinScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
@@ -87,6 +97,8 @@ const ResultatBesoinScreen: React.FC = () => {
     const activeVideoRefs = useRef<Map<string, Video>>(new Map());
     const isScrollingRef = useRef(false);
     const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const prestatairesRef = useRef<Map<string, Prestataire>>(new Map());
+    const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const [prestatairesLoaded, setPrestatairesLoaded] = useState(false);
     const [showChatModal, setShowChatModal] = useState(false);
     const [showGalleryModal, setShowGalleryModal] = useState(false);
@@ -598,19 +610,6 @@ const ResultatBesoinScreen: React.FC = () => {
             setLoading(true);
             setError(null);
 
-            // Fonction helper pour calculer la distance GPS (utilise la même formule que calculateDistance globale)
-            const calculateDistanceFromCoords = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
-                const R = 6371; // Rayon de la Terre en km
-                const dLat = (lat2 - lat1) * Math.PI / 180;
-                const dLon = (lon2 - lon1) * Math.PI / 180;
-                const a =
-                    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                    Math.sin(dLon / 2) * Math.sin(dLon / 2);
-                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-                return R * c;
-            };
-
             const servicePromises = serviceIds.map(async (serviceId, index) => {
                 try {
                     console.log(`🔍 [ResultatBesoinScreen] Récupération du service ${serviceId}...`);
@@ -739,13 +738,48 @@ const ResultatBesoinScreen: React.FC = () => {
                             : null
                     });
 
+                    // ✅ CORRIGÉ 2026-03-07: Helper pour extraire un tableau de médias depuis différents formats
+                    // Déplacé au niveau du forEach pour être accessible dans tout le bloc
+                    const extractMediaField = (field: any): any[] => {
+                        if (Array.isArray(field) && field.length > 0) return field;
+                        if (field && typeof field === 'object' && Array.isArray(field.valeur)) return field.valeur;
+                        if (field && typeof field === 'string') return [field];
+                        return [];
+                    };
+
+                    // ✅ CORRIGÉ 2026-03-07: Normaliser les images/vidéos (extraire les URLs si ce sont des objets)
+                    // Déplacé au niveau du forEach pour être accessible dans tout le bloc
+                    const normalizeMediaArray = (mediaArray: any[]): string[] => {
+                        const result: string[] = [];
+                        for (const item of mediaArray) {
+                            if (typeof item === 'string' && item.trim() && item !== 'false') {
+                                result.push(item.trim());
+                            } else if (item && typeof item === 'object') {
+                                const val = item.url || item.path || item.uri || item.src;
+                                if (typeof val === 'string' && val.trim()) {
+                                    result.push(val.trim());
+                                } else if (item.valeur) {
+                                    if (typeof item.valeur === 'string' && item.valeur.trim()) {
+                                        result.push(item.valeur.trim());
+                                    } else if (Array.isArray(item.valeur)) {
+                                        for (const sub of item.valeur) {
+                                            if (typeof sub === 'string' && sub.trim() && sub !== 'false') {
+                                                result.push(sub.trim());
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        return result;
+                    };
+
                     // Produits depuis l'API service_products (nouveau système uniquement)
                     if (service._productsFromAPI && Array.isArray(service._productsFromAPI) && service._productsFromAPI.length > 0) {
                         serviceProduits = service._productsFromAPI.map((productFromAPI: any) => {
                             // ✅ Transformer le format API vers format attendu (product_data contient les données)
                             const productData = productFromAPI.product_data || productFromAPI;
 
-                            // ✅ CORRIGÉ 2026-02-10: DEBUG - Log détaillé de la structure productFromAPI pour diagnostiquer les médias
                             if (__DEV__) {
                                 console.log(`🔍 [ResultatBesoinScreen] Structure productFromAPI pour service ${service.id}:`, {
                                     hasProductData: !!productFromAPI.product_data,
@@ -759,63 +793,22 @@ const ResultatBesoinScreen: React.FC = () => {
                                 });
                             }
 
-                            // ✅ CORRIGÉ 2026-01-23: Utiliser la fonction utilitaire pour extraire le nom correctement
                             const productName = getProductName(productData) || productFromAPI.product_name || '';
 
-                            // ✅ CORRIGÉ 2026-02-10: Extraire les images/vidéos depuis TOUTES les sources possibles
-                            // Priorité: productFromAPI.images/videos (direct) > productData.images/videos > []
-                            // ✅ AMÉLIORÉ: Extraire aussi depuis product_data si c'est un objet JSON
                             let extractedImages: any[] = [];
                             let extractedVideos: any[] = [];
 
-                            // ✅ CORRIGÉ 2026-02-27: Helper pour extraire un tableau de médias depuis différents formats
-                            // Gère: tableau simple, objet {valeur: [...]}, string simple
-                            const extractMediaField = (field: any): any[] => {
-                                if (Array.isArray(field) && field.length > 0) return field;
-                                if (field && typeof field === 'object' && Array.isArray(field.valeur)) return field.valeur;
-                                if (field && typeof field === 'string') return [field];
-                                return [];
-                            };
-
-                            // Source 1: productFromAPI.images/videos (direct - peut venir de la table media enrichie par le backend)
+                            // Source 1: productFromAPI.images/videos (direct)
                             extractedImages = extractMediaField(productFromAPI.images);
                             extractedVideos = extractMediaField(productFromAPI.videos);
 
-                            // Source 2: productData.images/videos (où le backend enrichit avec les médias de la table media)
+                            // Source 2: productData.images/videos
                             if (extractedImages.length === 0 && productData) {
                                 extractedImages = extractMediaField(productData.images);
                             }
                             if (extractedVideos.length === 0 && productData) {
                                 extractedVideos = extractMediaField(productData.videos);
                             }
-
-                            // ✅ AMÉLIORÉ: Normaliser les images/vidéos (extraire les URLs si ce sont des objets)
-                            const normalizeMediaArray = (mediaArray: any[]): string[] => {
-                                const result: string[] = [];
-                                for (const item of mediaArray) {
-                                    if (typeof item === 'string' && item.trim() && item !== 'false') {
-                                        result.push(item.trim());
-                                    } else if (item && typeof item === 'object') {
-                                        // ✅ CORRIGÉ 2026-02-27: Si valeur est un tableau, le dérouler (format {valeur: [...]})
-                                        const val = item.url || item.path || item.uri || item.src;
-                                        if (typeof val === 'string' && val.trim()) {
-                                            result.push(val.trim());
-                                        } else if (item.valeur) {
-                                            if (typeof item.valeur === 'string' && item.valeur.trim()) {
-                                                result.push(item.valeur.trim());
-                                            } else if (Array.isArray(item.valeur)) {
-                                                // Dérouler le tableau imbriqué
-                                                for (const sub of item.valeur) {
-                                                    if (typeof sub === 'string' && sub.trim() && sub !== 'false') {
-                                                        result.push(sub.trim());
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                                return result;
-                            };
 
                             const normalizedImages = normalizeMediaArray(extractedImages);
                             const normalizedVideos = normalizeMediaArray(extractedVideos);
@@ -1691,7 +1684,7 @@ const ResultatBesoinScreen: React.FC = () => {
             const description = service.description || service.data?.description?.valeur || '';
             const prix = service.prix || service.data?.prix?.valeur;
             const devise = service.devise || 'XAF';
-            const location = service.localisation || service.data?.localisation?.valeur || '';
+            const serviceLocation = service.localisation || service.data?.localisation?.valeur || '';
 
             // Essayer de trouver le premier produit du service pour un lien produit précis
             const serviceProducts = services.find(s => s.id === service.id);
@@ -1703,7 +1696,7 @@ const ResultatBesoinScreen: React.FC = () => {
                 productDescription: description,
                 price: prix ? (typeof prix === 'string' ? parseFloat(prix) || undefined : prix) : undefined,
                 devise,
-                location,
+                location: serviceLocation,
                 productId: firstProductIndex,
                 serviceId,
             });
@@ -1982,8 +1975,7 @@ const ResultatBesoinScreen: React.FC = () => {
         return prestatairesRef.current.get(userId) || prestataires.get(userId);
     }, [prestataires]);
 
-    // ✅ CORRECTION 2025-01-02: Ref pour debounce les mises à jour et éviter les re-renders multiples
-    const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    // ✅ updateTimeoutRef déclaré en haut du composant avec les autres refs
 
     // ✅ CORRIGÉ 2025-01-02: Mémoriser les listes filtrées avec comparaison profonde pour éviter les recalculs inutiles
     const filteredProducts = useMemo(() => {
@@ -2258,26 +2250,6 @@ const ResultatBesoinScreen: React.FC = () => {
     const keyExtractor = useCallback((item: { key: string }, index: number) => {
         return item.key || `item-${index}`;
     }, []);
-
-    // ✅ CORRIGÉ 2026-03-06: Composants optimisés avec React.memo
-    const MemoizedProductCard = React.memo(ProductCard, (prevProps, nextProps) => {
-        return (
-            prevProps.product?.id === nextProps.product?.id &&
-            prevProps.product?.product_id === nextProps.product?.product_id &&
-            prevProps.service?.id === nextProps.service?.id &&
-            prevProps.isScrolling === nextProps.isScrolling &&
-            prevProps.userLocation?.latitude === nextProps.userLocation?.latitude &&
-            prevProps.userLocation?.longitude === nextProps.userLocation?.longitude
-        );
-    });
-
-    const MemoizedServiceCard = React.memo(UltraModernServiceCard, (prevProps, nextProps) => {
-        return (
-            prevProps.service?.id === nextProps.service?.id &&
-            prevProps.service?.score === nextProps.service?.score &&
-            prevProps.service?.distance === nextProps.service?.distance
-        );
-    });
 
     if (loading) {
         return (
@@ -2577,13 +2549,7 @@ const ResultatBesoinScreen: React.FC = () => {
                                 refreshControl={
                                     <RefreshControl
                                         refreshing={refreshing}
-                                        onRefresh={() => {
-                                            setRefreshing(true);
-                                            // Recharger les données
-                                            setTimeout(() => {
-                                                setRefreshing(false);
-                                            }, 1000);
-                                        }}
+                                        onRefresh={onRefresh}
                                         colors={[theme.colors.primary]}
                                     />
                                 }

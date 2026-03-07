@@ -644,6 +644,120 @@ pub async fn list_user_specialized_services(
         }
     }
 
+    // 7. Assurance (via table services avec category)
+    if query.type_filter.is_none() || query.type_filter.as_deref() == Some("assurance") {
+        let sql = format!(
+            r#"
+            SELECT 
+                s.id,
+                s.id as service_id,
+                'assurance' as type_,
+                COALESCE(s.data->>'titre_service', s.data->>'nom', 'Service assurance') as nom,
+                s.is_active,
+                NULL::boolean as is_available_now,
+                s.created_at,
+                COALESCE(s.updated_at, s.created_at) as updated_at,
+                jsonb_build_object(
+                    'category', s.category,
+                    'description', s.data->>'description',
+                    'type_assurance', s.data->>'type_assurance',
+                    'compagnie', s.data->>'compagnie',
+                    'ville', s.data->>'ville',
+                    'telephone', s.data->>'telephone'
+                ) as metadata
+            FROM services s
+            WHERE s.user_id = $1
+              AND (s.category ILIKE '%assurance%' OR s.data::text ILIKE '%assurance%')
+              {}
+            ORDER BY s.updated_at DESC NULLS LAST
+            LIMIT $2 OFFSET $3
+            "#,
+            status_condition,
+        );
+
+        let rows = sqlx::query(&sql)
+            .bind(user_id)
+            .bind(limit)
+            .bind(offset)
+            .fetch_all(&state.pg)
+            .await
+            .map_err(|e| {
+                error!("[list_user_specialized_services] Erreur assurance: {}", e);
+                AppError::Internal(format!("Erreur chargement assurance: {}", e))
+            })?;
+
+        for row in rows {
+            services.push(UnifiedSpecializedService {
+                id: row.get::<i32, _>("id"),
+                service_id: row.get::<i32, _>("service_id"),
+                type_: row.get::<String, _>("type_"),
+                nom: row.get::<String, _>("nom"),
+                is_active: row.get::<bool, _>("is_active"),
+                is_available_now: row.get::<Option<bool>, _>("is_available_now"),
+                created_at: row.get::<chrono::DateTime<chrono::Utc>, _>("created_at"),
+                updated_at: row.get::<chrono::DateTime<chrono::Utc>, _>("updated_at"),
+                metadata: row.get::<serde_json::Value, _>("metadata"),
+            });
+        }
+    }
+
+    // 8. Supermarché (via table services avec category)
+    if query.type_filter.is_none() || query.type_filter.as_deref() == Some("supermarche") {
+        let sql = format!(
+            r#"
+            SELECT 
+                s.id,
+                s.id as service_id,
+                'supermarche' as type_,
+                COALESCE(s.data->>'titre_service', s.data->>'nom', 'Supermarché') as nom,
+                s.is_active,
+                NULL::boolean as is_available_now,
+                s.created_at,
+                COALESCE(s.updated_at, s.created_at) as updated_at,
+                jsonb_build_object(
+                    'category', s.category,
+                    'description', s.data->>'description',
+                    'ville', s.data->>'ville',
+                    'adresse', s.data->>'adresse',
+                    'telephone', s.data->>'telephone'
+                ) as metadata
+            FROM services s
+            WHERE s.user_id = $1
+              AND (s.category ILIKE '%supermarche%' OR s.category ILIKE '%supermarket%'
+                   OR s.category ILIKE '%epicerie%' OR s.category ILIKE '%alimentation%')
+              {}
+            ORDER BY s.updated_at DESC NULLS LAST
+            LIMIT $2 OFFSET $3
+            "#,
+            status_condition,
+        );
+
+        let rows = sqlx::query(&sql)
+            .bind(user_id)
+            .bind(limit)
+            .bind(offset)
+            .fetch_all(&state.pg)
+            .await
+            .map_err(|e| {
+                error!("[list_user_specialized_services] Erreur supermarché: {}", e);
+                AppError::Internal(format!("Erreur chargement supermarché: {}", e))
+            })?;
+
+        for row in rows {
+            services.push(UnifiedSpecializedService {
+                id: row.get::<i32, _>("id"),
+                service_id: row.get::<i32, _>("service_id"),
+                type_: row.get::<String, _>("type_"),
+                nom: row.get::<String, _>("nom"),
+                is_active: row.get::<bool, _>("is_active"),
+                is_available_now: row.get::<Option<bool>, _>("is_available_now"),
+                created_at: row.get::<chrono::DateTime<chrono::Utc>, _>("created_at"),
+                updated_at: row.get::<chrono::DateTime<chrono::Utc>, _>("updated_at"),
+                metadata: row.get::<serde_json::Value, _>("metadata"),
+            });
+        }
+    }
+
     // Calculer les statistiques (vérifier cache d'abord)
     let stats = if let Ok(Some(cached_stats)) =
         cache.get_statistics(user_id, query.status.as_deref()).await

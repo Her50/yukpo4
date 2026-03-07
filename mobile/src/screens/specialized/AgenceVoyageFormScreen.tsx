@@ -101,6 +101,24 @@ const AgenceVoyageFormScreen: React.FC = () => {
     const [boardingSummary, setBoardingSummary] = useState<any | null>(null);
     const [passengersList, setPassengersList] = useState<any[]>([]);
 
+    // IA Suggestions
+    const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
+    const [loadingAI, setLoadingAI] = useState(false);
+
+    const handleAISuggest = async () => {
+        setLoadingAI(true);
+        try {
+            const resp = await apiPost('/api/ai/chat', {
+                message: `En tant qu'expert en gestion d'agences de voyage, analyse mon agence "${formData.nom_agence}" avec ${selectedDestinations.length} destinations, ${schedules.length} horaires et ${selectedCompagnies.length} compagnies. Destinations: ${selectedDestinations.map((d: any) => d.place_name || d.raw || d).join(', ')}. Services: ${selectedServices.join(', ')}. Donne-moi 3 recommandations concrètes et courtes pour augmenter mon chiffre d'affaires et améliorer la satisfaction client.`,
+                context: 'travel_agency_partner_dashboard',
+            });
+            const d = (resp?.data || resp) as any;
+            setAiSuggestion(d?.response || d?.message || d?.data?.response || 'Aucune suggestion disponible.');
+        } catch {
+            setAiSuggestion('Service IA temporairement indisponible. Réessayez plus tard.');
+        } finally { setLoadingAI(false); }
+    };
+
     const { partnerData } = usePartnerData(user?.role, 'agencevoyage');
     const { errors, validateField, validateForm, setError } = useFormValidation({
         nom_agence: { required: true, minLength: 3 },
@@ -355,6 +373,7 @@ const AgenceVoyageFormScreen: React.FC = () => {
                     { label: 'Ajouter horaire', icon: 'plus-circle', color: '#2563EB', onPress: () => { setEditingSchedule(null); setScheduleForm({ departure_city: '', arrival_city: '', departure_times: [], day_of_week: null, notes: '' }); setShowScheduleModal(true); } },
                     { label: 'Mon service', icon: 'settings', color: '#6B7280', onPress: () => setActiveTab('service') },
                     { label: 'Modèles bus', icon: 'truck', color: '#8B5CF6', onPress: () => setActiveTab('bus') },
+                    { label: 'IA Conseils', icon: 'sparkles', color: '#7C3AED', onPress: handleAISuggest },
                 ].map((a, i) => (
                     <TouchableOpacity key={i} style={s.quickAction} onPress={a.onPress}>
                         <View style={[s.quickIcon, { backgroundColor: a.color + '15' }]}><SafeIcon name={a.icon as any} size={22} color={a.color} /></View>
@@ -369,6 +388,27 @@ const AgenceVoyageFormScreen: React.FC = () => {
                 <View style={s.infoCard}><SafeIcon name="calendar" size={16} color="#2563EB" /><Text style={s.infoText}>{formData.jours_ouverture.map(d => DAYS_OF_WEEK.find(w => w.value === d)?.short || '').join(', ')}</Text></View>
             )}
             {formData.peut_emettre_tickets_bus && <View style={s.infoCard}><SafeIcon name="ticket" size={16} color="#10B981" /><Text style={s.infoText}>Émission de tickets bus activée</Text></View>}
+
+            {/* IA Suggestions Card */}
+            {loadingAI && (
+                <View style={[s.infoCard, { backgroundColor: '#FAF5FF', borderLeftColor: '#7C3AED', flexDirection: 'column', alignItems: 'center', paddingVertical: 16 }]}>
+                    <ActivityIndicator size="small" color="#7C3AED" />
+                    <Text style={[s.infoText, { color: '#7C3AED', marginTop: 8 }]}>Analyse IA en cours...</Text>
+                </View>
+            )}
+            {aiSuggestion && !loadingAI && (
+                <View style={[s.infoCard, { backgroundColor: '#FAF5FF', borderLeftColor: '#7C3AED', flexDirection: 'column', alignItems: 'flex-start' }]}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                        <SafeIcon name="sparkles" size={16} color="#7C3AED" />
+                        <Text style={{ fontWeight: '700', color: '#5B21B6', fontSize: 14 }}>Recommandations IA</Text>
+                    </View>
+                    <Text style={{ fontSize: 13, color: '#374151', lineHeight: 20 }}>{aiSuggestion}</Text>
+                    <TouchableOpacity onPress={handleAISuggest} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10 }}>
+                        <SafeIcon name="refresh-cw" size={13} color="#7C3AED" />
+                        <Text style={{ fontSize: 12, color: '#7C3AED', fontWeight: '600' }}>Actualiser</Text>
+                    </TouchableOpacity>
+                </View>
+            )}
 
             {/* Recent Schedules */}
             {schedules.length > 0 && (

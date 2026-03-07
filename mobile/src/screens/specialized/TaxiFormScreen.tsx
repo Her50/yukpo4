@@ -3,8 +3,8 @@
 // Mode Création: Formulaire guidé avec header gradient
 // Exploite endpoints: CRUD taxi, booking, availability, dynamic pricing
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
+import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
@@ -18,7 +18,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import LocationSelector, { LocationObject } from '../../components/LocationSelector';
+import { LocationObject } from '../../components/LocationSelector';
 import ModernGPSModal from '../../components/ModernGPSModal';
 import SafeIcon from '../../components/SafeIcon';
 import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
@@ -28,7 +28,6 @@ import { clearSavedFormData, useFormAutoSave } from '../../hooks/useFormAutoSave
 import { useFormValidation } from '../../hooks/useFormValidation';
 import { usePartnerData } from '../../hooks/usePartnerData';
 import { apiGet, apiPost, servicesApi } from '../../services/api';
-import { modernColors } from '../../theme/modernTheme';
 import { getCurrencyIntelligently } from '../../utils/currencyUtils';
 
 const STORAGE_KEY = '@taxi_last_form_data';
@@ -129,7 +128,20 @@ const TaxiFormScreen: React.FC = () => {
         }
     }, [formData.nom_chauffeur, serviceId, user?.id]);
 
-    const handleRefresh = async () => { setRefreshing(true); setRefreshing(false); };
+    const handleRefresh = async () => {
+        setRefreshing(true);
+        try {
+            const resp = await apiGet('/api/taxis');
+            const d = (resp?.data || resp) as any;
+            const taxis = Array.isArray(d?.data) ? d.data : Array.isArray(d) ? d : [];
+            const myTaxi = taxis.find((t: any) => t.user_id === user?.id) || (taxis.length > 0 ? taxis[0] : null);
+            if (myTaxi) {
+                setTaxiData(myTaxi);
+                setIsAvailable(myTaxi.disponible || myTaxi.is_available || false);
+            }
+        } catch (e) { console.log('[Taxi] Refresh:', e); }
+        setRefreshing(false);
+    };
 
     const handleToggleAvailability = async () => {
         if (!taxiData?.id) return;
@@ -302,8 +314,8 @@ const TaxiFormScreen: React.FC = () => {
             {/* Tarifs */}
             <Text style={[s.sectionTitle, { marginTop: 8 }]}>Tarifs</Text>
             <View style={{ flexDirection: 'row', gap: 12 }}>
-                <View style={[s.field, { flex: 1 }]}><NativeInput label={`Base (${devise})`} value={formData.tarif_base} onChangeText={t => setFormData({ ...formData, tarif_base: t.replace(/\D/g,'') })} placeholder="500" keyboardType="numeric" /></View>
-                <View style={[s.field, { flex: 1 }]}><NativeInput label={`Par km (${devise})`} value={formData.tarif_par_km} onChangeText={t => setFormData({ ...formData, tarif_par_km: t.replace(/\D/g,'') })} placeholder="200" keyboardType="numeric" /></View>
+                <View style={[s.field, { flex: 1 }]}><NativeInput label={`Base (${devise})`} value={formData.tarif_base} onChangeText={t => setFormData({ ...formData, tarif_base: t.replace(/\D/g, '') })} placeholder="500" keyboardType="numeric" /></View>
+                <View style={[s.field, { flex: 1 }]}><NativeInput label={`Par km (${devise})`} value={formData.tarif_par_km} onChangeText={t => setFormData({ ...formData, tarif_par_km: t.replace(/\D/g, '') })} placeholder="200" keyboardType="numeric" /></View>
             </View>
 
             {/* Options */}

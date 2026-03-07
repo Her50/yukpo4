@@ -665,7 +665,7 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
 
                             {/* Bouton vérification coursier pour le prestataire */}
                             {!isCourier && delivery?.courier && deliveryId &&
-                                (delivery?.status === 'assigned' || delivery?.status === 'en_route_pickup' || delivery?.status === 'shopping_pending') && (
+                                (delivery?.status === 'assigned' || delivery?.status === 'en_route_pickup' || delivery?.status === 'arrival_pickup' || delivery?.status === 'shopping_pending') && (
                                     <TouchableOpacity
                                         style={[styles.button, { backgroundColor: '#EEF2FF', borderWidth: 1, borderColor: modernColors.primary + '40' }]}
                                         onPress={() => (navigation as any).navigate('ProviderCourierVerification', { deliveryId })}

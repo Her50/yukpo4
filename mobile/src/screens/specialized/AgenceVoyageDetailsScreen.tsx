@@ -1,40 +1,77 @@
-// ✅ Détails d'une agence de voyage avec boutons d'action (Mobile)
+// ✅ REFONTE COMPLÈTE 2026-03-07: AgenceVoyageDetailsScreen → Écran professionnel mondial
+// Inspiré: Omio, FlixBus, Rome2rio — header gradient, horaires bus, actions rapides, IA, avis
 import { useNavigation, useRoute } from '@react-navigation/native';
-import React, { useEffect, useState } from 'react';
+import { LinearGradient } from 'expo-linear-gradient';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
+    Dimensions,
     Linking,
+    RefreshControl,
     ScrollView,
+    Share,
     StyleSheet,
     Text,
     TouchableOpacity,
     View
 } from 'react-native';
-import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeButton } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
-import { apiGet } from '../../services/api';
-import { modernColors } from '../../theme/modernTheme';
+import { apiGet, apiPost } from '../../services/api';
+
+const { width } = Dimensions.get('window');
 
 interface AgenceVoyageDetails {
     id: number;
     service_id: number;
     user_id: number;
     nom_agence: string;
+    description?: string;
     adresse?: string;
     quartier?: string;
     ville?: string;
+    pays?: string;
     gps?: string;
+    logo_url?: string;
     is_available_now: boolean;
+    is_verified?: boolean;
+    note_moyenne?: number;
+    nombre_avis?: number;
     services_voyage?: string[];
     compagnies_bus?: string[];
     destinations?: string[];
+    specialites?: string[];
     heures_ouverture?: string;
     heures_fermeture?: string;
+    jours_ouverture?: number[] | string;
     telephone?: string;
+    whatsapp?: string;
     email?: string;
+    site_web?: string;
+    peut_emettre_tickets_bus?: boolean;
+    devise?: string;
 }
+
+interface Schedule {
+    id: number;
+    departure_city: string;
+    arrival_city: string;
+    departure_times: string[];
+    day_of_week?: number;
+    notes?: string;
+}
+
+const DAYS = ['', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+const DAYS_FULL = ['', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+
+const SERVICE_ICONS: Record<string, string> = {
+    'Billetterie bus': 'ticket',
+    'Billetterie avion': 'plane',
+    'Organisation voyages': 'globe',
+    'Visa': 'file-text',
+};
 
 const AgenceVoyageDetailsScreen: React.FC = () => {
     const navigation = useNavigation();
@@ -43,179 +80,417 @@ const AgenceVoyageDetailsScreen: React.FC = () => {
     const params = route.params as any;
 
     const [agence, setAgence] = useState<AgenceVoyageDetails | null>(null);
+    const [schedules, setSchedules] = useState<Schedule[]>([]);
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+    const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
+    const [loadingAI, setLoadingAI] = useState(false);
 
-    useEffect(() => {
-        loadAgenceDetails();
-    }, []);
+    useEffect(() => { loadAll(); }, []);
+
+    const loadAll = async () => {
+        await Promise.all([loadAgenceDetails(), loadSchedules()]);
+    };
 
     const loadAgenceDetails = async () => {
         try {
             setLoading(true);
-            const response = await apiGet(`/api/agences-voyage/${params.agenceId}`);
-
-            if (response.success && response.data) {
-                setAgence(response.data);
+            const agenceId = params.agenceId || params.id || params.specializedServiceId;
+            const response = await apiGet(`/api/agences-voyage/${agenceId}`);
+            const d = (response?.data || response) as any;
+            if (d && (d.nom_agence || d.data?.nom_agence)) {
+                setAgence(d.data || d);
+            } else if (response.success && response.data) {
+                setAgence(response.data as any);
             } else {
-                Alert.alert('Erreur', 'Impossible de charger les détails de l\'agence de voyage');
+                Alert.alert('Erreur', 'Agence non trouvée');
                 navigation.goBack();
             }
         } catch (error: any) {
-            console.error('[AgenceVoyageDetailsScreen] Erreur:', error);
-            Alert.alert('Erreur', error.message || 'Impossible de charger les détails');
+            console.error('[AgenceVoyageDetails] Erreur:', error);
+            Alert.alert('Erreur', error.message || 'Impossible de charger');
             navigation.goBack();
-        } finally {
-            setLoading(false);
-        }
+        } finally { setLoading(false); }
     };
 
-    const handleCall = () => {
-        if (agence?.telephone) {
-            Linking.openURL(`tel:${agence.telephone}`);
-        }
+    const loadSchedules = async () => {
+        try {
+            const agenceId = params.agenceId || params.id || params.specializedServiceId;
+            const resp = await apiGet(`/api/bus-tickets/agencies/${agenceId}/schedules`);
+            const d = (resp?.data || resp) as any;
+            setSchedules(Array.isArray(d?.data) ? d.data : Array.isArray(d?.schedules) ? d.schedules : Array.isArray(d) ? d : []);
+        } catch { setSchedules([]); }
     };
+
+    const onRefresh = useCallback(async () => {
+        setRefreshing(true);
+        await loadAll();
+        setRefreshing(false);
+    }, []);
+
+    const handleCall = () => { if (agence?.telephone) Linking.openURL(`tel:${agence.telephone}`); };
+    const handleWhatsApp = () => { if (agence?.whatsapp) Linking.openURL(`https://wa.me/${agence.whatsapp.replace(/[^0-9+]/g, '')}`); };
+    const handleEmail = () => { if (agence?.email) Linking.openURL(`mailto:${agence.email}`); };
+    const handleWebsite = () => { if (agence?.site_web) Linking.openURL(agence.site_web.startsWith('http') ? agence.site_web : `https://${agence.site_web}`); };
 
     const handleBookTicket = () => {
-        navigation.navigate('BusTicketSearch' as never);
+        (navigation as any).navigate('BusTicketSearch', {
+            defaultDeparture: agence?.ville || agence?.quartier || '',
+        });
+    };
+
+    const handleSearchRoute = (dep: string, arr: string) => {
+        (navigation as any).navigate('BusTicketSearch', {
+            defaultDeparture: dep,
+            defaultArrival: arr,
+        });
+    };
+
+    const handleShare = async () => {
+        if (!agence) return;
+        try {
+            await Share.share({
+                title: agence.nom_agence,
+                message: `${agence.nom_agence} — ${(agence.destinations || []).slice(0, 3).join(', ')}${agence.telephone ? '\nTél: ' + agence.telephone : ''}\nVia Yukpo`,
+            });
+        } catch { }
+    };
+
+    const handleAISuggest = async () => {
+        if (!agence) return;
+        setLoadingAI(true);
+        try {
+            const resp = await apiPost('/api/ai/chat', {
+                message: `En tant qu'assistant voyage expert, recommande les meilleurs trajets et conseils pour un voyageur utilisant l'agence "${agence.nom_agence}" basée à ${agence.ville || agence.quartier || 'Cameroun'}. Destinations disponibles: ${(agence.destinations || []).join(', ')}. Services: ${(agence.services_voyage || []).join(', ')}. Donne 3 suggestions courtes et pratiques.`,
+                context: 'travel_agency_recommendation',
+            });
+            const d = (resp?.data || resp) as any;
+            setAiSuggestion(d?.response || d?.message || d?.data?.response || 'Aucune suggestion disponible pour le moment.');
+        } catch {
+            setAiSuggestion('Service IA temporairement indisponible. Réessayez plus tard.');
+        } finally { setLoadingAI(false); }
+    };
+
+    const renderStars = (rating: number) => {
+        const stars = [];
+        for (let i = 1; i <= 5; i++) {
+            stars.push(
+                <SafeIcon key={i} name={i <= Math.round(rating) ? 'star' : 'star'} size={14}
+                    color={i <= Math.round(rating) ? '#F59E0B' : '#D1D5DB'} />
+            );
+        }
+        return stars;
     };
 
     if (loading) {
         return (
-            <View style={styles.centerContainer}>
-                <ActivityIndicator size="large" color={modernColors.primary} />
-                <Text style={styles.loadingText}>Chargement...</Text>
+            <View style={st.loadingContainer}>
+                <LinearGradient colors={['#1E3A8A', '#2563EB']} style={st.loadingGradient}>
+                    <ActivityIndicator size="large" color="#fff" />
+                    <Text style={st.loadingText}>Chargement de l'agence...</Text>
+                </LinearGradient>
             </View>
         );
     }
 
     if (!agence) {
         return (
-            <View style={styles.centerContainer}>
-                <Text style={styles.errorText}>Agence de voyage non trouvée</Text>
+            <View style={st.loadingContainer}>
+                <SafeIcon name="alert-circle" size={48} color="#9CA3AF" />
+                <Text style={{ fontSize: 16, color: '#6B7280', marginTop: 16 }}>Agence non trouvée</Text>
+                <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginTop: 16 }}>
+                    <Text style={{ color: '#2563EB', fontWeight: '600' }}>Retour</Text>
+                </TouchableOpacity>
             </View>
         );
     }
 
+    const isOpen = agence.is_available_now;
+
     return (
-        <View style={styles.container}>
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                    <SafeIcon name="arrow-left" size={24} color="#111827" />
-                </TouchableOpacity>
-                <Text style={styles.title}>Détails</Text>
-            </View>
-
-            <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
-                <NativeCard style={styles.detailsCard}>
-                    <View style={styles.titleRow}>
-                        <SafeIcon name="bus" size={32} color={modernColors.primary} />
-                        <View style={styles.titleContainer}>
-                            <Text style={styles.nom}>{agence.nom_agence}</Text>
-                        </View>
+        <View style={st.container}>
+            {/* ─── HERO HEADER ─── */}
+            <LinearGradient colors={['#1E3A8A', '#2563EB', '#3B82F6']} style={st.hero}>
+                <View style={st.heroTop}>
+                    <TouchableOpacity onPress={() => navigation.goBack()} style={st.heroBackBtn}>
+                        <SafeIcon name="arrow-left" size={22} color="#fff" />
+                    </TouchableOpacity>
+                    <View style={{ flexDirection: 'row', gap: 12 }}>
+                        <TouchableOpacity onPress={handleShare} style={st.heroActionBtn}>
+                            <SafeIcon name="share-2" size={18} color="#fff" />
+                        </TouchableOpacity>
                     </View>
+                </View>
 
-                    <View style={styles.badgesRow}>
-                        <View style={[styles.statusBadge, agence.is_available_now && styles.statusBadgeAvailable]}>
-                            <Text style={[styles.statusText, agence.is_available_now && styles.statusTextAvailable]}>
-                                {agence.is_available_now ? 'Disponible' : 'Indisponible'}
+                <View style={st.heroContent}>
+                    <View style={st.heroIconBox}>
+                        <SafeIcon name="bus" size={28} color="#2563EB" />
+                    </View>
+                    <Text style={st.heroTitle}>{agence.nom_agence}</Text>
+                    {agence.description && <Text style={st.heroDesc} numberOfLines={2}>{agence.description}</Text>}
+
+                    <View style={st.heroBadges}>
+                        <View style={[st.heroBadge, isOpen ? st.heroBadgeOpen : st.heroBadgeClosed]}>
+                            <View style={[st.statusDot, { backgroundColor: isOpen ? '#10B981' : '#EF4444' }]} />
+                            <Text style={[st.heroBadgeText, { color: isOpen ? '#D1FAE5' : '#FECACA' }]}>
+                                {isOpen ? 'Ouvert' : 'Fermé'}
                             </Text>
                         </View>
+                        {agence.is_verified && (
+                            <View style={[st.heroBadge, { backgroundColor: '#10B98130' }]}>
+                                <SafeIcon name="check-circle" size={12} color="#10B981" />
+                                <Text style={[st.heroBadgeText, { color: '#D1FAE5' }]}>Vérifié</Text>
+                            </View>
+                        )}
+                        {(agence.note_moyenne || 0) > 0 && (
+                            <View style={[st.heroBadge, { backgroundColor: '#F59E0B30' }]}>
+                                <SafeIcon name="star" size={12} color="#F59E0B" />
+                                <Text style={[st.heroBadgeText, { color: '#FEF3C7' }]}>{(agence.note_moyenne || 0).toFixed(1)} ({agence.nombre_avis || 0})</Text>
+                            </View>
+                        )}
                     </View>
 
-                    {(agence.adresse || agence.ville || agence.quartier) && (
-                        <View style={styles.infoRow}>
-                            <SafeIcon name="map-pin" size={20} color={modernColors.textSecondary} />
-                            <View style={styles.infoContent}>
-                                {agence.adresse && <Text style={styles.infoText}>{agence.adresse}</Text>}
-                                <Text style={styles.infoSubtext}>
-                                    {[agence.quartier, agence.ville].filter(Boolean).join(', ')}
-                                </Text>
-                            </View>
-                        </View>
-                    )}
+                    <View style={st.heroLocation}>
+                        <SafeIcon name="map-pin" size={14} color="#93C5FD" />
+                        <Text style={st.heroLocationText}>
+                            {[agence.adresse, agence.quartier, agence.ville].filter(Boolean).join(', ') || 'Localisation non renseignée'}
+                        </Text>
+                    </View>
+                </View>
+            </LinearGradient>
 
-                    {agence.gps && (
-                        <View style={styles.infoRow}>
-                            <SafeIcon name="map-pin" size={20} color={modernColors.textSecondary} />
-                            <Text style={styles.infoText}>{agence.gps}</Text>
-                        </View>
-                    )}
+            <ScrollView style={st.body} contentContainerStyle={{ paddingBottom: 100 }}
+                showsVerticalScrollIndicator={false}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2563EB" />}>
 
+                {/* ─── QUICK ACTIONS ─── */}
+                <View style={st.quickActions}>
+                    <TouchableOpacity style={st.quickBtn} onPress={handleBookTicket}>
+                        <View style={[st.quickIcon, { backgroundColor: '#EFF6FF' }]}>
+                            <SafeIcon name="ticket" size={20} color="#2563EB" />
+                        </View>
+                        <Text style={st.quickLabel}>Réserver</Text>
+                    </TouchableOpacity>
                     {agence.telephone && (
-                        <TouchableOpacity style={styles.infoRow} onPress={handleCall}>
-                            <SafeIcon name="phone" size={20} color={modernColors.primary} />
-                            <Text style={[styles.infoText, styles.linkText]}>{agence.telephone}</Text>
+                        <TouchableOpacity style={st.quickBtn} onPress={handleCall}>
+                            <View style={[st.quickIcon, { backgroundColor: '#F0FDF4' }]}>
+                                <SafeIcon name="phone" size={20} color="#10B981" />
+                            </View>
+                            <Text style={st.quickLabel}>Appeler</Text>
                         </TouchableOpacity>
                     )}
-
-                    {agence.email && (
-                        <View style={styles.infoRow}>
-                            <SafeIcon name="mail" size={20} color={modernColors.textSecondary} />
-                            <Text style={styles.infoText}>{agence.email}</Text>
-                        </View>
+                    {agence.whatsapp && (
+                        <TouchableOpacity style={st.quickBtn} onPress={handleWhatsApp}>
+                            <View style={[st.quickIcon, { backgroundColor: '#F0FDF4' }]}>
+                                <SafeIcon name="message-circle" size={20} color="#22C55E" />
+                            </View>
+                            <Text style={st.quickLabel}>WhatsApp</Text>
+                        </TouchableOpacity>
                     )}
+                    {agence.site_web && (
+                        <TouchableOpacity style={st.quickBtn} onPress={handleWebsite}>
+                            <View style={[st.quickIcon, { backgroundColor: '#F5F3FF' }]}>
+                                <SafeIcon name="globe" size={20} color="#7C3AED" />
+                            </View>
+                            <Text style={st.quickLabel}>Site web</Text>
+                        </TouchableOpacity>
+                    )}
+                    {agence.email && !agence.whatsapp && !agence.site_web && (
+                        <TouchableOpacity style={st.quickBtn} onPress={handleEmail}>
+                            <View style={[st.quickIcon, { backgroundColor: '#FEF3C7' }]}>
+                                <SafeIcon name="mail" size={20} color="#D97706" />
+                            </View>
+                            <Text style={st.quickLabel}>Email</Text>
+                        </TouchableOpacity>
+                    )}
+                </View>
 
-                    {(agence.heures_ouverture || agence.heures_fermeture) && (
-                        <View style={styles.section}>
-                            <Text style={styles.sectionTitle}>Horaires</Text>
-                            <Text style={styles.infoText}>
-                                {agence.heures_ouverture && agence.heures_fermeture
-                                    ? `${agence.heures_ouverture} - ${agence.heures_fermeture}`
-                                    : agence.heures_ouverture || agence.heures_fermeture || 'Non renseignés'}
+                {/* ─── HORAIRES ─── */}
+                {(agence.heures_ouverture || agence.heures_fermeture) && (
+                    <View style={st.card}>
+                        <View style={st.cardHeader}>
+                            <SafeIcon name="clock" size={18} color="#2563EB" />
+                            <Text style={st.cardTitle}>Horaires d'ouverture</Text>
+                        </View>
+                        <View style={st.hoursRow}>
+                            <View style={st.hoursBadge}>
+                                <Text style={st.hoursTime}>{agence.heures_ouverture || '—'}</Text>
+                                <Text style={st.hoursLabel}>Ouverture</Text>
+                            </View>
+                            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+                                <SafeIcon name="arrow-right" size={16} color="#9CA3AF" />
+                            </View>
+                            <View style={st.hoursBadge}>
+                                <Text style={st.hoursTime}>{agence.heures_fermeture || '—'}</Text>
+                                <Text style={st.hoursLabel}>Fermeture</Text>
+                            </View>
+                        </View>
+                    </View>
+                )}
+
+                {/* ─── SERVICES ─── */}
+                {agence.services_voyage && agence.services_voyage.length > 0 && (
+                    <View style={st.card}>
+                        <View style={st.cardHeader}>
+                            <SafeIcon name="briefcase" size={18} color="#8B5CF6" />
+                            <Text style={st.cardTitle}>Services proposés</Text>
+                        </View>
+                        <View style={st.servicesGrid}>
+                            {agence.services_voyage.map((svc, i) => (
+                                <View key={i} style={st.serviceChip}>
+                                    <SafeIcon name={(SERVICE_ICONS[svc] || 'check') as any} size={16} color="#6366F1" />
+                                    <Text style={st.serviceChipText}>{svc}</Text>
+                                </View>
+                            ))}
+                        </View>
+                    </View>
+                )}
+
+                {/* ─── DESTINATIONS ─── */}
+                {agence.destinations && agence.destinations.length > 0 && (
+                    <View style={st.card}>
+                        <View style={st.cardHeader}>
+                            <SafeIcon name="map" size={18} color="#10B981" />
+                            <Text style={st.cardTitle}>Destinations ({agence.destinations.length})</Text>
+                        </View>
+                        <View style={st.destGrid}>
+                            {agence.destinations.map((dest, i) => (
+                                <TouchableOpacity key={i} style={st.destChip}
+                                    onPress={() => handleSearchRoute(agence.ville || agence.quartier || '', dest)}>
+                                    <SafeIcon name="map-pin" size={14} color="#059669" />
+                                    <Text style={st.destText}>{dest}</Text>
+                                    <SafeIcon name="chevron-right" size={14} color="#9CA3AF" />
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    </View>
+                )}
+
+                {/* ─── HORAIRES DE DÉPART (schedules) ─── */}
+                {schedules.length > 0 && (
+                    <View style={st.card}>
+                        <View style={st.cardHeader}>
+                            <SafeIcon name="calendar" size={18} color="#F59E0B" />
+                            <Text style={st.cardTitle}>Horaires de départ</Text>
+                        </View>
+                        {schedules.slice(0, 5).map((sch, i) => (
+                            <TouchableOpacity key={i} style={st.scheduleRow}
+                                onPress={() => handleSearchRoute(sch.departure_city, sch.arrival_city)}>
+                                <View style={st.scheduleRoute}>
+                                    <Text style={st.scheduleDep}>{sch.departure_city}</Text>
+                                    <SafeIcon name="arrow-right" size={14} color="#9CA3AF" />
+                                    <Text style={st.scheduleArr}>{sch.arrival_city}</Text>
+                                </View>
+                                <View style={st.scheduleTimes}>
+                                    {(sch.departure_times || []).map((t, j) => (
+                                        <View key={j} style={st.timeBadge}>
+                                            <Text style={st.timeText}>{t}</Text>
+                                        </View>
+                                    ))}
+                                </View>
+                                {sch.day_of_week && (
+                                    <Text style={st.scheduleDay}>{DAYS_FULL[sch.day_of_week] || ''}</Text>
+                                )}
+                            </TouchableOpacity>
+                        ))}
+                        {schedules.length > 5 && (
+                            <Text style={st.seeMore}>+{schedules.length - 5} autres horaires</Text>
+                        )}
+                    </View>
+                )}
+
+                {/* ─── COMPAGNIES ─── */}
+                {agence.compagnies_bus && agence.compagnies_bus.length > 0 && (
+                    <View style={st.card}>
+                        <View style={st.cardHeader}>
+                            <SafeIcon name="truck" size={18} color="#F97316" />
+                            <Text style={st.cardTitle}>Compagnies de bus</Text>
+                        </View>
+                        <View style={st.compGrid}>
+                            {agence.compagnies_bus.map((comp, i) => (
+                                <View key={i} style={st.compChip}>
+                                    <SafeIcon name="bus" size={14} color="#EA580C" />
+                                    <Text style={st.compText}>{comp}</Text>
+                                </View>
+                            ))}
+                        </View>
+                    </View>
+                )}
+
+                {/* ─── IA SUGGESTIONS ─── */}
+                <View style={st.card}>
+                    <View style={st.cardHeader}>
+                        <SafeIcon name="sparkles" size={18} color="#8B5CF6" />
+                        <Text style={st.cardTitle}>Assistant Voyage IA</Text>
+                    </View>
+                    {aiSuggestion ? (
+                        <View style={st.aiResult}>
+                            <Text style={st.aiText}>{aiSuggestion}</Text>
+                            <TouchableOpacity onPress={handleAISuggest} style={st.aiRetry}>
+                                <SafeIcon name="refresh-cw" size={14} color="#7C3AED" />
+                                <Text style={st.aiRetryText}>Nouvelles suggestions</Text>
+                            </TouchableOpacity>
+                        </View>
+                    ) : (
+                        <TouchableOpacity style={st.aiBtn} onPress={handleAISuggest} disabled={loadingAI}>
+                            {loadingAI ? (
+                                <ActivityIndicator size="small" color="#7C3AED" />
+                            ) : (
+                                <SafeIcon name="sparkles" size={18} color="#7C3AED" />
+                            )}
+                            <Text style={st.aiBtnText}>
+                                {loadingAI ? 'Analyse en cours...' : 'Obtenir des suggestions de voyage'}
                             </Text>
-                        </View>
+                        </TouchableOpacity>
                     )}
+                </View>
 
-                    {agence.destinations && agence.destinations.length > 0 && (
-                        <View style={styles.section}>
-                            <Text style={styles.sectionTitle}>Destinations</Text>
-                            <View style={styles.tagsContainer}>
-                                {agence.destinations.map((dest, idx) => (
-                                    <View key={idx} style={styles.tag}>
-                                        <Text style={styles.tagText}>{dest}</Text>
-                                    </View>
-                                ))}
-                            </View>
-                        </View>
-                    )}
+                {/* ─── CTA PRINCIPAL ─── */}
+                {agence.peut_emettre_tickets_bus && (
+                    <View style={st.ctaSection}>
+                        <NativeButton
+                            title="Rechercher un ticket de bus"
+                            onPress={handleBookTicket}
+                            variant="primary"
+                            size="large"
+                            style={{ backgroundColor: '#2563EB' }}
+                        />
+                    </View>
+                )}
 
-                    {agence.compagnies_bus && agence.compagnies_bus.length > 0 && (
-                        <View style={styles.section}>
-                            <Text style={styles.sectionTitle}>Compagnies de bus</Text>
-                            <View style={styles.tagsContainer}>
-                                {agence.compagnies_bus.map((comp, idx) => (
-                                    <View key={idx} style={styles.tag}>
-                                        <Text style={styles.tagText}>{comp}</Text>
-                                    </View>
-                                ))}
-                            </View>
-                        </View>
-                    )}
-
-                    {agence.services_voyage && agence.services_voyage.length > 0 && (
-                        <View style={styles.section}>
-                            <Text style={styles.sectionTitle}>Services</Text>
-                            <View style={styles.tagsContainer}>
-                                {agence.services_voyage.map((service, idx) => (
-                                    <View key={idx} style={styles.tag}>
-                                        <Text style={styles.tagText}>{service}</Text>
-                                    </View>
-                                ))}
-                            </View>
-                        </View>
-                    )}
-                </NativeCard>
-
-                <View style={styles.actionsContainer}>
-                    <NativeButton onPress={handleBookTicket} style={styles.actionButton}>
-                        <SafeIcon name="bus" size={20} color="#FFFFFF" />
-                        <Text style={styles.actionButtonText}>Réserver un billet</Text>
-                    </NativeButton>
+                {/* ─── CONTACT COMPLET ─── */}
+                <View style={st.card}>
+                    <View style={st.cardHeader}>
+                        <SafeIcon name="phone" size={18} color="#6B7280" />
+                        <Text style={st.cardTitle}>Contact</Text>
+                    </View>
                     {agence.telephone && (
-                        <NativeButton onPress={handleCall} style={[styles.actionButton, styles.actionButtonSecondary]}>
-                            <SafeIcon name="phone" size={20} color="#FFFFFF" />
-                            <Text style={styles.actionButtonText}>Appeler</Text>
-                        </NativeButton>
+                        <TouchableOpacity style={st.contactRow} onPress={handleCall}>
+                            <SafeIcon name="phone" size={16} color="#2563EB" />
+                            <Text style={st.contactText}>{agence.telephone}</Text>
+                            <SafeIcon name="external-link" size={14} color="#9CA3AF" />
+                        </TouchableOpacity>
+                    )}
+                    {agence.whatsapp && (
+                        <TouchableOpacity style={st.contactRow} onPress={handleWhatsApp}>
+                            <SafeIcon name="message-circle" size={16} color="#22C55E" />
+                            <Text style={st.contactText}>{agence.whatsapp}</Text>
+                            <SafeIcon name="external-link" size={14} color="#9CA3AF" />
+                        </TouchableOpacity>
+                    )}
+                    {agence.email && (
+                        <TouchableOpacity style={st.contactRow} onPress={handleEmail}>
+                            <SafeIcon name="mail" size={16} color="#D97706" />
+                            <Text style={st.contactText}>{agence.email}</Text>
+                            <SafeIcon name="external-link" size={14} color="#9CA3AF" />
+                        </TouchableOpacity>
+                    )}
+                    {agence.site_web && (
+                        <TouchableOpacity style={st.contactRow} onPress={handleWebsite}>
+                            <SafeIcon name="globe" size={16} color="#7C3AED" />
+                            <Text style={st.contactText}>{agence.site_web}</Text>
+                            <SafeIcon name="external-link" size={14} color="#9CA3AF" />
+                        </TouchableOpacity>
                     )}
                 </View>
             </ScrollView>
@@ -223,155 +498,78 @@ const AgenceVoyageDetailsScreen: React.FC = () => {
     );
 };
 
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#F9FAFB',
-    },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 16,
-        backgroundColor: '#FFFFFF',
-        borderBottomWidth: 1,
-        borderBottomColor: '#E5E7EB',
-    },
-    backButton: {
-        marginRight: 12,
-    },
-    title: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: '#111827',
-    },
-    content: {
-        flex: 1,
-    },
-    contentContainer: {
-        padding: 16,
-    },
-    detailsCard: {
-        padding: 20,
-        marginBottom: 16,
-    },
-    titleRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 16,
-        gap: 12,
-    },
-    titleContainer: {
-        flex: 1,
-    },
-    nom: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        color: '#111827',
-    },
-    badgesRow: {
-        flexDirection: 'row',
-        gap: 8,
-        marginBottom: 20,
-    },
-    statusBadge: {
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 6,
-        backgroundColor: '#F3F4F6',
-    },
-    statusBadgeAvailable: {
-        backgroundColor: '#D1FAE5',
-    },
-    statusText: {
-        fontSize: 14,
-        color: '#6B7280',
-        fontWeight: '600',
-    },
-    statusTextAvailable: {
-        color: '#065F46',
-    },
-    infoRow: {
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-        marginBottom: 16,
-        gap: 12,
-    },
-    infoContent: {
-        flex: 1,
-    },
-    infoText: {
-        fontSize: 16,
-        color: '#111827',
-    },
-    infoSubtext: {
-        fontSize: 14,
-        color: modernColors.textSecondary,
-        marginTop: 4,
-    },
-    linkText: {
-        color: modernColors.primary,
-    },
-    section: {
-        marginTop: 20,
-        paddingTop: 20,
-        borderTopWidth: 1,
-        borderTopColor: '#E5E7EB',
-    },
-    sectionTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: '#111827',
-        marginBottom: 12,
-    },
-    tagsContainer: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 8,
-    },
-    tag: {
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 6,
-        backgroundColor: '#DBEAFE',
-    },
-    tagText: {
-        fontSize: 14,
-        color: '#1E40AF',
-        fontWeight: '600',
-    },
-    actionsContainer: {
-        gap: 12,
-    },
-    actionButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 8,
-    },
-    actionButtonSecondary: {
-        backgroundColor: modernColors.primary,
-    },
-    actionButtonText: {
-        color: '#FFFFFF',
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    centerContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 32,
-        backgroundColor: '#F9FAFB',
-    },
-    loadingText: {
-        marginTop: 16,
-        fontSize: 16,
-        color: modernColors.textSecondary,
-    },
-    errorText: {
-        fontSize: 16,
-        color: modernColors.textSecondary,
-    },
+const st = StyleSheet.create({
+    container: { flex: 1, backgroundColor: '#F3F4F6' },
+    loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F3F4F6' },
+    loadingGradient: { width: '100%', flex: 1, justifyContent: 'center', alignItems: 'center' },
+    loadingText: { color: '#fff', fontSize: 15, marginTop: 16, fontWeight: '500' },
+    // Hero
+    hero: { paddingTop: 48, paddingBottom: 24, paddingHorizontal: 20 },
+    heroTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+    heroBackBtn: { padding: 6, backgroundColor: '#ffffff20', borderRadius: 10 },
+    heroActionBtn: { padding: 8, backgroundColor: '#ffffff20', borderRadius: 10 },
+    heroContent: { alignItems: 'flex-start' },
+    heroIconBox: { width: 52, height: 52, borderRadius: 14, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', marginBottom: 14, elevation: 4, shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } },
+    heroTitle: { fontSize: 24, fontWeight: '800', color: '#fff', marginBottom: 4 },
+    heroDesc: { fontSize: 14, color: '#BFDBFE', marginBottom: 12, lineHeight: 20 },
+    heroBadges: { flexDirection: 'row', gap: 8, marginBottom: 12, flexWrap: 'wrap' },
+    heroBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, backgroundColor: '#ffffff20' },
+    heroBadgeOpen: { backgroundColor: '#10B98130' },
+    heroBadgeClosed: { backgroundColor: '#EF444430' },
+    heroBadgeText: { fontSize: 12, fontWeight: '600', color: '#fff' },
+    statusDot: { width: 7, height: 7, borderRadius: 4 },
+    heroLocation: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    heroLocationText: { fontSize: 13, color: '#93C5FD', flex: 1 },
+    // Body
+    body: { flex: 1, paddingHorizontal: 16, paddingTop: 16 },
+    // Quick Actions
+    quickActions: { flexDirection: 'row', gap: 12, marginBottom: 20 },
+    quickBtn: { flex: 1, alignItems: 'center', gap: 6 },
+    quickIcon: { width: 48, height: 48, borderRadius: 14, justifyContent: 'center', alignItems: 'center', elevation: 2, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, shadowOffset: { width: 0, height: 1 } },
+    quickLabel: { fontSize: 11, fontWeight: '600', color: '#374151', textAlign: 'center' },
+    // Cards
+    card: { backgroundColor: '#fff', borderRadius: 16, padding: 18, marginBottom: 14, elevation: 2, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } },
+    cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14 },
+    cardTitle: { fontSize: 16, fontWeight: '700', color: '#111827', flex: 1 },
+    // Hours
+    hoursRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 20 },
+    hoursBadge: { alignItems: 'center', padding: 14, backgroundColor: '#EFF6FF', borderRadius: 12, minWidth: 100 },
+    hoursTime: { fontSize: 20, fontWeight: '700', color: '#1E3A8A' },
+    hoursLabel: { fontSize: 11, color: '#6B7280', marginTop: 4, fontWeight: '500' },
+    // Services
+    servicesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    serviceChip: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 10, backgroundColor: '#F5F3FF', borderRadius: 10, borderWidth: 1, borderColor: '#E9D5FF' },
+    serviceChipText: { fontSize: 13, fontWeight: '600', color: '#5B21B6' },
+    // Destinations
+    destGrid: { gap: 6 },
+    destChip: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 12, backgroundColor: '#F0FDF4', borderRadius: 10, borderWidth: 1, borderColor: '#BBF7D0' },
+    destText: { flex: 1, fontSize: 14, fontWeight: '500', color: '#166534' },
+    // Schedules
+    scheduleRow: { paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
+    scheduleRoute: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
+    scheduleDep: { fontSize: 14, fontWeight: '700', color: '#111827' },
+    scheduleArr: { fontSize: 14, fontWeight: '700', color: '#111827' },
+    scheduleTimes: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 4 },
+    timeBadge: { paddingHorizontal: 10, paddingVertical: 4, backgroundColor: '#FEF3C7', borderRadius: 6 },
+    timeText: { fontSize: 12, fontWeight: '700', color: '#92400E' },
+    scheduleDay: { fontSize: 12, color: '#6B7280', fontWeight: '500' },
+    seeMore: { textAlign: 'center', color: '#2563EB', fontWeight: '600', fontSize: 13, marginTop: 12 },
+    // Companies
+    compGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    compChip: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 10, backgroundColor: '#FFF7ED', borderRadius: 10, borderWidth: 1, borderColor: '#FED7AA' },
+    compText: { fontSize: 13, fontWeight: '600', color: '#9A3412' },
+    // AI
+    aiBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 14, borderRadius: 12, borderWidth: 1.5, borderColor: '#C4B5FD', borderStyle: 'dashed', backgroundColor: '#FAF5FF' },
+    aiBtnText: { fontSize: 14, fontWeight: '600', color: '#7C3AED' },
+    aiResult: { backgroundColor: '#FAF5FF', borderRadius: 12, padding: 14 },
+    aiText: { fontSize: 13, color: '#374151', lineHeight: 20 },
+    aiRetry: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12 },
+    aiRetryText: { fontSize: 13, color: '#7C3AED', fontWeight: '600' },
+    // CTA
+    ctaSection: { marginBottom: 14 },
+    // Contact
+    contactRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
+    contactText: { flex: 1, fontSize: 14, color: '#374151' },
 });
 
 export default AgenceVoyageDetailsScreen;

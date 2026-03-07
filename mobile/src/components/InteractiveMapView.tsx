@@ -1,6 +1,7 @@
-import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import {
     ActivityIndicator,
+    Platform,
     StyleSheet,
     Text,
     TouchableOpacity,
@@ -97,13 +98,25 @@ const InteractiveMapView = forwardRef<InteractiveMapViewRef, InteractiveMapViewP
     useEffect(() => {
         const timeout = setTimeout(() => {
             if (!mapReady) {
-                console.warn('[InteractiveMapView] ⚠️ Map loading timeout');
-                setMapReady(true); // Forcer l'affichage même si pas prêt
+                console.warn('[InteractiveMapView] ⚠️ Map loading timeout — forçage mapReady');
+                setMapError(true); // ✅ FIX: Signaler aussi l'erreur pour afficher le fallback
+                setMapReady(true);
             }
-        }, 5000);
+        }, 8000); // ✅ FIX: 8s au lieu de 5s pour laisser plus de temps au rendu natif
 
         return () => clearTimeout(timeout);
     }, [mapReady]);
+
+    // ✅ FIX 2026-03-07: Log diagnostic au montage
+    useEffect(() => {
+        console.log('[InteractiveMapView] 🗺️ Montage composant', {
+            platform: Platform.OS,
+            provider: Platform.OS === 'android' ? 'google (default)' : 'PROVIDER_GOOGLE',
+            initialRegionSet: !!initialRegion,
+            selectedLocation: selectedLocation ? `${selectedLocation.lat},${selectedLocation.lng}` : 'null',
+            startRegion: `${startRegion.latitude.toFixed(4)},${startRegion.longitude.toFixed(4)}`,
+        });
+    }, []);
 
     const handleMapPress = (event: any) => {
         const { latitude, longitude } = event.nativeEvent.coordinate;
@@ -211,14 +224,48 @@ const InteractiveMapView = forwardRef<InteractiveMapViewRef, InteractiveMapViewP
         }
     };
 
+    // ✅ FIX 2026-03-07: Réessayer le chargement de la carte
+    const handleRetryMap = () => {
+        console.log('[InteractiveMapView] 🔄 Retry map loading');
+        setMapError(false);
+        setMapReady(false);
+    };
+
     return (
-        <View style={styles.container}>
+        <View
+            style={styles.container}
+            onLayout={(e) => {
+                const { width, height } = e.nativeEvent.layout;
+                console.log(`[InteractiveMapView] 📐 Layout: ${width}x${height}`);
+                if (height < 10) {
+                    console.error('[InteractiveMapView] ❌ Container height is too small:', height);
+                }
+            }}
+        >
+            {/* Loading overlay */}
             {!mapReady && !mapError && (
                 <View style={styles.loadingContainer}>
                     <ActivityIndicator size="large" color={modernColors.primary} />
                     <Text style={styles.loadingText}>Chargement de la carte...</Text>
                 </View>
             )}
+
+            {/* ✅ FIX 2026-03-07: Erreur visible quand la carte ne charge pas */}
+            {mapError && mapReady && (
+                <View style={styles.errorContainer}>
+                    <SafeIcon name="alert-triangle" size={40} color="#F59E0B" />
+                    <Text style={styles.errorTitle}>Carte non disponible</Text>
+                    <Text style={styles.errorSubtext}>
+                        La carte Google Maps n'a pas pu se charger.
+                        Vérifiez votre connexion internet.
+                    </Text>
+                    <TouchableOpacity style={styles.retryBtn} onPress={handleRetryMap}>
+                        <SafeIcon name="refresh-cw" size={16} color="#FFFFFF" />
+                        <Text style={styles.retryBtnText}>Réessayer</Text>
+                    </TouchableOpacity>
+                </View>
+            )}
+
             <MapView
                 ref={mapRef}
                 style={styles.map}
@@ -238,7 +285,7 @@ const InteractiveMapView = forwardRef<InteractiveMapViewRef, InteractiveMapViewP
                     setMapError(false);
                 }}
                 onError={(error) => {
-                    console.error('[InteractiveMapView] ❌ Map error:', error);
+                    console.error('[InteractiveMapView] ❌ Map error:', error.nativeEvent || error);
                     setMapError(true);
                     setMapReady(true);
                 }}
@@ -390,6 +437,43 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#6B7280',
         fontWeight: '500',
+    },
+    errorContainer: {
+        ...StyleSheet.absoluteFillObject,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#FFF9E6',
+        zIndex: 999,
+        padding: 20,
+    },
+    errorTitle: {
+        marginTop: 12,
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#92400E',
+        textAlign: 'center',
+    },
+    errorSubtext: {
+        marginTop: 8,
+        fontSize: 13,
+        color: '#78716C',
+        textAlign: 'center',
+        lineHeight: 18,
+    },
+    retryBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 16,
+        paddingHorizontal: 20,
+        paddingVertical: 10,
+        borderRadius: 8,
+        backgroundColor: modernColors.primary,
+        gap: 8,
+    },
+    retryBtnText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#FFFFFF',
     },
     mapControls: {
         position: 'absolute',

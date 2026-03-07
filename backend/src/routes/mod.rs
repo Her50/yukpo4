@@ -7,6 +7,7 @@ pub mod appliance_model_routes; // ✅ Routes pour modèles d'appareils électro
 pub mod ar_routes;
 pub mod assurance_routes; // ✅ NOUVEAU: Routes assurance dédiées (recherche, devis IA, comparaison)
 pub mod auth_routes;
+pub mod auto_search_routes; // ✅ NOUVEAU 2026-03-07: Routes recherche automobile intelligente (filtres dynamiques)
 pub mod autocomplete_routes; // ✅ NOUVEAU: Routes pour autocomplete characteristics
 pub mod bourse_livre_routes;
 pub mod chat_media_routes;
@@ -88,6 +89,7 @@ pub mod social_features_routes;
 pub mod specialized_services_routes;
 pub mod stock_media_routes;
 pub mod studio_routes; // ✅ NOUVEAU: Routes Studio pour création vidéo immersive
+pub mod supermarket_routes; // ✅ NOUVEAU: Routes supermarché dédiées (produits, comparaison, promotions)
 pub mod system_health_routes;
 pub mod token_pack_routes;
 pub mod token_stats_routes; // ✅ NOUVEAU: Routes pour statistiques de consommation de tokens

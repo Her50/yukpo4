@@ -2128,8 +2128,8 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                         const finalProductIndex = jobResult.productIndex;
                                         const productName = formValues.nom_produit || 'Nouveau produit';
 
-                                        // ✅ NOUVEAU: Vérifier s'il existe une configuration de livraison précédente
-                                        checkExistingDeliveryConfigs(finalServiceId);
+                                        // ✅ CORRIGÉ: Attendre la vérification avant d'afficher la modal
+                                        await checkExistingDeliveryConfigs(finalServiceId);
 
                                         // Afficher la modal de confirmation
                                         setSuccessModalData({
@@ -2137,7 +2137,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                             productIndex: finalProductIndex,
                                             productName: productName,
                                             isPrestation: false,
-                                            isDuplicate: isDuplicate, // ✅ NOUVEAU: Indiquer si c'est une duplication
+                                            isDuplicate: isDuplicate,
                                         });
                                         setShowSuccessModal(true);
                                     } else {
@@ -2181,8 +2181,8 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                     const finalProductIndex = typeof productIndexResult === 'number' ? productIndexResult : parseInt(String(productIndexResult), 10);
                                     const productName = formValues.nom_produit || 'Nouveau produit';
 
-                                    // ✅ NOUVEAU: Vérifier s'il existe une configuration de livraison précédente
-                                    checkExistingDeliveryConfigs(finalServiceId);
+                                    // ✅ CORRIGÉ: Attendre la vérification avant d'afficher la modal
+                                    await checkExistingDeliveryConfigs(finalServiceId);
 
                                     // Afficher la modal de confirmation
                                     setSuccessModalData({
@@ -2190,7 +2190,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                         productIndex: finalProductIndex,
                                         productName: productName,
                                         isPrestation: false,
-                                        isDuplicate: isDuplicate, // ✅ NOUVEAU: Indiquer si c'est une duplication
+                                        isDuplicate: isDuplicate,
                                     });
                                     setShowSuccessModal(true);
                                 } else {

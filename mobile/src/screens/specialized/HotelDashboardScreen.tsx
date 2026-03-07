@@ -57,8 +57,11 @@ interface Reservation {
     montant_avance?: number;
     payment_status: string;
     reservation_status: string;
+    status?: string;
     checked_in_at?: string;
     checked_out_at?: string;
+    can_check_in?: boolean;
+    can_check_out?: boolean;
     created_at: string;
 }
 
@@ -129,7 +132,15 @@ const HotelDashboardScreen: React.FC = () => {
 
             const reservData = (reservRes?.data || reservRes) as any;
             if (reservData?.success || reservData?.data) {
-                setReservations(reservData?.data || []);
+                const rawReservations = reservData?.data || [];
+                // Map backend 'status' field to mobile 'reservation_status'
+                const mapped = rawReservations.map((r: any) => ({
+                    ...r,
+                    reservation_status: r.reservation_status || r.status || 'pending',
+                    checked_in_at: r.checked_in_at || (r.status === 'checked_in' ? 'yes' : undefined),
+                    checked_out_at: r.checked_out_at || (r.status === 'checked_out' ? 'yes' : undefined),
+                }));
+                setReservations(mapped);
             }
         } catch (error) {
             console.error('[HotelDashboard] Erreur chargement:', error);

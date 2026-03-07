@@ -302,6 +302,10 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             post(specialized_services_controller::create_property),
         )
         .route(
+            "/api/immobilier/biens/{id}",
+            put(specialized_services_controller::update_property),
+        )
+        .route(
             "/api/immobilier/biens/{id}/book-visit",
             post(specialized_services_controller::book_property_visit),
         )
