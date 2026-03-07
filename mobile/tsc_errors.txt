@@ -1,0 +1,21 @@
+﻿archive-inspect/mobile/src/screens/SettingsScreen.tsx(761,11): error TS17002: Expected corresponding JSX closing tag for 'Modal'.
+src/components/RealTimeVideoPreview.tsx(562,26): error TS1005: ',' expected.
+src/components/RealTimeVideoPreview.tsx(562,41): error TS1005: ',' expected.
+src/components/RealTimeVideoPreview.tsx(562,43): error TS1136: Property assignment expected.
+src/components/RealTimeVideoPreview.tsx(565,14): error TS1005: ',' expected.
+src/components/RealTimeVideoPreview.tsx(570,22): error TS1005: ',' expected.
+src/components/RealTimeVideoPreview.tsx(574,20): error TS1005: ',' expected.
+src/components/RealTimeVideoPreview.tsx(581,18): error TS1005: ',' expected.
+src/components/RealTimeVideoPreview.tsx(586,15): error TS1005: ',' expected.
+src/components/RealTimeVideoPreview.tsx(591,22): error TS1005: ',' expected.
+src/components/RealTimeVideoPreview.tsx(596,17): error TS1005: ',' expected.
+src/components/RealTimeVideoPreview.tsx(599,15): error TS1005: ',' expected.
+src/components/RealTimeVideoPreview.tsx(605,17): error TS1005: ',' expected.
+src/components/RealTimeVideoPreview.tsx(609,16): error TS1005: ',' expected.
+src/components/RealTimeVideoPreview.tsx(615,22): error TS1005: ',' expected.
+src/components/RealTimeVideoPreview.tsx(618,20): error TS1005: ',' expected.
+src/components/RealTimeVideoPreview.tsx(622,26): error TS1005: ',' expected.
+src/components/RealTimeVideoPreview.tsx(626,17): error TS1005: ',' expected.
+src/components/RealTimeVideoPreview.tsx(631,17): error TS1005: ',' expected.
+src/components/RealTimeVideoPreview.tsx(636,1): error TS1135: Argument expression expected.
+src/components/RealTimeVideoPreview.tsx(636,2): error TS1128: Declaration or statement expected.
