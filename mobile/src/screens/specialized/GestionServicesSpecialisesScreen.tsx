@@ -274,7 +274,10 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
             let url = '/api/specialized-services/user?';
             const params: string[] = [];
 
-            if (advancedFilters.type && advancedFilters.type !== 'all') {
+            // ✅ Filtrer automatiquement par partner_type si l'utilisateur est partenaire
+            if (user?.role === 'partenaire' && user.partner_type) {
+                params.push(`type_filter=${user.partner_type}`);
+            } else if (advancedFilters.type && advancedFilters.type !== 'all') {
                 params.push(`type_filter=${advancedFilters.type}`);
             }
             if (advancedFilters.status && advancedFilters.status !== 'all') {

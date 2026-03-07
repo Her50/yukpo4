@@ -35,21 +35,32 @@ export const useDeepLinkRedirect = () => {
             if (user?.role === 'partenaire' && user.partner_type) {
                 console.log(`[useDeepLinkRedirect] 🏢 Partenaire identifié: type="${user.partner_type}" - Redirection vers écran spécialisé`);
 
-                // Mapping des types de partenaires vers leurs écrans spécialisés
+                // Mapping des types de partenaires vers leurs écrans spécialisés (dashboards directs)
                 const partnerTypeToScreen: Record<string, string> = {
-                    'pharmacie': 'GestionServicesSpecialises',
-                    'hopital': 'GestionServicesSpecialises',
-                    'laboratoire': 'GestionServicesSpecialises',
-                    'agence_voyage': 'GestionServicesSpecialises',
-                    'covoiturage': 'GestionServicesSpecialises',
-                    'taxi': 'GestionServicesSpecialises',
-                    'hotel': 'ImmobilierForm',
-                    'meuble': 'ImmobilierForm',
+                    // ✅ Santé → dashboard dédié (mode dashboard auto-détecté)
+                    'pharmacie': 'PharmacieForm',
+                    'hopital': 'HopitalForm',
+                    'laboratoire': 'LaboratoireForm',
+                    'banquesang': 'BanqueSangForm',
+                    // ✅ Transport → dashboard dédié
+                    'agence_voyage': 'AgenceVoyageForm',
+                    'covoiturage': 'CovoiturageForm',
+                    'taxi': 'TaxiForm',
                     'chauffeur': 'TaxiForm',
-                    'supermarche': 'SupermarketHome',
+                    // ✅ Hébergement → HotelDashboard (conçu pour hotel + meublé)
+                    'hotel': 'HotelDashboard',
+                    'meuble': 'HotelDashboard',
+                    // ✅ Commerce
+                    'supermarche': 'SupermarketPartnerDashboard',
+                    // ✅ Emploi
+                    'offre_emploi': 'OffresEmploiHub',
+                    'recruteur': 'OffresEmploiHub',
+                    // ✅ Assurance (backend utilise 'assureur')
+                    'assureur': 'AssuranceDashboard',
+                    // ✅ Éducation
+                    'etablissementscolaire': 'OrientationPartnerDashboard',
+                    // Génériques
                     'livraison_courses_marche': 'MesServicesSpecialises',
-                    // Types génériques vers MesServicesSpecialises
-                    'restaurant': 'MesServicesSpecialises',
                     'ecommerce': 'MesServicesSpecialises',
                     'prestataire': 'MesServicesSpecialises',
                     'service': 'MesServicesSpecialises',

@@ -257,8 +257,9 @@ const HopitalFormScreen: React.FC = () => {
             <View style={s.quickRow}>
                 {[
                     { label: 'Gérer créneaux', icon: 'calendar', color: '#3B82F6', onPress: () => setActiveTab('slots') },
+                    { label: 'IA Triage', icon: 'brain', color: '#7C3AED', onPress: () => (navigation as any).navigate('HospitalAIRecommendations', { serviceId }) },
+                    { label: 'Statistiques', icon: 'bar-chart-2', color: '#F59E0B', onPress: () => (navigation as any).navigate('HospitalAnalytics', { serviceId }) },
                     { label: 'Mon service', icon: 'settings', color: '#6B7280', onPress: () => setActiveTab('service') },
-                    { label: 'Statistiques', icon: 'bar-chart-2', color: '#F59E0B', onPress: () => setActiveTab('analytics') },
                 ].map((a, i) => (
                     <TouchableOpacity key={i} style={s.quickAction} onPress={a.onPress}>
                         <View style={[s.quickIcon, { backgroundColor: a.color + '15' }]}><SafeIcon name={a.icon as any} size={22} color={a.color} /></View>

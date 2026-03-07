@@ -15128,6 +15128,37 @@ pub async fn ensure_specialized_services_tables(pool: &PgPool) -> Result<(), sql
         info!("✅ Table agences_voyage créée directement");
     }
 
+    // 4b. AGENCES_VOYAGE: Colonnes supplémentaires pour UX moderne
+    let agences_columns_to_add = vec![
+        ("description", "TEXT"),
+        ("logo_url", "TEXT"),
+        ("note_moyenne", "REAL DEFAULT 0"),
+        ("nombre_avis", "INTEGER DEFAULT 0"),
+        ("devise", "VARCHAR(10) DEFAULT 'XAF'"),
+        ("pays", "VARCHAR(100)"),
+        ("is_verified", "BOOLEAN DEFAULT FALSE"),
+        ("specialites", "TEXT[]"),
+    ];
+    for (col, col_type) in &agences_columns_to_add {
+        let check = format!(
+            "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name='agences_voyage' AND column_name='{}')",
+            col
+        );
+        let exists: bool =
+            sqlx::query_scalar::<_, bool>(&check).fetch_one(pool).await.unwrap_or(true);
+        if !exists {
+            let alter = format!("ALTER TABLE agences_voyage ADD COLUMN {} {}", col, col_type);
+            if let Err(e) = sqlx::query(&alter).execute(pool).await {
+                warn!(
+                    "⚠️ Impossible d'ajouter colonne {} à agences_voyage: {}",
+                    col, e
+                );
+            } else {
+                info!("✅ Colonne {} ajoutée à agences_voyage", col);
+            }
+        }
+    }
+
     // 5. COVOITURAGES
     if !covoiturages_exists {
         warn!("⚠️ Table covoiturages manquante, création directe...");

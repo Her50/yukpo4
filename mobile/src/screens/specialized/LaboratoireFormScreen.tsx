@@ -266,8 +266,9 @@ const LaboratoireFormScreen: React.FC = () => {
             <View style={s.quickRow}>
                 {[
                     { label: 'Ajouter examen', icon: 'plus-circle', color: '#0891B2', onPress: () => { setActiveTab('exams'); setTimeout(() => openExamModal(), 200); } },
+                    { label: 'IA Analyse', icon: 'brain', color: '#7C3AED', onPress: () => (navigation as any).navigate('LabAIAnalysis', { serviceId }) },
+                    { label: 'Statistiques', icon: 'bar-chart-2', color: '#F59E0B', onPress: () => (navigation as any).navigate('LabAnalytics', { serviceId }) },
                     { label: 'Mon service', icon: 'settings', color: '#6B7280', onPress: () => setActiveTab('service') },
-                    { label: 'Statistiques', icon: 'bar-chart-2', color: '#F59E0B', onPress: () => setActiveTab('analytics') },
                 ].map((a, i) => (
                     <TouchableOpacity key={i} style={s.quickAction} onPress={a.onPress}>
                         <View style={[s.quickIcon, { backgroundColor: a.color + '15' }]}><SafeIcon name={a.icon as any} size={22} color={a.color} /></View>
@@ -352,21 +353,21 @@ const LaboratoireFormScreen: React.FC = () => {
                 <View style={s.searchBar}><SafeIcon name="search" size={18} color="#9CA3AF" /><NativeInput value={searchQuery} onChangeText={setSearchQuery} placeholder="Rechercher..." style={{ flex: 1, backgroundColor: 'transparent' }} /></View>
             )}
             {loadingExams ? <ActivityIndicator size="large" color="#0891B2" style={{ marginTop: 32 }} /> :
-             examinationTypes.length === 0 ? (
-                <View style={s.emptyDash}><SafeIcon name="flask-conical" size={48} color="#9CA3AF" /><Text style={s.emptyTitle}>Aucun examen</Text><Text style={s.emptyText}>Ajoutez vos types d'examens pour les rendre visibles</Text><NativeButton title="Ajouter" onPress={() => openExamModal()} style={{ marginTop: 16 }} /></View>
-            ) : (
-                filteredExams.map((e, i) => (
-                    <TouchableOpacity key={i} style={s.examCard} onPress={() => openExamModal(e)}>
-                        <View style={[s.examCatDot, { backgroundColor: e.categorie === 'analyse' ? '#DC2626' : '#8B5CF6' }]} />
-                        <View style={{ flex: 1 }}>
-                            <Text style={s.examCardName}>{e.nom}</Text>
-                            <Text style={s.examCardSub}>{e.categorie === 'analyse' ? 'Analyse' : 'Imagerie'}{e.duree_estimee ? ` · ${e.duree_estimee}` : ''}</Text>
-                            {e.preparation_requise ? <Text style={s.examPrep}>⚠ {e.preparation_requise}</Text> : null}
-                        </View>
-                        {e.prix ? <Text style={s.examCardPrice}>{e.prix.toLocaleString()} FCFA</Text> : null}
-                    </TouchableOpacity>
-                ))
-            )}
+                examinationTypes.length === 0 ? (
+                    <View style={s.emptyDash}><SafeIcon name="flask-conical" size={48} color="#9CA3AF" /><Text style={s.emptyTitle}>Aucun examen</Text><Text style={s.emptyText}>Ajoutez vos types d'examens pour les rendre visibles</Text><NativeButton title="Ajouter" onPress={() => openExamModal()} style={{ marginTop: 16 }} /></View>
+                ) : (
+                    filteredExams.map((e, i) => (
+                        <TouchableOpacity key={i} style={s.examCard} onPress={() => openExamModal(e)}>
+                            <View style={[s.examCatDot, { backgroundColor: e.categorie === 'analyse' ? '#DC2626' : '#8B5CF6' }]} />
+                            <View style={{ flex: 1 }}>
+                                <Text style={s.examCardName}>{e.nom}</Text>
+                                <Text style={s.examCardSub}>{e.categorie === 'analyse' ? 'Analyse' : 'Imagerie'}{e.duree_estimee ? ` · ${e.duree_estimee}` : ''}</Text>
+                                {e.preparation_requise ? <Text style={s.examPrep}>⚠ {e.preparation_requise}</Text> : null}
+                            </View>
+                            {e.prix ? <Text style={s.examCardPrice}>{e.prix.toLocaleString()} FCFA</Text> : null}
+                        </TouchableOpacity>
+                    ))
+                )}
         </ScrollView>
     );
 

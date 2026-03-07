@@ -36,7 +36,7 @@ const MesServicesSpecialisesScreen: React.FC = () => {
     const { user } = useAuth();
     const [creatingService, setCreatingService] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
-    const [filterCategory, setFilterCategory] = useState<'tous' | 'sante' | 'transport'>('tous');
+    const [filterCategory, setFilterCategory] = useState<'tous' | 'sante' | 'transport' | 'commerce' | 'immobilier' | 'autres'>('tous');
 
     // ✅ NOUVEAU : Rediriger vers le hub unifié si disponible
     // Sinon, garder l'ancien comportement pour compatibilité
@@ -327,6 +327,71 @@ const MesServicesSpecialisesScreen: React.FC = () => {
         },
     ];
 
+    const servicesCommerce: ServiceSpecialise[] = [
+        {
+            id: 'supermarche',
+            title: 'Supermarché',
+            icon: 'Store',
+            description: 'Gérer un catalogue de supermarché',
+            route: 'SupermarketPartnerDashboard',
+            color: '#10B981',
+        },
+    ];
+
+    const servicesImmobilier: ServiceSpecialise[] = [
+        {
+            id: 'immobilier',
+            title: 'Immobilier',
+            icon: 'Home',
+            description: 'Publier des annonces immobilières',
+            route: 'ImmobilierForm',
+            color: '#6366F1',
+        },
+        {
+            id: 'hotel',
+            title: 'Hôtel / Meublé',
+            icon: 'Building',
+            description: 'Gérer un hôtel ou un meublé',
+            route: 'HotelDashboard',
+            color: '#0891B2',
+        },
+    ];
+
+    const servicesAutres: ServiceSpecialise[] = [
+        {
+            id: 'offre_emploi',
+            title: 'Offres d\'emploi',
+            icon: 'Briefcase',
+            description: 'Publier et gérer des offres d\'emploi',
+            route: 'OffresEmploiHub',
+            color: '#7C3AED',
+        },
+        {
+            id: 'assureur',
+            title: 'Assurance',
+            icon: 'Shield',
+            description: 'Proposer des produits d\'assurance',
+            route: 'AssuranceDashboard',
+            color: '#6366F1',
+        },
+        {
+            id: 'etablissementscolaire',
+            title: 'Établissement scolaire',
+            icon: 'GraduationCap',
+            description: 'Gérer un établissement scolaire',
+            route: 'OrientationPartnerDashboard',
+            color: '#2563EB',
+        },
+        {
+            id: 'livre_scolaire',
+            title: 'Livre scolaire',
+            icon: 'BookOpen',
+            description: 'Vendre ou échanger des livres scolaires',
+            route: 'LivreScolaireForm',
+            color: '#059669',
+        },
+    ];
+
     // Filtrer les services selon la recherche et la catégorie
     const filteredSante = servicesSante.filter((service) => {
         const matchesSearch = searchQuery === '' ||
@@ -340,6 +405,27 @@ const MesServicesSpecialisesScreen: React.FC = () => {
             service.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
             service.description.toLowerCase().includes(searchQuery.toLowerCase());
         return matchesSearch && (filterCategory === 'tous' || filterCategory === 'transport');
+    });
+
+    const filteredCommerce = servicesCommerce.filter((service) => {
+        const matchesSearch = searchQuery === '' ||
+            service.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            service.description.toLowerCase().includes(searchQuery.toLowerCase());
+        return matchesSearch && (filterCategory === 'tous' || filterCategory === 'commerce');
+    });
+
+    const filteredImmobilier = servicesImmobilier.filter((service) => {
+        const matchesSearch = searchQuery === '' ||
+            service.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            service.description.toLowerCase().includes(searchQuery.toLowerCase());
+        return matchesSearch && (filterCategory === 'tous' || filterCategory === 'immobilier');
+    });
+
+    const filteredAutres = servicesAutres.filter((service) => {
+        const matchesSearch = searchQuery === '' ||
+            service.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            service.description.toLowerCase().includes(searchQuery.toLowerCase());
+        return matchesSearch && (filterCategory === 'tous' || filterCategory === 'autres');
     });
 
     return (
@@ -436,6 +522,26 @@ const MesServicesSpecialisesScreen: React.FC = () => {
                         Transport
                     </Text>
                 </TouchableOpacity>
+                <TouchableOpacity
+                    style={[
+                        styles.filterButton,
+                        filterCategory === 'commerce' && styles.filterButtonActive,
+                    ]}
+                    onPress={() => setFilterCategory('commerce')}
+                >
+                    <SafeIcon name="store" size={16} color={filterCategory === 'commerce' ? '#fff' : '#10B981'} type="lucide" />
+                    <Text style={[styles.filterButtonText, filterCategory === 'commerce' && styles.filterButtonTextActive]}>Commerce</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                    style={[
+                        styles.filterButton,
+                        filterCategory === 'autres' && styles.filterButtonActive,
+                    ]}
+                    onPress={() => setFilterCategory('autres')}
+                >
+                    <SafeIcon name="grid" size={16} color={filterCategory === 'autres' ? '#fff' : '#8B5CF6'} type="lucide" />
+                    <Text style={[styles.filterButtonText, filterCategory === 'autres' && styles.filterButtonTextActive]}>Autres</Text>
+                </TouchableOpacity>
             </View>
 
             {/* ✅ NOUVEAU: Bouton pour accéder au hub unifié */}
@@ -529,8 +635,86 @@ const MesServicesSpecialisesScreen: React.FC = () => {
                 </View>
             )}
 
+            {/* Groupe Commerce */}
+            {filteredCommerce.length > 0 && (
+                <View style={styles.group}>
+                    <View style={styles.groupHeader}>
+                        <SafeIcon name="store" size={20} color="#10B981" type="lucide" />
+                        <Text style={styles.groupTitle}>Commerce</Text>
+                    </View>
+                    <View style={styles.servicesGrid}>
+                        {filteredCommerce.map((service) => (
+                            <TouchableOpacity
+                                key={service.id}
+                                style={[styles.serviceCard, { borderLeftColor: service.color }]}
+                                onPress={() => handleServicePress(service)}
+                                disabled={creatingService === service.id}
+                            >
+                                <View style={[styles.serviceIconContainer, { backgroundColor: service.color + '15' }]}>
+                                    <SafeIcon name={service.icon} size={20} color={service.color} type="lucide" />
+                                </View>
+                                <Text style={styles.serviceTitle} numberOfLines={2}>{service.title}</Text>
+                                <Text style={styles.serviceDescription} numberOfLines={2}>{service.description}</Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                </View>
+            )}
+
+            {/* Groupe Immobilier */}
+            {filteredImmobilier.length > 0 && (
+                <View style={styles.group}>
+                    <View style={styles.groupHeader}>
+                        <SafeIcon name="home" size={20} color="#6366F1" type="lucide" />
+                        <Text style={styles.groupTitle}>Immobilier</Text>
+                    </View>
+                    <View style={styles.servicesGrid}>
+                        {filteredImmobilier.map((service) => (
+                            <TouchableOpacity
+                                key={service.id}
+                                style={[styles.serviceCard, { borderLeftColor: service.color }]}
+                                onPress={() => handleServicePress(service)}
+                                disabled={creatingService === service.id}
+                            >
+                                <View style={[styles.serviceIconContainer, { backgroundColor: service.color + '15' }]}>
+                                    <SafeIcon name={service.icon} size={20} color={service.color} type="lucide" />
+                                </View>
+                                <Text style={styles.serviceTitle} numberOfLines={2}>{service.title}</Text>
+                                <Text style={styles.serviceDescription} numberOfLines={2}>{service.description}</Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                </View>
+            )}
+
+            {/* Groupe Autres services */}
+            {filteredAutres.length > 0 && (
+                <View style={styles.group}>
+                    <View style={styles.groupHeader}>
+                        <SafeIcon name="grid" size={20} color="#8B5CF6" type="lucide" />
+                        <Text style={styles.groupTitle}>Emploi, Assurance & Autres</Text>
+                    </View>
+                    <View style={styles.servicesGrid}>
+                        {filteredAutres.map((service) => (
+                            <TouchableOpacity
+                                key={service.id}
+                                style={[styles.serviceCard, { borderLeftColor: service.color }]}
+                                onPress={() => handleServicePress(service)}
+                                disabled={creatingService === service.id}
+                            >
+                                <View style={[styles.serviceIconContainer, { backgroundColor: service.color + '15' }]}>
+                                    <SafeIcon name={service.icon} size={20} color={service.color} type="lucide" />
+                                </View>
+                                <Text style={styles.serviceTitle} numberOfLines={2}>{service.title}</Text>
+                                <Text style={styles.serviceDescription} numberOfLines={2}>{service.description}</Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                </View>
+            )}
+
             {/* Message si aucun résultat */}
-            {filteredSante.length === 0 && filteredTransport.length === 0 && (
+            {filteredSante.length === 0 && filteredTransport.length === 0 && filteredCommerce.length === 0 && filteredImmobilier.length === 0 && filteredAutres.length === 0 && (
                 <View style={styles.emptyContainer}>
                     <SafeIcon name="search-x" size={48} color={modernColors.textSecondary} type="lucide" />
                     <Text style={styles.emptyText}>Aucun service trouvé</Text>

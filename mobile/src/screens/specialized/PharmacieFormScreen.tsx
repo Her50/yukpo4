@@ -399,8 +399,8 @@ const PharmacieFormScreen: React.FC = () => {
                 {[
                     { label: isOnDuty ? 'En garde ✓' : 'Hors garde', icon: isOnDuty ? 'shield-check' : 'shield-off', color: isOnDuty ? '#10B981' : '#EF4444', onPress: handleToggleGuard },
                     { label: 'Ajouter produit', icon: 'plus-circle', color: '#3B82F6', onPress: () => { setActiveTab('products'); setTimeout(() => openProductModal(), 200); } },
-                    { label: 'Inventaire', icon: 'search', color: '#8B5CF6', onPress: () => setActiveTab('products') },
-                    { label: 'Statistiques', icon: 'bar-chart-2', color: '#F59E0B', onPress: () => setActiveTab('analytics') },
+                    { label: 'IA Interactions', icon: 'brain', color: '#7C3AED', onPress: () => (navigation as any).navigate('PharmacyAIInteractions', { serviceId }) },
+                    { label: 'Statistiques', icon: 'bar-chart-2', color: '#F59E0B', onPress: () => (navigation as any).navigate('PharmacyAnalytics', { serviceId }) },
                 ].map((a, i) => (
                     <TouchableOpacity key={i} style={s.quickAction} onPress={a.onPress}>
                         <View style={[s.quickIcon, { backgroundColor: a.color + '15' }]}>

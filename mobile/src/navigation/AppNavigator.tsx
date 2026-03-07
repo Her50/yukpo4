@@ -240,6 +240,7 @@ import RecipeSearchScreen from '../screens/specialized/RecipeSearchScreen';
 import ErrorBoundary from '../components/ErrorBoundary';
 import AgencyAnalyticsDashboardScreen from '../screens/AgencyAnalyticsDashboard';
 import ProductStatsScreen from '../screens/ProductStatsScreen';
+import AssuranceDashboardScreen from '../screens/specialized/AssuranceDashboardScreen';
 import AutoServicesResultsScreen from '../screens/specialized/AutoServicesResultsScreen';
 import AutoServicesSearchScreen from '../screens/specialized/AutoServicesSearchScreen';
 import BayamSelamResultsScreen from '../screens/specialized/BayamSelamResultsScreen';
@@ -248,9 +249,11 @@ import InsuranceQuoteRequestScreen from '../screens/specialized/InsuranceQuoteRe
 import InsuranceServicesResultsScreen from '../screens/specialized/InsuranceServicesResultsScreen';
 import InsuranceServicesSearchScreen from '../screens/specialized/InsuranceServicesSearchScreen';
 import MenuWeekCalendarScreen from '../screens/specialized/MenuWeekCalendarScreen';
+import OrientationPartnerDashboardScreen from '../screens/specialized/OrientationPartnerDashboardScreen';
 import RecipeDetailsScreen from '../screens/specialized/RecipeDetailsScreen';
 import ShoppingListScreen from '../screens/specialized/ShoppingListScreen';
 import SupermarketHomeScreen from '../screens/specialized/SupermarketHomeScreen';
+import SupermarketPartnerDashboardScreen from '../screens/specialized/SupermarketPartnerDashboardScreen';
 import VideoCreationIntroScreen from '../screens/video/VideoCreationIntroScreen';
 import VideoCreationWizardScreen from '../screens/video/VideoCreationWizardScreen';
 import VideoGenerationResultScreen from '../screens/video/VideoGenerationResultScreen';
@@ -414,6 +417,38 @@ const PrestataireReservationsScreenWithSafeArea = withNavigatorSafeArea(Prestata
 const SlotManagementScreenWithSafeArea = withNavigatorSafeArea(SlotManagementScreen);
 const BookAppointmentScreenWithSafeArea = withNavigatorSafeArea(BookAppointmentScreen);
 const ServiceDetailScreenWithSafeArea = withNavigatorSafeArea(ServiceDetailScreen);
+// ✅ SÉCURITÉ: Wrapper générique ErrorBoundary pour écrans spécialisés
+const withDashboardErrorBoundary = (ScreenComponent: React.ComponentType<any>, screenName: string) => {
+  const WrappedScreen = (props: any) => (
+    <ErrorBoundary
+      fallback={
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F9FAFB', padding: 20 }}>
+          <Text style={{ fontSize: 16, fontWeight: '600', color: '#1F2937', marginBottom: 8, textAlign: 'center' }}>
+            Impossible de charger {screenName}
+          </Text>
+          <Text style={{ fontSize: 13, color: '#6B7280', marginBottom: 20, textAlign: 'center' }}>
+            Une erreur est survenue. Veuillez réessayer.
+          </Text>
+          <TouchableOpacity
+            style={{ backgroundColor: modernColors.primary, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 8 }}
+            onPress={() => (props.navigation as any)?.goBack?.()}
+          >
+            <Text style={{ color: '#FFF', fontWeight: '600' }}>Retour</Text>
+          </TouchableOpacity>
+        </View>
+      }
+    >
+      <ScreenComponent {...props} />
+    </ErrorBoundary>
+  );
+  WrappedScreen.displayName = `ErrorBoundary(${screenName})`;
+  return WrappedScreen;
+};
+// ✅ NOUVEAU: Dashboards partenaires manquants (avec ErrorBoundary)
+const AssuranceDashboardScreenWithSafeArea = withNavigatorSafeArea(withDashboardErrorBoundary(AssuranceDashboardScreen, 'Dashboard Assurance'));
+const SupermarketPartnerDashboardScreenWithSafeArea = withNavigatorSafeArea(withDashboardErrorBoundary(SupermarketPartnerDashboardScreen, 'Dashboard Supermarché'));
+const OrientationPartnerDashboardScreenWithSafeArea = withNavigatorSafeArea(withDashboardErrorBoundary(OrientationPartnerDashboardScreen, 'Dashboard Établissement'));
+
 // ✅ SÉCURITÉ: Wrapper VideoFeedScreen avec ErrorBoundary pour éviter les crashes
 const VideoFeedScreenWithErrorBoundary = (props: any) => (
   <ErrorBoundary
@@ -1123,6 +1158,10 @@ const SecondaryStack = () => {
       <Stack.Screen name="HotelBookingPayment" component={HotelBookingPaymentScreenWithSafeArea} options={{ title: 'Paiement réservation' }} />
       <Stack.Screen name="HotelQRScanner" component={HotelQRScannerScreenWithSafeArea} options={{ title: 'Scanner QR réservation' }} />
       <Stack.Screen name="HotelReservationQR" component={HotelQRScannerScreenWithSafeArea} options={{ title: 'Mon QR réservation' }} />
+      {/* ✅ NOUVEAU: Dashboards partenaires manquants */}
+      <Stack.Screen name="AssuranceDashboard" component={AssuranceDashboardScreenWithSafeArea} options={{ title: 'Dashboard Assurance' }} />
+      <Stack.Screen name="SupermarketPartnerDashboard" component={SupermarketPartnerDashboardScreenWithSafeArea} options={{ title: 'Dashboard Supermarché' }} />
+      <Stack.Screen name="OrientationPartnerDashboard" component={OrientationPartnerDashboardScreenWithSafeArea} options={{ title: 'Dashboard Établissement' }} />
       <Stack.Screen name="HopitalList" component={HopitalListScreenWithSafeArea} />
       <Stack.Screen name="HopitalDetails" component={HopitalDetailsScreenWithSafeArea} />
       <Stack.Screen name="HospitalAIRecommendations" component={HospitalAIRecommendationsScreenWithSafeArea} options={{ title: 'Recommandations IA' }} />

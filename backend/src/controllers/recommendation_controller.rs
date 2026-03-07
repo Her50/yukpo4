@@ -25,6 +25,8 @@ pub struct GetRecommendationsQuery {
     pub session_id: Option<String>,
     pub categories: Option<String>,
     pub limit: Option<i32>,
+    pub format: Option<String>,
+    pub page: Option<i32>,
 }
 
 #[derive(Debug, Serialize)]
@@ -137,17 +139,21 @@ pub async fn get_mixed_content(
         .session_id
         .unwrap_or_else(|| format!("session_{}", chrono::Utc::now().timestamp()));
     let limit = params.limit.unwrap_or(15);
+    let format_filter = params.format.clone().unwrap_or_default().to_lowercase();
+    let _page = params.page.unwrap_or(1);
     let categories: Vec<String> = params
         .categories
         .as_ref()
         .map(|c| c.split(',').map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect())
         .unwrap_or_default();
     let categories_lower: HashSet<String> = categories.iter().map(|c| c.to_lowercase()).collect();
+    let is_video_feed = format_filter == "video";
 
     log::info!(
-        "🎯 [MixedContent] Génération feed mixte pour user_id: {} (limit: {}, categories: {:?})",
+        "🎯 [MixedContent] Génération feed mixte pour user_id: {} (limit: {}, format: {}, categories: {:?})",
         user_id,
         limit,
+        format_filter,
         categories
     );
 
@@ -254,12 +260,87 @@ pub async fn get_mixed_content(
         entry.saves = saves;
     }
 
+    // ✅ CORRIGÉ 2026-03-07: Récupérer les service_ids pour charger les médias depuis la table media
+    let service_ids: Vec<i32> =
+        organic_rows.iter().filter_map(|row| row.get::<Option<i32>, _>("id")).collect();
+
+    // ✅ CORRIGÉ 2026-03-07: Charger les vidéos/images depuis la table media (pas seulement le JSONB)
+    let mut media_map: HashMap<i32, Vec<String>> = HashMap::new(); // service_id -> global videos
+    let mut product_media_map: HashMap<(i32, i32), Vec<String>> = HashMap::new(); // (service_id, product_index) -> videos
+    let mut media_images_map: HashMap<i32, Vec<String>> = HashMap::new(); // service_id -> global images
+    let mut product_images_map: HashMap<(i32, i32), Vec<String>> = HashMap::new(); // (service_id, product_index) -> images
+
+    if !service_ids.is_empty() {
+        let media_rows = sqlx::query(
+            r#"
+            SELECT service_id, product_index, type, path
+            FROM media
+            WHERE service_id = ANY($1::int[])
+            AND type IN ('image', 'video')
+            AND path IS NOT NULL
+            ORDER BY service_id, COALESCE(product_index, -1), uploaded_at ASC
+            "#,
+        )
+        .bind(&service_ids)
+        .fetch_all(pool)
+        .await
+        .unwrap_or_default();
+
+        log::info!(
+            "📁 [MixedContent] {} médias trouvés dans la table media pour {} services",
+            media_rows.len(),
+            service_ids.len()
+        );
+
+        let media_storage = &state.media_storage;
+        for row in media_rows {
+            let service_id = row.get::<i32, _>("service_id");
+            let product_index: Option<i32> = row.try_get("product_index").ok().flatten();
+            let media_type = row.get::<String, _>("type");
+            let path = row.get::<String, _>("path");
+
+            // Générer l'URL (presigned si distant, public sinon)
+            let url = if path.starts_with("http://") || path.starts_with("https://") {
+                path.clone()
+            } else if media_storage.is_remote() {
+                match media_storage.generate_presigned_url(&path, 7 * 24 * 3600).await {
+                    Ok(presigned) => presigned,
+                    Err(_) => media_storage.build_public_url(&path),
+                }
+            } else {
+                media_storage.build_public_url(&path)
+            };
+
+            if let Some(prod_idx) = product_index {
+                match media_type.as_str() {
+                    "video" => {
+                        product_media_map.entry((service_id, prod_idx)).or_default().push(url)
+                    }
+                    "image" => {
+                        product_images_map.entry((service_id, prod_idx)).or_default().push(url)
+                    }
+                    _ => {}
+                }
+            } else {
+                match media_type.as_str() {
+                    "video" => media_map.entry(service_id).or_default().push(url),
+                    "image" => media_images_map.entry(service_id).or_default().push(url),
+                    _ => {}
+                }
+            }
+        }
+    }
+
     // Traiter les résultats
     let mut organic_products: Vec<serde_json::Value> = vec![];
     for row in organic_rows {
         let row_id: i32 = row.get::<Option<_>, _>("id").unwrap_or_default();
         let row_data: serde_json::Value = row.get::<Option<_>, _>("data").unwrap_or_default();
         let row_category: Option<String> = row.get::<Option<_>, _>("category");
+
+        // ✅ CORRIGÉ 2026-03-07: Récupérer les vidéos globales du service
+        let global_videos = media_map.get(&row_id).cloned().unwrap_or_default();
+        let global_images = media_images_map.get(&row_id).cloned().unwrap_or_default();
 
         if let Some(produits) = row_data.get("produits") {
             if let Some(produits_array) =
@@ -271,6 +352,27 @@ pub async fn get_mixed_content(
                         .get(&content_id)
                         .copied()
                         .or_else(|| engagement_map.get(&format!("service_{}", row_id)).copied());
+
+                    // ✅ Combiner vidéos du produit spécifique + vidéos globales du service
+                    let product_videos =
+                        product_media_map.get(&(row_id, index as i32)).cloned().unwrap_or_default();
+                    let mut all_videos = product_videos;
+                    for v in &global_videos {
+                        if !all_videos.contains(v) {
+                            all_videos.push(v.clone());
+                        }
+                    }
+                    let product_imgs = product_images_map
+                        .get(&(row_id, index as i32))
+                        .cloned()
+                        .unwrap_or_default();
+                    let mut all_images = product_imgs;
+                    for img in &global_images {
+                        if !all_images.contains(img) {
+                            all_images.push(img.clone());
+                        }
+                    }
+
                     organic_products.push(build_organic_product_json(
                         row_id,
                         &content_id,
@@ -279,6 +381,8 @@ pub async fn get_mixed_content(
                         row_category.clone(),
                         &row_data,
                         stats,
+                        &all_videos,
+                        &all_images,
                     ));
                 }
             } else if let Some(produits_array) = produits.as_array() {
@@ -288,6 +392,26 @@ pub async fn get_mixed_content(
                         .get(&content_id)
                         .copied()
                         .or_else(|| engagement_map.get(&format!("service_{}", row_id)).copied());
+
+                    let product_videos =
+                        product_media_map.get(&(row_id, index as i32)).cloned().unwrap_or_default();
+                    let mut all_videos = product_videos;
+                    for v in &global_videos {
+                        if !all_videos.contains(v) {
+                            all_videos.push(v.clone());
+                        }
+                    }
+                    let product_imgs = product_images_map
+                        .get(&(row_id, index as i32))
+                        .cloned()
+                        .unwrap_or_default();
+                    let mut all_images = product_imgs;
+                    for img in &global_images {
+                        if !all_images.contains(img) {
+                            all_images.push(img.clone());
+                        }
+                    }
+
                     organic_products.push(build_organic_product_json(
                         row_id,
                         &content_id,
@@ -296,6 +420,8 @@ pub async fn get_mixed_content(
                         row_category.clone(),
                         &row_data,
                         stats,
+                        &all_videos,
+                        &all_images,
                     ));
                 }
             }
@@ -443,14 +569,54 @@ pub async fn get_mixed_content(
         }
     }
 
+    // ✅ CORRIGÉ 2026-03-07: Filtrer par format=video si demandé
+    if is_video_feed {
+        let before = organic_products.len();
+        organic_products.retain(|item| {
+            // Garder seulement les items qui ont au moins une vidéo
+            let has_video = item
+                .get("videoUrl")
+                .and_then(|v| v.as_str())
+                .map(|s| !s.is_empty())
+                .unwrap_or(false)
+                || item
+                    .get("data")
+                    .and_then(|d| d.get("videos"))
+                    .and_then(|v| v.as_array())
+                    .map(|arr| !arr.is_empty())
+                    .unwrap_or(false);
+            has_video
+        });
+        log::info!(
+            "🎬 [MixedContent] Filtre video: {} -> {} items organiques avec vidéo",
+            before,
+            organic_products.len()
+        );
+
+        let before_ads = paid_ads.len();
+        paid_ads.retain(|ad| {
+            ad.get("data")
+                .and_then(|d| d.get("videos"))
+                .and_then(|v| v.as_array())
+                .map(|arr| !arr.is_empty())
+                .unwrap_or(false)
+        });
+        log::info!(
+            "🎬 [MixedContent] Filtre video pubs: {} -> {} publicités avec vidéo",
+            before_ads,
+            paid_ads.len()
+        );
+    }
+
     // ✅ Mélanger intelligemment selon les règles de fréquence
     let mixed = mix_content_intelligently(&paid_ads, &organic_products, &engagement_map);
 
     log::info!(
-        "✅ [MixedContent] Feed généré: {} items total ({} organiques, {} publicités)",
+        "✅ [MixedContent] Feed généré: {} items total ({} organiques, {} publicités, format: {})",
         mixed.len(),
         organic_products.len(),
-        paid_ads.len()
+        paid_ads.len(),
+        format_filter
     );
 
     Ok(Json(serde_json::json!({
@@ -535,20 +701,80 @@ fn build_organic_product_json(
     category: Option<String>,
     service_data: &serde_json::Value,
     engagement: Option<EngagementStats>,
+    media_videos: &[String],
+    media_images: &[String],
 ) -> serde_json::Value {
+    // ✅ CORRIGÉ 2026-03-07: Utiliser les vidéos/images de la table media en priorité
+    // Fallback sur le JSONB si la table media est vide
+    let videos_json = if !media_videos.is_empty() {
+        serde_json::json!(media_videos)
+    } else {
+        // Extraire depuis JSONB en gérant le format {valeur: [...]}
+        let jsonb_videos = product.get("videos");
+        match jsonb_videos {
+            Some(v) if v.is_array() => v.clone(),
+            Some(v) if v.is_object() => v.get("valeur").cloned().unwrap_or(serde_json::json!([])),
+            _ => serde_json::json!([]),
+        }
+    };
+
+    let images_json = if !media_images.is_empty() {
+        serde_json::json!(media_images)
+    } else {
+        let jsonb_images = product.get("images");
+        match jsonb_images {
+            Some(v) if v.is_array() => v.clone(),
+            Some(v) if v.is_object() => v.get("valeur").cloned().unwrap_or(serde_json::json!([])),
+            _ => serde_json::json!([]),
+        }
+    };
+
+    // Extraire la première vidéo pour le champ videoUrl (utilisé par le mobile)
+    let first_video = if let Some(arr) = videos_json.as_array() {
+        arr.first().and_then(|v| v.as_str()).map(|s| s.to_string())
+    } else {
+        None
+    };
+
+    // Extraire le thumbnail (première image)
+    let thumbnail = if let Some(arr) = images_json.as_array() {
+        arr.first().and_then(|v| v.as_str()).map(|s| s.to_string())
+    } else {
+        None
+    };
+
+    // Extraire le nom du vendeur depuis service_data
+    let seller_name = service_data
+        .get("titre_service")
+        .and_then(|v| {
+            v.as_str()
+                .map(|s| s.to_string())
+                .or_else(|| v.get("valeur").and_then(|vv| vv.as_str()).map(|s| s.to_string()))
+        })
+        .unwrap_or_default();
+
     let mut value = serde_json::json!({
         "type": "organic",
         "is_paid": false,
         "content_id": content_id,
+        "service_id": service_id,
+        "product_index": product_index,
+        "seller_name": seller_name,
+        "videoUrl": first_video,
+        "thumbnail": thumbnail,
         "data": {
             "id": format!("{}_{}", service_id, product_index),
             "service_id": service_id,
+            "product_index": product_index,
             "nom": product.get("nom").and_then(|v| v.as_str()).unwrap_or("Produit"),
             "description": product.get("description").and_then(|v| v.as_str()).unwrap_or(""),
             "prix": product.get("prix").and_then(|v| v.as_str()).unwrap_or("0"),
             "devise": product.get("devise").and_then(|v| v.as_str()).unwrap_or("XAF"),
-            "images": product.get("images").cloned().unwrap_or(serde_json::json!([])),
-            "videos": product.get("videos").cloned().unwrap_or(serde_json::json!([])),
+            "images": images_json,
+            "videos": videos_json,
+            "videoUrl": first_video,
+            "thumbnail": thumbnail,
+            "seller_name": seller_name,
             "category": category,
             "service": {
                 "id": service_id,
