@@ -49,7 +49,7 @@ const safeUseEffect = (
         if (typeof cleanup === 'function') {
             return () => {
                 try {
-                    cleanup();
+                    (cleanup as () => void)();
                 } catch (error) {
                     console.error('[safeUseEffect] ⚠️ Erreur dans cleanup:', error);
                 }

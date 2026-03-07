@@ -6,7 +6,7 @@ use axum::{
 use std::sync::Arc;
 
 use crate::controllers::health_structure_controller::{
-    create_health_structure, get_all_health_structures, get_health_structures,
+    create_health_structure, get_health_structures,
 };
 
 /// Routes pour la gestion des structures de santé (autocomplete)
