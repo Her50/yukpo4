@@ -278,92 +278,43 @@ export const PriceVariantSelector: React.FC<PriceVariantSelectorProps> = ({
                     </View>
                     <SafeIcon name="plus" size={18} color={modernColors.primary} />
                 </TouchableOpacity>
+            )}
 
-                        <View style={styles.modalityInfo}>
-                            <View style={styles.modalityHeader}>
-                                <Text style={styles.modalityValue}>{modality.valeur}</Text>
-                                {modality.stock !== undefined && (
-                                    <View style={styles.stockBadge}>
-                                        <Text style={styles.stockBadgeText}>Stock: {modality.stock}</Text>
-                                    </View>
-                                )}
-                            </View>
-                            <Text style={styles.modalityPrice}>
-                                {formatPrice(modality.prix, modality.devise)}
-                            </Text>
-                        </View>
-
-                        <View style={styles.modalityActions}>
-                            <TouchableOpacity
-                                style={styles.actionButton}
-                                onPress={() => openEditModal(modality, index)}
-                            >
-                                <SafeIcon name="edit-2" size={16} color={modernColors.primary} />
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={[styles.actionButton, styles.deleteActionButton]}
-                                onPress={() => removeModality(index)}
-                            >
-                                <SafeIcon name="trash-2" size={16} color="#FFFFFF" />
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-    ))
-}
-            </View >
-        ) : showEmptyStateDetails ? (
-    <View style={styles.emptyState}>
-        <View style={styles.emptyStateIcon}>
-            <SafeIcon name="tag" size={32} color={modernColors.primary} />
-        </View>
-        <Text style={styles.emptyStateTitle}>Aucune variante définie</Text>
-        <Text style={styles.emptyStateText}>
-            Appuyez sur « Ajouter » pour définir une variante (ex: Taille M) et le prix correspondant.
-        </Text>
-    </View>
-) : (
-    <TouchableOpacity style={styles.compactEmptyState} onPress={openAddModal}>
-        <SafeIcon name="layers" size={18} color={modernColors.primary} />
-        <View style={{ flex: 1 }}>
-            <Text style={styles.compactEmptyTitle}>Ajouter une variante</Text>
-            <Text style={styles.compactEmptyText}>Ex: Taille M, Formule VIP, Option Livraison...</Text>
-        </View>
-        <SafeIcon name="plus" size={18} color={modernColors.primary} />
-    </TouchableOpacity>
-)}
-
-{/* Modal d'édition */ }
-        <Modal
-            visible={showModal}
-            transparent={true}
-            animationType="slide"
-            onRequestClose={() => {
-                setShowModal(false);
-                setEditingModality(null);
-                setEditIndex(null);
-            }}
-        >
-            <KeyboardAvoidingView 
-                style={styles.modalOverlay}
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+            {/* Modal d'édition */}
+            <Modal
+                visible={showModal}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={() => setShowModal(false)}
             >
-                <View style={styles.modalContent}>
-                    <View style={styles.modalHeader}>
-                        <Text style={styles.modalTitle}>
-                            {editingModality ? 'Modifier une modalité' : 'Ajouter une modalité'}
-                        </Text>
-                        <TouchableOpacity
-                            style={styles.closeButton}
-                            onPress={() => {
-                                setShowModal(false);
-                                setEditingModality(null);
-                                setEditIndex(null);
-                            }}
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>
+                                {editIndex !== null ? 'Modifier' : 'Ajouter'} une modalité
+                            </Text>
+                            <TouchableOpacity
+                                style={styles.closeButton}
+                                onPress={() => {
+                                    setShowModal(false);
+                                    setEditingModality(null);
+                                    setEditIndex(null);
+                                }}
+                            >
+                                <SafeIcon name="x" size={20} color={modernColors.text} />
+                            </TouchableOpacity>
+                        </View>
+
+                        <ScrollView 
+                            style={styles.modalBody} 
+                            contentContainerStyle={styles.modalBodyContent}
+                            showsVerticalScrollIndicator={true}
+                            keyboardShouldPersistTaps="handled"
                         >
-                            <SafeIcon name="x" size={20} color={modernColors.text} />
-                        </TouchableOpacity>
-                    </View>
+                            {/* Valeur */}
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.inputLabel}>
+                                    Valeur {resolvedVariable ? `(${resolvedVariable})` : ''} <Text style={styles.required}>*</Text>
                                 </Text>
                                 <TextInput
                                     style={styles.input}
@@ -516,10 +467,10 @@ export const PriceVariantSelector: React.FC<PriceVariantSelectorProps> = ({
                                 <Text style={styles.saveButtonText}>Enregistrer</Text>
                             </TouchableOpacity>
                         </View>
-                    </View >
-                </View >
-            </Modal >
-        </View >
+                    </View>
+                </View>
+            </Modal>
+        </View>
     );
 };
 
@@ -703,16 +654,14 @@ const styles = StyleSheet.create({
     modalOverlay: {
         flex: 1,
         backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        justifyContent: 'center', // ✅ CHANGÉ: Centrer au lieu de flex-end pour éviter que le clavier masque
-        paddingHorizontal: 20,
+        justifyContent: 'flex-end',
     },
     modalContent: {
         backgroundColor: '#FFFFFF',
-        borderRadius: 20,
-        maxHeight: '85%', // ✅ RÉDUIT: De 90% à 85% pour laisser plus d'espace
-        minHeight: '40%', // ✅ RÉDUIT: De 50% à 40% pour plus de flexibilité
-        width: '100%',
-        maxWidth: 500, // ✅ AJOUTÉ: Limiter la largeur sur grands écrans
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        maxHeight: '90%',
+        minHeight: '50%',
     },
     modalHeader: {
         flexDirection: 'row',
@@ -732,12 +681,10 @@ const styles = StyleSheet.create({
     },
     modalBody: {
         flex: 1,
-        maxHeight: 400, // ✅ AJOUTÉ: Limiter la hauteur pour éviter que le clavier masque
     },
     modalBodyContent: {
         padding: 16,
-        paddingBottom: 40, // ✅ AUGMENTÉ: De 32 à 40 pour plus d'espace avec le clavier
-        flexGrow: 1, // ✅ AJOUTÉ: Permettre au contenu de s'étendre
+        paddingBottom: 32, // ✅ CORRIGÉ: Ajouter du padding en bas pour éviter que les champs soient coupés
     },
     inputGroup: {
         marginBottom: 20,
@@ -753,11 +700,10 @@ const styles = StyleSheet.create({
         borderColor: modernColors.border,
         borderRadius: 8,
         paddingHorizontal: 12,
-        paddingVertical: 12, // ✅ AUGMENTÉ: De 10 à 12 pour plus d'espace de toucher
-        fontSize: 16, // ✅ AUGMENTÉ: De 14 à 16 pour meilleure lisibilité avec clavier
+        paddingVertical: 10,
+        fontSize: 14,
         color: modernColors.text,
         backgroundColor: '#FFFFFF',
-        minHeight: 48, // ✅ AJOUTÉ: Hauteur minimale pour éviter les problèmes de clavier
     },
     inputHint: {
         fontSize: 12,
