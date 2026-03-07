@@ -1,9 +1,9 @@
 // ✅ NOUVEAU: Prévisualisation temps réel des vidéos avec WebSocket et streaming
 
+import { ResizeMode, Video } from 'expo-av';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
-    Alert,
     Image,
     PanResponder,
     StyleSheet,
@@ -11,10 +11,9 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import { Video, ResizeMode } from 'expo-av';
-import { SafeIcon } from './SafeIcon';
-import { modernColors } from '../theme/modernTheme';
 import { apiGet } from '../services/api';
+import { modernColors } from '../theme/modernTheme';
+import { SafeIcon } from './SafeIcon';
 
 interface RealTimeVideoPreviewProps {
     videoUrl: string;
@@ -82,16 +81,16 @@ export const RealTimeVideoPreview: React.FC<RealTimeVideoPreviewProps> = ({
         try {
             // Charger les métadonnées de la vidéo
             const metadata = await apiGet(`/video/metadata?url=${encodeURIComponent(videoUrl)}`);
-            
+
             if (metadata.success && metadata.data) {
                 setDuration(metadata.data.duration || 0);
-                
+
                 // Générer les frames de preview
                 await generatePreviewFrames(metadata.data.duration || 0);
-                
+
                 // Charger les marqueurs de timeline
                 await loadTimelineMarkers();
-                
+
                 onPreviewReady?.(videoUrl);
             } else {
                 throw new Error(metadata.error || 'Erreur chargement métadonnées');
@@ -107,10 +106,10 @@ export const RealTimeVideoPreview: React.FC<RealTimeVideoPreviewProps> = ({
 
     const generatePreviewFrames = useCallback(async (videoDuration: number) => {
         setIsGeneratingPreview(true);
-        
+
         try {
             const response = await apiGet(`/video/preview-frames?url=${encodeURIComponent(videoUrl)}&duration=${videoDuration}`);
-            
+
             if (response.success && response.data?.frames) {
                 setPreviewFrames(response.data.frames);
             }
@@ -125,7 +124,7 @@ export const RealTimeVideoPreview: React.FC<RealTimeVideoPreviewProps> = ({
     const loadTimelineMarkers = useCallback(async () => {
         try {
             const response = await apiGet(`/video/timeline-markers?url=${encodeURIComponent(videoUrl)}`);
-            
+
             if (response.success && response.data?.markers) {
                 setTimelineMarkers(response.data.markers);
             }
@@ -208,7 +207,7 @@ export const RealTimeVideoPreview: React.FC<RealTimeVideoPreviewProps> = ({
         },
         onPanResponderMove: (evt, gestureState) => {
             const { dx, dy } = gestureState;
-            
+
             // Zoom avec deux doigts (pinch)
             if (evt.nativeEvent.changedTouches.length === 2) {
                 const distance = Math.sqrt(dx * dx + dy * dy);
@@ -295,7 +294,7 @@ export const RealTimeVideoPreview: React.FC<RealTimeVideoPreviewProps> = ({
                     onLoad={handleLoad}
                     onError={handleError}
                 />
-                
+
                 {/* Contrôles de zoom */}
                 {zoomLevel !== 1.0 && (
                     <TouchableOpacity style={styles.resetZoomButton} onPress={resetZoom}>
@@ -310,7 +309,7 @@ export const RealTimeVideoPreview: React.FC<RealTimeVideoPreviewProps> = ({
                     {/* Barre de progression */}
                     <View style={styles.progressBar}>
                         <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
-                        
+
                         {/* Marqueurs de timeline */}
                         {timelineMarkers.map((marker, index) => (
                             <TouchableOpacity
@@ -368,15 +367,15 @@ export const RealTimeVideoPreview: React.FC<RealTimeVideoPreviewProps> = ({
                         <TouchableOpacity style={styles.controlButton} onPress={() => seekTo(0)}>
                             <SafeIcon name="skip-back" size={24} color={modernColors.text} />
                         </TouchableOpacity>
-                        
+
                         <TouchableOpacity style={styles.playButton} onPress={togglePlayPause}>
-                            <SafeIcon 
-                                name={isPlaying ? "pause" : "play"} 
-                                size={32} 
-                                color="white" 
+                            <SafeIcon
+                                name={isPlaying ? "pause" : "play"}
+                                size={32}
+                                color="white"
                             />
                         </TouchableOpacity>
-                        
+
                         <TouchableOpacity style={styles.controlButton} onPress={() => seekTo(duration)}>
                             <SafeIcon name="skip-forward" size={24} color={modernColors.text} />
                         </TouchableOpacity>
@@ -408,26 +407,26 @@ export const RealTimeVideoPreview: React.FC<RealTimeVideoPreviewProps> = ({
                         </View>
 
                         {/* Volume */}
-                        <TouchableOpacity 
-                            style={styles.volumeButton} 
+                        <TouchableOpacity
+                            style={styles.volumeButton}
                             onPress={() => changeVolume(volume === 0 ? 1 : 0)}
                         >
-                            <SafeIcon 
-                                name={volume === 0 ? "volume-x" : "volume-2"} 
-                                size={20} 
-                                color={modernColors.text} 
+                            <SafeIcon
+                                name={volume === 0 ? "volume-x" : "volume-2"}
+                                size={20}
+                                color={modernColors.text}
                             />
                         </TouchableOpacity>
 
                         {/* Toggle timeline */}
-                        <TouchableOpacity 
-                            style={styles.toggleButton} 
+                        <TouchableOpacity
+                            style={styles.toggleButton}
                             onPress={() => setShowTimeline(!showTimeline)}
                         >
-                            <SafeIcon 
-                                name={showTimeline ? "eye-off" : "eye"} 
-                                size={20} 
-                                color={modernColors.text} 
+                            <SafeIcon
+                                name={showTimeline ? "eye-off" : "eye"}
+                                size={20}
+                                color={modernColors.text}
                             />
                         </TouchableOpacity>
                     </View>
@@ -559,7 +558,7 @@ const styles = StyleSheet.create({
         borderWidth: 2,
         borderColor: 'transparent',
     },
-    previewFrameSelected .frameThumbnail: {
+    frameThumbnailSelected: {
         borderColor: modernColors.primary,
     },
     frameTime: {

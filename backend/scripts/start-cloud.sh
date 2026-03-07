@@ -13,9 +13,18 @@ else
 fi
 
 # Vérifier les variables d'environnement critiques
-if [ -z "$DATABASE_URL" ]; then
-    echo "❌ ERREUR: DATABASE_URL non définie"
-    exit 1
+# ✅ CORRIGÉ 2026-03-07: Pour Cloud Run, DATABASE_URL est un secret, pas une variable d'environnement
+if [ "$CLOUD_RUN" = "true" ]; then
+    echo "🚀 Cloud Run détecté - DATABASE_URL sera lu depuis les secrets Cloud Run"
+    if [ -z "$DATABASE_URL" ]; then
+        echo "ℹ️ DATABASE_URL non défini comme variable (normal pour Cloud Run - sera lu depuis le secret)"
+    fi
+else
+    # Pour les autres environnements (AWS, local), DATABASE_URL doit être une variable
+    if [ -z "$DATABASE_URL" ]; then
+        echo "❌ ERREUR: DATABASE_URL non définie"
+        exit 1
+    fi
 fi
 
 # Variables d'environnement avec valeurs par défaut pour AWS
@@ -30,10 +39,41 @@ export DB_POOL_SIZE=${DB_POOL_SIZE:-100}
 export DB_POOL_MIN_SIZE=${DB_POOL_MIN_SIZE:-5}  # ✅ Optimisé: Réduit de 20 à 5 pour démarrage plus rapide
 export DB_ACQUIRE_TIMEOUT_SECS=${DB_ACQUIRE_TIMEOUT_SECS:-30}
 
-# ✅ CORRIGÉ 2026-02-15: Pour Cloud Run, sauter la vérification DB (non-bloquante)
-if [ "$CLOUD_RUN" != "true" ]; then
-    # Vérifier la connectivité à la base de données (AWS RDS)
+# ✅ CORRIGÉ 2026-03-07: Pour Cloud Run, sauter la vérification DB (non-bloquante)
+if [ "$CLOUD_RUN" = "true" ]; then
+    echo "🚀 Cloud Run: Vérification DB sautée (connexion via secret Cloud Run)"
+elif [ -n "$AWS_REGION" ] || [ -n "$ECS_CONTAINER_METADATA_URI" ]; then
     echo "🔍 Vérification de la connectivité à la base de données AWS RDS..."
+    MAX_RETRIES=30
+    RETRY_COUNT=0
+
+    # Extraire les informations de connexion de DATABASE_URL
+    DB_HOST=$(echo $DATABASE_URL | sed -n 's/.*@\([^:]*\):.*/\1/p')
+    DB_PORT=$(echo $DATABASE_URL | sed -n 's/.*:\([0-9]*\)\/.*/\1/p' || echo "5432")
+
+    if [ -z "$DB_HOST" ]; then
+        echo "⚠️ Format de DATABASE_URL non reconnu ou connexion directe détecté"
+        echo "   L'application utilisera connect_lazy pour connexion non-bloquante"
+    else
+        until pg_isready -h "$DB_HOST" -p "$DB_PORT" 2>/dev/null || [ $RETRY_COUNT -ge $MAX_RETRIES ]; do
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+            echo "⏳ En attente de la base de données ($DB_HOST:$DB_PORT)... (tentative $RETRY_COUNT/$MAX_RETRIES)"
+            sleep 2
+        done
+    fi
+
+    if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
+        echo "❌ ERREUR: Impossible de se connecter à la base de données après $MAX_RETRIES tentatives"
+        echo "   DB_HOST: ${DB_HOST:-non défini}"
+        echo "   DB_PORT: ${DB_PORT:-non défini}"
+        echo "   DATABASE_URL: ${DATABASE_URL:0:50}... (tronqué pour sécurité)"
+        exit 1
+    fi
+
+    echo "✅ Base de données AWS RDS accessible"
+else
+    # Environnement local ou autre
+    echo "🔍 Vérification de la connectivité à la base de données..."
     MAX_RETRIES=30
     RETRY_COUNT=0
 
@@ -68,9 +108,7 @@ if [ "$CLOUD_RUN" != "true" ]; then
         exit 1
     fi
 
-    echo "✅ Base de données AWS RDS accessible"
-else
-    echo "🚀 Cloud Run: Vérification DB sautée (connexion non-bloquante via connect_lazy)"
+    echo "✅ Base de données accessible"
 fi
 
 # 🛠️ S'assurer que la base applicative existe
@@ -78,58 +116,65 @@ fi
 # On essaie de créer la DB automatiquement en se connectant à la DB "postgres".
 # Désactiver set -e temporairement pour cette section (la vérification peut échouer sans être critique)
 set +e
-DB_NAME=$(echo "$DATABASE_URL" | sed -n 's#.*/\([^/?]*\).*#\1#p')
-if [ -n "$DB_NAME" ] && [ "$DB_NAME" != "postgres" ]; then
-    echo "🔍 Vérification de l'existence de la base PostgreSQL '$DB_NAME'..."
-    ADMIN_DB_URL=$(echo "$DATABASE_URL" | sed -E 's#/(.*)$#/postgres#')
-    if command -v psql >/dev/null 2>&1; then
-        # ✅ AMÉLIORATION: Tester directement la connexion à la base au lieu de pg_database
-        # Cela évite les problèmes de permissions sur les vues système
-        echo "   Test de connexion directe à la base '$DB_NAME'..."
-        DB_CONNECT_TEST=$(psql "$DATABASE_URL" -c "SELECT 1;" 2>&1)
-        DB_CONNECT_SUCCESS=$?
-        
-        if [ $DB_CONNECT_SUCCESS -eq 0 ]; then
-            echo "✅ Base '$DB_NAME' existe et est accessible"
-        else
-            # Si la connexion échoue, vérifier si c'est une erreur de "base inexistante" ou autre
-            if echo "$DB_CONNECT_TEST" | grep -qi "database.*does not exist\|database.*not found\|FATAL.*database"; then
-                echo "⚠️ Base '$DB_NAME' inexistante, tentative de création..."
-                # Tenter de créer la base via la base 'postgres'
-                if psql "$ADMIN_DB_URL" -v ON_ERROR_STOP=1 -c "CREATE DATABASE \"${DB_NAME}\"" >/dev/null 2>&1; then
-                    echo "✅ Base '$DB_NAME' créée avec succès"
+
+# ✅ CORRIGÉ 2026-03-07: Pour Cloud Run, sauter la vérification de création de DB
+if [ "$CLOUD_RUN" = "true" ]; then
+    echo "🚀 Cloud Run: Vérification de l'existence de la base sautée (gérée par Cloud SQL)"
+else
+    DB_NAME=$(echo "$DATABASE_URL" | sed -n 's#.*/\([^/?]*\).*#\1#p')
+    if [ -n "$DB_NAME" ] && [ "$DB_NAME" != "postgres" ]; then
+        echo "🔍 Vérification de l'existence de la base PostgreSQL '$DB_NAME'..."
+        ADMIN_DB_URL=$(echo "$DATABASE_URL" | sed -E 's#/(.*)$#/postgres#')
+        if command -v psql >/dev/null 2>&1; then
+            # ✅ AMÉLIORATION: Tester directement la connexion à la base au lieu de pg_database
+            # Cela évite les problèmes de permissions sur les vues système
+            echo "   Test de connexion directe à la base '$DB_NAME'..."
+            DB_CONNECT_TEST=$(psql "$DATABASE_URL" -c "SELECT 1;" 2>&1)
+            DB_CONNECT_SUCCESS=$?
+            
+            if [ $DB_CONNECT_SUCCESS -eq 0 ]; then
+                echo "✅ Base '$DB_NAME' existe et est accessible"
+            else
+                # Si la connexion échoue, vérifier si c'est une erreur de "base inexistante" ou autre
+                if echo "$DB_CONNECT_TEST" | grep -qi "database.*does not exist\|database.*not found\|FATAL.*database"; then
+                    echo "⚠️ Base '$DB_NAME' inexistante, tentative de création..."
+                    # Tenter de créer la base via la base 'postgres'
+                    if psql "$ADMIN_DB_URL" -v ON_ERROR_STOP=1 -c "CREATE DATABASE \"${DB_NAME}\"" >/dev/null 2>&1; then
+                        echo "✅ Base '$DB_NAME' créée avec succès"
+                    else
+                        echo "⚠️ WARNING: Impossible de créer la base '$DB_NAME' automatiquement (permissions insuffisantes)"
+                        echo "   Sur AWS RDS, l'utilisateur n'a pas les permissions SUPERUSER nécessaires"
+                        echo ""
+                        echo "   La base devrait être créée automatiquement par Terraform via le paramètre db_name"
+                        echo "   Si elle n'existe toujours pas, créez-la manuellement via AWS RDS Query Editor"
+                        echo ""
+                        echo "   Command SQL: CREATE DATABASE \"${DB_NAME}\";"
+                        echo ""
+                        echo "   Continuons quand même - l'application tentera de se connecter directement"
+                        echo "   Si la base n'existe pas, l'application affichera une erreur de connexion claire"
+                    fi
                 else
-                    echo "⚠️ WARNING: Impossible de créer la base '$DB_NAME' automatiquement (permissions insuffisantes)"
-                    echo "   Sur AWS RDS, l'utilisateur n'a pas les permissions SUPERUSER nécessaires"
+                    # Autre type d'erreur (permissions, réseau, etc.)
+                    echo "⚠️ WARNING: Erreur lors de la vérification de la base '$DB_NAME':"
+                    echo "   $(echo "$DB_CONNECT_TEST" | head -1)"
                     echo ""
-                    echo "   La base devrait être créée automatiquement par Terraform via le paramètre db_name"
-                    echo "   Si elle n'existe toujours pas, créez-la manuellement via AWS RDS Query Editor"
-                    echo ""
-                    echo "   Command SQL: CREATE DATABASE \"${DB_NAME}\";"
+                    echo "   Cela peut être dû à:"
+                    echo "   - Un problème de permissions"
+                    echo "   - Un problème de réseau"
+                    echo "   - La base existe mais l'utilisateur n'a pas les permissions nécessaires"
                     echo ""
                     echo "   Continuons quand même - l'application tentera de se connecter directement"
                     echo "   Si la base n'existe pas, l'application affichera une erreur de connexion claire"
                 fi
-            else
-                # Autre type d'erreur (permissions, réseau, etc.)
-                echo "⚠️ WARNING: Erreur lors de la vérification de la base '$DB_NAME':"
-                echo "   $(echo "$DB_CONNECT_TEST" | head -1)"
-                echo ""
-                echo "   Cela peut être dû à:"
-                echo "   - Un problème de permissions"
-                echo "   - Un problème de réseau"
-                echo "   - La base existe mais l'utilisateur n'a pas les permissions nécessaires"
-                echo ""
-                echo "   Continuons quand même - l'application tentera de se connecter directement"
-                echo "   Si la base n'existe pas, l'application affichera une erreur de connexion claire"
             fi
+        else
+            echo "⚠️ WARNING: psql non disponible, impossible de vérifier/créer la base '$DB_NAME'"
+            echo "   (postgresql-client doit être installé dans l'image)"
+            echo "   Continuons quand même - l'application tentera de se connecter directement"
         fi
-    else
-        echo "⚠️ WARNING: psql non disponible, impossible de vérifier/créer la base '$DB_NAME'"
-        echo "   (postgresql-client doit être installé dans l'image)"
-        echo "   Continuons quand même - l'application tentera de se connecter directement"
     fi
 fi
+
 # Réactiver set -e pour le reste du script
 set -e
 
@@ -267,9 +312,19 @@ echo "   Port: $PORT"
 echo "   Host: $HOST"
 echo "   Log Level: $RUST_LOG"
 echo "   APP_ENV: $APP_ENV"
-echo "   DATABASE_URL: ${DATABASE_URL:0:30}... (présent)"
-echo "   REDIS_URL: ${REDIS_URL:+présent}${REDIS_URL:-non défini}"
-echo "   JWT_SECRET: ${JWT_SECRET:+présent}${JWT_SECRET:-non défini}"
+
+# ✅ CORRIGÉ 2026-03-07: Affichage correct des variables pour Cloud Run
+if [ "$CLOUD_RUN" = "true" ]; then
+    echo "   DATABASE_URL: [secret Cloud Run]"
+    echo "   REDIS_URL: ${REDIS_URL:+[secret Cloud Run]}${REDIS_URL:-non défini}"
+    echo "   MONGODB_URL: ${MONGODB_URL:+[secret Cloud Run]}${MONGODB_URL:-non défini}"
+    echo "   JWT_SECRET: [secret Cloud Run]"
+else
+    echo "   DATABASE_URL: ${DATABASE_URL:0:30}... (présent)"
+    echo "   REDIS_URL: ${REDIS_URL:+présent}${REDIS_URL:-non défini}"
+    echo "   MONGODB_URL: ${MONGODB_URL:+présent}${MONGODB_URL:-non défini}"
+    echo "   JWT_SECRET: ${JWT_SECRET:+présent}${JWT_SECRET:-non défini}"
+fi
 
 # Les vérifications ont été déplacées AVANT Redis (voir plus haut)
 echo "🚀 Lancement de l'application backend..."
@@ -277,10 +332,19 @@ echo "   Commande: ./yukpomnang_backend"
 echo "   Les logs [MAIN] devraient apparaître ci-dessous..."
 echo ""
 echo "🔍 Point de contrôle: Avant lancement de l'exécutable"
-echo "   DATABASE_URL: ${DATABASE_URL:0:50}..."
-echo "   REDIS_URL: ${REDIS_URL:+présent (${#REDIS_URL} caractères)}${REDIS_URL:-non défini}"
-echo "   MONGODB_URL: ${MONGODB_URL:+présent (${#MONGODB_URL} caractères)}${MONGODB_URL:-non défini}"
-echo "   JWT_SECRET: ${JWT_SECRET:+présent}${JWT_SECRET:-non défini}"
+
+# ✅ CORRIGÉ 2026-03-07: Affichage correct pour Cloud Run
+if [ "$CLOUD_RUN" = "true" ]; then
+    echo "   DATABASE_URL: [secret Cloud Run]"
+    echo "   REDIS_URL: ${REDIS_URL:+[secret Cloud Run (${#REDIS_URL} caractères)]}${REDIS_URL:-non défini}"
+    echo "   MONGODB_URL: ${MONGODB_URL:+[secret Cloud Run (${#MONGODB_URL} caractères)]}${MONGODB_URL:-non défini}"
+    echo "   JWT_SECRET: [secret Cloud Run]"
+else
+    echo "   DATABASE_URL: ${DATABASE_URL:0:50}..."
+    echo "   REDIS_URL: ${REDIS_URL:+présent (${#REDIS_URL} caractères)}${REDIS_URL:-non défini}"
+    echo "   MONGODB_URL: ${MONGODB_URL:+présent (${#MONGODB_URL} caractères)}${MONGODB_URL:-non défini}"
+    echo "   JWT_SECRET: ${JWT_SECRET:+présent}${JWT_SECRET:-non défini}"
+fi
 echo ""
 
 # Utiliser exec pour que le processus principal soit le backend
