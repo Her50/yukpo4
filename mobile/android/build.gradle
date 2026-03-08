@@ -28,10 +28,8 @@ apply plugin: "com.facebook.react.rootproject"
 allprojects {
     configurations.all {
         resolutionStrategy {
-            // Forcer react-native-webrtc à utiliser Maven Central pour org.webrtc
-            dependencySubstitution {
-                substitute module('org.webrtc:google-webrtc') with module('org.webrtc:google-webrtc:1.0.32006')
-            }
+            // Forcer org.webrtc depuis Maven Central (pas JitPack)
+            force 'org.webrtc:google-webrtc:1.0.32006'
         }
     }
 }
