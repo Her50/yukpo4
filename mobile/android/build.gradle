@@ -28,7 +28,7 @@ apply plugin: "com.facebook.react.rootproject"
 allprojects {
     configurations.all {
         resolutionStrategy {
-            force 'org.jitsi:webrtc:124.0.3'
+            force 'org.webrtc:google-webrtc:1.0.32006'
         }
     }
 }
@@ -51,6 +51,8 @@ allprojects {
         maven { 
             url 'https://www.jitpack.io' 
             content {
+                // Exclure WebRTC de JitPack car il retourne 522
+                exclude group: 'org.jitsi', module: 'webrtc'
                 includeGroup "org.jitsi"
             }
         }
