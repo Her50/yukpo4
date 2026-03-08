@@ -47,15 +47,8 @@ allprojects {
         google()
         mavenCentral()
         
-        // JitPack with timeout and fallback repositories
-        maven { 
-            url 'https://www.jitpack.io' 
-            content {
-                // Exclure WebRTC de JitPack car il retourne 522
-                exclude group: 'org.jitsi', module: 'webrtc'
-                includeGroup "org.jitsi"
-            }
-        }
+        // JitPack repository (timeout configuré dans gradle.properties)
+        maven { url 'https://www.jitpack.io' }
         
         // Alternative repositories for WebRTC dependencies
         maven { url 'https://oss.sonatype.org/content/repositories/snapshots' }
