@@ -28,7 +28,8 @@ apply plugin: "com.facebook.react.rootproject"
 allprojects {
     configurations.all {
         resolutionStrategy {
-            force 'org.webrtc:google-webrtc:1.0.32006'
+            // Pas de force strategy - configuration simple comme le build f7b5e2e
+            // Laisse react-native-webrtc utiliser sa version par défaut (124.0.3)
         }
     }
 }

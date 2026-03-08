@@ -150,8 +150,8 @@ dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
 
-    // WebRTC dependency - utiliser version compatible Maven Central
-    implementation('org.webrtc:google-webrtc:1.0.32006')
+    // WebRTC - utilise la version par défaut de react-native-webrtc (124.0.3)
+    // Pas de force strategy - configuration simple comme le build f7b5e2e
 
     def isGifEnabled = (findProperty('expo.gif.enabled') ?: "") == "true";
     def isWebpEnabled = (findProperty('expo.webp.enabled') ?: "") == "true";
@@ -181,7 +181,8 @@ dependencies {
 // Dependency resolution configuration
 configurations.all {
     resolutionStrategy {
-        force 'org.webrtc:google-webrtc:1.0.32006'
+        // Pas de force strategy - laisse react-native-webrtc utiliser sa version par défaut
+        // Configuration simple comme le build f7b5e2e qui a réussi
     }
 }
 
