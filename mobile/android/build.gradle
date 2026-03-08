@@ -24,6 +24,19 @@ buildscript {
 
 apply plugin: "com.facebook.react.rootproject"
 
+// Configuration globale pour les timeouts
+allprojects {
+    configurations.all {
+        resolutionStrategy {
+            eachDependency { DependencyResolveDetails details ->
+                if (details.requested.group == 'org.jitsi' && details.requested.name == 'webrtc') {
+                    details.useVersion '124.0.3'
+                }
+            }
+        }
+    }
+}
+
 allprojects {
     repositories {
         maven {
@@ -37,6 +50,18 @@ allprojects {
 
         google()
         mavenCentral()
-        maven { url 'https://www.jitpack.io' }
+        
+        // JitPack with timeout and fallback repositories
+        maven { 
+            url 'https://www.jitpack.io' 
+            content {
+                includeGroup "org.jitsi"
+            }
+        }
+        
+        // Alternative repositories for WebRTC dependencies
+        maven { url 'https://oss.sonatype.org/content/repositories/snapshots' }
+        maven { url 'https://repository.apache.org/content/repositories/releases' }
+        maven { url 'https://maven.google.com' }
     }
 }

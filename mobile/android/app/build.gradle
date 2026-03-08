@@ -150,6 +150,11 @@ dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
 
+    // Force specific WebRTC version to avoid resolution conflicts
+    implementation('org.jitsi:webrtc:124.0.3') {
+        force = true
+    }
+
     def isGifEnabled = (findProperty('expo.gif.enabled') ?: "") == "true";
     def isWebpEnabled = (findProperty('expo.webp.enabled') ?: "") == "true";
     def isWebpAnimatedEnabled = (findProperty('expo.webp.animated') ?: "") == "true";
@@ -172,6 +177,19 @@ dependencies {
         implementation("com.facebook.react:hermes-android")
     } else {
         implementation jscFlavor
+    }
+}
+
+// Dependency resolution configuration
+configurations.all {
+    resolutionStrategy {
+        force 'org.jitsi:webrtc:124.0.3'
+        eachDependency { DependencyResolveDetails details ->
+            if (details.requested.group == 'org.jitsi' && details.requested.name == 'webrtc') {
+                details.useVersion '124.0.3'
+                details.because 'Force specific WebRTC version to avoid build issues'
+            }
+        }
     }
 }
 
