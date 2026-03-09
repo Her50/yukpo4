@@ -9,7 +9,7 @@ import { CompatibilityScoreBadge } from '../../components/covoiturage/Compatibil
 import { IntelligentMatchingFilters, MatchingFilters } from '../../components/covoiturage/IntelligentMatchingFilters';
 import { apiPost } from '../../services/api';
 
-export const CovoiturageIntelligentSearchScreen: React.FC = () => {
+const CovoiturageIntelligentSearchScreen: React.FC = () => {
     const navigation = useNavigation();
     const [depart, setDepart] = useState('');
     const [destination, setDestination] = useState('');
@@ -206,4 +206,6 @@ const styles = StyleSheet.create({
         marginBottom: 4,
     },
 });
+
+export default CovoiturageIntelligentSearchScreen;
 

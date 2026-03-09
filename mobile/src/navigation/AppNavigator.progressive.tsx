@@ -1,5 +1,5 @@
-// Navigation SÉCURISÉE qui préserve la logique existante
-// Version minimaliste mais avec TOUS les écrans de la logique partnerFormMap
+// Navigation avec accès progressif aux écrans spécialisés
+// Les écrans sont ajoutés via GestionServicesSpecialisesScreen
 
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
@@ -17,7 +17,6 @@ import PartnerRegisterScreen from '../screens/auth/PartnerRegisterScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
 
 // Écrans principaux
-import ConnectionTestScreen from '../screens/ConnectionTestScreen';
 import ContactScreen from '../screens/ContactScreen';
 import HomeScreen from '../screens/HomeScreen';
 import MesInteractionsScreen from '../screens/MesInteractionsScreen';
@@ -29,16 +28,13 @@ import ProfileScreen from '../screens/ProfileScreen';
 import GestionServicesSpecialisesScreen from '../screens/specialized/GestionServicesSpecialisesScreen';
 import ServicesDashboard from '../screens/specialized/ServicesDashboard';
 
-// ✅ ÉCRANS RÉFÉRENCÉS DANS LA LOGIQUE EXISTANTE (partnerFormMap)
-import AgenceVoyageFormScreen from '../screens/specialized/AgenceVoyageFormScreen';
-import BanqueSangFormScreen from '../screens/specialized/BanqueSangFormScreen';
-import CovoiturageFormScreen from '../screens/specialized/CovoiturageFormScreen';
+// ✅ AJOUT : Écrans spécialisés les plus importants
 import HopitalFormScreen from '../screens/specialized/HopitalFormScreen';
 import ImmobilierFormScreen from '../screens/specialized/ImmobilierFormScreen';
-import LaboratoireFormScreen from '../screens/specialized/LaboratoireFormScreen';
 import PharmacieFormScreen from '../screens/specialized/PharmacieFormScreen';
 import TaxiFormScreen from '../screens/specialized/TaxiFormScreen';
-import SpecializedServicesHubScreen from '../screens/SpecializedServicesHubScreen';
+
+// ✅ AJOUT : Écrans référencés dans GestionServicesSpecialisesScreen
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -51,7 +47,7 @@ const LoadingScreen = () => (
   </View>
 );
 
-// Tab Navigator - LOGIQUE PRINCIPALE PRÉSERVÉE
+// Tab Navigator
 const MainTabNavigator = () => {
   return (
     <Tab.Navigator
@@ -97,32 +93,67 @@ const MainTabNavigator = () => {
   );
 };
 
-// Stack principal - LOGIQUE DE NAVIGATION COMPLÈTE PRÉSERVÉE
+// Stack principal avec les écrans spécialisés essentiels
 const MainStackNavigator = () => {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="MainTabs" component={MainTabNavigator} />
       <Stack.Screen name="Contact" component={ContactScreen} />
       <Stack.Screen name="Navigation" component={NavigationScreen} />
-      <Stack.Screen name="ConnectionTest" component={ConnectionTestScreen} />
       <Stack.Screen name="ServicesDashboard" component={ServicesDashboard} />
       <Stack.Screen name="GestionServicesSpecialises" component={GestionServicesSpecialisesScreen} />
 
-      {/* ✅ TOUS LES ÉCRANS DE LA LOGIQUE PARTNERFORMMAP - PRÉSERVATION COMPLÈTE */}
-      <Stack.Screen name="PharmacieForm" component={PharmacieFormScreen} options={{ title: 'Pharmacie' }} />
-      <Stack.Screen name="TaxiForm" component={TaxiFormScreen} options={{ title: 'Taxi' }} />
-      <Stack.Screen name="HopitalForm" component={HopitalFormScreen} options={{ title: 'Hôpital' }} />
-      <Stack.Screen name="ImmobilierForm" component={ImmobilierFormScreen} options={{ title: 'Immobilier' }} />
-      <Stack.Screen name="LaboratoireForm" component={LaboratoireFormScreen} options={{ title: 'Laboratoire' }} />
-      <Stack.Screen name="AgenceVoyageForm" component={AgenceVoyageFormScreen} options={{ title: 'Agence de voyage' }} />
-      <Stack.Screen name="BanqueSangForm" component={BanqueSangFormScreen} options={{ title: 'Banque de sang' }} />
-      <Stack.Screen name="CovoiturageForm" component={CovoiturageFormScreen} options={{ title: 'Covoiturage' }} />
-      <Stack.Screen name="SpecializedServicesHub" component={SpecializedServicesHubScreen} options={{ title: 'Services spécialisés' }} />
+      {/* ✅ ÉCRANS SPÉCIALISÉS ACCESSIBLES - LOGIQUE EXISTANTE PRÉSERVÉE */}
+      <Stack.Screen
+        name="PharmacieForm"
+        component={PharmacieFormScreen}
+        options={{ title: 'Pharmacie' }}
+      />
+      <Stack.Screen
+        name="TaxiForm"
+        component={TaxiFormScreen}
+        options={{ title: 'Taxi' }}
+      />
+      <Stack.Screen
+        name="HopitalForm"
+        component={HopitalFormScreen}
+        options={{ title: 'Hôpital' }}
+      />
+      <Stack.Screen
+        name="ImmobilierForm"
+        component={ImmobilierFormScreen}
+        options={{ title: 'Immobilier' }}
+      />
+      <Stack.Screen
+        name="LaboratoireForm"
+        component={LaboratoireFormScreen}
+        options={{ title: 'Laboratoire' }}
+      />
+      <Stack.Screen
+        name="AgenceVoyageForm"
+        component={AgenceVoyageFormScreen}
+        options={{ title: 'Agence de voyage' }}
+      />
+      <Stack.Screen
+        name="BanqueSangForm"
+        component={BanqueSangFormScreen}
+        options={{ title: 'Banque de sang' }}
+      />
+      <Stack.Screen
+        name="CovoiturageForm"
+        component={CovoiturageFormScreen}
+        options={{ title: 'Covoiturage' }}
+      />
+      <Stack.Screen
+        name="SpecializedServicesHub"
+        component={SpecializedServicesHubScreen}
+        options={{ title: 'Services spécialisés' }}
+      />
     </Stack.Navigator>
   );
 };
 
-// Stack auth - LOGIQUE D'AUTHENTIFICATION PRÉSERVÉE
+// Stack auth
 const AuthStackNavigator = () => {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
@@ -134,22 +165,22 @@ const AuthStackNavigator = () => {
   );
 };
 
-// App Navigator principal - LOGIQUE PRINCIPALE PRÉSERVÉE
+// App Navigator principal
 const AppNavigator = () => {
   const { user, loading } = useAuth();
 
-  console.log('[AppNavigator Sécurisé] 🚀 Démarrage - Logique préservée', { user: !!user, loading });
+  console.log('[AppNavigator Progressif] 🚀 Démarrage', { user: !!user, loading });
 
   if (loading) {
     return <LoadingScreen />;
   }
 
   if (!user) {
-    console.log('[AppNavigator Sécurisé] 📱 Mode Non-Connecté');
+    console.log('[AppNavigator Progressif] 📱 Mode Non-Connecté');
     return <AuthStackNavigator />;
   }
 
-  console.log('[AppNavigator Sécurisé] 👤 Mode Connecté - Logique complète préservée');
+  console.log('[AppNavigator Progressif] 👤 Mode Connecté');
   return (
     <LanguageProvider>
       <LocationProvider>

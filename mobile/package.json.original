@@ -19,7 +19,6 @@
     "maestro:test": "maestro test maestro/flows"
   },
   "dependencies": {
-    "@craftzdog/react-native-buffer": "^6.1.1",
     "@expo/metro-runtime": "~4.0.1",
     "@expo/vector-icons": "~14.0.4",
     "@gorhom/bottom-sheet": "^5.2.7",
@@ -77,7 +76,6 @@
     "react-dom": "18.3.1",
     "react-native": "0.76.9",
     "react-native-chart-kit": "^6.12.0",
-    "react-native-crypto": "^2.2.1",
     "react-native-fs": "^2.20.0",
     "react-native-gesture-handler": "~2.20.2",
     "react-native-get-random-values": "~1.11.0",
@@ -94,8 +92,8 @@
     "react-native-svg": "15.8.0",
     "react-native-vision-camera": "^4.0.0",
     "react-native-web": "~0.19.13",
+    "react-native-webrtc": "^124.0.3",
     "react-query": "^3.39.3",
-    "readable-stream": "^4.7.0",
     "sentry-expo": "~7.0.0"
   },
   "devDependencies": {
@@ -131,6 +129,7 @@
           "react-native-chart-kit",
           "react-native-fs",
           "react-native-keyboard-aware-scroll-view",
+          "react-native-webrtc",
           "react-native-skeleton-placeholder"
         ]
       }

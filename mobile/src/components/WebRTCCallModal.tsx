@@ -19,8 +19,19 @@ import { API_ENDPOINTS, WS_ENDPOINTS } from '../config/api.config';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
 
-// Import WebRTC - Package installé
-import { mediaDevices, MediaStream, RTCIceCandidate, RTCPeerConnection, RTCSessionDescription, RTCView } from 'react-native-webrtc';
+// Import WebRTC - TEMPORAIREMENT DÉSACTIVÉ (JitPack outage)
+// import { mediaDevices, MediaStream, RTCIceCandidate, RTCPeerConnection, RTCSessionDescription, RTCView } from 'react-native-webrtc';
+
+// Types temporaires pour éviter les erreurs TypeScript
+interface MediaStream { }
+interface RTCIceCandidate { }
+interface RTCPeerConnection { }
+interface RTCSessionDescription { }
+interface RTCView { }
+
+const mediaDevices = {
+    getUserMedia: async () => null
+};
 
 const { width, height } = Dimensions.get('window');
 

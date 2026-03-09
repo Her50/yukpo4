@@ -9,6 +9,17 @@ use std::sync::Arc;
 use crate::controllers::auth_controller::{
     bootstrap_super_admin, login_handler, oauth_login_handler, register_user,
 };
+use axum::response::Json;
+use serde_json::json;
+
+// Endpoint de test sans dépendance DB
+pub async fn test_handler() -> Result<Json<serde_json::Value>, axum::http::StatusCode> {
+    Ok(Json(json!({
+        "status": "ok",
+        "message": "Backend fonctionne sans DB",
+        "timestamp": chrono::Utc::now().to_rfc3339()
+    })))
+}
 use crate::middlewares::anti_bruteforce;
 use crate::middlewares::cors::cors_preflight_handler;
 use crate::state::AppState;
@@ -16,6 +27,9 @@ use axum::middleware;
 
 pub fn auth_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
     Router::new()
+        // ✅ TEMPORAIRE: Endpoint de test sans dépendance DB
+        .route("/auth/test", post(test_handler))
+        .route("/auth/test", options(cors_preflight_handler))
         .route(
             "/auth/login",
             post(login_handler)

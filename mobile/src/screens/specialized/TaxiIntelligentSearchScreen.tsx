@@ -12,7 +12,7 @@ import { useLocation } from '../../contexts/LocationContext';
 import { apiPost } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 
-export const TaxiIntelligentSearchScreen: React.FC = () => {
+const TaxiIntelligentSearchScreen: React.FC = () => {
     const navigation = useNavigation();
     const { location } = useLocation();
     const [lat, setLat] = useState<number | null>(location?.coords?.latitude || null);
@@ -328,4 +328,6 @@ const styles = StyleSheet.create({
         marginBottom: 4,
     },
 });
+
+export default TaxiIntelligentSearchScreen;
 

@@ -167,8 +167,6 @@ module.exports = {
                 }
             ],
             // ✅ RETIRÉ: withExpoModuleGradlePlugin - redondant car settings.gradle gère déjà l'inclusion d'expo-modules-core/android
-            // ✅ Ajout du plugin WebRTC personnalisé (remplace @config-plugins/react-native-webrtc qui requiert SDK 51)
-            require('./plugins/withWebRTC'),
             "expo-asset",
             "expo-localization",
             "expo-location",

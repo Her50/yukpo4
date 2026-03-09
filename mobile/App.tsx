@@ -1,3 +1,6 @@
+// ✅ CRITIQUE: Polyfills pour React Native/Expo - DOIT être en premier
+import './polyfills';
+
 // ✅ CRITIQUE: PATCH REACT DOIT ÊTRE IMPORTÉ EN PREMIER AVANT TOUT
 // Utiliser require pour charger le patch AVANT React
 const { patchReactUseEffect } = require('./src/utils/reactPatch');
