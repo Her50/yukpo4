@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
+    Clipboard,
     Linking,
     Modal,
     ScrollView,
@@ -17,7 +18,7 @@ import SafeIcon from '../../components/SafeIcon';
 import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useAuth } from '../../contexts/AuthContext';
-import { apiGet, apiPost } from '../../services/api';
+import { apiDelete, apiGet, apiPost } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 import { isAdminUser } from '../../utils/roleHelpers';
 
@@ -52,6 +53,9 @@ const ExternalProvidersAdminScreen: React.FC = () => {
         contact_phone: '',
         contact_email: '',
     });
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
+    const [createdProvider, setCreatedProvider] = useState<ExternalProvider | null>(null);
+    const [copiedField, setCopiedField] = useState<string | null>(null);
 
     useEffect(() => {
         if (!user || !isAdminUser(user)) {
@@ -98,19 +102,10 @@ const ExternalProvidersAdminScreen: React.FC = () => {
                 setCreateForm({ provider_name: '', contact_phone: '', contact_email: '' });
                 loadProviders();
 
-                // Proposer d'envoyer l'API key
+                // Ouvrir le modal de succès avec les identifiants et options de partage
                 if (provider) {
-                    Alert.alert(
-                        'Prestataire créé',
-                        `${provider.provider_name} a été créé avec succès.\n\nVoulez-vous partager ses identifiants ?`,
-                        [
-                            { text: 'Plus tard', style: 'cancel' },
-                            {
-                                text: 'Partager',
-                                onPress: () => shareProviderCredentials(provider),
-                            },
-                        ]
-                    );
+                    setCreatedProvider(provider);
+                    setShowSuccessModal(true);
                 }
             } else {
                 throw new Error(data?.message || 'Erreur lors de la création');
@@ -416,6 +411,138 @@ const ExternalProvidersAdminScreen: React.FC = () => {
                                 />
                             </View>
                         </ScrollView>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Modal de succès après création — Identifiants + Partage */}
+            <Modal
+                visible={showSuccessModal && !!createdProvider}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={() => {
+                    setShowSuccessModal(false);
+                    setCreatedProvider(null);
+                    setCopiedField(null);
+                }}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={[styles.modalHeader, { backgroundColor: '#F0FDF4', borderBottomColor: '#BBF7D0' }]}>
+                            <Text style={[styles.modalTitle, { color: '#166534' }]}>
+                                Prestataire créé avec succès
+                            </Text>
+                            <TouchableOpacity
+                                onPress={() => {
+                                    setShowSuccessModal(false);
+                                    setCreatedProvider(null);
+                                    setCopiedField(null);
+                                }}
+                                style={styles.closeButton}
+                            >
+                                <SafeIcon name="x" size={24} color={modernColors.text} />
+                            </TouchableOpacity>
+                        </View>
+
+                        {createdProvider && (
+                            <ScrollView style={styles.modalBody}>
+                                <View style={styles.successBanner}>
+                                    <SafeIcon name="check-circle" size={40} color="#22C55E" />
+                                    <Text style={styles.successTitle}>{createdProvider.provider_name}</Text>
+                                    <Text style={styles.successSubtitle}>Les identifiants ci-dessous permettent de commander des livraisons</Text>
+                                </View>
+
+                                {/* Clé API */}
+                                <NativeCard style={styles.credentialCard}>
+                                    <Text style={styles.credentialLabel}>Clé API</Text>
+                                    <View style={styles.credentialRow}>
+                                        <Text style={styles.apiKeyText} selectable numberOfLines={1}>
+                                            {createdProvider.api_key}
+                                        </Text>
+                                        <TouchableOpacity
+                                            style={[styles.copyBtn, copiedField === 'api_key' && styles.copyBtnDone]}
+                                            onPress={() => {
+                                                Clipboard.setString(createdProvider.api_key);
+                                                setCopiedField('api_key');
+                                                setTimeout(() => setCopiedField(null), 2000);
+                                            }}
+                                        >
+                                            <SafeIcon name={copiedField === 'api_key' ? 'check' : 'copy'} size={16} color={copiedField === 'api_key' ? '#22C55E' : '#7C3AED'} />
+                                        </TouchableOpacity>
+                                    </View>
+                                </NativeCard>
+
+                                {/* Lien formulaire */}
+                                <NativeCard style={styles.credentialCard}>
+                                    <Text style={styles.credentialLabel}>Lien du formulaire de commande</Text>
+                                    <View style={styles.credentialRow}>
+                                        <Text style={[styles.urlText, { flex: 1 }]} selectable numberOfLines={2}>
+                                            {`${FORM_URL}?key=${createdProvider.api_key}`}
+                                        </Text>
+                                        <TouchableOpacity
+                                            style={[styles.copyBtn, copiedField === 'url' && styles.copyBtnDone]}
+                                            onPress={() => {
+                                                Clipboard.setString(`${FORM_URL}?key=${createdProvider.api_key}`);
+                                                setCopiedField('url');
+                                                setTimeout(() => setCopiedField(null), 2000);
+                                            }}
+                                        >
+                                            <SafeIcon name={copiedField === 'url' ? 'check' : 'copy'} size={16} color={copiedField === 'url' ? '#22C55E' : '#3B82F6'} />
+                                        </TouchableOpacity>
+                                    </View>
+                                </NativeCard>
+
+                                {/* Info */}
+                                <NativeCard style={[styles.infoCard, { marginHorizontal: 0, marginTop: 4 }]}>
+                                    <View style={styles.infoRow}>
+                                        <SafeIcon name="info" size={16} color="#3B82F6" />
+                                        <Text style={[styles.infoText, { fontSize: 12 }]}>
+                                            Le prestataire ouvrira ce lien dans son navigateur pour commander des livraisons. La clé API est pré-remplie dans le formulaire.
+                                        </Text>
+                                    </View>
+                                </NativeCard>
+
+                                {/* Boutons de partage */}
+                                <Text style={[styles.sectionTitle, { marginTop: 16 }]}>Envoyer au prestataire</Text>
+
+                                <TouchableOpacity
+                                    style={styles.whatsappMainBtn}
+                                    onPress={() => sendViaWhatsApp(createdProvider)}
+                                >
+                                    <SafeIcon name="message-circle" size={22} color="white" />
+                                    <Text style={styles.whatsappMainBtnText}>Envoyer par WhatsApp</Text>
+                                </TouchableOpacity>
+
+                                <View style={[styles.shareButtons, { marginTop: 10 }]}>
+                                    <TouchableOpacity
+                                        style={[styles.shareButton, { backgroundColor: '#3B82F6' }]}
+                                        onPress={() => sendViaSMS(createdProvider)}
+                                    >
+                                        <SafeIcon name="smartphone" size={20} color="white" />
+                                        <Text style={styles.shareButtonText}>SMS</Text>
+                                    </TouchableOpacity>
+
+                                    <TouchableOpacity
+                                        style={[styles.shareButton, { backgroundColor: '#8B5CF6' }]}
+                                        onPress={() => shareProviderCredentials(createdProvider)}
+                                    >
+                                        <SafeIcon name="share-2" size={20} color="white" />
+                                        <Text style={styles.shareButtonText}>Partager</Text>
+                                    </TouchableOpacity>
+                                </View>
+
+                                <TouchableOpacity
+                                    style={styles.laterBtn}
+                                    onPress={() => {
+                                        setShowSuccessModal(false);
+                                        setCreatedProvider(null);
+                                        setCopiedField(null);
+                                    }}
+                                >
+                                    <Text style={styles.laterBtnText}>Fermer</Text>
+                                </TouchableOpacity>
+                            </ScrollView>
+                        )}
                     </View>
                 </View>
             </Modal>
@@ -814,6 +941,76 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '600',
         color: '#EF4444',
+    },
+    // Success modal styles
+    successBanner: {
+        alignItems: 'center',
+        paddingVertical: 20,
+        gap: 8,
+    },
+    successTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: modernColors.text,
+        textAlign: 'center',
+    },
+    successSubtitle: {
+        fontSize: 13,
+        color: modernColors.textSecondary,
+        textAlign: 'center',
+        paddingHorizontal: 16,
+    },
+    credentialCard: {
+        padding: 14,
+        marginBottom: 10,
+        borderRadius: 10,
+        borderLeftWidth: 3,
+        borderLeftColor: '#7C3AED',
+    },
+    credentialLabel: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: modernColors.textSecondary,
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+        marginBottom: 6,
+    },
+    credentialRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    copyBtn: {
+        padding: 8,
+        borderRadius: 8,
+        backgroundColor: '#F5F3FF',
+    },
+    copyBtnDone: {
+        backgroundColor: '#D1FAE5',
+    },
+    whatsappMainBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 10,
+        backgroundColor: '#25D366',
+        paddingVertical: 16,
+        borderRadius: 14,
+    },
+    whatsappMainBtnText: {
+        color: 'white',
+        fontSize: 16,
+        fontWeight: '700',
+    },
+    laterBtn: {
+        alignItems: 'center',
+        paddingVertical: 14,
+        marginTop: 8,
+        marginBottom: 32,
+    },
+    laterBtnText: {
+        fontSize: 14,
+        color: modernColors.textSecondary,
     },
 });
 

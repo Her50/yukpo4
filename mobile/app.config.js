@@ -119,6 +119,11 @@ module.exports = {
                             pathPrefix: "/track"
                         },
                         {
+                            scheme: "https",
+                            host: "yukpo-backend-376093909298.europe-west1.run.app",
+                            pathPrefix: "/navigation"
+                        },
+                        {
                             scheme: "yukpomnang"
                         }
                     ],

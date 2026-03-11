@@ -256,6 +256,12 @@ const LoginScreen: React.FC = () => {
     >
       <KeyboardAwareScreen style={styles.container} contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
+          {/* Logo de l'application */}
+          <Image
+            source={require('../../assets/adaptive-icon.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
           <Title style={styles.title}>
             Connexion{' '}
             <Text style={styles.brandYuk}>Yuk</Text><Text style={styles.brandPo}>po</Text>
@@ -430,6 +436,11 @@ const styles = StyleSheet.create({
   header: {
     alignItems: 'center',
     marginBottom: modernStyles.spacing.xl,
+  },
+  logo: {
+    width: 120,
+    height: 120,
+    marginBottom: modernStyles.spacing.lg,
   },
   title: {
     fontSize: 32,

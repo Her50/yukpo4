@@ -3501,11 +3501,152 @@ async fn share_navigation_performance(
     html.push_str(&format!("<div class='stat' style='border-color:#F59E0B'><div class='stat-value'>{:.1}</div><div class='stat-label'>km/h max</div></div>", max_speed));
     html.push_str("</div>");
     html.push_str(&format!("<div class='badge-row'><span class='badge'>🏅 {} badges</span><span class='badge'>⚡ {:.1} km/h moy</span></div>", badges, avg_speed));
+    // Deep link: tente d'ouvrir l'app, sinon redirige vers le store
+    let deep_link = format!("yukpomnang://navigation?tab=stats&userId={}", user_id);
+    let intent_url = format!("intent://navigation?tab=stats&userId={}#Intent;scheme=yukpomnang;package=com.yukpomnang.mobile;end", user_id);
     let store_url = "https://play.google.com/store/apps/details?id=com.yukpomnang";
     html.push_str(&format!(
-        "<a class='cta' href='{}'>Télécharger Yukpo 🚀</a>",
+        "<a class='cta' id='openApp' href='{}'>Ouvrir dans Yukpo 🚀</a>",
+        deep_link
+    ));
+    html.push_str(&format!(
+        "<a class='cta' style='background:#475569;margin-top:8px' href='{}'>Télécharger Yukpo</a>",
         store_url
     ));
+    // Auto-redirect: essaie le deep link, puis intent://, puis store
+    html.push_str("<script>");
+    html.push_str(&format!(
+        "var dl='{}',intent='{}',store='{}';",
+        deep_link, intent_url, store_url
+    ));
+    html.push_str("var ua=navigator.userAgent||'';");
+    html.push_str("if(/android/i.test(ua)){document.getElementById('openApp').href=intent;setTimeout(function(){window.location=intent;},100);setTimeout(function(){window.location=store;},2000);}");
+    html.push_str("else if(/iphone|ipad|ipod/i.test(ua)){window.location=dl;setTimeout(function(){window.location=store;},1500);}");
+    html.push_str("</script>");
+    html.push_str("</div></body></html>");
+
+    axum::response::Html(html)
+}
+
+/// Page HTML publique pour partager un itinéraire navigation
+/// Sert une page avec OG meta tags + deep link pour ouvrir l'app avec la destination pré-remplie
+#[derive(Deserialize)]
+struct ShareRouteQuery {
+    dest_lat: f64,
+    dest_lng: f64,
+    dest_name: Option<String>,
+    distance: Option<String>,
+    duration: Option<String>,
+    mode: Option<String>,
+    origin_name: Option<String>,
+}
+
+async fn share_navigation_route(
+    Query(params): Query<ShareRouteQuery>,
+) -> impl axum::response::IntoResponse {
+    let dest_name = params.dest_name.as_deref().unwrap_or("Destination");
+    let origin_name = params.origin_name.as_deref().unwrap_or("Ma position");
+    let distance = params.distance.as_deref().unwrap_or("");
+    let duration = params.duration.as_deref().unwrap_or("");
+    let mode = params.mode.as_deref().unwrap_or("driving");
+    let mode_emoji = match mode {
+        "walking" => "🚶",
+        "bicycling" => "🚲",
+        "transit" => "🚌",
+        _ => "🚗",
+    };
+
+    let title = format!("{} Itinéraire vers {}", mode_emoji, dest_name);
+    let description = if !distance.is_empty() && !duration.is_empty() {
+        format!(
+            "{} → {} · {} · {}",
+            origin_name, dest_name, distance, duration
+        )
+    } else {
+        format!("{} → {}", origin_name, dest_name)
+    };
+
+    let deep_link = format!(
+        "yukpomnang://navigate?dest_lat={}&dest_lng={}&dest_name={}&mode={}",
+        params.dest_lat,
+        params.dest_lng,
+        urlencoding::encode(dest_name),
+        mode
+    );
+    let intent_url = format!(
+        "intent://navigate?dest_lat={}&dest_lng={}&dest_name={}&mode={}#Intent;scheme=yukpomnang;package=com.yukpomnang.mobile;end",
+        params.dest_lat, params.dest_lng, urlencoding::encode(dest_name), mode
+    );
+    let gmaps_url = format!(
+        "https://www.google.com/maps/dir/?api=1&destination={},{}&travelmode={}",
+        params.dest_lat, params.dest_lng, mode
+    );
+    let store_url = "https://play.google.com/store/apps/details?id=com.yukpomnang";
+
+    let mut html = String::new();
+    html.push_str("<!DOCTYPE html><html lang='fr'><head><meta charset='UTF-8'>");
+    html.push_str("<meta name='viewport' content='width=device-width, initial-scale=1.0'>");
+    html.push_str(&format!("<title>{}</title>", title));
+    html.push_str(&format!("<meta property='og:title' content='{}'>", title));
+    html.push_str(&format!(
+        "<meta property='og:description' content='{}'>",
+        description
+    ));
+    html.push_str("<meta property='og:type' content='website'>");
+    html.push_str("<meta property='og:image' content='https://storage.googleapis.com/yukpo-project-yukpo-backend-media/yukpo-logo.png'>");
+    html.push_str(&format!(
+        "<meta name='twitter:card' content='summary'><meta name='twitter:title' content='{}'>",
+        title
+    ));
+    html.push_str(&format!(
+        "<meta name='twitter:description' content='{}'>",
+        description
+    ));
+    html.push_str("<style>");
+    html.push_str("*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:linear-gradient(135deg,#0F172A,#1E293B);min-height:100vh;display:flex;align-items:center;justify-content:center;color:#fff;padding:20px}");
+    html.push_str(".card{background:rgba(255,255,255,0.08);backdrop-filter:blur(20px);border-radius:24px;padding:32px;max-width:420px;width:100%;border:1px solid rgba(255,255,255,0.1)}");
+    html.push_str(".header{text-align:center;margin-bottom:20px}h1{font-size:20px;font-weight:800;margin-bottom:4px}h2{font-size:14px;color:#94A3B8;font-weight:400}");
+    html.push_str(".route-info{background:rgba(255,255,255,0.05);border-radius:16px;padding:16px;margin-bottom:16px;border-left:4px solid #3B82F6}");
+    html.push_str(".route-label{font-size:12px;color:#94A3B8}.route-val{font-size:16px;font-weight:700;margin-top:2px}");
+    html.push_str(
+        ".metrics{display:flex;gap:16px;justify-content:center;margin:16px 0;flex-wrap:wrap}",
+    );
+    html.push_str(".metric{background:rgba(255,255,255,0.05);padding:12px 16px;border-radius:12px;text-align:center}.metric-val{font-size:20px;font-weight:900}.metric-lbl{font-size:11px;color:#94A3B8;margin-top:2px}");
+    html.push_str(".cta{display:block;text-align:center;color:#fff;text-decoration:none;padding:14px;border-radius:14px;font-weight:700;font-size:16px;margin-top:8px}");
+    html.push_str("</style></head><body><div class='card'>");
+    html.push_str(&format!(
+        "<div class='header'><h1>{} Itinéraire</h1><h2>Partagé via Yukpo Navigation</h2></div>",
+        mode_emoji
+    ));
+    html.push_str("<div class='route-info'>");
+    html.push_str(&format!(
+        "<div class='route-label'>📍 Départ</div><div class='route-val'>{}</div>",
+        origin_name
+    ));
+    html.push_str(&format!("<div class='route-label' style='margin-top:12px'>🏁 Destination</div><div class='route-val'>{}</div>", dest_name));
+    html.push_str("</div>");
+    if !distance.is_empty() || !duration.is_empty() {
+        html.push_str("<div class='metrics'>");
+        if !distance.is_empty() {
+            html.push_str(&format!("<div class='metric'><div class='metric-val'>{}</div><div class='metric-lbl'>Distance</div></div>", distance));
+        }
+        if !duration.is_empty() {
+            html.push_str(&format!("<div class='metric'><div class='metric-val'>{}</div><div class='metric-lbl'>Durée</div></div>", duration));
+        }
+        html.push_str("</div>");
+    }
+    html.push_str(&format!("<a class='cta' id='openApp' style='background:linear-gradient(135deg,#3B82F6,#6366F1)' href='{}'>Ouvrir dans Yukpo 🚀</a>", deep_link));
+    html.push_str(&format!("<a class='cta' style='background:#475569;margin-top:8px' href='{}'>Ouvrir dans Google Maps</a>", gmaps_url));
+    // Auto-redirect JS
+    html.push_str("<script>");
+    html.push_str(&format!(
+        "var dl='{}',intent='{}',gmaps='{}',store='{}';",
+        deep_link, intent_url, gmaps_url, store_url
+    ));
+    html.push_str("var ua=navigator.userAgent||'';");
+    html.push_str("if(/android/i.test(ua)){document.getElementById('openApp').href=intent;setTimeout(function(){window.location=intent;},100);setTimeout(function(){window.location=store;},2500);}");
+    html.push_str("else if(/iphone|ipad|ipod/i.test(ua)){window.location=dl;setTimeout(function(){window.location=store;},1500);}");
+    html.push_str("</script>");
     html.push_str("</div></body></html>");
 
     axum::response::Html(html)
@@ -4329,7 +4470,9 @@ pub fn navigation_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             "/api/navigation/push-alerts/check",
             get(check_and_send_navigation_push_alerts).layer(middleware::from_fn(jwt_auth)),
         )
-        // ✅ NOUVEAU: Page publique de partage performances (pas d'auth, accessible par tous)
+        // ✅ NOUVEAU: Pages publiques de partage (pas d'auth, accessible par tous)
+        // IMPORTANT: /route doit être AVANT /{user_id} pour éviter que "route" soit capturé comme user_id
+        .route("/navigation/share/route", get(share_navigation_route))
         .route(
             "/navigation/share/{user_id}",
             get(share_navigation_performance),

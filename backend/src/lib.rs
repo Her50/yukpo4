@@ -337,6 +337,9 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
     // ✅ NOUVEAU 2026-03-06: Configuration WhatsApp Business
     let whatsapp = whatsapp_routes::create_whatsapp_routes(state.clone());
 
+    // ✅ NOUVEAU: Routes pour page de téléchargement APK test
+    let test_routes = crate::routes::test_routes::create_test_routes();
+
     let app = Router::new()
         .route("/healthz", get(healthz))
         .route("/health", get(healthz)) // ✅ Route pour ALB health checks
@@ -427,6 +430,7 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .merge(supermarket) // ✅ NOUVEAU: Routes supermarché dédiées (produits, comparaison, promotions)
         .merge(followers) // ✅ NOUVEAU 2026-03-05: Routes pour système de suivi vendeurs
         .merge(whatsapp) // ✅ NOUVEAU 2026-03-06: Routes WhatsApp Business API
+        .merge(test_routes) // ✅ NOUVEAU: Routes pour page de téléchargement APK test
         .merge(mobile_logs)
         .merge(navigation) // ✅ NOUVEAU: Routes navigation intelligente
         .merge(phone_verification) // ✅ NOUVEAU 2026-02-25: Routes vérification OTP téléphone

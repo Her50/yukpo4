@@ -509,12 +509,17 @@ S['NavigationScreen'] = createLazy(() => import('../screens/NavigationScreen'), 
 // ============================================================================
 
 const GESTION_SUPPORTED_TYPES = [
-  'pharmacie', 'hopital', 'laboratoire', 'agence de voyage', 'agencevoyage',
-  'agence_voyage', 'banquesang', 'banque_sang', 'covoiturage', 'taxi',
-  'hotel', 'meuble', 'supermarche', 'chauffeur', 'livrescolaire',
-  'livre_scolaire', 'restaurant', 'assureur', 'assurance',
+  'pharmacie', 'hopital', 'laboratoire',
+  'agence de voyage', 'agencevoyage', 'agence_voyage', 'agencedevoyage', 'agence_de_voyage',
+  'banquesang', 'banque_sang', 'covoiturage', 'taxi', 'chauffeur',
+  'hotel', 'meuble', 'immobilier',
+  'supermarche', 'restaurant',
+  'livrescolaire', 'livre_scolaire',
+  'assureur', 'assurance',
   'etablissementscolaire', 'etablissement_scolaire',
   'offre_emploi', 'offreemploi', 'recruteur',
+  'livraison_courses_marche', 'demenagement', 'transport', 'telecom',
+  'ecommerce', 'prestataire', 'service',
 ];
 
 // ✅ FIX: Mapping partagé partner_type → écran spécialisé (même logique que useDeepLinkRedirect)
@@ -582,8 +587,23 @@ const PartnerDashboardTab: React.FC<any> = (props) => {
 function MainTabNavigator() {
   const { user } = useAuth();
   const [isCourier, setIsCourier] = useState(false);
-  const [hasSpecializedServices, setHasSpecializedServices] = useState(false);
-  const isPartner = (user as any)?.role === 'partenaire' && (user as any)?.partner_type;
+
+  // ✅ FIX CRITIQUE: Calcul SYNCHRONE de hasSpecializedServices (pas useEffect)
+  // L'ancien useEffect ne s'exécutait qu'APRÈS le premier rendu, donc initialRouteName
+  // était toujours 'Home' au premier rendu, même pour les partenaires.
+  const isPartner = (user as any)?.role === 'partenaire' && !!(user as any)?.partner_type;
+  const hasSpecializedServices = React.useMemo(() => {
+    const pt = (user as any)?.partner_type;
+    const role = (user as any)?.role;
+    if (role === 'partenaire' && pt) {
+      const normalized = pt.toLowerCase().trim().replace(/\s+/g, '');
+      const normalizedNoUnderscore = pt.toLowerCase().trim().replace(/[\s_]+/g, '');
+      return GESTION_SUPPORTED_TYPES.includes(pt)
+        || GESTION_SUPPORTED_TYPES.includes(normalized)
+        || GESTION_SUPPORTED_TYPES.includes(normalizedNoUnderscore);
+    }
+    return false;
+  }, [user?.id, (user as any)?.partner_type, (user as any)?.role]);
 
   // Détecter si l'utilisateur est coursier
   useEffect(() => {
@@ -600,21 +620,6 @@ function MainTabNavigator() {
     const t = setTimeout(check, 100);
     return () => clearTimeout(t);
   }, [user?.id]);
-
-  // Détecter si le partenaire a des services spécialisés
-  useEffect(() => {
-    const pt = (user as any)?.partner_type;
-    const role = (user as any)?.role;
-    if (role === 'partenaire' && pt) {
-      // ✅ FIX: Normaliser le partner_type pour gérer toutes les variantes d'écriture
-      const normalized = pt.toLowerCase().trim().replace(/\s+/g, '');
-      if (GESTION_SUPPORTED_TYPES.includes(pt) || GESTION_SUPPORTED_TYPES.includes(normalized)) {
-        setHasSpecializedServices(true);
-        return;
-      }
-    }
-    setHasSpecializedServices(false);
-  }, [user?.id, (user as any)?.partner_type]);
 
   return (
     <Tab.Navigator

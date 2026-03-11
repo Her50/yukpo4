@@ -30,7 +30,7 @@ import SafeIcon from '../components/SafeIcon';
 import { NativeButton, NativeCard, NativeInput } from '../components/SafeNativeDesign';
 import { useToaster } from '../components/ToasterProvider'; // ✅ NOUVEAU: Pour les toasts de confirmation
 import { useAuth } from '../contexts/AuthContext';
-import { apiGet, apiPatch, apiPost } from '../services/api';
+import { apiGet, apiPatch, apiPost, deliveryApi } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import { MAX_PRODUCT_IMAGES, mergeImageSources, orderImagesWithPrimary } from '../utils/mediaHelpers';
 import { applyPriceVariantToProduits, extractPriceVariant } from '../utils/priceVariant';
@@ -3024,11 +3024,11 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                         setShowDeliveryAutoPrompt(false);
                         setExistingDeliveryConfig(null);
                         setSuccessModalData(null);
-                        // ✅ CORRIGÉ 2026-03-11: Utiliser reset() pour quitter AjouterProduitSimpleScreen
+                        // ✅ CORRIGÉ 2026-03-11: Utiliser reset() pour aller à MesProduits
                         setTimeout(() => {
                             (navigation as any).reset({
                                 index: 0,
-                                routes: [{ name: 'Main', params: { screen: 'Services' } }],
+                                routes: [{ name: 'Main', params: { screen: 'Services', params: { screen: 'MesProduits' } } }],
                             });
                         }, 300);
                     }}
@@ -3067,11 +3067,11 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                         '✅ Configuration copiée',
                                         `La configuration de livraison de "${existingDeliveryConfig.productName}" a été appliquée à "${successModalData.productName}".`
                                     );
-                                    // ✅ CORRIGÉ 2026-03-11: Utiliser reset() pour quitter AjouterProduitSimpleScreen
+                                    // ✅ CORRIGÉ 2026-03-11: Utiliser reset() pour aller à MesProduits
                                     setTimeout(() => {
                                         (navigation as any).reset({
                                             index: 0,
-                                            routes: [{ name: 'Main', params: { screen: 'Services' } }],
+                                            routes: [{ name: 'Main', params: { screen: 'Services', params: { screen: 'MesProduits' } } }],
                                         });
                                     }, 300);
                                 } else {
@@ -3107,12 +3107,12 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                     onClose={() => {
                         setShowProductDeliveryConfig(false);
                         setProductDeliveryConfigData(null);
-                        // ✅ CORRIGÉ 2026-03-11: Utiliser reset() pour quitter AjouterProduitSimpleScreen
+                        // ✅ CORRIGÉ 2026-03-11: Utiliser reset() pour aller à MesProduits
                         // navigate() ne pop pas le stack screen, l'utilisateur restait sur l'écran de création
                         setTimeout(() => {
                             (navigation as any).reset({
                                 index: 0,
-                                routes: [{ name: 'Main', params: { screen: 'Services' } }],
+                                routes: [{ name: 'Main', params: { screen: 'Services', params: { screen: 'MesProduits' } } }],
                             });
                         }, 300);
                     }}
@@ -3127,11 +3127,11 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                             '✅ Configuration terminée',
                             'Votre produit a été configuré avec succès !'
                         );
-                        // Utiliser reset() pour quitter le stack et aller à l'écran de gestion des produits
+                        // Utiliser reset() pour aller à l'écran de gestion des produits (MesProduits)
                         setTimeout(() => {
                             (navigation as any).reset({
                                 index: 0,
-                                routes: [{ name: 'Main', params: { screen: 'Services' } }],
+                                routes: [{ name: 'Main', params: { screen: 'Services', params: { screen: 'MesProduits' } } }],
                             });
                         }, 300);
                     }}

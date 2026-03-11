@@ -1,4 +1,4 @@
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { Audio } from 'expo-av';
 import * as Location from 'expo-location';
 import * as Speech from 'expo-speech';
@@ -195,8 +195,11 @@ const playContextualAlert = async (checkpointType: string, distanceMeters: numbe
     } catch (e) { console.warn('[NavigationScreen] TTS fallback error:', e); }
 };
 
+const SHARE_BASE_URL = 'https://yukpo-backend-376093909298.europe-west1.run.app';
+
 const NavigationScreen: React.FC = () => {
     const navigation = useNavigation();
+    const route = useRoute<any>();
     const { user } = useAuth();
     const { location: currentLocation } = useLocationSafe();
     const [destination, setDestination] = useState('');
@@ -325,6 +328,27 @@ const NavigationScreen: React.FC = () => {
                 .catch(() => { });
         }
     }, [user, loadSavedDestinations]);
+    // ── Réception deep link: pré-remplir destination depuis lien partagé ──
+    useEffect(() => {
+        const params = route.params as any;
+        if (params?.dest_lat && params?.dest_lng) {
+            const lat = parseFloat(params.dest_lat);
+            const lng = parseFloat(params.dest_lng);
+            if (!isNaN(lat) && !isNaN(lng)) {
+                const name = params.dest_name ? decodeURIComponent(params.dest_name) : `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+                setDestination(name);
+                setDestinationCoords({ lat, lng });
+                if (params.mode) setTravelMode(params.mode);
+                showToast(`📍 Destination: ${name}`);
+                // Lancer la recherche d'itinéraires après un court délai
+                setTimeout(() => searchRoutesRef.current(), 500);
+            }
+        }
+        if (params?.tab === 'stats') {
+            setShowActivityStats(true);
+            loadActivityStats(activityPeriod);
+        }
+    }, [route.params]);
     useEffect(() => {
         const s1 = Keyboard.addListener('keyboardDidShow', (e) => { setKeyboardHeight(e.endCoordinates.height); setIsKeyboardVisible(true); });
         const s2 = Keyboard.addListener('keyboardDidHide', () => { setKeyboardHeight(0); setIsKeyboardVisible(false); });
@@ -421,8 +445,37 @@ const NavigationScreen: React.FC = () => {
     const shareRoute = useCallback(async () => {
         if (!selectedRoute || !destinationCoords) return;
         const origin = await getCurrentPosition(); if (!origin) return;
-        await Share.share({ message: `Itinéraire: ${formatDistance(selectedRoute.distance_meters)} · ${formatDuration(selectedRoute.duration_in_traffic_seconds || selectedRoute.duration_seconds)}\nhttps://www.google.com/maps/dir/?api=1&origin=${origin.lat},${origin.lng}&destination=${destinationCoords.lat},${destinationCoords.lng}&travelmode=${travelMode}`, title: 'Mon itinéraire Yukpo' });
-    }, [selectedRoute, destinationCoords, getCurrentPosition, travelMode]);
+        const originName = await reverseGeocode(origin.lat, origin.lng);
+        const destName = destination || await reverseGeocode(destinationCoords.lat, destinationCoords.lng);
+        const dist = formatDistance(selectedRoute.distance_meters);
+        const dur = formatDuration(selectedRoute.duration_in_traffic_seconds || selectedRoute.duration_seconds);
+        const shareUrl = `${SHARE_BASE_URL}/navigation/share/route?dest_lat=${destinationCoords.lat}&dest_lng=${destinationCoords.lng}&dest_name=${encodeURIComponent(destName)}&distance=${encodeURIComponent(dist)}&duration=${encodeURIComponent(dur)}&mode=${travelMode}&origin_name=${encodeURIComponent(originName)}`;
+        const modeEmoji = travelMode === 'walking' ? '🚶' : travelMode === 'bicycling' ? '🚲' : travelMode === 'transit' ? '🚌' : '🚗';
+        await Share.share({
+            message: `${modeEmoji} Itinéraire Yukpo\n📍 ${originName} → 🏁 ${destName}\n📊 ${dist} · ⏱ ${dur}\n\n${shareUrl}`,
+            title: `Itinéraire vers ${destName}`,
+        });
+    }, [selectedRoute, destinationCoords, getCurrentPosition, travelMode, destination]);
+    const shareAlert = useCallback(async (alert: { checkpoint_type: string; lat: number; lng: number; locationName?: string; speed_limit?: number }) => {
+        const info = CHECKPOINT_LABELS[alert.checkpoint_type] || { label: alert.checkpoint_type, icon: '⚠️', color: '#6B7280' };
+        const locName = alert.locationName || await reverseGeocode(alert.lat, alert.lng);
+        const msg = `${info.icon} ${info.label} signalé à ${locName}${alert.speed_limit ? ` (${alert.speed_limit} km/h)` : ''}\n\n⚠️ Signalement communautaire via Yukpo Navigation\n${SHARE_BASE_URL}/navigation/share/route?dest_lat=${alert.lat}&dest_lng=${alert.lng}&dest_name=${encodeURIComponent(locName)}&mode=driving`;
+        await Share.share({ message: msg, title: `${info.icon} ${info.label} - Yukpo` });
+    }, []);
+    const sharePOI = useCallback(async (poi: PointOfInterest) => {
+        const lat = poi.location?.lat ?? (poi as any).latitude ?? 0;
+        const lng = poi.location?.lng ?? (poi as any).longitude ?? 0;
+        const catEntry = Object.entries(POI_CATEGORIES).find(([, c]) => c.types.includes(poi.type));
+        const catIcon = catEntry ? catEntry[1].icon : '📍';
+        const lines = [`${catIcon} ${poi.name}`];
+        if (poi.address) lines.push(`📍 ${poi.address}`);
+        if (poi.rating) lines.push(`⭐ ${poi.rating}${poi.total_ratings ? ` (${poi.total_ratings} avis)` : ''}`);
+        if (poi.is_open != null) lines.push(poi.is_open ? '✅ Ouvert' : '❌ Fermé');
+        lines.push('');
+        lines.push(`Ouvrir dans Yukpo 🚀`);
+        lines.push(`${SHARE_BASE_URL}/navigation/share/route?dest_lat=${lat}&dest_lng=${lng}&dest_name=${encodeURIComponent(poi.name)}&mode=driving`);
+        await Share.share({ message: lines.join('\n'), title: `${catIcon} ${poi.name}` });
+    }, []);
     const sharePerformance = useCallback(async () => {
         if (!aiInsights) return;
         const hs = aiInsights.health_score || {}, co2 = aiInsights.co2_impact || {}, gam = aiInsights.gamification || {};
@@ -1052,7 +1105,14 @@ const NavigationScreen: React.FC = () => {
                                     {checkpoints.slice(0, 5).map(cp => {
                                         const info = CHECKPOINT_LABELS[cp.checkpoint_type] || { label: cp.checkpoint_type, icon: '⚠️', color: '#6B7280' };
                                         return (
-                                            <View key={cp.id} style={st.cpItem}><Text style={{ fontSize: 18 }}>{info.icon}</Text><View style={st.flex1}><Text style={st.cpItemLabel}>{info.label}</Text>{cp.description && <Text style={st.cpItemDesc}>{cp.description}</Text>}</View>{cp.speed_limit && <Text style={st.cpItemSpd}>{cp.speed_limit} km/h</Text>}</View>
+                                            <View key={cp.id} style={st.cpItem}>
+                                                <Text style={{ fontSize: 18 }}>{info.icon}</Text>
+                                                <View style={st.flex1}><Text style={st.cpItemLabel}>{info.label}</Text>{cp.description && <Text style={st.cpItemDesc}>{cp.description}</Text>}</View>
+                                                {cp.speed_limit && <Text style={st.cpItemSpd}>{cp.speed_limit} km/h</Text>}
+                                                <TouchableOpacity onPress={() => shareAlert({ checkpoint_type: cp.checkpoint_type, lat: cp.latitude, lng: cp.longitude, speed_limit: cp.speed_limit })} style={st.cpShareBtn}>
+                                                    <SafeIcon name="Share2" size={12} color={modernColors.textSecondary} />
+                                                </TouchableOpacity>
+                                            </View>
                                         );
                                     })}
                                 </NativeCard>
@@ -1093,6 +1153,7 @@ const NavigationScreen: React.FC = () => {
                                                             <View style={{ gap: 6 }}>
                                                                 <TouchableOpacity style={st.poiNavBtn} onPress={() => navigateToPOI(poi)}><SafeIcon name="Navigation" size={14} color="#10B981" /></TouchableOpacity>
                                                                 <TouchableOpacity style={st.poiAddBtn} onPress={() => addWaypoint(poi)}><SafeIcon name="Plus" size={14} color={modernColors.primary} /></TouchableOpacity>
+                                                                <TouchableOpacity style={st.poiShareBtn} onPress={() => sharePOI(poi)}><SafeIcon name="Share2" size={12} color={modernColors.textSecondary} /></TouchableOpacity>
                                                             </View>
                                                         </View>
                                                     ))}
@@ -1347,6 +1408,7 @@ const st = StyleSheet.create({
     cpItemLabel: { fontSize: 13, fontWeight: '600', color: modernColors.text },
     cpItemDesc: { fontSize: 11, color: modernColors.textSecondary },
     cpItemSpd: { fontSize: 13, fontWeight: '700', color: '#EF4444', backgroundColor: '#FEE2E2', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
+    cpShareBtn: { width: 28, height: 28, borderRadius: 14, backgroundColor: modernColors.surfaceVariant, alignItems: 'center', justifyContent: 'center', marginLeft: 4 },
 
     // POI
     poiCatCard: { marginBottom: 8, padding: 0, overflow: 'hidden' },
@@ -1365,6 +1427,7 @@ const st = StyleSheet.create({
     openText: { fontSize: 10, fontWeight: '600' },
     poiNavBtn: { width: 30, height: 30, borderRadius: 15, backgroundColor: '#DCFCE7', alignItems: 'center', justifyContent: 'center' },
     poiAddBtn: { width: 30, height: 30, borderRadius: 15, backgroundColor: '#EFF6FF', alignItems: 'center', justifyContent: 'center' },
+    poiShareBtn: { width: 28, height: 28, borderRadius: 14, backgroundColor: modernColors.surfaceVariant, alignItems: 'center', justifyContent: 'center' },
 
     // Go buttons
     shareRouteBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 10, borderRadius: 12, borderWidth: 1.5, borderColor: modernColors.border, backgroundColor: modernColors.surface },

@@ -14,8 +14,6 @@ import {
   Alert,
   Dimensions,
   Image,
-  Linking,
-  Platform,
   ScrollView,
   Share,
   StyleSheet,
@@ -1394,8 +1392,8 @@ const ProductCard: React.FC<ProductCardProps> = ({
     }
   };
 
-  // ✅ NOUVEAU 2026-01-13: Fonction pour ouvrir l'application de navigation GPS
-  const handleOpenNavigation = async () => {
+  // ✅ FIX 2026-03-11: Naviguer vers l'écran de navigation in-app avec destination pré-remplie
+  const handleOpenNavigation = () => {
     try {
       // Extraire les coordonnées GPS du produit/service
       const productGPS = product._gps || productData._gps || product.gps || productData.gps || productData.gps_coords || productData.gps_fixe || service?.data?.gps_fixe?.valeur || service?.data?.gps?.valeur;
@@ -1403,7 +1401,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
       if (!productGPS) {
         Alert.alert(
           'Localisation indisponible',
-          'Les coordonnées GPS du commerçant ne sont pas disponibles pour le moment.'
+          'Les coordonnées GPS du prestataire ne sont pas disponibles pour le moment.'
         );
         return;
       }
@@ -1426,80 +1424,21 @@ const ProductCard: React.FC<ProductCardProps> = ({
       if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
         Alert.alert(
           'Coordonnées invalides',
-          'Les coordonnées GPS du commerçant sont invalides.'
+          'Les coordonnées GPS du prestataire sont invalides.'
         );
         return;
       }
 
-      // Construire les URLs pour différentes applications de navigation
-      const googleMapsUrl = Platform.select({
-        ios: `maps://app?daddr=${lat},${lng}&dirflg=d`,
-        android: `google.navigation:q=${lat},${lng}`,
-        default: `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`,
+      // ✅ FIX: Naviguer vers NavigationScreen in-app avec destination pré-remplie
+      const destName = chosenLocation || filterBooleanValue(productData?.product_name || product?.product_name, 'Destination');
+      (navigation as any).navigate('Navigation', {
+        dest_lat: lat.toString(),
+        dest_lng: lng.toString(),
+        dest_name: destName,
       });
-
-      const appleMapsUrl = `http://maps.apple.com/?daddr=${lat},${lng}&dirflg=d`;
-      const wazeUrl = `waze://?navigate=yes&ll=${lat},${lng}`;
-      const fallbackUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
-
-      // Essayer d'ouvrir les applications dans l'ordre de préférence
-      if (Platform.OS === 'ios') {
-        // iOS : Essayer Apple Maps d'abord, puis Google Maps
-        try {
-          const canOpenAppleMaps = await Linking.canOpenURL(appleMapsUrl);
-          if (canOpenAppleMaps) {
-            await Linking.openURL(appleMapsUrl);
-            return;
-          }
-        } catch (error) {
-          console.log('[ProductCard] Apple Maps non disponible, essai Google Maps');
-        }
-
-        try {
-          const canOpenGoogleMaps = await Linking.canOpenURL(googleMapsUrl || '');
-          if (canOpenGoogleMaps && googleMapsUrl) {
-            await Linking.openURL(googleMapsUrl);
-            return;
-          }
-        } catch (error) {
-          console.log('[ProductCard] Google Maps non disponible, utilisation du fallback');
-        }
-      } else if (Platform.OS === 'android') {
-        // Android : Essayer Waze d'abord, puis Google Maps
-        try {
-          const canOpenWaze = await Linking.canOpenURL(wazeUrl);
-          if (canOpenWaze) {
-            await Linking.openURL(wazeUrl);
-            return;
-          }
-        } catch (error) {
-          console.log('[ProductCard] Waze non disponible, essai Google Maps');
-        }
-
-        try {
-          const canOpenGoogleMaps = await Linking.canOpenURL(googleMapsUrl || '');
-          if (canOpenGoogleMaps && googleMapsUrl) {
-            await Linking.openURL(googleMapsUrl);
-            return;
-          }
-        } catch (error) {
-          console.log('[ProductCard] Google Maps non disponible, utilisation du fallback');
-        }
-      }
-
-      // Fallback : Ouvrir Google Maps dans le navigateur
-      try {
-        await Linking.openURL(fallbackUrl);
-      } catch (error) {
-        console.error('[ProductCard] Erreur ouverture navigation:', error);
-        Alert.alert(
-          'Erreur',
-          'Impossible d\'ouvrir l\'application de navigation. Veuillez installer Google Maps ou Apple Maps.'
-        );
-      }
     } catch (error) {
       console.error('[ProductCard] Erreur navigation GPS:', error);
-      Alert.alert('Erreur', 'Impossible d\'ouvrir l\'application de navigation');
+      Alert.alert('Erreur', 'Impossible d\'ouvrir la navigation');
     }
   };
 
@@ -1911,29 +1850,31 @@ const ProductCard: React.FC<ProductCardProps> = ({
                   </TouchableOpacity>
                 )}
 
-                {/* Adresse avec drapeau - Quartier/Ville + drapeau collé */}
+                {/* ✅ FIX 2026-03-11: Adresse cliquable → NavigationScreen (comme la distance) */}
                 {(chosenLocation || countryFlag) && (
-                  <View style={styles.addressRowCompact}>
+                  <TouchableOpacity
+                    style={styles.addressRowCompact}
+                    onPress={hasGPS ? handleOpenNavigation : undefined}
+                    disabled={!hasGPS}
+                    activeOpacity={hasGPS ? 0.7 : 1}
+                  >
                     {chosenLocation && (
                       <>
-                        <SafeIcon name="map-pin" size={10} color="#6B7280" />
-                        {/* ✅ CORRIGÉ 2026-01-22: Conteneur pour texte + drapeau (collés ensemble) */}
+                        <SafeIcon name="map-pin" size={10} color={hasGPS ? '#6366F1' : '#6B7280'} />
                         <View style={styles.addressTextWithFlagContainer}>
-                          <Text style={styles.addressTextCompact} numberOfLines={1}>
+                          <Text style={[styles.addressTextCompact, hasGPS && { color: '#6366F1' }]} numberOfLines={1}>
                             {chosenLocation}
                           </Text>
-                          {/* ✅ CORRIGÉ 2026-01-22: Drapeau juste à côté du texte (pas à l'extrême droite) */}
                           {countryFlag && countryFlag !== '🌍' && (
                             <Text style={styles.addressFlagCompact}>{countryFlag}</Text>
                           )}
                         </View>
                       </>
                     )}
-                    {/* Si pas de localisation mais drapeau disponible */}
                     {!chosenLocation && countryFlag && countryFlag !== '🌍' && (
                       <Text style={styles.addressFlagCompact}>{countryFlag}</Text>
                     )}
-                  </View>
+                  </TouchableOpacity>
                 )}
               </View>
 

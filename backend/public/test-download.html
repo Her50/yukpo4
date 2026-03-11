@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yukpo - Application Mobile Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 400px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        .logo {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #3B82F6 0%, #7C3AED 100%);
+            border-radius: 20px;
+            margin: 0 auto 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 24px;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .version {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 30px;
+        }
+        .download-btn {
+            background: linear-gradient(135deg, #3B82F6 0%, #7C3AED 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            margin: 10px 0;
+            transition: transform 0.2s;
+        }
+        .download-btn:hover {
+            transform: translateY(-2px);
+        }
+        .instructions {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: left;
+        }
+        .instructions h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .instructions ol {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        .instructions li {
+            margin: 5px 0;
+            color: #666;
+        }
+        .warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 20px 0;
+            color: #856404;
+        }
+        .qr-placeholder {
+            width: 150px;
+            height: 150px;
+            border: 2px dashed #ddd;
+            border-radius: 10px;
+            margin: 20px auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #999;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">YP</div>
+        <h1>Yukpo Mobile</h1>
+        <p class="version">Version de Test - 1.0.0</p>
+        
+        <div class="warning">
+            <strong>⚠️ Version Test</strong><br>
+            Cette version est destinée aux testeurs uniquement.
+        </div>
+
+        <!-- Remplacer ce lien par votre APK réel -->
+        <a href="https://yukpo-backend-376093909298.europe-west1.run.app/downloads/yukpo-mobile-test.apk" 
+           class="download-btn" 
+           id="downloadBtn">
+            📱 Télécharger l'APK Android
+        </a>
+
+        <div class="qr-placeholder" id="qrCode">
+            QR Code
+        </div>
+
+        <div class="instructions">
+            <h3>📋 Instructions d'installation</h3>
+            <ol>
+                <li>Cliquez sur le bouton de téléchargement</li>
+                <li>Autorisez le téléchargement depuis votre navigateur</li>
+                <li>Activez "Sources inconnues" dans Paramètres Android</li>
+                <li>Ouvrez le fichier APK téléchargé</li>
+                <li>Suivez les instructions d'installation</li>
+            </ol>
+        </div>
+
+        <div class="instructions">
+            <h3>🔧 Configuration requise</h3>
+            <ul>
+                <li>Android 7.0 (API 24) ou plus récent</li>
+                <li>2GB RAM minimum</li>
+                <li>100MB espace libre</li>
+            </ul>
+        </div>
+
+        <p style="color: #666; font-size: 12px; margin-top: 30px;">
+            Pour toute question technique :<br>
+            support@yukpomnang.com
+        </p>
+    </div>
+
+    <script>
+        // Générer un QR Code pour le téléchargement
+        document.addEventListener('DOMContentLoaded', function() {
+            const downloadUrl = document.getElementById('downloadBtn').href;
+            
+            // Créer un QR Code simple (vous pouvez utiliser une librairie comme qrcode.js)
+            const qrCode = document.getElementById('qrCode');
+            qrCode.innerHTML = `
+                <div style="font-size: 10px; color: #666;">
+                    Scannez pour<br>télécharger
+                </div>
+            `;
+            
+            // Tracking du téléchargement
+            document.getElementById('downloadBtn').addEventListener('click', function() {
+                console.log('Download started');
+                // Vous pouvez ajouter ici un appel à votre backend pour tracking
+            });
+        });
+    </script>
+</body>
+</html>

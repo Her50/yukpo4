@@ -92,6 +92,7 @@ pub mod stock_media_routes;
 pub mod studio_routes; // ✅ NOUVEAU: Routes Studio pour création vidéo immersive
 pub mod supermarket_routes; // ✅ NOUVEAU: Routes supermarché dédiées (produits, comparaison, promotions)
 pub mod system_health_routes;
+pub mod test_routes; // ✅ Routes pour page de téléchargement APK test
 pub mod token_pack_routes;
 pub mod token_stats_routes; // ✅ NOUVEAU: Routes pour statistiques de consommation de tokens
 pub mod upload_routes;

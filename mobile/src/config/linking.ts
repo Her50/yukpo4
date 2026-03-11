@@ -85,6 +85,17 @@ const linking: LinkingOptions<any> = {
         },
       },
       GlobalPromoCatalog: 'promo/black-friday',
+      // ✅ NOUVEAU: Deep links Navigation intelligente
+      NavigationIntelligente: {
+        path: 'navigate',
+        parse: {
+          dest_lat: (v: string) => v ? parseFloat(v) : undefined,
+          dest_lng: (v: string) => v ? parseFloat(v) : undefined,
+          dest_name: (v: string) => v ? decodeURIComponent(v) : undefined,
+          mode: (v: string) => v || 'driving',
+          tab: (v: string) => v || undefined,
+        },
+      },
     },
   },
 };

@@ -82,9 +82,10 @@ export const useDeepLinkRedirect = () => {
                     'service': 'GestionServicesSpecialises',
                 };
 
-                // ✅ FIX: Normaliser le partner_type (lowercase, supprimer espaces → underscore)
+                // ✅ FIX: Normaliser le partner_type (3 niveaux: brut, sans espaces, sans espaces+underscores)
                 const normalizedType = user.partner_type.toLowerCase().trim().replace(/\s+/g, '');
-                const targetScreen = partnerTypeToScreen[user.partner_type] || partnerTypeToScreen[normalizedType];
+                const normalizedNoUnderscore = user.partner_type.toLowerCase().trim().replace(/[\s_]+/g, '');
+                const targetScreen = partnerTypeToScreen[user.partner_type] || partnerTypeToScreen[normalizedType] || partnerTypeToScreen[normalizedNoUnderscore];
 
                 console.log(`[useDeepLinkRedirect] 🔍 Debug partenaire:`);
                 console.log(`  - partner_type brut: "${user.partner_type}"`);

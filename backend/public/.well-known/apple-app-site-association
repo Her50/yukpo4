@@ -9,7 +9,8 @@
         "components": [
           { "/": "/product/*" },
           { "/": "/service/*" },
-          { "/": "/track/*" }
+          { "/": "/track/*" },
+          { "/": "/navigation/*" }
         ]
       }
     ],
