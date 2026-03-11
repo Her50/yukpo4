@@ -46,10 +46,10 @@ const LoginScreen: React.FC = () => {
   const redirectUri = Linking.createURL('/');
 
   const [googleRequest, googleResponse, googlePromptAsync] = Google.useAuthRequest({
-    expoClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || '738929393617-4kt4e9ed1g79j70dng7epskqn7rkqnm2.apps.googleusercontent.com',
-    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
-    webClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || '738929393617-4kt4e9ed1g79j70dng7epskqn7rkqnm2.apps.googleusercontent.com',
+    expoClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || '376093909298-nd9ss04u338rpr0d3mdk1t8g5u9o35hq.apps.googleusercontent.com',
+    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || '376093909298-j8mqqo5ddokjr4rj66955in8fr2nlc89.apps.googleusercontent.com',
+    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || '376093909298-fghg1v2quhl3eb0pj1lq21s6sdfshska.apps.googleusercontent.com',
+    webClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || '376093909298-nd9ss04u338rpr0d3mdk1t8g5u9o35hq.apps.googleusercontent.com',
     redirectUri: redirectUri, // ✅ Forcer le redirect URI pour garantir l'alignement
   });
 
