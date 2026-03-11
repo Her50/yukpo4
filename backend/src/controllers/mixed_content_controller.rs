@@ -26,12 +26,19 @@ pub struct MixedContentQuery {
     /// Nombre max de résultats
     #[serde(default = "default_limit")]
     pub limit: i32,
+    /// Page pour la pagination (1-indexed)
+    #[serde(default = "default_page")]
+    pub page: i32,
     /// ✅ NOUVEAU 2026-03-04: Format de contenu demandé ("video" pour feed vidéo)
     pub format: Option<String>,
 }
 
 fn default_limit() -> i32 {
     20
+}
+
+fn default_page() -> i32 {
+    1
 }
 
 #[derive(Debug, Serialize)]
@@ -83,7 +90,7 @@ pub async fn get_mixed_content(
             "[MixedContent] 🎬 Requête feed VIDÉO - User: {:?}, Limit: {}",
             params.user_id, params.limit
         ));
-        let videos = fetch_video_feed_from_media(&state, params.limit).await?;
+        let videos = fetch_video_feed_from_media(&state, params.limit, params.page).await?;
         log_info(&format!(
             "[MixedContent] 🎬 {} vidéos récupérées depuis table media",
             videos.len()
@@ -443,7 +450,9 @@ async fn fetch_ml_recommended_content(
 async fn fetch_video_feed_from_media(
     state: &Arc<AppState>,
     limit: i32,
+    page: i32,
 ) -> AppResult<Vec<ContentItem>> {
+    let offset = (page.max(1) - 1) * limit;
     let pool = &state.pg;
 
     // ✅ NOUVEAU: Log de diagnostic - vérifier d'abord combien de médias existent
@@ -533,10 +542,11 @@ async fn fetch_video_feed_from_media(
         AND m.path IS NOT NULL
         AND m.path != ''
         ORDER BY m.uploaded_at DESC
-        LIMIT $1
+        LIMIT $1 OFFSET $2
         "#,
     )
     .bind(limit)
+    .bind(offset)
     .fetch_all(pool)
     .await
     .map_err(|e| {
@@ -564,11 +574,16 @@ async fn fetch_video_feed_from_media(
         let product_name: Option<String> = row.try_get("product_name").ok().flatten();
         let hashtags: Vec<String> = row.try_get("hashtags").unwrap_or_default();
 
-        // Construire les URLs CDN/S3 à partir des paths
-        let video_url = build_media_url_with_fallback(state, &video_path);
-        let hls_video_url = hls_url.as_ref().map(|h| build_media_url_with_fallback(state, h));
-        let thumbnail_url =
-            thumbnail_path.as_ref().map(|t| build_media_url_with_fallback(state, t));
+        // ✅ CORRIGÉ 2026-03-18: Utiliser presigned URLs pour le bucket privé GCS
+        let video_url = build_media_url_presigned(state, &video_path).await;
+        let hls_video_url = match hls_url.as_ref() {
+            Some(h) => Some(build_media_url_presigned(state, h).await),
+            None => None,
+        };
+        let thumbnail_url = match thumbnail_path.as_ref() {
+            Some(t) => Some(build_media_url_presigned(state, t).await),
+            None => None,
+        };
 
         // Extraire le titre du service
         let service_title = service_data
@@ -615,6 +630,28 @@ async fn fetch_video_feed_from_media(
     }
 
     Ok(content)
+}
+
+/// ✅ NOUVEAU 2026-03-18: Génère une URL pré-signée pour les fichiers stockés en GCS privé
+async fn build_media_url_presigned(state: &Arc<AppState>, path: &str) -> String {
+    if path.starts_with("http://") || path.starts_with("https://") {
+        return path.to_string();
+    }
+    if state.media_storage.is_remote() {
+        match state.media_storage.generate_presigned_url(path, 7 * 24 * 3600).await {
+            Ok(presigned) => presigned,
+            Err(e) => {
+                log_error(&format!(
+                    "[MixedContent] Presigned URL error for {}: {}",
+                    path, e
+                ));
+                // Fallback to public URL (may not work if bucket is private)
+                state.media_storage.build_public_url(path)
+            }
+        }
+    } else {
+        build_media_url_with_fallback(state, path)
+    }
 }
 
 /// Mélanger le contenu avec priorisation des publicités

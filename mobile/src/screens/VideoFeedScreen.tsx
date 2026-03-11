@@ -543,6 +543,13 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
         ({ viewableItems }: { viewableItems: Array<ViewToken> }) => {
             const nextIndex = viewableItems[0]?.index ?? 0;
             if (nextIndex === currentIndex) return;
+            // ✅ CORRIGÉ 2026-03-18: Pause immédiate de TOUTES les vidéos non-courantes
+            // Empêche l'interférence audio/vidéo pendant le scroll
+            videoRefs.current.forEach((ref, idx) => {
+                if (ref && idx !== nextIndex) {
+                    ref.pauseAsync().catch(() => undefined);
+                }
+            });
             setCurrentIndex(nextIndex);
         },
         [currentIndex],
@@ -593,9 +600,14 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
         const key = `${item.serviceId}_${item.productIndex ?? 0}`;
         try {
             const response = await apiGet(`/api/products/${item.serviceId}/${item.productIndex ?? 0}/reactions`);
-            if (response && response.success && response.data) {
+            if (response && response.data) {
                 const reactionsData: Record<string, { count: number; hasReacted: boolean }> = {};
-                const reactionsArray = Array.isArray(response.data) ? response.data : [];
+                // ✅ CORRIGÉ 2026-03-18: apiGet wraps response → response.data = backend JSON
+                // Backend renvoie { success, data: [...] }, donc les réactions sont dans response.data.data
+                const backendResp = response.data as any;
+                const reactionsArray = Array.isArray(backendResp?.data)
+                    ? backendResp.data
+                    : Array.isArray(backendResp) ? backendResp : [];
                 reactionsArray.forEach((r: any) => {
                     if (r && r.reaction_type) {
                         reactionsData[r.reaction_type] = {
@@ -1012,31 +1024,34 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                     )}
                 </View>
 
-                {/* ✅ Boutons d'action flottants */}
-                <View style={styles.actionButtonsContainer}>
-                    {item.serviceId && (
-                        <TouchableOpacity
-                            style={styles.ctaButton}
-                            onPress={() => handleViewProduct(item)}
-                            activeOpacity={0.8}
-                        >
-                            <SafeIcon name="shopping-bag" size={14} color="#fff" type="lucide" />
-                            <Text style={styles.ctaText}>Voir le produit</Text>
-                        </TouchableOpacity>
-                    )}
+                {/* ✅ CORRIGÉ 2026-03-18: Boutons CTA uniquement pour la vidéo active
+                    Empêche le bouton "Voir produit" de rester visible sur une autre vidéo */}
+                {isActive && (
+                    <View style={styles.actionButtonsContainer}>
+                        {item.serviceId && (
+                            <TouchableOpacity
+                                style={styles.ctaButton}
+                                onPress={() => handleViewProduct(item)}
+                                activeOpacity={0.8}
+                            >
+                                <SafeIcon name="shopping-bag" size={14} color="#fff" type="lucide" />
+                                <Text style={styles.ctaText}>Voir le produit</Text>
+                            </TouchableOpacity>
+                        )}
 
-                    {/* ✅ Bouton de livraison si le service a configuré la livraison automatique */}
-                    {item.serviceId && item.hasDelivery && (
-                        <TouchableOpacity
-                            style={styles.deliveryButton}
-                            onPress={() => handleDeliveryOrder(item)}
-                            activeOpacity={0.8}
-                        >
-                            <SafeIcon name="truck" size={14} color="#fff" type="lucide" />
-                            <Text style={styles.deliveryText}>Commander</Text>
-                        </TouchableOpacity>
-                    )}
-                </View>
+                        {/* ✅ Bouton de livraison si le service a configuré la livraison automatique */}
+                        {item.serviceId && item.hasDelivery && (
+                            <TouchableOpacity
+                                style={styles.deliveryButton}
+                                onPress={() => handleDeliveryOrder(item)}
+                                activeOpacity={0.8}
+                            >
+                                <SafeIcon name="truck" size={14} color="#fff" type="lucide" />
+                                <Text style={styles.deliveryText}>Commander</Text>
+                            </TouchableOpacity>
+                        )}
+                    </View>
+                )}
 
                 <View style={styles.actions}>
                     {/* ✅ Réaction coeur: tap = love, long-press = picker multi-réactions */}
@@ -1058,11 +1073,12 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                         </Text>
                     </TouchableOpacity>
 
-                    {/* ✅ Barre de réactions rapides: emojis visibles directement */}
+                    {/* ✅ CORRIGÉ 2026-03-18: Barre de réactions avec compteurs + feedback visuel bleu */}
                     <View style={styles.quickReactionsBar}>
                         {REACTIONS.filter(r => r.type !== 'love').map((reaction) => {
                             const itemReactions = reactionsMap[`${item.serviceId}_${item.productIndex ?? 0}`] || {};
                             const hasReacted = itemReactions[reaction.type]?.hasReacted || false;
+                            const reactionCount = itemReactions[reaction.type]?.count || 0;
                             return (
                                 <TouchableOpacity
                                     key={reaction.type}
@@ -1071,7 +1087,12 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                                     activeOpacity={0.7}
                                     disabled={pendingReaction !== null}
                                 >
-                                    <Text style={styles.quickReactionEmoji}>{reaction.emoji}</Text>
+                                    <Text style={[styles.quickReactionEmoji, hasReacted && { transform: [{ scale: 1.15 }] }]}>{reaction.emoji}</Text>
+                                    {reactionCount > 0 && (
+                                        <Text style={[styles.quickReactionCount, hasReacted && styles.quickReactionCountActive]}>
+                                            {reactionCount}
+                                        </Text>
+                                    )}
                                 </TouchableOpacity>
                             );
                         })}
@@ -1221,6 +1242,13 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                 removeClippedSubviews={false}
                 initialNumToRender={1}
                 decelerationRate="fast"
+                onScrollBeginDrag={() => {
+                    // ✅ CORRIGÉ 2026-03-18: Pause vidéo courante dès le début du scroll
+                    const ref = videoRefs.current.get(currentIndex);
+                    if (ref) {
+                        ref.pauseAsync().catch(() => undefined);
+                    }
+                }}
                 onEndReached={loadMore}
                 onEndReachedThreshold={0.5}
                 onScrollToIndexFailed={(info) => {
@@ -1625,20 +1653,29 @@ const styles = StyleSheet.create({
         paddingVertical: 2,
     },
     quickReactionBtn: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
+        width: 34,
+        height: 34,
+        borderRadius: 17,
         backgroundColor: 'rgba(0,0,0,0.3)',
         alignItems: 'center',
         justifyContent: 'center',
     },
     quickReactionBtnActive: {
-        backgroundColor: 'rgba(255,255,255,0.25)',
+        backgroundColor: 'rgba(59,130,246,0.35)',
         borderWidth: 1.5,
-        borderColor: 'rgba(255,255,255,0.5)',
+        borderColor: '#3B82F6',
     },
     quickReactionEmoji: {
-        fontSize: 16,
+        fontSize: 15,
+    },
+    quickReactionCount: {
+        color: 'rgba(255,255,255,0.8)',
+        fontSize: 9,
+        fontWeight: '700',
+        marginTop: 1,
+    },
+    quickReactionCountActive: {
+        color: '#3B82F6',
     },
     actionLabel: {
         color: '#fff',
@@ -1793,7 +1830,7 @@ const styles = StyleSheet.create({
     },
     searchBarContainer: {
         position: 'absolute',
-        top: Platform.OS === 'ios' ? 100 : 80,
+        top: Platform.OS === 'ios' ? 88 : 65,
         left: 16,
         right: 16,
         zIndex: 100,

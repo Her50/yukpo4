@@ -18,6 +18,7 @@ struct CreateNegotiatedPriceRequest {
     conversation_id: String,
     service_id: i32,
     product_index: Option<i32>,
+    #[allow(dead_code)]
     merchant_user_id: Option<i32>,
     client_user_id: i32,
     original_price_cents: i64,
