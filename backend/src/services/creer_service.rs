@@ -3502,6 +3502,7 @@ pub async fn creer_service(
             produit_obj.remove("image_base64");
 
             let mut saved_paths_for_product: Vec<String> = Vec::new();
+            let mut saved_video_paths_for_product: Vec<String> = Vec::new();
             let service_image_count = if product_index == 0 {
                 service_images.len()
             } else {
@@ -3934,6 +3935,7 @@ pub async fn creer_service(
                     }
 
                     files_saved += 1;
+                    saved_video_paths_for_product.push(file_path);
                     log::info!(
                         "[creer_service] ✅ Vidéo {}/{} du produit {} sauvegardée",
                         video_index + 1,
@@ -3941,6 +3943,20 @@ pub async fn creer_service(
                         product_index
                     );
                 }
+            }
+
+            // ✅ FIX 2026-03-11: Réinjecter les chemins vidéo dans produit_obj
+            // Sans cela, product_data.videos est vide et share_product_redirect
+            // ne peut trouver les vidéos que via la table media (qui peut échouer)
+            if !saved_video_paths_for_product.is_empty() {
+                let video_paths_json: Vec<serde_json::Value> = saved_video_paths_for_product
+                    .iter()
+                    .map(|path| serde_json::Value::String(path.clone()))
+                    .collect();
+                produit_obj.insert(
+                    "videos".to_string(),
+                    serde_json::Value::Array(video_paths_json),
+                );
             }
         }
 

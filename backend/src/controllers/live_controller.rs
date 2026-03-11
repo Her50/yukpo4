@@ -89,8 +89,25 @@ pub async fn list_upcoming_sessions(
 pub async fn start_live_session(
     State(state): State<Arc<AppState>>,
     Authenticated(user): Authenticated,
-    Json(mut payload): Json<CreateLiveSessionRequest>,
+    Json(raw_body): Json<serde_json::Value>,
 ) -> AppResult<Json<serde_json::Value>> {
+    log::info!("[live] start_live_session called by user_id={}", user.id);
+    log::info!(
+        "[live] raw body keys: {:?}",
+        raw_body.as_object().map(|o| o.keys().collect::<Vec<_>>())
+    );
+
+    // ✅ FIX: Désérialisation manuelle avec log d'erreur clair
+    let mut payload: CreateLiveSessionRequest =
+        serde_json::from_value(raw_body.clone()).map_err(|e| {
+            log::error!(
+                "[live] Erreur désérialisation payload: {} | body: {}",
+                e,
+                raw_body
+            );
+            AppError::BadRequest(format!("Payload invalide: {}", e))
+        })?;
+
     if !state
         .feature_flags
         .is_enabled(crate::config::feature_flags::KnownFlag::ConnectorsLivekit)
@@ -110,7 +127,10 @@ pub async fn start_live_session(
     }
 
     let response = match LiveStreamingService::create_session(state.clone(), payload).await {
-        Ok(r) => r,
+        Ok(r) => {
+            log::info!("[live] create_session OK, session_id={}", r.session.id);
+            r
+        }
         Err(e) => {
             log::error!("[live] create_session failed: {:?}", e);
             return Err(e);

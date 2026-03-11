@@ -33,7 +33,6 @@ import ResultsMapView from '../components/results/ResultsMapView';
 import SearchBarSection from '../components/results/SearchBarSection';
 import SuggestionsPanel from '../components/results/SuggestionsPanel';
 import SafeIcon from '../components/SafeIcon';
-import { ENVIRONMENT } from '../config/environment';
 import { useAuth } from '../contexts/AuthContext';
 import { useLocation } from '../contexts/LocationContext';
 import { useSearchAutocomplete } from '../hooks/useSearchAutocomplete';
@@ -835,7 +834,8 @@ const ResultatBesoinScreen: React.FC = () => {
                 }
             }
             const productName = product.nom || 'Ce produit';
-            const shareUrl = `${ENVIRONMENT.API_URL || 'https://yukpomnang.com'}/service/${product.service_id}`;
+            const SHARE_BASE_URL = process.env.EXPO_PUBLIC_SHARE_URL || 'https://yukpo-backend-376093909298.europe-west1.run.app';
+            const shareUrl = `${SHARE_BASE_URL}/product/${product.product_index ?? 0}?serviceId=${product.service_id}`;
             const shareMessage = `🌟 Découvrez "${productName}" sur Yukpomnang\n\n${shareUrl}`;
             const result = await Share.share({
                 message: shareMessage,

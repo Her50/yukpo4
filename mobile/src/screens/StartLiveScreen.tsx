@@ -84,7 +84,9 @@ export default function StartLiveScreen() {
         },
       };
 
+      console.log('[StartLiveScreen] Envoi payload:', JSON.stringify(payload));
       const response = await liveStreamingService.startLiveSession(payload);
+      console.log('[StartLiveScreen] Réponse brute:', JSON.stringify(response));
 
       const backendResp = response.data as any;
       const innerData = backendResp?.data || backendResp;
@@ -109,7 +111,9 @@ export default function StartLiveScreen() {
           ]
         );
       } else {
-        throw new Error(backendResp?.error || (response as any).error || 'Échec du démarrage du live');
+        const errMsg = backendResp?.message || backendResp?.error || (response as any).error || (response as any).message || 'Échec du démarrage du live';
+        console.error('[StartLiveScreen] Erreur backend:', errMsg, 'status:', backendResp?.status || response?.status);
+        throw new Error(errMsg);
       }
     } catch (error: any) {
       console.error('[StartLiveScreen] Erreur démarrage live:', error);

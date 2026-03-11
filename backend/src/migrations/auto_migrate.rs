@@ -13,6 +13,43 @@ use std::sync::Arc;
 pub async fn ensure_media_analytics_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification des tables media_engagement & media_distribution...");
 
+    // ✅ FIX 2026-03-11: S'assurer que la table media a TOUTES les colonnes nécessaires
+    // L'ancienne migration ne crée que (id, service_id, type, path, uploaded_at)
+    // Les colonnes manquantes causent des échecs silencieux dans share_product_redirect
+    let media_columns = vec![
+        ("product_id", "TEXT"),
+        ("product_index", "INTEGER"),
+        ("media_type", "TEXT"),
+        ("is_main_image", "BOOLEAN DEFAULT FALSE"),
+        ("display_order", "INTEGER DEFAULT 0"),
+        ("file_size", "BIGINT"),
+        ("file_format", "TEXT"),
+        ("service_media_type", "VARCHAR(50)"),
+        ("ai_description", "TEXT"),
+        ("ai_tags", "TEXT[]"),
+        ("ai_category", "VARCHAR(100)"),
+        ("ai_metadata", "JSONB"),
+        ("ai_analyzed_at", "TIMESTAMPTZ"),
+        ("ai_model_used", "VARCHAR(100)"),
+        ("ai_confidence", "DOUBLE PRECISION"),
+        ("image_signature", "JSONB"),
+        ("image_hash", "VARCHAR(64)"),
+        ("image_metadata", "JSONB"),
+    ];
+    for (col_name, col_type) in &media_columns {
+        let query = format!(
+            "ALTER TABLE media ADD COLUMN IF NOT EXISTS {} {}",
+            col_name, col_type
+        );
+        if let Err(e) = sqlx::query(&query).execute(pool).await {
+            warn!(
+                "⚠️ Ajout colonne media.{} échoué (peut-être déjà existante): {}",
+                col_name, e
+            );
+        }
+    }
+    info!("✅ Colonnes media vérifiées/ajoutées");
+
     sqlx::query(
         r#"
         CREATE TABLE IF NOT EXISTS media_engagement (
@@ -4526,7 +4563,7 @@ pub async fn ensure_product_comments_tables(pool: &PgPool) -> Result<(), sqlx::E
             pc.updated_at,
             pc.edited_at,
             pc.is_deleted,
-            (u.nom_complet)::TEXT AS user_name,
+            COALESCE(u.nom_complet, u.name, CONCAT(u.prenom, ' ', u.nom), u.email, 'Utilisateur')::TEXT AS user_name,
             COALESCE(u.avatar_url, ''::VARCHAR(500)) AS user_avatar,
             (
                 SELECT jsonb_object_agg(reaction_type, reaction_count)

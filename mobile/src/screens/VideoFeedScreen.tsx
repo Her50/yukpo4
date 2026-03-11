@@ -1388,8 +1388,7 @@ const styles = StyleSheet.create({
     poster: {
         height: SCREEN_HEIGHT,
         width: SCREEN_WIDTH,
-        resizeMode: 'cover',
-    },
+    } as const,
     pauseOverlay: {
         ...StyleSheet.absoluteFillObject,
         alignItems: 'center',

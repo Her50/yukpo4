@@ -2114,8 +2114,9 @@ export const commentsApi = {
     commentId: number,
     payload: { content?: string; rating?: number | null; mentions?: number[] }
   ) => {
+    // ✅ CORRIGÉ 2026-03-18: Backend route uses PUT, not PATCH
     return apiCall(`/api/comments/${commentId}`, {
-      method: 'PATCH',
+      method: 'PUT',
       body: JSON.stringify(payload),
     });
   },

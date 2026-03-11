@@ -1034,86 +1034,170 @@ pub async fn share_product_redirect(
     let video_expiry_seconds: u64 = 30 * 24 * 3600; // 30 jours
     let image_expiry_seconds: u64 = 7 * 24 * 3600; // 7 jours
 
-    // ✅ OPTIMISÉ 2026-03-11: Requêtes SQL images + vidéos EN PARALLÈLE + LIMIT pour rapidité
-    let (product_image_paths, product_video_paths) = tokio::join!(
-        async {
-            match sqlx::query_scalar::<_, Option<String>>(
+    // ✅ FIX 2026-03-11: Requête SQL DÉFENSIVE — requête simple d'abord (colonnes de base),
+    // puis requête enrichie si les colonnes existent. Évite les échecs silencieux
+    // quand product_index/is_main_image/display_order n'existent pas dans l'ancienne table media.
+    let query_media_paths = |pool: &sqlx::PgPool,
+                             sid: i32,
+                             pidx: i32,
+                             media_type_filter: &str,
+                             limit: i32| {
+        let media_type_filter = media_type_filter.to_string();
+        let pool = pool.clone();
+        async move {
+            // Requête enrichie (avec product_index, is_main_image, display_order)
+            let enriched_result = sqlx::query_scalar::<_, Option<String>>(&format!(
                 r#"SELECT path FROM media
-                WHERE service_id = $1
-                AND (product_index = $2 OR product_index IS NULL)
-                AND (type = 'image' OR media_type = 'image')
-                ORDER BY CASE WHEN product_index = $2 THEN 0 ELSE 1 END,
-                    COALESCE(is_main_image, FALSE) DESC,
-                    COALESCE(display_order, 0) ASC, id ASC
-                LIMIT 6"#,
-            )
-            .bind(final_service_id)
-            .bind(final_product_index)
-            .fetch_all(&state.pg)
-            .await
-            {
-                Ok(rows) => rows.into_iter().flatten().collect::<Vec<String>>(),
-                Err(e) => {
-                    log::error!("❌ [share_product_redirect] Erreur SQL images: {}", e);
-                    Vec::new()
+                    WHERE service_id = $1
+                    AND (product_index = $2 OR product_index IS NULL)
+                    AND (type = '{}' OR media_type = '{}')
+                    ORDER BY CASE WHEN product_index = $2 THEN 0 ELSE 1 END,
+                        COALESCE(is_main_image, FALSE) DESC,
+                        COALESCE(display_order, 0) ASC, id ASC
+                    LIMIT {}"#,
+                media_type_filter, media_type_filter, limit
+            ))
+            .bind(sid)
+            .bind(pidx)
+            .fetch_all(&pool)
+            .await;
+
+            match enriched_result {
+                Ok(rows) => {
+                    let paths: Vec<String> = rows.into_iter().flatten().collect();
+                    log::info!(
+                        "🖼️ [share] SQL enrichie OK: {} {} pour service={} product_index={}",
+                        paths.len(),
+                        media_type_filter,
+                        sid,
+                        pidx
+                    );
+                    paths
                 }
-            }
-        },
-        async {
-            match sqlx::query_scalar::<_, Option<String>>(
-                r#"SELECT path FROM media
-                WHERE service_id = $1
-                AND (product_index = $2 OR product_index IS NULL)
-                AND (type = 'video' OR media_type = 'video')
-                ORDER BY CASE WHEN product_index = $2 THEN 0 ELSE 1 END,
-                    COALESCE(display_order, 0) ASC, id ASC
-                LIMIT 3"#,
-            )
-            .bind(final_service_id)
-            .bind(final_product_index)
-            .fetch_all(&state.pg)
-            .await
-            {
-                Ok(rows) => rows.into_iter().flatten().collect::<Vec<String>>(),
                 Err(e) => {
-                    log::error!("❌ [share_product_redirect] Erreur SQL vidéos: {}", e);
-                    Vec::new()
+                    log::warn!(
+                        "⚠️ [share] SQL enrichie échouée (colonnes manquantes?): {} — fallback simple",
+                        e
+                    );
+                    // Fallback: requête simple sans colonnes potentiellement manquantes
+                    match sqlx::query_scalar::<_, Option<String>>(
+                        &format!(
+                            "SELECT path FROM media WHERE service_id = $1 AND type = '{}' ORDER BY id ASC LIMIT {}",
+                            media_type_filter, limit
+                        ),
+                    )
+                    .bind(sid)
+                    .fetch_all(&pool)
+                    .await
+                    {
+                        Ok(rows) => {
+                            let paths: Vec<String> = rows.into_iter().flatten().collect();
+                            log::info!(
+                                "🖼️ [share] SQL simple OK: {} {} pour service={}",
+                                paths.len(), media_type_filter, sid
+                            );
+                            paths
+                        }
+                        Err(e2) => {
+                            log::error!("❌ [share] SQL simple aussi échouée: {}", e2);
+                            Vec::new()
+                        }
+                    }
                 }
             }
         }
+    };
+
+    let (product_image_paths, product_video_paths) = tokio::join!(
+        query_media_paths(&state.pg, final_service_id, final_product_index, "image", 6),
+        query_media_paths(&state.pg, final_service_id, final_product_index, "video", 3)
     );
 
-    // Extraire images/vidéos depuis product_data (format tableau OU {valeur: [...]})
-    let extract_media_paths = |key: &str| -> Vec<String> {
-        let val = product_data.as_object().and_then(|obj| obj.get(key));
-        match val {
-            Some(v) if v.is_array() => v
-                .as_array()
-                .unwrap()
-                .iter()
-                .filter_map(|v| v.as_str().map(|s| s.to_string()))
-                .collect(),
-            Some(v) if v.is_object() => v
-                .get("valeur")
-                .and_then(|v| v.as_array())
-                .map(|arr| arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect())
-                .unwrap_or_default(),
-            _ => Vec::new(),
+    // ✅ FIX 2026-03-11: Extraire images/vidéos depuis product_data — PLUS ROBUSTE
+    // Gère les formats: tableau direct, {valeur: [...]}, {type_donnee: ..., valeur: [...]}, string unique
+    let extract_media_paths = |keys: &[&str]| -> Vec<String> {
+        let obj = match product_data.as_object() {
+            Some(o) => o,
+            None => return Vec::new(),
+        };
+        let mut paths = Vec::new();
+        for key in keys {
+            let val = match obj.get(*key) {
+                Some(v) => v,
+                None => continue,
+            };
+            // Format: ["path1", "path2"]
+            if let Some(arr) = val.as_array() {
+                for item in arr {
+                    if let Some(s) = item.as_str() {
+                        if !s.is_empty() && !s.starts_with("data:") {
+                            paths.push(s.to_string());
+                        }
+                    }
+                }
+            }
+            // Format: {valeur: ["path1", ...]} ou {type_donnee: ..., valeur: ["path1", ...]}
+            else if let Some(inner_obj) = val.as_object() {
+                if let Some(valeur) = inner_obj.get("valeur") {
+                    if let Some(arr) = valeur.as_array() {
+                        for item in arr {
+                            if let Some(s) = item.as_str() {
+                                if !s.is_empty() && !s.starts_with("data:") {
+                                    paths.push(s.to_string());
+                                }
+                            }
+                        }
+                    } else if let Some(s) = valeur.as_str() {
+                        if !s.is_empty() && !s.starts_with("data:") {
+                            paths.push(s.to_string());
+                        }
+                    }
+                }
+            }
+            // Format: "path_unique"
+            else if let Some(s) = val.as_str() {
+                if !s.is_empty() && !s.starts_with("data:") {
+                    paths.push(s.to_string());
+                }
+            }
         }
+        paths
     };
 
     // Fusionner chemins uniques (DB prioritaire, puis product_data)
     let mut all_image_paths = product_image_paths;
-    for img in extract_media_paths("images") {
+    for img in extract_media_paths(&[
+        "images",
+        "image",
+        "photos",
+        "photo",
+        "image_produit",
+        "images_produit",
+    ]) {
         if !img.is_empty() && !all_image_paths.contains(&img) {
             all_image_paths.push(img);
         }
     }
     let mut all_video_paths = product_video_paths;
-    for vid in extract_media_paths("videos") {
+    for vid in extract_media_paths(&["videos", "video", "video_produit", "videos_produit"]) {
         if !vid.is_empty() && !all_video_paths.contains(&vid) {
             all_video_paths.push(vid);
         }
+    }
+
+    log::info!(
+        "📊 [share] Avant presign: {} images + {} vidéos (service={}, product_index={})",
+        all_image_paths.len(),
+        all_video_paths.len(),
+        final_service_id,
+        final_product_index
+    );
+    if all_image_paths.is_empty() && all_video_paths.is_empty() {
+        log::warn!(
+            "⚠️ [share] AUCUN média trouvé pour service={} product_index={}! product_data keys: {:?}",
+            final_service_id, final_product_index,
+            product_data.as_object().map(|o| o.keys().collect::<Vec<_>>())
+        );
     }
 
     // ✅ OPTIMISÉ 2026-03-11: Résoudre TOUTES les URLs pré-signées EN PARALLÈLE
@@ -1612,47 +1696,68 @@ pub async fn share_service_redirect(
         raw_service_description
     };
 
-    // ✅ OPTIMISÉ 2026-03-11: Requêtes SQL images + vidéos EN PARALLÈLE + LIMIT
+    // ✅ FIX 2026-03-11: Requêtes SQL DÉFENSIVES avec fallback (mêmes que share_product_redirect)
     let image_expiry: u64 = 7 * 24 * 3600;
     let video_expiry: u64 = 7 * 24 * 3600;
 
-    let (service_image_paths, service_video_paths) = tokio::join!(
-        async {
-            match sqlx::query_scalar::<_, Option<String>>(
-                r#"SELECT path FROM media
-                   WHERE service_id = $1 AND (type = 'image' OR media_type = 'image')
-                   ORDER BY COALESCE(is_main_image, FALSE) DESC, COALESCE(display_order, 0) ASC, id ASC
-                   LIMIT 6"#,
+    let query_service_media = |pool: &sqlx::PgPool,
+                               sid: i32,
+                               media_type_filter: &str,
+                               limit: i32| {
+        let media_type_filter = media_type_filter.to_string();
+        let pool = pool.clone();
+        async move {
+            // Requête enrichie (avec is_main_image, display_order, media_type)
+            let enriched = sqlx::query_scalar::<_, Option<String>>(
+                &format!(
+                    r#"SELECT path FROM media
+                       WHERE service_id = $1 AND (type = '{}' OR media_type = '{}')
+                       ORDER BY COALESCE(is_main_image, FALSE) DESC, COALESCE(display_order, 0) ASC, id ASC
+                       LIMIT {}"#,
+                    media_type_filter, media_type_filter, limit
+                ),
             )
-            .bind(service_id)
-            .fetch_all(&state.pg)
-            .await
-            {
-                Ok(rows) => rows.into_iter().flatten().collect::<Vec<String>>(),
-                Err(e) => {
-                    log::error!("❌ [share_service_redirect] Erreur SQL images: {}", e);
-                    Vec::new()
+            .bind(sid)
+            .fetch_all(&pool)
+            .await;
+
+            match enriched {
+                Ok(rows) => {
+                    let paths: Vec<String> = rows.into_iter().flatten().collect();
+                    log::info!(
+                        "🖼️ [share_service] SQL enrichie: {} {} pour service={}",
+                        paths.len(),
+                        media_type_filter,
+                        sid
+                    );
+                    paths
                 }
-            }
-        },
-        async {
-            match sqlx::query_scalar::<_, Option<String>>(
-                r#"SELECT path FROM media
-                   WHERE service_id = $1 AND (type = 'video' OR media_type = 'video')
-                   ORDER BY COALESCE(display_order, 0) ASC, id ASC
-                   LIMIT 3"#,
-            )
-            .bind(service_id)
-            .fetch_all(&state.pg)
-            .await
-            {
-                Ok(rows) => rows.into_iter().flatten().collect::<Vec<String>>(),
                 Err(e) => {
-                    log::error!("❌ [share_service_redirect] Erreur SQL vidéos: {}", e);
-                    Vec::new()
+                    log::warn!("⚠️ [share_service] SQL enrichie échouée: {} — fallback", e);
+                    match sqlx::query_scalar::<_, Option<String>>(
+                        &format!(
+                            "SELECT path FROM media WHERE service_id = $1 AND type = '{}' ORDER BY id ASC LIMIT {}",
+                            media_type_filter, limit
+                        ),
+                    )
+                    .bind(sid)
+                    .fetch_all(&pool)
+                    .await
+                    {
+                        Ok(rows) => rows.into_iter().flatten().collect(),
+                        Err(e2) => {
+                            log::error!("❌ [share_service] SQL simple échouée: {}", e2);
+                            Vec::new()
+                        }
+                    }
                 }
             }
         }
+    };
+
+    let (service_image_paths, service_video_paths) = tokio::join!(
+        query_service_media(&state.pg, service_id, "image", 6),
+        query_service_media(&state.pg, service_id, "video", 3)
     );
 
     // Collecter les chemins images (DB + fallback depuis service_data si DB vide)

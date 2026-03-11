@@ -17,11 +17,12 @@ use crate::state::AppState;
 pub fn product_comments_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
     Router::new()
         // GET /api/services/{id}/comments - Récupérer les commentaires d'un service
+        // ✅ CORRIGÉ 2026-03-18: optional_jwt_auth pour permettre la lecture anonyme
+        // (évite 401 si token expiré → les commentaires restent visibles)
         .route(
             "/api/services/{id}/comments",
-            get(get_product_comments_handler).layer(axum::middleware::from_fn_with_state(
-                state.clone(),
-                crate::middlewares::jwt::jwt_auth,
+            get(get_product_comments_handler).layer(axum::middleware::from_fn(
+                crate::middlewares::jwt::optional_jwt_auth,
             )),
         )
         // POST /api/services/{id}/comments - Créer un commentaire
