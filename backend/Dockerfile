@@ -36,15 +36,15 @@ COPY .sqlx ./.sqlx
 # Vérifier que le cache SQLx est présent
 RUN echo "=== Vérification du cache SQLx ===" && \
     if [ -d ".sqlx" ]; then \
-        CACHE_COUNT=$(find .sqlx -type f 2>/dev/null | wc -l || echo 0) && \
-        echo "✅ Cache SQLx présent (${CACHE_COUNT} fichiers)" && \
-        if [ "${CACHE_COUNT}" -eq 0 ]; then \
-            echo "❌ WARNING: Le cache .sqlx est vide!" && \
-            exit 1; \
-        fi; \
+    CACHE_COUNT=$(find .sqlx -type f 2>/dev/null | wc -l || echo 0) && \
+    echo "✅ Cache SQLx présent (${CACHE_COUNT} fichiers)" && \
+    if [ "${CACHE_COUNT}" -eq 0 ]; then \
+    echo "❌ WARNING: Le cache .sqlx est vide!" && \
+    exit 1; \
+    fi; \
     else \
-        echo "❌ ERREUR: Répertoire .sqlx non trouvé!" && \
-        exit 1; \
+    echo "❌ ERREUR: Répertoire .sqlx non trouvé!" && \
+    exit 1; \
     fi && \
     echo "==="
 
@@ -106,6 +106,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libice6 \
     libfontconfig1 \
     libfreetype6 \
+    fonts-dejavu-core \
     libgl1 \
     libglu1 \
     && rm -rf /var/lib/apt/lists/*
@@ -117,17 +118,17 @@ COPY blender/ /tmp/blender/
 # Installer Blender depuis le contexte local
 # Blender est OBLIGATOIRE pour le rendu 3D AR
 RUN if [ -f "/tmp/blender/blender-4.0.0-linux-x64.tar.xz" ]; then \
-        BLENDER_ARCHIVE="/tmp/blender/blender-4.0.0-linux-x64.tar.xz"; \
-        echo "✅ Installation de Blender depuis .tar.xz..."; \
-        tar -xf "$BLENDER_ARCHIVE" -C /tmp; \
+    BLENDER_ARCHIVE="/tmp/blender/blender-4.0.0-linux-x64.tar.xz"; \
+    echo "✅ Installation de Blender depuis .tar.xz..."; \
+    tar -xf "$BLENDER_ARCHIVE" -C /tmp; \
     elif [ -f "/tmp/blender/blender-4.0.0-linux-x64.tar" ]; then \
-        BLENDER_ARCHIVE="/tmp/blender/blender-4.0.0-linux-x64.tar"; \
-        echo "✅ Installation de Blender depuis .tar..."; \
-        tar -xf "$BLENDER_ARCHIVE" -C /tmp; \
+    BLENDER_ARCHIVE="/tmp/blender/blender-4.0.0-linux-x64.tar"; \
+    echo "✅ Installation de Blender depuis .tar..."; \
+    tar -xf "$BLENDER_ARCHIVE" -C /tmp; \
     else \
-        echo "❌ ERREUR: Blender non trouve dans le contexte Docker!" && \
-        echo "   Placez blender-4.0.0-linux-x64.tar ou .tar.xz dans backend/blender/" && \
-        exit 1; \
+    echo "❌ ERREUR: Blender non trouve dans le contexte Docker!" && \
+    echo "   Placez blender-4.0.0-linux-x64.tar ou .tar.xz dans backend/blender/" && \
+    exit 1; \
     fi && \
     mv /tmp/blender-4.0.0-linux-x64 /opt/blender && \
     ln -s /opt/blender/blender /usr/local/bin/blender && \

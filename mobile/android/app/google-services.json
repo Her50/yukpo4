@@ -1,21 +1,30 @@
-{
+﻿{
   "project_info": {
-    "project_number": "130064615448",
-    "project_id": "yukpomnang-93cb4",
-    "storage_bucket": "yukpomnang-93cb4.firebasestorage.app"
+    "project_number": "376093909298",
+    "project_id": "yukpo-project",
+    "storage_bucket": "yukpo-project.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:130064615448:android:59785afc4b944c9e555b6d",
+        "mobilesdk_app_id": "1:376093909298:android:yukpomnangmobile",
         "android_client_info": {
           "package_name": "com.yukpomnang.mobile"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "376093909298-fghg1v2quhl3eb0pj1lq21s6sdfshska.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.yukpomnang.mobile",
+            "certificate_hash": "e19abdde56fb324b77e348fe6ef61ebb4db5594f"
+          }
+        }
+      ],
       "api_key": [
         {
-          "current_key": "SET_VIA_FIREBASE_CONSOLE_OR_LOCAL"
+          "current_key": "AIzaSyBur183e2f6C1gwaQp021e838DfSz-Srog"
         }
       ],
       "services": {

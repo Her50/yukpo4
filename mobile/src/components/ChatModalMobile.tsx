@@ -1184,9 +1184,9 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                     <View style={styles.documentPreview}>
                                         <SafeIcon name="file-text" size={20} color="#FFFFFF" />
                                         <Text style={styles.audioPreviewText} numberOfLines={1}>{doc.name}</Text>
-                                        {doc.size && (
+                                        {doc.size ? (
                                             <Text style={styles.documentSize}>{(doc.size / 1024).toFixed(0)} KB</Text>
-                                        )}
+                                        ) : null}
                                     </View>
                                     <TouchableOpacity
                                         style={styles.removeMediaButton}
@@ -1227,11 +1227,11 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                         {/* ✅ NOUVEAU 2026-01-23: Bouton "Commander" avec texte (comme ProductCard) */}
                         {/* ✅ Utilise maintenant l'API /api/services/:id/products au lieu de l'ancien format JSONB */}
                         {/* ✅ Vérifie la configuration de livraison et prend en compte le prix négocié */}
-                        {service?.id && (
+                        {service?.id ? (
                             <TouchableOpacity
                                 style={[
                                     styles.deliveryButton,
-                                    !deliveryEnabled && styles.deliveryButtonDisabled
+                                    !deliveryEnabled ? styles.deliveryButtonDisabled : undefined
                                 ]}
                                 onPress={async () => {
                                     if (!service?.id) {
@@ -1303,12 +1303,12 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                 />
                                 <Text style={[
                                     styles.deliveryButtonText,
-                                    !deliveryEnabled && styles.deliveryButtonTextDisabled
+                                    !deliveryEnabled ? styles.deliveryButtonTextDisabled : undefined
                                 ]}>
                                     Commander
                                 </Text>
                             </TouchableOpacity>
-                        )}
+                        ) : null}
 
                         {/* ✅ NOUVEAU 2026-01-23: Bouton "Envoyer lien avis" - Visible uniquement pour le propriétaire */}
                         {(() => {

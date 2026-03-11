@@ -472,11 +472,11 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
             <Title style={styles.headerTitle}>
               💬 Historique des conversations
             </Title>
-            {unreadTotalCount > 0 && (
+            {unreadTotalCount > 0 ? (
               <View style={styles.unreadBadge}>
                 <Text style={styles.unreadBadgeText}>{unreadTotalCount}</Text>
               </View>
-            )}
+            ) : null}
           </View>
 
           <IconButton
@@ -540,7 +540,7 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
                 key={chat.id}
                 style={[
                   styles.chatCard,
-                  (chat?.unreadCount || 0) > 0 && styles.unreadChatCard
+                  (chat?.unreadCount || 0) > 0 ? styles.unreadChatCard : undefined
                 ]}
                 onPress={() => {
                   handleOpenChatModal(chat);
@@ -556,7 +556,7 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
                   <View style={styles.chatHeader}>
                     <Text style={[
                       styles.chatClientName,
-                      (chat?.unreadCount || 0) > 0 && styles.unreadText
+                      (chat?.unreadCount || 0) > 0 ? styles.unreadText : undefined
                     ]}>
                       {chat?.clientName || 'Client'}
                     </Text>
@@ -571,7 +571,7 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
 
                   <Text style={[
                     styles.chatLastMessage,
-                    chat?.unreadCount > 0 && styles.unreadText
+                    (chat?.unreadCount ?? 0) > 0 ? styles.unreadText : undefined
                   ]}>
                     {chat?.lastMessage || ''}
                   </Text>
@@ -586,11 +586,11 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
                       </Text>
                     </View>
 
-                    {chat.unreadCount != null && chat.unreadCount > 0 && (
+                    {chat.unreadCount != null && chat.unreadCount > 0 ? (
                       <View style={styles.unreadCountBadge}>
                         <Text style={styles.unreadCountText}>{String(chat.unreadCount)}</Text>
                       </View>
-                    )}
+                    ) : null}
                   </View>
                 </View>
               </TouchableOpacity>
@@ -599,23 +599,25 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
         </ScrollView>
       </View>
 
-      {/* ChatModalMobile avec WebSocket intégré */}
-      <ChatModalMobile
-        visible={showChatModal}
-        service={selectedService}
-        prestataireInfo={selectedPrestataire}
-        user={user}
-        conversationId={selectedChat?.id}
-        isPrivateConversation={!selectedChat?.serviceId}
-        onClose={() => {
-          setShowChatModal(false);
-          setSelectedService(null);
-          setSelectedPrestataire(null);
-          setSelectedChat(null);
-          // ✅ CORRIGÉ: Recharger les conversations pour mettre à jour les compteurs non-lus
-          loadChatHistories().catch(e => console.warn('[ChatHistoryModal] Erreur reload:', e));
-        }}
-      />
+      {/* ChatModalMobile avec WebSocket intégré - rendu conditionnel pour éviter crash */}
+      {showChatModal && selectedService && selectedPrestataire ? (
+        <ChatModalMobile
+          visible={true}
+          service={selectedService}
+          prestataireInfo={selectedPrestataire}
+          user={user}
+          conversationId={selectedChat?.id}
+          isPrivateConversation={!selectedChat?.serviceId}
+          onClose={() => {
+            setShowChatModal(false);
+            setSelectedService(null);
+            setSelectedPrestataire(null);
+            setSelectedChat(null);
+            // ✅ CORRIGÉ: Recharger les conversations pour mettre à jour les compteurs non-lus
+            loadChatHistories().catch(e => console.warn('[ChatHistoryModal] Erreur reload:', e));
+          }}
+        />
+      ) : null}
     </Modal>
   );
 };

@@ -2339,8 +2339,8 @@ impl DeliveryRepository {
             }
         }
 
-        // ✅ OPTIMISÉ: Utiliser les colonnes calculées (pickup_lat, pickup_lng, etc.) si disponibles, sinon ST_Y/ST_X
-        // La migration 20260114_optimize_delivery_queries_performance.sql crée ces colonnes pour améliorer les performances
+        // ✅ CORRIGÉ 2026-03-11: Utiliser ST_Y/ST_X directement au lieu de COALESCE avec colonnes calculées
+        // Les colonnes pickup_lat, pickup_lng, etc. n'existent pas en production
         let row: Option<DeliverySummaryRow> = sqlx::query_as(
             r#"
             SELECT
@@ -2348,10 +2348,10 @@ impl DeliveryRepository {
                 status,
                 creator_id,
                 courier_id,
-                COALESCE(pickup_lat, ST_Y(pickup_location::geometry)) AS pickup_lat,
-                COALESCE(pickup_lng, ST_X(pickup_location::geometry)) AS pickup_lng,
-                COALESCE(dropoff_lat, ST_Y(dropoff_location::geometry)) AS dropoff_lat,
-                COALESCE(dropoff_lng, ST_X(dropoff_location::geometry)) AS dropoff_lng,
+                ST_Y(pickup_location::geometry) AS pickup_lat,
+                ST_X(pickup_location::geometry) AS pickup_lng,
+                ST_Y(dropoff_location::geometry) AS dropoff_lat,
+                ST_X(dropoff_location::geometry) AS dropoff_lng,
                 dropoff_address,
                 distance_meters,
                 estimated_duration_seconds,
@@ -2370,8 +2370,8 @@ impl DeliveryRepository {
                 recipient_dropoff_updated_at,
                 recipient_chat_thread_id,
                 store_name,
-                COALESCE(store_lat, ST_Y(store_location::geometry)) AS store_lat,
-                COALESCE(store_lng, ST_X(store_location::geometry)) AS store_lng,
+                ST_Y(store_location::geometry) AS store_lat,
+                ST_X(store_location::geometry) AS store_lng,
                 COALESCE(shopping_required, FALSE) AS shopping_required,
                 COALESCE(metadata, '{}'::jsonb) AS metadata,
                 -- ✅ Aller-retour

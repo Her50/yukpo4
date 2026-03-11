@@ -112,6 +112,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxext6 \
     libxxf86vm1 \
     libxfixes3 \
+    fonts-dejavu-core \
     && rm -rf /var/lib/apt/lists/*
 
 # 🎨 Installer Blender pour rendu 3D AR (optimisé pour AWS - mode headless avec xvfb)

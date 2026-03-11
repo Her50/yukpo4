@@ -11190,6 +11190,69 @@ pub async fn ensure_chat_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
         info!("✅ Tables de chat présentes");
     }
 
+    // ✅ CORRIGÉ 2026-03-11: S'assurer que la table conversations a TOUTES les colonnes requises
+    // La table peut avoir été créée par les migrations "fix" (00000071, 00000073) avec un schéma minimal
+    // (seulement id, created_at, updated_at), ce qui cause des erreurs 404/500 pour le chat,
+    // les prix négociés, et les conversations WebSocket
+    if conversations_exists {
+        let required_columns = [
+            (
+                "client_id",
+                "INTEGER REFERENCES users(id) ON DELETE CASCADE",
+            ),
+            (
+                "prestataire_id",
+                "INTEGER REFERENCES users(id) ON DELETE CASCADE",
+            ),
+            (
+                "service_id",
+                "INTEGER REFERENCES services(id) ON DELETE SET NULL",
+            ),
+            ("service_title", "TEXT"),
+            ("status", "VARCHAR(20) DEFAULT 'active'"),
+            ("is_active", "BOOLEAN DEFAULT TRUE"),
+            ("last_message_at", "TIMESTAMP WITH TIME ZONE DEFAULT NOW()"),
+        ];
+
+        for (col_name, col_type) in &required_columns {
+            let has_column = sqlx::query_scalar::<_, bool>(
+                "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'conversations' AND column_name = $1)",
+            )
+            .bind(col_name)
+            .fetch_one(pool)
+            .await?;
+
+            if !has_column {
+                warn!(
+                    "⚠️ Colonne '{}' manquante sur conversations, ajout en cours...",
+                    col_name
+                );
+                let alter_sql = format!(
+                    "ALTER TABLE conversations ADD COLUMN IF NOT EXISTS {} {}",
+                    col_name, col_type
+                );
+                sqlx::query(&alter_sql).execute(pool).await?;
+                info!("✅ Colonne '{}' ajoutée à conversations", col_name);
+            }
+        }
+
+        // Créer les index manquants
+        sqlx::query(
+            "CREATE INDEX IF NOT EXISTS idx_conversations_client_id ON conversations(client_id)",
+        )
+        .execute(pool)
+        .await?;
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_conversations_prestataire_id ON conversations(prestataire_id)")
+            .execute(pool).await?;
+        sqlx::query(
+            "CREATE INDEX IF NOT EXISTS idx_conversations_service_id ON conversations(service_id)",
+        )
+        .execute(pool)
+        .await?;
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_conversations_last_message ON conversations(last_message_at DESC)")
+            .execute(pool).await?;
+    }
+
     Ok(())
 }
 
