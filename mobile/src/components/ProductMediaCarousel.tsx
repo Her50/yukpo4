@@ -57,6 +57,9 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
     // ✅ NOUVEAU 2026-03-02: Tracking interaction utilisateur pour pause auto-scroll
     const userInteractingRef = useRef(false);
     const autoScrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    // ✅ FIX 2026-03-11: Ref pour tracker immédiatement l'état de lecture vidéo (évite le délai du state React)
+    const videoPlayingRef = useRef<number | null>(null);
+    const currentIndexRef = useRef(0);
 
     // Combiner toutes les médias avec priorité variantImage
     const allMedia: Array<{ type: 'image' | 'video'; uri: string; index: number }> = [];
@@ -98,6 +101,8 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
         // ✅ Notifier le changement de média
         onMediaChange?.(index, allMedia.length);
 
+        currentIndexRef.current = index;
+
         // Arrêter la vidéo précédente si on change de slide
         if (playingVideoIndex !== null && playingVideoIndex !== index) {
             const previousVideoRef = videoRefs.current.get(playingVideoIndex);
@@ -105,10 +110,13 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
                 previousVideoRef.pauseAsync().catch(() => undefined);
             }
             setPlayingVideoIndex(null);
+            videoPlayingRef.current = null;
         }
 
         // ✅ NOUVEAU 2026-03-02: Autoplay vidéo quand le slide vidéo devient visible par scroll utilisateur
         if (allMedia[index]?.type === 'video' && playingVideoIndex !== index) {
+            // ✅ FIX 2026-03-11: Mettre le ref immédiatement pour bloquer l'auto-scroll
+            videoPlayingRef.current = index;
             setTimeout(() => {
                 const videoRef = videoRefs.current.get(index);
                 if (videoRef) {
@@ -132,12 +140,14 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
                         await videoRef.setStatusAsync({ shouldPlay: true, isMuted: false });
                         await videoRef.playAsync();
                         setPlayingVideoIndex(index);
+                        videoPlayingRef.current = index;
                         console.log('[ProductMediaCarousel] ✅ Vidéo démarrée avec succès, index:', index);
                     } else {
                         // La vidéo n'est pas encore chargée, attendre qu'elle se charge
                         console.log('[ProductMediaCarousel] ⏳ Vidéo pas encore chargée, attente...');
                         // Marquer comme devant jouer, le onPlaybackStatusUpdate démarrera la lecture
                         setPlayingVideoIndex(index);
+                        videoPlayingRef.current = index;
                         // Essayer de charger la vidéo
                         await videoRef.loadAsync({ uri: allMedia[index].uri }, { shouldPlay: true, isMuted: false });
                     }
@@ -147,21 +157,25 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
                     try {
                         await videoRef.loadAsync({ uri: allMedia[index].uri }, { shouldPlay: true, isMuted: false });
                         setPlayingVideoIndex(index);
+                        videoPlayingRef.current = index;
                     } catch (retryError) {
                         console.error('[ProductMediaCarousel] ❌ Erreur retry lecture vidéo:', retryError);
                         setPlayingVideoIndex(null);
+                        videoPlayingRef.current = null;
                     }
                 }
             } else {
                 console.warn('[ProductMediaCarousel] ⚠️ Ref vidéo non disponible pour index:', index);
                 // Si la ref n'est pas encore disponible, marquer comme devant jouer
                 setPlayingVideoIndex(index);
+                videoPlayingRef.current = index;
             }
         }
     };
 
     const openFullscreen = (media: { type: 'image' | 'video'; uri: string }) => {
         setPlayingVideoIndex(null);
+        videoPlayingRef.current = null;
         setFullscreenMedia(media);
         onImagePress?.(media.type === 'image' ? 0 : -1);
     };
@@ -200,36 +214,56 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
             }
 
             setPlayingVideoIndex(null);
+            videoPlayingRef.current = null;
         }
     }, [isScrolling, playingVideoIndex, allMedia, onStopVideo]);
 
-    // ✅ CORRIGÉ 2026-03-02: Auto-scroll continu à travers tous les médias
-    // Scroll toutes les 4s pour les images, pause quand l'utilisateur interagit ou qu'une vidéo joue
+    // ✅ FIX 2026-03-11: Auto-play la première vidéo si elle est au slide 0
+    useEffect(() => {
+        if (allMedia.length > 0 && allMedia[0]?.type === 'video') {
+            // Délai pour laisser le composant se monter et la ref vidéo se créer
+            const timer = setTimeout(() => {
+                const videoRef = videoRefs.current.get(0);
+                if (videoRef && videoPlayingRef.current === null) {
+                    videoRef.playAsync().catch(() => undefined);
+                    setPlayingVideoIndex(0);
+                    videoPlayingRef.current = 0;
+                }
+            }, 600);
+            return () => clearTimeout(timer);
+        }
+    }, [allMedia.length]);
+
+    // ✅ CORRIGÉ 2026-03-11: Auto-scroll continu — PAUSE quand une vidéo joue (utilise ref, pas state)
     useEffect(() => {
         if (allMedia.length <= 1) return;
 
         const startAutoScroll = () => {
             if (autoScrollTimerRef.current) clearInterval(autoScrollTimerRef.current);
             autoScrollTimerRef.current = setInterval(() => {
-                // Ne pas auto-scroll si l'utilisateur interagit ou si une vidéo est en lecture
-                if (userInteractingRef.current || playingVideoIndex !== null) return;
+                // ✅ FIX: Utiliser le ref au lieu du state pour vérifier immédiatement
+                if (userInteractingRef.current || videoPlayingRef.current !== null) return;
 
-                setCurrentIndex((prev) => {
-                    const nextIndex = (prev + 1) % allMedia.length;
-                    scrollViewRef.current?.scrollTo({ x: CAROUSEL_WIDTH * nextIndex, animated: true });
-                    // ✅ NOUVEAU: Si le prochain slide est une vidéo, lancer l'autoplay
-                    if (allMedia[nextIndex]?.type === 'video') {
-                        // Petit délai pour laisser le scroll se terminer avant de lancer la vidéo
-                        setTimeout(() => {
-                            const videoRef = videoRefs.current.get(nextIndex);
-                            if (videoRef) {
-                                videoRef.playAsync().catch(() => undefined);
-                                setPlayingVideoIndex(nextIndex);
-                            }
-                        }, 400);
-                    }
-                    return nextIndex;
-                });
+                // ✅ FIX: Vérifier aussi si le slide actuel est une vidéo (même si playingVideoIndex pas encore mis à jour)
+                const curIdx = currentIndexRef.current;
+                if (allMedia[curIdx]?.type === 'video') return;
+
+                const nextIndex = (curIdx + 1) % allMedia.length;
+                scrollViewRef.current?.scrollTo({ x: CAROUSEL_WIDTH * nextIndex, animated: true });
+                setCurrentIndex(nextIndex);
+                currentIndexRef.current = nextIndex;
+
+                // Si le prochain slide est une vidéo, lancer l'autoplay
+                if (allMedia[nextIndex]?.type === 'video') {
+                    videoPlayingRef.current = nextIndex; // Bloquer immédiatement l'auto-scroll
+                    setTimeout(() => {
+                        const videoRef = videoRefs.current.get(nextIndex);
+                        if (videoRef) {
+                            videoRef.playAsync().catch(() => undefined);
+                            setPlayingVideoIndex(nextIndex);
+                        }
+                    }, 400);
+                }
             }, 4000);
         };
 
@@ -240,7 +274,7 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
             clearTimeout(initTimer);
             if (autoScrollTimerRef.current) clearInterval(autoScrollTimerRef.current);
         };
-    }, [allMedia.length, playingVideoIndex]);
+    }, [allMedia.length]);
 
     if (allMedia.length === 0) {
         return (
@@ -296,15 +330,31 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
                             style={styles.media}
                             resizeMode={ResizeMode.COVER} // ✅ CORRIGÉ: COVER au lieu de CONTAIN pour éviter les espaces noirs
                             shouldPlay={playingVideoIndex === index && !isScrolling}
-                            isLooping
+                            isLooping={false}
                             isMuted={playingVideoIndex !== index}
                             useNativeControls={false}
+                            onPlaybackStatusUpdate={(status) => {
+                                // ✅ FIX: Détecter la fin de la vidéo pour passer au média suivant
+                                if (status.isLoaded && status.didJustFinish && playingVideoIndex === index) {
+                                    console.log('[ProductMediaCarousel] Vidéo terminée, passage au média suivant');
+                                    setPlayingVideoIndex(null);
+                                    videoPlayingRef.current = null;
+                                    // Passer au média suivant après un court délai
+                                    setTimeout(() => {
+                                        const nextIndex = (index + 1) % allMedia.length;
+                                        scrollViewRef.current?.scrollTo({ x: CAROUSEL_WIDTH * nextIndex, animated: true });
+                                        setCurrentIndex(nextIndex);
+                                        currentIndexRef.current = nextIndex;
+                                    }, 500);
+                                }
+                            }}
                             onError={(error: any) => {
                                 const errorMessage = (error as any)?.message || String(error);
                                 if (!errorMessage.includes('404')) {
                                     console.error('[ProductMediaCarousel] ❌ Erreur vidéo:', error);
                                 }
                                 setPlayingVideoIndex(null);
+                                videoPlayingRef.current = null;
                             }}
                         />
                         {/* Overlay sombre + icône quand la vidéo n'est pas en lecture */}
@@ -499,12 +549,6 @@ const styles = StyleSheet.create({
         height: 100,
         borderTopLeftRadius: 12,
         borderTopRightRadius: 12,
-    },
-    videoContainer: {
-        width: '100%',
-        height: '100%',
-        position: 'relative',
-        backgroundColor: '#1a1a2e',
     },
     playButton: {
         position: 'absolute',

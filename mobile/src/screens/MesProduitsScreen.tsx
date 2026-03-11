@@ -257,6 +257,8 @@ const MesProduitsScreen: React.FC = () => {
     const [showMenuModal, setShowMenuModal] = useState(false);
     const [showDeliveryConfigModal, setShowDeliveryConfigModal] = useState(false);
     const [deliveryConfigProduct, setDeliveryConfigProduct] = useState<ManagedProduct | null>(null);
+    const [showProductActionsModal, setShowProductActionsModal] = useState(false);
+    const [productActionsTarget, setProductActionsTarget] = useState<ManagedProduct | null>(null);
     const [showMediaGallery, setShowMediaGallery] = useState(false);
     const [selectedServiceForGallery, setSelectedServiceForGallery] = useState<any>(null);
     // ✅ MIGRÉ: Utilise useSharedValue au lieu de Animated.Value
@@ -2204,18 +2206,8 @@ const MesProduitsScreen: React.FC = () => {
                     <TouchableOpacity
                         style={styles.contextMenuRow}
                         onPress={() => {
-                            Alert.alert(
-                                'Plus d\'actions',
-                                `Actions pour "${product.nom || 'ce produit'}"`,
-                                [
-                                    { text: '📋 Dupliquer', onPress: () => handleDuplicateProduct(product) },
-                                    { text: '📊 Statistiques', onPress: () => handleViewStats(product) },
-                                    { text: '📢 Promouvoir', onPress: () => handlePromoteProduct(product) },
-                                    { text: '🚚 Livraison', onPress: () => handleOpenDeliveryConfig(product) },
-                                    { text: '🗑️ Supprimer', style: 'destructive', onPress: () => handleDeleteProduct(product) },
-                                    { text: 'Annuler', style: 'cancel' },
-                                ]
-                            );
+                            setProductActionsTarget(product);
+                            setShowProductActionsModal(true);
                         }}
                     >
                         <SafeIcon name="more-vertical" size={15} color="#6B7280" />
@@ -2589,6 +2581,121 @@ const MesProduitsScreen: React.FC = () => {
                 </TouchableOpacity>
             </Modal>
 
+            {/* ✅ FIX: Modal actions produit (remplace Alert.alert qui bloquait sur Android avec >3 boutons) */}
+            <Modal
+                visible={showProductActionsModal}
+                transparent={true}
+                animationType="fade"
+                onRequestClose={() => setShowProductActionsModal(false)}
+            >
+                <TouchableOpacity
+                    style={styles.productActionsOverlay}
+                    activeOpacity={1}
+                    onPress={() => setShowProductActionsModal(false)}
+                >
+                    <View style={styles.productActionsSheet} onStartShouldSetResponder={() => true}>
+                        {/* Handle bar */}
+                        <View style={styles.productActionsHandle} />
+
+                        <Text style={styles.productActionsTitle}>
+                            {productActionsTarget?.nom || 'Produit'}
+                        </Text>
+
+                        {/* Actions */}
+                        <TouchableOpacity
+                            style={styles.productActionRow}
+                            onPress={() => {
+                                setShowProductActionsModal(false);
+                                if (productActionsTarget) handlePromoteProduct(productActionsTarget);
+                            }}
+                        >
+                            <View style={[styles.productActionIconBg, { backgroundColor: '#FEF3C7' }]}>
+                                <SafeIcon name="trending-up" size={18} color="#D97706" />
+                            </View>
+                            <View style={styles.productActionTextCol}>
+                                <Text style={styles.productActionLabel}>Promouvoir</Text>
+                                <Text style={styles.productActionHint}>Booster la visibilité</Text>
+                            </View>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={styles.productActionRow}
+                            onPress={() => {
+                                setShowProductActionsModal(false);
+                                if (productActionsTarget) handleViewStats(productActionsTarget);
+                            }}
+                        >
+                            <View style={[styles.productActionIconBg, { backgroundColor: '#EEF2FF' }]}>
+                                <SafeIcon name="bar-chart-2" size={18} color="#6366F1" />
+                            </View>
+                            <View style={styles.productActionTextCol}>
+                                <Text style={styles.productActionLabel}>Statistiques</Text>
+                                <Text style={styles.productActionHint}>Vues, clics, conversions</Text>
+                            </View>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={styles.productActionRow}
+                            onPress={() => {
+                                setShowProductActionsModal(false);
+                                if (productActionsTarget) handleDuplicateProduct(productActionsTarget);
+                            }}
+                        >
+                            <View style={[styles.productActionIconBg, { backgroundColor: '#F0FDF4' }]}>
+                                <SafeIcon name="copy" size={18} color="#16A34A" />
+                            </View>
+                            <View style={styles.productActionTextCol}>
+                                <Text style={styles.productActionLabel}>Dupliquer</Text>
+                                <Text style={styles.productActionHint}>Créer une copie</Text>
+                            </View>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={styles.productActionRow}
+                            onPress={() => {
+                                setShowProductActionsModal(false);
+                                if (productActionsTarget) handleOpenDeliveryConfig(productActionsTarget);
+                            }}
+                        >
+                            <View style={[styles.productActionIconBg, { backgroundColor: '#EFF6FF' }]}>
+                                <SafeIcon name="truck" size={18} color="#3B82F6" />
+                            </View>
+                            <View style={styles.productActionTextCol}>
+                                <Text style={styles.productActionLabel}>Livraison</Text>
+                                <Text style={styles.productActionHint}>Configurer la livraison</Text>
+                            </View>
+                        </TouchableOpacity>
+
+                        {/* Séparateur avant action destructive */}
+                        <View style={styles.productActionSeparator} />
+
+                        <TouchableOpacity
+                            style={styles.productActionRow}
+                            onPress={() => {
+                                setShowProductActionsModal(false);
+                                if (productActionsTarget) handleDeleteProduct(productActionsTarget);
+                            }}
+                        >
+                            <View style={[styles.productActionIconBg, { backgroundColor: '#FEF2F2' }]}>
+                                <SafeIcon name="trash-2" size={18} color="#DC2626" />
+                            </View>
+                            <View style={styles.productActionTextCol}>
+                                <Text style={[styles.productActionLabel, { color: '#DC2626' }]}>Supprimer</Text>
+                                <Text style={styles.productActionHint}>Supprimer définitivement</Text>
+                            </View>
+                        </TouchableOpacity>
+
+                        {/* Bouton Annuler */}
+                        <TouchableOpacity
+                            style={styles.productActionCancel}
+                            onPress={() => setShowProductActionsModal(false)}
+                        >
+                            <Text style={styles.productActionCancelText}>Annuler</Text>
+                        </TouchableOpacity>
+                    </View>
+                </TouchableOpacity>
+            </Modal>
+
             {/* ✅ Modal galerie médias des produits */}
             {selectedServiceForGallery && (
                 <ServiceMediaGallery
@@ -2749,6 +2856,77 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         color: modernColors.text,
         flex: 1,
+    },
+    // ✅ FIX: Styles pour le modal actions produit (remplace Alert.alert)
+    productActionsOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.45)',
+        justifyContent: 'flex-end',
+    },
+    productActionsSheet: {
+        backgroundColor: '#FFFFFF',
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        paddingBottom: Platform.OS === 'ios' ? 34 : 20,
+        paddingHorizontal: 20,
+    },
+    productActionsHandle: {
+        width: 40,
+        height: 4,
+        borderRadius: 2,
+        backgroundColor: '#D1D5DB',
+        alignSelf: 'center',
+        marginTop: 12,
+        marginBottom: 16,
+    },
+    productActionsTitle: {
+        fontSize: 17,
+        fontWeight: '700',
+        color: '#1F2937',
+        marginBottom: 16,
+    },
+    productActionRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 13,
+        gap: 14,
+    },
+    productActionIconBg: {
+        width: 40,
+        height: 40,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    productActionTextCol: {
+        flex: 1,
+    },
+    productActionLabel: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: '#1F2937',
+    },
+    productActionHint: {
+        fontSize: 12,
+        color: '#9CA3AF',
+        marginTop: 1,
+    },
+    productActionSeparator: {
+        height: 1,
+        backgroundColor: '#F3F4F6',
+        marginVertical: 4,
+    },
+    productActionCancel: {
+        marginTop: 12,
+        paddingVertical: 14,
+        alignItems: 'center',
+        backgroundColor: '#F3F4F6',
+        borderRadius: 14,
+    },
+    productActionCancelText: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: '#6B7280',
     },
     filtersContainer: {
         backgroundColor: '#FFFFFF',

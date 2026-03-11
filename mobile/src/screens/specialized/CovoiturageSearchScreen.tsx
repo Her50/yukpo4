@@ -391,7 +391,7 @@ const CovoiturageSearchScreen: React.FC = () => {
                             )}
                         </View>
 
-                        {/* ✅ AMÉLIORÉ: Champs départ et destination compacts côte à côte */}
+                        {/* ✅ FIX: Champs départ et destination en pleine largeur pour lisibilité */}
                         {!searchNearby && (
                             <View style={styles.routeContainer}>
                                 <View style={styles.routeRow}>
@@ -413,21 +413,23 @@ const CovoiturageSearchScreen: React.FC = () => {
                                         />
                                     </View>
 
-                                    {/* Bouton d'échange */}
-                                    <TouchableOpacity
-                                        style={styles.swapButton}
-                                        onPress={() => {
-                                            hapticPress();
-                                            const tempVille = villeDepart;
-                                            const tempQuartier = quartierDepart;
-                                            setVilleDepart(villeDestination);
-                                            setQuartierDepart(quartierDestination);
-                                            setVilleDestination(tempVille);
-                                            setQuartierDestination(tempQuartier);
-                                        }}
-                                    >
-                                        <SafeIcon name="arrow-up-down" size={18} color="#FFFFFF" type="lucide" />
-                                    </TouchableOpacity>
+                                    {/* Bouton d'échange centré */}
+                                    <View style={styles.swapButtonRow}>
+                                        <TouchableOpacity
+                                            style={styles.swapButton}
+                                            onPress={() => {
+                                                hapticPress();
+                                                const tempVille = villeDepart;
+                                                const tempQuartier = quartierDepart;
+                                                setVilleDepart(villeDestination);
+                                                setQuartierDepart(quartierDestination);
+                                                setVilleDestination(tempVille);
+                                                setQuartierDestination(tempQuartier);
+                                            }}
+                                        >
+                                            <SafeIcon name="arrow-up-down" size={18} color="#FFFFFF" type="lucide" />
+                                        </TouchableOpacity>
+                                    </View>
 
                                     {/* Destination */}
                                     <View style={styles.routeInputContainer}>
@@ -832,12 +834,11 @@ const styles = StyleSheet.create({
         marginBottom: 20,
     },
     routeRow: {
-        flexDirection: 'row',
-        alignItems: 'flex-end',
-        gap: 8,
+        flexDirection: 'column',
+        gap: 4,
     },
     routeInputContainer: {
-        flex: 1,
+        width: '100%',
     },
     routeLabel: {
         fontSize: 11,
@@ -847,6 +848,10 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 4,
+    },
+    swapButtonRow: {
+        alignItems: 'center',
+        marginVertical: 2,
     },
     swapButton: {
         width: 36,

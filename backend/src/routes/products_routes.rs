@@ -13,7 +13,7 @@ use crate::controllers::product_stats_controller::{
 };
 use crate::controllers::products_controller::{
     delete_product, duplicate_product, get_product, get_products_by_service, get_products_by_user,
-    get_products_by_user_path, og_placeholder_image, share_product_redirect,
+    get_products_by_user_path, og_placeholder_image, og_product_image, share_product_redirect,
     share_service_redirect, share_tracking_redirect, update_product,
 };
 use crate::middlewares::jwt::jwt_auth;
@@ -87,6 +87,8 @@ pub fn products_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/service/{service_id}", get(share_service_redirect))
         // ✅ NOUVEAU: Route publique pour partage de suivi de livraison
         .route("/track/{delivery_id}", get(share_tracking_redirect))
+        // ✅ NOUVEAU: Image OG dynamique PNG avec nom + prix + variations (pour WhatsApp/Facebook)
+        .route("/api/og-product-image/{product_id}", get(og_product_image))
         // ✅ NOUVEAU: Placeholder OG image dynamique (SVG) quand aucune image produit/service n'existe
         .route("/api/og-placeholder", get(og_placeholder_image))
         .with_state(state)

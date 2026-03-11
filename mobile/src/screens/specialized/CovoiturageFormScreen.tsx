@@ -4,8 +4,8 @@
 // Exploite endpoints: CRUD covoiturage, my-trips, booking, search, reviews, driver verification
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
+import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
@@ -195,8 +195,8 @@ const CovoiturageFormScreen: React.FC = () => {
     const handleSubmit = async () => {
         if (!formData.depart || !formData.destination) { Alert.alert('Erreur', 'Départ et destination obligatoires'); return; }
         if (!formData.prix_par_place.trim()) { Alert.alert('Erreur', 'Prix par place obligatoire'); return; }
-        const now = new Date(); now.setHours(0,0,0,0);
-        const dep = new Date(formData.date_depart); dep.setHours(0,0,0,0);
+        const now = new Date(); now.setHours(0, 0, 0, 0);
+        const dep = new Date(formData.date_depart); dep.setHours(0, 0, 0, 0);
         if (dep < now) { Alert.alert('Validation', 'Date dans le passé'); return; }
 
         setLoading(true);
@@ -325,14 +325,14 @@ const CovoiturageFormScreen: React.FC = () => {
             <View style={s.routeCard}>
                 <Text style={s.routeCardTitle}>Itinéraire</Text>
                 <View style={s.routeInputs}>
-                    <View style={{ flex: 1 }}>
+                    <View style={{ width: '100%' }}>
                         <Text style={s.routeLabel}>🟢 Départ *</Text>
                         <LocationSelector label="" value={formData.depart ? (typeof formData.depart === 'string' ? { raw: formData.depart, place_name: formData.depart } : formData.depart) : ''} onSelect={(loc: LocationObject) => setFormData({ ...formData, depart: loc })} placeholder="Lieu de départ..." scope="all" enrichWithBackend />
                     </View>
                     <TouchableOpacity style={s.swapBtn} onPress={() => { const t = formData.depart; const tg = selectedGPSDepart; setFormData({ ...formData, depart: formData.destination, destination: t }); setSelectedGPSDepart(selectedGPSDestination); setSelectedGPSDestination(tg); }}>
                         <SafeIcon name="arrow-up-down" size={18} color="#fff" />
                     </TouchableOpacity>
-                    <View style={{ flex: 1 }}>
+                    <View style={{ width: '100%' }}>
                         <Text style={s.routeLabel}>🔴 Arrivée *</Text>
                         <LocationSelector label="" value={formData.destination ? (typeof formData.destination === 'string' ? { raw: formData.destination, place_name: formData.destination } : formData.destination) : ''} onSelect={(loc: LocationObject) => setFormData({ ...formData, destination: loc })} placeholder="Lieu d'arrivée..." scope="all" enrichWithBackend />
                     </View>
@@ -363,7 +363,7 @@ const CovoiturageFormScreen: React.FC = () => {
                         <Text style={s.dateBtnText}>{formData.heure_depart}</Text>
                         <SafeIcon name="clock" size={18} color={modernColors.primary} />
                     </TouchableOpacity>
-                    {showTimePicker && <DateTimePicker value={new Date(`2000-01-01T${formData.heure_depart}`)} mode="time" display="default" onChange={(_, d) => { setShowTimePicker(false); if (d) setFormData({ ...formData, heure_depart: `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}` }); }} />}
+                    {showTimePicker && <DateTimePicker value={new Date(`2000-01-01T${formData.heure_depart}`)} mode="time" display="default" onChange={(_, d) => { setShowTimePicker(false); if (d) setFormData({ ...formData, heure_depart: `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}` }); }} />}
                 </View>
             </View>
 
@@ -392,10 +392,10 @@ const CovoiturageFormScreen: React.FC = () => {
             {/* Places & Price */}
             <View style={{ flexDirection: 'row', gap: 12 }}>
                 <View style={[s.field, { flex: 1 }]}>
-                    <NativeInput label="Places *" value={formData.places_disponibles} onChangeText={t => { const n = t.replace(/\D/g,''); if (!n || (parseInt(n) >= 1 && parseInt(n) <= 20)) setFormData({ ...formData, places_disponibles: n }); }} placeholder="3" keyboardType="numeric" />
+                    <NativeInput label="Places *" value={formData.places_disponibles} onChangeText={t => { const n = t.replace(/\D/g, ''); if (!n || (parseInt(n) >= 1 && parseInt(n) <= 20)) setFormData({ ...formData, places_disponibles: n }); }} placeholder="3" keyboardType="numeric" />
                 </View>
                 <View style={[s.field, { flex: 1 }]}>
-                    <NativeInput label={`Prix/place (${formData.devise}) *`} value={formData.prix_par_place} onChangeText={t => setFormData({ ...formData, prix_par_place: t.replace(/\D/g,'') })} placeholder="5000" keyboardType="numeric" />
+                    <NativeInput label={`Prix/place (${formData.devise}) *`} value={formData.prix_par_place} onChangeText={t => setFormData({ ...formData, prix_par_place: t.replace(/\D/g, '') })} placeholder="5000" keyboardType="numeric" />
                 </View>
             </View>
 
@@ -452,7 +452,7 @@ const CovoiturageFormScreen: React.FC = () => {
                             <Text style={s.dateBtnText}>{formData.recurrence_end_date ? formData.recurrence_end_date.toLocaleDateString('fr-FR') : 'Sans fin'}</Text>
                             <SafeIcon name="calendar" size={18} color={modernColors.primary} />
                         </TouchableOpacity>
-                        {showRecurrenceEndDatePicker && <DateTimePicker value={formData.recurrence_end_date || new Date(Date.now() + 30*86400000)} mode="date" display="default" minimumDate={new Date(Date.now() + 86400000)} onChange={(_, d) => { setShowRecurrenceEndDatePicker(false); if (d) setFormData({ ...formData, recurrence_end_date: d }); }} />}
+                        {showRecurrenceEndDatePicker && <DateTimePicker value={formData.recurrence_end_date || new Date(Date.now() + 30 * 86400000)} mode="date" display="default" minimumDate={new Date(Date.now() + 86400000)} onChange={(_, d) => { setShowRecurrenceEndDatePicker(false); if (d) setFormData({ ...formData, recurrence_end_date: d }); }} />}
                     </View>
                 </>
             )}

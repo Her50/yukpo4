@@ -37,15 +37,15 @@ COPY .sqlx ./.sqlx
 # Vérifier que le cache SQLx est présent
 RUN echo "=== Vérification du cache SQLx ===" && \
     if [ -d ".sqlx" ]; then \
-        CACHE_COUNT=$(find .sqlx -type f 2>/dev/null | wc -l || echo 0) && \
-        echo "✅ Cache SQLx présent (${CACHE_COUNT} fichiers)" && \
-        if [ "${CACHE_COUNT}" -eq 0 ]; then \
-            echo "❌ ERREUR: Le cache .sqlx est vide!" && \
-            exit 1; \
-        fi; \
+    CACHE_COUNT=$(find .sqlx -type f 2>/dev/null | wc -l || echo 0) && \
+    echo "✅ Cache SQLx présent (${CACHE_COUNT} fichiers)" && \
+    if [ "${CACHE_COUNT}" -eq 0 ]; then \
+    echo "❌ ERREUR: Le cache .sqlx est vide!" && \
+    exit 1; \
+    fi; \
     else \
-        echo "❌ ERREUR: Répertoire .sqlx non trouvé!" && \
-        exit 1; \
+    echo "❌ ERREUR: Répertoire .sqlx non trouvé!" && \
+    exit 1; \
     fi && \
     echo "==="
 
@@ -88,6 +88,7 @@ LABEL platform="aws-ecs-fargate"
 
 # Installer uniquement les dépendances runtime essentielles + X11/virtual X pour Blender headless
 # ✅ AJOUTÉ: redis-tools pour redis-cli (vérification Redis dans start-cloud.sh)
+# ✅ CORRIGÉ 2026-03-11: Ajout de ffmpeg (REQUIS pour la génération vidéo marketing)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     libpq5 \
@@ -97,6 +98,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     xz-utils \
     postgresql-client \
     redis-tools \
+    ffmpeg \
     xvfb \
     libx11-6 \
     libxrender1 \

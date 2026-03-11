@@ -1,93 +1,111 @@
 // Composant pour sélectionner et valider les modes de paiement
+// ✅ CORRIGÉ 2026-03-11: Numéros MTN Money et Orange Money séparés (plus de partage d'état)
+// Format de sortie compatible avec backend PaymentMatchingService:
+// { mtn_money: { phone, verified }, orange_money: { phone, verified }, taxId?, carte_bancaire?: {...} }
 import React, { useEffect, useState } from 'react';
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Switch, Text, View } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
 import { formatCardNumber, validateCardExpiry, validateCardNumber, validatePhoneNumber } from '../utils/paymentValidation';
-import { NativeInput } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
+import { NativeInput } from './SafeNativeDesign';
 
-interface PaymentMethod {
-    type: 'mobile_money' | 'orange_money' | 'carte_bancaire';
-    phoneNumber?: string;
-    cardNumber?: string;
-    cardExpiry?: string;
-    cardCVV?: string;
-    cardHolder?: string;
-    taxId?: string; // Numéro de contribuable
+// ✅ CORRIGÉ: Interface compatible avec le backend PaymentMatchingService
+export interface PaymentMethodsData {
+    mtn_money?: { phone: string; verified: boolean };
+    orange_money?: { phone: string; verified: boolean };
+    carte_bancaire?: {
+        cardNumber: string;
+        cardExpiry: string;
+        cardCVV: string;
+        cardHolder: string;
+    };
+    taxId?: string;
 }
 
 interface PaymentMethodSelectorProps {
-    onPaymentChange: (payment: PaymentMethod | null) => void;
+    onPaymentChange: (payment: PaymentMethodsData | null) => void;
     readonly?: boolean;
 }
 
-// Les validations sont maintenant dans utils/paymentValidation.ts
-
 const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({ onPaymentChange, readonly = false }) => {
-    const [selectedType, setSelectedType] = useState<'mobile_money' | 'orange_money' | 'carte_bancaire' | null>(null);
-    const [phoneNumber, setPhoneNumber] = useState('');
+    // ✅ CORRIGÉ: États séparés pour chaque mode de paiement mobile money
+    const [mtnEnabled, setMtnEnabled] = useState(false);
+    const [mtnPhoneNumber, setMtnPhoneNumber] = useState('');
+    const [mtnPhoneError, setMtnPhoneError] = useState<string | null>(null);
+
+    const [orangeEnabled, setOrangeEnabled] = useState(false);
+    const [orangePhoneNumber, setOrangePhoneNumber] = useState('');
+    const [orangePhoneError, setOrangePhoneError] = useState<string | null>(null);
+
+    const [showBankCard, setShowBankCard] = useState(false);
     const [cardNumber, setCardNumber] = useState('');
     const [cardExpiry, setCardExpiry] = useState('');
     const [cardCVV, setCardCVV] = useState('');
     const [cardHolder, setCardHolder] = useState('');
-    const [taxId, setTaxId] = useState(''); // Numéro de contribuable
-
-    // Validation en temps réel
-    const [phoneError, setPhoneError] = useState<string | null>(null);
     const [cardError, setCardError] = useState<string | null>(null);
     const [expiryError, setExpiryError] = useState<string | null>(null);
 
-    // Mettre à jour le parent quand les données changent
+    const [taxId, setTaxId] = useState('');
+
+    // ✅ Mettre à jour le parent quand les données changent
     useEffect(() => {
-        if (!selectedType) {
-            onPaymentChange(null);
-            return;
+        const result: PaymentMethodsData = {};
+        let hasAnyMethod = false;
+
+        // MTN Money
+        if (mtnEnabled && mtnPhoneNumber.trim()) {
+            const validation = validatePhoneNumber(mtnPhoneNumber);
+            if (validation.valid) {
+                result.mtn_money = { phone: validation.formattedNumber || mtnPhoneNumber, verified: false };
+                setMtnPhoneError(null);
+                hasAnyMethod = true;
+            } else if (mtnPhoneNumber.length > 6) {
+                setMtnPhoneError(validation.error || null);
+            }
+        } else {
+            setMtnPhoneError(null);
         }
 
-        if (selectedType === 'mobile_money' || selectedType === 'orange_money') {
-            const validation = validatePhoneNumber(phoneNumber);
+        // Orange Money
+        if (orangeEnabled && orangePhoneNumber.trim()) {
+            const validation = validatePhoneNumber(orangePhoneNumber);
             if (validation.valid) {
-                onPaymentChange({
-                    type: selectedType,
-                    phoneNumber: validation.formattedNumber || phoneNumber,
-                    taxId: taxId.trim() || undefined
-                });
-                setPhoneError(null);
-            } else {
-                onPaymentChange(null);
-                if (phoneNumber.length > 6) {
-                    setPhoneError(validation.error || null);
-                }
+                result.orange_money = { phone: validation.formattedNumber || orangePhoneNumber, verified: false };
+                setOrangePhoneError(null);
+                hasAnyMethod = true;
+            } else if (orangePhoneNumber.length > 6) {
+                setOrangePhoneError(validation.error || null);
             }
-        } else if (selectedType === 'carte_bancaire') {
+        } else {
+            setOrangePhoneError(null);
+        }
+
+        // Carte bancaire
+        if (showBankCard && cardNumber && cardExpiry && cardCVV && cardHolder) {
             const cardValidation = validateCardNumber(cardNumber);
             const expiryValidation = validateCardExpiry(cardExpiry);
-
             if (cardValidation.valid && expiryValidation.valid && cardCVV.length >= 3 && cardHolder.trim().length > 0) {
-                onPaymentChange({
-                    type: selectedType,
-                    cardNumber,
-                    cardExpiry,
-                    cardCVV,
-                    cardHolder,
-                    taxId: taxId.trim() || undefined
-                });
+                result.carte_bancaire = { cardNumber, cardExpiry, cardCVV, cardHolder };
                 setCardError(null);
                 setExpiryError(null);
+                hasAnyMethod = true;
             } else {
-                onPaymentChange(null);
                 if (cardNumber.length >= 13) setCardError(cardValidation.error || null);
                 if (cardExpiry.length >= 4) setExpiryError(expiryValidation.error || null);
             }
         }
-    }, [selectedType, phoneNumber, cardNumber, cardExpiry, cardCVV, cardHolder, taxId]);
 
-    // Auto-formatage numéro de carte (espaces tous les 4 chiffres)
+        if (taxId.trim()) {
+            result.taxId = taxId.trim();
+        }
+
+        onPaymentChange(hasAnyMethod ? result : null);
+    }, [mtnEnabled, mtnPhoneNumber, orangeEnabled, orangePhoneNumber, showBankCard, cardNumber, cardExpiry, cardCVV, cardHolder, taxId]);
+
     const handleCardNumberChange = (text: string) => {
         setCardNumber(formatCardNumber(text));
     };
 
-    // Auto-formatage date d'expiration (MM/YY)
     const handleExpiryChange = (text: string) => {
         const cleaned = text.replace(/\D/g, '');
         if (cleaned.length >= 2) {
@@ -97,14 +115,16 @@ const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({ onPayment
         }
     };
 
+    const cleanPhone = (text: string) => text.replace(/[^\d\s]/g, '');
+
     return (
         <View style={styles.container}>
-            <Text style={styles.title}>💳 Mode de paiement</Text>
+            <Text style={styles.title}>💳 Modes de paiement</Text>
             <Text style={styles.subtitle}>
-                Sélectionnez votre moyen de paiement préféré pour faciliter les transactions
+                Renseignez vos numéros pour recevoir les paiements de vos clients. Vous pouvez activer plusieurs modes.
             </Text>
 
-            {/* ✅ Numéro de contribuable (PREMIER CHAMP - optionnel) */}
+            {/* Numéro de contribuable */}
             <View style={styles.taxIdSection}>
                 <View style={styles.taxIdHeader}>
                     <SafeIcon name="file-text" size={18} color={modernColors.textSecondary} />
@@ -123,227 +143,203 @@ const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({ onPayment
                 </Text>
             </View>
 
-            {/* Sélection du type de paiement */}
-            <View style={styles.paymentTypes}>
-                <TouchableOpacity
-                    style={[
-                        styles.paymentTypeCard,
-                        selectedType === 'mobile_money' && styles.paymentTypeCardActive
-                    ]}
-                    onPress={() => setSelectedType('mobile_money')}
-                    disabled={readonly}
-                >
-                    {/* ✅ CORRIGÉ: Utiliser emoji directement pour éviter les erreurs de chargement */}
-                    <View style={styles.paymentTypeIconContainer}>
-                        <Text style={styles.paymentTypeIconEmoji}>📱</Text>
+            {/* ✅ MTN Money - Section dédiée */}
+            <View style={[styles.providerSection, mtnEnabled && styles.providerSectionActive]}>
+                <View style={styles.providerHeader}>
+                    <View style={styles.providerTitleRow}>
+                        <Text style={styles.providerEmoji}>📱</Text>
+                        <Text style={[styles.providerTitle, mtnEnabled && styles.providerTitleActive]}>MTN Mobile Money</Text>
                     </View>
-                    <Text style={[
-                        styles.paymentTypeText,
-                        selectedType === 'mobile_money' && styles.paymentTypeTextActive
-                    ]}>
-                        MTN Money
-                    </Text>
-                    {selectedType === 'mobile_money' && (
-                        <View style={styles.checkmark}>
-                            <SafeIcon name="check-circle" size={20} color={modernColors.success} />
-                        </View>
-                    )}
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                    style={[
-                        styles.paymentTypeCard,
-                        selectedType === 'orange_money' && styles.paymentTypeCardActive
-                    ]}
-                    onPress={() => setSelectedType('orange_money')}
-                    disabled={readonly}
-                >
-                    {/* ✅ CORRIGÉ: Utiliser emoji directement pour éviter les erreurs de chargement */}
-                    <View style={styles.paymentTypeIconContainer}>
-                        <Text style={styles.paymentTypeIconEmoji}>📱</Text>
-                    </View>
-                    <Text style={[
-                        styles.paymentTypeText,
-                        selectedType === 'orange_money' && styles.paymentTypeTextActive
-                    ]}>
-                        Orange Money
-                    </Text>
-                    {selectedType === 'orange_money' && (
-                        <View style={styles.checkmark}>
-                            <SafeIcon name="check-circle" size={20} color={modernColors.success} />
-                        </View>
-                    )}
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                    style={[
-                        styles.paymentTypeCard,
-                        selectedType === 'carte_bancaire' && styles.paymentTypeCardActive
-                    ]}
-                    onPress={() => setSelectedType('carte_bancaire')}
-                    disabled={readonly}
-                >
-                    <Text style={styles.paymentTypeIcon}>💳</Text>
-                    <Text style={[
-                        styles.paymentTypeText,
-                        selectedType === 'carte_bancaire' && styles.paymentTypeTextActive
-                    ]}>
-                        Carte Bancaire
-                    </Text>
-                    {selectedType === 'carte_bancaire' && (
-                        <View style={styles.checkmark}>
-                            <SafeIcon name="check-circle" size={20} color={modernColors.success} />
-                        </View>
-                    )}
-                </TouchableOpacity>
-            </View>
-
-            {/* Formulaire Mobile Money / Orange Money */}
-            {(selectedType === 'mobile_money' || selectedType === 'orange_money') && (
-                <View style={styles.formContainer}>
-                    <Text style={styles.formLabel}>
-                        Numéro de téléphone {selectedType === 'mobile_money' ? 'Mobile Money' : 'Orange Money'}
-                    </Text>
-                    <Text style={styles.formHint}>
-                        Entrez votre numéro sans l'indicatif pays (détecté automatiquement)
-                    </Text>
-                    <NativeInput
-                        placeholder="Ex: 6XX XX XX XX"
-                        value={phoneNumber}
-                        onChangeText={(text) => {
-                            // Permettre uniquement les chiffres et espaces
-                            const cleaned = text.replace(/[^\d\s]/g, '');
-                            setPhoneNumber(cleaned);
-                        }}
-                        keyboardType="phone-pad"
-                        maxLength={15}
-                        style={[
-                            styles.input,
-                            phoneError && styles.inputError
-                        ]}
-                        editable={!readonly}
+                    <Switch
+                        value={mtnEnabled}
+                        onValueChange={setMtnEnabled}
+                        trackColor={{ false: '#E5E7EB', true: '#FBBF24' }}
+                        thumbColor={mtnEnabled ? '#F59E0B' : '#9CA3AF'}
+                        disabled={readonly}
                     />
-                    {phoneError && (
-                        <View style={styles.errorContainer}>
-                            <SafeIcon name="alert-circle" size={16} color={modernColors.error} />
-                            <Text style={styles.errorText}>{phoneError}</Text>
-                        </View>
-                    )}
-                    {phoneNumber.length > 0 && !phoneError && (
-                        <View style={styles.successContainer}>
-                            <SafeIcon name="check-circle" size={16} color={modernColors.success} />
-                            <Text style={styles.successText}>✓ Numéro valide</Text>
-                        </View>
-                    )}
                 </View>
-            )}
-
-            {/* Formulaire Carte Bancaire */}
-            {selectedType === 'carte_bancaire' && (
-                <View style={styles.formContainer}>
-                    <View style={styles.cardPreview}>
-                        <Text style={styles.cardType}>
-                            {validateCardNumber(cardNumber.replace(/\s/g, '')).type || 'Carte Bancaire'}
+                {mtnEnabled && (
+                    <View style={styles.providerForm}>
+                        <Text style={styles.formLabel}>Numéro MTN Money</Text>
+                        <Text style={styles.formHint}>
+                            Votre numéro MTN pour recevoir les paiements (ex: 670 XX XX XX)
                         </Text>
-                    </View>
-
-                    {/* Numéro de carte */}
-                    <View style={styles.fieldGroup}>
-                        <Text style={styles.formLabel}>Numéro de carte</Text>
                         <NativeInput
-                            placeholder="XXXX XXXX XXXX XXXX"
-                            value={cardNumber}
-                            onChangeText={handleCardNumberChange}
-                            keyboardType="number-pad"
-                            maxLength={19}
-                            style={[
-                                styles.input,
-                                cardError && styles.inputError
-                            ]}
+                            placeholder="6XX XX XX XX"
+                            value={mtnPhoneNumber}
+                            onChangeText={(text) => setMtnPhoneNumber(cleanPhone(text))}
+                            keyboardType="phone-pad"
+                            maxLength={15}
+                            style={[styles.input, mtnPhoneError && styles.inputError]}
                             editable={!readonly}
                         />
-                        {cardError && (
+                        {mtnPhoneError && (
                             <View style={styles.errorContainer}>
                                 <SafeIcon name="alert-circle" size={16} color={modernColors.error} />
-                                <Text style={styles.errorText}>{cardError}</Text>
+                                <Text style={styles.errorText}>{mtnPhoneError}</Text>
+                            </View>
+                        )}
+                        {mtnPhoneNumber.length > 0 && !mtnPhoneError && (
+                            <View style={styles.successContainer}>
+                                <SafeIcon name="check-circle" size={16} color={modernColors.success} />
+                                <Text style={styles.successText}>Numéro MTN valide</Text>
                             </View>
                         )}
                     </View>
+                )}
+            </View>
 
-                    {/* Nom du titulaire */}
-                    <View style={styles.fieldGroup}>
-                        <Text style={styles.formLabel}>Nom du titulaire</Text>
+            {/* ✅ Orange Money - Section dédiée */}
+            <View style={[styles.providerSection, orangeEnabled && styles.providerSectionActiveOrange]}>
+                <View style={styles.providerHeader}>
+                    <View style={styles.providerTitleRow}>
+                        <Text style={styles.providerEmoji}>📱</Text>
+                        <Text style={[styles.providerTitle, orangeEnabled && styles.providerTitleActiveOrange]}>Orange Money</Text>
+                    </View>
+                    <Switch
+                        value={orangeEnabled}
+                        onValueChange={setOrangeEnabled}
+                        trackColor={{ false: '#E5E7EB', true: '#FDBA74' }}
+                        thumbColor={orangeEnabled ? '#F97316' : '#9CA3AF'}
+                        disabled={readonly}
+                    />
+                </View>
+                {orangeEnabled && (
+                    <View style={styles.providerForm}>
+                        <Text style={styles.formLabel}>Numéro Orange Money</Text>
+                        <Text style={styles.formHint}>
+                            Votre numéro Orange pour recevoir les paiements (ex: 690 XX XX XX)
+                        </Text>
                         <NativeInput
-                            placeholder="JEAN DUPONT"
-                            value={cardHolder}
-                            onChangeText={(text) => setCardHolder(text.toUpperCase())}
-                            autoCapitalize="characters"
-                            style={styles.input}
+                            placeholder="6XX XX XX XX"
+                            value={orangePhoneNumber}
+                            onChangeText={(text) => setOrangePhoneNumber(cleanPhone(text))}
+                            keyboardType="phone-pad"
+                            maxLength={15}
+                            style={[styles.input, orangePhoneError && styles.inputError]}
                             editable={!readonly}
                         />
+                        {orangePhoneError && (
+                            <View style={styles.errorContainer}>
+                                <SafeIcon name="alert-circle" size={16} color={modernColors.error} />
+                                <Text style={styles.errorText}>{orangePhoneError}</Text>
+                            </View>
+                        )}
+                        {orangePhoneNumber.length > 0 && !orangePhoneError && (
+                            <View style={styles.successContainer}>
+                                <SafeIcon name="check-circle" size={16} color={modernColors.success} />
+                                <Text style={styles.successText}>Numéro Orange valide</Text>
+                            </View>
+                        )}
                     </View>
+                )}
+            </View>
 
-                    {/* Date expiration + CVV */}
-                    <View style={styles.rowFields}>
-                        <View style={[styles.fieldGroup, styles.flex1]}>
-                            <Text style={styles.formLabel}>Expiration</Text>
+            {/* Carte Bancaire - Section dédiée */}
+            <View style={[styles.providerSection, showBankCard && styles.providerSectionActiveCard]}>
+                <View style={styles.providerHeader}>
+                    <View style={styles.providerTitleRow}>
+                        <Text style={styles.providerEmoji}>💳</Text>
+                        <Text style={[styles.providerTitle, showBankCard && styles.providerTitleActiveCard]}>Carte Bancaire</Text>
+                    </View>
+                    <Switch
+                        value={showBankCard}
+                        onValueChange={setShowBankCard}
+                        trackColor={{ false: '#E5E7EB', true: '#93C5FD' }}
+                        thumbColor={showBankCard ? '#3B82F6' : '#9CA3AF'}
+                        disabled={readonly}
+                    />
+                </View>
+                {showBankCard && (
+                    <View style={styles.providerForm}>
+                        <View style={styles.cardPreview}>
+                            <Text style={styles.cardType}>
+                                {validateCardNumber(cardNumber.replace(/\s/g, '')).type || 'Carte Bancaire'}
+                            </Text>
+                        </View>
+                        <View style={styles.fieldGroup}>
+                            <Text style={styles.formLabel}>Numéro de carte</Text>
                             <NativeInput
-                                placeholder="MM/AA"
-                                value={cardExpiry}
-                                onChangeText={handleExpiryChange}
+                                placeholder="XXXX XXXX XXXX XXXX"
+                                value={cardNumber}
+                                onChangeText={handleCardNumberChange}
                                 keyboardType="number-pad"
-                                maxLength={5}
-                                style={[
-                                    styles.input,
-                                    expiryError && styles.inputError
-                                ]}
+                                maxLength={19}
+                                style={[styles.input, cardError && styles.inputError]}
                                 editable={!readonly}
                             />
-                            {expiryError && (
-                                <Text style={styles.errorTextSmall}>{expiryError}</Text>
+                            {cardError && (
+                                <View style={styles.errorContainer}>
+                                    <SafeIcon name="alert-circle" size={16} color={modernColors.error} />
+                                    <Text style={styles.errorText}>{cardError}</Text>
+                                </View>
                             )}
                         </View>
-
-                        <View style={[styles.fieldGroup, styles.flex1]}>
-                            <Text style={styles.formLabel}>CVV</Text>
+                        <View style={styles.fieldGroup}>
+                            <Text style={styles.formLabel}>Nom du titulaire</Text>
                             <NativeInput
-                                placeholder="XXX"
-                                value={cardCVV}
-                                onChangeText={(text) => setCardCVV(text.replace(/\D/g, ''))}
-                                keyboardType="number-pad"
-                                maxLength={4}
-                                secureTextEntry
+                                placeholder="JEAN DUPONT"
+                                value={cardHolder}
+                                onChangeText={(text) => setCardHolder(text.toUpperCase())}
+                                autoCapitalize="characters"
                                 style={styles.input}
                                 editable={!readonly}
                             />
                         </View>
-                    </View>
-
-                    {cardNumber.length >= 13 && !cardError && cardExpiry.length >= 5 && !expiryError && cardCVV.length >= 3 && cardHolder.length > 0 && (
-                        <View style={styles.successContainer}>
-                            <SafeIcon name="check-circle" size={16} color={modernColors.success} />
-                            <Text style={styles.successText}>✓ Informations de carte valides</Text>
+                        <View style={styles.rowFields}>
+                            <View style={[styles.fieldGroup, styles.flex1]}>
+                                <Text style={styles.formLabel}>Expiration</Text>
+                                <NativeInput
+                                    placeholder="MM/AA"
+                                    value={cardExpiry}
+                                    onChangeText={handleExpiryChange}
+                                    keyboardType="number-pad"
+                                    maxLength={5}
+                                    style={[styles.input, expiryError && styles.inputError]}
+                                    editable={!readonly}
+                                />
+                                {expiryError && <Text style={styles.errorTextSmall}>{expiryError}</Text>}
+                            </View>
+                            <View style={[styles.fieldGroup, styles.flex1]}>
+                                <Text style={styles.formLabel}>CVV</Text>
+                                <NativeInput
+                                    placeholder="XXX"
+                                    value={cardCVV}
+                                    onChangeText={(text) => setCardCVV(text.replace(/\D/g, ''))}
+                                    keyboardType="number-pad"
+                                    maxLength={4}
+                                    secureTextEntry
+                                    style={styles.input}
+                                    editable={!readonly}
+                                />
+                            </View>
                         </View>
-                    )}
-                </View>
-            )}
+                        {cardNumber.length >= 13 && !cardError && cardExpiry.length >= 5 && !expiryError && cardCVV.length >= 3 && cardHolder.length > 0 && (
+                            <View style={styles.successContainer}>
+                                <SafeIcon name="check-circle" size={16} color={modernColors.success} />
+                                <Text style={styles.successText}>Informations de carte valides</Text>
+                            </View>
+                        )}
+                    </View>
+                )}
+            </View>
 
             {/* Message informatif */}
-            {!selectedType && (
+            {!mtnEnabled && !orangeEnabled && !showBankCard && (
                 <View style={styles.hintBox}>
                     <SafeIcon name="info" size={20} color={modernColors.primary} />
                     <Text style={styles.hintText}>
-                        Sélectionnez un mode de paiement pour faciliter les transactions avec vos clients
+                        Activez au moins un mode de paiement pour recevoir les paiements de vos clients
                     </Text>
                 </View>
             )}
 
             {/* Sécurité */}
-            {selectedType && (
+            {(mtnEnabled || orangeEnabled || showBankCard) && (
                 <View style={styles.securityBanner}>
                     <SafeIcon name="shield" size={18} color={modernColors.success} />
                     <Text style={styles.securityText}>
-                        🔒 Vos informations de paiement sont sécurisées et cryptées
+                        Vos informations de paiement sont sécurisées et cryptées
                     </Text>
                 </View>
             )}
@@ -365,71 +361,70 @@ const styles = StyleSheet.create({
         color: modernColors.textSecondary,
         marginTop: -8,
     },
-    paymentTypes: {
-        flexDirection: 'row',
-        gap: 12,
-    },
-    paymentTypeCard: {
-        flex: 1,
+    // ✅ Sections par fournisseur
+    providerSection: {
         backgroundColor: modernColors.surface,
-        borderWidth: 2,
+        borderWidth: 1.5,
         borderColor: modernColors.border,
-        borderRadius: 12,
+        borderRadius: 14,
         padding: 16,
-        alignItems: 'center',
-        gap: 8,
-        position: 'relative',
-    },
-    paymentTypeCardActive: {
-        borderColor: modernColors.primary,
-        backgroundColor: modernColors.primary + '10',
-    },
-    paymentTypeIcon: {
-        fontSize: 32,
-    },
-    paymentTypeIconContainer: {
-        width: 40,
-        height: 40,
-        marginBottom: 4,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    paymentTypeIconImage: {
-        width: 40,
-        height: 40,
-    },
-    paymentTypeIconEmoji: {
-        fontSize: 32,
-        textAlign: 'center',
-    },
-    paymentTypeText: {
-        fontSize: 13,
-        fontWeight: '600',
-        color: modernColors.textSecondary,
-        textAlign: 'center',
-    },
-    paymentTypeTextActive: {
-        color: modernColors.primary,
-    },
-    checkmark: {
-        position: 'absolute',
-        top: 8,
-        right: 8,
-    },
-    formContainer: {
         gap: 12,
-        marginTop: 8,
+    },
+    providerSectionActive: {
+        borderColor: '#FBBF24',
+        backgroundColor: '#FFFBEB',
+    },
+    providerSectionActiveOrange: {
+        borderColor: '#F97316',
+        backgroundColor: '#FFF7ED',
+    },
+    providerSectionActiveCard: {
+        borderColor: '#3B82F6',
+        backgroundColor: '#EFF6FF',
+    },
+    providerHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    providerTitleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+    },
+    providerEmoji: {
+        fontSize: 28,
+    },
+    providerTitle: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: modernColors.textSecondary,
+    },
+    providerTitleActive: {
+        color: '#B45309',
+    },
+    providerTitleActiveOrange: {
+        color: '#C2410C',
+    },
+    providerTitleActiveCard: {
+        color: '#1D4ED8',
+    },
+    providerForm: {
+        gap: 10,
+        paddingTop: 4,
+        borderTopWidth: 1,
+        borderTopColor: modernColors.border,
     },
     formLabel: {
         fontSize: 14,
         fontWeight: '600',
         color: modernColors.text,
-        marginBottom: 4,
+        marginBottom: 2,
     },
     formHint: {
         fontSize: 12,
         color: modernColors.textSecondary,
-        marginBottom: 4,
+        marginBottom: 2,
     },
     input: {
         borderWidth: 1,
@@ -506,7 +501,7 @@ const styles = StyleSheet.create({
         backgroundColor: modernColors.primary,
         padding: 16,
         borderRadius: 12,
-        marginBottom: 12,
+        marginBottom: 8,
     },
     cardType: {
         fontSize: 16,

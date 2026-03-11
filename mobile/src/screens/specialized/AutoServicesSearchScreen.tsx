@@ -14,7 +14,7 @@ import {
 import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 import ModernGPSModal from '../../components/ModernGPSModal';
 import SafeIcon from '../../components/SafeIcon';
-import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
+import { NativeInput } from '../../components/SafeNativeDesign';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useLocation } from '../../contexts/LocationContext';
 import { apiGet } from '../../services/api';
@@ -253,12 +253,21 @@ const AutoServicesSearchScreen: React.FC = () => {
                         placeholder="Rechercher marque, modèle, type..."
                         placeholderTextColor="rgba(255,255,255,0.5)"
                         style={styles.searchBarInput}
+                        onSubmitEditing={handleSearch}
+                        returnKeyType="search"
                     />
                     {searchText ? (
                         <TouchableOpacity onPress={() => setSearchText('')}>
                             <SafeIcon name="x" size={20} color="rgba(255,255,255,0.7)" type="lucide" />
                         </TouchableOpacity>
                     ) : null}
+                    <TouchableOpacity
+                        style={styles.searchBarSubmitBtn}
+                        onPress={handleSearch}
+                        activeOpacity={0.7}
+                    >
+                        <SafeIcon name="arrow-right" size={20} color="#FFFFFF" type="lucide" />
+                    </TouchableOpacity>
                 </View>
             </LinearGradient>
 
@@ -515,11 +524,17 @@ const AutoServicesSearchScreen: React.FC = () => {
                 ) : null}
 
                 {/* Bouton recherche principal */}
-                <NativeButton
+                <TouchableOpacity
                     onPress={handleSearch}
                     style={styles.searchButton}
+                    activeOpacity={0.8}
                 >
-                    <View style={styles.searchButtonContent}>
+                    <LinearGradient
+                        colors={[ACCENT_LIGHT, ACCENT_COLOR]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={styles.searchButtonGradient}
+                    >
                         <SafeIcon name="search" size={22} color="#FFFFFF" type="lucide" />
                         <Text style={styles.searchButtonText}>Rechercher</Text>
                         {activeFiltersCount > 0 && (
@@ -527,8 +542,8 @@ const AutoServicesSearchScreen: React.FC = () => {
                                 <Text style={styles.filterBadgeText}>{activeFiltersCount}</Text>
                             </View>
                         )}
-                    </View>
-                </NativeButton>
+                    </LinearGradient>
+                </TouchableOpacity>
 
                 {/* Info */}
                 <View style={styles.infoCard}>
@@ -610,6 +625,15 @@ const styles = StyleSheet.create({
         borderWidth: 0,
         paddingVertical: 8,
         marginBottom: 0,
+    },
+    searchBarSubmitBtn: {
+        width: 36,
+        height: 36,
+        borderRadius: 10,
+        backgroundColor: 'rgba(255, 255, 255, 0.25)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginLeft: 4,
     },
     content: {
         flex: 1,
@@ -828,12 +852,12 @@ const styles = StyleSheet.create({
         overflow: 'hidden',
         backgroundColor: ACCENT_COLOR,
     },
-    searchButtonContent: {
+    searchButtonGradient: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
         gap: 10,
-        paddingVertical: 4,
+        paddingVertical: 16,
     },
     searchButtonText: {
         color: '#FFFFFF',

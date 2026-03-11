@@ -612,10 +612,30 @@ fn build_media_gallery(
             html_attr_escape(first_url)
         };
 
+        // ✅ AMÉLIORÉ 2026-03-11: Ajout flèches prev/next + compteur + dots (comme ProductCard)
         let main_html = format!(
-            r#"<div class="gallery-main"><video id="main-video" src="{}" autoplay muted loop playsinline{}></video><img id="main-image" src="{}" alt="{}"{} /></div>"#,
+            r#"<div class="gallery-main"><button class="gallery-nav prev" onclick="prevMedia()">&#10094;</button><video id="main-video" src="{}" autoplay muted loop playsinline{}></video><img id="main-image" src="{}" alt="{}"{} /><button class="gallery-nav next" onclick="nextMedia()">&#10095;</button></div>"#,
             vid_src, vid_style, img_src, escaped_name, img_style
         );
+
+        let counter_html = format!(
+            r#"<div class="gallery-counter" id="gallery-counter">1 / {}</div>"#,
+            all_media.len()
+        );
+
+        let dots: String = all_media
+            .iter()
+            .enumerate()
+            .map(|(idx, _)| {
+                let active = if idx == 0 { " active" } else { "" };
+                format!(
+                    r#"<span class="gallery-dot{}" onclick="showMedia({})"></span>"#,
+                    active, idx
+                )
+            })
+            .collect::<Vec<_>>()
+            .join("");
+        let dots_html = format!(r#"<div class="gallery-dots">{}</div>"#, dots);
 
         let thumbs: String = all_media.iter().enumerate().map(|(idx, (url, is_vid))| {
             let active = if idx == 0 { " active" } else { "" };
@@ -634,8 +654,8 @@ fn build_media_gallery(
         }).collect::<Vec<_>>().join("\n            ");
 
         format!(
-            r#"<div class="gallery-container">{}<div class="gallery-thumbs">{}</div></div>"#,
-            main_html, thumbs
+            r#"<div class="gallery-container">{}{}{}<div class="gallery-thumbs">{}</div></div>"#,
+            main_html, counter_html, dots_html, thumbs
         )
     };
 
@@ -654,27 +674,48 @@ fn build_media_gallery(
     (gallery_html, media_js_array, first_video)
 }
 
-/// CSS commun pour la galerie média (vidéos + images)
+/// CSS commun pour la galerie média (vidéos + images) + prix_variation
 fn media_gallery_css() -> &'static str {
     r#"
         .media-hero { margin: 20px 0; text-align: center; }
         .media-hero img, .media-hero video { max-width: 100%; height: auto; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
         .gallery-container { margin: 20px 0; }
-        .gallery-main { margin-bottom: 16px; text-align: center; position: relative; }
-        .gallery-main video, .gallery-main img { max-width: 100%; height: auto; max-height: 500px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); object-fit: contain; }
-        .gallery-thumbs { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 12px; }
-        .thumb-wrap { position: relative; display: inline-flex; cursor: pointer; border: 2px solid transparent; border-radius: 8px; overflow: hidden; transition: all 0.2s; opacity: 0.7; width: 80px; height: 80px; }
+        .gallery-main { margin-bottom: 12px; text-align: center; position: relative; touch-action: pan-y; user-select: none; -webkit-user-select: none; }
+        .gallery-main video, .gallery-main img { max-width: 100%; height: auto; max-height: 500px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); object-fit: contain; pointer-events: none; }
+        .gallery-nav { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.45); color: #fff; border: none; border-radius: 50%; width: 36px; height: 36px; font-size: 18px; cursor: pointer; z-index: 2; display: flex; align-items: center; justify-content: center; transition: background 0.2s; }
+        .gallery-nav:hover { background: rgba(0,0,0,0.7); }
+        .gallery-nav.prev { left: 8px; }
+        .gallery-nav.next { right: 8px; }
+        .gallery-counter { text-align: center; font-size: 13px; color: #6b7280; margin-bottom: 8px; font-weight: 500; }
+        .gallery-dots { display: flex; gap: 6px; justify-content: center; margin-bottom: 10px; }
+        .gallery-dot { width: 8px; height: 8px; border-radius: 50%; background: #d1d5db; transition: all 0.2s; cursor: pointer; }
+        .gallery-dot.active { background: #667eea; transform: scale(1.3); }
+        .gallery-thumbs { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 4px; }
+        .thumb-wrap { position: relative; display: inline-flex; cursor: pointer; border: 2px solid transparent; border-radius: 8px; overflow: hidden; transition: all 0.2s; opacity: 0.7; width: 72px; height: 72px; }
         .thumb-wrap:hover { opacity: 1; border-color: #667eea; transform: scale(1.05); }
         .thumb-wrap.active { opacity: 1; border-color: #667eea; }
         .thumb-media { width: 100%; height: 100%; object-fit: cover; display: block; }
         .play-badge { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); color: #fff; font-size: 16px; background: rgba(0,0,0,0.5); border-radius: 50%; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+        .price-variants { margin: 20px 0; }
+        .price-variants-title { font-size: 15px; font-weight: 700; color: #374151; margin-bottom: 10px; }
+        .price-variants-scroll { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 8px; -webkit-overflow-scrolling: touch; scroll-snap-type: x mandatory; }
+        .price-variants-scroll::-webkit-scrollbar { height: 4px; }
+        .price-variants-scroll::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
+        .price-variant-card { flex: 0 0 auto; min-width: 130px; max-width: 200px; background: #f9fafb; border: 1.5px solid #e5e7eb; border-radius: 10px; padding: 12px 14px; scroll-snap-align: start; transition: border-color 0.2s; }
+        .price-variant-card:hover { border-color: #667eea; }
+        .pv-name { font-size: 14px; font-weight: 600; color: #1f2937; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .pv-price { font-size: 16px; font-weight: 700; color: #10b981; }
+        .pv-desc { font-size: 12px; color: #9ca3af; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     "#
 }
 
-/// JS commun pour la galerie média
+/// JS commun pour la galerie média (swipe + arrows + counter)
 fn media_gallery_js() -> &'static str {
     r#"
+        var currentMediaIndex = 0;
         function showMedia(index) {
+            if (index < 0 || index >= mediaItems.length) return;
+            currentMediaIndex = index;
             var item = mediaItems[index];
             if (!item) return;
             var vid = document.getElementById('main-video');
@@ -691,8 +732,218 @@ fn media_gallery_js() -> &'static str {
                 wraps[i].className = wraps[i].className.replace(' active', '');
                 if (i === index) wraps[i].className += ' active';
             }
+            var dots = document.querySelectorAll('.gallery-dot');
+            for (var j = 0; j < dots.length; j++) {
+                dots[j].className = dots[j].className.replace(' active', '');
+                if (j === index) dots[j].className += ' active';
+            }
+            var counter = document.getElementById('gallery-counter');
+            if (counter) counter.textContent = (index + 1) + ' / ' + mediaItems.length;
         }
+        function prevMedia() { showMedia(currentMediaIndex > 0 ? currentMediaIndex - 1 : mediaItems.length - 1); }
+        function nextMedia() { showMedia(currentMediaIndex < mediaItems.length - 1 ? currentMediaIndex + 1 : 0); }
+        // Touch swipe support
+        (function() {
+            var gm = document.querySelector('.gallery-main');
+            if (!gm) return;
+            var startX = 0, startY = 0, distX = 0, swiping = false;
+            gm.addEventListener('touchstart', function(e) { startX = e.touches[0].clientX; startY = e.touches[0].clientY; swiping = true; distX = 0; }, {passive: true});
+            gm.addEventListener('touchmove', function(e) { if (!swiping) return; distX = e.touches[0].clientX - startX; var distY = e.touches[0].clientY - startY; if (Math.abs(distY) > Math.abs(distX)) { swiping = false; } }, {passive: true});
+            gm.addEventListener('touchend', function() { if (!swiping) return; swiping = false; if (Math.abs(distX) > 40) { if (distX < 0) nextMedia(); else prevMedia(); } });
+        })();
     "#
+}
+
+/// ✅ NOUVEAU 2026-03-11: Extraire les prix_variation en texte pour og:description
+/// Ex: "Taille S: 3000 XAF | M: 5000 XAF | L: 7000 XAF"
+fn extract_price_variants_text(product_data: &Value) -> String {
+    let variation_val = product_data
+        .get("variation_prix")
+        .or_else(|| product_data.get("variabilite_prix"))
+        .or_else(|| product_data.get("price_variant"));
+
+    let variation_val = match variation_val {
+        Some(v) => v,
+        None => return String::new(),
+    };
+
+    // Dé-wrapper récursivement
+    let mut unwrapped = variation_val;
+    for _ in 0..5 {
+        if let Some(obj) = unwrapped.as_object() {
+            if obj.contains_key("modalites") {
+                break;
+            }
+            if let Some(inner) = obj.get("valeur") {
+                if inner.is_object() || inner.is_array() {
+                    unwrapped = inner;
+                    continue;
+                }
+            }
+        }
+        break;
+    }
+
+    let modalites = if let Some(arr) = unwrapped.as_array() {
+        arr.clone()
+    } else if let Some(obj) = unwrapped.as_object() {
+        obj.get("modalites").and_then(|m| m.as_array()).cloned().unwrap_or_default()
+    } else {
+        return String::new();
+    };
+
+    if modalites.is_empty() {
+        return String::new();
+    }
+
+    let parts: Vec<String> = modalites
+        .iter()
+        .filter_map(|m| {
+            let obj = m.as_object()?;
+            let name = obj.get("valeur").or_else(|| obj.get("value")).and_then(|v| v.as_str())?;
+            let price = obj.get("prix").or_else(|| obj.get("price")).and_then(|v| {
+                if let Some(n) = v.as_f64() {
+                    Some(n)
+                } else if let Some(s) = v.as_str() {
+                    s.parse::<f64>().ok()
+                } else {
+                    None
+                }
+            });
+            let devise = obj
+                .get("devise")
+                .or_else(|| obj.get("currency"))
+                .and_then(|v| v.as_str())
+                .unwrap_or("XAF");
+            match price {
+                Some(p) => Some(format!("{}: {} {}", name, p as i64, devise)),
+                None => Some(name.to_string()),
+            }
+        })
+        .collect();
+
+    parts.join(" | ")
+}
+
+/// ✅ NOUVEAU 2026-03-11: Extraire et rendre les prix_variation depuis product_data
+/// Formats supportés (comme ProductCard mobile):
+///   1. { origine_champs, valeur: { variable, modalites: [...] }, type_donnee }
+///   2. { valeur: { variable, modalites: [...] } }
+///   3. { variable, modalites: [...] }
+///   4. [ { valeur, prix }, ... ]
+fn build_price_variants_html(product_data: &Value) -> String {
+    // Chercher dans les clés possibles
+    let variation_val = product_data
+        .get("variation_prix")
+        .or_else(|| product_data.get("variabilite_prix"))
+        .or_else(|| product_data.get("price_variant"));
+
+    let variation_val = match variation_val {
+        Some(v) => v,
+        None => return String::new(),
+    };
+
+    // Dé-wrapper récursivement les couches { valeur: ... } jusqu'au contenu réel
+    let mut unwrapped = variation_val;
+    for _ in 0..5 {
+        if let Some(obj) = unwrapped.as_object() {
+            // S'arrêter si on a déjà les modalites
+            if obj.contains_key("modalites") {
+                break;
+            }
+            if let Some(inner) = obj.get("valeur") {
+                if inner.is_object() || inner.is_array() {
+                    unwrapped = inner;
+                    continue;
+                }
+            }
+        }
+        break;
+    }
+
+    // Extraire la variable (dimension) et les modalités
+    let variable = unwrapped
+        .as_object()
+        .and_then(|o| o.get("variable"))
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+
+    let modalites = if let Some(arr) = unwrapped.as_array() {
+        // Format tableau direct: [{ valeur, prix }, ...]
+        arr.clone()
+    } else if let Some(obj) = unwrapped.as_object() {
+        obj.get("modalites").and_then(|m| m.as_array()).cloned().unwrap_or_default()
+    } else {
+        return String::new();
+    };
+
+    if modalites.is_empty() {
+        return String::new();
+    }
+
+    let title = if variable.is_empty() {
+        "Variations de prix".to_string()
+    } else {
+        format!("Prix par {}", variable)
+    };
+
+    let cards: String = modalites
+        .iter()
+        .filter_map(|m| {
+            let obj = m.as_object()?;
+            let name = obj
+                .get("valeur")
+                .or_else(|| obj.get("value"))
+                .and_then(|v| v.as_str())
+                .unwrap_or("—");
+            let price = obj.get("prix").or_else(|| obj.get("price")).and_then(|v| {
+                if let Some(n) = v.as_f64() {
+                    Some(n)
+                } else if let Some(s) = v.as_str() {
+                    s.parse::<f64>().ok()
+                } else {
+                    None
+                }
+            });
+            let desc = obj.get("description").and_then(|v| v.as_str()).unwrap_or("");
+            let devise = obj
+                .get("devise")
+                .or_else(|| obj.get("currency"))
+                .and_then(|v| v.as_str())
+                .unwrap_or("XAF");
+
+            let price_html = match price {
+                Some(p) => format!(
+                    r#"<div class="pv-price">{} {}</div>"#,
+                    p as i64,
+                    html_attr_escape(devise)
+                ),
+                None => String::new(),
+            };
+            let desc_html = if desc.is_empty() {
+                String::new()
+            } else {
+                format!(r#"<div class="pv-desc">{}</div>"#, html_attr_escape(desc))
+            };
+            Some(format!(
+                r#"<div class="price-variant-card"><div class="pv-name">{}</div>{}{}</div>"#,
+                html_attr_escape(name),
+                price_html,
+                desc_html
+            ))
+        })
+        .collect::<Vec<_>>()
+        .join("\n            ");
+
+    if cards.is_empty() {
+        return String::new();
+    }
+
+    format!(
+        r#"<div class="price-variants"><div class="price-variants-title">{}</div><div class="price-variants-scroll">{}</div></div>"#,
+        html_attr_escape(&title),
+        cards
+    )
 }
 
 /// GET /product/:product_id?serviceId=:service_id
@@ -981,11 +1232,16 @@ pub async fn share_product_redirect(
         .or_else(|_| std::env::var("BACKEND_URL"))
         .unwrap_or_else(|_| "https://yukpo-backend-376093909298.europe-west1.run.app".to_string());
 
-    // ✅ CORRIGÉ 2026-03-03: Séparer og:image (crawlers sociaux) et image HTML (affichage)
-    // Les crawlers sociaux (Facebook, WhatsApp, Twitter) ne supportent PAS le SVG pour og:image
-    // og_image_url: uniquement de vraies images (presigned URLs) — None si aucune image
-    // display_image_url: SVG placeholder si aucune image (pour l'affichage HTML uniquement)
-    let og_image_url: Option<String> = all_product_images.first().cloned();
+    // ✅ AMÉLIORÉ 2026-03-11: Image OG enrichie avec nom + prix + variations de prix (PNG)
+    // Si le produit a une photo → on l'utilise comme og:image principale
+    // Sinon → on utilise l'endpoint /api/og-product-image/:id qui génère un PNG dynamique
+    // avec nom du produit, prix, et variations de prix visibles dans l'aperçu WhatsApp/Facebook
+    let og_product_image_url = format!(
+        "{}/api/og-product-image/{}?serviceId={}",
+        &share_base_url, product_id, service_id
+    );
+    let og_image_url: Option<String> =
+        Some(all_product_images.first().cloned().unwrap_or(og_product_image_url.clone()));
     let display_image_url = all_product_images.first().cloned().unwrap_or_else(|| {
         format!(
             "{}/api/og-placeholder?name={}",
@@ -1026,14 +1282,24 @@ pub async fn share_product_redirect(
         product.product_price.as_ref().and_then(|p| p.to_string().parse::<f64>().ok());
     let price_currency = "XAF";
 
-    // ✅ CORRIGÉ: og:description inclut le prix pour que les previews sociales l'affichent
-    let product_description = if let Some(price) = price_amount {
-        format!(
-            "{} — Prix: {} {}",
-            raw_description, price as i64, price_currency
-        )
-    } else {
-        raw_description
+    // ✅ AMÉLIORÉ 2026-03-11: og:description enrichie avec prix + variations de prix
+    // WhatsApp/Facebook affichent ~200 caractères de description dans l'aperçu du lien
+    let price_variants_text = extract_price_variants_text(product_data);
+    let product_description = {
+        let mut desc = raw_description.clone();
+        if let Some(price) = price_amount {
+            desc = format!("{} — Prix: {} {}", desc, price as i64, price_currency);
+        }
+        if !price_variants_text.is_empty() {
+            // Ajouter les variations en respectant la limite ~300 chars pour og:description
+            let remaining = 300_usize.saturating_sub(desc.chars().count());
+            if remaining > 20 {
+                let variants_truncated: String =
+                    price_variants_text.chars().take(remaining.saturating_sub(3)).collect();
+                desc = format!("{} | {}", desc, variants_truncated);
+            }
+        }
+        desc
     };
 
     let deep_link = generate_deep_link(&product_id, service_id);
@@ -1237,6 +1503,9 @@ pub async fn share_product_redirect(
     );
     html.push_str(&price_html);
     html.push_str(&media_gallery_html);
+    // ✅ NOUVEAU 2026-03-11: Afficher les variations de prix (scrollables horizontalement)
+    let price_variants_html = build_price_variants_html(product_data);
+    html.push_str(&price_variants_html);
     html.push_str(
         r#"
         <div class="description">"#,
@@ -2092,6 +2361,203 @@ pub async fn share_tracking_redirect(
     );
 
     Ok(Html(html).into_response())
+}
+
+/// Query params pour l'image OG enrichie d'un produit
+#[derive(Debug, Deserialize)]
+pub struct OgProductImageParams {
+    #[serde(alias = "serviceId")]
+    pub service_id: Option<i32>,
+}
+
+/// GET /api/og-product-image/:product_id?serviceId=:service_id
+/// Génère une image PNG dynamique 1200x630 pour og:image
+/// Affiche : nom du produit, prix principal, variations de prix, branding Yukpomnang
+/// WhatsApp/Facebook/Twitter utilisent cette image dans l'aperçu du lien partagé
+pub async fn og_product_image(
+    Path(product_id): Path<String>,
+    Query(params): Query<OgProductImageParams>,
+    State(state): State<Arc<AppState>>,
+) -> axum::response::Response {
+    // Résoudre service_id et product_index
+    let (parsed_service_id, product_index) = if let Some(pos) = product_id.find('_') {
+        (
+            product_id[..pos].parse::<i32>().ok(),
+            product_id[pos + 1..].parse::<i32>().ok(),
+        )
+    } else {
+        (None, product_id.parse::<i32>().ok())
+    };
+    let service_id = match params.service_id.or(parsed_service_id) {
+        Some(sid) => sid,
+        None => {
+            if let Some(pidx) = product_index {
+                sqlx::query_scalar::<_, i32>("SELECT service_id FROM service_products WHERE product_index = $1 AND is_active = true LIMIT 1")
+                    .bind(pidx).fetch_optional(&state.pg).await.ok().flatten().unwrap_or(0)
+            } else {
+                0
+            }
+        }
+    };
+
+    // Récupérer le produit
+    let product = state
+        .products_service
+        .get_product(
+            parsed_service_id.unwrap_or(service_id),
+            product_index.unwrap_or(0),
+        )
+        .await
+        .ok()
+        .flatten();
+
+    let (product_name, price_text, variants_lines) = match product {
+        Some(ref p) => {
+            let name = p.product_name.clone();
+            let price =
+                p.product_price.as_ref().map(|pr| format!("{} XAF", pr)).unwrap_or_default();
+            let variants_text = extract_price_variants_text(&p.product_data);
+            let lines: Vec<String> = if variants_text.is_empty() {
+                vec![]
+            } else {
+                variants_text.split(" | ").map(|s| s.to_string()).collect()
+            };
+            (name, price, lines)
+        }
+        None => ("Produit Yukpomnang".to_string(), String::new(), vec![]),
+    };
+
+    // Construire le SVG 1200x630
+    let svg = build_og_product_svg(&product_name, &price_text, &variants_lines);
+
+    // Convertir SVG → PNG avec resvg
+    match render_svg_to_png(&svg) {
+        Some(png_data) => axum::response::Response::builder()
+            .status(200)
+            .header("Content-Type", "image/png")
+            .header("Cache-Control", "public, max-age=3600")
+            .body(axum::body::Body::from(png_data))
+            .unwrap_or_else(|_| {
+                axum::response::Response::builder()
+                    .status(500)
+                    .body(axum::body::Body::empty())
+                    .unwrap()
+            }),
+        None => {
+            // Fallback: retourner le SVG brut (mieux que rien)
+            log::warn!("[og_product_image] resvg render failed, returning SVG fallback");
+            axum::response::Response::builder()
+                .status(200)
+                .header("Content-Type", "image/svg+xml")
+                .header("Cache-Control", "public, max-age=3600")
+                .body(axum::body::Body::from(svg))
+                .unwrap_or_else(|_| {
+                    axum::response::Response::builder()
+                        .status(500)
+                        .body(axum::body::Body::empty())
+                        .unwrap()
+                })
+        }
+    }
+}
+
+/// Construit le SVG 1200x630 pour l'image OG d'un produit
+fn build_og_product_svg(product_name: &str, price_text: &str, variants: &[String]) -> String {
+    let safe = |s: &str| -> String {
+        s.replace('&', "&amp;")
+            .replace('<', "&lt;")
+            .replace('>', "&gt;")
+            .replace('"', "&quot;")
+    };
+
+    // Tronquer le nom si trop long
+    let display_name: String = if product_name.chars().count() > 50 {
+        format!("{}...", product_name.chars().take(47).collect::<String>())
+    } else {
+        product_name.to_string()
+    };
+
+    // Construire les lignes de variants (max 6)
+    let mut variant_svg = String::new();
+    let variant_start_y: i32 = if price_text.is_empty() { 360 } else { 400 };
+    for (i, variant) in variants.iter().take(6).enumerate() {
+        let display_var: String = if variant.chars().count() > 35 {
+            format!("{}...", variant.chars().take(32).collect::<String>())
+        } else {
+            variant.clone()
+        };
+        // Disposer en 2 colonnes si > 3 variants
+        let (x, y): (i32, i32) = if variants.len() > 3 {
+            let col = (i % 2) as i32;
+            let row = (i / 2) as i32;
+            (200 + col * 400, variant_start_y + row * 42)
+        } else {
+            (600, variant_start_y + (i as i32) * 44)
+        };
+        variant_svg.push_str(&format!(
+            r#"  <rect x="{}" y="{}" width="{}" height="34" rx="8" fill="rgba(255,255,255,0.15)"/>
+  <text x="{}" y="{}" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="white" text-anchor="{}" opacity="0.95">{}</text>
+"#,
+            if variants.len() > 3 { x - 150 } else { 200 },
+            y - 24,
+            if variants.len() > 3 { 360 } else { 800 },
+            x,
+            y,
+            if variants.len() > 3 { "middle" } else { "middle" },
+            safe(&display_var)
+        ));
+    }
+
+    // Prix badge
+    let price_svg = if price_text.is_empty() {
+        String::new()
+    } else {
+        let price_w = (price_text.chars().count() as i32) * 16 + 60;
+        format!(
+            r##"  <rect x="{}" y="310" width="{}" height="50" rx="25" fill="#10b981"/>
+  <text x="600" y="343" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="bold" fill="white" text-anchor="middle">{}</text>
+"##,
+            600 - price_w / 2,
+            price_w,
+            safe(price_text)
+        )
+    };
+
+    format!(
+        r#"<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea"/>
+      <stop offset="100%" style="stop-color:#764ba2"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <text x="600" y="120" font-family="Arial, Helvetica, sans-serif" font-size="100" font-weight="bold" fill="white" text-anchor="middle" opacity="0.15">Y</text>
+  <text x="600" y="240" font-family="Arial, Helvetica, sans-serif" font-size="42" font-weight="bold" fill="white" text-anchor="middle" opacity="0.95">{name}</text>
+  <text x="600" y="280" font-family="Arial, Helvetica, sans-serif" font-size="20" fill="white" text-anchor="middle" opacity="0.5">━━━━━━━━━━━━━━━━━━</text>
+{price}{variants}  <text x="600" y="590" font-family="Arial, Helvetica, sans-serif" font-size="22" fill="white" text-anchor="middle" opacity="0.4">yukpomnang.com</text>
+</svg>"#,
+        name = safe(&display_name),
+        price = price_svg,
+        variants = variant_svg,
+    )
+}
+
+/// Convertit un SVG en PNG via resvg
+fn render_svg_to_png(svg_data: &str) -> Option<Vec<u8>> {
+    use resvg::usvg::{self, TreeParsing};
+
+    let opt = usvg::Options::default();
+    let utree = usvg::Tree::from_str(svg_data, &opt).ok()?;
+    let rtree = resvg::Tree::from_usvg(&utree);
+    let size = rtree.size;
+    let width = size.width() as u32;
+    let height = size.height() as u32;
+
+    let mut pixmap = tiny_skia::Pixmap::new(width, height)?;
+    rtree.render(tiny_skia::Transform::default(), &mut pixmap.as_mut());
+
+    Some(pixmap.encode_png().ok()?)
 }
 
 /// Query params pour le placeholder OG

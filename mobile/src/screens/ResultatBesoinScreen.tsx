@@ -2152,10 +2152,18 @@ const ResultatBesoinScreen: React.FC = () => {
                     }
                 }}
                 onChatPress={() => {
+                    console.log('[ResultatBesoinScreen] Chat button pressed', {
+                        product: product?.nom || product?.product_data?.nom,
+                        service: service?.id,
+                        prestataire: prestataire?.nom || prestataire?.nom_complet,
+                        hasService: !!service,
+                        hasPrestataire: !!prestataire
+                    });
                     setSelectedProduct(product);
                     setSelectedService(service);
                     setSelectedPrestataire(prestataire);
                     setShowChatModal(true);
+                    console.log('[ResultatBesoinScreen] Chat modal state set to true');
                 }}
             />
         );

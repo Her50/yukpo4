@@ -5,7 +5,7 @@
  */
 
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { TextInput as RNTextInput, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
 
 // ✅ Import avec gestion d'erreur
@@ -165,8 +165,7 @@ const FallbackCard: React.FC<{ children: React.ReactNode;[key: string]: any }> =
 
 // ✅ Fallback pour NativeInput
 const FallbackInput: React.FC<any> = (props) => {
-    const { TextInput } = require('react-native');
-    return <TextInput style={[fallbackStyles.input, props.style]} {...props} />;
+    return <RNTextInput style={[fallbackStyles.input, props.style]} {...props} />;
 };
 
 // ✅ Fallback pour NativeDivider

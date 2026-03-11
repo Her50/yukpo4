@@ -131,7 +131,8 @@ module.exports = {
             config: {
                 encoding: "UTF-8",
                 googleMaps: {
-                    apiKey: getEnvVar('EXPO_PUBLIC_GOOGLE_MAPS_API_KEY', 'AIzaSyDqlMAysWsGzv1jQtR6WJn8LZXpH75SwFo')
+                    // ✅ CORRIGÉ 2026-03-11: Nouvelle clé avec SHA-1 debug keystore correct
+                    apiKey: getEnvVar('EXPO_PUBLIC_GOOGLE_MAPS_API_KEY', 'AIzaSyBur183e2f6C1gwaQp021e838DfSz-Srog')
                 }
             },
             "meta-data": [
@@ -154,11 +155,13 @@ module.exports = {
                         buildToolsVersion: "35.0.0",
                         minSdkVersion: 24,
                         kotlinVersion: "1.9.25",
-                        // ✅ OPTIMISATION TAILLE BUILD
+                        // OPTIMISATION TAILLE BUILD
                         enableProguardInReleaseBuilds: true,
                         enableShrinkResourcesInReleaseBuilds: true,
                         enableR8: true,
-                        enableR8FullMode: true,
+                        // CORRIGÉ 2026-03-11: R8 full mode DÉSACTIVÉ — cassait Google Maps SDK
+                        // R8 full mode supprime les classes Google Play Services (maps, location, etc.)
+                        enableR8FullMode: false,
                         proguardMinifyEnabled: true,
                         packagingOptions: {
                             pickFirst: ['**/libc++_shared.so', '**/libfbjni.so']
@@ -166,6 +169,7 @@ module.exports = {
                     }
                 }
             ],
+            // RETIRÉ: withExpoModuleGradlePlugin - redondant car settings.gradle gère déjà l'inclusion d'expo-modules-core/android
             // ✅ RETIRÉ: withExpoModuleGradlePlugin - redondant car settings.gradle gère déjà l'inclusion d'expo-modules-core/android
             "expo-asset",
             "expo-localization",

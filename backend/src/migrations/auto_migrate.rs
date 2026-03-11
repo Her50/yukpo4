@@ -7948,11 +7948,10 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Err(e) => error!("❌ Erreur migration auto delivery_fraud_signals: {}", e),
     }
 
-    // TODO: Fonction ensure_public_tracking_tokens_table à implémenter
-    // match ensure_public_tracking_tokens_table(pool).await {
-    //     Ok(_) => info!("✅ Migration auto: public_tracking_tokens OK"),
-    //     Err(e) => error!("❌ Erreur migration auto public_tracking_tokens: {}", e),
-    // }
+    match ensure_public_tracking_tokens_table(pool).await {
+        Ok(_) => info!("✅ Migration auto: public_tracking_tokens OK"),
+        Err(e) => error!("❌ Erreur migration auto public_tracking_tokens: {}", e),
+    }
 
     match ensure_delivery_payment_reservations_table(pool).await {
         Ok(_) => info!("✅ Migration auto: delivery_payment_reservations OK"),
@@ -8923,6 +8922,12 @@ pub async fn run_auto_migrations(pool: &PgPool) {
     match ensure_insurance_digitalization_tables(pool).await {
         Ok(_) => info!("✅ Migration auto: insurance digitalization tables OK"),
         Err(e) => error!("❌ Erreur migration auto insurance digitalization: {}", e),
+    }
+
+    // ✅ NOUVEAU 2026-03-11 : Table platform_settings (numéros MTN/Orange Money plateforme, admin CRUD)
+    match ensure_platform_settings_table(pool).await {
+        Ok(_) => info!("✅ Migration auto: platform_settings OK"),
+        Err(e) => error!("❌ Erreur migration auto platform_settings: {}", e),
     }
 
     info!("✅ Migrations automatiques terminées");
@@ -10765,6 +10770,48 @@ pub async fn ensure_external_delivery_providers_table(pool: &PgPool) -> Result<(
 
     sqlx::query(
         "CREATE INDEX IF NOT EXISTS idx_external_providers_active ON external_delivery_providers(is_active) WHERE is_active = TRUE",
+    )
+    .execute(pool)
+    .await?;
+
+    // ✅ Phase 11: Index sur contact_phone pour lookup WhatsApp rapide
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_external_providers_phone ON external_delivery_providers(contact_phone) WHERE contact_phone IS NOT NULL",
+    )
+    .execute(pool)
+    .await?;
+
+    Ok(())
+}
+
+/// ✅ Phase 11: Vérifie et crée la table public_tracking_tokens si elle n'existe pas
+pub async fn ensure_public_tracking_tokens_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification de la table public_tracking_tokens...");
+
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS public_tracking_tokens (
+            id SERIAL PRIMARY KEY,
+            delivery_id UUID NOT NULL,
+            tracking_token VARCHAR(255) UNIQUE NOT NULL,
+            provider_id INTEGER REFERENCES external_delivery_providers(id) ON DELETE SET NULL,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            expires_at TIMESTAMPTZ,
+            UNIQUE(delivery_id, tracking_token)
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_public_tracking_tokens_token ON public_tracking_tokens(tracking_token)",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_public_tracking_tokens_delivery ON public_tracking_tokens(delivery_id)",
     )
     .execute(pool)
     .await?;
@@ -19131,5 +19178,44 @@ pub async fn ensure_insurance_digitalization_tables(pool: &PgPool) -> Result<(),
         .execute(pool).await?;
 
     info!("✅ Tables digitalisation assurance créées avec succès (insurance_products, insurance_policies, insurance_claims, documents)");
+    Ok(())
+}
+
+/// ✅ NOUVEAU 2026-03-11 : Table platform_settings pour stocker les numéros Mobile Money de la plateforme
+/// et autres paramètres admin (accessible uniquement aux admin/super-admin)
+pub async fn ensure_platform_settings_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification de la table platform_settings...");
+
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS platform_settings (
+            id SERIAL PRIMARY KEY,
+            key TEXT NOT NULL UNIQUE,
+            value JSONB NOT NULL DEFAULT '{}'::jsonb,
+            description TEXT,
+            updated_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            updated_at TIMESTAMPTZ DEFAULT NOW()
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    // Seed les paramètres de paiement plateforme s'ils n'existent pas
+    sqlx::query(
+        r#"
+        INSERT INTO platform_settings (key, value, description)
+        VALUES
+            ('platform_mtn_money', '{"phone": "", "merchant_id": "", "enabled": false}'::jsonb, 'Numéro MTN Mobile Money de la plateforme pour recevoir les paiements tokens'),
+            ('platform_orange_money', '{"phone": "", "merchant_id": "", "enabled": false}'::jsonb, 'Numéro Orange Money de la plateforme pour recevoir les paiements tokens'),
+            ('platform_bank_account', '{"bank_name": "", "account_number": "", "iban": "", "enabled": false}'::jsonb, 'Compte bancaire de la plateforme')
+        ON CONFLICT (key) DO NOTHING
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    info!("✅ Table platform_settings créée avec succès");
     Ok(())
 }

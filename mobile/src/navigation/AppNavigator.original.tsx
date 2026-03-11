@@ -143,7 +143,8 @@ import HealthServicesHubScreen from '../screens/specialized/HealthServicesHubScr
 import AgenceVoyageDetailsScreen from '../screens/specialized/AgenceVoyageDetailsScreen';
 import AgenceVoyageListScreen from '../screens/specialized/AgenceVoyageListScreen';
 import AgenceVoyageSearchScreen from '../screens/specialized/AgenceVoyageSearchScreen';
-// ✅ NOUVEAU: Écrans Immobilier
+// ✅ NOUVEAU: Écrans Immobilier + Hôtel/Meublé dédié
+import HotelMeubleHomeScreen from '../screens/specialized/HotelMeubleHomeScreen';
 import ImmobilierBookingScreen from '../screens/specialized/ImmobilierBookingScreen';
 import ImmobilierCompareScreen from '../screens/specialized/ImmobilierCompareScreen';
 import ImmobilierDetailsScreen from '../screens/specialized/ImmobilierDetailsScreen';
@@ -378,6 +379,7 @@ const TrocDetailsScreenWithSafeArea = withNavigatorSafeArea(TrocDetailsScreen);
 const TrocLiveValidationScreenWithSafeArea = withNavigatorSafeArea(TrocLiveValidationScreen);
 const MesTrocsScreenWithSafeArea = withNavigatorSafeArea(MesTrocsScreen);
 // ✅ NOUVEAU: Immobilier
+const HotelMeubleHomeScreenWithSafeArea = withNavigatorSafeArea(HotelMeubleHomeScreen);
 const ImmobilierSearchScreenWithSafeArea = withNavigatorSafeArea(ImmobilierSearchScreen);
 const ImmobilierHomeScreenWithSafeArea = withNavigatorSafeArea(ImmobilierHomeScreen);
 const ImmobilierFormScreenWithSafeArea = withNavigatorSafeArea(ImmobilierFormScreen);
@@ -1141,8 +1143,8 @@ const SecondaryStack = () => {
       <Stack.Screen name="HopitalSearchAdvanced" component={HopitalSearchScreenWithSafeArea} />
       {/* ✅ NOUVEAU: Routes Immobilier */}
       <Stack.Screen name="ImmobilierSearch" component={ImmobilierHomeScreenWithSafeArea} />
-      <Stack.Screen name="HotelSearch" component={ImmobilierHomeScreenWithSafeArea} />
-      <Stack.Screen name="MeubleSearch" component={ImmobilierHomeScreenWithSafeArea} />
+      <Stack.Screen name="HotelSearch" component={HotelMeubleHomeScreenWithSafeArea} />
+      <Stack.Screen name="MeubleSearch" component={HotelMeubleHomeScreenWithSafeArea} />
       <Stack.Screen name="ImmobilierSearchAdvanced" component={ImmobilierSearchScreenWithSafeArea} />
       <Stack.Screen name="ImmobilierList" component={ImmobilierListScreenWithSafeArea} />
       <Stack.Screen name="ImmobilierDetails" component={ImmobilierDetailsScreenWithSafeArea} />

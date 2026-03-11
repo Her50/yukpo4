@@ -809,18 +809,18 @@ const HomeScreen: React.FC = () => {
                                     'bayamselam': 'BayamSelamSearch',      // ✅ Utilisateur: SupermarketHomeScreen
                                     // Services Immobilier (UTILISATEURS) - ✅ Routes séparées pour hôtel/meublé
                                     'immo': 'ImmobilierSearch',           // ✅ Utilisateur: ImmobilierHomeScreen
-                                    'hotel': 'HotelSearch',              // ✅ Utilisateur: ImmobilierHomeScreen (filtré pour hôtels)
-                                    'meuble': 'MeubleSearch',            // ✅ Utilisateur: ImmobilierHomeScreen (filtré pour meublés)
+                                    'hotel': 'HotelSearch',              // ✅ Utilisateur: HotelMeubleHomeScreen (dédié hôtels)
+                                    'meuble': 'MeubleSearch',            // ✅ Utilisateur: HotelMeubleHomeScreen (dédié meublés)
                                 };
                                 const route = searchRoutes[serviceId] || 'Home';
                                 console.log('[HomeScreen] Navigation vers:', route, 'pour service:', serviceId);
 
-                                // ✅ NOUVEAU: Passer des paramètres de filtre pour hôtel/meublé
+                                // ✅ Passer le mode pour hôtel/meublé dédié
                                 const routeParams: any = {};
                                 if (serviceId === 'hotel') {
-                                    routeParams.initialFilter = { type_bien: 'hotel' };
+                                    routeParams.mode = 'hotel';
                                 } else if (serviceId === 'meuble') {
-                                    routeParams.initialFilter = { type_bien: 'meuble' };
+                                    routeParams.mode = 'meuble';
                                 }
 
                                 const success = navigate(route, routeParams);

@@ -4,7 +4,7 @@
  */
 
 import React, { useCallback, useMemo } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { useLocation } from '../../contexts/LocationContext';
 import { modernColors } from '../../theme/modernTheme';
@@ -108,7 +108,7 @@ const ResultsMapView: React.FC<ResultsMapViewProps> = ({
     return (
         <View style={styles.container}>
             <MapView
-                provider={PROVIDER_GOOGLE}
+                provider={Platform.OS === 'ios' ? PROVIDER_GOOGLE : undefined}
                 style={styles.map}
                 initialRegion={mapRegion}
                 showsUserLocation={!!location?.coords}

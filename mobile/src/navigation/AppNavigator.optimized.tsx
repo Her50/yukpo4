@@ -12,6 +12,7 @@ import React, { memo, useEffect, useState } from 'react';
 import { ActivityIndicator, Platform, StyleSheet, Text, View } from 'react-native';
 import SafeIcon from '../components/SafeIcon';
 import { useAuth } from '../contexts/AuthContext';
+import { useDeepLinkRedirect } from '../hooks/useDeepLinkRedirect';
 import { apiGet } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 
@@ -165,6 +166,7 @@ reg('MonProfil', () => import('../screens/MonProfilScreen'));
 reg('MyBusTickets', () => import('../screens/MyBusTicketsScreen'));
 reg('OrderStatus', () => import('../screens/OrderStatusScreen'));
 reg('PaiementPlan', () => import('../screens/PaiementPlanScreen'));
+reg('PlatformPaymentSettings', () => import('../screens/PlatformPaymentSettingsScreen'));
 reg('Plans', () => import('../screens/PlansScreen'));
 reg('PrestataireBoutique', () => import('../screens/PrestataireBoutiqueScreen'));
 reg('ProductDetail', () => import('../screens/ProductDetailScreen'));
@@ -227,6 +229,7 @@ reg('ShoppingBudget', () => import('../screens/delivery/ShoppingBudgetScreen'));
 reg('ShoppingPickupDrop', () => import('../screens/delivery/ShoppingPickupDropScreen'));
 reg('ShoppingSummary', () => import('../screens/delivery/ShoppingSummaryScreen'));
 reg('StorageLocations', () => import('../screens/delivery/StorageLocationsScreen'));
+reg('ExternalProvidersAdmin', () => import('../screens/delivery/ExternalProvidersAdminScreen'));
 
 // ---------------------------------------------------------------------------
 // Offres d'emploi (14)
@@ -495,8 +498,8 @@ S['Search'] = S['SpecializedSearch'];
 S['Videos'] = S['VideoFeed'];
 S['LiveViewerScreen'] = S['LiveViewer'];
 S['Payment'] = S['PaiementPlan'];
-S['HotelSearch'] = S['ImmobilierSearch'];
-S['MeubleSearch'] = S['ImmobilierSearch'];
+S['HotelSearch'] = createLazy(() => import('../screens/specialized/HotelMeubleHomeScreen'), 'HotelSearch');
+S['MeubleSearch'] = createLazy(() => import('../screens/specialized/HotelMeubleHomeScreen'), 'MeubleSearch');
 S['NavigationScreen'] = createLazy(() => import('../screens/NavigationScreen'), 'NavigationScreen');
 
 // ============================================================================
@@ -507,9 +510,45 @@ S['NavigationScreen'] = createLazy(() => import('../screens/NavigationScreen'), 
 
 const GESTION_SUPPORTED_TYPES = [
   'pharmacie', 'hopital', 'laboratoire', 'agence de voyage', 'agencevoyage',
-  'banquesang', 'covoiturage', 'taxi', 'hotel', 'meuble', 'supermarche',
-  'chauffeur', 'livrescolaire', 'restaurant',
+  'agence_voyage', 'banquesang', 'banque_sang', 'covoiturage', 'taxi',
+  'hotel', 'meuble', 'supermarche', 'chauffeur', 'livrescolaire',
+  'livre_scolaire', 'restaurant', 'assureur', 'assurance',
+  'etablissementscolaire', 'etablissement_scolaire',
+  'offre_emploi', 'offreemploi', 'recruteur',
 ];
+
+// ✅ FIX: Mapping partagé partner_type → écran spécialisé (même logique que useDeepLinkRedirect)
+const getPartnerDashboardScreen = (partnerType: string | undefined): string | null => {
+  if (!partnerType) return null;
+  const map: Record<string, string> = {
+    'pharmacie': 'PharmacieForm',
+    'hopital': 'HopitalForm',
+    'laboratoire': 'LaboratoireForm',
+    'banquesang': 'BanqueSangForm',
+    'banque_sang': 'BanqueSangForm',
+    'agence_voyage': 'AgenceVoyageForm',
+    'agencedevoyage': 'AgenceVoyageForm',
+    'agencevoyage': 'AgenceVoyageForm',
+    'covoiturage': 'CovoiturageForm',
+    'taxi': 'TaxiForm',
+    'chauffeur': 'TaxiForm',
+    'hotel': 'HotelDashboard',
+    'meuble': 'HotelDashboard',
+    'supermarche': 'SupermarketPartnerDashboard',
+    'restaurant': 'RestaurantDashboard',
+    'offre_emploi': 'OffresEmploiHub',
+    'offreemploi': 'OffresEmploiHub',
+    'recruteur': 'OffresEmploiHub',
+    'assureur': 'AssuranceDashboard',
+    'assurance': 'AssuranceDashboard',
+    'etablissementscolaire': 'OrientationPartnerDashboard',
+    'etablissement_scolaire': 'OrientationPartnerDashboard',
+    'livrescolaire': 'OrientationPartnerDashboard',
+    'livre_scolaire': 'OrientationPartnerDashboard',
+  };
+  const normalized = partnerType.toLowerCase().trim().replace(/\s+/g, '');
+  return map[partnerType] || map[normalized] || null;
+};
 
 function MainTabNavigator() {
   const { user } = useAuth();
@@ -536,9 +575,13 @@ function MainTabNavigator() {
   useEffect(() => {
     const pt = (user as any)?.partner_type;
     const role = (user as any)?.role;
-    if (role === 'partenaire' && pt && GESTION_SUPPORTED_TYPES.includes(pt)) {
-      setHasSpecializedServices(true);
-      return;
+    if (role === 'partenaire' && pt) {
+      // ✅ FIX: Normaliser le partner_type pour gérer toutes les variantes d'écriture
+      const normalized = pt.toLowerCase().trim().replace(/\s+/g, '');
+      if (GESTION_SUPPORTED_TYPES.includes(pt) || GESTION_SUPPORTED_TYPES.includes(normalized)) {
+        setHasSpecializedServices(true);
+        return;
+      }
     }
     setHasSpecializedServices(false);
   }, [user?.id, (user as any)?.partner_type]);
@@ -580,7 +623,7 @@ function MainTabNavigator() {
         }}
       />
 
-      {/* Onglet 2: Mes Services (conditionnel: GestionServicesSpecialises pour partenaires, MesProduits sinon) */}
+      {/* Onglet 2: Mes Services (conditionnel: écran spécialisé pour partenaires, MesProduits sinon) */}
       {hasSpecializedServices ? (
         <Tab.Screen
           name="GestionServicesSpecialises"
@@ -592,6 +635,18 @@ function MainTabNavigator() {
               <SafeIcon name="briefcase" size={size} color={focused ? modernColors.primary : color} type="lucide" />
             ),
           }}
+          listeners={({ navigation }) => ({
+            tabPress: (e) => {
+              // ✅ FIX: Rediriger vers l'écran spécialisé du partenaire (même que login)
+              const pt = (user as any)?.partner_type;
+              const targetScreen = getPartnerDashboardScreen(pt);
+              if (targetScreen && targetScreen !== 'GestionServicesSpecialises') {
+                e.preventDefault();
+                navigation.navigate(targetScreen);
+              }
+              // Si pas de mapping spécifique, laisser le comportement par défaut (GestionServicesSpecialises)
+            },
+          })}
         />
       ) : (
         <Tab.Screen

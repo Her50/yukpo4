@@ -3,7 +3,7 @@
 use axum::{
     extract::{Path, Query, State},
     response::{Html, Json},
-    routing::{get, post},
+    routing::{delete, get, post},
     Router,
 };
 use chrono::Utc;
@@ -42,6 +42,15 @@ pub fn delivery_external_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route(
             "/api/delivery/whatsapp-order",
             post(whatsapp_delivery_webhook),
+        )
+        // ✅ Phase 11: Admin CRUD pour prestataires externes (API key management)
+        .route(
+            "/api/admin/external-providers",
+            get(list_external_providers).post(create_external_provider),
+        )
+        .route(
+            "/api/admin/external-providers/{id}",
+            delete(delete_external_provider),
         )
         .with_state(state)
 }
@@ -1233,4 +1242,112 @@ fn xml_escape(s: &str) -> String {
         .replace('>', "&gt;")
         .replace('"', "&quot;")
         .replace('\'', "&apos;")
+}
+
+// ============================================================================
+// ✅ Phase 11: Admin CRUD pour prestataires externes
+// ============================================================================
+
+/// GET /api/admin/external-providers — Liste tous les prestataires externes
+async fn list_external_providers(State(state): State<Arc<AppState>>) -> AppResult<Json<Value>> {
+    let providers = sqlx::query_as::<_, ExternalDeliveryProvider>(
+        "SELECT * FROM external_delivery_providers ORDER BY created_at DESC",
+    )
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| {
+        log::error!("[AdminProviders] Erreur list: {}", e);
+        AppError::Database(e.to_string())
+    })?;
+
+    Ok(Json(json!({
+        "success": true,
+        "providers": providers,
+        "count": providers.len()
+    })))
+}
+
+/// Input pour créer un prestataire externe depuis l'admin
+#[derive(Debug, Deserialize)]
+struct CreateExternalProviderInput {
+    provider_name: String,
+    contact_phone: Option<String>,
+    contact_email: Option<String>,
+}
+
+/// POST /api/admin/external-providers — Crée un nouveau prestataire externe avec API key auto-générée
+async fn create_external_provider(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<CreateExternalProviderInput>,
+) -> AppResult<Json<Value>> {
+    if payload.provider_name.trim().is_empty() {
+        return Err(AppError::BadRequest(
+            "Le nom du prestataire est requis".into(),
+        ));
+    }
+
+    // Générer API key et secret
+    let api_key = format!("ykp_{}", Uuid::new_v4().to_string().replace("-", ""));
+    let api_secret = format!("sec_{}", Uuid::new_v4().to_string().replace("-", ""));
+
+    let provider = sqlx::query_as::<_, ExternalDeliveryProvider>(
+        r#"INSERT INTO external_delivery_providers (provider_name, api_key, api_secret, contact_phone, contact_email, is_active)
+           VALUES ($1, $2, $3, $4, $5, TRUE)
+           RETURNING *"#,
+    )
+    .bind(payload.provider_name.trim())
+    .bind(&api_key)
+    .bind(&api_secret)
+    .bind(&payload.contact_phone)
+    .bind(&payload.contact_email)
+    .fetch_one(&state.pg)
+    .await
+    .map_err(|e| {
+        log::error!("[AdminProviders] Erreur create: {}", e);
+        AppError::Database(e.to_string())
+    })?;
+
+    let form_url =
+        "https://yukpo-backend-376093909298.europe-west1.run.app/api/delivery/partner-form";
+
+    log::info!(
+        "[AdminProviders] ✅ Prestataire créé: {} (id={}, api_key={})",
+        provider.provider_name,
+        provider.id,
+        &api_key[..12]
+    );
+
+    Ok(Json(json!({
+        "success": true,
+        "provider": provider,
+        "form_url": form_url,
+        "message": format!("Prestataire '{}' créé avec succès", provider.provider_name)
+    })))
+}
+
+/// DELETE /api/admin/external-providers/:id — Supprime (désactive) un prestataire externe
+async fn delete_external_provider(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<i32>,
+) -> AppResult<Json<Value>> {
+    let result =
+        sqlx::query("UPDATE external_delivery_providers SET is_active = FALSE WHERE id = $1")
+            .bind(id)
+            .execute(&state.pg)
+            .await
+            .map_err(|e| {
+                log::error!("[AdminProviders] Erreur delete: {}", e);
+                AppError::Database(e.to_string())
+            })?;
+
+    if result.rows_affected() == 0 {
+        return Err(AppError::NotFound("Prestataire non trouvé".into()));
+    }
+
+    log::info!("[AdminProviders] ✅ Prestataire {} désactivé", id);
+
+    Ok(Json(json!({
+        "success": true,
+        "message": "Prestataire désactivé avec succès"
+    })))
 }

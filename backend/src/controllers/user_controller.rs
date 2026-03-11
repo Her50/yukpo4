@@ -128,6 +128,9 @@ pub struct UpdateProfileInput {
     pub nom: Option<String>,
     pub prenom: Option<String>,
     pub nom_complet: Option<String>,
+    // ✅ NOUVEAU 2026-03-11: Modes de paiement prestataire (MTN Money, Orange Money, etc.)
+    // Format attendu: { "mtn_money": { "phone": "...", "verified": false }, "orange_money": { ... } }
+    pub payment_methods: Option<serde_json::Value>,
 }
 
 pub async fn update_user_profile(
@@ -153,6 +156,23 @@ pub async fn update_user_profile(
     } else {
         None
     };
+
+    // ✅ NOUVEAU 2026-03-11: Sauvegarder les modes de paiement si fournis
+    if let Some(ref pm) = input.payment_methods {
+        info!(
+            "[update_user_profile] Mise à jour payment_methods pour user_id={}: {:?}",
+            user.id, pm
+        );
+        let _ =
+            sqlx::query("UPDATE users SET payment_methods = $1, updated_at = NOW() WHERE id = $2")
+                .bind(pm)
+                .bind(user.id)
+                .execute(&state.pg)
+                .await
+                .map_err(|e| {
+                    error!("[update_user_profile] Erreur mise à jour payment_methods: {e:?}");
+                });
+    }
 
     let updated = sqlx::query_as::<_, User>(
         r#"

@@ -5,6 +5,7 @@ import {
     Alert,
     Dimensions,
     Modal,
+    Platform,
     StyleSheet,
     Text,
     TextInput,
@@ -242,7 +243,7 @@ const NewGPSModal: React.FC<NewGPSModalProps> = ({
                     )}
                     <MapView
                         style={styles.map}
-                        provider={PROVIDER_GOOGLE}
+                        provider={Platform.OS === 'ios' ? PROVIDER_GOOGLE : undefined}
                         region={mapRegion}
                         onRegionChangeComplete={setMapRegion}
                         onPress={handleMapPress}

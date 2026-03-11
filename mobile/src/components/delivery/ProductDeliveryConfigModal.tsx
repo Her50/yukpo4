@@ -199,8 +199,8 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
             setLoading(true);
             try {
                 const response = await apiGet(`/api/delivery/product-config/${serviceId}/${selectedProductIndex}`);
-                if (response.success && response.data && typeof response.data === 'object' && 'config' in response.data) {
-                    const data = response.data as any;
+                const data = response.data as any;
+                if (response.success && data && typeof data === 'object' && data.config) {
                     const c = data.config;
 
                     // Pré-remplir le formulaire avec la config du produit sélectionné
@@ -512,8 +512,10 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
     const loadExistingConfig = async () => {
         try {
             const response = await apiGet(`/api/delivery/product-config/${serviceId}/${productIndex}`);
-            if (response.success && response.data && typeof response.data === 'object' && 'config' in response.data) {
-                const data = response.data as any;
+            const data = response.data as any;
+            // ✅ CORRIGÉ: Vérifier que config n'est PAS null (le backend retourne {config: null} pour les nouveaux produits)
+            // Sans ce check, 'config' in response.data est true même si config===null, ce qui crashait sur c.pickup_address
+            if (response.success && data && typeof data === 'object' && data.config) {
                 const c = data.config;
 
                 // ✅ NOUVEAU: Charger l'adresse existante comme première adresse de récupération
@@ -587,8 +589,8 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                             console.log('[ProductDeliveryConfigModal] ✅ Config trouvée depuis:', sourceProduct.name);
 
                             const configResponse = await apiGet(`/api/delivery/product-config/${serviceId}/${sourceProduct.index}`);
-                            if (configResponse.success && configResponse.data && typeof configResponse.data === 'object' && 'config' in configResponse.data) {
-                                const cfgData = configResponse.data as any;
+                            const cfgData = configResponse.data as any;
+                            if (configResponse.success && cfgData && typeof cfgData === 'object' && cfgData.config) {
                                 const c = cfgData.config;
 
                                 const pickupAddr = (typeof c.pickup_address === 'string' ? c.pickup_address : '') || '';

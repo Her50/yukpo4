@@ -10,7 +10,8 @@ export const ENVIRONMENT = {
     // Les clés Maps côté client sont publiques par nature — protégées par restrictions plateforme
     // ✅ CORRIGÉ 2026-03-01: Détecter les placeholders 'SET_VIA_EAS_SECRET_OR_ENV' qui ne sont pas de vraies clés
     GOOGLE_MAPS_API_KEY: (() => {
-        const ANDROID_KEY = 'AIzaSyDqlMAysWsGzv1jQtR6WJn8LZXpH75SwFo';
+        // ✅ CORRIGÉ 2026-03-11: Nouvelle clé avec SHA-1 debug keystore correct
+        const ANDROID_KEY = 'AIzaSyBur183e2f6C1gwaQp021e838DfSz-Srog';
         const IOS_KEY = 'AIzaSyBHGQavkIvn0pgj52WuTEapSkdKUmljqs8';
         const fallbackKey = Platform.OS === 'ios' ? IOS_KEY : ANDROID_KEY;
         const envKey = Platform.OS === 'ios'

@@ -3035,8 +3035,8 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                         try {
                             // Charger la config du produit source
                             const response = await apiGet(`/api/delivery/product-config/${successModalData.serviceId}/${existingDeliveryConfig.productIndex}`);
-                            if (response.success && response.data && typeof response.data === 'object' && 'config' in response.data) {
-                                const data = response.data as any;
+                            const data = response.data as any;
+                            if (response.success && data && typeof data === 'object' && data.config) {
                                 const c = data.config;
                                 // Sauvegarder cette config pour le nouveau produit
                                 const saveResponse = await apiPost('/api/delivery/product-config', {

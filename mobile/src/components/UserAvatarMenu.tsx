@@ -49,6 +49,14 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0
             adminOnly: true
         },
         {
+            title: 'Prestataires externes',
+            icon: '🔑',
+            route: 'ExternalProvidersAdmin',
+            description: 'Gérer les prestataires et envoyer les clés API',
+            highlighted: true,
+            adminOnly: true
+        },
+        {
             title: '🔥 Configuration Black Friday',
             icon: '🔥',
             route: 'BlackFridayAdminConfig',

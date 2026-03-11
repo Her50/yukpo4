@@ -566,13 +566,21 @@ const ProductCard: React.FC<ProductCardProps> = ({
       || product.variation_prix || product.variabilite_prix || product.price_variant;
 
     if (variationPrix) {
-      // ✅ CORRIGÉ 2026-03-04: Dé-wrapper le format formulaire dynamique {type_donnee, valeur: {...}, origine_champs}
-      // Le mobile envoie variation_prix sous forme {valeur: {variable: "pointure", modalites: [...]}}
+      // ✅ CORRIGÉ 2026-03-11: Dé-wrapper robustement le format formulaire dynamique
+      // Formats possibles:
+      //   1. {origine_champs, valeur: {variable, modalites: [...]}, type_donnee} (formulaire dynamique complet)
+      //   2. {valeur: {variable, modalites: [...]}} (sans origine_champs — premier produit créé avec le service)
+      //   3. {variable, modalites: [...]} (déjà dé-wrappé)
+      //   4. [{valeur, prix}, ...] (tableau direct)
       let unwrappedVariationPrix = variationPrix;
-      if (typeof variationPrix === 'object' && !Array.isArray(variationPrix) &&
-        variationPrix.origine_champs && variationPrix.valeur &&
-        typeof variationPrix.valeur === 'object' && !Array.isArray(variationPrix.valeur)) {
-        unwrappedVariationPrix = variationPrix.valeur;
+      // Dé-wrapper récursivement les couches {valeur: ...} jusqu'au contenu réel
+      let maxDepth = 3;
+      while (maxDepth-- > 0 &&
+        typeof unwrappedVariationPrix === 'object' && !Array.isArray(unwrappedVariationPrix) &&
+        unwrappedVariationPrix.valeur !== undefined &&
+        !unwrappedVariationPrix.modalites && // S'arrêter si on a déjà les modalites
+        typeof unwrappedVariationPrix.valeur === 'object') {
+        unwrappedVariationPrix = unwrappedVariationPrix.valeur;
       }
 
       console.log('[ProductCard] 🔍 variation_prix trouvé:', {

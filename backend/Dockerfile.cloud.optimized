@@ -78,6 +78,7 @@ LABEL version="2.0.0-optimized"
 
 # Installer uniquement les dépendances runtime essentielles (SANS Blender et X11)
 # ✅ AJOUTÉ: Python3 pour serveur HTTP minimal de health check (plus fiable que socat/netcat)
+# ✅ CORRIGÉ 2026-03-11: Ajout de ffmpeg (REQUIS pour la génération vidéo marketing)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     libpq5 \
@@ -86,6 +87,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     postgresql-client \
     redis-tools \
     python3 \
+    ffmpeg \
+    fonts-dejavu-core \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 

@@ -17,6 +17,7 @@ import {
     StatusBar,
     StyleSheet,
     Text,
+    TextInput,
     TouchableOpacity,
     View,
     ViewToken
@@ -261,6 +262,8 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
     const [hasMore, setHasMore] = useState(true);
     const [showDeliveryModal, setShowDeliveryModal] = useState(false);
     const [selectedDeliveryItem, setSelectedDeliveryItem] = useState<FeedItem | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [filteredFeed, setFilteredFeed] = useState<FeedItem[]>([]);
     const viewedSet = useRef<Set<string>>(new Set());
     const spinAnim = useRef(new Animated.Value(0)).current;
     const videoRefs = useRef<Map<number, Video | null>>(new Map());
@@ -331,6 +334,23 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
     }, [showOnlyMyVideos, user?.id]);
 
     useEffect(() => { fetchFeed(); }, [fetchFeed]);
+
+    // ✅ Filtrer le feed selon la recherche
+    useEffect(() => {
+        if (!searchQuery.trim()) {
+            setFilteredFeed(feed);
+        } else {
+            const query = searchQuery.toLowerCase();
+            const filtered = feed.filter(item =>
+                item.titre?.toLowerCase().includes(query) ||
+                item.description?.toLowerCase().includes(query) ||
+                item.sellerName?.toLowerCase().includes(query) ||
+                item.category?.toLowerCase().includes(query) ||
+                item.hashtags?.some(tag => tag.toLowerCase().includes(query))
+            );
+            setFilteredFeed(filtered);
+        }
+    }, [feed, searchQuery]);
 
     const onRefresh = useCallback(() => {
         setRefreshing(true);
@@ -746,11 +766,16 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                                 videoRef.replayAsync().catch(() => undefined);
                             }
                         }, 500); // Petite pause avant de relancer
-                    } else {
+                    } else if (currentPlayCount >= 2) {
                         // Après la deuxième lecture, passer à la vidéo suivante
                         const nextIndex = index + 1;
-                        if (nextIndex < feed.length) {
-                            flatListRef.current?.scrollToIndex({ index: nextIndex, animated: true });
+                        if (nextIndex < filteredFeed.length) {
+                            setTimeout(() => {
+                                flatListRef.current?.scrollToIndex({ index: nextIndex, animated: true });
+                            }, 800);
+                        } else {
+                            // Fin du feed, charger plus de vidéos si disponible
+                            loadMore();
                         }
                     }
                 }
@@ -803,6 +828,25 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                         </View>
                     )}
 
+                    {/* ✅ Bouton replay après 2 lectures */}
+                    {!paused && isActive && !isBuffering && (playCount[contentId] || 0) >= 2 && progress >= 0.98 && (
+                        <TouchableOpacity
+                            style={styles.replayButton}
+                            onPress={() => {
+                                const videoRef = videoRefs.current.get(index);
+                                if (videoRef) {
+                                    playCountRef.current[contentId] = 0;
+                                    setPlayCount(prev => ({ ...prev, [contentId]: 0 }));
+                                    videoRef.replayAsync().catch(() => undefined);
+                                }
+                            }}
+                            activeOpacity={0.8}
+                        >
+                            <SafeIcon name="rotate-ccw" size={32} color="#fff" type="lucide" />
+                            <Text style={styles.replayText}>Rejouer</Text>
+                        </TouchableOpacity>
+                    )}
+
                     {doubleTapHeart === contentId && (
                         <Animated.View
                             style={[
@@ -828,6 +872,27 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                     pointerEvents="none"
                 />
 
+                {/* ✅ Barre de recherche */}
+                {index === 0 && (
+                    <View style={styles.searchBarContainer}>
+                        <View style={styles.searchBar}>
+                            <SafeIcon name="search" size={18} color="#9CA3AF" type="lucide" />
+                            <TextInput
+                                style={styles.searchInput}
+                                placeholder="Rechercher des vidéos..."
+                                placeholderTextColor="#9CA3AF"
+                                value={searchQuery}
+                                onChangeText={setSearchQuery}
+                            />
+                            {searchQuery.length > 0 && (
+                                <TouchableOpacity onPress={() => setSearchQuery('')}>
+                                    <SafeIcon name="x" size={18} color="#9CA3AF" type="lucide" />
+                                </TouchableOpacity>
+                            )}
+                        </View>
+                    </View>
+                )}
+
                 {/* ✅ Header: bouton retour + compteur vidéo (comme TikTok) */}
                 <View style={styles.topBar}>
                     <TouchableOpacity
@@ -838,7 +903,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                         <SafeIcon name="arrow-left" size={22} color="#fff" type="lucide" />
                     </TouchableOpacity>
                     <View style={styles.videoCounter}>
-                        <Text style={styles.videoCounterText}>{index + 1}/{feed.length}</Text>
+                        <Text style={styles.videoCounterText}>{index + 1}/{filteredFeed.length}</Text>
                     </View>
                     {item.isPaid && (
                         <View style={styles.sponsoredBadgeInline}>
@@ -1078,7 +1143,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
             <StatusBar barStyle="light-content" backgroundColor="#000" translucent />
             <FlatList
                 ref={flatListRef}
-                data={feed}
+                data={filteredFeed}
                 keyExtractor={(item) => item.id}
                 renderItem={renderItem}
                 pagingEnabled
@@ -1614,6 +1679,51 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 11,
         fontWeight: '700',
+    },
+    replayButton: {
+        position: 'absolute',
+        top: '50%',
+        left: '50%',
+        transform: [{ translateX: -60 }, { translateY: -60 }],
+        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+        borderRadius: 60,
+        width: 120,
+        height: 120,
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        borderWidth: 2,
+        borderColor: 'rgba(255, 255, 255, 0.3)',
+    },
+    replayText: {
+        color: '#fff',
+        fontSize: 14,
+        fontWeight: '700',
+        marginTop: 4,
+    },
+    searchBarContainer: {
+        position: 'absolute',
+        top: Platform.OS === 'ios' ? 100 : 80,
+        left: 16,
+        right: 16,
+        zIndex: 100,
+    },
+    searchBar: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+        borderRadius: 25,
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        gap: 10,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.2)',
+    },
+    searchInput: {
+        flex: 1,
+        color: '#fff',
+        fontSize: 15,
+        fontWeight: '500',
     },
 });
 

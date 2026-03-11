@@ -1,6 +1,7 @@
 // Composant carte interactive avec clustering pour biens immobiliers
 import React, { useEffect, useRef, useState } from 'react';
 import {
+    Platform,
     StyleSheet,
     Text,
     TouchableOpacity,
@@ -104,7 +105,7 @@ const PropertyMapView: React.FC<PropertyMapViewProps> = ({
         <View style={styles.container}>
             <MapView
                 ref={mapRef}
-                provider={PROVIDER_GOOGLE}
+                provider={Platform.OS === 'ios' ? PROVIDER_GOOGLE : undefined}
                 style={styles.map}
                 initialRegion={mapRegion}
                 onRegionChangeComplete={setMapRegion}

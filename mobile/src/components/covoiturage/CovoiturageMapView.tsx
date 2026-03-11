@@ -2,6 +2,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
     Dimensions,
+    Platform,
     StyleSheet,
     Text,
     TouchableOpacity,
@@ -163,7 +164,7 @@ const CovoiturageMapView: React.FC<CovoiturageMapViewProps> = ({
         <View style={styles.container}>
             <MapView
                 ref={mapRef}
-                provider={PROVIDER_GOOGLE}
+                provider={Platform.OS === 'ios' ? PROVIDER_GOOGLE : undefined}
                 style={styles.map}
                 initialRegion={mapRegion}
                 showsUserLocation={!!currentLocation}

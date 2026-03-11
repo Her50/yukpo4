@@ -170,6 +170,10 @@ lru = "0.12"
 ort = "2.0.0-rc.10"  # ✅ ONNX Runtime pour inference ML (toujours activé)
 ndarray = "0.15"  # Arrays pour features ML (toujours activé)
 
-# 💳 Payment processing (Stripe temporairement désactivé)
+# �️ OG Image dynamique (SVG → PNG pour previews WhatsApp/Facebook)
+resvg = "0.37"
+tiny-skia = "0.11"
+
+# �💳 Payment processing (Stripe temporairement désactivé)
 # async-stripe = "1.0.0-rc.2"  # Réactiver une fois les dépendances corrigées
 

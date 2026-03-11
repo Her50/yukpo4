@@ -17,7 +17,7 @@ import {
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { KeyboardAwareScreen } from '../components/KeyboardAwareScreen';
-import { apiGet, apiPost } from '../services/api';
+import { apiGet, apiPost, apiPut } from '../services/api';
 // Code corrigé (remplace @ts-ignore)
 // ✅ NOUVEAU 2025-11-02: Gestionnaire upload images/vidéos dédié
 import BrandingManagerMobile from '../components/BrandingManagerMobile';
@@ -5103,7 +5103,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   finalServiceData.tokens_ia_externe = tokensIAExterne;
                 }
 
-                // ✅ NOUVEAU: Ajouter le mode de paiement si présent
+                // ✅ CORRIGÉ 2026-03-11: Ajouter le mode de paiement dans les données du service ET dans users.payment_methods
                 if (paymentMethod) {
                   finalServiceData.mode_paiement = {
                     type_donnee: 'object',
@@ -5111,6 +5111,17 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                     origine_champs: 'formulaire'
                   };
                   console.log('[FormulaireYukpoIntelligentScreen] ✅ Mode de paiement ajouté:', paymentMethod);
+
+                  // ✅ NOUVEAU: Sauvegarder aussi dans users.payment_methods pour le PaymentMatchingService
+                  // Le backend PaymentMatchingService lit depuis users.payment_methods, pas services.data
+                  try {
+                    await apiPut('/api/user/me', {
+                      payment_methods: paymentMethod,
+                    });
+                    console.log('[FormulaireYukpoIntelligentScreen] ✅ payment_methods sauvegardé dans profil utilisateur');
+                  } catch (pmErr) {
+                    console.warn('[FormulaireYukpoIntelligentScreen] ⚠️ Erreur sauvegarde payment_methods profil:', pmErr);
+                  }
                 }
 
                 const attachMediaField = (fieldName: string, values: any[], options: { typeDonnee?: string; takeFirst?: boolean } = {}) => {
@@ -6106,8 +6117,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             try {
               // Charger la config du produit source
               const response = await apiGet(`/api/delivery/product-config/${successModalData.serviceId}/${existingDeliveryConfig.productIndex}`);
-              if (response.success && response.data && typeof response.data === 'object' && 'config' in response.data) {
-                const data = response.data as any;
+              const data = response.data as any;
+              if (response.success && data && typeof data === 'object' && data.config) {
                 const c = data.config;
                 // Sauvegarder cette config pour le nouveau produit
                 const saveResponse = await apiPost('/api/delivery/product-config', {

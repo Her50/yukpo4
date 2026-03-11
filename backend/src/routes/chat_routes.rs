@@ -130,6 +130,7 @@ pub struct Conversation {
     pub last_message_time: DateTime<Utc>,
     pub unread_count: i32,
     pub is_active: bool,
+    pub service_id: Option<i32>,
     pub service_title: Option<String>,
     pub status: String,
 }
@@ -177,6 +178,7 @@ pub async fn get_user_conversations(
                 0
             ) as unread_count,
             c.is_active,
+            c.service_id,
             c.service_title,
             c.status
         FROM conversations c
@@ -214,6 +216,7 @@ pub async fn get_user_conversations(
                         .unwrap_or_else(|_| Utc::now()),
                     unread_count: row.get::<Option<_>, _>("unread_count").unwrap_or(0),
                     is_active: row.get::<Option<_>, _>("is_active").unwrap_or(true),
+                    service_id: row.get::<Option<_>, _>("service_id"),
                     service_title: row.get::<Option<_>, _>("service_title"),
                     status: row.try_get("status").unwrap_or_else(|_| "active".to_string()),
                 });

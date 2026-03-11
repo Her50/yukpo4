@@ -859,7 +859,7 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
                                                 size={18}
                                                 color={placeType === 'establishment' ? modernColors.primary : modernColors.textSecondary}
                                             />
-                                            <Text style={styles.optionText}>{opt}</Text>
+                                            <Text style={styles.optionText} numberOfLines={1} ellipsizeMode="tail">{opt}</Text>
                                         </View>
                                     </Pressable>
                                 );
@@ -893,6 +893,7 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: modernColors.text,
         padding: 0, // ✅ Important pour éviter le padding supplémentaire
+        minHeight: 22, // ✅ FIX: Garantir que le texte saisi est toujours visible
     },
     enrichingText: { fontSize: 11, color: modernColors.primary, marginTop: 2 },
     clearIconButton: {

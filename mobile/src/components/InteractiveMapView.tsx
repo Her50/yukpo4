@@ -269,7 +269,7 @@ const InteractiveMapView = forwardRef<InteractiveMapViewRef, InteractiveMapViewP
             <MapView
                 ref={mapRef}
                 style={styles.map}
-                provider={PROVIDER_GOOGLE}
+                provider={Platform.OS === 'ios' ? PROVIDER_GOOGLE : undefined}
                 mapType={getMapType()}
                 // ✅ CORRIGÉ 2026-02-25: initialRegion (non-contrôlé) au lieu de region
                 // region={} causait des sauts visuels à chaque re-render

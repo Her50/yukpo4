@@ -156,6 +156,21 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
     const titreService = getServiceFieldValue(service?.data?.titre_service);
     const categorieService = getServiceFieldValue(service?.data?.category);
 
+    // ✅ DEBUG: Log when modal opens
+    useEffect(() => {
+        if (visible) {
+            console.log('[ChatModalMobile] Modal opened', {
+                visible,
+                hasService: !!service,
+                serviceId: service?.id,
+                hasPrestataire: !!prestataireInfo,
+                prestataireName: nomPrestataire,
+                effectiveServiceId,
+                prestataireUserId
+            });
+        }
+    }, [visible, service?.id, prestataireInfo, nomPrestataire, effectiveServiceId, prestataireUserId]);
+
     // Auto-scroll vers le bas
     useEffect(() => {
         if (messages.length > 0) {
@@ -1350,27 +1365,51 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                     const response = await apiGet(`/api/services/${service.id}`);
                                     if (response.success && response.data) {
                                         const serviceData = response.data;
-                                        const products = serviceData.data?.produits?.valeur ||
-                                            serviceData.produits ||
+                                        // ✅ FIX: Essayer plusieurs chemins pour trouver les produits
+                                        const rawData = (serviceData as any)?.data || serviceData;
+                                        const products = rawData?.data?.produits?.valeur ||
+                                            rawData?.produits?.valeur ||
+                                            rawData?.data?.produits ||
+                                            rawData?.produits ||
+                                            serviceData?.produits ||
                                             [];
+
+                                        console.log('[ChatModalMobile] Produits trouvés:', products.length, 'serviceData keys:', Object.keys(serviceData || {}));
 
                                         if (products.length === 0) {
                                             Alert.alert('Aucun produit', 'Ce service n\'a pas de produits disponibles');
                                             return;
                                         }
 
-                                        // ✅ CORRIGÉ : Filtrer les produits qui ont un prix valide (> 0)
-                                        const productsWithPrice = products.filter((product: any) => {
-                                            const price = product.price || product.prix || product.prix_unitaire;
-                                            if (!price) return false;
+                                        // ✅ FIX: Helper pour extraire le prix numérique, y compris format {valeur: "5000"}
+                                        const extractNumericPrice = (product: any): number => {
+                                            const fields = [product.price, product.prix, product.prix_unitaire];
+                                            for (const raw of fields) {
+                                                if (raw == null) continue;
+                                                // Nombre direct
+                                                if (typeof raw === 'number' && raw > 0) return raw;
+                                                // String directe
+                                                if (typeof raw === 'string') {
+                                                    const n = parseFloat(raw.replace(/[^\d.,]/g, '').replace(',', '.'));
+                                                    if (!isNaN(n) && n > 0) return n;
+                                                }
+                                                // Format {valeur: "5000"} ou {valeur: 5000}
+                                                if (typeof raw === 'object' && raw.valeur != null) {
+                                                    const v = raw.valeur;
+                                                    if (typeof v === 'number' && v > 0) return v;
+                                                    if (typeof v === 'string') {
+                                                        const n = parseFloat(v.replace(/[^\d.,]/g, '').replace(',', '.'));
+                                                        if (!isNaN(n) && n > 0) return n;
+                                                    }
+                                                }
+                                            }
+                                            return 0;
+                                        };
 
-                                            // Vérifier que le prix est un nombre valide et > 0
-                                            const numericPrice = typeof price === 'number'
-                                                ? price
-                                                : parseFloat(price);
+                                        // Filtrer les produits qui ont un prix valide (> 0)
+                                        const productsWithPrice = products.filter((product: any) => extractNumericPrice(product) > 0);
 
-                                            return !isNaN(numericPrice) && numericPrice > 0;
-                                        });
+                                        console.log('[ChatModalMobile] Produits avec prix:', productsWithPrice.length, '/', products.length);
 
                                         if (productsWithPrice.length === 0) {
                                             Alert.alert('Aucun prix', 'Aucun produit n\'a de prix défini pour la négociation');
@@ -1380,18 +1419,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                         // Si un seul produit avec prix, ouvrir directement le modal
                                         if (productsWithPrice.length === 1) {
                                             const product = productsWithPrice[0];
-                                            const originalPrice = typeof product.price === 'number'
-                                                ? product.price
-                                                : typeof product.prix === 'number'
-                                                    ? product.prix
-                                                    : typeof product.prix_unitaire === 'number'
-                                                        ? product.prix_unitaire
-                                                        : parseFloat(product.price || product.prix || product.prix_unitaire) || 0;
-
-                                            if (originalPrice <= 0) {
-                                                Alert.alert('Erreur', 'Le prix de ce produit n\'est pas valide');
-                                                return;
-                                            }
+                                            const originalPrice = extractNumericPrice(product);
 
                                             setSelectedProductForNegotiation({
                                                 product,
@@ -1401,32 +1429,15 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                             setShowNegotiatePriceModal(true);
                                         } else {
                                             // Si plusieurs produits, afficher un sélecteur
+                                            const productName = (p: any) => p.name || p.titre || (p.titre_service?.valeur) || (typeof p.titre_service === 'string' ? p.titre_service : null) || 'Produit';
                                             Alert.alert(
                                                 'Négocier le prix',
                                                 'Choisissez le produit pour lequel vous voulez négocier le prix',
                                                 productsWithPrice.map((product: any, index: number) => {
-                                                    const originalPrice = typeof product.price === 'number'
-                                                        ? product.price
-                                                        : typeof product.prix === 'number'
-                                                            ? product.prix
-                                                            : typeof product.prix_unitaire === 'number'
-                                                                ? product.prix_unitaire
-                                                                : parseFloat(product.price || product.prix || product.prix_unitaire) || 0;
-
-                                                    // ✅ CORRIGÉ : Vérifier que le prix est valide avant de l'afficher
-                                                    if (originalPrice <= 0) {
-                                                        return null; // Ignorer les produits sans prix valide
-                                                    }
-
+                                                    const originalPrice = extractNumericPrice(product);
                                                     return {
-                                                        text: `${product.name || product.titre || `Produit ${index + 1}`} - ${originalPrice.toLocaleString('fr-FR')} FCFA`,
+                                                        text: `${productName(product)} - ${originalPrice.toLocaleString('fr-FR')} FCFA`,
                                                         onPress: () => {
-                                                            // ✅ CORRIGÉ : Vérifier à nouveau le prix avant d'ouvrir le modal
-                                                            if (originalPrice <= 0) {
-                                                                Alert.alert('Erreur', 'Le prix de ce produit n\'est pas valide');
-                                                                return;
-                                                            }
-
                                                             setSelectedProductForNegotiation({
                                                                 product,
                                                                 productIndex: products.indexOf(product),
@@ -1435,7 +1446,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                                             setShowNegotiatePriceModal(true);
                                                         }
                                                     };
-                                                }).filter((item: any) => item !== null).concat([{ text: 'Annuler', style: 'cancel' }])
+                                                }).concat([{ text: 'Annuler', style: 'cancel' } as any])
                                             );
                                         }
                                     } else {

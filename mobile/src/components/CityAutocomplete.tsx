@@ -220,9 +220,9 @@ const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
         >
             <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
             <View style={styles.suggestionText}>
-                <Text style={styles.suggestionMain}>{item.main_text}</Text>
+                <Text style={styles.suggestionMain} numberOfLines={1} ellipsizeMode="tail">{item.main_text}</Text>
                 {item.secondary_text && (
-                    <Text style={styles.suggestionSecondary}>{item.secondary_text}</Text>
+                    <Text style={styles.suggestionSecondary} numberOfLines={1} ellipsizeMode="tail">{item.secondary_text}</Text>
                 )}
             </View>
         </TouchableOpacity>

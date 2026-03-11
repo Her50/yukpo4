@@ -3717,8 +3717,16 @@ IMPORTANT: Retourne UNIQUEMENT le JSON."#,
         if radar_count > 0 {
             alerts.push(serde_json::json!({"type": "radar", "message": format!("{} radar(s) signalé(s) sur votre trajet. Respectez les limitations.", radar_count), "severity": "warning"}));
         }
+        let transport_count = checkpoints.iter().filter(|(t, ..)| t == "transport_control").count();
         if police_count > 0 {
-            alerts.push(serde_json::json!({"type": "police", "message": format!("{} contrôle(s) de police signalé(s). Vérifiez vos documents.", police_count), "severity": "warning"}));
+            alerts.push(serde_json::json!({"type": "police", "message": format!("{} contrôle(s) police/gendarmerie signalé(s). Vérifiez vos documents.", police_count), "severity": "warning"}));
+        }
+        let road_check_count = checkpoints.iter().filter(|(t, ..)| t == "road_check").count();
+        if transport_count > 0 {
+            alerts.push(serde_json::json!({"type": "transport_control", "message": format!("{} contrôle(s) du ministère des transports signalé(s). Préparez carte grise et assurance.", transport_count), "severity": "warning"}));
+        }
+        if road_check_count > 0 {
+            alerts.push(serde_json::json!({"type": "road_check", "message": format!("{} contrôle(s) routier(s) signalé(s). Préparez permis, carte grise et assurance.", road_check_count), "severity": "warning"}));
         }
         if accident_count > 0 {
             alerts.push(serde_json::json!({"type": "accident", "message": format!("{} accident(s) signalé(s). Redoublez de prudence.", accident_count), "severity": "critical"}));
@@ -3806,6 +3814,8 @@ async fn report_checkpoint(
     let valid_types = [
         "radar",
         "police",
+        "transport_control",
+        "road_check",
         "accident",
         "danger",
         "road_works",

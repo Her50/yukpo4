@@ -256,33 +256,35 @@ const ProductDetailScreen: React.FC = () => {
                 </View>
 
                 {/* ProductCard */}
-                <ProductCard
-                    product={product}
-                    service={service}
-                    prestataire={prestataire}
-                    onPress={() => {
-                        // Navigation vers résultats complets
-                        navigation.navigate('ResultatBesoin' as never, {
-                            results: [{ service_id: serviceId, data: product }],
-                            productId,
-                            highlightProduct: true
-                        });
-                    }}
-                    onChatPress={() => {
-                        navigation.navigate('ResultatBesoin' as never, {
-                            results: [{ service_id: serviceId, data: product }],
-                            productId,
-                            openChat: true
-                        });
-                    }}
-                    onBookSeat={() => {
-                        navigation.navigate('ResultatBesoin' as never, {
-                            results: [{ service_id: serviceId, data: product }],
-                            productId,
-                            openSeatSelector: true
-                        });
-                    }}
-                />
+                <View style={styles.productCardWrapper}>
+                    <ProductCard
+                        product={product}
+                        service={service}
+                        prestataire={prestataire}
+                        onPress={() => {
+                            // Navigation vers résultats complets
+                            navigation.navigate('ResultatBesoin' as never, {
+                                results: [{ service_id: serviceId, data: product }],
+                                productId,
+                                highlightProduct: true
+                            });
+                        }}
+                        onChatPress={() => {
+                            navigation.navigate('ResultatBesoin' as never, {
+                                results: [{ service_id: serviceId, data: product }],
+                                productId,
+                                openChat: true
+                            });
+                        }}
+                        onBookSeat={() => {
+                            navigation.navigate('ResultatBesoin' as never, {
+                                results: [{ service_id: serviceId, data: product }],
+                                productId,
+                                openSeatSelector: true
+                            });
+                        }}
+                    />
+                </View>
 
                 {/* Boutons d'action */}
                 <View style={styles.actionsContainer}>
@@ -400,6 +402,10 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         color: modernColors.primary,
         flex: 1,
+    },
+    productCardWrapper: {
+        paddingHorizontal: 16,
+        alignItems: 'center',
     },
     actionsContainer: {
         padding: 16,

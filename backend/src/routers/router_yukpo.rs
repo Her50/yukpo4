@@ -297,6 +297,10 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
     let partner_validation_routes_merged =
         crate::routes::partner_validation_routes::partner_validation_routes(state.clone());
 
+    // ✅ NOUVEAU 2026-03-11: Routes admin pour paramètres plateforme (numéros MTN/Orange Money)
+    let platform_settings_routes_merged =
+        crate::routes::platform_settings_routes::platform_settings_routes(state.clone());
+
     // ✅ NOUVEAU: Routes pour recherche avec planifications
     let scheduling_search_routes_merged =
         crate::routes::scheduling_search_routes::scheduling_search_routes(state.clone());
@@ -422,6 +426,7 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .merge(conversation_routes_merged)
         .merge(signalement_routes_merged)
         .merge(partner_validation_routes_merged)
+        .merge(platform_settings_routes_merged)
         .merge(scheduling_search_routes_merged)
         .merge(service_team_routes_merged)
         .merge(image_search_routes_merged)

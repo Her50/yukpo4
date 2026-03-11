@@ -61,6 +61,7 @@ pub mod payment_routes;
 pub mod phone_model_routes; // ✅ Routes pour modèles de smartphones
 pub mod phone_verification_routes; // ✅ NOUVEAU 2026-02-25: Routes pour vérification OTP téléphone
 pub mod places_routes; // ✅ NOUVEAU: Routes pour autocomplete de lieux (Google Maps API)
+pub mod platform_settings_routes; // ✅ NOUVEAU 2026-03-11: Routes admin pour paramètres plateforme (numéros MTN/Orange Money)
 pub mod plugin_routes;
 pub mod popular_products_routes;
 pub mod prestataire_routes;

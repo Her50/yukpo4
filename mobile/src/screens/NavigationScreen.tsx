@@ -1,8 +1,12 @@
+import { useNavigation } from '@react-navigation/native';
+import { Audio } from 'expo-av';
 import * as Location from 'expo-location';
+import * as Speech from 'expo-speech';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     ActivityIndicator, Alert, Dimensions, Keyboard, KeyboardAvoidingView, Linking,
-    Platform, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View
+    Platform, ScrollView, Share, StyleSheet, Text, ToastAndroid,
+    TouchableOpacity, View
 } from 'react-native';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE, Region } from 'react-native-maps';
 import LocationSelector, { LocationObject } from '../components/LocationSelector';
@@ -81,15 +85,30 @@ const TRAVEL_MODES = [
 ];
 const CHECKPOINT_LABELS: Record<string, { label: string; icon: string; color: string }> = {
     radar: { label: 'Radar', icon: '📸', color: '#EF4444' },
-    police: { label: 'Contrôle police', icon: '👮', color: '#3B82F6' },
+    police: { label: 'Police / Gendarmerie', icon: '👮', color: '#3B82F6' },
+    transport_control: { label: 'Contrôle Transports', icon: '🛂', color: '#0D9488' },
+    road_check: { label: 'Contrôle routier', icon: '🚧', color: '#D97706' },
     accident: { label: 'Accident', icon: '🚨', color: '#F59E0B' },
     danger: { label: 'Danger', icon: '⚠️', color: '#EF4444' },
     road_works: { label: 'Travaux', icon: '🚧', color: '#F97316' },
     speed_bump: { label: 'Ralentisseur', icon: '🔶', color: '#8B5CF6' },
 };
+// Distance d'alerte par type (en mètres) — radar/police/transports à 10km, autres à 2km
+const CHECKPOINT_ALERT_DISTANCE: Record<string, number> = {
+    radar: 10000,
+    police: 10000,
+    transport_control: 10000,
+    road_check: 10000,
+    accident: 3000,
+    danger: 2000,
+    road_works: 2000,
+    speed_bump: 500,
+};
 const REPORT_TYPES = [
     { type: 'radar', icon: '🚓', label: 'Radar', bg: '#FEE2E2' },
-    { type: 'police', icon: '👮', label: 'Police', bg: '#DBEAFE' },
+    { type: 'police', icon: '👮', label: 'Police / Gendarmerie', bg: '#DBEAFE' },
+    { type: 'transport_control', icon: '🛂', label: 'Min. Transports', bg: '#CCFBF1' },
+    { type: 'road_check', icon: '🚧', label: 'Contrôle routier', bg: '#FEF9C3' },
     { type: 'accident', icon: '🚗', label: 'Accident', bg: '#FEF3C7' },
     { type: 'danger', icon: '⚠️', label: 'Danger', bg: '#FEE2E2' },
     { type: 'road_works', icon: '🚧', label: 'Travaux', bg: '#FEF3C7' },
@@ -97,7 +116,86 @@ const REPORT_TYPES = [
 ];
 
 // ══════════════════════════════════════════════════════════════════════════
+// ── Helpers globaux ─────────────────────────────────────────────────────
+const showToast = (msg: string) => {
+    if (Platform.OS === 'android') { ToastAndroid.show(msg, ToastAndroid.LONG); }
+    else { Alert.alert('', msg); }
+};
+const reverseGeocode = async (lat: number, lng: number): Promise<string> => {
+    try {
+        const results = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lng });
+        if (results?.[0]) {
+            const r = results[0];
+            const parts = [r.street, r.name, r.district, r.subregion, r.city].filter(Boolean);
+            return parts.length > 0 ? parts.slice(0, 3).join(', ') : `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+        }
+    } catch { }
+    return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+};
+// ✅ AMÉLIORÉ 2026-03-11: Messages vocaux contextuels par type d'alerte
+const CHECKPOINT_VOICE_MESSAGES: Record<string, (distText: string, speedLimit?: number) => string> = {
+    radar: (d, sl) => sl ? `Attention, radar à ${d}. Limite de vitesse: ${sl} kilomètres heure. Respectez la signalisation.` : `Attention, radar détecté à ${d}. Respectez les panneaux de circulation.`,
+    police: (d) => `Contrôle police ou gendarmerie signalé à ${d}. Préparez vos documents et ralentissez.`,
+    transport_control: (d) => `Contrôle du ministère des transports signalé à ${d}. Préparez vos documents de transport, carte grise et assurance.`,
+    road_check: (d) => `Contrôle routier signalé à ${d}. Ralentissez et préparez permis de conduire, carte grise et assurance.`,
+    accident: (d) => `Accident signalé à ${d}. Redoublez de prudence et réduisez votre vitesse.`,
+    danger: (d) => `Zone dangereuse à ${d}. Soyez vigilant et adaptez votre conduite.`,
+    road_works: (d) => `Travaux en cours à ${d}. Ralentissez et suivez la signalisation temporaire.`,
+    speed_bump: (d) => `Ralentisseur à ${d}. Réduisez votre vitesse.`,
+};
+
+// Sons d'alerte différenciés par urgence
+const CHECKPOINT_SOUND_URLS: Record<string, string> = {
+    radar: 'https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg',
+    police: 'https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg',
+    transport_control: 'https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg',
+    road_check: 'https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg',
+    accident: 'https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg',
+    danger: 'https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg',
+    road_works: 'https://actions.google.com/sounds/v1/alarms/beep_short.ogg',
+    speed_bump: 'https://actions.google.com/sounds/v1/alarms/beep_short.ogg',
+};
+
+const formatDistanceText = (meters: number): string => {
+    if (meters >= 1000) return `${(meters / 1000).toFixed(1)} kilomètres`;
+    return `${Math.round(meters)} mètres`;
+};
+
+// ✅ AMÉLIORÉ 2026-03-11: Alerte contextuelle avec TTS + son + haptic
+const playContextualAlert = async (checkpointType: string, distanceMeters: number, speedLimit?: number) => {
+    // 1. Haptic immédiat
+    try { const h = await import('expo-haptics'); await h.notificationAsync(h.NotificationFeedbackType.Warning); } catch { }
+    // 2. Son d'alerte (bref, avant la voix)
+    try {
+        await Audio.setAudioModeAsync({ playsInSilentModeIOS: true, staysActiveInBackground: false });
+        const soundUrl = CHECKPOINT_SOUND_URLS[checkpointType] || CHECKPOINT_SOUND_URLS.danger;
+        const { sound } = await Audio.Sound.createAsync(
+            { uri: soundUrl },
+            { shouldPlay: true, volume: 1.0 }
+        );
+        sound.setOnPlaybackStatusUpdate((status) => {
+            if ('didJustFinish' in status && status.didJustFinish) { sound.unloadAsync(); }
+        });
+    } catch { }
+    // 3. Message vocal contextuel (TTS)
+    try {
+        const distText = formatDistanceText(distanceMeters);
+        const msgFn = CHECKPOINT_VOICE_MESSAGES[checkpointType];
+        const message = msgFn ? msgFn(distText, speedLimit) : `Attention, alerte à ${distText}. Soyez prudent.`;
+        // Arrêter un éventuel message en cours
+        Speech.stop();
+        Speech.speak(message, {
+            language: 'fr-FR',
+            rate: 0.95,
+            pitch: 1.0,
+            onError: (e) => console.warn('[NavigationScreen] TTS error:', e),
+        });
+        console.log(`[NavigationScreen] 🔊 TTS: ${message}`);
+    } catch (e) { console.warn('[NavigationScreen] TTS fallback error:', e); }
+};
+
 const NavigationScreen: React.FC = () => {
+    const navigation = useNavigation();
     const { user } = useAuth();
     const { location: currentLocation } = useLocationSafe();
     const [destination, setDestination] = useState('');
@@ -333,7 +431,16 @@ const NavigationScreen: React.FC = () => {
     }, []);
     const reportCheckpoint = useCallback(async (type: string) => {
         let pos = livePosition; if (!pos) pos = await getCurrentPosition(); if (!pos) { Alert.alert('Erreur', 'GPS indisponible'); return; }
-        try { await apiPost('/api/navigation/checkpoints', { checkpoint_type: type, latitude: pos.lat, longitude: pos.lng, is_permanent: type === 'speed_bump' }); checkpointsReportedRef.current += 1; Alert.alert('Signalé', 'Merci !'); loadCheckpointsSafely(); } catch { Alert.alert('Erreur', 'Échec du signalement'); }
+        try {
+            await apiPost('/api/navigation/checkpoints', { checkpoint_type: type, latitude: pos.lat, longitude: pos.lng, is_permanent: type === 'speed_bump' });
+            checkpointsReportedRef.current += 1;
+            // Reverse geocode pour afficher le nom du lieu
+            const locationName = await reverseGeocode(pos.lat, pos.lng);
+            const typeLabel = CHECKPOINT_LABELS[type]?.label || type;
+            const typeIcon = CHECKPOINT_LABELS[type]?.icon || '⚠️';
+            showToast(`${typeIcon} ${typeLabel} signalé à ${locationName}`);
+            loadCheckpointsSafely();
+        } catch { Alert.alert('Erreur', 'Échec du signalement'); }
     }, [livePosition, getCurrentPosition, loadCheckpointsSafely]);
 
     const startTracking = useCallback(async () => {
@@ -362,8 +469,8 @@ const NavigationScreen: React.FC = () => {
             const eta = new Date(Date.now() + rt * 1000); setLiveETA(`${eta.getHours().toString().padStart(2, '0')}:${eta.getMinutes().toString().padStart(2, '0')}`);
             setIsOffRoute(minD > 200); if (minD > 200) wasOffRouteRef.current = true;
             const cps = checkpointsRef.current; let near: typeof nearbyCheckpoint = null;
-            for (const cp of cps) { const cd = haversineDistance(latitude, longitude, cp.latitude, cp.longitude); if (cd < 300 && (!near || cd < near.distance)) near = { id: cp.id, checkpoint_type: cp.checkpoint_type, distance: Math.round(cd), speed_limit: cp.speed_limit }; }
-            if (near && !encounteredCheckpointIdsRef.current.has(near.id)) { encounteredCheckpointIdsRef.current.add(near.id); checkpointsEncounteredRef.current += 1; }
+            for (const cp of cps) { const cd = haversineDistance(latitude, longitude, cp.latitude, cp.longitude); const alertDist = CHECKPOINT_ALERT_DISTANCE[cp.checkpoint_type] || 2000; if (cd < alertDist && (!near || cd < near.distance)) near = { id: cp.id, checkpoint_type: cp.checkpoint_type, distance: Math.round(cd), speed_limit: cp.speed_limit }; }
+            if (near && !encounteredCheckpointIdsRef.current.has(near.id)) { encounteredCheckpointIdsRef.current.add(near.id); checkpointsEncounteredRef.current += 1; playContextualAlert(near.checkpoint_type, near.distance, near.speed_limit); }
             setNearbyCheckpoint(near);
         });
         locationSubscriptionRef.current = sub;
@@ -372,6 +479,8 @@ const NavigationScreen: React.FC = () => {
     const stopTracking = useCallback(async () => {
         if (locationSubscriptionRef.current) { locationSubscriptionRef.current.remove(); locationSubscriptionRef.current = null; }
         if (checkpointRefreshRef.current) { clearInterval(checkpointRefreshRef.current); checkpointRefreshRef.current = null; }
+        // ✅ Arrêter le TTS en cours lors de l'arrêt du tracking
+        try { Speech.stop(); } catch { }
         const st = trackingStartTimeRef.current, sp = speedSamplesRef.current, dM = distanceTraveledRef.current, dKm = dM / 1000;
         const dSec = st ? Math.round((Date.now() - new Date(st).getTime()) / 1000) : 0, dMin = dSec / 60;
         const avg = sp.length > 0 ? sp.reduce((a, b) => a + b, 0) / sp.length : 0;
@@ -406,6 +515,9 @@ const NavigationScreen: React.FC = () => {
                     {/* ━━ HEADER ━━ */}
                     <View style={st.header}>
                         <View style={st.headerLeft}>
+                            <TouchableOpacity onPress={() => navigation.goBack()} style={st.backBtn}>
+                                <SafeIcon name="ArrowLeft" size={22} color={modernColors.text} />
+                            </TouchableOpacity>
                             <View style={st.headerIcon}><Text style={{ fontSize: 22 }}>🧭</Text></View>
                             <View>
                                 <Text style={st.headerTitle}>Navigation</Text>
@@ -416,6 +528,27 @@ const NavigationScreen: React.FC = () => {
                             onPress={() => { const n = !showActivityStats; setShowActivityStats(n); if (n) loadActivityStats(activityPeriod); }}>
                             <SafeIcon name={showActivityStats ? 'Compass' : 'BarChart3'} size={18} color={showActivityStats ? '#fff' : modernColors.text} />
                         </TouchableOpacity>
+                    </View>
+
+                    {/* ━━ BARRE D'ALERTES COMMUNAUTAIRES (toujours visible) ━━ */}
+                    <View style={st.alertBar}>
+                        <View style={st.alertBarHeader}>
+                            <Text style={st.alertBarIcon}>🚨</Text>
+                            <Text style={st.alertBarTitle}>Signaler une alerte</Text>
+                        </View>
+                        <View style={st.alertBarButtons}>
+                            {REPORT_TYPES.map(r => (
+                                <TouchableOpacity
+                                    key={r.type}
+                                    style={[st.alertBarBtn, { backgroundColor: r.bg }]}
+                                    onPress={() => reportCheckpoint(r.type)}
+                                    activeOpacity={0.7}
+                                >
+                                    <Text style={st.alertBarBtnIcon}>{r.icon}</Text>
+                                    <Text style={st.alertBarBtnLabel}>{r.label}</Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
                     </View>
 
                     {/* ━━━━━━ MODE: TRACKING ━━━━━━ */}
@@ -439,7 +572,7 @@ const NavigationScreen: React.FC = () => {
                                 <View style={[st.cpAlert, { backgroundColor: (CHECKPOINT_LABELS[nearbyCheckpoint.checkpoint_type]?.color || '#EF4444') + '15' }]}>
                                     <Text style={{ fontSize: 28 }}>{CHECKPOINT_LABELS[nearbyCheckpoint.checkpoint_type]?.icon || '⚠️'}</Text>
                                     <View style={st.flex1}>
-                                        <Text style={[st.cpTitle, { color: CHECKPOINT_LABELS[nearbyCheckpoint.checkpoint_type]?.color }]}>{CHECKPOINT_LABELS[nearbyCheckpoint.checkpoint_type]?.label} dans {nearbyCheckpoint.distance}m</Text>
+                                        <Text style={[st.cpTitle, { color: CHECKPOINT_LABELS[nearbyCheckpoint.checkpoint_type]?.color }]}>{CHECKPOINT_LABELS[nearbyCheckpoint.checkpoint_type]?.label} dans {nearbyCheckpoint.distance >= 1000 ? `${(nearbyCheckpoint.distance / 1000).toFixed(1)} km` : `${nearbyCheckpoint.distance} m`}</Text>
                                         {nearbyCheckpoint.speed_limit && <Text style={st.cpSpeed}>Limite: {nearbyCheckpoint.speed_limit} km/h</Text>}
                                     </View>
                                 </View>
@@ -470,7 +603,7 @@ const NavigationScreen: React.FC = () => {
                             {/* Map tracking */}
                             {showMap && mapRegion && (
                                 <View style={st.mapWrap}>
-                                    <MapView ref={mapRef} style={st.mapView} provider={PROVIDER_GOOGLE} initialRegion={mapRegion} showsUserLocation showsTraffic showsCompass loadingEnabled onMapReady={() => console.log('[NavigationScreen] ✅ Map ready (tracking)')} onError={(e) => console.error('[NavigationScreen] ❌ Map error (tracking):', e.nativeEvent || e)}>
+                                    <MapView ref={mapRef} style={st.mapView} provider={Platform.OS === 'ios' ? PROVIDER_GOOGLE : undefined} initialRegion={mapRegion} showsUserLocation showsTraffic showsCompass loadingEnabled onMapReady={() => console.log('[NavigationScreen] ✅ Map ready (tracking)')} onError={(e) => console.error('[NavigationScreen] ❌ Map error (tracking):', e.nativeEvent || e)}>
                                         {routePolylineCoords.length > 1 && <Polyline coordinates={routePolylineCoords} strokeColor={modernColors.primary} strokeWidth={4} />}
                                         {destinationCoords && <Marker coordinate={{ latitude: destinationCoords.lat, longitude: destinationCoords.lng }} title="Destination" pinColor="#EF4444" tracksViewChanges={false} />}
                                         {livePosition && <Marker coordinate={{ latitude: livePosition.lat, longitude: livePosition.lng }} title="Ma position" pinColor="#3B82F6" />}
@@ -481,16 +614,6 @@ const NavigationScreen: React.FC = () => {
                                     </TouchableOpacity>
                                 </View>
                             )}
-                            {/* Report */}
-                            <NativeCard style={st.reportCard}>
-                                <View style={st.row8}><Text style={{ fontSize: 16 }}>📢</Text><Text style={st.reportTitle}>Signaler</Text>
-                                    <TouchableOpacity onPress={() => setShowReportHelp(!showReportHelp)}><SafeIcon name="Info" size={14} color={modernColors.textSecondary} /></TouchableOpacity>
-                                </View>
-                                {showReportHelp && <Text style={st.reportHelp}>Aidez la communauté en signalant les dangers sur votre trajet.</Text>}
-                                <ScrollView horizontal showsHorizontalScrollIndicator={false} nestedScrollEnabled contentContainerStyle={{ gap: 8, paddingTop: 8 }}>
-                                    {REPORT_TYPES.map(r => <TouchableOpacity key={r.type} style={[st.reportBtn, { backgroundColor: r.bg }]} onPress={() => reportCheckpoint(r.type)}><Text style={{ fontSize: 16 }}>{r.icon}</Text><Text style={st.reportBtnTxt}>{r.label}</Text></TouchableOpacity>)}
-                                </ScrollView>
-                            </NativeCard>
                             <TouchableOpacity style={st.stopBtn} onPress={stopTracking}><Text style={{ fontSize: 16 }}>⏹</Text><Text style={st.stopText}>Arrêter le suivi</Text></TouchableOpacity>
                         </>
 
@@ -516,6 +639,38 @@ const NavigationScreen: React.FC = () => {
                                             ))}
                                         </View>
                                     </NativeCard>
+                                    {/* ━━ PARTAGE EXTERNE DES STATS ━━ */}
+                                    <TouchableOpacity
+                                        style={st.shareStatsBtn}
+                                        activeOpacity={0.8}
+                                        onPress={async () => {
+                                            const periodLabel = activityPeriod === 'week' ? 'cette semaine' : activityPeriod === 'month' ? 'ce mois' : 'cette année';
+                                            const dist = (activitySummary.total_distance_km || 0).toFixed(1);
+                                            const sess = activitySummary.total_sessions || 0;
+                                            const cal = Math.round(activitySummary.total_calories || 0);
+                                            const dur = Math.round(activitySummary.total_duration_minutes || 0);
+                                            const best = activitySummary.best_session;
+                                            const hs = aiInsights?.health_score;
+                                            let msg = `🏃‍♂️ Mes stats navigation Yukpo (${periodLabel}) :\n\n` +
+                                                `📏 ${dist} km parcourus\n` +
+                                                `🔥 ${cal} calories brûlées\n` +
+                                                `⏱ ${dur} minutes d'activité\n` +
+                                                `🎯 ${sess} session${sess > 1 ? 's' : ''}`;
+                                            if (hs?.score) msg += `\n🫀 Score santé : ${hs.score}/100 (${hs.label || ''})`;
+                                            if (best) msg += `\n🏅 Record : ${best.distance_km?.toFixed(1)} km en ${Math.round(best.duration_minutes || 0)} min`;
+                                            msg += `\n\n💪 Rejoins-moi sur Yukpo et suis tes performances ! 🚀\n`;
+                                            msg += Platform.OS === 'ios'
+                                                ? 'https://apps.apple.com/app/yukpomnang'
+                                                : 'https://play.google.com/store/apps/details?id=com.yukpomnang';
+                                            try { await Share.share({ message: msg, title: 'Mes stats Yukpo Navigation' }); } catch { }
+                                        }}
+                                    >
+                                        <SafeIcon name="Share2" size={18} color="#fff" />
+                                        <View>
+                                            <Text style={st.shareStatsTxt}>Partager mes statistiques</Text>
+                                            <Text style={st.shareStatsSub}>Invite tes amis à rejoindre Yukpo !</Text>
+                                        </View>
+                                    </TouchableOpacity>
                                     {/* Best session */}
                                     {activitySummary.best_session && (
                                         <NativeCard style={[st.secCard, { backgroundColor: '#FFFBEB' }]}>
@@ -783,7 +938,7 @@ const NavigationScreen: React.FC = () => {
                             {/* Map */}
                             {(selectedRoute || destinationCoords) && showMap && mapRegion && (
                                 <View style={st.mapWrap}>
-                                    <MapView ref={mapRef} style={st.mapView} provider={PROVIDER_GOOGLE} initialRegion={mapRegion} showsUserLocation showsTraffic showsCompass loadingEnabled loadingIndicatorColor={modernColors.primary} onMapReady={() => console.log('[NavigationScreen] ✅ Map ready (navigation)')} onError={(e) => console.error('[NavigationScreen] ❌ Map error (navigation):', e.nativeEvent || e)}>
+                                    <MapView ref={mapRef} style={st.mapView} provider={Platform.OS === 'ios' ? PROVIDER_GOOGLE : undefined} initialRegion={mapRegion} showsUserLocation showsTraffic showsCompass loadingEnabled loadingIndicatorColor={modernColors.primary} onMapReady={() => console.log('[NavigationScreen] ✅ Map ready (navigation)')} onError={(e) => console.error('[NavigationScreen] ❌ Map error (navigation):', e.nativeEvent || e)}>
                                         {routePolylineCoords.length > 1 && <Polyline coordinates={routePolylineCoords} strokeColor={modernColors.primary} strokeWidth={4} />}
                                         {destinationCoords && <Marker coordinate={{ latitude: destinationCoords.lat, longitude: destinationCoords.lng }} title={destination || 'Destination'} pinColor="#EF4444" tracksViewChanges={false} />}
                                         {livePosition && <Marker coordinate={{ latitude: livePosition.lat, longitude: livePosition.lng }} title="Ma position" pinColor="#3B82F6" />}
@@ -929,13 +1084,24 @@ const st = StyleSheet.create({
     row8: { flexDirection: 'row', alignItems: 'center', gap: 8 },
 
     // Header
-    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 16, marginBottom: 8 },
-    headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 16, marginBottom: 4 },
+    headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    backBtn: { width: 38, height: 38, borderRadius: 12, backgroundColor: modernColors.surface, borderWidth: 1.5, borderColor: modernColors.border, alignItems: 'center', justifyContent: 'center' },
     headerIcon: { width: 44, height: 44, borderRadius: 14, backgroundColor: modernColors.primary, alignItems: 'center', justifyContent: 'center', shadowColor: modernColors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
     headerTitle: { fontSize: 22, fontWeight: '800', color: modernColors.text },
     headerSub: { fontSize: 13, color: modernColors.textSecondary, marginTop: 1 },
     headerBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: modernColors.surface, borderWidth: 1.5, borderColor: modernColors.border, alignItems: 'center', justifyContent: 'center' },
     headerBtnActive: { backgroundColor: modernColors.primary, borderColor: modernColors.primary },
+
+    // Alert bar (toujours visible en haut)
+    alertBar: { backgroundColor: '#FFF', borderRadius: 16, padding: 14, marginBottom: 12, borderWidth: 1.5, borderColor: '#FEE2E2', shadowColor: '#EF4444', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 3 },
+    alertBarHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
+    alertBarIcon: { fontSize: 20 },
+    alertBarTitle: { fontSize: 15, fontWeight: '800', color: '#DC2626' },
+    alertBarButtons: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    alertBarBtn: { flexDirection: 'column', alignItems: 'center', justifyContent: 'center', paddingVertical: 10, paddingHorizontal: 12, borderRadius: 14, minWidth: (width - 32 - 14 * 2 - 8 * 2) / 3, flex: 1 },
+    alertBarBtnIcon: { fontSize: 22, marginBottom: 3 },
+    alertBarBtnLabel: { fontSize: 11, fontWeight: '700', color: '#374151', textAlign: 'center' },
 
     // Search
     searchCard: { marginBottom: 12, padding: 16 },
@@ -1099,7 +1265,10 @@ const st = StyleSheet.create({
     periodBtnActive: { backgroundColor: modernColors.primary + '15', borderColor: modernColors.primary },
     periodText: { fontSize: 13, fontWeight: '600', color: modernColors.textSecondary },
     periodTextActive: { color: modernColors.primary, fontWeight: '700' },
-    summCard: { marginBottom: 12, padding: 16 },
+    summCard: { marginBottom: 8, padding: 16 },
+    shareStatsBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, marginBottom: 12, paddingVertical: 14, paddingHorizontal: 20, borderRadius: 14, backgroundColor: '#7C3AED', shadowColor: '#7C3AED', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
+    shareStatsTxt: { fontSize: 15, fontWeight: '800', color: '#fff' },
+    shareStatsSub: { fontSize: 11, color: 'rgba(255,255,255,0.8)', marginTop: 1 },
     statsGrid: { flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center' },
     statItem: { alignItems: 'center', gap: 2 },
     statVal: { fontSize: 20, fontWeight: '900', color: modernColors.text },

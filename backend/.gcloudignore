@@ -1,0 +1,65 @@
+# .gcloudignore — Fichiers exclus de l'upload Cloud Build
+# Cloud Build utilise ce fichier (pas .dockerignore) pour filtrer l'upload
+
+# Build artifacts (souvent > 10 GiB)
+target/
+
+# Blender binaries
+blender/
+
+# Analyses et rapports
+analyses_db/
+
+# Documentation
+*.md
+!README.md
+
+# Scripts dev
+*.ps1
+*.bat
+*.sh
+!scripts/start-cloud.sh
+
+# Logs
+*.log
+*.tmp
+*.backup
+*.bak
+
+# IDE
+.vscode/
+.idea/
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# CI/CD
+.github/
+
+# Tests
+tests/
+test/
+
+# Data
+data/*.json
+data/*.csv
+
+# Env files
+.env
+.env.*
+
+# Docker meta (déjà dans le contexte)
+docker-compose*.yml
+.dockerignore
+
+# Clés/certs
+*.pem
+*.key
+*.crt
+
+# Anciens fichiers
+migrations_old/
+*.orig
+*.rej

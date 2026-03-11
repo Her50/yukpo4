@@ -6083,88 +6083,88 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 <View style={styles.overlay}>
                     <NativeCard style={styles.modalCard}>
                         <View style={styles.modalHeader}>
-                            <View style={{ flex: 1 }}>
-                                <Text style={styles.modalTitle}>Studio vidéo produit</Text>
-                                <Text style={styles.modalSubtitle}>
-                                    Assemblez en 30 secondes une vidéo verticale prête pour TikTok, Reels et votre fiche
-                                    produit.
-                                </Text>
-                                {/* ✅ AMÉLIORÉ: Indicateur d'étapes avec labels */}
-                                <View style={styles.stepIndicator}>
-                                    <View style={styles.stepsIndicator}>
-                                        {([
-                                            { num: 1, label: 'Produit' },
-                                            { num: 2, label: 'Médias' },
-                                            { num: 3, label: 'Style' },
-                                            { num: 4, label: 'Script' },
-                                            { num: 5, label: 'Audio' },
-                                            { num: 6, label: 'Publier' },
-                                        ] as const).map(({ num: stepNum, label }) => {
-                                            const isCompleted = completedSteps.has(stepNum as ModalStep);
-                                            const isActive = activeStep === stepNum;
-
-                                            return (
-                                                <View key={stepNum} style={styles.stepContainer}>
-                                                    <TouchableOpacity
-                                                        style={[
-                                                            styles.stepDot,
-                                                            isCompleted && styles.stepDotCompleted,
-                                                            isActive && styles.stepDotActive,
-                                                        ]}
-                                                        onPress={() => handleStepChange(stepNum as ModalStep)}
-                                                        activeOpacity={0.7}
-                                                    >
-                                                        <Text
-                                                            style={[
-                                                                styles.stepDotText,
-                                                                isCompleted && styles.stepDotTextCompleted,
-                                                                isActive && styles.stepDotTextActive,
-                                                            ]}
-                                                        >
-                                                            {isCompleted ? '✓' : stepNum}
-                                                        </Text>
-                                                    </TouchableOpacity>
-                                                    <Text style={[
-                                                        styles.stepLabel,
-                                                        isActive && styles.stepLabelActive,
-                                                        isCompleted && styles.stepLabelCompleted,
-                                                    ]}>{label}</Text>
-                                                    {stepNum < 6 && (
-                                                        <View
-                                                            style={[
-                                                                styles.stepConnector,
-                                                                isCompleted && styles.stepConnectorCompleted,
-                                                                activeStep > stepNum && styles.stepConnectorActive,
-                                                            ]}
-                                                        />
-                                                    )}
-                                                </View>
-                                            );
-                                        })}
+                            {/* Ligne 1: Titre + progression + fermer */}
+                            <View style={styles.headerTopRow}>
+                                <Text style={styles.modalTitle} numberOfLines={1}>Studio vidéo produit</Text>
+                                <View style={styles.headerTopRight}>
+                                    <View style={styles.globalProgressContainer}>
+                                        <View style={styles.globalProgressBar}>
+                                            <View
+                                                style={[
+                                                    styles.globalProgressFill,
+                                                    { width: `${globalProgress}%` }
+                                                ]}
+                                            />
+                                        </View>
+                                        <Text style={styles.globalProgressText}>
+                                            {globalProgress}%
+                                        </Text>
                                     </View>
-                                    <Text style={styles.stepText}>
-                                        Étape {activeStep} sur 6
-                                    </Text>
+                                    <TouchableOpacity onPress={onClose} disabled={isSubmitting} style={styles.closeButton}>
+                                        <SafeIcon name="x" size={20} color="#EF4444" />
+                                    </TouchableOpacity>
                                 </View>
                             </View>
 
-                            {/* ✅ NOUVEAU: Barre de progression globale */}
-                            <View style={styles.globalProgressContainer}>
-                                <View style={styles.globalProgressBar}>
-                                    <View
-                                        style={[
-                                            styles.globalProgressFill,
-                                            { width: `${globalProgress}%` }
-                                        ]}
-                                    />
-                                </View>
-                                <Text style={styles.globalProgressText}>
-                                    {globalProgress}% complété
-                                </Text>
+                            {/* Ligne 2: Sous-titre compact pleine largeur */}
+                            <Text style={styles.modalSubtitle} numberOfLines={2}>
+                                Assemblez en 30s une vidéo verticale prête pour TikTok, Reels et votre fiche produit.
+                            </Text>
+
+                            {/* Ligne 3: Indicateur d'étapes pleine largeur */}
+                            <View style={styles.stepsIndicator}>
+                                {([
+                                    { num: 1, label: 'Produit' },
+                                    { num: 2, label: 'Médias' },
+                                    { num: 3, label: 'Style' },
+                                    { num: 4, label: 'Script' },
+                                    { num: 5, label: 'Audio' },
+                                    { num: 6, label: 'Publier' },
+                                ] as const).map(({ num: stepNum, label }) => {
+                                    const isCompleted = completedSteps.has(stepNum as ModalStep);
+                                    const isActive = activeStep === stepNum;
+
+                                    return (
+                                        <React.Fragment key={stepNum}>
+                                            <View style={styles.stepItemCol}>
+                                                <TouchableOpacity
+                                                    style={[
+                                                        styles.stepDot,
+                                                        isCompleted && styles.stepDotCompleted,
+                                                        isActive && styles.stepDotActive,
+                                                    ]}
+                                                    onPress={() => handleStepChange(stepNum as ModalStep)}
+                                                    activeOpacity={0.7}
+                                                >
+                                                    <Text
+                                                        style={[
+                                                            styles.stepDotText,
+                                                            isCompleted && styles.stepDotTextCompleted,
+                                                            isActive && styles.stepDotTextActive,
+                                                        ]}
+                                                    >
+                                                        {isCompleted ? '✓' : stepNum}
+                                                    </Text>
+                                                </TouchableOpacity>
+                                                <Text style={[
+                                                    styles.stepLabel,
+                                                    isActive && styles.stepLabelActive,
+                                                    isCompleted && styles.stepLabelCompleted,
+                                                ]}>{label}</Text>
+                                            </View>
+                                            {stepNum < 6 && (
+                                                <View
+                                                    style={[
+                                                        styles.stepConnector,
+                                                        isCompleted && styles.stepConnectorCompleted,
+                                                        activeStep > stepNum && styles.stepConnectorActive,
+                                                    ]}
+                                                />
+                                            )}
+                                        </React.Fragment>
+                                    );
+                                })}
                             </View>
-                            <TouchableOpacity onPress={onClose} disabled={isSubmitting} style={styles.closeButton}>
-                                <SafeIcon name="x" size={20} color={modernColors.textSecondary} />
-                            </TouchableOpacity>
                         </View>
 
                         <ScrollView
@@ -6434,30 +6434,39 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFFFFF',
     },
     modalHeader: {
-        paddingHorizontal: 20,
-        paddingTop: 20,
-        paddingBottom: 12,
+        paddingHorizontal: 16,
+        paddingTop: 14,
+        paddingBottom: 10,
+        gap: 6,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F1F5F9',
+    },
+    headerTopRow: {
         flexDirection: 'row',
-        alignItems: 'flex-start',
+        alignItems: 'center',
         justifyContent: 'space-between',
-        gap: 16,
+    },
+    headerTopRight: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
     },
     modalTitle: {
-        fontSize: 20,
+        fontSize: 18,
         fontWeight: '700',
         color: modernColors.text,
+        flexShrink: 1,
     },
     modalSubtitle: {
-        fontSize: 13,
+        fontSize: 12,
         color: modernColors.textSecondary,
-        marginTop: 4,
-        lineHeight: 18,
+        lineHeight: 16,
     },
     closeButton: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        backgroundColor: '#F1F5F9',
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: '#FEF2F2',
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -7076,12 +7085,13 @@ const styles = StyleSheet.create({
         gap: 8,
         marginTop: 12,
     },
-    // ✅ NOUVEAU: Styles pour l'indicateur d'étapes amélioré
+    // ✅ CORRIGÉ 2026-03-11: Indicateur pleine largeur, compact
     stepsIndicator: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 4,
-        marginBottom: 16,
+        justifyContent: 'center',
+        gap: 2,
+        marginTop: 2,
     },
     stepContainer: {
         flexDirection: 'row',
@@ -7089,9 +7099,9 @@ const styles = StyleSheet.create({
         position: 'relative',
     },
     stepDot: {
-        width: 24,
-        height: 24,
-        borderRadius: 12,
+        width: 26,
+        height: 26,
+        borderRadius: 13,
         backgroundColor: '#E5E7EB',
         borderWidth: 2,
         borderColor: '#D1D5DB',
@@ -7118,10 +7128,10 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
     },
     stepConnector: {
-        width: 20,
+        width: 14,
         height: 2,
         backgroundColor: '#D1D5DB',
-        marginHorizontal: 2,
+        marginHorizontal: 1,
     },
     stepConnectorActive: {
         backgroundColor: '#3B82F6',
@@ -7129,40 +7139,36 @@ const styles = StyleSheet.create({
     stepConnectorCompleted: {
         backgroundColor: '#10B981',
     },
+    stepItemCol: {
+        alignItems: 'center',
+        gap: 2,
+    },
     stepLabel: {
         fontSize: 9,
         color: '#9CA3AF',
         fontWeight: '500',
-        marginTop: 2,
-        position: 'absolute',
-        top: 26,
         textAlign: 'center',
-        width: 48,
-        left: -12,
     },
     stepLabelActive: {
         color: '#3B82F6',
         fontWeight: '700',
-        fontSize: 10,
     },
     stepLabelCompleted: {
         color: '#10B981',
         fontWeight: '600',
     },
-    // ✅ NOUVEAU: Barre de progression globale
+    // ✅ CORRIGÉ 2026-03-11: Barre de progression inline pour header compact
     globalProgressContainer: {
-        paddingHorizontal: 20,
-        paddingVertical: 8,
-        backgroundColor: '#F9FAFB',
-        borderBottomWidth: 1,
-        borderBottomColor: '#E5E7EB',
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
     },
     globalProgressBar: {
+        width: 60,
         height: 4,
         backgroundColor: '#E5E7EB',
         borderRadius: 2,
         overflow: 'hidden',
-        marginBottom: 4,
     },
     globalProgressFill: {
         height: '100%',
@@ -7172,8 +7178,7 @@ const styles = StyleSheet.create({
     globalProgressText: {
         fontSize: 11,
         color: '#6B7280',
-        textAlign: 'center',
-        fontWeight: '500',
+        fontWeight: '600',
     },
     stepText: {
         fontSize: 12,

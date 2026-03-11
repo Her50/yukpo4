@@ -36,45 +36,57 @@ export const useDeepLinkRedirect = () => {
                 console.log(`[useDeepLinkRedirect] 🏢 Partenaire identifié: type="${user.partner_type}" - Redirection vers écran spécialisé`);
 
                 // Mapping des types de partenaires vers leurs écrans spécialisés (dashboards directs)
+                // ✅ FIX: Inclure TOUTES les variantes d'écriture envoyées par le backend
                 const partnerTypeToScreen: Record<string, string> = {
                     // ✅ Santé → dashboard dédié (mode dashboard auto-détecté)
                     'pharmacie': 'PharmacieForm',
                     'hopital': 'HopitalForm',
                     'laboratoire': 'LaboratoireForm',
                     'banquesang': 'BanqueSangForm',
-                    // ✅ Transport → dashboard dédié
+                    'banque_sang': 'BanqueSangForm',
+                    // ✅ Transport → dashboard dédié (toutes variantes)
                     'agence_voyage': 'AgenceVoyageForm',
+                    'agencedevoyage': 'AgenceVoyageForm',
+                    'agencevoyage': 'AgenceVoyageForm',
                     'covoiturage': 'CovoiturageForm',
                     'taxi': 'TaxiForm',
                     'chauffeur': 'TaxiForm',
                     // ✅ Hébergement → HotelDashboard (conçu pour hotel + meublé)
                     'hotel': 'HotelDashboard',
                     'meuble': 'HotelDashboard',
-                    // ✅ Commerce
+                    // ✅ Commerce / Restauration
                     'supermarche': 'SupermarketPartnerDashboard',
+                    'restaurant': 'RestaurantDashboard',
                     // ✅ Emploi
                     'offre_emploi': 'OffresEmploiHub',
+                    'offreemploi': 'OffresEmploiHub',
                     'recruteur': 'OffresEmploiHub',
                     // ✅ Assurance (backend utilise 'assureur')
                     'assureur': 'AssuranceDashboard',
+                    'assurance': 'AssuranceDashboard',
                     // ✅ Éducation
                     'etablissementscolaire': 'OrientationPartnerDashboard',
+                    'etablissement_scolaire': 'OrientationPartnerDashboard',
+                    'livrescolaire': 'OrientationPartnerDashboard',
+                    'livre_scolaire': 'OrientationPartnerDashboard',
                     // Génériques
-                    'livraison_courses_marche': 'MesServicesSpecialises',
-                    'ecommerce': 'MesServicesSpecialises',
-                    'prestataire': 'MesServicesSpecialises',
-                    'service': 'MesServicesSpecialises',
+                    'livraison_courses_marche': 'GestionServicesSpecialises',
+                    'ecommerce': 'GestionServicesSpecialises',
+                    'prestataire': 'GestionServicesSpecialises',
+                    'service': 'GestionServicesSpecialises',
                 };
 
-                const targetScreen = partnerTypeToScreen[user.partner_type];
+                // ✅ FIX: Normaliser le partner_type (lowercase, supprimer espaces → underscore)
+                const normalizedType = user.partner_type.toLowerCase().trim().replace(/\s+/g, '');
+                const targetScreen = partnerTypeToScreen[user.partner_type] || partnerTypeToScreen[normalizedType];
 
                 if (targetScreen) {
                     console.log(`[useDeepLinkRedirect] � Redirection partenaire ${user.partner_type} → ${targetScreen}`);
                     navNavigate(targetScreen as any);
                     return true; // Redirection effectuée
                 } else {
-                    console.warn(`[useDeepLinkRedirect] ⚠️ Type partenaire non mappé: ${user.partner_type}, redirection vers MesServicesSpecialises`);
-                    navNavigate('MesServicesSpecialises' as any);
+                    console.warn(`[useDeepLinkRedirect] ⚠️ Type partenaire non mappé: ${user.partner_type}, redirection vers GestionServicesSpecialises`);
+                    navNavigate('GestionServicesSpecialises' as any);
                     return true;
                 }
             }

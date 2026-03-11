@@ -251,7 +251,7 @@ const LoginScreen: React.FC = () => {
 
   return (
     <LinearGradient
-      colors={modernColors.primaryGradient}
+      colors={['#1a1a2e', '#16213e', '#0f3460']}
       style={styles.gradientContainer}
     >
       <KeyboardAwareScreen style={styles.container} contentContainerStyle={styles.scrollContent}>
@@ -442,10 +442,10 @@ const styles = StyleSheet.create({
     textShadowRadius: 4,
   },
   brandYuk: {
-    color: '#3B82F6', // Bleu (cohérent avec le logo officiel)
+    color: '#60A5FA', // Bleu clair (lisible sur fond sombre)
   },
   brandPo: {
-    color: '#7C3AED', // Violet (cohérent avec le logo officiel)
+    color: '#A78BFA', // Violet clair (lisible sur fond sombre)
   },
   subtitle: {
     textAlign: 'center',
@@ -549,8 +549,10 @@ const styles = StyleSheet.create({
   },
   formCard: {
     marginBottom: modernStyles.spacing.lg,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
     borderRadius: modernStyles.borderRadius.large,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
   },
   loginButtonLabel: {
     fontSize: 16,

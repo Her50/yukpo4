@@ -42,6 +42,7 @@ interface ChatHistory {
   lastMessageTime: Date;
   unreadCount: number;
   isActive: boolean;
+  serviceId?: number;
   serviceTitle?: string;
   status: 'active' | 'completed' | 'cancelled';
 }
@@ -102,6 +103,7 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
           lastMessageTime: new Date(conv.lastMessageTime || conv.last_message_time || Date.now()),
           unreadCount: conv.unreadCount ?? conv.unread_count ?? 0,
           isActive: conv.isActive ?? conv.is_active ?? true,
+          serviceId: conv.serviceId ?? conv.service_id ?? undefined,
           serviceTitle: conv.serviceTitle || conv.service_title || undefined,
           status: conv.status || 'active',
         }));
@@ -206,33 +208,56 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
     }
   };
 
-  const handleOpenChatModal = (chat: ChatHistory) => {
-    // Créer un objet service simulé pour le ChatModal
+  const handleOpenChatModal = async (chat: ChatHistory) => {
+    // ✅ CORRIGÉ: Déterminer le bon interlocuteur selon le rôle de l'utilisateur
+    const currentUserId = String(user?.id || '');
+    const isClient = currentUserId === chat.clientId;
+    const otherUserId = isClient ? chat.prestataireId : chat.clientId;
+    const otherUserName = isClient ? chat.prestataireName : chat.clientName;
+    const otherUserPhoto = isClient ? chat.prestatairePhoto : chat.clientPhoto;
+
+    // ✅ CORRIGÉ: Utiliser le vrai service_id (numérique) au lieu du conversation UUID
     const serviceData = {
-      id: chat.id,
+      id: chat.serviceId || 0,
       titre: chat.serviceTitle || 'Service',
-      description: `Conversation avec ${chat.clientName}`,
-      user_id: chat.prestataireId,
+      description: `Conversation avec ${otherUserName}`,
+      user_id: otherUserId,
       data: {
         titre_service: chat.serviceTitle || 'Service',
-        description: `Conversation avec ${chat.clientName}`,
-        nom_prestataire: chat.prestataireName
+        description: `Conversation avec ${otherUserName}`,
+        nom_prestataire: otherUserName
       }
     };
 
-    // Créer un objet prestataire simulé
+    // ✅ CORRIGÉ: Passer user_id pour que ChatModalMobile puisse lire prestataireInfo.user_id
     const prestataireData = {
-      id: chat.prestataireId,
-      name: chat.prestataireName,
+      id: otherUserId,
+      user_id: Number(otherUserId) || 0,
+      userId: Number(otherUserId) || 0,
+      name: otherUserName,
+      nom_complet: otherUserName,
       email: '',
-      avatar: chat.prestatairePhoto,
+      avatar: otherUserPhoto,
       isOnline: true
     };
 
+    // ✅ CORRIGÉ: Marquer la conversation comme lue via l'API (charge les messages = déclenche le mark-as-read côté backend)
+    try {
+      await apiGet(`/api/chat/messages/${chat.id}`);
+    } catch (e) {
+      console.warn('[ChatHistoryModal] Erreur mark-as-read:', e);
+    }
+
+    // ✅ Mettre à jour le compteur local immédiatement
+    setChatHistories(prev => prev.map(c =>
+      c.id === chat.id ? { ...c, unreadCount: 0 } : c
+    ));
+
+    setSelectedChat(chat);
     setSelectedService(serviceData);
     setSelectedPrestataire(prestataireData);
     setShowChatModal(true);
-    setShowChatMessages(false); // Fermer l'interface intégrée
+    setShowChatMessages(false);
   };
 
   const sendMessage = async () => {
@@ -581,12 +606,14 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
         prestataireInfo={selectedPrestataire}
         user={user}
         conversationId={selectedChat?.id}
-        isPrivateConversation={true}
+        isPrivateConversation={!selectedChat?.serviceId}
         onClose={() => {
           setShowChatModal(false);
           setSelectedService(null);
           setSelectedPrestataire(null);
           setSelectedChat(null);
+          // ✅ CORRIGÉ: Recharger les conversations pour mettre à jour les compteurs non-lus
+          loadChatHistories().catch(e => console.warn('[ChatHistoryModal] Erreur reload:', e));
         }}
       />
     </Modal>
