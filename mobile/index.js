@@ -160,6 +160,7 @@ console.log('='.repeat(50));
 // Charger l'application principale avec gestion d'erreur
 let App;
 try {
+    // ✅ NORMAL: Remettre App.tsx pour modification directe
     App = require('./App').default;
     console.log('✅ [INDEX.JS] App.tsx chargé avec succès');
 } catch (error) {

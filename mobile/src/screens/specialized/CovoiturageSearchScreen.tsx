@@ -1,26 +1,27 @@
 // ✅ Écran de recherche de covoiturages (Mobile) - VERSION REFONDUE
-import { LinearGradient } from 'expo-linear-gradient';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useNavigation } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useState } from 'react';
 import {
     Alert,
     Platform,
+    ScrollView,
     StyleSheet,
     Switch,
     Text,
     TouchableOpacity,
     View
 } from 'react-native';
-import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import CovoiturageMapView from '../../components/covoiturage/CovoiturageMapView';
-import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
+import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
+import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeInput } from '../../components/SafeNativeDesign';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useLocation } from '../../contexts/LocationContext';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
-import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 
 interface CovoiturageSearchFilters {
     depart?: string;
@@ -105,25 +106,25 @@ const CovoiturageSearchScreen: React.FC = () => {
                 radius_km: radiusKm,
                 date_depart: dateDepart.toISOString().split('T')[0],
             };
-                if (minPlaces > 1) filters.min_places = minPlaces;
-                if (maxPrix) {
-                    const prix = parseInt(maxPrix);
-                    if (!isNaN(prix) && prix > 0) filters.max_prix = prix;
-                }
-                // ✅ NOUVEAU: Filtres avancés
-                if (typeVehicule) filters.type_vehicule = typeVehicule;
-                if (accepteAnimaux) filters.accepte_animaux = true;
-                if (fumeurAutorise) filters.fumeur_autorise = true;
-                if (bagages) filters.bagages = true;
-                if (trajetRecurrent) filters.trajet_recurrent = true;
-                navigation.navigate('CovoiturageList' as never, { filters, searchType: 'nearby' } as never);
+            if (minPlaces > 1) filters.min_places = minPlaces;
+            if (maxPrix) {
+                const prix = parseInt(maxPrix);
+                if (!isNaN(prix) && prix > 0) filters.max_prix = prix;
+            }
+            // ✅ NOUVEAU: Filtres avancés
+            if (typeVehicule) filters.type_vehicule = typeVehicule;
+            if (accepteAnimaux) filters.accepte_animaux = true;
+            if (fumeurAutorise) filters.fumeur_autorise = true;
+            if (bagages) filters.bagages = true;
+            if (trajetRecurrent) filters.trajet_recurrent = true;
+            navigation.navigate('CovoiturageList' as never, { filters, searchType: 'nearby' } as never);
         } else {
             // Recherche classique
             const villeDepartStr = typeof villeDepart === 'string' ? villeDepart : (villeDepart as LocationObject)?.components?.ville || (villeDepart as LocationObject)?.place_name || '';
             const quartierDepartStr = typeof quartierDepart === 'string' ? quartierDepart : (quartierDepart as LocationObject)?.components?.quartier || (quartierDepart as LocationObject)?.place_name || '';
             const villeDestinationStr = typeof villeDestination === 'string' ? villeDestination : (villeDestination as LocationObject)?.components?.ville || (villeDestination as LocationObject)?.place_name || '';
             const quartierDestinationStr = typeof quartierDestination === 'string' ? quartierDestination : (quartierDestination as LocationObject)?.components?.quartier || (quartierDestination as LocationObject)?.place_name || '';
-            
+
             if (!villeDepartStr.trim() && !quartierDepartStr.trim()) {
                 Alert.alert('Erreur', 'Veuillez renseigner au moins la ville ou le quartier de départ');
                 return;
@@ -315,7 +316,7 @@ const CovoiturageSearchScreen: React.FC = () => {
                     {/* Formulaire de recherche */}
                     <View style={styles.searchFormCard}>
                         <Text style={styles.sectionTitle}>📍 Recherche</Text>
-                        
+
                         {/* Recherche GPS */}
                         <View style={styles.inputGroup}>
                             <View style={styles.optionCard}>
@@ -411,7 +412,7 @@ const CovoiturageSearchScreen: React.FC = () => {
                                             required={true}
                                         />
                                     </View>
-                                    
+
                                     {/* Bouton d'échange */}
                                     <TouchableOpacity
                                         style={styles.swapButton}
@@ -427,7 +428,7 @@ const CovoiturageSearchScreen: React.FC = () => {
                                     >
                                         <SafeIcon name="arrow-up-down" size={18} color="#FFFFFF" type="lucide" />
                                     </TouchableOpacity>
-                                    
+
                                     {/* Destination */}
                                     <View style={styles.routeInputContainer}>
                                         <Text style={styles.routeLabel}>
@@ -446,7 +447,7 @@ const CovoiturageSearchScreen: React.FC = () => {
                                         />
                                     </View>
                                 </View>
-                                
+
                                 {/* Quartiers (optionnels, plus compacts) */}
                                 <View style={styles.neighborhoodsRow}>
                                     <View style={styles.neighborhoodInputContainer}>

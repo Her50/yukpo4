@@ -625,7 +625,7 @@ const HomeScreen: React.FC = () => {
                     </View>
                     <TouchableOpacity
                         style={styles.navigationButton}
-                        onPress={() => navigate('NavigationScreen')}
+                        onPress={() => navigate('Navigation')}
                         activeOpacity={0.8}
                     >
                         <SafeIcon name="navigation" size={22} color="#6366F1" />
@@ -834,14 +834,6 @@ const HomeScreen: React.FC = () => {
                 </View>
 
             </ScrollView>
-
-            {/* Bouton flottant de test de connexion */}
-            <TouchableOpacity
-                style={styles.testConnectionButton}
-                onPress={() => navigate('ConnectionTest')}
-            >
-                <Text style={{ color: 'white', fontSize: 24 }}>🔧</Text>
-            </TouchableOpacity>
 
             {/* Modal GPS */}
             {showGPSModal && (
@@ -1249,22 +1241,6 @@ const styles = StyleSheet.create({
         color: '#111827',
         marginBottom: 12, // ✅ AUGMENTÉ: De 8 à 12 pour plus d'espace
         marginTop: 4, // ✅ AJOUTÉ: Marge en haut pour séparation
-    },
-    testConnectionButton: {
-        position: 'absolute',
-        bottom: 80,
-        right: 20,
-        backgroundColor: '#6366F1',
-        width: 56,
-        height: 56,
-        borderRadius: 28,
-        justifyContent: 'center',
-        alignItems: 'center',
-        elevation: 8,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 4,
     },
 });
 

@@ -88,8 +88,8 @@ pub async fn list_upcoming_sessions(
 
 pub async fn start_live_session(
     State(state): State<Arc<AppState>>,
-    Authenticated(_user): Authenticated,
-    Json(payload): Json<CreateLiveSessionRequest>,
+    Authenticated(user): Authenticated,
+    Json(mut payload): Json<CreateLiveSessionRequest>,
 ) -> AppResult<Json<serde_json::Value>> {
     if !state
         .feature_flags
@@ -97,7 +97,25 @@ pub async fn start_live_session(
     {
         log::info!("Feature flag connectors_livekit non activé, création de live autorisée en mode fallback SRS");
     }
-    let response = LiveStreamingService::create_session(state.clone(), payload).await?;
+
+    // Override host_user_id with the authenticated user to prevent FK violations
+    // and avoid trusting the client-supplied value
+    if payload.host_user_id != user.id {
+        log::warn!(
+            "[live] host_user_id mismatch: payload={} auth={}, using auth id",
+            payload.host_user_id,
+            user.id
+        );
+        payload.host_user_id = user.id;
+    }
+
+    let response = match LiveStreamingService::create_session(state.clone(), payload).await {
+        Ok(r) => r,
+        Err(e) => {
+            log::error!("[live] create_session failed: {:?}", e);
+            return Err(e);
+        }
+    };
 
     let mut audience_targets: Vec<i32> = response
         .linked_services

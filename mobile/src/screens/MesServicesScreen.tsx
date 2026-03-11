@@ -1154,6 +1154,9 @@ const MesServicesScreen: React.FC = () => {
     };
   }, [services]);
 
+  // ✅ CORRIGÉ: Créer les styles dynamiquement avec le thème AVANT le early return loading
+  const dynamicStyles = React.useMemo(() => createStyles(colors), [colors]);
+
   if (loading && services.length === 0) {
     return (
       <View style={[dynamicStyles.container, { backgroundColor: colors.background }]}>
@@ -1179,9 +1182,6 @@ const MesServicesScreen: React.FC = () => {
       </View>
     );
   }
-
-  // ✅ NOUVEAU: Créer les styles dynamiquement avec le thème
-  const dynamicStyles = React.useMemo(() => createStyles(colors), [colors]);
 
   // ✅ NOUVEAU: Breadcrumbs navigation
   const breadcrumbItems: BreadcrumbItem[] = useMemo(() => {

@@ -1,9 +1,9 @@
 // ✅ Écran de recherche d'hôpitaux (Mobile) - VERSION REFONDUE
-import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState } from 'react';
 import {
-    Alert,
+    ScrollView,
     StyleSheet,
     Switch,
     Text,
@@ -11,14 +11,14 @@ import {
     View
 } from 'react-native';
 import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
+import { LocationObject } from '../../components/LocationSelector';
 import ModernGPSModal from '../../components/ModernGPSModal';
-import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeInput } from '../../components/SafeNativeDesign';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useLocation } from '../../contexts/LocationContext';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
-import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 
 interface HopitalSearchFilters {
     ville?: string;
@@ -83,7 +83,7 @@ const HopitalSearchScreen: React.FC = () => {
         // ✅ RÉORIENTÉ: Priorité sur recherche de services médicaux plutôt que d'établissements
         // Si une spécialité ou prestation est sélectionnée, utiliser l'endpoint de recherche de services médicaux
         const serviceRecherche = prestation || (selectedSpecialites.length > 0 ? selectedSpecialites[0] : '');
-        
+
         if (serviceRecherche.trim()) {
             const filters: HopitalSearchFilters = {
                 prestation: serviceRecherche.trim(),
@@ -125,7 +125,7 @@ const HopitalSearchScreen: React.FC = () => {
 
     const typesEtablissements = ['Hôpital', 'Clinique', 'Dispensaire', 'Centre de santé'];
     const prestations = [
-        'Urgences', 'Consultation générale', 'Chirurgie', 'Maternité', 
+        'Urgences', 'Consultation générale', 'Chirurgie', 'Maternité',
         'Pédiatrie', 'Cardiologie', 'Neurologie', 'Radiologie'
     ];
     // ✅ NOUVEAU: Spécialités médicales complètes
@@ -245,7 +245,7 @@ const HopitalSearchScreen: React.FC = () => {
                     <Text style={styles.sectionDescription}>
                         Recherchez un service médical spécifique (consultation, chirurgie, spécialité...)
                     </Text>
-                    
+
                     {/* Service médical recherché (PRIORITAIRE) */}
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>
@@ -264,7 +264,7 @@ const HopitalSearchScreen: React.FC = () => {
                     <Text style={styles.sectionDescription}>
                         Ajoutez votre position pour trouver des services à proximité
                     </Text>
-                    
+
                     {/* GPS */}
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>
@@ -540,7 +540,7 @@ const HopitalSearchScreen: React.FC = () => {
                     {/* Options */}
                     <View style={styles.optionsSection}>
                         <Text style={styles.sectionTitle}>⚙️ Options de recherche</Text>
-                        
+
                         <View style={styles.optionCard}>
                             <View style={styles.optionContent}>
                                 <View style={styles.optionIconContainer}>

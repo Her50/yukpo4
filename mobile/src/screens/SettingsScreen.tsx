@@ -94,30 +94,7 @@ const SettingsScreen: React.FC = () => {
     loginAlerts: true,
   });
 
-  // ✅ NOUVEAU 2026-02-06: État pour le changement de mot de passe
-  const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [passwordData, setPasswordData] = useState({
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: ''
-  });
-  const [changingPassword, setChangingPassword] = useState(false);
-
   const [activeSection, setActiveSection] = useState<string>('profile');
-
-  // ✅ NOUVEAU 2026-02-06: Vérifier les paramètres de route au montage
-  useEffect(() => {
-    // @ts-ignore - route peut avoir des paramètres
-    const routeParams = (route as any)?.params;
-    if (routeParams) {
-      if (routeParams.initialSection) {
-        setActiveSection(routeParams.initialSection);
-      }
-      if (routeParams.showPasswordModal) {
-        setShowPasswordModal(true);
-      }
-    }
-  }, [route]);
 
   // ✅ NOUVEAU 2026-02-06: Vérifier les paramètres de route au montage
   useEffect(() => {
@@ -165,6 +142,45 @@ const SettingsScreen: React.FC = () => {
       Alert.alert('Erreur', 'Impossible de sauvegarder les paramètres');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      Alert.alert('Erreur', 'Les mots de passe ne correspondent pas');
+      return;
+    }
+
+    if (passwordData.newPassword.length < 8) {
+      Alert.alert('Erreur', 'Le mot de passe doit contenir au moins 8 caractères');
+      return;
+    }
+
+    try {
+      setChangingPassword(true);
+
+      const response = await apiPost('/api/users/change-password', {
+        current_password: passwordData.currentPassword,
+        new_password: passwordData.newPassword
+      });
+
+      if (response.success) {
+        Alert.alert('Succès', 'Votre mot de passe a été modifié avec succès', [
+          {
+            text: 'OK', onPress: () => {
+              setShowPasswordModal(false);
+              setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+            }
+          }
+        ]);
+      } else {
+        throw new Error(response.error || 'Erreur lors du changement de mot de passe');
+      }
+    } catch (error: any) {
+      console.error('Erreur changement mot de passe:', error);
+      Alert.alert('Erreur', error.message || 'Impossible de modifier le mot de passe');
+    } finally {
+      setChangingPassword(false);
     }
   };
 
@@ -499,55 +515,6 @@ const SettingsScreen: React.FC = () => {
       </View>
     </View>
   );
-
-  // ✅ NOUVEAU 2026-02-06: État pour le changement de mot de passe
-  const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [passwordData, setPasswordData] = useState({
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: ''
-  });
-  const [changingPassword, setChangingPassword] = useState(false);
-
-  // ✅ NOUVEAU 2026-02-06: Fonction pour changer le mot de passe
-  const handleChangePassword = async () => {
-    if (passwordData.newPassword !== passwordData.confirmPassword) {
-      Alert.alert('Erreur', 'Les mots de passe ne correspondent pas');
-      return;
-    }
-
-    if (passwordData.newPassword.length < 8) {
-      Alert.alert('Erreur', 'Le mot de passe doit contenir au moins 8 caractères');
-      return;
-    }
-
-    try {
-      setChangingPassword(true);
-
-      const response = await apiPost('/api/users/change-password', {
-        current_password: passwordData.currentPassword,
-        new_password: passwordData.newPassword
-      });
-
-      if (response.success) {
-        Alert.alert('Succès', 'Votre mot de passe a été modifié avec succès', [
-          {
-            text: 'OK', onPress: () => {
-              setShowPasswordModal(false);
-              setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
-            }
-          }
-        ]);
-      } else {
-        throw new Error(response.error || 'Erreur lors du changement de mot de passe');
-      }
-    } catch (error: any) {
-      console.error('Erreur changement mot de passe:', error);
-      Alert.alert('Erreur', error.message || 'Impossible de modifier le mot de passe');
-    } finally {
-      setChangingPassword(false);
-    }
-  };
 
   const renderSecuritySection = () => (
     <View style={styles.section}>

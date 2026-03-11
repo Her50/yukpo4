@@ -20,6 +20,7 @@ import ChatInputMobile from '../components/ChatInputMobile';
 import ChatModalMobile from '../components/ChatModalMobile';
 import { KeyboardAwareScreen } from '../components/KeyboardAwareScreen';
 import ModernGPSModal from '../components/ModernGPSModal';
+import ProductCard from '../components/ProductCard';
 import SafeIcon from '../components/SafeIcon';
 import { SafeNativeView } from '../components/SafeNativeView';
 import ServiceGalleryModal from '../components/ServiceGalleryModal';

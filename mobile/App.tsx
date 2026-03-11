@@ -151,6 +151,7 @@ export default function App() {
                     <LocationProvider>
                       <AuthProvider>
                         <RemoteLoggingInitializer />
+                        {/* ✅ DIAGNOSTIC: WebSocketProvider réactivé pour test */}
                         <WebSocketProvider>
                           <FeatureFlagProvider>
                             <DeliveryProvider>
@@ -182,9 +183,9 @@ export default function App() {
                 </ToasterProvider>
               </PaperProvider>
             </ThemeProvider>
-          </AsyncStorageGate>
-        </SafeAreaProvider>
-      </GestureHandlerRootView>
-    </ErrorBoundary>
+          </AsyncStorageGate >
+        </SafeAreaProvider >
+      </GestureHandlerRootView >
+    </ErrorBoundary >
   );
 }

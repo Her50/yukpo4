@@ -1333,11 +1333,11 @@ const styles = StyleSheet.create({
     },
     bottomInfo: {
         position: 'absolute',
-        bottom: 160, // ✅ RÉAJUSTÉ: Plus bas pour laisser de la place au CTA
+        bottom: 75, // ✅ CORRIGÉ: Réduit de 160 à 75 pour rapprocher description du bouton CTA
         left: 16,
         right: 72,
-        gap: 8,
-        maxHeight: 280, // ✅ AJOUT: Limiter la hauteur pour éviter les débordements
+        gap: 4, // ✅ CORRIGÉ: Réduit de 8 à 4 pour un espacement plus compact
+        maxHeight: 280,
     },
     sellerRow: {
         flexDirection: 'row',
@@ -1434,7 +1434,7 @@ const styles = StyleSheet.create({
     // ✅ AJOUT: Conteneur pour les boutons d'action
     actionButtonsContainer: {
         position: 'absolute',
-        bottom: 20,
+        bottom: 16, // ✅ CORRIGÉ: Réduit de 20 à 16
         left: 16,
         right: 72,
         flexDirection: 'row',

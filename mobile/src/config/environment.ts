@@ -31,7 +31,7 @@ export const ENVIRONMENT = {
     // - https://yukpomnang-backend-alb-2043939972.us-east-1.elb.amazonaws.com (AWS ALB direct)
     // Pour développement local: http://localhost:3000
     // Pour autre serveur: définir EXPO_PUBLIC_API_BASE_URL dans .env
-    API_URL: process.env.EXPO_PUBLIC_API_URL || process.env.EXPO_PUBLIC_API_BASE_URL || 'https://yukpo-backend-mkzqhoqhaq-ew.a.run.app',
+    API_URL: process.env.EXPO_PUBLIC_API_URL || process.env.EXPO_PUBLIC_API_BASE_URL || 'https://yukpo-backend-376093909298.europe-west1.run.app',
     // API_URL: process.env.EXPO_PUBLIC_API_URL || process.env.EXPO_PUBLIC_API_BASE_URL || 'https://api.yukpomnang.com',  // ⚠️ AWS (ancien)
     UPLOAD_BASE_URL: process.env.EXPO_PUBLIC_UPLOAD_BASE_URL || 'https://storage.googleapis.com/yukpo-project-yukpo-backend-media',  // GCP Cloud Storage HTTPS
     // UPLOAD_BASE_URL: process.env.EXPO_PUBLIC_UPLOAD_BASE_URL || 'https://cdn.yukpomnang.com',  // ⚠️ AWS CDN (ancien)

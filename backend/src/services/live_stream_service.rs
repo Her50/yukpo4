@@ -89,6 +89,13 @@ impl LiveStreamingService {
         state: Arc<AppState>,
         payload: CreateLiveSessionRequest,
     ) -> AppResult<LiveSessionResponse> {
+        log::info!(
+            "[live] create_session: host={}, title={:?}, service_id={:?}",
+            payload.host_user_id,
+            payload.title,
+            payload.service_id
+        );
+
         if payload.title.trim().is_empty() {
             return Err(AppError::BadRequest(
                 "Le titre du live est obligatoire".to_string(),
@@ -101,6 +108,47 @@ impl LiveStreamingService {
             ));
         }
 
+        // Validate that the host user actually exists to prevent FK violation
+        let user_exists: bool =
+            sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM users WHERE id = $1)")
+                .bind(payload.host_user_id)
+                .fetch_one(&state.pg)
+                .await
+                .unwrap_or(false);
+
+        if !user_exists {
+            log::error!(
+                "[live] host_user_id {} does not exist in users table",
+                payload.host_user_id
+            );
+            return Err(AppError::BadRequest(format!(
+                "Utilisateur {} introuvable",
+                payload.host_user_id
+            )));
+        }
+
+        // Validate service_id FK if provided — clear invalid ones to prevent FK violation
+        let validated_service_id: Option<i32> = if let Some(sid) = payload.service_id {
+            let service_exists: bool =
+                sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM services WHERE id = $1)")
+                    .bind(sid)
+                    .fetch_one(&state.pg)
+                    .await
+                    .unwrap_or(false);
+
+            if service_exists {
+                Some(sid)
+            } else {
+                log::warn!(
+                    "[live] service_id {} does not exist in services table, clearing to None",
+                    sid
+                );
+                None
+            }
+        } else {
+            None
+        };
+
         let mut session_metadata = if payload.metadata.is_null() {
             json!({})
         } else {
@@ -112,7 +160,7 @@ impl LiveStreamingService {
         }
 
         let mut linked_ids = payload.linked_service_ids.clone();
-        if let Some(primary) = payload.service_id {
+        if let Some(primary) = validated_service_id {
             if !linked_ids.contains(&primary) {
                 linked_ids.push(primary);
             }
@@ -120,7 +168,16 @@ impl LiveStreamingService {
         linked_ids.sort_unstable();
         linked_ids.dedup();
 
-        let provisioning = Self::provision_stream_targets(state.clone(), &payload).await?;
+        let provisioning = match Self::provision_stream_targets(state.clone(), &payload).await {
+            Ok(p) => {
+                log::info!("[live] provisioning OK: source={}", p.provisioning_source);
+                p
+            }
+            Err(e) => {
+                log::error!("[live] provision_stream_targets failed: {:?}", e);
+                return Err(e);
+            }
+        };
         session_metadata["provisioning"] = json!(provisioning.provisioning_source);
         session_metadata["fallback_used"] = json!(provisioning.used_fallback);
 
@@ -160,7 +217,7 @@ impl LiveStreamingService {
         "#,
         )
         .bind(payload.host_user_id)
-        .bind(payload.service_id)
+        .bind(validated_service_id)
         .bind(&payload.title)
         .bind(&payload.description)
         .bind("scheduled")
@@ -176,7 +233,13 @@ impl LiveStreamingService {
         .bind(&provisioning.fallback_hls_url)
         .bind(session_metadata)
         .fetch_one(&mut *tx)
-        .await?;
+        .await
+        .map_err(|e| {
+            log::error!("[live] INSERT live_sessions failed: {}", e);
+            AppError::Database(format!("Erreur création session live: {}", e))
+        })?;
+
+        log::info!("[live] live_sessions INSERT OK, id={}", record.id);
 
         sqlx::query(
             r#"
@@ -187,9 +250,18 @@ impl LiveStreamingService {
         )
         .bind(record.id)
         .execute(&mut *tx)
-        .await?;
+        .await
+        .map_err(|e| {
+            log::error!("[live] INSERT live_session_analytics failed: {}", e);
+            AppError::Database(format!("Erreur création analytics live: {}", e))
+        })?;
 
-        tx.commit().await?;
+        tx.commit().await.map_err(|e| {
+            log::error!("[live] transaction commit failed: {}", e);
+            AppError::Database(format!("Erreur commit transaction live: {}", e))
+        })?;
+
+        log::info!("[live] session {} created successfully", record.id);
 
         let linked_services_vec = Self::load_linked_services(&state.pg, &linked_ids).await?;
 

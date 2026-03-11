@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
+import React, { useState } from 'react';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { API_BASE_URL } from '../config/api';
 
 const ConnectionTestScreen: React.FC = () => {
@@ -19,14 +19,15 @@ const ConnectionTestScreen: React.FC = () => {
   const testBackendConnection = async () => {
     try {
       addResult('Backend Health Check', false, 'Testing...', null);
-      
+
       const response = await fetch(`${API_BASE_URL}/health`, {
         method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
       });
-      
+
       if (response.ok) {
-        const data = await response.json();
+        const text = await response.text();
+        let data: any;
+        try { data = JSON.parse(text); } catch { data = { status: text }; }
         addResult('Backend Health Check', true, '✅ Backend accessible', data);
       } else {
         addResult('Backend Health Check', false, `❌ HTTP ${response.status}`, null);
@@ -39,17 +40,17 @@ const ConnectionTestScreen: React.FC = () => {
   const testAuthEndpoint = async () => {
     try {
       addResult('Auth Endpoint Test', false, 'Testing...', null);
-      
-      const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
-        method: 'GET',
+
+      const response = await fetch(`${API_BASE_URL}/api/auth/test`, {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });
-      
-      if (response.status === 401) {
-        addResult('Auth Endpoint Test', true, '✅ Endpoint accessible (401 = non authentifié)', null);
-      } else if (response.ok) {
+
+      if (response.ok) {
         const data = await response.json();
-        addResult('Auth Endpoint Test', true, '✅ Utilisateur authentifié', data);
+        addResult('Auth Endpoint Test', true, '✅ Endpoint auth accessible', data);
+      } else if (response.status === 401) {
+        addResult('Auth Endpoint Test', true, '✅ Endpoint accessible (401 = non authentifié)', null);
       } else {
         addResult('Auth Endpoint Test', false, `❌ HTTP ${response.status}`, null);
       }
@@ -61,18 +62,18 @@ const ConnectionTestScreen: React.FC = () => {
   const testLoginEndpoint = async () => {
     try {
       addResult('Login Endpoint Test', false, 'Testing...', null);
-      
+
       const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          email: 'test@example.com', 
-          password: 'testpassword' 
+        body: JSON.stringify({
+          email: 'test@example.com',
+          password: 'testpassword'
         }),
       });
-      
+
       const data = await response.json();
-      
+
       if (response.status === 401 || response.status === 400) {
         addResult('Login Endpoint Test', true, '✅ Endpoint fonctionne (erreur normale)', data);
       } else if (response.ok) {
@@ -88,15 +89,15 @@ const ConnectionTestScreen: React.FC = () => {
   const runAllTests = async () => {
     setIsLoading(true);
     setTestResults([]);
-    
+
     await testBackendConnection();
     await new Promise(resolve => setTimeout(resolve, 500));
-    
+
     await testAuthEndpoint();
     await new Promise(resolve => setTimeout(resolve, 500));
-    
+
     await testLoginEndpoint();
-    
+
     setIsLoading(false);
   };
 
@@ -107,7 +108,7 @@ const ConnectionTestScreen: React.FC = () => {
         <Text style={styles.subtitle}>URL: {API_BASE_URL}</Text>
       </View>
 
-      <TouchableOpacity 
+      <TouchableOpacity
         style={[styles.testButton, isLoading && styles.disabledButton]}
         onPress={runAllTests}
         disabled={isLoading}

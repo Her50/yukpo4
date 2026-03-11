@@ -216,14 +216,43 @@ pub async fn notify_delivery_status_change(
         }
     }
 
+    // ✅ Phase 11 - Récupérer le lien de suivi public pour l'inclure dans les notifications
+    let tracking_url = match sqlx::query_scalar::<_, String>(
+        "SELECT tracking_token FROM public_tracking_tokens WHERE delivery_id = $1::uuid LIMIT 1",
+    )
+    .bind(delivery_id)
+    .fetch_optional(pool)
+    .await
+    {
+        Ok(Some(token)) => Some(format!(
+            "https://yukpo-backend-376093909298.europe-west1.run.app/track/{}",
+            token
+        )),
+        _ => None,
+    };
+
+    // Enrichir le message avec le lien de suivi
+    let message_with_tracking = if let Some(ref url) = tracking_url {
+        format!("{}\n\n📍 Suivre votre livraison :\n{}", message, url)
+    } else {
+        message.clone()
+    };
+
     // Envoyer SMS si numéro disponible
     if let Some(phone) = recipient_phone {
-        let _ = send_sms_notification(pool, phone, &message, Some(delivery_id)).await;
+        let _ = send_sms_notification(pool, phone, &message_with_tracking, Some(delivery_id)).await;
     }
 
     // Envoyer Email si email disponible
     if let Some(email) = recipient_email {
-        let _ = send_email_notification(pool, email, subject, &message, Some(delivery_id)).await;
+        let _ = send_email_notification(
+            pool,
+            email,
+            subject,
+            &message_with_tracking,
+            Some(delivery_id),
+        )
+        .await;
     }
 
     Ok(())

@@ -196,9 +196,32 @@ const ServiceDetailSharedScreen: React.FC = () => {
       );
       return;
     }
+
+    // ✅ FIX: Construire un objet service complet avec tous les champs requis
+    const normalizedService = {
+      id: serviceId,
+      service_id: serviceId,
+      user_id: service?.user_id || service?.prestataire?.user_id,
+      data: service?.data || {},
+      category: service?.category,
+      is_active: service?.is_active,
+      // Ajouter les infos prestataire
+      prestataire: service?.prestataire || {
+        user_id: service?.user_id,
+        nom_complet: prestataireName,
+        nom: prestataireName,
+        avatar_url: prestataireAvatar
+      },
+      user: service?.user || {
+        id: service?.user_id,
+        nom_complet: prestataireName,
+        avatar_url: prestataireAvatar
+      }
+    };
+
     // Naviguer vers ResultatBesoin pour accéder au chat
     (navigation as any).navigate('ResultatBesoin', {
-      results: [{ service_id: serviceId, ...service }],
+      results: [normalizedService],
       openChat: true,
     });
   };
