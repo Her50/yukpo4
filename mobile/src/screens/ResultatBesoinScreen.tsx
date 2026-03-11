@@ -1,6 +1,7 @@
 ﻿// @ts-nocheck
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Video } from 'expo-av';
+import * as Haptics from 'expo-haptics';
 import React, { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     ActivityIndicator,
@@ -1670,6 +1671,7 @@ const ResultatBesoinScreen: React.FC = () => {
     }, []);
 
     const handleShare = useCallback(async (service: Service) => {
+        try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch (_) { }
         try {
             const titre = service.titre || service.title || service.data?.titre_service?.valeur || 'Service Yukpo';
             const description = service.description || service.data?.description?.valeur || '';

@@ -2,6 +2,7 @@
 // 🛍️ MON ACTIVITÉ - Dashboard intégré + Liste de services
 // @ts-nocheck
 import { useNavigation } from '@react-navigation/native';
+import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useState } from 'react';
 import {
@@ -81,7 +82,7 @@ const ServicesScreen: React.FC = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [sortBy, setSortBy] = useState<'date' | 'views' | 'interactions' | 'score'>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-  const [showStats, setShowStats] = useState(false); // ✅ NOUVEAU: Masquer/afficher les stats
+  const [showStats, setShowStats] = useState(false); // Masquer/afficher les stats
 
   useEffect(() => {
     loadServices();
@@ -91,12 +92,12 @@ const ServicesScreen: React.FC = () => {
     try {
       setLoading(true);
 
-      console.log('[ServicesScreen] 🔄 Chargement des services...');
+      console.log('[ServicesScreen] Chargement des services...');
 
       // Charger les services de l'utilisateur
       const response = await userApi.getUserServices();
 
-      console.log('[ServicesScreen] 📡 Réponse API:', {
+      console.log('[ServicesScreen] Réponse API:', {
         success: response.success,
         hasData: !!response.data,
         dataType: Array.isArray(response.data) ? 'array' : typeof response.data,
@@ -105,15 +106,15 @@ const ServicesScreen: React.FC = () => {
       });
 
       if (response.success && response.data) {
-        // ✅ TRANSFORMATION: Convertir le format backend vers le format frontend
+        // Convertir le format backend vers le format frontend
         const rawServices = Array.isArray(response.data) ? response.data : [];
-        console.log('[ServicesScreen] 📥 Services bruts reçus:', rawServices.length);
+        console.log('[ServicesScreen] Services bruts reçus:', rawServices.length);
 
         const servicesData: Service[] = rawServices.map((rawService: any) => {
           // Extraire les données du champ 'data'
           const serviceData = rawService.data || {};
 
-          // ✅ CORRECTION: Utiliser getFieldValue pour extraire les valeurs
+          // Utiliser getFieldValue pour extraire les valeurs
           const extractValue = (field: any): string => {
             const value = getFieldValue(field);
             if (value === null || value === undefined) return '';
@@ -137,16 +138,16 @@ const ServicesScreen: React.FC = () => {
           };
         });
 
-        console.log('[ServicesScreen] ✅ Services transformés:', servicesData.length, 'services');
-        console.log('[ServicesScreen] 📦 Premier service transformé:', servicesData[0]);
+        console.log('[ServicesScreen] Services transformés:', servicesData.length, 'services');
+        console.log('[ServicesScreen] Premier service transformé:', servicesData[0]);
         setServices(servicesData);
         calculateStats(servicesData);
       } else {
-        console.error('[ServicesScreen] ❌ Erreur chargement services:', response.error);
+        console.error('[ServicesScreen] Erreur chargement services:', response.error);
         setServices([]);
       }
     } catch (error) {
-      console.error('[ServicesScreen] ❌ Exception lors du chargement:', error);
+      console.error('[ServicesScreen] Exception lors du chargement:', error);
       setServices([]);
     } finally {
       setLoading(false);
@@ -167,7 +168,7 @@ const ServicesScreen: React.FC = () => {
     const categoryMap = new Map<string, CategoryStats>();
 
     servicesData.forEach(service => {
-      // ✅ CORRECTION: Extraire la valeur de category qui peut être {valeur, type_donnee, origine_champs}
+      // Extraire la valeur de category qui peut être {valeur, type_donnee, origine_champs}
       const categoryField = service.data?.category;
       const category = getFieldValue(categoryField) || 'Autre';
 
@@ -210,21 +211,21 @@ const ServicesScreen: React.FC = () => {
 
   const handleEditService = (service: Service) => {
     try {
-      // ✅ CORRECTION: Validation et passage complet des données
+      // Validation et passage complet des données
       if (!service || !service.id) {
         console.error('[ServicesScreen] Service invalide pour édition:', service);
         Alert.alert('Erreur', 'Impossible d\'éditer ce service (données manquantes)');
         return;
       }
 
-      console.log('[ServicesScreen] ✏️ Ouverture édition service:', {
+      console.log('[ServicesScreen] Ouverture édition service:', {
         id: service.id,
         title: service.title,
         hasData: !!service.data,
         dataKeys: service.data ? Object.keys(service.data) : []
       });
 
-      // ✅ IMPORTANT: Passer toutes les données du service pour le mode édition
+      // Passer toutes les données du service pour le mode édition
       navigation.navigate('FormulaireYukpoIntelligent' as never, {
         mode: 'edit',
         serviceId: service.id,
@@ -239,7 +240,7 @@ const ServicesScreen: React.FC = () => {
         fromServicesScreen: true
       } as never);
     } catch (error) {
-      console.error('[ServicesScreen] ❌ Erreur navigation édition:', error);
+      console.error('[ServicesScreen] Erreur navigation édition:', error);
       Alert.alert('Erreur', 'Impossible d\'ouvrir l\'édition du service');
     }
   };
@@ -273,6 +274,7 @@ const ServicesScreen: React.FC = () => {
   };
 
   const handleShareService = async (service: Service) => {
+    try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch (_) { }
     try {
       const SHARE_BASE_URL = process.env.EXPO_PUBLIC_SHARE_URL || 'https://yukpo-backend-376093909298.europe-west1.run.app';
       const shareUrl = `${SHARE_BASE_URL}/service/${service.id}`;

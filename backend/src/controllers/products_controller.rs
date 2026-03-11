@@ -12,6 +12,7 @@ use axum::{
     response::{Html, IntoResponse},
     Extension, Json,
 };
+use futures::future::join_all;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sqlx::Row;
@@ -1029,160 +1030,63 @@ pub async fn share_product_redirect(
     let product_name = &product.product_name;
     let product_price = product.product_price.as_ref().map(|p| p.to_string());
 
-    // ✅ CORRIGÉ 2026-03-03: Récupérer toutes les images du produit depuis la table media
-    // Utiliser des URLs pré-signées car le bucket GCS n'est PAS public (build_public_url retourne des 404)
-    // ✅ CORRIGÉ 2026-03-08: Logger les erreurs SQL au lieu de les avaler silencieusement avec .ok()
-    let product_image_paths: Vec<String> = match sqlx::query_scalar::<_, Option<String>>(
-        r#"
-        SELECT path
-        FROM media
-        WHERE service_id = $1
-        AND (product_index = $2 OR product_index IS NULL)
-        AND (type = 'image' OR media_type = 'image')
-        ORDER BY 
-            CASE WHEN product_index = $2 THEN 0 ELSE 1 END,
-            COALESCE(is_main_image, FALSE) DESC,
-            COALESCE(display_order, 0) ASC, 
-            id ASC
-        "#,
-    )
-    .bind(final_service_id)
-    .bind(final_product_index)
-    .fetch_all(&state.pg)
-    .await
-    {
-        Ok(rows) => rows.into_iter().flatten().collect(),
-        Err(e) => {
-            log::error!("❌ [share_product_redirect] Erreur SQL images produit service_id={}, product_index={}: {}", final_service_id, final_product_index, e);
-            Vec::new()
-        }
-    };
+    // ✅ OPTIMISÉ 2026-03-11: URLs pré-signées longue durée pour les crawlers sociaux
+    let video_expiry_seconds: u64 = 30 * 24 * 3600; // 30 jours
+    let image_expiry_seconds: u64 = 7 * 24 * 3600; // 7 jours
 
-    // ✅ AMÉLIORÉ: Utiliser des URLs pré-signées plus longues pour les vidéos (30 jours)
-    // Les crawlers sociaux mettent en cache les previews pendant longtemps
-    let video_expiry_seconds = 30 * 24 * 3600; // 30 jours
-    let image_expiry_seconds = 7 * 24 * 3600; // 7 jours
-
-    let mut product_images_db: Vec<String> = Vec::with_capacity(product_image_paths.len());
-    for path in &product_image_paths {
-        let url = if path.starts_with("http://") || path.starts_with("https://") {
-            path.clone()
-        } else if state.media_storage.is_remote() {
-            // ✅ CORRIGÉ 2026-03-08: Logger les erreurs de presigned URL au lieu de fallback silencieux
-            match state.media_storage.generate_presigned_url(path, image_expiry_seconds).await {
-                Ok(presigned) => presigned,
+    // ✅ OPTIMISÉ 2026-03-11: Requêtes SQL images + vidéos EN PARALLÈLE + LIMIT pour rapidité
+    let (product_image_paths, product_video_paths) = tokio::join!(
+        async {
+            match sqlx::query_scalar::<_, Option<String>>(
+                r#"SELECT path FROM media
+                WHERE service_id = $1
+                AND (product_index = $2 OR product_index IS NULL)
+                AND (type = 'image' OR media_type = 'image')
+                ORDER BY CASE WHEN product_index = $2 THEN 0 ELSE 1 END,
+                    COALESCE(is_main_image, FALSE) DESC,
+                    COALESCE(display_order, 0) ASC, id ASC
+                LIMIT 6"#,
+            )
+            .bind(final_service_id)
+            .bind(final_product_index)
+            .fetch_all(&state.pg)
+            .await
+            {
+                Ok(rows) => rows.into_iter().flatten().collect::<Vec<String>>(),
                 Err(e) => {
-                    log::warn!("⚠️ [share_product_redirect] Échec presigned URL pour image '{}': {} — fallback build_public_url", path, e);
-                    state.media_storage.build_public_url(path)
+                    log::error!("❌ [share_product_redirect] Erreur SQL images: {}", e);
+                    Vec::new()
                 }
             }
-        } else {
-            state.media_storage.build_public_url(path)
-        };
-        product_images_db.push(url);
-    }
-
-    // ✅ CORRIGÉ 2026-02-27: Extraire images depuis product_data (format tableau OU {valeur: [...]})
-    let product_images_from_data: Vec<String> = {
-        let images_val = product_data.as_object().and_then(|obj| obj.get("images"));
-        match images_val {
-            Some(v) if v.is_array() => v
-                .as_array()
-                .unwrap()
-                .iter()
-                .filter_map(|v| v.as_str().map(|s| s.to_string()))
-                .collect(),
-            Some(v) if v.is_object() => {
-                // Format {valeur: [...]} du formulaire dynamique
-                v.as_object()
-                    .unwrap()
-                    .get("valeur")
-                    .and_then(|v| v.as_array())
-                    .map(|arr| {
-                        arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect()
-                    })
-                    .unwrap_or_default()
-            }
-            _ => Vec::new(),
-        }
-    };
-
-    // Fusionner les images (DB en priorité, puis product_data)
-    // ✅ CORRIGÉ: Convertir les chemins relatifs de product_data en URLs pré-signées
-    let mut all_product_images = product_images_db;
-    for img in product_images_from_data {
-        if img.is_empty() || all_product_images.contains(&img) {
-            continue;
-        }
-        let resolved_url = if img.starts_with("http://")
-            || img.starts_with("https://")
-            || img.starts_with("data:")
-        {
-            img
-        } else if state.media_storage.is_remote() {
-            match state.media_storage.generate_presigned_url(&img, image_expiry_seconds).await {
-                Ok(presigned) => presigned,
+        },
+        async {
+            match sqlx::query_scalar::<_, Option<String>>(
+                r#"SELECT path FROM media
+                WHERE service_id = $1
+                AND (product_index = $2 OR product_index IS NULL)
+                AND (type = 'video' OR media_type = 'video')
+                ORDER BY CASE WHEN product_index = $2 THEN 0 ELSE 1 END,
+                    COALESCE(display_order, 0) ASC, id ASC
+                LIMIT 3"#,
+            )
+            .bind(final_service_id)
+            .bind(final_product_index)
+            .fetch_all(&state.pg)
+            .await
+            {
+                Ok(rows) => rows.into_iter().flatten().collect::<Vec<String>>(),
                 Err(e) => {
-                    log::warn!("⚠️ [share_product_redirect] Échec presigned URL pour image product_data '{}': {}", img, e);
-                    state.media_storage.build_public_url(&img)
+                    log::error!("❌ [share_product_redirect] Erreur SQL vidéos: {}", e);
+                    Vec::new()
                 }
             }
-        } else {
-            state.media_storage.build_public_url(&img)
-        };
-        all_product_images.push(resolved_url);
-    }
-
-    // ✅ AJOUTÉ: Récupérer les VIDÉOS du produit depuis la table media
-    // ✅ CORRIGÉ 2026-03-08: Logger les erreurs SQL
-    let product_video_paths: Vec<String> = match sqlx::query_scalar::<_, Option<String>>(
-        r#"
-        SELECT path FROM media
-        WHERE service_id = $1
-        AND (product_index = $2 OR product_index IS NULL)
-        AND (type = 'video' OR media_type = 'video')
-        ORDER BY CASE WHEN product_index = $2 THEN 0 ELSE 1 END,
-            COALESCE(display_order, 0) ASC, id ASC
-        "#,
-    )
-    .bind(final_service_id)
-    .bind(final_product_index)
-    .fetch_all(&state.pg)
-    .await
-    {
-        Ok(rows) => rows.into_iter().flatten().collect(),
-        Err(e) => {
-            log::error!("❌ [share_product_redirect] Erreur SQL vidéos produit service_id={}, product_index={}: {}", final_service_id, final_product_index, e);
-            Vec::new()
         }
-    };
+    );
 
-    let mut all_product_videos: Vec<String> = Vec::new();
-    for path in &product_video_paths {
-        let url = if path.starts_with("http://") || path.starts_with("https://") {
-            path.clone()
-        } else if state.media_storage.is_remote() {
-            match state.media_storage.generate_presigned_url(path, video_expiry_seconds).await {
-                Ok(presigned) => presigned,
-                Err(e) => {
-                    log::warn!(
-                        "⚠️ [share_product_redirect] Échec presigned URL pour vidéo '{}': {}",
-                        path,
-                        e
-                    );
-                    state.media_storage.build_public_url(path)
-                }
-            }
-        } else {
-            state.media_storage.build_public_url(path)
-        };
-        all_product_videos.push(url);
-    }
-
-    // Extraire vidéos depuis product_data.videos
-    let product_videos_from_data: Vec<String> = {
-        let videos_val = product_data.as_object().and_then(|obj| obj.get("videos"));
-        match videos_val {
+    // Extraire images/vidéos depuis product_data (format tableau OU {valeur: [...]})
+    let extract_media_paths = |key: &str| -> Vec<String> {
+        let val = product_data.as_object().and_then(|obj| obj.get(key));
+        match val {
             Some(v) if v.is_array() => v
                 .as_array()
                 .unwrap()
@@ -1197,31 +1101,75 @@ pub async fn share_product_redirect(
             _ => Vec::new(),
         }
     };
-    for vid in product_videos_from_data {
-        if vid.is_empty() || all_product_videos.contains(&vid) {
-            continue;
+
+    // Fusionner chemins uniques (DB prioritaire, puis product_data)
+    let mut all_image_paths = product_image_paths;
+    for img in extract_media_paths("images") {
+        if !img.is_empty() && !all_image_paths.contains(&img) {
+            all_image_paths.push(img);
         }
-        let resolved_url = if vid.starts_with("http://")
-            || vid.starts_with("https://")
-            || vid.starts_with("data:")
-        {
-            vid
-        } else if state.media_storage.is_remote() {
-            match state.media_storage.generate_presigned_url(&vid, video_expiry_seconds).await {
-                Ok(presigned) => presigned,
-                Err(e) => {
-                    log::warn!("⚠️ [share_product_redirect] Échec presigned URL pour vidéo product_data '{}': {}", vid, e);
-                    state.media_storage.build_public_url(&vid)
-                }
-            }
-        } else {
-            state.media_storage.build_public_url(&vid)
-        };
-        all_product_videos.push(resolved_url);
+    }
+    let mut all_video_paths = product_video_paths;
+    for vid in extract_media_paths("videos") {
+        if !vid.is_empty() && !all_video_paths.contains(&vid) {
+            all_video_paths.push(vid);
+        }
     }
 
+    // ✅ OPTIMISÉ 2026-03-11: Résoudre TOUTES les URLs pré-signées EN PARALLÈLE
+    // Avant: séquentiel → chaque generate_presigned_url = ~100-500ms → 10 fichiers = 1-5s
+    // Après: parallèle → 10 fichiers = ~100-500ms total (vitesse d'UN seul appel S3)
+    let (all_product_images, all_product_videos) = tokio::join!(
+        join_all(all_image_paths.iter().map(|path| {
+            let ms = &state.media_storage;
+            let exp = image_expiry_seconds;
+            async move {
+                if path.starts_with("http://") || path.starts_with("https://") {
+                    path.clone()
+                } else if ms.is_remote() {
+                    match ms.generate_presigned_url(path, exp).await {
+                        Ok(presigned) => presigned,
+                        Err(e) => {
+                            log::warn!(
+                                "⚠️ [share_product] Échec presigned image '{}': {}",
+                                path,
+                                e
+                            );
+                            ms.build_public_url(path)
+                        }
+                    }
+                } else {
+                    ms.build_public_url(path)
+                }
+            }
+        })),
+        join_all(all_video_paths.iter().map(|path| {
+            let ms = &state.media_storage;
+            let exp = video_expiry_seconds;
+            async move {
+                if path.starts_with("http://") || path.starts_with("https://") {
+                    path.clone()
+                } else if ms.is_remote() {
+                    match ms.generate_presigned_url(path, exp).await {
+                        Ok(presigned) => presigned,
+                        Err(e) => {
+                            log::warn!(
+                                "⚠️ [share_product] Échec presigned vidéo '{}': {}",
+                                path,
+                                e
+                            );
+                            ms.build_public_url(path)
+                        }
+                    }
+                } else {
+                    ms.build_public_url(path)
+                }
+            }
+        }))
+    );
+
     log::info!(
-        "🖼️ [share_product_redirect] {} vidéos + {} images pour produit {}",
+        "🖼️ [share_product_redirect] {} vidéos + {} images pour produit {} (parallèle)",
         all_product_videos.len(),
         all_product_images.len(),
         product_id
@@ -1664,57 +1612,53 @@ pub async fn share_service_redirect(
         raw_service_description
     };
 
-    // ✅ CORRIGÉ: Récupérer TOUTES les images du service (pas LIMIT 1)
-    // ✅ CORRIGÉ 2026-03-08: Logger les erreurs SQL au lieu de .ok().unwrap_or_default()
-    let service_image_paths: Vec<String> = match sqlx::query_scalar::<_, Option<String>>(
-        r#"SELECT path FROM media
-           WHERE service_id = $1 AND (type = 'image' OR media_type = 'image')
-           ORDER BY COALESCE(is_main_image, FALSE) DESC, COALESCE(display_order, 0) ASC, id ASC"#,
-    )
-    .bind(service_id)
-    .fetch_all(&state.pg)
-    .await
-    {
-        Ok(rows) => rows.into_iter().flatten().collect(),
-        Err(e) => {
-            log::error!(
-                "❌ [share_service_redirect] Erreur SQL images service_id={}: {}",
-                service_id,
-                e
-            );
-            Vec::new()
-        }
-    };
+    // ✅ OPTIMISÉ 2026-03-11: Requêtes SQL images + vidéos EN PARALLÈLE + LIMIT
+    let image_expiry: u64 = 7 * 24 * 3600;
+    let video_expiry: u64 = 7 * 24 * 3600;
 
-    let mut all_service_images: Vec<String> = Vec::with_capacity(service_image_paths.len());
-    for path in &service_image_paths {
-        let url = if path.starts_with("http://") || path.starts_with("https://") {
-            path.clone()
-        } else if state.media_storage.is_remote() {
-            match state.media_storage.generate_presigned_url(path, 7 * 24 * 3600).await {
-                Ok(presigned) => presigned,
+    let (service_image_paths, service_video_paths) = tokio::join!(
+        async {
+            match sqlx::query_scalar::<_, Option<String>>(
+                r#"SELECT path FROM media
+                   WHERE service_id = $1 AND (type = 'image' OR media_type = 'image')
+                   ORDER BY COALESCE(is_main_image, FALSE) DESC, COALESCE(display_order, 0) ASC, id ASC
+                   LIMIT 6"#,
+            )
+            .bind(service_id)
+            .fetch_all(&state.pg)
+            .await
+            {
+                Ok(rows) => rows.into_iter().flatten().collect::<Vec<String>>(),
                 Err(e) => {
-                    log::warn!(
-                        "⚠️ [share_service_redirect] Échec presigned URL pour image '{}': {}",
-                        path,
-                        e
-                    );
-                    state.media_storage.build_public_url(path)
+                    log::error!("❌ [share_service_redirect] Erreur SQL images: {}", e);
+                    Vec::new()
                 }
             }
-        } else {
-            state.media_storage.build_public_url(path)
-        };
-        all_service_images.push(url);
-    }
+        },
+        async {
+            match sqlx::query_scalar::<_, Option<String>>(
+                r#"SELECT path FROM media
+                   WHERE service_id = $1 AND (type = 'video' OR media_type = 'video')
+                   ORDER BY COALESCE(display_order, 0) ASC, id ASC
+                   LIMIT 3"#,
+            )
+            .bind(service_id)
+            .fetch_all(&state.pg)
+            .await
+            {
+                Ok(rows) => rows.into_iter().flatten().collect::<Vec<String>>(),
+                Err(e) => {
+                    log::error!("❌ [share_service_redirect] Erreur SQL vidéos: {}", e);
+                    Vec::new()
+                }
+            }
+        }
+    );
 
-    // ✅ CORRIGÉ: Fallback — si aucune image dans la table media, extraire depuis service_data
-    // Les images peuvent être dans data.images, data.produits[].images, data.logo, data.banniere
-    if all_service_images.is_empty() {
-        let mut fallback_paths: Vec<String> = Vec::new();
-
-        // Extraire images depuis data.images (format tableau ou {valeur: [...]})
-        let extract_image_paths = |val: Option<&Value>| -> Vec<String> {
+    // Collecter les chemins images (DB + fallback depuis service_data si DB vide)
+    let mut all_image_paths = service_image_paths;
+    if all_image_paths.is_empty() {
+        let extract_paths = |val: Option<&Value>| -> Vec<String> {
             match val {
                 Some(v) if v.is_array() => v
                     .as_array()
@@ -1733,15 +1677,11 @@ pub async fn share_service_redirect(
                 _ => Vec::new(),
             }
         };
-
-        // Service-level images
-        fallback_paths.extend(extract_image_paths(service_data.get("images")));
-        fallback_paths.extend(extract_image_paths(service_data.get("logo")));
-        fallback_paths.extend(extract_image_paths(service_data.get("banniere")));
-        fallback_paths.extend(extract_image_paths(service_data.get("banner")));
-        fallback_paths.extend(extract_image_paths(service_data.get("images_realisations")));
-
-        // Product-level images (from data.produits)
+        all_image_paths.extend(extract_paths(service_data.get("images")));
+        all_image_paths.extend(extract_paths(service_data.get("logo")));
+        all_image_paths.extend(extract_paths(service_data.get("banniere")));
+        all_image_paths.extend(extract_paths(service_data.get("banner")));
+        all_image_paths.extend(extract_paths(service_data.get("images_realisations")));
         if let Some(produits) = service_data.get("produits") {
             let produits_arr = if produits.is_array() {
                 produits.as_array().cloned()
@@ -1752,82 +1692,18 @@ pub async fn share_service_redirect(
             };
             if let Some(arr) = produits_arr {
                 for prod in &arr {
-                    fallback_paths.extend(extract_image_paths(prod.get("images")));
+                    all_image_paths.extend(extract_paths(prod.get("images")));
                 }
             }
         }
-
-        // Convert fallback paths to presigned URLs
-        for img in fallback_paths {
-            if img.is_empty() || all_service_images.contains(&img) {
-                continue;
-            }
-            let resolved_url = if img.starts_with("http://")
-                || img.starts_with("https://")
-                || img.starts_with("data:")
-            {
-                img
-            } else if state.media_storage.is_remote() {
-                match state.media_storage.generate_presigned_url(&img, 7 * 24 * 3600).await {
-                    Ok(presigned) => presigned,
-                    Err(e) => {
-                        log::warn!("⚠️ [share_service_redirect] Échec presigned URL pour image fallback '{}': {}", img, e);
-                        state.media_storage.build_public_url(&img)
-                    }
-                }
-            } else {
-                state.media_storage.build_public_url(&img)
-            };
-            all_service_images.push(resolved_url);
-        }
+        // Dédupliquer et limiter
+        all_image_paths.dedup();
+        all_image_paths.truncate(6);
     }
 
-    // ✅ AJOUTÉ: Récupérer les VIDÉOS du service depuis la table media
-    // ✅ CORRIGÉ 2026-03-08: Logger les erreurs SQL
-    let service_video_paths: Vec<String> = match sqlx::query_scalar::<_, Option<String>>(
-        r#"SELECT path FROM media
-           WHERE service_id = $1 AND (type = 'video' OR media_type = 'video')
-           ORDER BY COALESCE(display_order, 0) ASC, id ASC"#,
-    )
-    .bind(service_id)
-    .fetch_all(&state.pg)
-    .await
-    {
-        Ok(rows) => rows.into_iter().flatten().collect(),
-        Err(e) => {
-            log::error!(
-                "❌ [share_service_redirect] Erreur SQL vidéos service_id={}: {}",
-                service_id,
-                e
-            );
-            Vec::new()
-        }
-    };
-
-    let mut all_service_videos: Vec<String> = Vec::new();
-    for path in &service_video_paths {
-        let url = if path.starts_with("http://") || path.starts_with("https://") {
-            path.clone()
-        } else if state.media_storage.is_remote() {
-            match state.media_storage.generate_presigned_url(path, 7 * 24 * 3600).await {
-                Ok(presigned) => presigned,
-                Err(e) => {
-                    log::warn!(
-                        "⚠️ [share_service_redirect] Échec presigned URL pour vidéo '{}': {}",
-                        path,
-                        e
-                    );
-                    state.media_storage.build_public_url(path)
-                }
-            }
-        } else {
-            state.media_storage.build_public_url(path)
-        };
-        all_service_videos.push(url);
-    }
-
-    // Extraire vidéos depuis service_data.videos (fallback)
-    if all_service_videos.is_empty() {
+    // Collecter les chemins vidéos (DB + fallback depuis service_data si DB vide)
+    let mut all_video_paths = service_video_paths;
+    if all_video_paths.is_empty() {
         let extract_paths = |val: Option<&Value>| -> Vec<String> {
             match val {
                 Some(v) if v.is_array() => v
@@ -1848,7 +1724,6 @@ pub async fn share_service_redirect(
             }
         };
         let mut video_fallback = extract_paths(service_data.get("videos"));
-        // Videos from products
         if let Some(produits) = service_data.get("produits") {
             let produits_arr = if produits.is_array() {
                 produits.as_array().cloned()
@@ -1864,31 +1739,65 @@ pub async fn share_service_redirect(
             }
         }
         for vid in video_fallback {
-            if vid.is_empty() || all_service_videos.contains(&vid) {
-                continue;
+            if !vid.is_empty() && !all_video_paths.contains(&vid) {
+                all_video_paths.push(vid);
             }
-            let resolved_url = if vid.starts_with("http://")
-                || vid.starts_with("https://")
-                || vid.starts_with("data:")
-            {
-                vid
-            } else if state.media_storage.is_remote() {
-                match state.media_storage.generate_presigned_url(&vid, 7 * 24 * 3600).await {
-                    Ok(presigned) => presigned,
-                    Err(e) => {
-                        log::warn!("⚠️ [share_service_redirect] Échec presigned URL pour vidéo fallback '{}': {}", vid, e);
-                        state.media_storage.build_public_url(&vid)
-                    }
-                }
-            } else {
-                state.media_storage.build_public_url(&vid)
-            };
-            all_service_videos.push(resolved_url);
         }
+        all_video_paths.truncate(3);
     }
 
+    // ✅ OPTIMISÉ 2026-03-11: Résoudre TOUTES les URLs pré-signées EN PARALLÈLE
+    let (all_service_images, all_service_videos) = tokio::join!(
+        join_all(all_image_paths.iter().map(|path| {
+            let ms = &state.media_storage;
+            let exp = image_expiry;
+            async move {
+                if path.starts_with("http://") || path.starts_with("https://") {
+                    path.clone()
+                } else if ms.is_remote() {
+                    match ms.generate_presigned_url(path, exp).await {
+                        Ok(presigned) => presigned,
+                        Err(e) => {
+                            log::warn!(
+                                "⚠️ [share_service] Échec presigned image '{}': {}",
+                                path,
+                                e
+                            );
+                            ms.build_public_url(path)
+                        }
+                    }
+                } else {
+                    ms.build_public_url(path)
+                }
+            }
+        })),
+        join_all(all_video_paths.iter().map(|path| {
+            let ms = &state.media_storage;
+            let exp = video_expiry;
+            async move {
+                if path.starts_with("http://") || path.starts_with("https://") {
+                    path.clone()
+                } else if ms.is_remote() {
+                    match ms.generate_presigned_url(path, exp).await {
+                        Ok(presigned) => presigned,
+                        Err(e) => {
+                            log::warn!(
+                                "⚠️ [share_service] Échec presigned vidéo '{}': {}",
+                                path,
+                                e
+                            );
+                            ms.build_public_url(path)
+                        }
+                    }
+                } else {
+                    ms.build_public_url(path)
+                }
+            }
+        }))
+    );
+
     log::info!(
-        "🖼️ [share_service_redirect] {} vidéos + {} images pour service {}",
+        "🖼️ [share_service_redirect] {} vidéos + {} images pour service {} (parallèle)",
         all_service_videos.len(),
         all_service_images.len(),
         service_id

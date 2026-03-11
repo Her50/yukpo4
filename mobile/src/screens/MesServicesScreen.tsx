@@ -2,6 +2,7 @@
 // Design moderne inspiré du frontend - Version améliorée UX niveau géant
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { FlashList } from '@shopify/flash-list';
+import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as React from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -619,6 +620,7 @@ const MesServicesScreen: React.FC = () => {
   };
 
   const handleShareService = async (service: any) => {
+    try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch (_) { }
     try {
       // Implémentation du partage avec deep linking
       const titre = service.data?.titre_service?.valeur || service.data?.titre?.valeur || service.title || 'Service Yukpo';

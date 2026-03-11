@@ -1,6 +1,7 @@
 // @ts-nocheck
 // ✅ MIGRÉ: Utilise react-native-reanimated pour de meilleures performances
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import * as Haptics from 'expo-haptics';
 import React, { useCallback, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
@@ -1139,6 +1140,7 @@ const MesProduitsScreen: React.FC = () => {
 
     // Partager un produit
     const handleShareProduct = async (product: ManagedProduct) => {
+        try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch (_) { }
         try {
             // ✅ NOUVEAU 2026-01-XX: Utiliser la fonction utilitaire pour générer le message de partage uniforme
             // Extraire la localisation si disponible (depuis les données brutes du produit)
