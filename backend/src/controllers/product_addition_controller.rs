@@ -37,7 +37,8 @@ pub async fn process_product_creation(
     service_id: i32,
     user_id: i32,
     product_data: &Value,
-    images_to_process: &[String], // ✅ CORRIGÉ: Ne plus ignorer les images
+    images_to_process: &[String],
+    videos_to_process: &[String], // ✅ NOUVEAU 2026-03-11: Support vidéos séparé
 ) -> AppResult<Value> {
     use crate::utils::log::log_info;
 
@@ -434,20 +435,168 @@ pub async fn process_product_creation(
                     }
                 }
 
-                // ✅ NOUVEAU: Logger le résultat final du traitement des médias
+                // ✅ NOUVEAU: Logger le résultat final du traitement des images
                 if !images_to_process.is_empty() {
                     if media_processing_success && media_insertion_count > 0 {
                         log::info!(
-                        "[process_product_creation] ✅ Traitement médias réussi: {} média(x) sauvegardé(s)",
+                        "[process_product_creation] ✅ Traitement images réussi: {} image(s) sauvegardée(s)",
                         media_insertion_count
                     );
                     } else {
                         log::error!(
-                        "[process_product_creation] ❌ ÉCHEC traitement médias: {} média(x) attendu(s), {} sauvegardé(s)",
+                        "[process_product_creation] ❌ ÉCHEC traitement images: {} image(s) attendue(s), {} sauvegardée(s)",
                         images_to_process.len(),
                         media_insertion_count
                     );
                     }
+                }
+
+                // ✅ NOUVEAU 2026-03-11: Traiter les vidéos séparément (type = "video")
+                if !videos_to_process.is_empty() {
+                    log::info!(
+                        "[process_product_creation] 🎬 Traitement de {} vidéo(s) pour produit {} (product_id: {})",
+                        videos_to_process.len(),
+                        product_index,
+                        real_product_id
+                    );
+
+                    let mut valid_videos: Vec<String> = Vec::new();
+                    for (idx, video_data) in videos_to_process.iter().enumerate() {
+                        if video_data.is_empty() {
+                            log::warn!(
+                                "[process_product_creation] ⚠️ Vidéo {} est vide, ignorée",
+                                idx
+                            );
+                            continue;
+                        }
+                        let is_url =
+                            video_data.starts_with("http://") || video_data.starts_with("https://");
+                        let is_base64 =
+                            !is_url && (video_data.starts_with("data:") || video_data.len() > 100);
+                        if is_url || is_base64 {
+                            valid_videos.push(video_data.clone());
+                        } else {
+                            log::warn!(
+                                "[process_product_creation] ⚠️ Vidéo {} format invalide, ignorée",
+                                idx
+                            );
+                        }
+                    }
+
+                    if !valid_videos.is_empty() {
+                        use crate::services::media_storage_service::MediaStorageService;
+                        use crate::services::optimized_media_processor::{
+                            MediaItem, OptimizedMediaProcessor, OptimizedMediaProcessorConfig,
+                        };
+                        use std::path::PathBuf;
+
+                        let config = OptimizedMediaProcessorConfig {
+                            max_concurrent: 5,
+                            db_batch_size: 10,
+                            generate_thumbnails: false,
+                            adaptive_compression: false,
+                            use_signature_cache: false,
+                        };
+
+                        let storage_root = PathBuf::from(
+                            std::env::var("UPLOAD_STORAGE_ROOT")
+                                .unwrap_or_else(|_| "uploads".to_string()),
+                        );
+                        use crate::config::storage::MediaStorageConfig;
+                        let storage_config = MediaStorageConfig::from_env();
+                        let media_storage =
+                            std::sync::Arc::new(MediaStorageService::new(storage_config));
+
+                        let processor = OptimizedMediaProcessor::new(
+                            pool.clone(),
+                            storage_root,
+                            media_storage,
+                            config,
+                        );
+
+                        let mut media_items: Vec<MediaItem> = Vec::new();
+                        for video_data in &valid_videos {
+                            let is_base64 = !video_data.starts_with("http://")
+                                && !video_data.starts_with("https://");
+                            media_items.push(MediaItem::new_image(video_data.clone(), is_base64));
+                        }
+
+                        // Calculer le display_order de départ (après les images)
+                        let video_display_order_start = media_insertion_count as i32;
+
+                        match processor
+                            .process_media_batch(
+                                service_id,
+                                Some(product_index.try_into().unwrap()),
+                                media_items,
+                            )
+                            .await
+                        {
+                            Ok(processed) => {
+                                log::info!(
+                                    "[process_product_creation] ✅ {} vidéo(s) traitée(s), insertion dans table media",
+                                    processed.len()
+                                );
+
+                                for (idx, media) in processed.iter().enumerate() {
+                                    let display_order = video_display_order_start + idx as i32;
+
+                                    match sqlx::query(
+                                        r#"
+                                        INSERT INTO media (
+                                            service_id, product_id, product_index, type, path,
+                                            is_main_image, display_order, uploaded_at,
+                                            image_signature, image_hash, image_metadata
+                                        )
+                                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                                        "#,
+                                    )
+                                    .bind(service_id)
+                                    .bind(&real_product_id)
+                                    .bind(product_index)
+                                    .bind("video") // ✅ Type "video" au lieu de "image"
+                                    .bind(&media.file_path)
+                                    .bind(false) // Vidéos ne sont pas l'image principale
+                                    .bind(display_order)
+                                    .bind(chrono::Utc::now().naive_utc())
+                                    .bind(&media.image_signature)
+                                    .bind(&media.image_hash)
+                                    .bind(&media.image_metadata)
+                                    .execute(&*pool)
+                                    .await
+                                    {
+                                        Ok(_) => {
+                                            media_insertion_count += 1;
+                                            log::info!(
+                                                "[process_product_creation] ✅ Vidéo {} insérée (path: {})",
+                                                idx,
+                                                media.file_path
+                                            );
+                                        }
+                                        Err(e) => {
+                                            log::error!(
+                                                "[process_product_creation] ❌ Erreur insertion vidéo {}: {:?}",
+                                                idx,
+                                                e
+                                            );
+                                        }
+                                    }
+                                }
+                            }
+                            Err(e) => {
+                                log::error!(
+                                    "[process_product_creation] ❌ Erreur traitement batch vidéos: {}",
+                                    e
+                                );
+                                media_processing_success = false;
+                            }
+                        }
+                    }
+
+                    log::info!(
+                        "[process_product_creation] 🎬 Résultat vidéos: {} total média(x) sauvegardé(s)",
+                        media_insertion_count
+                    );
                 }
             }
 
@@ -937,6 +1086,89 @@ pub async fn add_product_to_service(
         ));
     }
 
+    // ✅ NOUVEAU 2026-03-11: Extraire les VIDÉOS séparément (même logique que images)
+    let mut videos_to_process: Vec<String> = Vec::new();
+
+    if let Some(prod_obj) = product_data_original.as_object() {
+        // Réutiliser extract_from_field (déjà défini plus haut) pour les vidéos
+        fn extract_video_field(
+            field_name: &str,
+            value: &serde_json::Value,
+            videos: &mut Vec<String>,
+        ) -> usize {
+            let mut count = 0;
+            match value {
+                serde_json::Value::Array(arr) => {
+                    for item in arr {
+                        if let Some(s) = item.as_str() {
+                            if !s.is_empty() {
+                                videos.push(s.to_string());
+                                count += 1;
+                            }
+                        } else if let Some(obj) = item.as_object() {
+                            if let Some(url) = obj
+                                .get("url")
+                                .or_else(|| obj.get("path"))
+                                .or_else(|| obj.get("valeur"))
+                            {
+                                if let Some(s) = url.as_str() {
+                                    if !s.is_empty() {
+                                        videos.push(s.to_string());
+                                        count += 1;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                serde_json::Value::String(s) => {
+                    if !s.is_empty() {
+                        videos.push(s.clone());
+                        count += 1;
+                    }
+                }
+                serde_json::Value::Object(obj) => {
+                    if let Some(valeur) = obj.get("valeur") {
+                        count += extract_video_field(field_name, valeur, videos);
+                    }
+                }
+                _ => {}
+            }
+            count
+        }
+
+        let video_fields = [
+            "videoUrls",      // Upload préalable (priorité)
+            "videos",         // URLs ou base64
+            "video_base64",   // Rétrocompatibilité
+            "videos_base64",  // Base64 array
+            "product_videos", // Format alternatif
+            "productVideos",  // Format camelCase
+            "video_urls",     // Format snake_case
+            "video_url",      // Format snake_case (singulier)
+            "media_videos",   // Format media
+            "mediaVideos",    // Format camelCase
+        ];
+
+        for field_name in &video_fields {
+            if let Some(value) = prod_obj.get(*field_name) {
+                let count = extract_video_field(field_name, value, &mut videos_to_process);
+                if count > 0 {
+                    log_info(&format!(
+                        "[add_product_to_service] ✅ Trouvé {} vidéo(s) dans champ '{}'",
+                        count, field_name
+                    ));
+                }
+            }
+        }
+    }
+
+    log_info(&format!(
+        "[add_product_to_service] 📊 Total médias extraits: {} image(s) + {} vidéo(s)",
+        images_to_process.len(),
+        videos_to_process.len()
+    ));
+
     // ✅ Nettoyer les médias du JSON (seront sauvegardés séparément)
     let mut product_data_cleaned = request.product_data.clone();
     let mut removed_count = 0;
@@ -953,6 +1185,7 @@ pub async fn add_product_to_service(
             user.id,
             request.product_data.clone(),
             images_to_process.clone(),
+            videos_to_process.clone(),
             Some(5), // Priority normale
         )
         .await?;

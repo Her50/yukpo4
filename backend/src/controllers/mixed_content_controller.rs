@@ -504,14 +504,19 @@ async fn fetch_video_feed_from_media(
             s.user_id as seller_user_id,
             u.name as seller_name,
             u.avatar_url as seller_avatar,
-            -- Récupérer la première image du même service comme thumbnail
-            (
-                SELECT m2.path FROM media m2 
-                WHERE m2.service_id = m.service_id 
-                AND (m2.type = 'image' OR m2.media_type = 'image')
-                AND m2.path IS NOT NULL
-                ORDER BY COALESCE(m2.is_main_image, FALSE) DESC, m2.id ASC
-                LIMIT 1
+            -- ✅ URL HLS transcodée si disponible (meilleure qualité adaptative)
+            m.hls_url as hls_url,
+            -- ✅ Thumbnail transcodée (haute résolution) > image du service
+            COALESCE(
+                m.thumbnail_url,
+                (
+                    SELECT m2.path FROM media m2 
+                    WHERE m2.service_id = m.service_id 
+                    AND (m2.type = 'image' OR m2.media_type = 'image')
+                    AND m2.path IS NOT NULL
+                    ORDER BY COALESCE(m2.is_main_image, FALSE) DESC, m2.id ASC
+                    LIMIT 1
+                )
             ) as thumbnail_path,
             -- Récupérer le nom du produit depuis service_products
             (
@@ -550,6 +555,7 @@ async fn fetch_video_feed_from_media(
         let media_id: i32 = row.try_get("id")?;
         let service_id: i32 = row.try_get("service_id")?;
         let video_path: String = row.try_get("video_path")?;
+        let hls_url: Option<String> = row.try_get("hls_url").ok().flatten();
         let thumbnail_path: Option<String> = row.try_get("thumbnail_path").ok().flatten();
         let service_data: Value = row.get::<Option<_>, _>("service_data").unwrap_or(json!({}));
         let category: Option<String> = row.try_get("category").ok().flatten();
@@ -560,6 +566,7 @@ async fn fetch_video_feed_from_media(
 
         // Construire les URLs CDN/S3 à partir des paths
         let video_url = build_media_url_with_fallback(state, &video_path);
+        let hls_video_url = hls_url.as_ref().map(|h| build_media_url_with_fallback(state, h));
         let thumbnail_url =
             thumbnail_path.as_ref().map(|t| build_media_url_with_fallback(state, t));
 
@@ -593,6 +600,7 @@ async fn fetch_video_feed_from_media(
                 "video": video_url,
                 "videoUrl": video_url,
                 "videos": [video_url],
+                "hlsUrl": hls_video_url,
                 "thumbnail": thumbnail_url,
                 "cover": thumbnail_url,
                 "category": category,

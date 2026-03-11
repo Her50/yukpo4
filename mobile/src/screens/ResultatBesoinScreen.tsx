@@ -97,6 +97,7 @@ const ResultatBesoinScreen: React.FC = () => {
     // ✅ CORRIGÉ 2026-03-06: Ref pour suivre les vidéos actives et les arrêter proprement
     const activeVideoRefs = useRef<Map<string, Video>>(new Map());
     const isScrollingRef = useRef(false);
+    const [isScrollingState, setIsScrollingState] = useState(false);
     const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const prestatairesRef = useRef<Map<string, Prestataire>>(new Map());
     const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -264,19 +265,8 @@ const ResultatBesoinScreen: React.FC = () => {
             score += 15; // Bonus partiel si au moins la moitié correspond
         }
 
-        // ✅ CORRIGÉ 2026-03-06: Ajouter un score minimal pour les produits avec données de base
-        // Évite que le premier produit créé (avec données parfois incomplètes) soit filtré out
-        if (score === 0) {
-            // Vérifier si le produit a des données de base minimales
-            const hasBasicData = productData.id || productData.product_id ||
-                Array.isArray(productData.images) && productData.images.length > 0 ||
-                Array.isArray(productData.videos) && productData.videos.length > 0;
-
-            if (hasBasicData) {
-                score = 1; // Score minimal pour éviter d'être filtré complètement
-                if (__DEV__) console.log('[ResultatBesoinScreen] ⚠️ Score minimal appliqué pour produit avec données de base mais pas de texte:', { id: productData.id, hasImages: Array.isArray(productData.images) && productData.images.length > 0 });
-            }
-        }
+        // ✅ CORRIGÉ 2026-03-11: Supprimé le score minimal qui causait l'affichage de produits non pertinents
+        // Seuls les produits avec un vrai score de pertinence (> 0) doivent être affichés
 
         return score;
     }, [getProductName]);
@@ -1477,6 +1467,7 @@ const ResultatBesoinScreen: React.FC = () => {
     // ✅ CORRIGÉ 2026-03-06: Gestion du scroll pour arrêter les vidéos
     const handleScrollBegin = useCallback(() => {
         isScrollingRef.current = true;
+        setIsScrollingState(true); // ✅ FIX 2026-03-11: Déclencher re-render pour propager isScrolling aux cartes
         stopAllVideos();
 
         // Annuler le timeout précédent
@@ -1486,12 +1477,11 @@ const ResultatBesoinScreen: React.FC = () => {
     }, [stopAllVideos]);
 
     const handleScrollEnd = useCallback(() => {
-        isScrollingRef.current = false;
-
-        // Marquer la fin du scroll après un délai
+        // Marquer la fin du scroll après un délai pour éviter les faux positifs
         scrollTimeoutRef.current = setTimeout(() => {
             isScrollingRef.current = false;
-        }, 500);
+            setIsScrollingState(false); // ✅ FIX 2026-03-11: Déclencher re-render pour propager isScrolling aux cartes
+        }, 300);
     }, []);
 
     // ✅ CORRIGÉ 2026-03-06: Nettoyer les timeouts et vidéos au démontage
@@ -2136,7 +2126,7 @@ const ResultatBesoinScreen: React.FC = () => {
                 service={service}
                 prestataire={prestataire}
                 userLocation={userLocationMemo}
-                isScrolling={isScrollingRef.current}
+                isScrolling={isScrollingState}
                 onPress={() => {
                     // ✅ CORRIGÉ 2026-02-25: Naviguer vers la boutique du prestataire pour afficher TOUS ses produits
                     if (service?.user_id) {
@@ -2167,7 +2157,7 @@ const ResultatBesoinScreen: React.FC = () => {
                 }}
             />
         );
-    }, [userLocationMemo, getProductName, navigation]); // ✅ Utiliser userLocationMemo au lieu de location directement
+    }, [userLocationMemo, isScrollingState, getProductName, navigation]); // ✅ Utiliser userLocationMemo au lieu de location directement
 
     // ✅ NOUVEAU 2026-01-XX: Fonction pour rendre ProductCard pour les services (utiliser le même visuel que les produits)
     // ✅ DÉPLACÉ avant renderListItem pour éviter les problèmes de dépendances
@@ -2207,7 +2197,7 @@ const ResultatBesoinScreen: React.FC = () => {
                 service={service}
                 prestataire={prestataire}
                 userLocation={userLocationMemo}
-                isScrolling={isScrollingRef.current}
+                isScrolling={isScrollingState}
                 onPress={() => {
                     // ✅ CORRIGÉ 2026-02-25: Naviguer vers la boutique du prestataire pour afficher TOUS ses produits
                     if (service?.user_id) {
@@ -2228,7 +2218,7 @@ const ResultatBesoinScreen: React.FC = () => {
                 }}
             />
         );
-    }, [userLocationMemo, getPrestataire, navigation]); // ✅ Utiliser handleServiceClick au lieu de handleServicePress
+    }, [userLocationMemo, isScrollingState, getPrestataire, navigation]); // ✅ Utiliser handleServiceClick au lieu de handleServicePress
 
     // ✅ NOUVEAU 2026-01-14: renderItem mémorisé pour FlatList pour éviter les re-renders
     const renderListItem = useCallback(({ item }: { item: { type: 'service' | 'product'; data: any; key: string } }) => {
@@ -2839,11 +2829,8 @@ const styles = StyleSheet.create({
         color: theme.colors.text,
     },
     servicesContainer: {
-        flex: 1,
-    },
-    servicesContainerContent: {
-        paddingHorizontal: 10,
-        paddingVertical: 2, // ✅ RÉDUIT: De 6 à 2 pour compacter l'espacement vertical
+        paddingHorizontal: 16, // ✅ CORRIGÉ 2026-03-11: Augmenté pour meilleur équilibre des cartes
+        paddingVertical: 2,
     },
     serviceCard: {
         marginBottom: 16,

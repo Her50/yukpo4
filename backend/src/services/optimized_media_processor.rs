@@ -301,7 +301,7 @@ impl OptimizedMediaProcessor {
             let img = image::load_from_memory(image_bytes)
                 .map_err(|e| AppError::Internal(format!("Erreur décodage thumbnail: {}", e)))?;
 
-            let thumbnail = img.resize_exact(200, 200, image::imageops::FilterType::Lanczos3);
+            let thumbnail = img.resize(600, 600, image::imageops::FilterType::Lanczos3);
 
             let thumbnail_dir = self
                 .storage_root

@@ -16,6 +16,7 @@ pub struct ProductCreationJob {
     pub user_id: i32,
     pub product_data: Value,
     pub images_to_process: Vec<String>,
+    pub videos_to_process: Vec<String>,
     pub status: String,
     pub priority: i32,
     pub attempt_count: i32,
@@ -44,6 +45,7 @@ impl ProductCreationQueueService {
         user_id: i32,
         product_data: Value,
         images_to_process: Vec<String>,
+        videos_to_process: Vec<String>,
         priority: Option<i32>,
     ) -> AppResult<i64> {
         let priority = priority.unwrap_or(5);
@@ -51,8 +53,8 @@ impl ProductCreationQueueService {
         let job_id: i64 = sqlx::query_scalar(
             r#"
             INSERT INTO product_creation_queue 
-                (service_id, user_id, product_data, images_to_process, priority)
-            VALUES ($1, $2, $3, $4, $5)
+                (service_id, user_id, product_data, images_to_process, videos_to_process, priority)
+            VALUES ($1, $2, $3, $4, $5, $6)
             RETURNING id
             "#,
         )
@@ -60,6 +62,7 @@ impl ProductCreationQueueService {
         .bind(user_id)
         .bind(&product_data)
         .bind(&images_to_process)
+        .bind(&videos_to_process)
         .bind(priority)
         .fetch_one(&*self.pool)
         .await
@@ -82,6 +85,7 @@ impl ProductCreationQueueService {
             SELECT 
                 id, service_id, user_id, product_data, 
                 images_to_process,
+                COALESCE(videos_to_process, '{}') as videos_to_process,
                 status, priority, attempt_count, max_attempts,
                 error_message, result_data, 
                 created_at, started_at, completed_at
@@ -102,6 +106,9 @@ impl ProductCreationQueueService {
                 product_data: row.try_get("product_data")?,
                 images_to_process: row
                     .try_get::<Vec<String>, _>("images_to_process")
+                    .unwrap_or_default(),
+                videos_to_process: row
+                    .try_get::<Vec<String>, _>("videos_to_process")
                     .unwrap_or_default(),
                 status: row.try_get("status")?,
                 priority: row.try_get("priority")?,
@@ -126,6 +133,7 @@ impl ProductCreationQueueService {
             SELECT 
                 id, service_id, user_id, product_data,
                 images_to_process,
+                COALESCE(videos_to_process, '{}') as videos_to_process,
                 status, priority, attempt_count, max_attempts,
                 error_message, result_data,
                 created_at, started_at, completed_at
@@ -151,6 +159,9 @@ impl ProductCreationQueueService {
                     product_data: row.try_get("product_data")?,
                     images_to_process: row
                         .try_get::<Vec<String>, _>("images_to_process")
+                        .unwrap_or_default(),
+                    videos_to_process: row
+                        .try_get::<Vec<String>, _>("videos_to_process")
                         .unwrap_or_default(),
                     status: row.try_get("status")?,
                     priority: row.try_get("priority")?,
@@ -248,11 +259,12 @@ impl ProductCreationQueueService {
         // Marquer comme en cours
         self.mark_processing(job.id).await?;
 
-        // ✅ NOUVEAU: Logger les images à traiter
+        // ✅ NOUVEAU: Logger les images et vidéos à traiter
         log::info!(
-            "[ProductCreationQueue] 📦 Job {} - {} image(s) à traiter",
+            "[ProductCreationQueue] 📦 Job {} - {} image(s) + {} vidéo(s) à traiter",
             job.id,
-            job.images_to_process.len()
+            job.images_to_process.len(),
+            job.videos_to_process.len()
         );
 
         // Traiter le job
@@ -262,6 +274,7 @@ impl ProductCreationQueueService {
             job.user_id,
             &job.product_data,
             &job.images_to_process,
+            &job.videos_to_process,
         )
         .await
         {
@@ -289,7 +302,9 @@ impl ProductCreationQueueService {
 
                 // ✅ CORRIGÉ: Ne marquer comme complété que si les médias ont été traités avec succès
                 // (ou s'il n'y avait pas d'images à traiter)
-                if !job.images_to_process.is_empty() && !media_processing_success {
+                let has_media =
+                    !job.images_to_process.is_empty() || !job.videos_to_process.is_empty();
+                if has_media && !media_processing_success {
                     let error_msg = format!(
                         "Produit créé mais échec traitement médias: {} attendu(s), {} sauvegardé(s)",
                         media_expected_count,
@@ -309,7 +324,7 @@ impl ProductCreationQueueService {
                 } else {
                     self.mark_completed(job.id, result_data.clone()).await?;
 
-                    if !job.images_to_process.is_empty() {
+                    if has_media {
                         log::info!(
                             "[ProductCreationQueue] ✅ Job {} complété avec succès - {} média(x) sauvegardé(s)",
                             job.id,
@@ -317,7 +332,7 @@ impl ProductCreationQueueService {
                         );
                     } else {
                         log::info!(
-                            "[ProductCreationQueue] ✅ Job {} complété avec succès (pas d'images à traiter)",
+                            "[ProductCreationQueue] ✅ Job {} complété avec succès (pas de médias à traiter)",
                             job.id
                         );
                     }

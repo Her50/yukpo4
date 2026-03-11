@@ -23,7 +23,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { commentsApi } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
-import { NativeButton, NativeCard } from './NativeDesign';
+import { NativeCard } from './NativeDesign';
 import SafeIcon from './SafeIcon';
 import UserMentionPicker from './UserMentionPicker';
 
@@ -907,6 +907,23 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                     >
                         <Text style={styles.emojiButtonText}>😀</Text>
                     </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[
+                            styles.composerSendButton,
+                            (composerContent.trim() || composerAudio || (composerRating !== null && composerRating !== undefined))
+                                ? styles.composerSendButtonActive
+                                : undefined,
+                        ]}
+                        onPress={handleSubmitComment}
+                        disabled={submitting}
+                        activeOpacity={0.7}
+                    >
+                        {submitting ? (
+                            <ActivityIndicator size="small" color="#fff" />
+                        ) : (
+                            <SafeIcon name="send" size={18} color="#fff" />
+                        )}
+                    </TouchableOpacity>
                 </View>
             </View>
 
@@ -951,13 +968,6 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                 </View>
             )}
 
-            <View style={styles.composerActions}>
-                <NativeButton
-                    title={editingTarget ? 'Mettre à jour' : 'Publier'}
-                    onPress={handleSubmitComment}
-                    disabled={submitting}
-                />
-            </View>
         </View>
     );
 
@@ -1639,6 +1649,17 @@ const styles = StyleSheet.create({
     composerActionButtonActive: {
         backgroundColor: '#FEE2E2',
         borderColor: modernColors.error,
+    },
+    composerSendButton: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: '#D1D5DB',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    composerSendButtonActive: {
+        backgroundColor: modernColors.primary,
     },
     emojiButtonText: {
         fontSize: 20,

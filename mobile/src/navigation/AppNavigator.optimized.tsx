@@ -529,6 +529,7 @@ const getPartnerDashboardScreen = (partnerType: string | undefined): string | nu
     'agence_voyage': 'AgenceVoyageForm',
     'agencedevoyage': 'AgenceVoyageForm',
     'agencevoyage': 'AgenceVoyageForm',
+    'agence_de_voyage': 'AgenceVoyageForm', // ✅ AJOUT: normalisation depuis "agence de voyage"
     'covoiturage': 'CovoiturageForm',
     'taxi': 'TaxiForm',
     'chauffeur': 'TaxiForm',
@@ -545,6 +546,12 @@ const getPartnerDashboardScreen = (partnerType: string | undefined): string | nu
     'etablissement_scolaire': 'OrientationPartnerDashboard',
     'livrescolaire': 'OrientationPartnerDashboard',
     'livre_scolaire': 'OrientationPartnerDashboard',
+    // Autres types avec espaces (normalisation)
+    'livraison_courses_marche': 'GestionServicesSpecialises',
+    'demenagement': 'GestionServicesSpecialises',
+    'transport': 'GestionServicesSpecialises',
+    'telecom': 'GestionServicesSpecialises',
+    'immobilier': 'ImmobilierForm',
   };
   const normalized = partnerType.toLowerCase().trim().replace(/\s+/g, '');
   return map[partnerType] || map[normalized] || null;

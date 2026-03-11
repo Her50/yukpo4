@@ -5229,19 +5229,47 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
                   origineChampsForMedia = autocompleteData.origine_champs || 'formulaire';
 
+                  // ✅ CORRIGÉ 2026-03-11: Extraire variation_prix depuis les valeurs du formulaire
+                  // Avant ce fix, variation_prix n'était PAS inclus dans produitObj, causant l'absence
+                  // de variantes de prix pour le premier produit dans ResultatBesoinScreen/ProductCard
+                  const variationPrixValue = valeursFormulaire.variabilite_prix
+                    || valeursFormulaire.price_variant
+                    || valeursFormulaire.variation_prix
+                    || autocompleteData.variation_prix;
+
                   // Construire l'objet produit enrichi des médias
                   const produitObj: any = {
                     nom: nomProduit,
+                    nom_produit: nomProduit, // ✅ AJOUTÉ: Alias attendu par ProductCard/ResultatBesoinScreen
                     prix: prixProduit,
+                    prix_produit: prixProduit, // ✅ AJOUTÉ: Alias attendu par ProductCard
                     categorie: categorieProduit,
+                    categorie_produit: categorieProduit, // ✅ AJOUTÉ: Alias
                     description: descriptionProduit,
+                    description_produit: descriptionProduit, // ✅ AJOUTÉ: Alias
                     devise: deviseProduit,
+                    devise_produit: deviseProduit, // ✅ AJOUTÉ: Alias
                     combinaison_brute: combinationString,
                     characteristic_vector: characteristicVector,
                     product_labels: productLabelsFromAutocomplete,
                     sous_caracteristiques: autocompleteData.sous_caracteristiques || {},
                     origine_champs: autocompleteData.origine_champs || 'formulaire'
                   };
+
+                  // ✅ CORRIGÉ 2026-03-11: Inclure variation_prix dans le produit (pas seulement au niveau produits)
+                  if (variationPrixValue && typeof variationPrixValue === 'object') {
+                    // Dé-wrapper le format {type_donnee, valeur} si nécessaire
+                    const unwrapped = (variationPrixValue.type_donnee && variationPrixValue.valeur)
+                      ? variationPrixValue.valeur
+                      : variationPrixValue;
+                    produitObj.variation_prix = unwrapped;
+                    produitObj.variabilite_prix = unwrapped;
+                    console.log('[FormulaireYukpoIntelligentScreen] ✅ variation_prix inclus dans produitObj:', {
+                      hasModalites: !!unwrapped?.modalites,
+                      modalitesCount: Array.isArray(unwrapped?.modalites) ? unwrapped.modalites.length : 0,
+                      variable: unwrapped?.variable
+                    });
+                  }
 
                   if (compressedMedia?.images?.length) {
                     // ✅ CORRECTION: Limiter à 10 images maximum (limite backend)

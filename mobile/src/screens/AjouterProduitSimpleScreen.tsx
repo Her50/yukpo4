@@ -3024,9 +3024,12 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                         setShowDeliveryAutoPrompt(false);
                         setExistingDeliveryConfig(null);
                         setSuccessModalData(null);
-                        // Rediriger vers Mes Services
+                        // ✅ CORRIGÉ 2026-03-11: Utiliser reset() pour quitter AjouterProduitSimpleScreen
                         setTimeout(() => {
-                            (navigation as any).navigate('Main', { screen: 'Services' });
+                            (navigation as any).reset({
+                                index: 0,
+                                routes: [{ name: 'Main', params: { screen: 'Services' } }],
+                            });
                         }, 300);
                     }}
                     onReuseExisting={async () => {
@@ -3058,17 +3061,19 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                     storage_location_id: c.storage_location_id || null,
                                 });
                                 if (saveResponse.success) {
+                                    setExistingDeliveryConfig(null);
+                                    setSuccessModalData(null);
                                     Alert.alert(
                                         '✅ Configuration copiée',
-                                        `La configuration de livraison de "${existingDeliveryConfig.productName}" a été appliquée à "${successModalData.productName}".`,
-                                        [{
-                                            text: 'OK', onPress: () => {
-                                                setExistingDeliveryConfig(null);
-                                                setSuccessModalData(null);
-                                                (navigation as any).navigate('Main', { screen: 'Services' });
-                                            }
-                                        }]
+                                        `La configuration de livraison de "${existingDeliveryConfig.productName}" a été appliquée à "${successModalData.productName}".`
                                     );
+                                    // ✅ CORRIGÉ 2026-03-11: Utiliser reset() pour quitter AjouterProduitSimpleScreen
+                                    setTimeout(() => {
+                                        (navigation as any).reset({
+                                            index: 0,
+                                            routes: [{ name: 'Main', params: { screen: 'Services' } }],
+                                        });
+                                    }, 300);
                                 } else {
                                     Alert.alert('Erreur', 'Impossible de copier la configuration. Veuillez configurer manuellement.');
                                     setProductDeliveryConfigData({
@@ -3102,30 +3107,33 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                     onClose={() => {
                         setShowProductDeliveryConfig(false);
                         setProductDeliveryConfigData(null);
-                        // Après fermeture, rediriger vers Mes Services
+                        // ✅ CORRIGÉ 2026-03-11: Utiliser reset() pour quitter AjouterProduitSimpleScreen
+                        // navigate() ne pop pas le stack screen, l'utilisateur restait sur l'écran de création
                         setTimeout(() => {
-                            (navigation as any).navigate('Main', { screen: 'Services' });
+                            (navigation as any).reset({
+                                index: 0,
+                                routes: [{ name: 'Main', params: { screen: 'Services' } }],
+                            });
                         }, 300);
                     }}
                     serviceId={productDeliveryConfigData.serviceId}
                     productIndex={productDeliveryConfigData.productIndex}
                     productName={productDeliveryConfigData.productName}
                     onSuccess={() => {
-                        // Configuration sauvegardée avec succès
+                        // ✅ CORRIGÉ 2026-03-11: Fermer le modal et naviguer immédiatement vers MesProduitsScreen
                         setShowProductDeliveryConfig(false);
                         setProductDeliveryConfigData(null);
                         Alert.alert(
                             '✅ Configuration terminée',
-                            'Votre produit a été configuré avec succès !',
-                            [
-                                {
-                                    text: 'OK',
-                                    onPress: () => {
-                                        (navigation as any).navigate('Main', { screen: 'Services' });
-                                    }
-                                }
-                            ]
+                            'Votre produit a été configuré avec succès !'
                         );
+                        // Utiliser reset() pour quitter le stack et aller à l'écran de gestion des produits
+                        setTimeout(() => {
+                            (navigation as any).reset({
+                                index: 0,
+                                routes: [{ name: 'Main', params: { screen: 'Services' } }],
+                            });
+                        }, 300);
                     }}
                 />
             )}

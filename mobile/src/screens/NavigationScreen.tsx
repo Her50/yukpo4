@@ -105,14 +105,14 @@ const CHECKPOINT_ALERT_DISTANCE: Record<string, number> = {
     speed_bump: 500,
 };
 const REPORT_TYPES = [
-    { type: 'radar', icon: '🚓', label: 'Radar', bg: '#FEE2E2' },
-    { type: 'police', icon: '👮', label: 'Police / Gendarmerie', bg: '#DBEAFE' },
-    { type: 'transport_control', icon: '🛂', label: 'Min. Transports', bg: '#CCFBF1' },
-    { type: 'road_check', icon: '🚧', label: 'Contrôle routier', bg: '#FEF9C3' },
-    { type: 'accident', icon: '🚗', label: 'Accident', bg: '#FEF3C7' },
-    { type: 'danger', icon: '⚠️', label: 'Danger', bg: '#FEE2E2' },
-    { type: 'road_works', icon: '🚧', label: 'Travaux', bg: '#FEF3C7' },
-    { type: 'speed_bump', icon: '🔺', label: 'Dos-d\'âne', bg: '#F3F4F6' },
+    { type: 'radar', icon: '📸', short: 'Radar', label: 'Radar', bg: '#FEE2E2', color: '#DC2626' },
+    { type: 'police', icon: '👮', short: 'Police', label: 'Police / Gendarmerie', bg: '#DBEAFE', color: '#2563EB' },
+    { type: 'transport_control', icon: '🛂', short: 'Transport', label: 'Min. Transports', bg: '#CCFBF1', color: '#0D9488' },
+    { type: 'road_check', icon: '🚧', short: 'Contrôle', label: 'Contrôle routier', bg: '#FEF9C3', color: '#D97706' },
+    { type: 'accident', icon: '🚨', short: 'Accident', label: 'Accident', bg: '#FEF3C7', color: '#EA580C' },
+    { type: 'danger', icon: '⚠️', short: 'Danger', label: 'Danger', bg: '#FEE2E2', color: '#DC2626' },
+    { type: 'road_works', icon: '🔧', short: 'Travaux', label: 'Travaux', bg: '#FEF3C7', color: '#F97316' },
+    { type: 'speed_bump', icon: '🔶', short: 'Dos-d\'âne', label: 'Dos-d\'âne', bg: '#F3F4F6', color: '#7C3AED' },
 ];
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -258,6 +258,7 @@ const NavigationScreen: React.FC = () => {
     const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
     const [isLocationSelectorFocused, setIsLocationSelectorFocused] = useState(false);
     const [isHorizontalScrolling, setIsHorizontalScrolling] = useState(false);
+    const [showReportBar, setShowReportBar] = useState(false);
     const routeCardWidth = width * 0.72 + 10;
     const mapRef = useRef<MapView>(null);
     const scrollViewRef = useRef<ScrollView>(null);
@@ -530,26 +531,28 @@ const NavigationScreen: React.FC = () => {
                         </TouchableOpacity>
                     </View>
 
-                    {/* ━━ BARRE D'ALERTES COMMUNAUTAIRES (toujours visible) ━━ */}
-                    <View style={st.alertBar}>
-                        <View style={st.alertBarHeader}>
-                            <Text style={st.alertBarIcon}>🚨</Text>
-                            <Text style={st.alertBarTitle}>Signaler une alerte</Text>
-                        </View>
-                        <View style={st.alertBarButtons}>
+                    {/* ━━ BARRE D'ALERTES COMMUNAUTAIRES (compacte, toggle) ━━ */}
+                    <TouchableOpacity style={st.alertToggle} onPress={() => setShowReportBar(!showReportBar)} activeOpacity={0.7}>
+                        <SafeIcon name="AlertTriangle" size={14} color={modernColors.textSecondary} />
+                        <Text style={st.alertToggleText}>Signaler une alerte</Text>
+                        {checkpoints.length > 0 && <View style={st.alertCountBadge}><Text style={st.alertCountText}>{checkpoints.length}</Text></View>}
+                        <SafeIcon name={showReportBar ? 'ChevronUp' : 'ChevronDown'} size={14} color={modernColors.textSecondary} />
+                    </TouchableOpacity>
+                    {showReportBar && (
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={st.alertChipScroll} contentContainerStyle={st.alertChipContent}>
                             {REPORT_TYPES.map(r => (
                                 <TouchableOpacity
                                     key={r.type}
-                                    style={[st.alertBarBtn, { backgroundColor: r.bg }]}
-                                    onPress={() => reportCheckpoint(r.type)}
+                                    style={[st.alertChip, { backgroundColor: r.bg, borderColor: r.color + '30' }]}
+                                    onPress={() => { reportCheckpoint(r.type); setShowReportBar(false); }}
                                     activeOpacity={0.7}
                                 >
-                                    <Text style={st.alertBarBtnIcon}>{r.icon}</Text>
-                                    <Text style={st.alertBarBtnLabel}>{r.label}</Text>
+                                    <Text style={st.alertChipIcon}>{r.icon}</Text>
+                                    <Text style={[st.alertChipLabel, { color: r.color }]}>{r.short}</Text>
                                 </TouchableOpacity>
                             ))}
-                        </View>
-                    </View>
+                        </ScrollView>
+                    )}
 
                     {/* ━━━━━━ MODE: TRACKING ━━━━━━ */}
                     {isTracking && selectedRoute ? (
@@ -1093,15 +1096,16 @@ const st = StyleSheet.create({
     headerBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: modernColors.surface, borderWidth: 1.5, borderColor: modernColors.border, alignItems: 'center', justifyContent: 'center' },
     headerBtnActive: { backgroundColor: modernColors.primary, borderColor: modernColors.primary },
 
-    // Alert bar (toujours visible en haut)
-    alertBar: { backgroundColor: '#FFF', borderRadius: 16, padding: 14, marginBottom: 12, borderWidth: 1.5, borderColor: '#FEE2E2', shadowColor: '#EF4444', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 3 },
-    alertBarHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
-    alertBarIcon: { fontSize: 20 },
-    alertBarTitle: { fontSize: 15, fontWeight: '800', color: '#DC2626' },
-    alertBarButtons: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-    alertBarBtn: { flexDirection: 'column', alignItems: 'center', justifyContent: 'center', paddingVertical: 10, paddingHorizontal: 12, borderRadius: 14, minWidth: (width - 32 - 14 * 2 - 8 * 2) / 3, flex: 1 },
-    alertBarBtnIcon: { fontSize: 22, marginBottom: 3 },
-    alertBarBtnLabel: { fontSize: 11, fontWeight: '700', color: '#374151', textAlign: 'center' },
+    // Barre d'alertes compacte (toggle + chips labellés)
+    alertToggle: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 10, paddingHorizontal: 14, marginBottom: 4, borderRadius: 12, backgroundColor: modernColors.surface, borderWidth: 1, borderColor: modernColors.border },
+    alertToggleText: { flex: 1, fontSize: 13, fontWeight: '600', color: modernColors.textSecondary },
+    alertCountBadge: { backgroundColor: '#EF4444', borderRadius: 10, paddingHorizontal: 7, paddingVertical: 1, minWidth: 20, alignItems: 'center' },
+    alertCountText: { fontSize: 11, fontWeight: '700', color: '#FFF' },
+    alertChipScroll: { marginBottom: 12, maxHeight: 44 },
+    alertChipContent: { flexDirection: 'row', gap: 8, paddingHorizontal: 2, paddingVertical: 4 },
+    alertChip: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1 },
+    alertChipIcon: { fontSize: 14 },
+    alertChipLabel: { fontSize: 12, fontWeight: '700' },
 
     // Search
     searchCard: { marginBottom: 12, padding: 16 },

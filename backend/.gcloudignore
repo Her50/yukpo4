@@ -5,7 +5,7 @@
 target/
 
 # Blender binaries
-blender/
+# blender/
 
 # Analyses et rapports
 analyses_db/
@@ -13,6 +13,7 @@ analyses_db/
 # Documentation
 *.md
 !README.md
+!ia_intentions_instructions.md
 
 # Scripts dev
 *.ps1

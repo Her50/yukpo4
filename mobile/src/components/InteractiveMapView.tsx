@@ -60,7 +60,6 @@ const InteractiveMapView = forwardRef<InteractiveMapViewRef, InteractiveMapViewP
     // ✅ Garder une ref pour le zoom courant (mis à jour par onRegionChangeComplete)
     const currentRegionRef = useRef(startRegion);
     const [mapReady, setMapReady] = useState(false);
-    const [mapError, setMapError] = useState(false);
 
     // ✅ NOUVEAU: Exposer la méthode animateToRegion via ref
     useImperativeHandle(ref, () => ({
@@ -94,15 +93,15 @@ const InteractiveMapView = forwardRef<InteractiveMapViewRef, InteractiveMapViewP
         }
     }, [selectedLocation, mapReady]);
 
-    // ✅ CORRECTION CRASH: Timeout pour le chargement de la carte
+    // ✅ FIX 2026-03-11: Timeout court — forcer mapReady pour que l'animation vers selectedLocation puisse se déclencher
+    // Plus d'overlay opaque, donc pas besoin d'attendre longtemps
     useEffect(() => {
         const timeout = setTimeout(() => {
             if (!mapReady) {
                 console.warn('[InteractiveMapView] ⚠️ Map loading timeout — forçage mapReady');
-                setMapError(true); // ✅ FIX: Signaler aussi l'erreur pour afficher le fallback
                 setMapReady(true);
             }
-        }, 8000); // ✅ FIX: 8s au lieu de 5s pour laisser plus de temps au rendu natif
+        }, 5000);
 
         return () => clearTimeout(timeout);
     }, [mapReady]);
@@ -224,13 +223,6 @@ const InteractiveMapView = forwardRef<InteractiveMapViewRef, InteractiveMapViewP
         }
     };
 
-    // ✅ FIX 2026-03-07: Réessayer le chargement de la carte
-    const handleRetryMap = () => {
-        console.log('[InteractiveMapView] 🔄 Retry map loading');
-        setMapError(false);
-        setMapReady(false);
-    };
-
     return (
         <View
             style={styles.container}
@@ -242,27 +234,12 @@ const InteractiveMapView = forwardRef<InteractiveMapViewRef, InteractiveMapViewP
                 }
             }}
         >
-            {/* Loading overlay */}
-            {!mapReady && !mapError && (
-                <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="large" color={modernColors.primary} />
-                    <Text style={styles.loadingText}>Chargement de la carte...</Text>
-                </View>
-            )}
-
-            {/* ✅ FIX 2026-03-07: Erreur visible quand la carte ne charge pas */}
-            {mapError && mapReady && (
-                <View style={styles.errorContainer}>
-                    <SafeIcon name="alert-triangle" size={40} color="#F59E0B" />
-                    <Text style={styles.errorTitle}>Carte non disponible</Text>
-                    <Text style={styles.errorSubtext}>
-                        La carte Google Maps n'a pas pu se charger.
-                        Vérifiez votre connexion internet.
-                    </Text>
-                    <TouchableOpacity style={styles.retryBtn} onPress={handleRetryMap}>
-                        <SafeIcon name="refresh-cw" size={16} color="#FFFFFF" />
-                        <Text style={styles.retryBtnText}>Réessayer</Text>
-                    </TouchableOpacity>
+            {/* ✅ FIX 2026-03-11: Indicateur de chargement NON-BLOQUANT (pas d'overlay opaque) */}
+            {/* L'overlay opaque empêchait MapView de s'initialiser sur certains Android */}
+            {!mapReady && (
+                <View style={styles.loadingBanner}>
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                    <Text style={styles.loadingBannerText}>Chargement de la carte...</Text>
                 </View>
             )}
 
@@ -282,11 +259,10 @@ const InteractiveMapView = forwardRef<InteractiveMapViewRef, InteractiveMapViewP
                 onMapReady={() => {
                     console.log('[InteractiveMapView] ✅ Map ready');
                     setMapReady(true);
-                    setMapError(false);
                 }}
                 onError={(error) => {
                     console.error('[InteractiveMapView] ❌ Map error:', error.nativeEvent || error);
-                    setMapError(true);
+                    // ✅ FIX 2026-03-11: Forcer mapReady même en cas d'erreur pour débloquer l'UI
                     setMapReady(true);
                 }}
                 showsUserLocation={true}
@@ -425,55 +401,23 @@ const styles = StyleSheet.create({
     map: {
         flex: 1,
     },
-    loadingContainer: {
-        ...StyleSheet.absoluteFillObject,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: '#F9FAFB',
-        zIndex: 1000,
-    },
-    loadingText: {
-        marginTop: 12,
-        fontSize: 14,
-        color: '#6B7280',
-        fontWeight: '500',
-    },
-    errorContainer: {
-        ...StyleSheet.absoluteFillObject,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: '#FFF9E6',
-        zIndex: 999,
-        padding: 20,
-    },
-    errorTitle: {
-        marginTop: 12,
-        fontSize: 16,
-        fontWeight: '700',
-        color: '#92400E',
-        textAlign: 'center',
-    },
-    errorSubtext: {
-        marginTop: 8,
-        fontSize: 13,
-        color: '#78716C',
-        textAlign: 'center',
-        lineHeight: 18,
-    },
-    retryBtn: {
+    loadingBanner: {
+        position: 'absolute',
+        top: 50,
+        left: 12,
         flexDirection: 'row',
         alignItems: 'center',
-        marginTop: 16,
-        paddingHorizontal: 20,
-        paddingVertical: 10,
-        borderRadius: 8,
-        backgroundColor: modernColors.primary,
+        backgroundColor: 'rgba(0,0,0,0.6)',
+        paddingHorizontal: 14,
+        paddingVertical: 8,
+        borderRadius: 20,
+        zIndex: 10,
         gap: 8,
     },
-    retryBtnText: {
-        fontSize: 14,
-        fontWeight: '600',
+    loadingBannerText: {
+        fontSize: 13,
         color: '#FFFFFF',
+        fontWeight: '500',
     },
     mapControls: {
         position: 'absolute',

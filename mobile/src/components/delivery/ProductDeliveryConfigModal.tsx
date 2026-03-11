@@ -109,8 +109,10 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
     const [showVehicleModal, setShowVehicleModal] = useState(false);
 
     // ✅ NOUVEAU: Array d'adresses de récupération du produit (au moins une obligatoire)
+    // ✅ FIX 2026-03-11: Ajout placeName pour afficher le nom du lieu au lieu des coordonnées GPS
     const [pickupAddresses, setPickupAddresses] = useState<Array<{
         id: string; // ID temporaire unique pour React key
+        placeName: string; // Nom du lieu (saisi par l'utilisateur ou depuis autocomplete)
         address: string;
         location: LocationObject | null;
         latitude: number;
@@ -156,6 +158,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
             });
             setPickupAddresses([{
                 id: `pickup_reset_${Date.now()}`,
+                placeName: '',
                 address: '',
                 location: null,
                 latitude: 0,
@@ -217,6 +220,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                         };
                         setPickupAddresses([{
                             id: `pickup_reuse_${Date.now()}`,
+                            placeName: pickupLocationObj?.place_name || '',
                             address: pickupAddr,
                             location: pickupLocationObj,
                             latitude: pickupLat,
@@ -335,6 +339,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                                     }
                                     return [{
                                         id: `pickup_product_${Date.now()}`,
+                                        placeName: locationObj?.place_name || addressText,
                                         address: addressText,
                                         location: locationObj,
                                         latitude,
@@ -387,6 +392,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                 // En mode transversal, initialiser avec une adresse vide
                 setPickupAddresses([{
                     id: `pickup_${Date.now()}`,
+                    placeName: '',
                     address: '',
                     location: null,
                     latitude: 0,
@@ -425,12 +431,13 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                     if (updated[0]) {
                         updated[0] = {
                             ...updated[0],
+                            placeName: selectedLocation.name || selectedLocation.address,
                             address: selectedLocation.address,
                             latitude: selectedLocation.latitude,
                             longitude: selectedLocation.longitude,
                             location: {
                                 raw: selectedLocation.address,
-                                place_name: selectedLocation.address,
+                                place_name: selectedLocation.name || selectedLocation.address,
                                 components: {},
                                 coordinates: { lat: selectedLocation.latitude, lng: selectedLocation.longitude }
                             }
@@ -447,6 +454,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
         const newId = `pickup_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
         setPickupAddresses(prev => [...prev, {
             id: newId,
+            placeName: '',
             address: '',
             location: null,
             latitude: 0,
@@ -462,6 +470,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
             if (filtered.length === 0) {
                 return [{
                     id: `pickup_${Date.now()}`,
+                    placeName: '',
                     address: '',
                     location: null,
                     latitude: 0,
@@ -543,12 +552,14 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
 
                     return pickupAddr ? [{
                         id: `pickup_existing_${Date.now()}`,
+                        placeName: pickupLocationObj?.place_name || pickupAddr,
                         address: pickupAddr,
                         location: pickupLocationObj,
                         latitude: pickupLat,
                         longitude: pickupLng,
                     }] : [{
                         id: `pickup_${Date.now()}`,
+                        placeName: '',
                         address: '',
                         location: null,
                         latitude: 0,
@@ -611,6 +622,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                                         };
                                         return [{
                                             id: `pickup_prefill_${Date.now()}`,
+                                            placeName: pickupLocationObj?.place_name || pickupAddr,
                                             address: pickupAddr,
                                             location: pickupLocationObj,
                                             latitude: pickupLat,
@@ -695,6 +707,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                             if (addressText) {
                                 setPickupAddresses([{
                                     id: `pickup_product_${Date.now()}`,
+                                    placeName: locationObj?.place_name || addressText,
                                     address: addressText,
                                     location: locationObj,
                                     latitude,
@@ -708,6 +721,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                     // Si pas de lieu_produit non plus, initialiser avec une adresse vide
                     setPickupAddresses([{
                         id: `pickup_${Date.now()}`,
+                        placeName: '',
                         address: '',
                         location: null,
                         latitude: 0,
@@ -720,6 +734,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
             // Initialiser avec une adresse vide en cas d'erreur
             setPickupAddresses([{
                 id: `pickup_${Date.now()}`,
+                placeName: '',
                 address: '',
                 location: null,
                 latitude: 0,
@@ -900,9 +915,13 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                 }
 
                 if (errorCount === 0) {
-                    Alert.alert('Succès', `Configuration appliquée à ${successCount} produit(s) avec succès`);
-                    onSuccess?.();
-                    onClose();
+                    // ✅ CORRIGÉ 2026-03-11: Appeler UNIQUEMENT onSuccess (pas onClose en plus)
+                    if (onSuccess) {
+                        onSuccess();
+                    } else {
+                        Alert.alert('Succès', `Configuration appliquée à ${successCount} produit(s) avec succès`);
+                        onClose();
+                    }
                 } else {
                     Alert.alert('Partiellement réussi', `${successCount} produit(s) configuré(s), ${errorCount} erreur(s)`);
                 }
@@ -947,9 +966,14 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
 
                         if (response.success) {
                             console.log('[SAUVEGARDE_CONFIG_LIVRAISON] ✅ === SUCCÈS sauvegarde ===');
-                            Alert.alert('Succès', 'Configuration de livraison sauvegardée avec succès');
-                            onSuccess?.();
-                            onClose();
+                            // ✅ CORRIGÉ 2026-03-11: Appeler UNIQUEMENT onSuccess (qui gère la fermeture et la navigation)
+                            // Ne PAS appeler onClose() en plus, sinon double Alert + navigation conflictuelle
+                            if (onSuccess) {
+                                onSuccess();
+                            } else {
+                                Alert.alert('Succès', 'Configuration de livraison sauvegardée avec succès');
+                                onClose();
+                            }
                             return; // Sortir de la fonction si succès
                         } else {
                             // ✅ LOGS DÉTAILLÉS: Capturer l'erreur du backend
@@ -1158,36 +1182,49 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                                             style={styles.removeButton}
                                             onPress={() => handleRemovePickupAddress(pickupAddr.id)}
                                         >
-                                            <SafeIcon name="x" size={18} color={modernColors.danger || '#EF4444'} />
+                                            <SafeIcon name="x" size={18} color="#EF4444" />
                                         </TouchableOpacity>
                                     )}
                                 </View>
                                 <TouchableOpacity
-                                    style={[styles.select, !pickupAddr.address && styles.selectPlaceholder]}
+                                    style={[styles.locationSelector, pickupAddr.placeName ? styles.locationSelectorFilled : null]}
                                     onPress={() => {
-                                        // ✅ CORRIGÉ: Pas besoin de setSelectedLocation, le modal utilise directement currentLocation
                                         setGpsModalForIndex(index);
                                         setShowGPSModal(true);
                                     }}
                                 >
-                                    <Text style={[styles.selectText, !pickupAddr.address && styles.selectPlaceholderText]}>
-                                        {pickupAddr.address || 'Cliquez pour sélectionner le lieu de récupération GPS...'}
-                                    </Text>
-                                    <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
+                                    {pickupAddr.placeName ? (
+                                        <View style={styles.locationSelectorContent}>
+                                            <View style={styles.locationIconContainer}>
+                                                <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
+                                            </View>
+                                            <View style={styles.locationTextContainer}>
+                                                <Text style={styles.locationPlaceName} numberOfLines={1}>
+                                                    {pickupAddr.placeName}
+                                                </Text>
+                                                {pickupAddr.address && pickupAddr.address !== pickupAddr.placeName && (
+                                                    <Text style={styles.locationAddress} numberOfLines={2}>
+                                                        {pickupAddr.address}
+                                                    </Text>
+                                                )}
+                                            </View>
+                                            <SafeIcon name="edit-2" size={16} color={modernColors.textSecondary} />
+                                        </View>
+                                    ) : (
+                                        <View style={styles.locationSelectorContent}>
+                                            <SafeIcon name="map-pin" size={20} color={modernColors.textSecondary} />
+                                            <Text style={styles.locationPlaceholder}>
+                                                Cliquez pour sélectionner un lieu...
+                                            </Text>
+                                        </View>
+                                    )}
                                 </TouchableOpacity>
-                                {/* ✅ CORRIGÉ: Afficher l'adresse textuelle si disponible */}
-                                {pickupAddr.address && (
-                                    <Text style={styles.addressText}>
-                                        📍 {pickupAddr.address}
+                                {/* ✅ FIX 2026-03-11: Coordonnées GPS en petit sous le lieu, uniquement si pertinent */}
+                                {pickupAddr.latitude !== 0 && pickupAddr.longitude !== 0 && (
+                                    <Text style={styles.gpsText}>
+                                        GPS: {pickupAddr.latitude.toFixed(4)}, {pickupAddr.longitude.toFixed(4)}
                                     </Text>
                                 )}
-                                {/* Afficher les coordonnées GPS seulement si disponibles et si l'adresse textuelle ne les contient pas */}
-                                {pickupAddr.latitude !== 0 && pickupAddr.longitude !== 0 &&
-                                    !pickupAddr.address.includes(pickupAddr.latitude.toFixed(2)) && (
-                                        <Text style={styles.gpsText}>
-                                            Coordonnées: {pickupAddr.latitude.toFixed(6)}, {pickupAddr.longitude.toFixed(6)}
-                                        </Text>
-                                    )}
                             </View>
                         ))}
                     </View>
@@ -1431,103 +1468,39 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                 </ScrollView>
             </View>
 
-            {/* ✅ NOUVEAU: Modal GPS pour sélection précise des adresses de récupération */}
+            {/* ✅ FIX 2026-03-11: Modal GPS avec onSelectLocation pour récupérer le nom du lieu */}
             <ModernGPSModal
                 visible={showGPSModal}
                 onClose={() => {
                     setShowGPSModal(false);
                     setGpsModalForIndex(null);
                 }}
-                onSelect={async (coordinatesString) => {
-                    // Parser les coordonnées depuis le format string "lat,lng"
-                    const firstPoint = coordinatesString.split('|')[0].split(',');
-                    if (firstPoint.length === 2) {
-                        const lat = parseFloat(firstPoint[0]);
-                        const lng = parseFloat(firstPoint[1]);
-
-                        if (!isNaN(lat) && !isNaN(lng)) {
-                            const index = gpsModalForIndex ?? 0;
-
-                            // ✅ CORRIGÉ 2026-01-12: Utiliser reverseGeocodeWithRetry avec retry et fallback
-                            try {
-                                const { reverseGeocodeWithRetry } = await import('../../utils/reverseGeocoding');
-                                const geocodeResult = await reverseGeocodeWithRetry(lat, lng, {
-                                    fallbackAddress: coordinatesString
-                                });
-
-                                if (geocodeResult) {
-                                    const fullAddress = geocodeResult.address;
-                                    const placeName = geocodeResult.name || geocodeResult.street || geocodeResult.district || geocodeResult.city || 'Lieu sélectionné';
-
-                                    // Construire un LocationObject avec le nom complet
-                                    const locationObj: LocationObject = {
-                                        raw: fullAddress,
-                                        place_name: placeName, // Nom principal du lieu (établissement, rue, quartier)
-                                        components: {
-                                            quartier: geocodeResult.district || undefined,
-                                            ville: geocodeResult.city || undefined,
-                                            region: geocodeResult.region || undefined,
-                                            pays: geocodeResult.country || undefined,
-                                        },
-                                        coordinates: { lat, lng },
-                                    };
-
-                                    // Trouver l'adresse à mettre à jour
-                                    const currentAddr = pickupAddresses[index];
-                                    if (currentAddr) {
-                                        handleUpdatePickupAddress(currentAddr.id, {
-                                            address: fullAddress,
-                                            location: locationObj,
-                                            latitude: lat,
-                                            longitude: lng,
-                                        });
-                                    }
-                                } else {
-                                    // Fallback si pas de géocodage inverse
-                                    const address = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
-                                    const locationObj: LocationObject = {
-                                        raw: address,
-                                        place_name: 'Lieu sélectionné',
-                                        components: {},
-                                        coordinates: { lat, lng }
-                                    };
-
-                                    const currentAddr = pickupAddresses[index];
-                                    if (currentAddr) {
-                                        handleUpdatePickupAddress(currentAddr.id, {
-                                            address: address,
-                                            location: locationObj,
-                                            latitude: lat,
-                                            longitude: lng,
-                                        });
-                                    }
-                                }
-                            } catch (error) {
-                                console.error('[ProductDeliveryConfigModal] Erreur géocodage inverse:', error);
-                                // Fallback en cas d'erreur
-                                const address = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
-                                const locationObj: LocationObject = {
-                                    raw: address,
-                                    place_name: 'Lieu sélectionné',
-                                    components: {},
-                                    coordinates: { lat, lng }
-                                };
-
-                                const currentAddr = pickupAddresses[index];
-                                if (currentAddr) {
-                                    handleUpdatePickupAddress(currentAddr.id, {
-                                        address: address,
-                                        location: locationObj,
-                                        latitude: lat,
-                                        longitude: lng,
-                                    });
-                                }
-                            }
-
-                            setShowGPSModal(false);
-                            setGpsModalForIndex(null);
-                        }
+                onSelect={(coordinatesString) => {
+                    // ✅ Fallback: si onSelectLocation n'est pas appelé (ancien flow)
+                    // Le gros du travail est fait dans onSelectLocation ci-dessous
+                    console.log('[ProductDeliveryConfigModal] onSelect (fallback):', coordinatesString);
+                }}
+                onSelectLocation={(locationData: SelectedLocationData) => {
+                    // ✅ FIX 2026-03-11: Utiliser directement le nom du lieu depuis le modal
+                    const index = gpsModalForIndex ?? 0;
+                    const currentAddr = pickupAddresses[index];
+                    if (currentAddr) {
+                        const locationObj: LocationObject = {
+                            raw: locationData.address,
+                            place_name: locationData.placeName || locationData.address,
+                            components: {},
+                            coordinates: { lat: locationData.latitude, lng: locationData.longitude },
+                        };
+                        handleUpdatePickupAddress(currentAddr.id, {
+                            placeName: locationData.placeName || locationData.address,
+                            address: locationData.address,
+                            location: locationObj,
+                            latitude: locationData.latitude,
+                            longitude: locationData.longitude,
+                        });
                     }
+                    setShowGPSModal(false);
+                    setGpsModalForIndex(null);
                 }}
                 currentLocation={
                     gpsModalForIndex !== null && pickupAddresses[gpsModalForIndex]?.location?.coordinates
@@ -1939,6 +1912,50 @@ const styles = StyleSheet.create({
     },
     selectContainer: {
         marginTop: 12,
+    },
+    // ✅ FIX 2026-03-11: Styles pour l'affichage amélioré des lieux de récupération
+    locationSelector: {
+        borderWidth: 1,
+        borderColor: '#D1D5DB',
+        borderRadius: 12,
+        padding: 14,
+        backgroundColor: '#FFFFFF',
+    },
+    locationSelectorFilled: {
+        borderColor: modernColors.primary,
+        backgroundColor: '#FAFBFF',
+    },
+    locationSelectorContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+    },
+    locationIconContainer: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: `${modernColors.primary}15`,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    locationTextContainer: {
+        flex: 1,
+    },
+    locationPlaceName: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: modernColors.text,
+    },
+    locationAddress: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
+        marginTop: 2,
+        lineHeight: 16,
+    },
+    locationPlaceholder: {
+        fontSize: 14,
+        color: modernColors.textSecondary,
+        flex: 1,
     },
 });
 

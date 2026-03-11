@@ -1000,25 +1000,30 @@ pub async fn update_product(
     }
 
     // ✅ FIX BUG 4: Traiter les nouveaux médias base64 (images et vidéos ajoutés lors de l'édition)
-    let all_base64: Vec<String> =
-        base64_images.into_iter().chain(base64_videos.into_iter()).collect();
+    // ✅ CORRIGÉ 2026-03-11: Garder la distinction image/vidéo au lieu de tout fusionner
+    // Avant ce fix, toutes les vidéos étaient insérées avec type='image' dans la table media
+    let all_base64_with_type: Vec<(String, &str)> = base64_images
+        .into_iter()
+        .map(|d| (d, "image"))
+        .chain(base64_videos.into_iter().map(|d| (d, "video")))
+        .collect();
 
-    if !all_base64.is_empty() {
+    if !all_base64_with_type.is_empty() {
         log::info!(
             "✏️ [update_product] Traitement de {} nouveau(x) média(s) base64...",
-            all_base64.len()
+            all_base64_with_type.len()
         );
 
-        // Valider les médias
-        let mut valid_media: Vec<String> = Vec::new();
-        for media_data in &all_base64 {
+        // Valider les médias (garder le type)
+        let mut valid_media: Vec<(String, &str)> = Vec::new();
+        for (media_data, media_type) in &all_base64_with_type {
             if media_data.is_empty() {
                 continue;
             }
             let is_url = media_data.starts_with("http://") || media_data.starts_with("https://");
             let is_base64 = !is_url && (media_data.starts_with("data:") || media_data.len() > 100);
             if is_url || is_base64 {
-                valid_media.push(media_data.clone());
+                valid_media.push((media_data.clone(), media_type));
             }
         }
 
@@ -1051,11 +1056,18 @@ pub async fn update_product(
                 config,
             );
 
+            // ✅ CORRIGÉ 2026-03-11: Utiliser new_image ou new_video selon le type réel du média
             let mut media_items: Vec<MediaItem> = Vec::new();
-            for media_data in &valid_media {
+            let mut media_types: Vec<String> = Vec::new(); // Garder les types pour l'INSERT
+            for (media_data, media_type) in &valid_media {
                 let is_base64 =
                     !media_data.starts_with("http://") && !media_data.starts_with("https://");
-                media_items.push(MediaItem::new_image(media_data.clone(), is_base64));
+                if *media_type == "video" {
+                    media_items.push(MediaItem::new_video(media_data.clone(), is_base64));
+                } else {
+                    media_items.push(MediaItem::new_image(media_data.clone(), is_base64));
+                }
+                media_types.push(media_type.to_string());
             }
 
             // Calculer le display_order de départ (après les médias existants conservés)
@@ -1075,6 +1087,9 @@ pub async fn update_product(
                     for (idx, media) in processed.iter().enumerate() {
                         let display_order = existing_kept_count + idx as i32;
                         let is_main = display_order == 0;
+                        // ✅ CORRIGÉ 2026-03-11: Utiliser le vrai type (image/video) au lieu de "image" hardcodé
+                        let actual_type =
+                            media_types.get(idx).map(|s| s.as_str()).unwrap_or("image");
 
                         match sqlx::query(
                             r#"
@@ -1088,7 +1103,7 @@ pub async fn update_product(
                         )
                         .bind(service_id_i32)
                         .bind(payload.product_index)
-                        .bind("image")
+                        .bind(actual_type)
                         .bind(&media.file_path)
                         .bind(is_main)
                         .bind(display_order)
@@ -1101,11 +1116,18 @@ pub async fn update_product(
                         {
                             Ok(_) => {
                                 insertion_count += 1;
+                                log::info!(
+                                    "✅ [update_product] Média {} inséré: type={}, path={}",
+                                    idx,
+                                    actual_type,
+                                    &media.file_path
+                                );
                             }
                             Err(e) => {
                                 log::error!(
-                                    "❌ [update_product] Erreur insertion media {}: {:?}",
+                                    "❌ [update_product] Erreur insertion media {} (type={}): {:?}",
                                     idx,
+                                    actual_type,
                                     e
                                 );
                             }

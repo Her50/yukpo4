@@ -989,8 +989,8 @@ const VideoCreationWizardScreen: React.FC = () => {
                 story_template_id: storyTemplateId,
                 auto_storyboard: autoStoryboard,
                 use_ai_templates: mode === 'expert',
-                use_service_mediatech: mode === 'expert',
-                include_publicite_assets: mode === 'expert',
+                use_service_mediatech: true,
+                include_publicite_assets: true,
                 music_mode: musicMode !== 'none' ? musicMode : undefined,
                 voiceover_lang: voiceoverEnabled ? voiceoverLang : undefined,
                 voiceover_script: voiceoverEnabled ? brief : undefined,
@@ -1364,6 +1364,20 @@ const VideoCreationWizardScreen: React.FC = () => {
             return;
         }
 
+        // ✅ CORRIGÉ 2026-03-11: Vérifier que le mode ai_virtual est disponible
+        // Le service de génération vidéo IA (Runway/Sora/Pika) n'est pas encore activé côté serveur
+        if (creationSource === 'ai_virtual') {
+            Alert.alert(
+                '🚧 Fonctionnalité bientôt disponible',
+                'La génération de vidéo 100% IA (Runway/Sora/Pika) n\'est pas encore activée sur le serveur.\n\nUtilisez le mode "Mes médias" pour créer une vidéo à partir de vos photos et images existantes.',
+                [
+                    { text: 'OK', style: 'cancel' },
+                    { text: 'Utiliser mes médias', onPress: () => setCreationSource('media') },
+                ]
+            );
+            return;
+        }
+
         // ✅ Vérifier le solde avant de lancer la génération
         if (costEstimation && costEstimation.affordable === false) {
             const balanceStr = costEstimation.current_balance_fcfa != null
@@ -1436,8 +1450,8 @@ const VideoCreationWizardScreen: React.FC = () => {
             story_template_id: storyTemplateId,
             auto_storyboard: autoStoryboard,
             use_ai_templates: mode === 'expert',
-            use_service_mediatech: mode === 'expert',
-            include_publicite_assets: mode === 'expert',
+            use_service_mediatech: true,
+            include_publicite_assets: true,
             selected_media_ids: creationSource === 'ai_virtual' ? [] : selectedMediaIds,
             music_mode: musicMode !== 'none' ? musicMode : undefined,
             voiceover_lang: voiceoverEnabled ? voiceoverLang : undefined,

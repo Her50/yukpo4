@@ -203,19 +203,21 @@ impl HybridImageSearchService {
             }
             Err(_) => {
                 // Fallback vers prompt optimisé embedded
-                match include_str!("../../ia_prompts/recherche_image_prompt_optimized.md") {
-                    embedded if !embedded.is_empty() => {
-                        log_info("[HybridImageSearch] ✅ Prompt optimisé chargé depuis embedded");
-                        embedded.to_string()
+                match tokio::fs::read_to_string("ia_prompts/recherche_image_prompt_optimized.md")
+                    .await
+                {
+                    Ok(embedded) if !embedded.is_empty() => {
+                        log_info("[HybridImageSearch] ✅ Prompt optimisé chargé depuis fichier");
+                        embedded
                     }
                     _ => {
                         log_warn("[HybridImageSearch] ⚠️ Prompt optimisé non trouvé, fallback vers prompt complet");
                         // Dernier fallback vers prompt complet si optimisé non disponible
-                        tokio::fs::read_to_string("backend/ia_prompts/recherche_image_prompt.md")
+                        tokio::fs::read_to_string("ia_prompts/recherche_image_prompt.md")
                             .await
                             .unwrap_or_else(|_| {
-                                include_str!("../../ia_prompts/recherche_image_prompt.md")
-                                    .to_string()
+                                // Fallback hardcoded si aucun fichier n'est disponible
+                                "Analyse cette image et identifie les produits, objets ou services visibles. Sois précis et concis.".to_string()
                             })
                     }
                 }

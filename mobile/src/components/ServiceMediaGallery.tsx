@@ -66,6 +66,27 @@ const extractUrl = (item: any): string => {
     return (item.valeur || item.url || item.path || '').toString().trim();
 };
 
+// ✅ FIX 2026-03-11: Normaliser la clé de déduplication pour éviter les doublons
+// Le même fichier peut apparaître comme chemin relatif OU URL complète selon la source
+const normalizeDedupeKey = (raw: string): string => {
+    if (!raw) return '';
+    let key = raw.trim();
+    // Retirer les préfixes URL connus pour obtenir le chemin relatif
+    const prefixes = [
+        /^https?:\/\/[^/]+\/api\/media\/files\//i,
+        /^https?:\/\/storage\.googleapis\.com\/[^/]+\//i,
+        /^https?:\/\/[^/]+\.run\.app\/api\/media\/files\//i,
+    ];
+    for (const prefix of prefixes) {
+        key = key.replace(prefix, '');
+    }
+    // Retirer les query params (presigned URLs)
+    key = key.split('?')[0];
+    // Retirer le slash initial
+    key = key.replace(/^\//, '');
+    return key.toLowerCase();
+};
+
 const ServiceMediaGallery: React.FC<ServiceMediaGalleryProps> = ({
     visible,
     onClose,
@@ -100,8 +121,10 @@ const ServiceMediaGallery: React.FC<ServiceMediaGalleryProps> = ({
             const addMedia = (type: 'image' | 'video', rawUrl: any, description: string, category?: string, source?: string) => {
                 const raw = extractUrl(rawUrl);
                 const url = buildMediaUrl(raw);
-                if (url && !seenUrls.has(url)) {
-                    seenUrls.add(url);
+                // ✅ FIX 2026-03-11: Déduplication sur clé normalisée (chemin relatif)
+                const dedupeKey = normalizeDedupeKey(raw) || normalizeDedupeKey(url);
+                if (url && dedupeKey && !seenUrls.has(dedupeKey)) {
+                    seenUrls.add(dedupeKey);
                     mediaList.push({ type, url, description, category, source });
                 }
             };
@@ -122,6 +145,7 @@ const ServiceMediaGallery: React.FC<ServiceMediaGalleryProps> = ({
 
             // ✅ Charger les produits depuis service_products (noms + product_data media)
             let productNameMap: Record<number, string> = {};
+            let apiProductsLoaded = false;
             if (serviceId) {
                 try {
                     const productsResp = await apiGet<any[]>(`/api/services/${serviceId}/products`);
@@ -141,6 +165,7 @@ const ServiceMediaGallery: React.FC<ServiceMediaGalleryProps> = ({
                         extractMediaArray(pd.images).forEach((img: any) => addMedia('image', img, name, cat, 'service_products'));
                         extractMediaArray(pd.videos).forEach((vid: any) => addMedia('video', vid, name, cat, 'service_products'));
                     });
+                    apiProductsLoaded = productsList.length > 0;
                     console.log(`[ServiceMediaGallery] ✅ ${productsList.length} produits depuis API`);
                 } catch (e) {
                     console.warn('[ServiceMediaGallery] ⚠️ Produits API non disponible:', e);
@@ -171,14 +196,18 @@ const ServiceMediaGallery: React.FC<ServiceMediaGalleryProps> = ({
             }
 
             // Fallback: produits dans service.data (ancien systeme embedded)
-            const products = service.data?.produits || [];
-            if (Array.isArray(products)) {
-                products.forEach((product: any, index: number) => {
-                    const name = product.nom || `Produit ${index + 1}`;
-                    const type = product.type || 'autre';
-                    extractMediaArray(product.images).forEach((img: any) => addMedia('image', img, name, type, 'services_data'));
-                    extractMediaArray(product.videos).forEach((vid: any) => addMedia('video', vid, name, type, 'services_data'));
-                });
+            // ✅ FIX 2026-03-11: Ne charger que si l'API products n'a pas déjà fourni les données
+            // Sinon c'est exactement le même product_data → doublons garantis
+            if (!apiProductsLoaded) {
+                const products = service.data?.produits || [];
+                if (Array.isArray(products)) {
+                    products.forEach((product: any, index: number) => {
+                        const name = product.nom || `Produit ${index + 1}`;
+                        const type = product.type || 'autre';
+                        extractMediaArray(product.images).forEach((img: any) => addMedia('image', img, name, type, 'services_data'));
+                        extractMediaArray(product.videos).forEach((vid: any) => addMedia('video', vid, name, type, 'services_data'));
+                    });
+                }
             }
 
             // Trier: branding d'abord (Logo, Bannière), puis produits groupés par nom, puis génériques

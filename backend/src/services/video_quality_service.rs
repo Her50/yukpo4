@@ -25,25 +25,25 @@ impl VideoQuality {
                 name: "360p".to_string(),
                 width: 640,
                 height: 360,
-                bitrate: "500k".to_string(),
+                bitrate: "800k".to_string(),
             },
             VideoQuality {
                 name: "480p".to_string(),
                 width: 854,
                 height: 480,
-                bitrate: "1000k".to_string(),
+                bitrate: "1500k".to_string(),
             },
             VideoQuality {
                 name: "720p".to_string(),
                 width: 1280,
                 height: 720,
-                bitrate: "2500k".to_string(),
+                bitrate: "4000k".to_string(),
             },
             VideoQuality {
                 name: "1080p".to_string(),
                 width: 1920,
                 height: 1080,
-                bitrate: "5000k".to_string(),
+                bitrate: "8000k".to_string(),
             },
         ]
     }
@@ -113,9 +113,9 @@ impl VideoQualityService {
                 "-b:a",
                 "128k",
                 "-preset",
-                "medium",
+                "slow",
                 "-crf",
-                "23",
+                "18",
                 "-y",
                 output_path.to_str().unwrap(),
             ];

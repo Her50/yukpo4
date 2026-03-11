@@ -5620,7 +5620,31 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             clearInterval(pollingIntervalRef.current);
         }
 
+        // ✅ CORRIGÉ 2026-03-11: Timeout de 10 minutes pour éviter le polling infini
+        const POLLING_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
+        const pollingStartTime = Date.now();
+
         const pollStatus = async () => {
+            // Vérifier le timeout
+            if (Date.now() - pollingStartTime > POLLING_TIMEOUT_MS) {
+                console.error('[ProductVideoCreationModal] ⏰ Timeout polling après 10 minutes');
+                if (pollingIntervalRef.current) {
+                    clearInterval(pollingIntervalRef.current);
+                    pollingIntervalRef.current = null;
+                }
+                setJobStatus('failed');
+                setCurrentJobId(null);
+                setIsSubmitting(false);
+                Alert.alert(
+                    '⏰ Délai dépassé',
+                    'La génération de la vidéo prend trop de temps (> 10 min).\n\n' +
+                    'Cela peut être dû à une surcharge du serveur.\n\n' +
+                    'Veuillez réessayer plus tard.',
+                    [{ text: 'OK' }]
+                );
+                return;
+            }
+
             try {
                 const statusResponse = await mediaApi.getVideoJobStatus(jobId);
                 if (!statusResponse.success || !statusResponse.data) {

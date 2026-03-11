@@ -48,29 +48,32 @@ export const useDeepLinkRedirect = () => {
                     'agence_voyage': 'AgenceVoyageForm',
                     'agencedevoyage': 'AgenceVoyageForm',
                     'agencevoyage': 'AgenceVoyageForm',
+                    'agence_de_voyage': 'AgenceVoyageForm', // AJOUT: normalisation depuis "agence de voyage"
                     'covoiturage': 'CovoiturageForm',
                     'taxi': 'TaxiForm',
                     'chauffeur': 'TaxiForm',
-                    // ✅ Hébergement → HotelDashboard (conçu pour hotel + meublé)
-                    'hotel': 'HotelDashboard',
-                    'meuble': 'HotelDashboard',
-                    // ✅ Commerce / Restauration
+                    // Commerce / Restauration
                     'supermarche': 'SupermarketPartnerDashboard',
                     'restaurant': 'RestaurantDashboard',
-                    // ✅ Emploi
+                    // Emploi
                     'offre_emploi': 'OffresEmploiHub',
                     'offreemploi': 'OffresEmploiHub',
                     'recruteur': 'OffresEmploiHub',
-                    // ✅ Assurance (backend utilise 'assureur')
+                    // Assurance (backend utilise 'assureur')
                     'assureur': 'AssuranceDashboard',
                     'assurance': 'AssuranceDashboard',
-                    // ✅ Éducation
+                    // Éducation
                     'etablissementscolaire': 'OrientationPartnerDashboard',
                     'etablissement_scolaire': 'OrientationPartnerDashboard',
                     'livrescolaire': 'OrientationPartnerDashboard',
                     'livre_scolaire': 'OrientationPartnerDashboard',
+                    // Autres types avec espaces (normalisation)
+                    'livraison_courses_marche': 'GestionServicesSpecialises', // normalisé depuis "livraison courses marche"
+                    'demenagement': 'GestionServicesSpecialises',
+                    'transport': 'GestionServicesSpecialises',
+                    'telecom': 'GestionServicesSpecialises',
+                    'immobilier': 'ImmobilierForm',
                     // Génériques
-                    'livraison_courses_marche': 'GestionServicesSpecialises',
                     'ecommerce': 'GestionServicesSpecialises',
                     'prestataire': 'GestionServicesSpecialises',
                     'service': 'GestionServicesSpecialises',
@@ -79,6 +82,13 @@ export const useDeepLinkRedirect = () => {
                 // ✅ FIX: Normaliser le partner_type (lowercase, supprimer espaces → underscore)
                 const normalizedType = user.partner_type.toLowerCase().trim().replace(/\s+/g, '');
                 const targetScreen = partnerTypeToScreen[user.partner_type] || partnerTypeToScreen[normalizedType];
+
+                console.log(`[useDeepLinkRedirect] 🔍 Debug partenaire:`);
+                console.log(`  - partner_type brut: "${user.partner_type}"`);
+                console.log(`  - normalizedType: "${normalizedType}"`);
+                console.log(`  - targetScreen: "${targetScreen}"`);
+                console.log(`  - mapping direct: "${partnerTypeToScreen[user.partner_type]}"`);
+                console.log(`  - mapping normalisé: "${partnerTypeToScreen[normalizedType]}"`);
 
                 if (targetScreen) {
                     console.log(`[useDeepLinkRedirect] � Redirection partenaire ${user.partner_type} → ${targetScreen}`);

@@ -900,6 +900,37 @@ pub async fn ensure_live_streaming_tables(pool: &PgPool) -> Result<(), sqlx::Err
     .execute(pool)
     .await?;
 
+    // ✅ FIX 2026-03-11: Si la table a été créée par une ancienne migration (00001014)
+    // avec un schéma différent, les colonnes attendues par le code manquent.
+    // On ajoute toutes les colonnes manquantes de manière idempotente.
+    let live_sessions_columns = vec![
+        ("livekit_room_name", "TEXT"),
+        ("livekit_participant_identity", "TEXT"),
+        ("livekit_ingress_id", "TEXT"),
+        ("livekit_ingress_url", "TEXT"),
+        ("stream_key", "TEXT"),
+        ("webrtc_url", "TEXT"),
+        ("hls_url", "TEXT"),
+        ("fallback_rtmp_url", "TEXT"),
+        ("fallback_hls_url", "TEXT"),
+        ("current_viewers", "INTEGER NOT NULL DEFAULT 0"),
+        ("peak_viewers", "INTEGER NOT NULL DEFAULT 0"),
+        ("total_watch_time_seconds", "BIGINT NOT NULL DEFAULT 0"),
+    ];
+    for (col_name, col_type) in &live_sessions_columns {
+        let query = format!(
+            "ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS {} {}",
+            col_name, col_type
+        );
+        if let Err(e) = sqlx::query(&query).execute(pool).await {
+            log::warn!(
+                "[auto_migrate] live_sessions ADD COLUMN {} skipped: {}",
+                col_name,
+                e
+            );
+        }
+    }
+
     sqlx::query("CREATE INDEX IF NOT EXISTS idx_live_sessions_status ON live_sessions(status)")
         .execute(pool)
         .await?;
@@ -930,6 +961,29 @@ pub async fn ensure_live_streaming_tables(pool: &PgPool) -> Result<(), sqlx::Err
     .execute(pool)
     .await?;
 
+    // ✅ FIX 2026-03-11: live_replays aussi peut avoir un ancien schéma
+    let live_replays_columns = vec![
+        ("replay_url", "TEXT NOT NULL DEFAULT ''"),
+        ("storage_provider", "TEXT"),
+        ("format", "TEXT"),
+        ("duration_seconds", "INTEGER"),
+        ("size_bytes", "BIGINT"),
+        ("available_at", "TIMESTAMPTZ NOT NULL DEFAULT NOW()"),
+    ];
+    for (col_name, col_type) in &live_replays_columns {
+        let query = format!(
+            "ALTER TABLE live_replays ADD COLUMN IF NOT EXISTS {} {}",
+            col_name, col_type
+        );
+        if let Err(e) = sqlx::query(&query).execute(pool).await {
+            log::warn!(
+                "[auto_migrate] live_replays ADD COLUMN {} skipped: {}",
+                col_name,
+                e
+            );
+        }
+    }
+
     sqlx::query(
         "CREATE INDEX IF NOT EXISTS idx_live_replays_session_id ON live_replays(live_session_id)",
     )
@@ -953,6 +1007,37 @@ pub async fn ensure_live_streaming_tables(pool: &PgPool) -> Result<(), sqlx::Err
     )
     .execute(pool)
     .await?;
+
+    // ✅ FIX 2026-03-11: live_session_analytics ancien schéma (00001014) est complètement différent
+    // L'ancien avait: id, live_session_id, metric_name, metric_value, recorded_at, metadata
+    // Le nouveau a: live_session_id (PK), total_viewers, hls_viewers, etc.
+    // Si l'ancien schéma est en place, ajouter les colonnes manquantes
+    let live_analytics_columns = vec![
+        ("total_viewers", "INTEGER NOT NULL DEFAULT 0"),
+        ("hls_viewers", "INTEGER NOT NULL DEFAULT 0"),
+        ("webrtc_viewers", "INTEGER NOT NULL DEFAULT 0"),
+        ("total_watch_time_seconds", "BIGINT NOT NULL DEFAULT 0"),
+        (
+            "average_watch_time_seconds",
+            "NUMERIC(10,2) NOT NULL DEFAULT 0",
+        ),
+        ("conversions", "INTEGER NOT NULL DEFAULT 0"),
+        ("revenue_cfa", "NUMERIC(14,2) NOT NULL DEFAULT 0"),
+        ("last_synced_at", "TIMESTAMPTZ NOT NULL DEFAULT NOW()"),
+    ];
+    for (col_name, col_type) in &live_analytics_columns {
+        let query = format!(
+            "ALTER TABLE live_session_analytics ADD COLUMN IF NOT EXISTS {} {}",
+            col_name, col_type
+        );
+        if let Err(e) = sqlx::query(&query).execute(pool).await {
+            log::warn!(
+                "[auto_migrate] live_session_analytics ADD COLUMN {} skipped: {}",
+                col_name,
+                e
+            );
+        }
+    }
 
     sqlx::query(
         "CREATE INDEX IF NOT EXISTS idx_live_session_analytics_last_synced ON live_session_analytics(last_synced_at)",
@@ -16989,6 +17074,29 @@ pub async fn ensure_product_creation_queue(pool: &PgPool) -> Result<(), sqlx::Er
 
     if table_exists {
         info!("✅ Table product_creation_queue existe déjà");
+
+        // ✅ NOUVEAU 2026-03-11: Ajouter colonne videos_to_process si elle n'existe pas
+        let has_videos_col = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(
+                SELECT 1 FROM information_schema.columns
+                WHERE table_schema = 'public'
+                  AND table_name = 'product_creation_queue'
+                  AND column_name = 'videos_to_process'
+            )",
+        )
+        .fetch_one(pool)
+        .await?;
+
+        if !has_videos_col {
+            info!("🔄 Ajout de la colonne videos_to_process à product_creation_queue...");
+            sqlx::query(
+                "ALTER TABLE product_creation_queue ADD COLUMN videos_to_process TEXT[] DEFAULT '{}'",
+            )
+            .execute(pool)
+            .await?;
+            info!("✅ Colonne videos_to_process ajoutée");
+        }
+
         return Ok(());
     }
 

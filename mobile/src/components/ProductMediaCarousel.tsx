@@ -114,14 +114,17 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
         }
 
         // ✅ NOUVEAU 2026-03-02: Autoplay vidéo quand le slide vidéo devient visible par scroll utilisateur
-        if (allMedia[index]?.type === 'video' && playingVideoIndex !== index) {
+        if (allMedia[index]?.type === 'video' && playingVideoIndex !== index && !isScrolling) {
             // ✅ FIX 2026-03-11: Mettre le ref immédiatement pour bloquer l'auto-scroll
             videoPlayingRef.current = index;
             setTimeout(() => {
                 const videoRef = videoRefs.current.get(index);
-                if (videoRef) {
+                if (videoRef && !isScrolling && videoPlayingRef.current === index) {
                     videoRef.playAsync().catch(() => undefined);
                     setPlayingVideoIndex(index);
+                } else {
+                    // Si le scroll a recommencé entre-temps, annuler l'autoplay
+                    videoPlayingRef.current = null;
                 }
             }, 300);
         }
@@ -218,13 +221,13 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
         }
     }, [isScrolling, playingVideoIndex, allMedia, onStopVideo]);
 
-    // ✅ FIX 2026-03-11: Auto-play la première vidéo si elle est au slide 0
+    // ✅ FIX 2026-03-11: Auto-play la première vidéo SEULEMENT si le carousel est visible et pas en scroll
     useEffect(() => {
-        if (allMedia.length > 0 && allMedia[0]?.type === 'video') {
+        if (allMedia.length > 0 && allMedia[0]?.type === 'video' && !isScrolling) {
             // Délai pour laisser le composant se monter et la ref vidéo se créer
             const timer = setTimeout(() => {
                 const videoRef = videoRefs.current.get(0);
-                if (videoRef && videoPlayingRef.current === null) {
+                if (videoRef && videoPlayingRef.current === null && !isScrolling) {
                     videoRef.playAsync().catch(() => undefined);
                     setPlayingVideoIndex(0);
                     videoPlayingRef.current = 0;
@@ -232,7 +235,7 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
             }, 600);
             return () => clearTimeout(timer);
         }
-    }, [allMedia.length]);
+    }, [allMedia.length, isScrolling]);
 
     // ✅ CORRIGÉ 2026-03-11: Auto-scroll continu — PAUSE quand une vidéo joue (utilise ref, pas state)
     useEffect(() => {
@@ -242,7 +245,7 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
             if (autoScrollTimerRef.current) clearInterval(autoScrollTimerRef.current);
             autoScrollTimerRef.current = setInterval(() => {
                 // ✅ FIX: Utiliser le ref au lieu du state pour vérifier immédiatement
-                if (userInteractingRef.current || videoPlayingRef.current !== null) return;
+                if (userInteractingRef.current || videoPlayingRef.current !== null || isScrolling) return;
 
                 // ✅ FIX: Vérifier aussi si le slide actuel est une vidéo (même si playingVideoIndex pas encore mis à jour)
                 const curIdx = currentIndexRef.current;
@@ -258,23 +261,23 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
                     videoPlayingRef.current = nextIndex; // Bloquer immédiatement l'auto-scroll
                     setTimeout(() => {
                         const videoRef = videoRefs.current.get(nextIndex);
-                        if (videoRef) {
+                        if (videoRef && !isScrolling) {
                             videoRef.playAsync().catch(() => undefined);
                             setPlayingVideoIndex(nextIndex);
                         }
                     }, 400);
                 }
-            }, 4000);
+            }, 3000); // ✅ RÉDUIT: De 4000ms à 3000ms pour un scroll plus réactif
         };
 
         // Démarrer après un court délai pour laisser le composant se monter
-        const initTimer = setTimeout(startAutoScroll, 2000);
+        const initTimer = setTimeout(startAutoScroll, 1500); // ✅ RÉDUIT: De 2000ms à 1500ms
 
         return () => {
             clearTimeout(initTimer);
             if (autoScrollTimerRef.current) clearInterval(autoScrollTimerRef.current);
         };
-    }, [allMedia.length]);
+    }, [allMedia.length, isScrolling]);
 
     if (allMedia.length === 0) {
         return (

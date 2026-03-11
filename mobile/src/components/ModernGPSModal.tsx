@@ -25,10 +25,20 @@ import SafeIcon from './SafeIcon';
 
 const { width, height } = Dimensions.get('window');
 
+// ✅ FIX 2026-03-11: Interface riche pour retourner le nom du lieu + adresse + coordonnées
+export interface SelectedLocationData {
+    placeName: string;     // Nom du lieu (saisi par l'utilisateur ou depuis autocomplete)
+    address: string;       // Adresse complète (reverse geocoding)
+    latitude: number;
+    longitude: number;
+    isSavedPlace?: boolean; // Indique si c'est un lieu sauvegardé
+}
+
 interface ModernGPSModalProps {
     visible: boolean;
     onClose: () => void;
     onSelect: (coordinates: string) => void; // Format: "lat,lng" ou "lat1,lng1|lat2,lng2|..."
+    onSelectLocation?: (locationData: SelectedLocationData) => void; // ✅ NOUVEAU: Callback riche avec nom du lieu
     currentLocation?: { lat: number; lng: number } | null;
     title?: string;
     allowZoneSelection?: boolean;
@@ -38,6 +48,7 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
     visible,
     onClose,
     onSelect,
+    onSelectLocation,
     currentLocation,
     title = 'Sélection de localisation GPS',
     allowZoneSelection = true
@@ -468,6 +479,16 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                 // Sélection via recherche ou bouton GPS : retourner directement les coordonnées
                 const coordsString = `${selectedLocation.lat},${selectedLocation.lng}`;
                 onSelect(coordsString);
+                // ✅ FIX 2026-03-11: Aussi appeler onSelectLocation avec les données riches
+                if (onSelectLocation) {
+                    onSelectLocation({
+                        placeName: searchQuery.trim() || address || '',
+                        address: address || searchQuery.trim() || coordsString,
+                        latitude: selectedLocation.lat,
+                        longitude: selectedLocation.lng,
+                        isSavedPlace: false,
+                    });
+                }
                 onClose();
             }
         } else {
@@ -557,11 +578,12 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
         try {
             // Obtenir l'adresse complète depuis les coordonnées
             const fullAddress = await getAddressFromCoordinates(selectedLocation.lat, selectedLocation.lng);
+            const trimmedName = saveLocationName.trim();
 
             // Créer un LocationObject depuis les coordonnées sélectionnées
             const locationObject: LocationObject = {
                 raw: fullAddress,
-                place_name: saveLocationName.trim(),
+                place_name: trimmedName,
                 components: {},
                 coordinates: {
                     lat: selectedLocation.lat,
@@ -569,8 +591,14 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                 }
             };
 
-            // ✅ NOUVEAU: Optionnel - Sauvegarder le lieu si l'utilisateur le souhaite (pour retrouver facilement)
-            // On peut laisser cette fonctionnalité optionnelle, mais pour l'instant on ne force pas la sauvegarde
+            // ✅ FIX 2026-03-11: Sauvegarder le lieu pour le rendre réutilisable dans l'autocomplete
+            try {
+                await createAddressFromLocation(locationObject, trimmedName, 'both');
+                console.log('[ModernGPSModal] ✅ Lieu sauvegardé:', trimmedName);
+            } catch (saveError) {
+                // Ne pas bloquer si la sauvegarde échoue (ex: pas connecté)
+                console.warn('[ModernGPSModal] ⚠️ Impossible de sauvegarder le lieu:', saveError);
+            }
 
             // Retourner les coordonnées avec le nom du lieu
             const coordsString = `${selectedLocation.lat},${selectedLocation.lng}`;
@@ -580,8 +608,19 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
             setSaveLocationName('');
             setSavingLocation(false);
 
-            // Appeler onSelect avec les coordonnées
+            // Appeler onSelect avec les coordonnées (rétrocompatibilité)
             onSelect(coordsString);
+
+            // ✅ FIX 2026-03-11: Appeler onSelectLocation avec les données riches
+            if (onSelectLocation) {
+                onSelectLocation({
+                    placeName: trimmedName,
+                    address: fullAddress,
+                    latitude: selectedLocation.lat,
+                    longitude: selectedLocation.lng,
+                    isSavedPlace: true,
+                });
+            }
 
             // Fermer le modal principal
             onClose();
@@ -589,10 +628,21 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
             console.error('[ModernGPSModal] Erreur sauvegarde lieu:', error);
             // Même en cas d'erreur, on continue avec les coordonnées
             const coordsString = `${selectedLocation.lat},${selectedLocation.lng}`;
+            const trimmedName = saveLocationName.trim();
             setShowSaveLocationModal(false);
             setSaveLocationName('');
             setSavingLocation(false);
             onSelect(coordsString);
+            // ✅ FIX 2026-03-11: Même en erreur, passer le nom saisi
+            if (onSelectLocation) {
+                onSelectLocation({
+                    placeName: trimmedName,
+                    address: `${selectedLocation.lat.toFixed(6)}, ${selectedLocation.lng.toFixed(6)}`,
+                    latitude: selectedLocation.lat,
+                    longitude: selectedLocation.lng,
+                    isSavedPlace: false,
+                });
+            }
             onClose();
         }
     };

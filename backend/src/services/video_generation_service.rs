@@ -706,25 +706,61 @@ pub async fn generate_product_video(
     }
 
     // ✅ CORRIGÉ 2026-01-04: Utiliser ProductsService au lieu de JSONB
-    let product = state.products_service
-        .get_product(service_id, product_index)
-        .await?
-        .ok_or_else(|| {
-            AppError::NotFound(format!(
-                "Produit {} introuvable pour le service {}. Vérifiez que le produit existe et est actif.",
+    // ✅ CORRIGÉ 2026-03-11: Fallback JSONB si produit absent de service_products
+    let product_opt = state.products_service.get_product(service_id, product_index).await?;
+
+    let primary_product = if let Some(product) = product_opt {
+        if !product.is_active {
+            return Err(AppError::BadRequest(format!(
+                "Le produit {} du service {} est désactivé. Veuillez le réactiver avant de générer une vidéo.",
                 product_index, service_id
-            ))
-        })?;
+            )));
+        }
+        product.product_data
+    } else {
+        // ✅ FALLBACK: Extraire depuis services.data JSONB (anciens services non migrés)
+        warn!(
+            "[VideoGeneration] ⚠️ Produit {}:{} absent de service_products, tentative fallback JSONB",
+            service_id, product_index
+        );
+        let produits = svc.data.get("produits").and_then(|p| {
+            // Gérer le format {valeur: [...]} du formulaire dynamique
+            if let Some(arr) = p.as_array() {
+                Some(arr.clone())
+            } else if let Some(val) = p.get("valeur").and_then(|v| v.as_array()) {
+                Some(val.clone())
+            } else {
+                None
+            }
+        });
 
-    // Vérifier que le produit est actif
-    if !product.is_active {
-        return Err(AppError::BadRequest(format!(
-            "Le produit {} du service {} est désactivé. Veuillez le réactiver avant de générer une vidéo.",
-            product_index, service_id
-        )));
-    }
+        let primary = produits
+            .as_ref()
+            .and_then(|arr| arr.get(product_index as usize))
+            .cloned()
+            .ok_or_else(|| {
+                AppError::NotFound(format!(
+                    "Produit {} introuvable pour le service {} (ni dans service_products, ni dans JSONB). Vérifiez que le produit existe.",
+                    product_index, service_id
+                ))
+            })?;
 
-    let primary_product = product.product_data;
+        // Auto-sync vers service_products pour les prochaines fois
+        info!(
+            "[VideoGeneration] 🔄 Auto-sync produit {}:{} depuis JSONB vers service_products",
+            service_id, product_index
+        );
+        if let Err(sync_err) =
+            state.products_service.create_product(service_id, product_index, &primary).await
+        {
+            warn!(
+                "[VideoGeneration] ⚠️ Auto-sync échoué (non bloquant): {}",
+                sync_err
+            );
+        }
+
+        primary
+    };
 
     // ✅ CORRIGÉ: Récupérer service_data depuis svc.data pour ensure_product_in_lifecycle
     let service_data = svc.data.clone();
@@ -1275,7 +1311,10 @@ pub async fn generate_product_video(
     }
 
     // ✅ PRIORITÉ 2 : Si pas d'images locales et génération IA activée, générer des images
-    if media_sources.is_empty() && payload.auto_generate_images.unwrap_or(false) {
+    // ✅ CORRIGÉ 2026-03-11: unwrap_or(true) pour cohérence avec la validation (ligne 572)
+    // Avant: unwrap_or(false) → incohérent avec validate_prerequisites qui utilise unwrap_or(true)
+    // → la validation passait mais la génération IA était ignorée → "aucune image" → échec
+    if media_sources.is_empty() && payload.auto_generate_images.unwrap_or(true) {
         info!("[VideoGeneration] Aucune image locale trouvée, génération d'images IA en cours...");
 
         // Construire une description pour la génération IA
@@ -1544,21 +1583,29 @@ pub async fn generate_product_video(
             }
         }
 
-        // ✅ CORRECTION: Détecter si le média est une vidéo ou une image pour utiliser la bonne option FFmpeg
-        let is_video = media
-            .path
-            .extension()
-            .and_then(|ext| ext.to_str())
-            .map(|ext| {
-                let ext_lower = ext.to_lowercase();
-                ext_lower == "mp4"
-                    || ext_lower == "mov"
-                    || ext_lower == "avi"
-                    || ext_lower == "mkv"
-                    || ext_lower == "webm"
-                    || ext_lower == "m4v"
-            })
-            .unwrap_or(false);
+        // ✅ CORRIGÉ 2026-03-11: Détecter si le média est une vidéo ou une image
+        // Pour les URLs pré-signées (GCS), PathBuf::extension() retourne "jpg?X-Goog-..."
+        // → il faut d'abord extraire le vrai chemin sans query params
+        let is_video = {
+            let path_str = media.path.to_string_lossy();
+            // Extraire le chemin sans query params pour les URLs
+            let clean_path = if path_str.contains('?') {
+                path_str.split('?').next().unwrap_or(&path_str)
+            } else {
+                &path_str
+            };
+            let ext = std::path::Path::new(clean_path)
+                .extension()
+                .and_then(|e| e.to_str())
+                .unwrap_or("")
+                .to_lowercase();
+            ext == "mp4"
+                || ext == "mov"
+                || ext == "avi"
+                || ext == "mkv"
+                || ext == "webm"
+                || ext == "m4v"
+        };
 
         let mut args = vec!["-y".to_string()];
 
@@ -2943,6 +2990,65 @@ fn upload_storage_root() -> PathBuf {
         .unwrap_or_else(|_| PathBuf::from("uploads"))
 }
 
+/// ✅ CORRIGÉ 2026-03-11: Résolution async des chemins médias
+/// Essaie d'abord le chemin local (row_to_media_source), puis fallback vers
+/// une URL pré-signée GCS si le stockage est distant (Cloud Run).
+/// C'était la CAUSE RACINE de l'échec de génération vidéo : sur Cloud Run,
+/// les fichiers médias sont sur GCS, pas en local → row_to_media_source retournait None
+/// → tous les médias étaient ignorés → "aucune image" → échec.
+async fn resolve_media_row(
+    state: &Arc<AppState>,
+    id: i32,
+    path: &str,
+    ai_description: Option<String>,
+) -> Option<MediaSource> {
+    // Essai 1: chemin local ou URL déjà complète
+    if let Some(source) = row_to_media_source(id, path, ai_description.clone()) {
+        return Some(source);
+    }
+
+    // Essai 2: Stockage distant (GCS) → générer URL pré-signée
+    if !path.is_empty() && state.media_storage.is_remote() {
+        info!(
+            "[VideoGeneration] 🔄 Tentative résolution GCS pour media_id={}, path={}",
+            id, path
+        );
+        match state.media_storage.generate_presigned_url(path, 3600).await {
+            Ok(presigned_url) => {
+                info!(
+                    "[VideoGeneration] ✅ URL pré-signée GCS générée pour media_id={}: {}…",
+                    id,
+                    &presigned_url[..presigned_url.len().min(80)]
+                );
+                return Some(MediaSource {
+                    id: Some(id),
+                    path: PathBuf::from(&presigned_url),
+                    ai_description,
+                });
+            }
+            Err(e) => {
+                // Essai 3: URL publique en dernier recours
+                let public_url = state.media_storage.build_public_url(path);
+                warn!(
+                    "[VideoGeneration] ⚠️ Presigned échoué pour media_id={} ({}), essai URL publique: {}",
+                    id, e, public_url
+                );
+                return Some(MediaSource {
+                    id: Some(id),
+                    path: PathBuf::from(&public_url),
+                    ai_description,
+                });
+            }
+        }
+    }
+
+    warn!(
+        "[VideoGeneration] ❌ Impossible de résoudre media_id={}, path={} (ni local, ni distant)",
+        id, path
+    );
+    None
+}
+
 async fn gather_media_sources(
     state: &Arc<AppState>,
     service_id: i32,
@@ -2980,7 +3086,9 @@ async fn gather_media_sources(
 
             for row in rows {
                 let ai_description = row.ai_description.clone();
-                if let Some(source) = row_to_media_source(row.id, &row.path, ai_description) {
+                if let Some(source) =
+                    resolve_media_row(state, row.id, &row.path, ai_description).await
+                {
                     if let Some(id) = source.id {
                         if seen_ids.contains(&id) {
                             continue;
@@ -3071,7 +3179,8 @@ async fn gather_media_sources(
 
         for row in final_rows {
             let ai_description = row.ai_description.clone();
-            if let Some(source) = row_to_media_source(row.id, &row.path, ai_description) {
+            if let Some(source) = resolve_media_row(state, row.id, &row.path, ai_description).await
+            {
                 if let Some(id) = source.id {
                     if seen_ids.contains(&id) {
                         continue;
@@ -3128,7 +3237,8 @@ async fn gather_media_sources(
 
         for row in rows {
             let ai_description = row.ai_description.clone();
-            if let Some(source) = row_to_media_source(row.id, &row.path, ai_description) {
+            if let Some(source) = resolve_media_row(state, row.id, &row.path, ai_description).await
+            {
                 if let Some(id) = source.id {
                     if seen_ids.contains(&id) {
                         continue;
@@ -3178,7 +3288,8 @@ async fn gather_media_sources(
 
         for row in rows {
             let ai_description = row.ai_description.clone();
-            if let Some(source) = row_to_media_source(row.id, &row.path, ai_description) {
+            if let Some(source) = resolve_media_row(state, row.id, &row.path, ai_description).await
+            {
                 if let Some(id) = source.id {
                     if seen_ids.contains(&id) {
                         continue;

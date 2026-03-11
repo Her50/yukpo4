@@ -92,6 +92,18 @@ const normalizeVideoUrl = (url: any): string | null => {
     return result;
 };
 
+// ✅ CORRIGÉ 2026-03-11: Vérifier qu'une URL est bien une vidéo (pas une image)
+const isVideoUrl = (url: string): boolean => {
+    const lower = url.toLowerCase();
+    const pathPart = lower.split('?')[0]; // Ignorer les query params (presigned URLs)
+    const imageExts = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp', '.heic'];
+    const videoExts = ['.mp4', '.mov', '.avi', '.webm', '.mkv', '.m4v', '.3gp'];
+    if (imageExts.some(ext => pathPart.endsWith(ext))) return false;
+    if (videoExts.some(ext => pathPart.endsWith(ext))) return true;
+    // Pas d'extension reconnaissable → accepter sauf si clairement image
+    return !lower.includes('/image') && !lower.includes('_image');
+};
+
 // ✅ CORRIGÉ 2026-03-04: Helper pour extraire une vidéo depuis un champ qui peut être:
 // - Une string directe: "url"
 // - Un tableau: ["url1", "url2"]
@@ -152,6 +164,12 @@ const normalizeFeed = (raw: any[]): FeedItem[] => {
 
             if (!video) {
                 console.log(`❌ [VideoFeedScreen] Item ${index} ignoré: normalizeVideoUrl a retourné null pour`, rawVideo);
+                return null;
+            }
+
+            // ✅ CORRIGÉ 2026-03-11: Rejeter les URLs qui sont des images (pas des vidéos)
+            if (!isVideoUrl(video)) {
+                console.log(`❌ [VideoFeedScreen] Item ${index} ignoré: URL est une image, pas une vidéo:`, video.substring(0, 80));
                 return null;
             }
 
@@ -264,6 +282,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
     const [selectedDeliveryItem, setSelectedDeliveryItem] = useState<FeedItem | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [filteredFeed, setFilteredFeed] = useState<FeedItem[]>([]);
+    const filteredFeedLengthRef = useRef(0);
     const viewedSet = useRef<Set<string>>(new Set());
     const spinAnim = useRef(new Animated.Value(0)).current;
     const videoRefs = useRef<Map<number, Video | null>>(new Map());
@@ -349,8 +368,18 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                 item.hashtags?.some(tag => tag.toLowerCase().includes(query))
             );
             setFilteredFeed(filtered);
+            // Remettre à la première vidéo quand la recherche change
+            if (filtered.length > 0) {
+                setCurrentIndex(0);
+                flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
+            }
         }
     }, [feed, searchQuery]);
+
+    // ✅ Garder la ref à jour pour éviter les stale closures dans handlePlaybackStatus
+    useEffect(() => {
+        filteredFeedLengthRef.current = filteredFeed.length;
+    }, [filteredFeed.length]);
 
     const onRefresh = useCallback(() => {
         setRefreshing(true);
@@ -729,7 +758,6 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
 
     const handlePlaybackStatus = useCallback((contentId: string, index: number, status: AVPlaybackStatus) => {
         if (!status.isLoaded) {
-            // ✅ Détecter le buffering avant le chargement
             setBufferingMap((prev) => {
                 if (prev[contentId] === true) return prev;
                 return { ...prev, [contentId]: true };
@@ -737,7 +765,6 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
             return;
         }
 
-        // ✅ Tracker l'état de buffering
         const isBuffering = status.isBuffering || false;
         setBufferingMap((prev) => {
             if (prev[contentId] === isBuffering) return prev;
@@ -758,30 +785,36 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                     playCountRef.current[contentId] = currentPlayCount;
                     setPlayCount(prev => ({ ...prev, [contentId]: currentPlayCount }));
 
-                    // Si c'est la première lecture, relancer la vidéo
                     if (currentPlayCount === 1) {
+                        // Première lecture terminée → relancer pour la 2ème
                         setTimeout(() => {
                             const videoRef = videoRefs.current.get(index);
                             if (videoRef) {
                                 videoRef.replayAsync().catch(() => undefined);
                             }
-                        }, 500); // Petite pause avant de relancer
+                        }, 500);
                     } else if (currentPlayCount >= 2) {
-                        // Après la deuxième lecture, passer à la vidéo suivante
+                        // ✅ CORRIGÉ: Utiliser la ref pour éviter stale closure
+                        const feedLen = filteredFeedLengthRef.current;
                         const nextIndex = index + 1;
-                        if (nextIndex < filteredFeed.length) {
+                        if (nextIndex < feedLen) {
                             setTimeout(() => {
-                                flatListRef.current?.scrollToIndex({ index: nextIndex, animated: true });
+                                try {
+                                    flatListRef.current?.scrollToIndex({ index: nextIndex, animated: true });
+                                } catch (_e) {
+                                    // Fallback: scroll par offset si l'index n'est pas accessible
+                                    flatListRef.current?.scrollToOffset({ offset: nextIndex * SCREEN_HEIGHT, animated: true });
+                                }
                             }, 800);
                         } else {
-                            // Fin du feed, charger plus de vidéos si disponible
+                            // Fin du feed, charger plus de vidéos
                             loadMore();
                         }
                     }
                 }
             }
         }
-    }, [feed.length]);
+    }, [loadMore]);
 
     const renderItem = useCallback(({ item, index }: { item: FeedItem; index: number }) => {
         const contentId = item.contentId || item.id;
@@ -800,6 +833,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                     <Video
                         ref={(ref) => registerRef(index, ref)}
                         style={styles.video}
+                        videoStyle={styles.videoNative}
                         source={{ uri: item.videoUrl }}
                         posterSource={item.thumbnail ? { uri: item.thumbnail } : undefined}
                         posterStyle={styles.poster}
@@ -809,6 +843,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                         isLooping={false}
                         isMuted={muted}
                         useNativeControls={false}
+                        progressUpdateIntervalMillis={250}
                         onPlaybackStatusUpdate={(status) => handlePlaybackStatus(contentId, index, status)}
                         onError={(error) => console.error(`[VideoFeedScreen] Erreur vidéo ${index}:`, error)}
                     />
@@ -872,26 +907,6 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                     pointerEvents="none"
                 />
 
-                {/* ✅ Barre de recherche */}
-                {index === 0 && (
-                    <View style={styles.searchBarContainer}>
-                        <View style={styles.searchBar}>
-                            <SafeIcon name="search" size={18} color="#9CA3AF" type="lucide" />
-                            <TextInput
-                                style={styles.searchInput}
-                                placeholder="Rechercher des vidéos..."
-                                placeholderTextColor="#9CA3AF"
-                                value={searchQuery}
-                                onChangeText={setSearchQuery}
-                            />
-                            {searchQuery.length > 0 && (
-                                <TouchableOpacity onPress={() => setSearchQuery('')}>
-                                    <SafeIcon name="x" size={18} color="#9CA3AF" type="lucide" />
-                                </TouchableOpacity>
-                            )}
-                        </View>
-                    </View>
-                )}
 
                 {/* ✅ Header: bouton retour + compteur vidéo (comme TikTok) */}
                 <View style={styles.topBar}>
@@ -1042,6 +1057,25 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                         </Text>
                     </TouchableOpacity>
 
+                    {/* ✅ Barre de réactions rapides: emojis visibles directement */}
+                    <View style={styles.quickReactionsBar}>
+                        {REACTIONS.filter(r => r.type !== 'love').map((reaction) => {
+                            const itemReactions = reactionsMap[`${item.serviceId}_${item.productIndex ?? 0}`] || {};
+                            const hasReacted = itemReactions[reaction.type]?.hasReacted || false;
+                            return (
+                                <TouchableOpacity
+                                    key={reaction.type}
+                                    style={[styles.quickReactionBtn, hasReacted && styles.quickReactionBtnActive]}
+                                    onPress={() => handleReaction(item, reaction.type)}
+                                    activeOpacity={0.7}
+                                    disabled={pendingReaction !== null}
+                                >
+                                    <Text style={styles.quickReactionEmoji}>{reaction.emoji}</Text>
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </View>
+
                     <TouchableOpacity style={styles.actionButton} onPress={() => handleOpenComments(item)} activeOpacity={0.7}>
                         <View style={styles.actionIconBg}>
                             <SafeIcon name="message-circle" size={24} color="#fff" type="lucide" />
@@ -1109,7 +1143,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                 )}
             </View>
         );
-    }, [likedMap, savedMap, pausedMap, mutedMap, progressMap, currentIndex, doubleTapHeart, heartAnim, handleTap, handleReaction, toggleSave, toggleMute, handleShare, handleViewProduct, handleOpenComments, registerRef, handlePlaybackStatus, isFocused, reactionsMap, showReactionPicker, pendingReaction, bufferingMap, spinAnim, feed.length, navigation, followMap, handleToggleFollow]);
+    }, [likedMap, savedMap, pausedMap, mutedMap, progressMap, currentIndex, doubleTapHeart, heartAnim, handleTap, handleReaction, toggleSave, toggleMute, handleShare, handleViewProduct, handleOpenComments, registerRef, handlePlaybackStatus, isFocused, reactionsMap, showReactionPicker, pendingReaction, bufferingMap, spinAnim, filteredFeed.length, navigation, followMap, handleToggleFollow]);
 
     if (loading) {
         return (
@@ -1141,6 +1175,32 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
     return (
         <SafeNativeView style={styles.container}>
             <StatusBar barStyle="light-content" backgroundColor="#000" translucent />
+
+            {/* ✅ Barre de recherche: overlay absolu, toujours visible */}
+            <View style={styles.searchBarContainer}>
+                <View style={styles.searchBar}>
+                    <SafeIcon name="search" size={18} color="#9CA3AF" type="lucide" />
+                    <TextInput
+                        style={styles.searchInput}
+                        placeholder="Rechercher des vidéos..."
+                        placeholderTextColor="#9CA3AF"
+                        value={searchQuery}
+                        onChangeText={setSearchQuery}
+                    />
+                    {searchQuery.length > 0 && (
+                        <TouchableOpacity onPress={() => setSearchQuery('')}>
+                            <SafeIcon name="x" size={18} color="#9CA3AF" type="lucide" />
+                        </TouchableOpacity>
+                    )}
+                </View>
+                {searchQuery.length > 0 && filteredFeed.length === 0 && (
+                    <Text style={styles.searchNoResults}>Aucune vidéo trouvée</Text>
+                )}
+                {searchQuery.length > 0 && filteredFeed.length > 0 && (
+                    <Text style={styles.searchResultCount}>{filteredFeed.length} vidéo{filteredFeed.length > 1 ? 's' : ''}</Text>
+                )}
+            </View>
+
             <FlatList
                 ref={flatListRef}
                 data={filteredFeed}
@@ -1155,9 +1215,9 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                     offset: SCREEN_HEIGHT * index,
                     index,
                 })}
-                windowSize={3}
-                maxToRenderPerBatch={2}
-                removeClippedSubviews={Platform.OS === 'android'}
+                windowSize={5}
+                maxToRenderPerBatch={3}
+                removeClippedSubviews={false}
                 initialNumToRender={1}
                 decelerationRate="fast"
                 onEndReached={loadMore}
@@ -1282,18 +1342,23 @@ const styles = StyleSheet.create({
         height: SCREEN_HEIGHT,
         width: SCREEN_WIDTH,
         backgroundColor: '#000',
+        overflow: 'hidden',
     },
     videoTouchable: {
         flex: 1,
     },
     video: {
-        height: '100%',
-        width: '100%',
+        height: SCREEN_HEIGHT,
+        width: SCREEN_WIDTH,
         backgroundColor: '#111',
     },
+    videoNative: {
+        width: SCREEN_WIDTH,
+        height: SCREEN_HEIGHT,
+    },
     poster: {
-        height: '100%',
-        width: '100%',
+        height: SCREEN_HEIGHT,
+        width: SCREEN_WIDTH,
         resizeMode: 'cover',
     },
     pauseOverlay: {
@@ -1550,6 +1615,30 @@ const styles = StyleSheet.create({
     actionIconBgActive: {
         backgroundColor: 'rgba(0,0,0,0.5)',
     },
+    quickReactionsBar: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        justifyContent: 'center',
+        gap: 4,
+        maxWidth: 80,
+        paddingVertical: 2,
+    },
+    quickReactionBtn: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: 'rgba(0,0,0,0.3)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    quickReactionBtnActive: {
+        backgroundColor: 'rgba(255,255,255,0.25)',
+        borderWidth: 1.5,
+        borderColor: 'rgba(255,255,255,0.5)',
+    },
+    quickReactionEmoji: {
+        fontSize: 16,
+    },
     actionLabel: {
         color: '#fff',
         fontSize: 12,
@@ -1724,6 +1813,26 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 15,
         fontWeight: '500',
+    },
+    searchNoResults: {
+        color: '#EF4444',
+        fontSize: 12,
+        fontWeight: '600',
+        textAlign: 'center',
+        marginTop: 6,
+        textShadowColor: 'rgba(0,0,0,0.8)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 3,
+    },
+    searchResultCount: {
+        color: '#34D399',
+        fontSize: 12,
+        fontWeight: '600',
+        textAlign: 'center',
+        marginTop: 6,
+        textShadowColor: 'rgba(0,0,0,0.8)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 3,
     },
 });
 

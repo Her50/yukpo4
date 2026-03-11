@@ -140,7 +140,7 @@ pub async fn get_mixed_content(
         .unwrap_or_else(|| format!("session_{}", chrono::Utc::now().timestamp()));
     let limit = params.limit.unwrap_or(15);
     let format_filter = params.format.clone().unwrap_or_default().to_lowercase();
-    let _page = params.page.unwrap_or(1);
+    let page = params.page.unwrap_or(1);
     let categories: Vec<String> = params
         .categories
         .as_ref()
@@ -158,9 +158,11 @@ pub async fn get_mixed_content(
     );
 
     // ✅ Charger produits organiques récents avec priorité sur les catégories utilisateur
+    let offset = ((page - 1) * limit) as i64;
     let organic_rows = match fetch_recent_services(
         pool,
         limit as i64,
+        offset,
         if categories_lower.is_empty() {
             None
         } else {
@@ -175,7 +177,9 @@ pub async fn get_mixed_content(
                 "ℹ️ [MixedContent] Aucun service correspondant aux catégories {:?}, bascule sur fallback global",
                 categories
             );
-            fetch_recent_services(pool, limit as i64, None).await.unwrap_or_default()
+            fetch_recent_services(pool, limit as i64, offset, None)
+                .await
+                .unwrap_or_default()
         }
         Err(e) => {
             log::error!(
@@ -569,37 +573,38 @@ pub async fn get_mixed_content(
         }
     }
 
-    // ✅ CORRIGÉ 2026-03-07: Filtrer par format=video si demandé
+    // ✅ CORRIGÉ 2026-03-11: Filtrer strictement par vidéo (vérifier extension + exclure images)
     if is_video_feed {
         let before = organic_products.len();
         organic_products.retain(|item| {
-            // Garder seulement les items qui ont au moins une vidéo
-            let has_video = item
-                .get("videoUrl")
-                .and_then(|v| v.as_str())
-                .map(|s| !s.is_empty())
-                .unwrap_or(false)
-                || item
-                    .get("data")
-                    .and_then(|d| d.get("videos"))
-                    .and_then(|v| v.as_array())
-                    .map(|arr| !arr.is_empty())
-                    .unwrap_or(false);
-            has_video
+            // Vérifier videoUrl en priorité (construit depuis media table type='video')
+            let video_url = item.get("videoUrl").and_then(|v| v.as_str()).filter(|s| !s.is_empty());
+            if let Some(url) = video_url {
+                return is_video_url(url);
+            }
+            // Fallback: vérifier data.videos mais uniquement les vraies vidéos
+            if let Some(arr) =
+                item.get("data").and_then(|d| d.get("videos")).and_then(|v| v.as_array())
+            {
+                return arr.iter().any(|v| v.as_str().map(is_video_url).unwrap_or(false));
+            }
+            false
         });
         log::info!(
-            "🎬 [MixedContent] Filtre video: {} -> {} items organiques avec vidéo",
+            "🎬 [MixedContent] Filtre video strict: {} -> {} items organiques avec vidéo",
             before,
             organic_products.len()
         );
 
         let before_ads = paid_ads.len();
         paid_ads.retain(|ad| {
-            ad.get("data")
-                .and_then(|d| d.get("videos"))
-                .and_then(|v| v.as_array())
-                .map(|arr| !arr.is_empty())
-                .unwrap_or(false)
+            if let Some(arr) =
+                ad.get("data").and_then(|d| d.get("videos")).and_then(|v| v.as_array())
+            {
+                arr.iter().any(|v| v.as_str().map(is_video_url).unwrap_or(false))
+            } else {
+                false
+            }
         });
         log::info!(
             "🎬 [MixedContent] Filtre video pubs: {} -> {} publicités avec vidéo",
@@ -626,9 +631,52 @@ pub async fn get_mixed_content(
     })))
 }
 
+/// ✅ Helper: vérifier qu'une URL pointe vers une vraie vidéo (pas une image)
+fn is_video_url(url: &str) -> bool {
+    let lower = url.to_lowercase();
+    // Exclure les images explicites
+    if lower.ends_with(".jpg")
+        || lower.ends_with(".jpeg")
+        || lower.ends_with(".png")
+        || lower.ends_with(".gif")
+        || lower.ends_with(".webp")
+        || lower.ends_with(".svg")
+        || lower.ends_with(".bmp")
+        || lower.ends_with(".heic")
+    {
+        return false;
+    }
+    // Accepter les extensions vidéo connues
+    if lower.ends_with(".mp4")
+        || lower.ends_with(".mov")
+        || lower.ends_with(".avi")
+        || lower.ends_with(".webm")
+        || lower.ends_with(".mkv")
+        || lower.ends_with(".m4v")
+        || lower.ends_with(".3gp")
+    {
+        return true;
+    }
+    // URLs signées GCS/S3 contiennent souvent le path avant les query params
+    if let Some(path_part) = lower.split('?').next() {
+        if path_part.ends_with(".mp4")
+            || path_part.ends_with(".mov")
+            || path_part.ends_with(".avi")
+            || path_part.ends_with(".webm")
+            || path_part.ends_with(".m4v")
+        {
+            return true;
+        }
+    }
+    // Si pas d'extension reconnaissable, accepter (peut être un stream ou CDN sans extension)
+    // mais seulement si ce n'est pas clairement une image
+    !lower.contains("/image") && !lower.contains("_image")
+}
+
 async fn fetch_recent_services(
     pool: &PgPool,
     limit: i64,
+    offset: i64,
     categories: Option<&[String]>,
 ) -> Result<Vec<PgRow>, sqlx::Error> {
     let mut base_query = String::from(
@@ -642,24 +690,29 @@ async fn fetch_recent_services(
             s.category
         FROM services s
         WHERE s.is_active = TRUE
-        AND s.created_at >= NOW() - INTERVAL '30 days'
+        AND s.created_at >= NOW() - INTERVAL '90 days'
     "#,
     );
 
     let use_categories = categories.map(|cats| !cats.is_empty()).unwrap_or(false);
 
     if use_categories {
-        base_query.push_str(" AND s.category = ANY($2)");
+        base_query.push_str(" AND s.category = ANY($3)");
     }
 
-    base_query.push_str(" ORDER BY s.created_at DESC LIMIT $1");
+    base_query.push_str(" ORDER BY s.created_at DESC LIMIT $1 OFFSET $2");
 
     if use_categories {
         let cats = categories.unwrap();
         let cat_refs: Vec<&str> = cats.iter().map(|c| c.as_str()).collect();
-        sqlx::query(&base_query).bind(limit).bind(cat_refs).fetch_all(pool).await
+        sqlx::query(&base_query)
+            .bind(limit)
+            .bind(offset)
+            .bind(cat_refs)
+            .fetch_all(pool)
+            .await
     } else {
-        sqlx::query(&base_query).bind(limit).fetch_all(pool).await
+        sqlx::query(&base_query).bind(limit).bind(offset).fetch_all(pool).await
     }
 }
 

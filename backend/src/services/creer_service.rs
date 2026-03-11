@@ -3076,6 +3076,14 @@ pub async fn creer_service(
         .cloned()
         .unwrap_or_default();
 
+    // ✅ FIX 2026-03-11: Pré-extraire variation_prix depuis data_obj AVANT l'emprunt mutable
+    // Sinon Rust refuse l'emprunt immutable de data_obj dans la boucle produits
+    let service_variation_prix_preextracted: Option<serde_json::Value> = data_obj
+        .get("variabilite_prix")
+        .or_else(|| data_obj.get("variation_prix"))
+        .or_else(|| data_obj.get("price_variant"))
+        .cloned();
+
     // ✅ DIAGNOSTIC: Vérifier la présence des produits AVANT traitement
     let produits_array_opt = produits_array_mut(&mut data_obj);
     log::info!(
@@ -3149,6 +3157,41 @@ pub async fn creer_service(
                     continue;
                 }
             };
+
+            // ✅ CORRIGÉ 2026-03-11: Injecter variation_prix depuis le niveau service dans le produit
+            // FormulaireYukpoIntelligentScreen stocke variabilite_prix au niveau service, pas dans chaque produit
+            // Cela causait l'absence de variation_prix dans service_products.product_data
+            if !produit_obj.contains_key("variation_prix")
+                && !produit_obj.contains_key("variabilite_prix")
+                && !produit_obj.contains_key("price_variant")
+            {
+                // ✅ FIX 2026-03-11: Utiliser la valeur pré-extraite avant l'emprunt mutable
+                let service_variation = service_variation_prix_preextracted.clone();
+
+                if let Some(variation_value) = service_variation {
+                    // Dé-wrapper le format {type_donnee, valeur} si nécessaire
+                    let unwrapped = if variation_value.is_object() {
+                        if let Some(inner) = variation_value.get("valeur") {
+                            if variation_value.get("type_donnee").is_some() {
+                                inner.clone()
+                            } else {
+                                variation_value.clone()
+                            }
+                        } else {
+                            variation_value.clone()
+                        }
+                    } else {
+                        variation_value.clone()
+                    };
+
+                    produit_obj.insert("variation_prix".to_string(), unwrapped.clone());
+                    produit_obj.insert("variabilite_prix".to_string(), unwrapped);
+                    log::info!(
+                        "[creer_service] ✅ variation_prix injecté dans produit {} depuis données service",
+                        product_index
+                    );
+                }
+            }
 
             // ✅ CORRIGÉ 2026-01-04: Créer le produit dans service_products EN PREMIER
             // pour obtenir le vrai product_id avant de créer les médias
@@ -3995,6 +4038,47 @@ pub async fn creer_service(
                             }
                         }
                     }
+                }
+            }
+        }
+
+        // ✅ CORRIGÉ 2026-03-11: Mettre à jour service_products.product_data avec les données enrichies
+        // Après le traitement (images, variants, vidéos), produits_array contient les données complètes
+        // mais service_products a été INSERT'é AVANT ces enrichissements → UPDATE nécessaire
+        for (product_index, produit_value) in produits_array.iter().enumerate() {
+            // Nettoyer les médias base64 avant la mise à jour (ne garder que les paths)
+            let mut product_data_for_update = produit_value.clone();
+            let mut removed = 0;
+            clean_media_recursive_final(&mut product_data_for_update, &mut removed);
+
+            match sqlx::query(
+                r#"
+                UPDATE service_products 
+                SET product_data = $1, updated_at = NOW()
+                WHERE service_id = $2 AND product_index = $3
+                "#,
+            )
+            .bind(&product_data_for_update)
+            .bind(service_id)
+            .bind(product_index as i32)
+            .execute(&mut *tx)
+            .await
+            {
+                Ok(result) => {
+                    if result.rows_affected() > 0 {
+                        log::info!(
+                            "[creer_service] ✅ service_products mis à jour avec données enrichies pour produit {} (service_id={})",
+                            product_index,
+                            service_id
+                        );
+                    }
+                }
+                Err(e) => {
+                    log::warn!(
+                        "[creer_service] ⚠️ Erreur mise à jour service_products enrichi pour produit {}: {}",
+                        product_index,
+                        e
+                    );
                 }
             }
         }

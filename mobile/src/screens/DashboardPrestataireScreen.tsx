@@ -216,6 +216,9 @@ const DashboardPrestataireScreen: React.FC = () => {
       {/* Statistiques principales */}
       <View style={styles.statsGrid}>
         <View style={styles.statCard}>
+          <View style={styles.statIcon}>
+            <SafeIcon name="briefcase" size={20} color="#6366F1" />
+          </View>
           <View style={styles.statContent}>
             <Text style={styles.statNumber}>{dashboardData.totalServices}</Text>
             <Text style={styles.statLabel}>Services totaux</Text>
@@ -223,6 +226,9 @@ const DashboardPrestataireScreen: React.FC = () => {
         </View>
 
         <View style={styles.statCard}>
+          <View style={styles.statIcon}>
+            <SafeIcon name="check-circle" size={20} color="#10B981" />
+          </View>
           <View style={styles.statContent}>
             <Text style={styles.statNumber}>{dashboardData.activeServices}</Text>
             <Text style={styles.statLabel}>Services actifs</Text>
@@ -230,6 +236,9 @@ const DashboardPrestataireScreen: React.FC = () => {
         </View>
 
         <View style={styles.statCard}>
+          <View style={styles.statIcon}>
+            <SafeIcon name="eye" size={20} color="#F59E0B" />
+          </View>
           <View style={styles.statContent}>
             <Text style={styles.statNumber}>{formatNumber(dashboardData.totalViews)}</Text>
             <Text style={styles.statLabel}>Vues totales</Text>
@@ -237,6 +246,9 @@ const DashboardPrestataireScreen: React.FC = () => {
         </View>
 
         <View style={styles.statCard}>
+          <View style={styles.statIcon}>
+            <SafeIcon name="message-square" size={20} color="#EF4444" />
+          </View>
           <View style={styles.statContent}>
             <Text style={styles.statNumber}>{formatNumber(dashboardData.totalInteractions)}</Text>
             <Text style={styles.statLabel}>Interactions</Text>
@@ -244,6 +256,9 @@ const DashboardPrestataireScreen: React.FC = () => {
         </View>
 
         <View style={styles.statCard}>
+          <View style={styles.statIcon}>
+            <SafeIcon name="star" size={20} color="#FCD34D" />
+          </View>
           <View style={styles.statContent}>
             <Text style={styles.statNumber}>{dashboardData.averageRating.toFixed(1)}</Text>
             <Text style={styles.statLabel}>Note moyenne</Text>
@@ -251,6 +266,9 @@ const DashboardPrestataireScreen: React.FC = () => {
         </View>
 
         <View style={styles.statCard}>
+          <View style={styles.statIcon}>
+            <SafeIcon name="wallet" size={20} color="#8B5CF6" />
+          </View>
           <View style={styles.statContent}>
             <Text style={styles.statNumber}>{formatCurrency(dashboardData.budgetConsumed)}</Text>
             <Text style={styles.statLabel}>Budget utilisé</Text>
@@ -334,12 +352,15 @@ const DashboardPrestataireScreen: React.FC = () => {
         {dashboardData.recentActivity.map((activity, index) => (
           <View key={index} style={styles.activityItem}>
             <View style={styles.activityIcon}>
-              <Text style={styles.activityIconText}>
-                {activity.type === 'view' ? 'V' :
-                  activity.type === 'message' ? 'M' :
-                    activity.type === 'call' ? 'A' :
-                      '?'}
-              </Text>
+              {activity.type === 'view' ? (
+                <SafeIcon name="eye" size={16} color="#FFFFFF" />
+              ) : activity.type === 'message' ? (
+                <SafeIcon name="message-circle" size={16} color="#FFFFFF" />
+              ) : activity.type === 'call' ? (
+                <SafeIcon name="phone" size={16} color="#FFFFFF" />
+              ) : (
+                <SafeIcon name="activity" size={16} color="#FFFFFF" />
+              )}
             </View>
             <View style={styles.activityContent}>
               <Text style={styles.activityText}>

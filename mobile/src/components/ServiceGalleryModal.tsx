@@ -76,6 +76,23 @@ const extractMediaFromField = (field: any): string[] => {
     return [];
 };
 
+// ✅ FIX 2026-03-11: Normaliser la clé de déduplication pour éviter les doublons
+const normalizeDedupeKey = (raw: string): string => {
+    if (!raw) return '';
+    let key = raw.trim();
+    const prefixes = [
+        /^https?:\/\/[^/]+\/api\/media\/files\//i,
+        /^https?:\/\/storage\.googleapis\.com\/[^/]+\//i,
+        /^https?:\/\/[^/]+\.run\.app\/api\/media\/files\//i,
+    ];
+    for (const prefix of prefixes) {
+        key = key.replace(prefix, '');
+    }
+    key = key.split('?')[0];
+    key = key.replace(/^\//, '');
+    return key.toLowerCase();
+};
+
 const ServiceGalleryModal: React.FC<ServiceGalleryModalProps> = ({
     visible,
     service,
@@ -110,8 +127,10 @@ const ServiceGalleryModal: React.FC<ServiceGalleryModalProps> = ({
 
         const addItem = (rawUrl: string, type: 'image' | 'video', category: GalleryItem['category'], label?: string) => {
             const url = buildMediaUrl(rawUrl);
-            if (url && !seen.has(url)) {
-                seen.add(url);
+            // ✅ FIX 2026-03-11: Déduplication sur clé normalisée (chemin relatif)
+            const dedupeKey = normalizeDedupeKey(rawUrl) || normalizeDedupeKey(url);
+            if (url && dedupeKey && !seen.has(dedupeKey)) {
+                seen.add(dedupeKey);
                 items.push({ id: `${category}-${type}-${counter++}`, url, type, category, label });
             }
         };
@@ -125,19 +144,8 @@ const ServiceGalleryModal: React.FC<ServiceGalleryModalProps> = ({
         extractMediaFromField(service.data?.images_realisations).forEach(u => addItem(u, 'image', 'realisation', 'Realisation'));
         extractMediaFromField(service.data?.videos).forEach(u => addItem(u, 'video', 'realisation', 'Realisation'));
 
-        // 3. Produits depuis service.data (ancien systeme embedded)
-        const produits = extractMediaFromField(service.data?.produits);
-        if (Array.isArray(produits)) {
-            produits.forEach((prod: any) => {
-                const pName = prod.nom || prod.title || 'Produit';
-                extractMediaFromField(prod.images).forEach(u => addItem(u, 'image', 'product', pName));
-                extractMediaFromField(prod.videos).forEach(u => addItem(u, 'video', 'product', pName));
-                extractMediaFromField(prod.imagesRealisations).forEach(u => addItem(u, 'image', 'product', pName));
-                extractMediaFromField(prod.videosRealisations).forEach(u => addItem(u, 'video', 'product', pName));
-            });
-        }
-
-        // 4. Charger les medias depuis la table media (API)
+        // 3. Charger les produits et medias depuis les APIs
+        let apiProductsLoaded = false;
         if (serviceId) {
             try {
                 // Map product_index -> product_name pour etiqueter les medias
@@ -160,6 +168,7 @@ const ServiceGalleryModal: React.FC<ServiceGalleryModalProps> = ({
                         extractMediaFromField(pd.images).forEach((u: string) => addItem(u, 'image', 'product', name));
                         extractMediaFromField(pd.videos).forEach((u: string) => addItem(u, 'video', 'product', name));
                     });
+                    apiProductsLoaded = productsList.length > 0;
                 } catch (e) {
                     console.warn('[ServiceGalleryModal] Produits API non disponible:', e);
                 }
@@ -181,6 +190,20 @@ const ServiceGalleryModal: React.FC<ServiceGalleryModalProps> = ({
                 }
             } catch (e) {
                 console.warn('[ServiceGalleryModal] Erreur chargement API medias:', e);
+            }
+        }
+
+        // ✅ FIX 2026-03-11: Fallback produits embarqués seulement si l'API n'a pas fourni les données
+        if (!apiProductsLoaded) {
+            const produits = extractMediaFromField(service.data?.produits);
+            if (Array.isArray(produits)) {
+                produits.forEach((prod: any) => {
+                    const pName = prod.nom || prod.title || 'Produit';
+                    extractMediaFromField(prod.images).forEach(u => addItem(u, 'image', 'product', pName));
+                    extractMediaFromField(prod.videos).forEach(u => addItem(u, 'video', 'product', pName));
+                    extractMediaFromField(prod.imagesRealisations).forEach(u => addItem(u, 'image', 'product', pName));
+                    extractMediaFromField(prod.videosRealisations).forEach(u => addItem(u, 'video', 'product', pName));
+                });
             }
         }
 
