@@ -4,7 +4,8 @@ import * as Location from 'expo-location';
 import * as Speech from 'expo-speech';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-    ActivityIndicator, Alert, Dimensions, Keyboard, KeyboardAvoidingView, Linking,
+    ActivityIndicator, Alert, Animated,
+    Dimensions, Keyboard, KeyboardAvoidingView, Linking,
     Platform, ScrollView, Share, StyleSheet, Text, ToastAndroid,
     TouchableOpacity, View
 } from 'react-native';
@@ -85,9 +86,9 @@ const TRAVEL_MODES = [
 ];
 const CHECKPOINT_LABELS: Record<string, { label: string; icon: string; color: string }> = {
     radar: { label: 'Radar', icon: '📸', color: '#EF4444' },
+    road_check: { label: 'Contrôle', icon: '🚧', color: '#D97706' },
+    transport_control: { label: 'Mintransport', icon: '🛂', color: '#0D9488' },
     police: { label: 'Police / Gendarmerie', icon: '👮', color: '#3B82F6' },
-    transport_control: { label: 'Contrôle Transports', icon: '🛂', color: '#0D9488' },
-    road_check: { label: 'Contrôle routier', icon: '🚧', color: '#D97706' },
     accident: { label: 'Accident', icon: '🚨', color: '#F59E0B' },
     danger: { label: 'Danger', icon: '⚠️', color: '#EF4444' },
     road_works: { label: 'Travaux', icon: '🚧', color: '#F97316' },
@@ -106,9 +107,9 @@ const CHECKPOINT_ALERT_DISTANCE: Record<string, number> = {
 };
 const REPORT_TYPES = [
     { type: 'radar', icon: '📸', short: 'Radar', label: 'Radar', bg: '#FEE2E2', color: '#DC2626' },
-    { type: 'police', icon: '👮', short: 'Police', label: 'Police / Gendarmerie', bg: '#DBEAFE', color: '#2563EB' },
-    { type: 'transport_control', icon: '🛂', short: 'Transport', label: 'Min. Transports', bg: '#CCFBF1', color: '#0D9488' },
     { type: 'road_check', icon: '🚧', short: 'Contrôle', label: 'Contrôle routier', bg: '#FEF9C3', color: '#D97706' },
+    { type: 'transport_control', icon: '🛂', short: 'Mintransp.', label: 'Mintransport', bg: '#CCFBF1', color: '#0D9488' },
+    { type: 'police', icon: '👮', short: 'Police', label: 'Police / Gendarmerie', bg: '#DBEAFE', color: '#2563EB' },
     { type: 'accident', icon: '🚨', short: 'Accident', label: 'Accident', bg: '#FEF3C7', color: '#EA580C' },
     { type: 'danger', icon: '⚠️', short: 'Danger', label: 'Danger', bg: '#FEE2E2', color: '#DC2626' },
     { type: 'road_works', icon: '🔧', short: 'Travaux', label: 'Travaux', bg: '#FEF3C7', color: '#F97316' },
@@ -136,7 +137,7 @@ const reverseGeocode = async (lat: number, lng: number): Promise<string> => {
 const CHECKPOINT_VOICE_MESSAGES: Record<string, (distText: string, speedLimit?: number) => string> = {
     radar: (d, sl) => sl ? `Attention, radar à ${d}. Limite de vitesse: ${sl} kilomètres heure. Respectez la signalisation.` : `Attention, radar détecté à ${d}. Respectez les panneaux de circulation.`,
     police: (d) => `Contrôle police ou gendarmerie signalé à ${d}. Préparez vos documents et ralentissez.`,
-    transport_control: (d) => `Contrôle du ministère des transports signalé à ${d}. Préparez vos documents de transport, carte grise et assurance.`,
+    transport_control: (d) => `Contrôle Mintransport signalé à ${d}. Préparez vos documents de transport, carte grise et assurance.`,
     road_check: (d) => `Contrôle routier signalé à ${d}. Ralentissez et préparez permis de conduire, carte grise et assurance.`,
     accident: (d) => `Accident signalé à ${d}. Redoublez de prudence et réduisez votre vitesse.`,
     danger: (d) => `Zone dangereuse à ${d}. Soyez vigilant et adaptez votre conduite.`,
@@ -211,10 +212,8 @@ const NavigationScreen: React.FC = () => {
     const [avoidTolls, setAvoidTolls] = useState(false);
     const [avoidHighways, setAvoidHighways] = useState(false);
     const [avoidFerries, setAvoidFerries] = useState(false);
-    const [showSteps, setShowSteps] = useState(false);
     const [showPrefs, setShowPrefs] = useState(false);
     const [showMap, setShowMap] = useState(true);
-    const [showAllSteps, setShowAllSteps] = useState(false);
     const [showReportHelp, setShowReportHelp] = useState(false);
     const [loadingCheckpoints, setLoadingCheckpoints] = useState(false);
     const [isTracking, setIsTracking] = useState(false);
@@ -259,6 +258,15 @@ const NavigationScreen: React.FC = () => {
     const [isLocationSelectorFocused, setIsLocationSelectorFocused] = useState(false);
     const [isHorizontalScrolling, setIsHorizontalScrolling] = useState(false);
     const [showReportBar, setShowReportBar] = useState(false);
+    const [showAlertHistory, setShowAlertHistory] = useState(false);
+    const [alertHistoryData, setAlertHistoryData] = useState<Array<{
+        id: string; checkpoint_type: string; lat: number; lng: number;
+        locationName: string; distance: number; count: number;
+        description?: string; speed_limit?: number; created_at?: string;
+    }>>([]);
+    const [loadingAlertHistory, setLoadingAlertHistory] = useState(false);
+    const [alertToast, setAlertToast] = useState<{ visible: boolean; message: string; icon: string; color: string }>({ visible: false, message: '', icon: '', color: '' });
+    const alertToastAnim = useRef(new Animated.Value(0)).current;
     const routeCardWidth = width * 0.72 + 10;
     const mapRef = useRef<MapView>(null);
     const scrollViewRef = useRef<ScrollView>(null);
@@ -308,7 +316,15 @@ const NavigationScreen: React.FC = () => {
 
     // ── API callbacks ──
     const loadSavedDestinations = useCallback(async () => { try { const r = await apiGet('/api/navigation/destinations'); if (r?.data?.destinations) setSavedDestinations(r.data.destinations); } catch { } }, []);
-    useEffect(() => { if (user) loadSavedDestinations(); }, [user, loadSavedDestinations]);
+    useEffect(() => {
+        if (user) {
+            loadSavedDestinations();
+            // Précharger les insights IA pour l'aperçu santé
+            apiGet('/api/navigation/activity/ai-insights?period=week')
+                .then((r: any) => { if (r?.data?.success) setAiInsights(r.data); })
+                .catch(() => { });
+        }
+    }, [user, loadSavedDestinations]);
     useEffect(() => {
         const s1 = Keyboard.addListener('keyboardDidShow', (e) => { setKeyboardHeight(e.endCoordinates.height); setIsKeyboardVisible(true); });
         const s2 = Keyboard.addListener('keyboardDidHide', () => { setKeyboardHeight(0); setIsKeyboardVisible(false); });
@@ -353,7 +369,7 @@ const NavigationScreen: React.FC = () => {
             const stepsP = route.steps.length > 0 ? `&route_steps=${encodeURIComponent(JSON.stringify(route.steps.map(s => ({ lat: s.location?.lat || 0, lng: s.location?.lng || 0 }))))}` : '';
             const r = await apiGet(`/api/navigation/points-of-interest?route_id=${route.id}&origin_lat=${origin.lat}&origin_lng=${origin.lng}&dest_lat=${destinationCoords.lat}&dest_lng=${destinationCoords.lng}${stepsP}`);
             if (r?.data?.pois && Array.isArray(r.data.pois)) {
-                const vp = r.data.pois.filter((p: any) => p?.name && validateCoords(p.latitude || p.lat, p.longitude || p.lng));
+                const vp = r.data.pois.filter((p: any) => p?.name && validateCoords(p.location?.lat ?? p.latitude ?? 0, p.location?.lng ?? p.longitude ?? 0));
                 setPointsOfInterest(vp);
                 const fc = Object.entries(POI_CATEGORIES).find(([k]) => vp.some((p: PointOfInterest) => POI_CATEGORIES[k].types.includes(p.type)));
                 if (fc) { const reset: Record<string, boolean> = {}; Object.keys(POI_CATEGORIES).forEach(k => reset[k] = false); reset[fc[0]] = true; setExpandedCategories(reset); }
@@ -430,19 +446,76 @@ const NavigationScreen: React.FC = () => {
         const con = Math.max(0, 100 - Math.sqrt(sp.reduce((s, v) => s + (v - avg) ** 2, 0) / sp.length) * 5);
         return Math.min(100, Math.max(0, Math.round(con * 0.5 + Math.min(20, dKm * 4) + Math.min(15, dMin * 0.5) + (mode === 'walking' ? 10 : mode === 'bicycling' ? 8 : 0) - (off ? 15 : 0))));
     }, []);
+    // ── Toast animé de confirmation d'alerte ──
+    const showAlertToast = useCallback((message: string, icon: string, color: string) => {
+        setAlertToast({ visible: true, message, icon, color });
+        Animated.sequence([
+            Animated.timing(alertToastAnim, { toValue: 1, duration: 300, useNativeDriver: true }),
+            Animated.delay(3000),
+            Animated.timing(alertToastAnim, { toValue: 0, duration: 300, useNativeDriver: true }),
+        ]).start(() => setAlertToast(prev => ({ ...prev, visible: false })));
+    }, [alertToastAnim]);
+
     const reportCheckpoint = useCallback(async (type: string) => {
         let pos = livePosition; if (!pos) pos = await getCurrentPosition(); if (!pos) { Alert.alert('Erreur', 'GPS indisponible'); return; }
         try {
             await apiPost('/api/navigation/checkpoints', { checkpoint_type: type, latitude: pos.lat, longitude: pos.lng, is_permanent: type === 'speed_bump' });
             checkpointsReportedRef.current += 1;
-            // Reverse geocode pour afficher le nom du lieu
             const locationName = await reverseGeocode(pos.lat, pos.lng);
             const typeLabel = CHECKPOINT_LABELS[type]?.label || type;
             const typeIcon = CHECKPOINT_LABELS[type]?.icon || '⚠️';
-            showToast(`${typeIcon} ${typeLabel} signalé à ${locationName}`);
+            showAlertToast(`${typeLabel} signalé à ${locationName}`, typeIcon, CHECKPOINT_LABELS[type]?.color || '#10B981');
             loadCheckpointsSafely();
         } catch { Alert.alert('Erreur', 'Échec du signalement'); }
-    }, [livePosition, getCurrentPosition, loadCheckpointsSafely]);
+    }, [livePosition, getCurrentPosition, loadCheckpointsSafely, showAlertToast]);
+
+    // ── Historique des alertes avec clustering et noms de lieux ──
+    const loadAlertHistory = useCallback(async () => {
+        setLoadingAlertHistory(true);
+        try {
+            const pos = await getCurrentPosition();
+            let rawCps = checkpoints;
+            // Si pas de checkpoints chargés, tenter un chargement large autour de la position
+            if (rawCps.length === 0 && pos) {
+                try {
+                    const r = await apiGet(`/api/navigation/checkpoints/along-route?origin_lat=${pos.lat - 0.05}&origin_lng=${pos.lng - 0.05}&dest_lat=${pos.lat + 0.05}&dest_lng=${pos.lng + 0.05}`);
+                    if (r?.data?.checkpoints && Array.isArray(r.data.checkpoints)) rawCps = r.data.checkpoints.filter((c: any) => c && validateCoords(c.latitude, c.longitude));
+                } catch { }
+            }
+            if (rawCps.length === 0) { setAlertHistoryData([]); setLoadingAlertHistory(false); return; }
+            // Clustering : regrouper les alertes à moins de 200m
+            const clusters: Array<{ items: any[]; centerLat: number; centerLng: number }> = [];
+            for (const cp of rawCps) {
+                let added = false;
+                for (const cl of clusters) {
+                    if (haversineDistance(cl.centerLat, cl.centerLng, cp.latitude, cp.longitude) < 200) {
+                        cl.items.push(cp);
+                        cl.centerLat = cl.items.reduce((s: number, c: any) => s + c.latitude, 0) / cl.items.length;
+                        cl.centerLng = cl.items.reduce((s: number, c: any) => s + c.longitude, 0) / cl.items.length;
+                        added = true; break;
+                    }
+                }
+                if (!added) clusters.push({ items: [cp], centerLat: cp.latitude, centerLng: cp.longitude });
+            }
+            // Résolution des noms de lieux + calcul des distances
+            const data = await Promise.all(clusters.map(async (cl) => {
+                const main = cl.items[0];
+                const locName = await reverseGeocode(cl.centerLat, cl.centerLng);
+                const dist = pos ? haversineDistance(pos.lat, pos.lng, cl.centerLat, cl.centerLng) : 0;
+                // Calculer le temps écoulé depuis la création
+                return {
+                    id: main.id, checkpoint_type: main.checkpoint_type,
+                    lat: cl.centerLat, lng: cl.centerLng, locationName: locName,
+                    distance: dist, count: cl.items.length,
+                    description: main.description, speed_limit: main.speed_limit,
+                    created_at: main.created_at,
+                };
+            }));
+            data.sort((a, b) => a.distance - b.distance);
+            setAlertHistoryData(data);
+        } catch (e) { console.warn('[NavigationScreen] Erreur historique alertes:', e); }
+        finally { setLoadingAlertHistory(false); }
+    }, [getCurrentPosition, checkpoints, haversineDistance]);
 
     const startTracking = useCallback(async () => {
         if (!selectedRoute || isTracking) return;
@@ -612,8 +685,9 @@ const NavigationScreen: React.FC = () => {
                                         {livePosition && <Marker coordinate={{ latitude: livePosition.lat, longitude: livePosition.lng }} title="Ma position" pinColor="#3B82F6" />}
                                         {checkpoints.slice(0, 10).map(cp => <Marker key={cp.id} coordinate={{ latitude: cp.latitude, longitude: cp.longitude }} title={`${CHECKPOINT_LABELS[cp.checkpoint_type]?.icon || '⚠️'} ${CHECKPOINT_LABELS[cp.checkpoint_type]?.label || cp.checkpoint_type}`} pinColor={CHECKPOINT_LABELS[cp.checkpoint_type]?.color || '#6B7280'} tracksViewChanges={false} />)}
                                     </MapView>
-                                    <TouchableOpacity style={st.mapBtn} onPress={() => { if (livePosition && mapRef.current) mapRef.current.animateToRegion({ latitude: livePosition.lat, longitude: livePosition.lng, latitudeDelta: 0.01, longitudeDelta: 0.01 }, 500); }}>
-                                        <SafeIcon name="Crosshair" size={18} color={modernColors.primary} />
+                                    <TouchableOpacity style={st.mapBtnLabeled} onPress={() => { if (livePosition && mapRef.current) mapRef.current.animateToRegion({ latitude: livePosition.lat, longitude: livePosition.lng, latitudeDelta: 0.01, longitudeDelta: 0.01 }, 500); }}>
+                                        <SafeIcon name="Locate" size={14} color={modernColors.primary} />
+                                        <Text style={st.mapBtnLabelTxt}>Ma position</Text>
                                     </TouchableOpacity>
                                 </View>
                             )}
@@ -853,7 +927,8 @@ const NavigationScreen: React.FC = () => {
                                 {TRAVEL_MODES.map(m => (
                                     <TouchableOpacity key={m.key} style={[st.modeBtn, travelMode === m.key && { backgroundColor: m.color + '15', borderColor: m.color }]}
                                         onPress={() => { setTravelMode(m.key); if (routes.length > 0) setTimeout(() => searchRoutesRef.current(), 100); }}>
-                                        <Text style={{ fontSize: 18 }}>{m.emoji}</Text><Text style={[st.modeBtnLbl, travelMode === m.key && { color: m.color, fontWeight: '700' as any }]}>{m.label}</Text>
+                                        <Text style={{ fontSize: 20 }}>{m.emoji}</Text>
+                                        <Text style={[st.modeBtnLbl, travelMode === m.key && { color: m.color, fontWeight: '700' as any }]} numberOfLines={1}>{m.label}</Text>
                                     </TouchableOpacity>
                                 ))}
                             </View>
@@ -948,11 +1023,13 @@ const NavigationScreen: React.FC = () => {
                                         {checkpoints.slice(0, 10).map(cp => <Marker key={cp.id} coordinate={{ latitude: cp.latitude, longitude: cp.longitude }} title={`${CHECKPOINT_LABELS[cp.checkpoint_type]?.icon || '⚠️'} ${CHECKPOINT_LABELS[cp.checkpoint_type]?.label || cp.checkpoint_type}`} pinColor={CHECKPOINT_LABELS[cp.checkpoint_type]?.color} tracksViewChanges={false} />)}
                                         {pointsOfInterest.slice(0, 5).map(poi => <Marker key={poi.id} coordinate={{ latitude: getPoiLat(poi), longitude: getPoiLng(poi) }} title={poi.name} description={poi.address} pinColor="#10B981" tracksViewChanges={false} />)}
                                     </MapView>
-                                    <TouchableOpacity style={st.mapBtn} onPress={() => { if (mapRef.current && routePolylineCoords.length > 1) mapRef.current.fitToCoordinates(routePolylineCoords, { edgePadding: { top: 50, right: 50, bottom: 50, left: 50 }, animated: true }); }}>
-                                        <SafeIcon name="Crosshair" size={18} color={modernColors.primary} />
+                                    <TouchableOpacity style={st.mapBtnLabeled} onPress={() => { if (mapRef.current && routePolylineCoords.length > 1) mapRef.current.fitToCoordinates(routePolylineCoords, { edgePadding: { top: 50, right: 50, bottom: 50, left: 50 }, animated: true }); }}>
+                                        <SafeIcon name="Maximize2" size={14} color={modernColors.primary} />
+                                        <Text style={st.mapBtnLabelTxt}>Recentrer</Text>
                                     </TouchableOpacity>
-                                    <TouchableOpacity style={[st.mapBtn, { top: 54 }]} onPress={() => setShowMap(false)}>
-                                        <SafeIcon name="Minimize2" size={16} color={modernColors.textSecondary} />
+                                    <TouchableOpacity style={[st.mapBtnLabeled, { top: 46 }]} onPress={() => setShowMap(false)}>
+                                        <SafeIcon name="EyeOff" size={14} color={modernColors.textSecondary} />
+                                        <Text style={[st.mapBtnLabelTxt, { color: modernColors.textSecondary }]}>Masquer</Text>
                                     </TouchableOpacity>
                                 </View>
                             )}
@@ -965,33 +1042,6 @@ const NavigationScreen: React.FC = () => {
                                 <NativeCard style={[st.secCard, { backgroundColor: '#FEF3C7', borderColor: '#F59E0B', borderWidth: 1 }]}>
                                     <Text style={st.secTitle}>⚠️ Alertes trafic</Text>
                                     {selectedRoute.warnings.map((w, i) => <Text key={i} style={st.alertText}>• {w}</Text>)}
-                                </NativeCard>
-                            )}
-
-                            {/* Steps accordion */}
-                            {selectedRoute?.steps && selectedRoute.steps.length > 0 && (
-                                <NativeCard style={st.secCard}>
-                                    <TouchableOpacity style={st.stepsHdr} onPress={() => setShowSteps(!showSteps)} activeOpacity={0.7}>
-                                        <Text style={{ fontSize: 16 }}>📋</Text><Text style={st.stepsTitle}>Étapes détaillées</Text>
-                                        <View style={st.stepsBadge}><Text style={st.stepsBadgeTxt}>{selectedRoute.steps.length}</Text></View>
-                                        <SafeIcon name={showSteps ? 'ChevronUp' : 'ChevronDown'} size={16} color={modernColors.textSecondary} />
-                                    </TouchableOpacity>
-                                    {showSteps && (
-                                        <View style={st.stepsList}>
-                                            {(showAllSteps ? selectedRoute.steps : selectedRoute.steps.slice(0, 5)).map((step, i) => (
-                                                <View key={i} style={st.stepItem}>
-                                                    <View style={st.stepIdx}><Text style={st.stepIdxTxt}>{i + 1}</Text></View>
-                                                    <View style={st.flex1}><Text style={st.stepInstr}>{step.instructions}</Text><View style={st.stepMeta}><Text style={st.stepDist}>{formatDistance(step.distance_meters)}</Text><Text style={st.stepDur}>{formatDuration(step.duration_seconds)}</Text></View></View>
-                                                </View>
-                                            ))}
-                                            {selectedRoute.steps.length > 5 && (
-                                                <TouchableOpacity style={st.showAllBtn} onPress={() => setShowAllSteps(!showAllSteps)}>
-                                                    <Text style={st.showAllTxt}>{showAllSteps ? 'Réduire' : `Voir les ${selectedRoute.steps.length} étapes`}</Text>
-                                                    <SafeIcon name={showAllSteps ? 'ChevronUp' : 'ChevronDown'} size={14} color={modernColors.primary} />
-                                                </TouchableOpacity>
-                                            )}
-                                        </View>
-                                    )}
                                 </NativeCard>
                             )}
 
@@ -1070,9 +1120,95 @@ const NavigationScreen: React.FC = () => {
                                     </TouchableOpacity>
                                 </View>
                             )}
+
+                            {/* ━━ HISTORIQUE DES ALERTES COMMUNAUTAIRES ━━ */}
+                            <NativeCard style={[st.secCard, { borderLeftWidth: 4, borderLeftColor: '#EF4444' }]}>
+                                <TouchableOpacity style={st.alertHistHdr} onPress={() => { setShowAlertHistory(!showAlertHistory); if (!showAlertHistory) loadAlertHistory(); }} activeOpacity={0.7}>
+                                    <Text style={{ fontSize: 18 }}>🚨</Text>
+                                    <View style={st.flex1}>
+                                        <Text style={st.alertHistTitle}>Alertes communautaires</Text>
+                                        <Text style={st.alertHistSub}>{checkpoints.length > 0 ? `${checkpoints.length} alerte${checkpoints.length > 1 ? 's' : ''} active${checkpoints.length > 1 ? 's' : ''}` : 'Voir les signalements autour de vous'}</Text>
+                                    </View>
+                                    <SafeIcon name={showAlertHistory ? 'ChevronUp' : 'ChevronDown'} size={16} color={modernColors.textSecondary} />
+                                </TouchableOpacity>
+                                {showAlertHistory && (
+                                    <View style={{ marginTop: 10 }}>
+                                        {loadingAlertHistory ? (
+                                            <View style={st.loadCard}><ActivityIndicator color="#EF4444" /><Text style={st.loadText}>Chargement des alertes...</Text></View>
+                                        ) : alertHistoryData.length === 0 ? (
+                                            <View style={{ alignItems: 'center' as any, padding: 16 }}><Text style={{ fontSize: 32 }}>✅</Text><Text style={st.emptyText}>Aucune alerte signalée dans cette zone</Text></View>
+                                        ) : (
+                                            alertHistoryData.map((alert, idx) => {
+                                                const info = CHECKPOINT_LABELS[alert.checkpoint_type] || { label: alert.checkpoint_type, icon: '⚠️', color: '#6B7280' };
+                                                const timeAgo = alert.created_at ? (() => {
+                                                    const diff = Date.now() - new Date(alert.created_at).getTime();
+                                                    if (diff < 3600000) return `il y a ${Math.floor(diff / 60000)} min`;
+                                                    if (diff < 86400000) return `il y a ${Math.floor(diff / 3600000)}h`;
+                                                    return `il y a ${Math.floor(diff / 86400000)}j`;
+                                                })() : '';
+                                                return (
+                                                    <View key={alert.id || idx} style={[st.alertHistItem, { borderLeftColor: info.color }]}>
+                                                        <Text style={{ fontSize: 20 }}>{info.icon}</Text>
+                                                        <View style={st.flex1}>
+                                                            <View style={st.alertHistItemTop}>
+                                                                <Text style={[st.alertHistLabel, { color: info.color }]}>{info.label}</Text>
+                                                                {alert.count > 1 && <View style={[st.alertHistCountBadge, { backgroundColor: info.color + '20' }]}><Text style={[st.alertHistCountTxt, { color: info.color }]}>×{alert.count}</Text></View>}
+                                                            </View>
+                                                            <Text style={st.alertHistLoc} numberOfLines={1}>📍 {alert.locationName}</Text>
+                                                            <View style={st.alertHistMeta}>
+                                                                <Text style={st.alertHistDist}>{formatDistance(alert.distance)}</Text>
+                                                                {timeAgo ? <Text style={st.alertHistTime}>🕒 {timeAgo}</Text> : null}
+                                                                {alert.speed_limit ? <Text style={st.alertHistSpd}>🚦 {alert.speed_limit} km/h</Text> : null}
+                                                            </View>
+                                                        </View>
+                                                    </View>
+                                                );
+                                            })
+                                        )}
+                                    </View>
+                                )}
+                            </NativeCard>
+
+                            {/* ━━ APERÇU SANTÉ & COACH IA ━━ */}
+                            {user && !isTracking && aiInsights && (
+                                <NativeCard style={[st.secCard, { borderLeftWidth: 4, borderLeftColor: '#7C3AED' }]}>
+                                    <TouchableOpacity style={st.healthPreviewRow} onPress={() => { setShowActivityStats(true); loadActivityStats(activityPeriod); }} activeOpacity={0.7}>
+                                        <View style={st.healthPreviewIcon}><Text style={{ fontSize: 24 }}>🫀</Text></View>
+                                        <View style={st.flex1}>
+                                            <Text style={st.healthPreviewTitle}>Score Santé & Coach IA</Text>
+                                            <View style={st.healthPreviewStats}>
+                                                {aiInsights.health_score && <Text style={[st.healthPreviewStat, { color: aiInsights.health_score.score >= 80 ? '#10B981' : '#F59E0B' }]}>❤️ {aiInsights.health_score.score}/100</Text>}
+                                                {aiInsights.gamification && <Text style={st.healthPreviewStat}>🔥 {aiInsights.gamification.current_streak}j</Text>}
+                                                {aiInsights.co2_impact && <Text style={st.healthPreviewStat}>🌿 {((aiInsights.co2_impact.saved_grams || 0) / 1000).toFixed(1)} kg</Text>}
+                                            </View>
+                                        </View>
+                                        <SafeIcon name="ChevronRight" size={20} color="#7C3AED" />
+                                    </TouchableOpacity>
+                                </NativeCard>
+                            )}
+                            {user && !isTracking && !aiInsights && (
+                                <TouchableOpacity style={st.healthPreviewEmpty} onPress={() => { setShowActivityStats(true); loadActivityStats(activityPeriod); }} activeOpacity={0.7}>
+                                    <Text style={{ fontSize: 20 }}>📊</Text>
+                                    <View style={st.flex1}>
+                                        <Text style={st.healthPreviewTitle}>Statistiques & Coach IA</Text>
+                                        <Text style={st.healthPreviewSub}>VO2max, défis, CO2, badges, conseils...</Text>
+                                    </View>
+                                    <SafeIcon name="ChevronRight" size={20} color={modernColors.textSecondary} />
+                                </TouchableOpacity>
+                            )}
                         </>
                     )}
                 </ScrollView>
+                {/* ━━ TOAST ANIMÉ DE CONFIRMATION D'ALERTE ━━ */}
+                {alertToast.visible && (
+                    <Animated.View style={[st.alertToastWrap, { opacity: alertToastAnim, transform: [{ translateY: alertToastAnim.interpolate({ inputRange: [0, 1], outputRange: [-40, 0] }) }] }]}>
+                        <View style={[st.alertToastInner, { borderLeftColor: alertToast.color }]}>
+                            <Text style={{ fontSize: 22 }}>{alertToast.icon}</Text>
+                            <Text style={st.alertToastMsg}>{alertToast.message}</Text>
+                            <Text style={{ fontSize: 14 }}>✅</Text>
+                        </View>
+                    </Animated.View>
+                )}
             </KeyboardAvoidingView>
         </SafeNativeView>
     );
@@ -1123,8 +1259,8 @@ const st = StyleSheet.create({
 
     // Travel modes
     modeSelector: { flexDirection: 'row', gap: 8, marginBottom: 12 },
-    modeBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 12, backgroundColor: modernColors.surface, borderWidth: 1.5, borderColor: modernColors.border },
-    modeBtnLbl: { fontSize: 12, fontWeight: '600', color: modernColors.textSecondary },
+    modeBtn: { flex: 1, flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, paddingVertical: 8, paddingHorizontal: 4, borderRadius: 12, backgroundColor: modernColors.surface, borderWidth: 1.5, borderColor: modernColors.border, overflow: 'hidden' },
+    modeBtnLbl: { fontSize: 11, fontWeight: '600', color: modernColors.textSecondary, textAlign: 'center' },
 
     // Favorites
     favChip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: modernColors.surface, borderWidth: 1, borderColor: modernColors.border },
@@ -1167,6 +1303,8 @@ const st = StyleSheet.create({
     mapWrap: { marginBottom: 12, borderRadius: 16, overflow: 'hidden', height: MAP_HEIGHT },
     mapView: { width: '100%', height: '100%' },
     mapBtn: { position: 'absolute', top: 10, right: 10, width: 36, height: 36, borderRadius: 18, backgroundColor: 'white', alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 4, elevation: 3 },
+    mapBtnLabeled: { position: 'absolute', top: 10, right: 10, flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 16, backgroundColor: 'white', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 4, elevation: 3 },
+    mapBtnLabelTxt: { fontSize: 11, fontWeight: '600', color: modernColors.primary },
     showMapBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 10, marginBottom: 12, borderRadius: 12, backgroundColor: modernColors.surface, borderWidth: 1, borderColor: modernColors.border },
     showMapText: { fontSize: 13, fontWeight: '600', color: modernColors.primary },
 
@@ -1175,21 +1313,34 @@ const st = StyleSheet.create({
     secTitle: { fontSize: 15, fontWeight: '700', color: modernColors.text, marginBottom: 10 },
     alertText: { fontSize: 13, color: '#92400E', marginBottom: 4, lineHeight: 18 },
 
-    // Steps
-    stepsHdr: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    stepsTitle: { flex: 1, fontSize: 15, fontWeight: '700', color: modernColors.text },
-    stepsBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, backgroundColor: modernColors.border },
-    stepsBadgeTxt: { fontSize: 12, color: modernColors.textSecondary, fontWeight: '600' },
-    stepsList: { marginTop: 12 },
-    stepItem: { flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: modernColors.border },
-    stepIdx: { width: 26, height: 26, borderRadius: 13, backgroundColor: modernColors.primary, alignItems: 'center', justifyContent: 'center', marginRight: 10, marginTop: 2 },
-    stepIdxTxt: { fontSize: 11, fontWeight: '700', color: 'white' },
-    stepInstr: { fontSize: 13, color: modernColors.text, lineHeight: 18, marginBottom: 4 },
-    stepMeta: { flexDirection: 'row', gap: 12 },
-    stepDist: { fontSize: 11, color: modernColors.textSecondary },
-    stepDur: { fontSize: 11, color: modernColors.textSecondary },
-    showAllBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, marginTop: 4, borderTopWidth: 1, borderTopColor: modernColors.border },
-    showAllTxt: { fontSize: 13, fontWeight: '600', color: modernColors.primary },
+    // Alert Toast
+    alertToastWrap: { position: 'absolute', top: 60, left: 16, right: 16, zIndex: 9999 },
+    alertToastInner: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14, borderRadius: 14, backgroundColor: '#FFFFFF', borderLeftWidth: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 8 },
+    alertToastMsg: { flex: 1, fontSize: 14, fontWeight: '700', color: modernColors.text },
+
+    // Alert History
+    alertHistHdr: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    alertHistTitle: { fontSize: 15, fontWeight: '700', color: modernColors.text },
+    alertHistSub: { fontSize: 12, color: modernColors.textSecondary, marginTop: 1 },
+    alertHistItem: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, paddingVertical: 10, paddingLeft: 10, marginTop: 6, borderLeftWidth: 3, borderRadius: 8, backgroundColor: modernColors.surfaceVariant },
+    alertHistItemTop: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    alertHistLabel: { fontSize: 14, fontWeight: '700' },
+    alertHistCountBadge: { paddingHorizontal: 6, paddingVertical: 1, borderRadius: 8 },
+    alertHistCountTxt: { fontSize: 11, fontWeight: '800' },
+    alertHistLoc: { fontSize: 12, color: modernColors.text, marginTop: 3 },
+    alertHistMeta: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4, flexWrap: 'wrap' },
+    alertHistDist: { fontSize: 11, fontWeight: '600', color: modernColors.primary },
+    alertHistTime: { fontSize: 11, color: modernColors.textSecondary },
+    alertHistSpd: { fontSize: 11, fontWeight: '600', color: '#EF4444' },
+
+    // Health Preview
+    healthPreviewRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    healthPreviewIcon: { width: 44, height: 44, borderRadius: 14, backgroundColor: '#7C3AED15', alignItems: 'center', justifyContent: 'center' },
+    healthPreviewTitle: { fontSize: 14, fontWeight: '700', color: modernColors.text },
+    healthPreviewStats: { flexDirection: 'row', gap: 12, marginTop: 4 },
+    healthPreviewStat: { fontSize: 12, fontWeight: '600', color: modernColors.textSecondary },
+    healthPreviewSub: { fontSize: 12, color: modernColors.textSecondary, marginTop: 2 },
+    healthPreviewEmpty: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, paddingHorizontal: 16, marginBottom: 12, borderRadius: 14, backgroundColor: modernColors.surface, borderWidth: 1.5, borderColor: modernColors.border },
 
     // Checkpoints
     cpItem: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, borderTopWidth: 1, borderTopColor: modernColors.border },

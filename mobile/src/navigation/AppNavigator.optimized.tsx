@@ -554,13 +554,36 @@ const getPartnerDashboardScreen = (partnerType: string | undefined): string | nu
     'immobilier': 'ImmobilierForm',
   };
   const normalized = partnerType.toLowerCase().trim().replace(/\s+/g, '');
-  return map[partnerType] || map[normalized] || null;
+  const normalizedNoUnderscore = partnerType.toLowerCase().trim().replace(/[\s_]+/g, '');
+  return map[partnerType] || map[normalized] || map[normalizedNoUnderscore] || null;
+};
+
+// ============================================================================
+// PARTNER DASHBOARD TAB - Renders the correct specialized screen per partner_type
+// Instead of always showing GestionServicesSpecialisesScreen (generic flat list),
+// this dynamically loads the partner's ACTUAL dashboard/form screen.
+// ============================================================================
+
+const PartnerDashboardTab: React.FC<any> = (props) => {
+  const { user } = useAuth();
+  const partnerType = (user as any)?.partner_type;
+  const screenName = getPartnerDashboardScreen(partnerType);
+
+  // If we have a specific dashboard screen mapped AND it exists in the lazy registry, render it directly
+  if (screenName && screenName !== 'GestionServicesSpecialises' && S[screenName]) {
+    const TargetScreen = S[screenName];
+    return <TargetScreen {...props} />;
+  }
+
+  // Fallback: generic GestionServicesSpecialisesScreen for unmapped or generic partner types
+  return <GestionServicesSpecialisesScreen {...props} />;
 };
 
 function MainTabNavigator() {
   const { user } = useAuth();
   const [isCourier, setIsCourier] = useState(false);
   const [hasSpecializedServices, setHasSpecializedServices] = useState(false);
+  const isPartner = (user as any)?.role === 'partenaire' && (user as any)?.partner_type;
 
   // Détecter si l'utilisateur est coursier
   useEffect(() => {
@@ -595,6 +618,7 @@ function MainTabNavigator() {
 
   return (
     <Tab.Navigator
+      initialRouteName={isPartner && hasSpecializedServices ? 'GestionServicesSpecialises' : 'Home'}
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: modernColors.primary,
@@ -634,26 +658,14 @@ function MainTabNavigator() {
       {hasSpecializedServices ? (
         <Tab.Screen
           name="GestionServicesSpecialises"
-          component={GestionServicesSpecialisesScreen}
+          component={PartnerDashboardTab}
           options={{
-            tabBarLabel: 'Mes Services',
-            title: 'Gestion Services Spécialisés',
+            tabBarLabel: 'Mon Espace',
+            title: 'Mon Espace Partenaire',
             tabBarIcon: ({ focused, color, size }) => (
               <SafeIcon name="briefcase" size={size} color={focused ? modernColors.primary : color} type="lucide" />
             ),
           }}
-          listeners={({ navigation }) => ({
-            tabPress: (e) => {
-              // ✅ FIX: Rediriger vers l'écran spécialisé du partenaire (même que login)
-              const pt = (user as any)?.partner_type;
-              const targetScreen = getPartnerDashboardScreen(pt);
-              if (targetScreen && targetScreen !== 'GestionServicesSpecialises') {
-                e.preventDefault();
-                navigation.navigate(targetScreen);
-              }
-              // Si pas de mapping spécifique, laisser le comportement par défaut (GestionServicesSpecialises)
-            },
-          })}
         />
       ) : (
         <Tab.Screen

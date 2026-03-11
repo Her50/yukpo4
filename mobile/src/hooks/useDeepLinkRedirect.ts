@@ -48,10 +48,15 @@ export const useDeepLinkRedirect = () => {
                     'agence_voyage': 'AgenceVoyageForm',
                     'agencedevoyage': 'AgenceVoyageForm',
                     'agencevoyage': 'AgenceVoyageForm',
-                    'agence_de_voyage': 'AgenceVoyageForm', // AJOUT: normalisation depuis "agence de voyage"
+                    'agence_de_voyage': 'AgenceVoyageForm',
                     'covoiturage': 'CovoiturageForm',
                     'taxi': 'TaxiForm',
                     'chauffeur': 'TaxiForm',
+                    // ✅ Hôtel / Meublé → HotelDashboard (était ABSENT → écran plat !)
+                    'hotel': 'HotelDashboard',
+                    'meuble': 'HotelDashboard',
+                    // ✅ Immobilier classique
+                    'immobilier': 'ImmobilierForm',
                     // Commerce / Restauration
                     'supermarche': 'SupermarketPartnerDashboard',
                     'restaurant': 'RestaurantDashboard',
@@ -67,13 +72,11 @@ export const useDeepLinkRedirect = () => {
                     'etablissement_scolaire': 'OrientationPartnerDashboard',
                     'livrescolaire': 'OrientationPartnerDashboard',
                     'livre_scolaire': 'OrientationPartnerDashboard',
-                    // Autres types avec espaces (normalisation)
-                    'livraison_courses_marche': 'GestionServicesSpecialises', // normalisé depuis "livraison courses marche"
+                    // Autres types génériques
+                    'livraison_courses_marche': 'GestionServicesSpecialises',
                     'demenagement': 'GestionServicesSpecialises',
                     'transport': 'GestionServicesSpecialises',
                     'telecom': 'GestionServicesSpecialises',
-                    'immobilier': 'ImmobilierForm',
-                    // Génériques
                     'ecommerce': 'GestionServicesSpecialises',
                     'prestataire': 'GestionServicesSpecialises',
                     'service': 'GestionServicesSpecialises',
@@ -91,12 +94,14 @@ export const useDeepLinkRedirect = () => {
                 console.log(`  - mapping normalisé: "${partnerTypeToScreen[normalizedType]}"`);
 
                 if (targetScreen) {
-                    console.log(`[useDeepLinkRedirect] � Redirection partenaire ${user.partner_type} → ${targetScreen}`);
-                    navNavigate(targetScreen as any);
-                    return true; // Redirection effectuée
+                    console.log(`[useDeepLinkRedirect] ✅ Redirection partenaire ${user.partner_type} → tab Mon Espace (${targetScreen})`);
+                    // ✅ FIX: Naviguer vers l'onglet Mon Espace (qui rend dynamiquement le bon écran via PartnerDashboardTab)
+                    // Au lieu de pousser un écran sur la pile, on switch vers l'onglet partenaire
+                    navNavigate('MainTabs' as any, { screen: 'GestionServicesSpecialises' } as any);
+                    return true;
                 } else {
-                    console.warn(`[useDeepLinkRedirect] ⚠️ Type partenaire non mappé: ${user.partner_type}, redirection vers GestionServicesSpecialises`);
-                    navNavigate('GestionServicesSpecialises' as any);
+                    console.warn(`[useDeepLinkRedirect] ⚠️ Type partenaire non mappé: ${user.partner_type}, redirection vers Mon Espace`);
+                    navNavigate('MainTabs' as any, { screen: 'GestionServicesSpecialises' } as any);
                     return true;
                 }
             }

@@ -4,8 +4,12 @@
 # Build artifacts (souvent > 10 GiB)
 target/
 
-# Blender binaries
-# blender/
+# Blender binaries (265 MB - téléchargé dans Dockerfile)
+blender/
+
+# Modèles et données volumineuses
+models/
+uploads/
 
 # Analyses et rapports
 analyses_db/
@@ -14,12 +18,19 @@ analyses_db/
 *.md
 !README.md
 !ia_intentions_instructions.md
+!ia_prompts/*.md
 
 # Scripts dev
 *.ps1
 *.bat
 *.sh
 !scripts/start-cloud.sh
+!scripts/start-cloud-run.sh
+!scripts/start-health-server.sh
+!scripts/health-server-simple.sh
+!scripts/health-server-python.py
+!scripts/startup-wrapper.sh
+!scripts/docker-entrypoint.sh
 
 # Logs
 *.log
