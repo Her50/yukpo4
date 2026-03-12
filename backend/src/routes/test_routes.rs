@@ -1,16 +1,16 @@
 // Endpoint pour servir l'APK de test
 use axum::{
     body::Body,
-    extract::Path,
     http::{header, StatusCode},
     response::{IntoResponse, Response},
     routing::get,
     Router,
 };
-use std::path::Path;
+use std::path::Path as StdPath;
+use std::sync::Arc;
 
 pub async fn get_test_apk() -> impl IntoResponse {
-    let apk_path = Path::new("uploads/yukpo-mobile-test.apk");
+    let apk_path = StdPath::new("uploads/yukpo-mobile-test.apk");
 
     if !apk_path.exists() {
         return (
@@ -20,7 +20,7 @@ pub async fn get_test_apk() -> impl IntoResponse {
             .into_response();
     }
 
-    let apk_content = match tokio::fs::read(apk_path).await {
+    let apk_content: Vec<u8> = match tokio::fs::read(apk_path).await {
         Ok(content) => content,
         Err(_) => {
             return (

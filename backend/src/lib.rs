@@ -430,7 +430,7 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .merge(supermarket) // ✅ NOUVEAU: Routes supermarché dédiées (produits, comparaison, promotions)
         .merge(followers) // ✅ NOUVEAU 2026-03-05: Routes pour système de suivi vendeurs
         .merge(whatsapp) // ✅ NOUVEAU 2026-03-06: Routes WhatsApp Business API
-        .merge(test_routes) // ✅ NOUVEAU: Routes pour page de téléchargement APK test
+        .merge(test_routes.with_state(state.clone())) // ✅ NOUVEAU: Routes pour page de téléchargement APK test
         .merge(mobile_logs)
         .merge(navigation) // ✅ NOUVEAU: Routes navigation intelligente
         .merge(phone_verification) // ✅ NOUVEAU 2026-02-25: Routes vérification OTP téléphone
