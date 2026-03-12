@@ -1,11 +1,10 @@
-# 🚀 .dockerignore optimisé pour AWS ECS/Fargate
+# 🚀 .dockerignore for root context build
 # Exclut les fichiers inutiles pour réduire la taille du contexte Docker
 
 ############################################
 # Build artifacts et dépendances
 ############################################
 target/
-# Cargo.lock - INCLUS car nécessaire pour builds reproductibles
 *.pdb
 *.dSYM
 
@@ -45,31 +44,8 @@ temp/
 ############################################
 *.md
 !README.md
-!MIGRATION_STATUS_REPORT.md
 docs/
 *.txt
-!ia_intentions_instructions.md
-
-############################################
-# Scripts de développement (non nécessaires dans l'image)
-############################################
-*.ps1
-*.bat
-*.sh
-!scripts/start-cloud.sh
-scripts/*.ps1
-scripts/*.bat
-build*.sh
-build*.ps1
-
-############################################
-# Anciennes migrations et données de test
-############################################
-migrations_old/
-data/test/
-data/*.json
-data/*.csv
-!data/.gitkeep
 
 ############################################
 # Tests et coverage
@@ -99,22 +75,8 @@ coverage/
 ############################################
 # Docker files (éviter la récursion)
 ############################################
-Dockerfile
-Dockerfile.cloud
-Dockerfile.cloud.blender
-# Exception : permettre Dockerfile.cloud.optimized et Dockerfile.build pour le build CI
-!Dockerfile.cloud.optimized
-!Dockerfile.build
-docker-compose*.yml
 .dockerignore
-
-############################################
-# AWS et cloud configs (seront injectés via secrets)
-############################################
-.aws/
-*.pem
-*.key
-*.crt
+docker-compose*.yml
 
 ############################################
 # Fichiers système
@@ -124,37 +86,43 @@ docker-compose*.yml
 *.patch
 
 ############################################
-# INCLUSIONS IMPORTANTES (ne pas exclure)
+# INCLUSIONS IMPORTANTES (backend)
 ############################################
-# ✅ SQLx cache (NÉCESSAIRE pour build offline)
-!.sqlx/
-!.sqlx/**/*
+# ✅ Backend - SQLx cache
+!backend/.sqlx/
+!backend/.sqlx/**/*
 
-# ✅ Code source
-!src/
-!src/**/*
+# ✅ Backend - Code source
+!backend/src/
+!backend/src/**/*
 
-# ✅ Configuration
-!config/
-!config/**/*
+# ✅ Backend - Configuration
+!backend/config/
+!backend/config/**/*
 
-# ✅ Migrations
-!migrations/
-!migrations/**/*
+# ✅ Backend - Migrations
+!backend/migrations/
+!backend/migrations/**/*
 
-# ✅ Prompts IA
-!ia_prompts/
-!ia_prompts/**/*
+# ✅ Backend - Prompts IA
+!backend/ia_prompts/
+!backend/ia_prompts/**/*
 
-# ✅ Fichiers de configuration Rust
-!Cargo.toml
-!Cargo.lock
+# ✅ Backend - Fichiers de configuration Rust
+!backend/Cargo.toml
+!backend/Cargo.lock
 
-# ✅ Blender (téléchargé manuellement)
-!blender/
-!blender/**/*
+# ✅ Backend - Blender
+!backend/blender/
+!backend/blender/**/*
 
-# ✅ Public files (test-download.html, .well-known, etc.)
-!public/
-!public/**/*
+# ✅ Backend - Public files (test-download.html, .well-known, etc.)
+!backend/public/
+!backend/public/**/*
 
+# ✅ Backend - Scripts
+!backend/scripts/
+!backend/scripts/**/*
+
+# ✅ Backend - Autres fichiers nécessaires
+!backend/ia_intentions_instructions.md
