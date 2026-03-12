@@ -60,6 +60,9 @@ COPY migrations ./migrations
 # Copier les scripts (nécessaires pour certains binaires définis dans Cargo.toml)
 COPY scripts ./scripts
 
+# Copier le dossier public pour les fichiers statiques (test-download.html, .well-known, etc.)
+COPY public ./public
+
 # Créer le dossier data
 RUN mkdir -p ./data
 
