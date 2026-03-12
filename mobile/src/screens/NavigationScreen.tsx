@@ -424,9 +424,30 @@ const NavigationScreen: React.FC = () => {
         const origin = await getCurrentPosition(); if (!origin) { setLoadingCheckpoints(false); return; }
         try {
             const r = await apiGet(`/api/navigation/checkpoints/along-route?origin_lat=${origin.lat}&origin_lng=${origin.lng}&dest_lat=${destinationCoords.lat}&dest_lng=${destinationCoords.lng}`);
-            if (r?.data?.checkpoints && Array.isArray(r.data.checkpoints)) setCheckpoints(r.data.checkpoints.filter((c: any) => c && validateCoords(c.latitude, c.longitude)));
-            else setCheckpoints([]);
-        } catch { setCheckpoints([]); } finally { setLoadingCheckpoints(false); }
+            console.log('[Navigation] Checkpoints raw response:', JSON.stringify(r, null, 2));
+            // ✅ CORRIGÉ: apiGet wraps response → r.data contains backend JSON
+            const backendResp = r.data as any;
+            console.log('[Navigation] Backend response:', JSON.stringify(backendResp, null, 2));
+            const checkpointsArray = Array.isArray(backendResp?.data?.checkpoints)
+                ? backendResp.data.checkpoints
+                : Array.isArray(backendResp?.checkpoints)
+                    ? backendResp.checkpoints
+                    : [];
+            console.log('[Navigation] Extracted checkpoints array:', JSON.stringify(checkpointsArray, null, 2));
+            if (checkpointsArray.length > 0) {
+                const filtered = checkpointsArray.filter((c: any) => c && validateCoords(c.latitude, c.longitude));
+                console.log('[Navigation] Filtered checkpoints:', JSON.stringify(filtered, null, 2));
+                setCheckpoints(filtered);
+            } else {
+                console.log('[Navigation] No checkpoints found in array');
+                setCheckpoints([]);
+            }
+        } catch (error) {
+            console.error('[Navigation] Error loading checkpoints:', error);
+            setCheckpoints([]);
+        } finally {
+            setLoadingCheckpoints(false);
+        }
     }, [selectedRoute, destinationCoords, getCurrentPosition]);
 
     const startNavigation = useCallback(async (route: RouteOption) => {
@@ -1068,7 +1089,27 @@ const NavigationScreen: React.FC = () => {
                                                 <NativeCard style={[st.secCard, { borderLeftWidth: 4, borderLeftColor: '#8B5CF6' }]}>
                                                     <Text style={st.secTitle}>💡 Conseils</Text>
                                                     {aiInsights.ai_tips.map((t: any, i: number) => (
-                                                        <View key={i} style={[st.tipCard, { borderLeftColor: t.priority === 'critical' ? '#EF4444' : '#10B981' }]}><Text style={{ fontSize: 18 }}>{t.emoji}</Text><View style={st.flex1}><Text style={st.tipTitle}>{t.title}</Text><Text style={st.tipMsg}>{t.message}</Text></View></View>
+                                                        <TouchableOpacity
+                                                            key={i}
+                                                            style={[st.tipCard, { borderLeftColor: t.priority === 'critical' ? '#EF4444' : '#10B981' }]}
+                                                            onPress={() => {
+                                                                if (t.action_url) {
+                                                                    Linking.openURL(t.action_url).catch(() => {
+                                                                        Alert.alert('Info', t.message);
+                                                                    });
+                                                                } else {
+                                                                    Alert.alert(t.title, t.message);
+                                                                }
+                                                            }}
+                                                            activeOpacity={0.7}
+                                                        >
+                                                            <Text style={{ fontSize: 18 }}>{t.emoji}</Text>
+                                                            <View style={st.flex1}>
+                                                                <Text style={st.tipTitle}>{t.title}</Text>
+                                                                <Text style={st.tipMsg}>{t.message}</Text>
+                                                            </View>
+                                                            <SafeIcon name="ChevronRight" size={16} color="#666" />
+                                                        </TouchableOpacity>
                                                     ))}
                                                 </NativeCard>
                                             )}
@@ -1111,10 +1152,32 @@ const NavigationScreen: React.FC = () => {
                                                 <NativeCard style={[st.secCard, { borderLeftWidth: 4, borderLeftColor: '#3B82F6' }]}>
                                                     <Text style={st.secTitle}>🎯 Défis</Text>
                                                     {aiInsights.challenges.map((c: any, i: number) => (
-                                                        <View key={i} style={{ marginBottom: 12 }}><View style={st.row8}><Text>{c.emoji}</Text><Text style={st.chLabel} numberOfLines={1}>{c.label}</Text>{c.completed && <Text>✅</Text>}</View>
-                                                            <View style={st.chBarBg}><View style={[st.chBarFill, { width: `${c.progress}%` as any, backgroundColor: c.completed ? '#10B981' : '#3B82F6' }]} /></View>
+                                                        <TouchableOpacity
+                                                            key={i}
+                                                            style={{ marginBottom: 12 }}
+                                                            onPress={() => {
+                                                                Alert.alert(
+                                                                    c.label,
+                                                                    `Progression: ${Math.round(c.progress)}%\n${c.completed ? '✅ Défi terminé !' : '🎯 Continuez vos efforts !'}`,
+                                                                    [
+                                                                        { text: 'OK', style: 'default' },
+                                                                        ...(c.action_url ? [{ text: 'Voir les détails', onPress: () => Linking.openURL(c.action_url) }] : [])
+                                                                    ]
+                                                                );
+                                                            }}
+                                                            activeOpacity={0.7}
+                                                        >
+                                                            <View style={st.row8}>
+                                                                <Text>{c.emoji}</Text>
+                                                                <Text style={st.chLabel} numberOfLines={1}>{c.label}</Text>
+                                                                {c.completed && <Text>✅</Text>}
+                                                                <SafeIcon name="ChevronRight" size={16} color="#666" />
+                                                            </View>
+                                                            <View style={st.chBarBg}>
+                                                                <View style={[st.chBarFill, { width: `${c.progress}%` as any, backgroundColor: c.completed ? '#10B981' : '#3B82F6' }]} />
+                                                            </View>
                                                             <Text style={st.chProg}>{Math.round(c.progress)}%</Text>
-                                                        </View>
+                                                        </TouchableOpacity>
                                                     ))}
                                                 </NativeCard>
                                             )}
@@ -1127,7 +1190,28 @@ const NavigationScreen: React.FC = () => {
                                                         aiInsights.personal_records.fastest_speed_kmh && { e: '⚡', t: 'Vitesse max', v: `${aiInsights.personal_records.fastest_speed_kmh} km/h` },
                                                         aiInsights.personal_records.most_calories && { e: '🔥', t: 'Max calories', v: `${aiInsights.personal_records.most_calories} cal` },
                                                     ].filter(Boolean).map((r: any, i: number) => (
-                                                        <View key={i} style={st.recRow}><Text style={{ fontSize: 20, width: 28 }}>{r.e}</Text><View style={st.flex1}><Text style={st.recTitle}>{r.t}</Text><Text style={st.recVal}>{r.v}</Text></View></View>
+                                                        <TouchableOpacity
+                                                            key={i}
+                                                            style={st.recRow}
+                                                            onPress={() => {
+                                                                Alert.alert(
+                                                                    r.t,
+                                                                    `🏅 Record personnel : ${r.v}\nFélicitations pour cette performance !`,
+                                                                    [
+                                                                        { text: 'Partager', onPress: () => sharePerformance() },
+                                                                        { text: 'OK', style: 'default' }
+                                                                    ]
+                                                                );
+                                                            }}
+                                                            activeOpacity={0.7}
+                                                        >
+                                                            <Text style={{ fontSize: 20, width: 28 }}>{r.e}</Text>
+                                                            <View style={st.flex1}>
+                                                                <Text style={st.recTitle}>{r.t}</Text>
+                                                                <Text style={st.recVal}>{r.v}</Text>
+                                                            </View>
+                                                            <SafeIcon name="ChevronRight" size={16} color="#666" />
+                                                        </TouchableOpacity>
                                                     ))}
                                                 </NativeCard>
                                             )}
@@ -1136,7 +1220,37 @@ const NavigationScreen: React.FC = () => {
                                                 <NativeCard style={[st.secCard, { borderLeftWidth: 4, borderLeftColor: '#6366F1' }]}>
                                                     <Text style={st.secTitle}>🏠 Trajets Habituels</Text>
                                                     {aiInsights.commute_insights.frequent_routes.map((r: any, i: number) => (
-                                                        <View key={i} style={st.comRow}><Text style={st.comFrom} numberOfLines={1}>{r.from}</Text><Text style={st.comArrow}>→</Text><Text style={st.comTo} numberOfLines={1}>{r.to}</Text><Text style={st.comMeta}>{r.count}x</Text></View>
+                                                        <TouchableOpacity
+                                                            key={i}
+                                                            style={st.comRow}
+                                                            onPress={() => {
+                                                                Alert.alert(
+                                                                    'Trajet fréquent',
+                                                                    `📍 ${r.from} → ${r.to}\n🔄 Fréquence: ${r.count} fois\n🕐 Heures de pointe: ${aiInsights.commute_insights.peak_departure_hours?.slice(0, 2).map((h: any) => typeof h === 'number' ? `${h}h` : `${h.hour}h`).join(', ') || 'N/A'}`,
+                                                                    [
+                                                                        {
+                                                                            text: 'Démarrer la navigation', onPress: () => {
+                                                                                // Utiliser ce trajet comme destination
+                                                                                Alert.alert('Navigation', 'Fonctionnalité bientôt disponible');
+                                                                            }
+                                                                        },
+                                                                        {
+                                                                            text: 'Voir les détails', onPress: () => {
+                                                                                Alert.alert('Détails', `Distance moyenne: ${r.avg_distance_km || 'N/A'} km\nDurée moyenne: ${r.avg_duration_min || 'N/A'} min`);
+                                                                            }
+                                                                        },
+                                                                        { text: 'Annuler', style: 'cancel' }
+                                                                    ]
+                                                                );
+                                                            }}
+                                                            activeOpacity={0.7}
+                                                        >
+                                                            <Text style={st.comFrom} numberOfLines={1}>{r.from}</Text>
+                                                            <Text style={st.comArrow}>→</Text>
+                                                            <Text style={st.comTo} numberOfLines={1}>{r.to}</Text>
+                                                            <Text style={st.comMeta}>{r.count}x</Text>
+                                                            <SafeIcon name="ChevronRight" size={16} color="#666" />
+                                                        </TouchableOpacity>
                                                     ))}
                                                     {aiInsights.commute_insights.peak_departure_hours?.length > 0 && (
                                                         <View style={{ marginTop: 10 }}><Text style={st.peakTitle}>🕐 Heures de pointe</Text>
