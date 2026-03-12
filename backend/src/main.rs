@@ -1,4 +1,5 @@
 // Mise à jour: 2026-02-14 - Configuration GCP complète (Artifact Registry, Cloud Run, permissions)
+// Note: Build trigger test - 2026-03-12
 use std::error::Error;
 use std::{env, fs, net::SocketAddr, path::Path, sync::Arc};
 
