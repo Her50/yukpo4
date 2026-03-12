@@ -1223,7 +1223,6 @@ const NavigationScreen: React.FC = () => {
                                         )}
                                     </TouchableOpacity>
                                 </NativeCard>
-                                    )}
                         </>
                     ) : (
                         <NativeCard style={st.emptyCard}><Text style={{ fontSize: 40 }}>📊</Text><Text style={st.emptyText}>Aucune activité enregistrée</Text><Text style={st.emptySubText}>Démarrez un suivi pour voir vos statistiques !</Text></NativeCard>
