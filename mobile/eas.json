@@ -73,7 +73,7 @@
                 // "EXPO_PUBLIC_WASABI_DIRECT_URL":  "https://yukpo-video-prod.s3.eu-central-1.wasabisys.com"
             },
             "android": {
-                "buildType": "app-bundle",
+                "buildType": "apk",
                 "credentialsSource": "remote",
                 "image": "latest",
                 "withoutCredentials": false,
