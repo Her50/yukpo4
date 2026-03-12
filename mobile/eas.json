@@ -77,7 +77,7 @@
                 "credentialsSource": "remote",
                 "image": "latest",
                 "withoutCredentials": false,
-                "prebuildCommand": "rm -rf android/app/build android/build android/.gradle || true"
+                "prebuildCommand": "npm run configure-build && rm -rf android/app/build android/build android/.gradle || true"
             }
         }
     },
