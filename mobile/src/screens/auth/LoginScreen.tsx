@@ -257,7 +257,7 @@ const LoginScreen: React.FC = () => {
       <KeyboardAwareScreen style={styles.container} contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
           <Title style={styles.title}>
-            Connexion
+            <Text style={styles.brandYuk}>Yuk</Text><Text style={styles.brandPo}>po</Text>
           </Title>
           <Paragraph style={styles.subtitle}>
             Connectez-vous avec votre compte{' '}
@@ -439,6 +439,12 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0, 0, 0, 0.3)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 4,
+  },
+  brandYuk: {
+    color: '#3B82F6', // Bleu (cohérent avec le logo officiel)
+  },
+  brandPo: {
+    color: '#7C3AED', // Violet (cohérent avec le logo officiel)
   },
   subtitle: {
     textAlign: 'center',

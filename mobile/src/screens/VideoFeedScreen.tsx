@@ -1090,30 +1090,24 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                         </Text>
                     </TouchableOpacity>
 
-                    {/* ✅ CORRIGÉ 2026-03-18: Barre de réactions avec compteurs + feedback visuel bleu */}
-                    <View style={styles.quickReactionsBar}>
-                        {REACTIONS.filter(r => r.type !== 'love').map((reaction) => {
-                            const itemReactions = reactionsMap[`${item.serviceId}_${item.productIndex ?? 0}`] || {};
-                            const hasReacted = itemReactions[reaction.type]?.hasReacted || false;
-                            const reactionCount = itemReactions[reaction.type]?.count || 0;
-                            return (
-                                <TouchableOpacity
-                                    key={reaction.type}
-                                    style={[styles.quickReactionBtn, hasReacted && styles.quickReactionBtnActive]}
-                                    onPress={() => handleReaction(item, reaction.type)}
-                                    activeOpacity={0.7}
-                                    disabled={pendingReaction !== null}
-                                >
-                                    <Text style={[styles.quickReactionEmoji, hasReacted && { transform: [{ scale: 1.15 }] }]}>{reaction.emoji}</Text>
-                                    {reactionCount > 0 && (
-                                        <Text style={[styles.quickReactionCount, hasReacted && styles.quickReactionCountActive]}>
-                                            {reactionCount}
-                                        </Text>
-                                    )}
-                                </TouchableOpacity>
-                            );
-                        })}
-                    </View>
+                    {/* ✅ NOUVEAU: Icône de réactions groupées - ouvre un picker horizontal */}
+                    <TouchableOpacity
+                        style={styles.actionButton}
+                        onPress={() => setShowReactionPicker(contentId)}
+                        onLongPress={() => setShowReactionPicker(contentId)}
+                        activeOpacity={0.7}
+                        disabled={pendingReaction !== null}
+                    >
+                        <View style={styles.actionIconBg}>
+                            <SafeIcon name="smile" size={24} color="#fff" type="lucide" />
+                        </View>
+                        <Text style={styles.actionLabel}>
+                            {formatCount(
+                                Object.values(reactionsMap[`${item.serviceId}_${item.productIndex ?? 0}`] || {}).reduce((sum, r) => sum + (r?.count || 0), 0)
+                                || (item.likesCount ?? 0)
+                            )}
+                        </Text>
+                    </TouchableOpacity>
 
                     <TouchableOpacity style={styles.actionButton} onPress={() => handleOpenComments(item)} activeOpacity={0.7}>
                         <View style={styles.actionIconBg}>
@@ -1150,28 +1144,36 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                     </Animated.View>
                 </TouchableOpacity>
 
-                {/* ✅ Picker multi-réactions (apparaît au long-press sur coeur) */}
+                {/* ✅ NOUVEAU: Picker horizontal de réactions optimisé */}
                 {showReactionPicker === contentId && (
                     <View style={styles.reactionPickerContainer}>
-                        <View style={styles.reactionPicker}>
+                        <ScrollView
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            style={styles.reactionPickerScroll}
+                            contentContainerStyle={styles.reactionPickerContent}
+                        >
                             {REACTIONS.map((reaction) => {
                                 const itemReactions = reactionsMap[`${item.serviceId}_${item.productIndex ?? 0}`] || {};
                                 const hasReacted = itemReactions[reaction.type]?.hasReacted || false;
+                                const reactionCount = itemReactions[reaction.type]?.count || 0;
                                 return (
                                     <TouchableOpacity
                                         key={reaction.type}
                                         style={[styles.reactionPickerItem, hasReacted && styles.reactionPickerItemActive]}
                                         onPress={() => handleReaction(item, reaction.type)}
                                         activeOpacity={0.7}
+                                        disabled={pendingReaction !== null}
                                     >
                                         <Text style={styles.reactionPickerEmoji}>{reaction.emoji}</Text>
-                                        {itemReactions[reaction.type]?.count > 0 && (
-                                            <Text style={styles.reactionPickerCount}>{itemReactions[reaction.type].count}</Text>
-                                        )}
+                                        <Text style={styles.reactionPickerLabel}>{reaction.label}</Text>
+                                        <Text style={[styles.reactionPickerCount, hasReacted && styles.reactionPickerCountActive]}>
+                                            {reactionCount > 0 ? reactionCount : ''}
+                                        </Text>
                                     </TouchableOpacity>
                                 );
                             })}
-                        </View>
+                        </ScrollView>
                         <TouchableOpacity
                             style={styles.reactionPickerClose}
                             onPress={() => setShowReactionPicker(null)}

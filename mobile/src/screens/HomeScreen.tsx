@@ -635,7 +635,7 @@ const HomeScreen: React.FC = () => {
                 {/* Titre centré */}
                 <View style={styles.headerCenter}>
                     <Text style={styles.brandTitle}>
-                        Accueil
+                        <Text style={styles.brandYuk}>Yuk</Text><Text style={styles.brandPo}>po</Text>
                     </Text>
                 </View>
 
@@ -937,6 +937,12 @@ const styles = StyleSheet.create({
         fontWeight: '900',
         letterSpacing: -0.3,
         color: '#1F2937',
+    },
+    brandYuk: {
+        color: '#3B82F6', // Bleu (cohérent avec le logo officiel)
+    },
+    brandPo: {
+        color: '#7C3AED', // Violet (cohérent avec le logo officiel)
     },
     headerRight: {
         flexDirection: 'row',

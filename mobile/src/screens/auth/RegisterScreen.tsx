@@ -9,7 +9,6 @@ import * as React from 'react';
 import { useEffect, useState } from 'react';
 import {
   Alert,
-  Image,
   Platform,
   ScrollView,
   StyleSheet,
@@ -393,12 +392,6 @@ const RegisterScreen: React.FC = () => {
   return (
     <KeyboardAwareScreen style={styles.container} contentContainerStyle={styles.scrollContent}>
       <View style={styles.header}>
-        {/* Logo de l'application */}
-        <Image
-          source={require('../../../assets/adaptive-icon.png')}
-          style={styles.logo}
-          resizeMode="contain"
-        />
         <Title style={styles.title}>
           Créer un compte{' '}
           <Text style={styles.brandYuk}>Yuk</Text><Text style={styles.brandPo}>po</Text>
@@ -578,11 +571,6 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    marginBottom: 20,
-  },
-  logo: {
-    width: 120,
-    height: 120,
     marginBottom: 20,
   },
   title: {

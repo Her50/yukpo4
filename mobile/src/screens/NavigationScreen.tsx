@@ -4,7 +4,7 @@ import * as Location from 'expo-location';
 import * as Speech from 'expo-speech';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-    ActivityIndicator, Alert, Animated,
+    ActivityIndicator, Alert, Animated, BackHandler,
     Dimensions, Keyboard, KeyboardAvoidingView, Linking,
     Platform, ScrollView, Share, StyleSheet, Text, ToastAndroid,
     TouchableOpacity, View
@@ -1147,428 +1147,441 @@ const NavigationScreen: React.FC = () => {
                                             )}
                                         </>
                                     ) : (
-                                        {/* AI Features Preview */ }
-                                        < NativeCard style={[st.secCard, { borderLeftWidth: 4, borderLeftColor: '#7C3AED' }]}>
-                                    <Text style={st.secTitle}>🤖 Coach IA - Fonctionnalités</Text>
-                                    <View style={{ gap: 12 }}>
-                                        <View style={st.aiFeatureRow}>
-                                            <Text style={{ fontSize: 20 }}>🫀</Text>
-                                            <View style={st.flex1}>
-                                                <Text style={st.aiFeatureTitle}>Score Santé</Text>
-                                                <Text style={st.aiFeatureDesc}>Évaluation globale basée sur activité, qualité, série et impact écologique</Text>
+                                        /* AI Features Preview */
+                                        <NativeCard style={[st.secCard, { borderLeftWidth: 4, borderLeftColor: '#7C3AED' }]}>
+                                            <Text style={st.secTitle}>🤖 Coach IA - Fonctionnalités</Text>
+                                            <View style={{ gap: 12 }}>
+                                                <View style={st.aiFeatureRow}>
+                                                    <Text style={{ fontSize: 20 }}>🫀</Text>
+                                                    <View style={st.flex1}>
+                                                        <Text style={st.aiFeatureTitle}>Impact Environnemental</Text>
+                                                        <Text style={st.aiFeatureDesc}>Suivi CO2, économies et équivalent arbres plantés</Text>
+                                                    </View>
+                                                </View>
+                                                <View style={st.aiFeatureRow}>
+                                                    <Text style={{ fontSize: 20 }}>❤️</Text>
+                                                    <View style={st.flex1}>
+                                                        <Text style={st.aiFeatureTitle}>Condition Physique</Text>
+                                                        <Text style={st.aiFeatureDesc}>Estimation VO2max et niveau de fitness basé sur vos performances</Text>
+                                                    </View>
+                                                </View>
+                                                <View style={st.aiFeatureRow}>
+                                                    <Text style={{ fontSize: 20 }}>🎯</Text>
+                                                    <View style={st.flex1}>
+                                                        <Text style={st.aiFeatureTitle}>Défis Personnalisés</Text>
+                                                        <Text style={st.aiFeatureDesc}>Objectifs adaptés à votre niveau et progrès</Text>
+                                                    </View>
+                                                </View>
+                                                <View style={st.aiFeatureRow}>
+                                                    <Text style={{ fontSize: 20 }}>🏅</Text>
+                                                    <View style={st.flex1}>
+                                                        <Text style={st.aiFeatureTitle}>Records Personnels</Text>
+                                                        <Text style={st.aiFeatureDesc}>Suivi de vos meilleures performances</Text>
+                                                    </View>
+                                                </View>
+                                                <View style={st.aiFeatureRow}>
+                                                    <Text style={{ fontSize: 20 }}>🏠</Text>
+                                                    <View style={st.flex1}>
+                                                        <Text style={st.aiFeatureTitle}>Trajets Habituels</Text>
+                                                        <Text style={st.aiFeatureDesc}>Analyse de vos routes fréquentes et heures de pointe</Text>
+                                                    </View>
+                                                </View>
                                             </View>
-                                        </View>
-                                        <View style={st.aiFeatureRow}>
-                                            <Text style={{ fontSize: 20 }}>💡</Text>
-                                            <View style={st.flex1}>
-                                                <Text style={st.aiFeatureTitle}>Conseils Personnalisés</Text>
-                                                <Text style={st.aiFeatureDesc}>Recommandations IA basées sur vos habitudes et objectifs</Text>
-                                            </View>
-                                        </View>
-                                        <View style={st.aiFeatureRow}>
-                                            <Text style={{ fontSize: 20 }}>🎮</Text>
-                                            <View style={st.flex1}>
-                                                <Text style={st.aiFeatureTitle}>Gamification</Text>
-                                                <Text style={st.aiFeatureDesc}>Badges, défis, séries et points pour motiver votre progression</Text>
-                                            </View>
-                                        </View>
-                                        <View style={st.aiFeatureRow}>
-                                            <Text style={{ fontSize: 20 }}>🌍</Text>
-                                            <View style={st.flex1}>
-                                                <Text style={st.aiFeatureTitle}>Impact Environnemental</Text>
-                                                <Text style={st.aiFeatureDesc}>Suivi CO2, économies et équivalent arbres plantés</Text>
-                                            </View>
-                                        </View>
-                                        <View style={st.aiFeatureRow}>
-                                            <Text style={{ fontSize: 20 }}>❤️</Text>
-                                            <View style={st.flex1}>
-                                                <Text style={st.aiFeatureTitle}>Condition Physique</Text>
-                                                <Text style={st.aiFeatureDesc}>Estimation VO2max et niveau de fitness basé sur vos performances</Text>
-                                            </View>
-                                        </View>
-                                        <View style={st.aiFeatureRow}>
-                                            <Text style={{ fontSize: 20 }}>🎯</Text>
-                                            <View style={st.flex1}>
-                                                <Text style={st.aiFeatureTitle}>Défis Personnalisés</Text>
-                                                <Text style={st.aiFeatureDesc}>Objectifs adaptés à votre niveau et progrès</Text>
-                                            </View>
-                                        </View>
-                                        <View style={st.aiFeatureRow}>
-                                            <Text style={{ fontSize: 20 }}>🏅</Text>
-                                            <View style={st.flex1}>
-                                                <Text style={st.aiFeatureTitle}>Records Personnels</Text>
-                                                <Text style={st.aiFeatureDesc}>Suivi de vos meilleures performances</Text>
-                                            </View>
-                                        </View>
-                                        <View style={st.aiFeatureRow}>
-                                            <Text style={{ fontSize: 20 }}>🏠</Text>
-                                            <View style={st.flex1}>
-                                                <Text style={st.aiFeatureTitle}>Trajets Habituels</Text>
-                                                <Text style={st.aiFeatureDesc}>Analyse de vos routes fréquentes et heures de pointe</Text>
-                                            </View>
-                                        </View>
-                                    </View>
-                                    <TouchableOpacity
-                                        style={[st.aiActivateBtn, { marginTop: 16 }]}
-                                        onPress={() => loadActivityStats(activityPeriod)}
-                                        disabled={loadingActivity}
-                                    >
-                                        {loadingActivity ? (
-                                            <ActivityIndicator color="#fff" />
-                                        ) : (
-                                            <>
-                                                <SafeIcon name="Zap" size={16} color="#fff" />
-                                                <Text style={st.aiActivateBtnText}>Activer le Coach IA</Text>
-                                            </>
-                                        )}
-                                    </TouchableOpacity>
-                                </NativeCard>
+                                            <TouchableOpacity
+                                                style={[st.aiActivateBtn, { marginTop: 16 }]}
+                                                onPress={() => loadActivityStats(activityPeriod)}
+                                                disabled={loadingActivity}
+                                            >
+                                                {loadingActivity ? (
+                                                    <ActivityIndicator color="#fff" />
+                                                ) : (
+                                                    <>
+                                                        <SafeIcon name="Zap" size={16} color="#fff" />
+                                                        <Text style={st.aiActivateBtnText}>Activer le Coach IA</Text>
+                                                    </>
+                                                )}
+                                            </TouchableOpacity>
+                                        </NativeCard>
+                                    )}
+                                </>
+                            ) : null}
                         </>
                     ) : (
-                        <NativeCard style={st.emptyCard}><Text style={{ fontSize: 40 }}>📊</Text><Text style={st.emptyText}>Aucune activité enregistrée</Text><Text style={st.emptySubText}>Démarrez un suivi pour voir vos statistiques !</Text></NativeCard>
-                    )}
-                </>
-
-                ) : (
-                /* ━━━━━━ MODE: NAVIGATION (planification) ━━━━━━ */
-                <>
-                    {/* Search */}
-                    <NativeCard style={st.searchCard}>
-                        <View style={st.originRow}><View style={st.originDot} /><Text style={st.originText}>Ma position actuelle</Text></View>
-                        <View style={st.routeLine} />
-                        <View style={st.destRow}><View style={st.destDot} />
-                            <View style={st.flex1}>
-                                <LocationSelector
-                                    value={selectedLocation ? selectedLocation : (destination || '')}
-                                    onSelect={(loc: LocationObject) => {
-                                        setSelectedLocation(loc); const t = loc.raw || loc.place_name || ''; setDestination(t);
-                                        if (loc.latitude && loc.longitude) { setDestinationCoords({ lat: loc.latitude, lng: loc.longitude }); setTimeout(() => searchRoutesRef.current(), 200); }
-                                        else { geocodeDestination(t).then(c => { if (c) { setDestinationCoords(c); setTimeout(() => searchRoutesRef.current(), 200); } }); }
-                                    }}
-                                    placeholder="Où allez-vous ?" scope="all" style={dynamicStyles.locationSelectorDynamic}
-                                    onFocusChange={(focused: boolean) => setIsLocationSelectorFocused(focused)}
-                                />
-                            </View>
-                        </View>
-                        <TouchableOpacity style={[st.searchBtn, loading && { opacity: 0.6 }]} onPress={searchRoutes} disabled={loading || (!destination.trim() && !selectedLocation)}>
-                            {loading ? <><ActivityIndicator color="white" size="small" /><Text style={st.searchBtnTxt}> Recherche...</Text></> : <><Text style={{ fontSize: 16 }}>🔍</Text><Text style={st.searchBtnTxt}> Trouver mon itinéraire</Text></>}
-                        </TouchableOpacity>
-                        {destinationCoords && (
-                            <View style={st.destActions}>
-                                <TouchableOpacity style={st.actChip} onPress={() => Alert.alert('Enregistrer', 'Type ?', [{ text: '🏠 Domicile', onPress: () => saveDestination('domicile') }, { text: '💼 Bureau', onPress: () => saveDestination('bureau') }, { text: '⭐ Favori', onPress: () => saveDestination('autre', destination.substring(0, 30) || 'Favori') }, { text: 'Annuler', style: 'cancel' }])}><Text style={{ fontSize: 12 }}>🔖</Text><Text style={st.actChipTxt}>Enregistrer</Text></TouchableOpacity>
-                                <TouchableOpacity style={st.actChip} onPress={() => setShowPrefs(!showPrefs)}><Text style={{ fontSize: 12 }}>🎚️</Text><Text style={st.actChipTxt}>Options</Text></TouchableOpacity>
-                                <TouchableOpacity style={st.actChip} onPress={async () => { const p = await getCurrentPosition(); if (p) { setWaypoints([...waypoints, { lat: p.lat, lng: p.lng, name: 'Position actuelle' }]); Alert.alert('Étape ajoutée'); } }}><Text style={{ fontSize: 12 }}>➕</Text><Text style={st.actChipTxt}>Étape</Text></TouchableOpacity>
-                            </View>
-                        )}
-                    </NativeCard>
-
-                    {/* Travel modes */}
-                    <View style={st.modeSelector}>
-                        {TRAVEL_MODES.map(m => (
-                            <TouchableOpacity key={m.key} style={[st.modeBtn, travelMode === m.key && { backgroundColor: m.color + '15', borderColor: m.color }]}
-                                onPress={() => { setTravelMode(m.key); if (routes.length > 0) setTimeout(() => searchRoutesRef.current(), 100); }}>
-                                <Text style={{ fontSize: 20 }}>{m.emoji}</Text>
-                                <Text style={[st.modeBtnLbl, travelMode === m.key && { color: m.color, fontWeight: '700' as any }]} numberOfLines={1}>{m.label}</Text>
-                            </TouchableOpacity>
-                        ))}
-                    </View>
-
-                    {/* Favorites */}
-                    {savedDestinations.length > 0 && !destination && (
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} nestedScrollEnabled style={{ marginBottom: 12 }} contentContainerStyle={{ gap: 8, paddingRight: 16 }}>
-                            {savedDestinations.map(fav => (
-                                <TouchableOpacity key={fav.id} style={st.favChip} onPress={() => {
-                                    setDestination(fav.address); setDestinationCoords({ lat: fav.latitude, lng: fav.longitude });
-                                    setTimeout(() => searchRoutesRef.current(), 200);
-                                }}>
-                                    <Text style={{ fontSize: 14 }}>{fav.label === 'domicile' ? '🏠' : fav.label === 'bureau' ? '💼' : '⭐'}</Text>
-                                    <Text style={st.favLabel} numberOfLines={1}>{fav.custom_label || fav.label}</Text>
+                        /* ━━━━━━ MODE: NAVIGATION (planification) ━━━━━━ */
+                        <>
+                            {/* Search */}
+                            <NativeCard style={st.searchCard}>
+                                <View style={st.originRow}>
+                                    <View style={st.originDot} />
+                                    <Text style={st.originText}>Ma position actuelle</Text>
+                                </View>
+                                <View style={st.routeLine} />
+                                <View style={st.destRow}>
+                                    <View style={st.destDot} />
+                                    <View style={st.flex1}>
+                                        <LocationSelector
+                                            value={selectedLocation ? selectedLocation : (destination || '')}
+                                            onSelect={(loc: LocationObject) => {
+                                                setSelectedLocation(loc);
+                                                const t = loc.raw || loc.place_name || '';
+                                                setDestination(t);
+                                                if (loc.latitude && loc.longitude) {
+                                                    setDestinationCoords({ lat: loc.latitude, lng: loc.longitude });
+                                                    setTimeout(() => searchRoutesRef.current(), 200);
+                                                }
+                                                else {
+                                                    geocodeDestination(t).then(c => {
+                                                        if (c) {
+                                                            setDestinationCoords(c);
+                                                            setTimeout(() => searchRoutesRef.current(), 200);
+                                                        }
+                                                    });
+                                                }
+                                            }}
+                                            placeholder="Où allez-vous ?"
+                                            scope="all"
+                                            style={dynamicStyles.locationSelectorDynamic}
+                                            onFocusChange={(focused: boolean) => setIsLocationSelectorFocused(focused)}
+                                        />
+                                    </View>
+                                </View>
+                                <TouchableOpacity style={[st.searchBtn, loading && { opacity: 0.6 }]} onPress={searchRoutes} disabled={loading || (!destination.trim() && !selectedLocation)}>
+                                    {loading ?
+                                        <><ActivityIndicator color="white" size="small" /><Text style={st.searchBtnTxt}> Recherche...</Text></>
+                                        :
+                                        <><Text style={{ fontSize: 16 }}>🔍</Text><Text style={st.searchBtnTxt}> Trouver mon itinéraire</Text></>
+                                    }
                                 </TouchableOpacity>
-                            ))}
-                        </ScrollView>
-                    )}
+                                {destinationCoords && (
+                                    <View style={st.destActions}>
+                                        <TouchableOpacity style={st.actChip} onPress={() => Alert.alert('Enregistrer', 'Type ?', [{ text: '🏠 Domicile', onPress: () => saveDestination('domicile') }, { text: '💼 Bureau', onPress: () => saveDestination('bureau') }, { text: '⭐ Favori', onPress: () => saveDestination('autre', destination.substring(0, 30) || 'Favori') }, { text: 'Annuler', style: 'cancel' }])}>
+                                            <Text style={{ fontSize: 12 }}>🔖</Text>
+                                            <Text style={st.actChipTxt}>Enregistrer</Text>
+                                        </TouchableOpacity>
+                                        <TouchableOpacity style={st.actChip} onPress={() => setShowPrefs(!showPrefs)}>
+                                            <Text style={{ fontSize: 12 }}>🎚️</Text>
+                                            <Text style={st.actChipTxt}>Options</Text>
+                                        </TouchableOpacity>
+                                        <TouchableOpacity style={st.actChip} onPress={async () => {
+                                            const p = await getCurrentPosition();
+                                            if (p) {
+                                                setWaypoints([...waypoints, { lat: p.lat, lng: p.lng, name: 'Position actuelle' }]);
+                                                Alert.alert('Étape ajoutée');
+                                            }
+                                        }}>
+                                            <Text style={{ fontSize: 12 }}>➕</Text>
+                                            <Text style={st.actChipTxt}>Étape</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                )}
+                            </NativeCard>
 
-                    {/* Route preferences */}
-                    {showPrefs && (
-                        <NativeCard style={st.prefsCard}>
-                            <Text style={st.secTitle}>🎚️ Préférences</Text>
-                            <View style={st.prefsRow}>
-                                {[{ k: 'tolls', l: 'Péages', v: avoidTolls, s: setAvoidTolls }, { k: 'highways', l: 'Autoroutes', v: avoidHighways, s: setAvoidHighways }, { k: 'ferries', l: 'Ferries', v: avoidFerries, s: setAvoidFerries }].map(p => (
-                                    <TouchableOpacity key={p.k} style={[st.prefChip, p.v && st.prefChipActive]} onPress={() => p.s(!p.v)}>
-                                        <Text style={[st.prefText, p.v && { color: '#EF4444' }]}>Éviter {p.l.toLowerCase()}</Text>
+                            {/* Travel modes */}
+                            <View style={st.modeSelector}>
+                                {TRAVEL_MODES.map(m => (
+                                    <TouchableOpacity key={m.key} style={[st.modeBtn, travelMode === m.key && { backgroundColor: m.color + '15', borderColor: m.color }]}
+                                        onPress={() => { setTravelMode(m.key); if (routes.length > 0) setTimeout(() => searchRoutesRef.current(), 100); }}>
+                                        <Text style={{ fontSize: 20 }}>{m.emoji}</Text>
+                                        <Text style={[st.modeBtnLbl, travelMode === m.key && { color: m.color, fontWeight: '700' as any }]} numberOfLines={1}>{m.label}</Text>
                                     </TouchableOpacity>
                                 ))}
                             </View>
-                        </NativeCard>
-                    )}
 
-                    {/* Waypoints */}
-                    {waypoints.length > 0 && (
-                        <NativeCard style={st.wpCard}>
-                            <View style={st.row8}><Text style={{ fontSize: 16 }}>📍</Text><Text style={st.wpTitle}>Étapes ({waypoints.length})</Text>
-                                <TouchableOpacity onPress={() => { setWaypoints([]); if (routes.length > 0) setTimeout(() => searchRoutesRef.current(), 100); }}><SafeIcon name="Trash2" size={16} color="#EF4444" /></TouchableOpacity>
-                            </View>
-                            {waypoints.map((wp, i) => (
-                                <View key={i} style={st.wpItem}>
-                                    <View style={st.wpIdx}><Text style={st.wpIdxTxt}>{i + 1}</Text></View>
-                                    <View style={st.flex1}><Text style={st.wpName} numberOfLines={1}>{wp.name}</Text><Text style={st.wpCoord}>{wp.lat.toFixed(4)}, {wp.lng.toFixed(4)}</Text></View>
-                                    <TouchableOpacity onPress={() => removeWaypoint(i)}><SafeIcon name="X" size={16} color="#EF4444" /></TouchableOpacity>
-                                </View>
-                            ))}
-                            <TouchableOpacity style={st.wpRecalc} onPress={() => searchRoutesRef.current()}><SafeIcon name="RefreshCw" size={14} color={modernColors.primary} /><Text style={st.wpRecalcTxt}>Recalculer</Text></TouchableOpacity>
-                        </NativeCard>
-                    )}
-
-                    {/* Routes */}
-                    {routes.length > 0 && (
-                        <View style={{ marginBottom: 12 }}>
-                            <View style={st.row8}><Text style={{ fontSize: 16 }}>🛣️</Text><Text style={st.secTitle}>{routes.length} itinéraire{routes.length > 1 ? 's' : ''} trouvé{routes.length > 1 ? 's' : ''}</Text></View>
-                            <ScrollView horizontal showsHorizontalScrollIndicator={false} nestedScrollEnabled pagingEnabled={false} decelerationRate="fast" snapToInterval={routeCardWidth} contentContainerStyle={{ gap: 10, paddingRight: 16, paddingTop: 8 }}
-                                onScrollBeginDrag={() => setIsHorizontalScrolling(true)} onScrollEndDrag={() => setIsHorizontalScrolling(false)} onMomentumScrollEnd={() => setIsHorizontalScrolling(false)}>
-                                {routes.map((route, idx) => {
-                                    const sel = selectedRoute?.id === route.id;
-                                    const dur = route.duration_in_traffic_seconds || route.duration_seconds;
-                                    return (
-                                        <TouchableOpacity key={route.id || idx} style={[st.routeCard, sel && st.routeCardSel, { width: routeCardWidth - 10 }]}
-                                            onPress={() => { setSelectedRoute(route); loadPointsOfInterestSafely(route); }} activeOpacity={0.8}>
-                                            <View style={st.routeCardTop}>
-                                                <View style={st.row8}>
-                                                    <View style={[st.trafficDot, { backgroundColor: getTrafficColor(route.traffic_level) }]} />
-                                                    <Text style={[st.trafficLbl, { color: getTrafficColor(route.traffic_level) }]}>{getTrafficLabel(route.traffic_level)}</Text>
-                                                </View>
-                                                {idx === 0 && <View style={st.recBadge}><Text style={st.recText}>Recommandé</Text></View>}
-                                            </View>
-                                            <Text style={st.routeSummary} numberOfLines={1}>{route.summary}</Text>
-                                            <View style={st.routeMetrics}>
-                                                <Text style={st.routeMetric}>📏 {formatDistance(route.distance_meters)}</Text>
-                                                <Text style={st.routeMetric}>⏱ {formatDuration(dur)}</Text>
-                                                {route.arrival_time && <Text style={st.routeMetric}>🏁 {route.arrival_time}</Text>}
-                                            </View>
-                                            {route.fare && <View style={st.fareBadge}><Text style={st.fareText}>{route.fare.text}</Text></View>}
-                                            {route.warnings?.slice(0, 1).map((w, wi) => <Text key={wi} style={st.warnText} numberOfLines={1}>⚠️ {w}</Text>)}
+                            {/* Favorites */}
+                            {savedDestinations.length > 0 && !destination && (
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false} nestedScrollEnabled style={{ marginBottom: 12 }} contentContainerStyle={{ gap: 8, paddingRight: 16 }}>
+                                    {savedDestinations.map(fav => (
+                                        <TouchableOpacity key={fav.id} style={st.favChip} onPress={() => {
+                                            setDestination(fav.address); setDestinationCoords({ lat: fav.latitude, lng: fav.longitude });
+                                            setTimeout(() => searchRoutesRef.current(), 200);
+                                        }}>
+                                            <Text style={{ fontSize: 14 }}>{fav.label === 'domicile' ? '🏠' : fav.label === 'bureau' ? '💼' : '⭐'}</Text>
+                                            <Text style={st.favLabel} numberOfLines={1}>{fav.custom_label || fav.label}</Text>
                                         </TouchableOpacity>
-                                    );
-                                })}
-                            </ScrollView>
-                        </View>
-                    )}
-
-                    {/* Map */}
-                    {(selectedRoute || destinationCoords) && showMap && mapRegion && (
-                        <View style={st.mapWrap}>
-                            <MapView ref={mapRef} style={st.mapView} provider={Platform.OS === 'ios' ? PROVIDER_GOOGLE : undefined} initialRegion={mapRegion} showsUserLocation showsTraffic showsCompass loadingEnabled loadingIndicatorColor={modernColors.primary} onMapReady={() => console.log('[NavigationScreen] ✅ Map ready (navigation)')} onError={(e) => console.error('[NavigationScreen] ❌ Map error (navigation):', e.nativeEvent || e)}>
-                                {routePolylineCoords.length > 1 && <Polyline coordinates={routePolylineCoords} strokeColor={modernColors.primary} strokeWidth={4} />}
-                                {destinationCoords && <Marker coordinate={{ latitude: destinationCoords.lat, longitude: destinationCoords.lng }} title={destination || 'Destination'} pinColor="#EF4444" tracksViewChanges={false} />}
-                                {livePosition && <Marker coordinate={{ latitude: livePosition.lat, longitude: livePosition.lng }} title="Ma position" pinColor="#3B82F6" />}
-                                {checkpoints.slice(0, 10).map(cp => <Marker key={cp.id} coordinate={{ latitude: cp.latitude, longitude: cp.longitude }} title={`${CHECKPOINT_LABELS[cp.checkpoint_type]?.icon || '⚠️'} ${CHECKPOINT_LABELS[cp.checkpoint_type]?.label || cp.checkpoint_type}`} pinColor={CHECKPOINT_LABELS[cp.checkpoint_type]?.color} tracksViewChanges={false} />)}
-                                {pointsOfInterest.slice(0, 5).map(poi => <Marker key={poi.id} coordinate={{ latitude: getPoiLat(poi), longitude: getPoiLng(poi) }} title={typeof poi.name === 'string' ? poi.name : 'Nom inconnu'} description={poi.address} pinColor="#10B981" tracksViewChanges={false} />)}
-                            </MapView>
-                            <TouchableOpacity style={st.mapBtnLabeled} onPress={() => { if (mapRef.current && routePolylineCoords.length > 1) mapRef.current.fitToCoordinates(routePolylineCoords, { edgePadding: { top: 50, right: 50, bottom: 50, left: 50 }, animated: true }); }}>
-                                <SafeIcon name="Maximize2" size={14} color={modernColors.primary} />
-                                <Text style={st.mapBtnLabelTxt}>Recentrer</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity style={[st.mapBtnLabeled, { top: 46 }]} onPress={() => setShowMap(false)}>
-                                <SafeIcon name="EyeOff" size={14} color={modernColors.textSecondary} />
-                                <Text style={[st.mapBtnLabelTxt, { color: modernColors.textSecondary }]}>Masquer</Text>
-                            </TouchableOpacity>
-                        </View>
-                    )}
-                    {(selectedRoute || destinationCoords) && !showMap && (
-                        <TouchableOpacity style={st.showMapBtn} onPress={() => setShowMap(true)}><Text style={{ fontSize: 14 }}>🗺️</Text><Text style={st.showMapText}>Afficher la carte</Text></TouchableOpacity>
-                    )}
-
-                    {/* Traffic alerts */}
-                    {selectedRoute?.warnings && selectedRoute.warnings.length > 0 && (
-                        <NativeCard style={[st.secCard, { backgroundColor: '#FEF3C7', borderColor: '#F59E0B', borderWidth: 1 }]}>
-                            <Text style={st.secTitle}>⚠️ Alertes trafic</Text>
-                            {selectedRoute.warnings.map((w, i) => <Text key={i} style={st.alertText}>• {w}</Text>)}
-                        </NativeCard>
-                    )}
-
-                    {/* Checkpoints */}
-                    {selectedRoute && checkpoints.length > 0 && (
-                        <NativeCard style={st.secCard}>
-                            <Text style={st.secTitle}>🚨 Signalements sur le trajet</Text>
-                            {checkpoints.slice(0, 5).map(cp => {
-                                const info = CHECKPOINT_LABELS[cp.checkpoint_type] || { label: cp.checkpoint_type, icon: '⚠️', color: '#6B7280' };
-                                return (
-                                    <View key={cp.id} style={st.cpItem}>
-                                        <Text style={{ fontSize: 18 }}>{info.icon}</Text>
-                                        <View style={st.flex1}><Text style={st.cpItemLabel}>{info.label}</Text>{cp.description && <Text style={st.cpItemDesc}>{cp.description}</Text>}</View>
-                                        {cp.speed_limit && <Text style={st.cpItemSpd}>{cp.speed_limit} km/h</Text>}
-                                        <TouchableOpacity onPress={() => shareAlert({ checkpoint_type: cp.checkpoint_type, lat: cp.latitude, lng: cp.longitude, speed_limit: cp.speed_limit })} style={st.cpShareBtn}>
-                                            <SafeIcon name="Share2" size={12} color={modernColors.textSecondary} />
-                                        </TouchableOpacity>
-                                    </View>
-                                );
-                            })}
-                        </NativeCard>
-                    )}
-
-                    {/* POIs */}
-                    {selectedRoute && (
-                        <View style={{ marginBottom: 12 }}>
-                            <Text style={st.secTitle}>🏪 Points d'intérêt à proximité</Text>
-                            {loadingPOI ? (
-                                <NativeCard style={st.loadCard}><ActivityIndicator color={modernColors.primary} /><Text style={st.loadText}>Recherche des POI...</Text></NativeCard>
-                            ) : pointsOfInterest.length === 0 ? (
-                                <NativeCard style={st.emptyCard}><Text style={st.emptyText}>Aucun POI trouvé</Text></NativeCard>
-                            ) : (
-                                Object.entries(POI_CATEGORIES).map(([catKey, cat]) => {
-                                    const pois = groupedPOIs[catKey] || [];
-                                    if (pois.length === 0) return null;
-                                    const expanded = expandedCategories[catKey];
-                                    return (
-                                        <NativeCard key={catKey} style={[st.poiCatCard, { borderLeftWidth: 3, borderLeftColor: cat.color }]}>
-                                            <TouchableOpacity style={st.poiCatHdr} onPress={() => toggleCategory(catKey)} activeOpacity={0.7}>
-                                                <View style={[st.poiCatIcon, { backgroundColor: cat.color + '15' }]}><Text style={{ fontSize: 20 }}>{cat.icon}</Text></View>
-                                                <View style={st.flex1}><Text style={st.poiCatLabel}>{cat.label}</Text><Text style={st.poiCatCount}>{pois.length} lieu{pois.length > 1 ? 'x' : ''}</Text></View>
-                                                <SafeIcon name={expanded ? 'ChevronUp' : 'ChevronDown'} size={16} color={modernColors.textSecondary} />
-                                            </TouchableOpacity>
-                                            {expanded && pois.slice(0, 5).map(poi => (
-                                                <View key={poi.id} style={st.poiItem}>
-                                                    <View style={st.flex1}>
-                                                        <Text style={st.poiName}>{typeof poi.name === 'string' ? poi.name : 'Nom inconnu'}</Text>
-                                                        {poi.address && <Text style={st.poiAddr} numberOfLines={1}>{poi.address}</Text>}
-                                                        <View style={st.poiMeta}>
-                                                            <Text style={st.poiDist}>{formatDistance(poi.distance_from_route_meters)}</Text>
-                                                            {poi.rating && <Text style={st.poiRating}>⭐ {poi.rating}</Text>}
-                                                            {poi.price_level && <Text style={st.poiPrice}>{'💰'.repeat(poi.price_level)}</Text>}
-                                                            {poi.is_open != null && <View style={[st.openBadge, { backgroundColor: poi.is_open ? '#DCFCE7' : '#FEE2E2' }]}><Text style={[st.openText, { color: poi.is_open ? '#16A34A' : '#EF4444' }]}>{poi.is_open ? 'Ouvert' : 'Fermé'}</Text></View>}
-                                                        </View>
-                                                    </View>
-                                                    <View style={{ gap: 6 }}>
-                                                        <TouchableOpacity style={st.poiNavBtn} onPress={() => navigateToPOI(poi)}><SafeIcon name="Navigation" size={14} color="#10B981" /></TouchableOpacity>
-                                                        <TouchableOpacity style={st.poiAddBtn} onPress={() => addWaypoint(poi)}><SafeIcon name="Plus" size={14} color={modernColors.primary} /></TouchableOpacity>
-                                                        <TouchableOpacity style={st.poiShareBtn} onPress={() => sharePOI(poi)}><SafeIcon name="Share2" size={12} color={modernColors.textSecondary} /></TouchableOpacity>
-                                                    </View>
-                                                </View>
-                                            ))}
-                                        </NativeCard>
-                                    );
-                                })
+                                    ))}
+                                </ScrollView>
                             )}
-                        </View>
-                    )}
 
-                    {/* Go buttons */}
-                    {selectedRoute && (
-                        <View style={st.goSection}>
-                            <TouchableOpacity style={st.shareRouteBtn} onPress={shareRoute} activeOpacity={0.7}>
-                                <SafeIcon name="Share2" size={16} color={modernColors.primary} /><Text style={st.shareRouteTxt}>Partager l'itinéraire</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity style={st.goBtn} onPress={startTracking} activeOpacity={0.8}>
-                                <Text style={{ fontSize: 20 }}>📡</Text>
-                                <View><Text style={st.goBtnText}>Suivi en temps réel</Text><Text style={st.goBtnSub}>Vitesse, radars, progression</Text></View>
-                            </TouchableOpacity>
-                            <TouchableOpacity style={st.extBtn} onPress={() => startNavigation(selectedRoute)} activeOpacity={0.8}>
-                                <Text style={{ fontSize: 16 }}>🗺️</Text>
-                                <Text style={st.extBtnText}>Ouvrir dans Google Maps</Text>
-                                <Text style={st.extBtnEta}>{selectedRoute.arrival_time || formatDuration(selectedRoute.duration_in_traffic_seconds || selectedRoute.duration_seconds)}</Text>
-                            </TouchableOpacity>
-                        </View>
-                    )}
+                            {/* Route preferences */}
+                            {showPrefs && (
+                                <NativeCard style={st.prefsCard}>
+                                    <Text style={st.secTitle}>🎚️ Préférences</Text>
+                                    <View style={st.prefsRow}>
+                                        {[{ k: 'tolls', l: 'Péages', v: avoidTolls, s: setAvoidTolls }, { k: 'highways', l: 'Autoroutes', v: avoidHighways, s: setAvoidHighways }, { k: 'ferries', l: 'Ferries', v: avoidFerries, s: setAvoidFerries }].map(p => (
+                                            <TouchableOpacity key={p.k} style={[st.prefChip, p.v && st.prefChipActive]} onPress={() => p.s(!p.v)}>
+                                                <Text style={[st.prefText, p.v && { color: '#EF4444' }]}>Éviter {p.l.toLowerCase()}</Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </View>
+                                </NativeCard>
+                            )}
 
-                    {/* ━━ HISTORIQUE DES ALERTES COMMUNAUTAIRES ━━ */}
-                    <NativeCard style={[st.secCard, { borderLeftWidth: 4, borderLeftColor: '#EF4444' }]}>
-                        <TouchableOpacity style={st.alertHistHdr} onPress={() => { setShowAlertHistory(!showAlertHistory); if (!showAlertHistory) loadAlertHistory(); }} activeOpacity={0.7}>
-                            <Text style={{ fontSize: 18 }}>🚨</Text>
-                            <View style={st.flex1}>
-                                <Text style={st.alertHistTitle}>Alertes communautaires</Text>
-                                <Text style={st.alertHistSub}>{checkpoints.length > 0 ? `${checkpoints.length} alerte${checkpoints.length > 1 ? 's' : ''} active${checkpoints.length > 1 ? 's' : ''}` : 'Voir les signalements autour de vous'}</Text>
-                            </View>
-                            <SafeIcon name={showAlertHistory ? 'ChevronUp' : 'ChevronDown'} size={16} color={modernColors.textSecondary} />
-                        </TouchableOpacity>
-                        {showAlertHistory && (
-                            <View style={{ marginTop: 10 }}>
-                                {/* Bouton de test pour le développement */}
-                                {__DEV__ && (
-                                    <TouchableOpacity
-                                        style={{ backgroundColor: '#F3F4F6', padding: 8, borderRadius: 8, marginBottom: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
-                                        onPress={createTestAlerts}
-                                    >
-                                        <Text style={{ fontSize: 12, color: '#6B7280', marginRight: 4 }}>🧪</Text>
-                                        <Text style={{ fontSize: 12, color: '#6B7280' }}>Créer alertes de test</Text>
+                            {/* Waypoints */}
+                            {waypoints.length > 0 && (
+                                <NativeCard style={st.wpCard}>
+                                    <View style={st.row8}><Text style={{ fontSize: 16 }}>📍</Text><Text style={st.wpTitle}>Étapes ({waypoints.length})</Text>
+                                        <TouchableOpacity onPress={() => { setWaypoints([]); if (routes.length > 0) setTimeout(() => searchRoutesRef.current(), 100); }}><SafeIcon name="Trash2" size={16} color="#EF4444" /></TouchableOpacity>
+                                    </View>
+                                    {waypoints.map((wp, i) => (
+                                        <View key={i} style={st.wpItem}>
+                                            <View style={st.wpIdx}><Text style={st.wpIdxTxt}>{i + 1}</Text></View>
+                                            <View style={st.flex1}><Text style={st.wpName} numberOfLines={1}>{wp.name}</Text><Text style={st.wpCoord}>{wp.lat.toFixed(4)}, {wp.lng.toFixed(4)}</Text></View>
+                                            <TouchableOpacity onPress={() => removeWaypoint(i)}><SafeIcon name="X" size={16} color="#EF4444" /></TouchableOpacity>
+                                        </View>
+                                    ))}
+                                    <TouchableOpacity style={st.wpRecalc} onPress={() => searchRoutesRef.current()}><SafeIcon name="RefreshCw" size={14} color={modernColors.primary} /><Text style={st.wpRecalcTxt}>Recalculer</Text></TouchableOpacity>
+                                </NativeCard>
+                            )}
+
+                            {/* Routes */}
+                            {routes.length > 0 && (
+                                <View style={{ marginBottom: 12 }}>
+                                    <View style={st.row8}><Text style={{ fontSize: 16 }}>🛣️</Text><Text style={st.secTitle}>{routes.length} itinéraire{routes.length > 1 ? 's' : ''} trouvé{routes.length > 1 ? 's' : ''}</Text></View>
+                                    <ScrollView horizontal showsHorizontalScrollIndicator={false} nestedScrollEnabled pagingEnabled={false} decelerationRate="fast" snapToInterval={routeCardWidth} contentContainerStyle={{ gap: 10, paddingRight: 16, paddingTop: 8 }}
+                                        onScrollBeginDrag={() => setIsHorizontalScrolling(true)} onScrollEndDrag={() => setIsHorizontalScrolling(false)} onMomentumScrollEnd={() => setIsHorizontalScrolling(false)}>
+                                        {routes.map((route, idx) => {
+                                            const sel = selectedRoute?.id === route.id;
+                                            const dur = route.duration_in_traffic_seconds || route.duration_seconds;
+                                            return (
+                                                <TouchableOpacity key={route.id || idx} style={[st.routeCard, sel && st.routeCardSel, { width: routeCardWidth - 10 }]}
+                                                    onPress={() => { setSelectedRoute(route); loadPointsOfInterestSafely(route); }} activeOpacity={0.8}>
+                                                    <View style={st.routeCardTop}>
+                                                        <View style={st.row8}>
+                                                            <View style={[st.trafficDot, { backgroundColor: getTrafficColor(route.traffic_level) }]} />
+                                                            <Text style={[st.trafficLbl, { color: getTrafficColor(route.traffic_level) }]}>{getTrafficLabel(route.traffic_level)}</Text>
+                                                        </View>
+                                                        {idx === 0 && <View style={st.recBadge}><Text style={st.recText}>Recommandé</Text></View>}
+                                                    </View>
+                                                    <Text style={st.routeSummary} numberOfLines={1}>{route.summary}</Text>
+                                                    <View style={st.routeMetrics}>
+                                                        <Text style={st.routeMetric}>📏 {formatDistance(route.distance_meters)}</Text>
+                                                        <Text style={st.routeMetric}>⏱ {formatDuration(dur)}</Text>
+                                                        {route.arrival_time && <Text style={st.routeMetric}>🏁 {route.arrival_time}</Text>}
+                                                    </View>
+                                                    {route.fare && <View style={st.fareBadge}><Text style={st.fareText}>{route.fare.text}</Text></View>}
+                                                    {route.warnings?.slice(0, 1).map((w, wi) => <Text key={wi} style={st.warnText} numberOfLines={1}>⚠️ {w}</Text>)}
+                                                </TouchableOpacity>
+                                            );
+                                        })}
+                                    </ScrollView>
+                                </View>
+                            )}
+
+                            {/* Map */}
+                            {(selectedRoute || destinationCoords) && showMap && mapRegion && (
+                                <View style={st.mapWrap}>
+                                    <MapView ref={mapRef} style={st.mapView} provider={Platform.OS === 'ios' ? PROVIDER_GOOGLE : undefined} initialRegion={mapRegion} showsUserLocation showsTraffic showsCompass loadingEnabled loadingIndicatorColor={modernColors.primary} onMapReady={() => console.log('[NavigationScreen] ✅ Map ready (navigation)')} onError={(e) => console.error('[NavigationScreen] ❌ Map error (navigation):', e.nativeEvent || e)}>
+                                        {routePolylineCoords.length > 1 && <Polyline coordinates={routePolylineCoords} strokeColor={modernColors.primary} strokeWidth={4} />}
+                                        {destinationCoords && <Marker coordinate={{ latitude: destinationCoords.lat, longitude: destinationCoords.lng }} title={destination || 'Destination'} pinColor="#EF4444" tracksViewChanges={false} />}
+                                        {livePosition && <Marker coordinate={{ latitude: livePosition.lat, longitude: livePosition.lng }} title="Ma position" pinColor="#3B82F6" />}
+                                        {checkpoints.slice(0, 10).map(cp => <Marker key={cp.id} coordinate={{ latitude: cp.latitude, longitude: cp.longitude }} title={`${CHECKPOINT_LABELS[cp.checkpoint_type]?.icon || '⚠️'} ${CHECKPOINT_LABELS[cp.checkpoint_type]?.label || cp.checkpoint_type}`} pinColor={CHECKPOINT_LABELS[cp.checkpoint_type]?.color} tracksViewChanges={false} />)}
+                                        {pointsOfInterest.slice(0, 5).map(poi => <Marker key={poi.id} coordinate={{ latitude: getPoiLat(poi), longitude: getPoiLng(poi) }} title={typeof poi.name === 'string' ? poi.name : 'Nom inconnu'} description={poi.address} pinColor="#10B981" tracksViewChanges={false} />)}
+                                    </MapView>
+                                    <TouchableOpacity style={st.mapBtnLabeled} onPress={() => { if (mapRef.current && routePolylineCoords.length > 1) mapRef.current.fitToCoordinates(routePolylineCoords, { edgePadding: { top: 50, right: 50, bottom: 50, left: 50 }, animated: true }); }}>
+                                        <SafeIcon name="Maximize2" size={14} color={modernColors.primary} />
+                                        <Text style={st.mapBtnLabelTxt}>Recentrer</Text>
                                     </TouchableOpacity>
-                                )}
-                                {loadingAlertHistory ? (
-                                    <View style={st.loadCard}><ActivityIndicator color="#EF4444" /><Text style={st.loadText}>Chargement des alertes...</Text></View>
-                                ) : alertHistoryData.length === 0 ? (
-                                    <View style={{ alignItems: 'center' as any, padding: 16 }}><Text style={{ fontSize: 32 }}>✅</Text><Text style={st.emptyText}>Aucune alerte signalée dans cette zone</Text></View>
-                                ) : (
-                                    alertHistoryData.map((alert, idx) => {
-                                        const info = CHECKPOINT_LABELS[alert.checkpoint_type] || { label: alert.checkpoint_type, icon: '⚠️', color: '#6B7280' };
-                                        const timeAgo = alert.created_at ? (() => {
-                                            const diff = Date.now() - new Date(alert.created_at).getTime();
-                                            if (diff < 3600000) return `il y a ${Math.floor(diff / 60000)} min`;
-                                            if (diff < 86400000) return `il y a ${Math.floor(diff / 3600000)}h`;
-                                            return `il y a ${Math.floor(diff / 86400000)}j`;
-                                        })() : '';
+                                    <TouchableOpacity style={[st.mapBtnLabeled, { top: 46 }]} onPress={() => setShowMap(false)}>
+                                        <SafeIcon name="EyeOff" size={14} color={modernColors.textSecondary} />
+                                        <Text style={[st.mapBtnLabelTxt, { color: modernColors.textSecondary }]}>Masquer</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            )}
+                            {(selectedRoute || destinationCoords) && !showMap && (
+                                <TouchableOpacity style={st.showMapBtn} onPress={() => setShowMap(true)}><Text style={{ fontSize: 14 }}>🗺️</Text><Text style={st.showMapText}>Afficher la carte</Text></TouchableOpacity>
+                            )}
+
+                            {/* Traffic alerts */}
+                            {selectedRoute?.warnings && selectedRoute.warnings.length > 0 && (
+                                <NativeCard style={[st.secCard, { backgroundColor: '#FEF3C7', borderColor: '#F59E0B', borderWidth: 1 }]}>
+                                    <Text style={st.secTitle}>⚠️ Alertes trafic</Text>
+                                    {selectedRoute.warnings.map((w, i) => <Text key={i} style={st.alertText}>• {w}</Text>)}
+                                </NativeCard>
+                            )}
+
+                            {/* Checkpoints */}
+                            {selectedRoute && checkpoints.length > 0 && (
+                                <NativeCard style={st.secCard}>
+                                    <Text style={st.secTitle}>🚨 Signalements sur le trajet</Text>
+                                    {checkpoints.slice(0, 5).map(cp => {
+                                        const info = CHECKPOINT_LABELS[cp.checkpoint_type] || { label: cp.checkpoint_type, icon: '⚠️', color: '#6B7280' };
                                         return (
-                                            <View key={alert.id || idx} style={[st.alertHistItem, { borderLeftColor: info.color }]}>
-                                                <Text style={{ fontSize: 20 }}>{info.icon}</Text>
-                                                <View style={st.flex1}>
-                                                    <View style={st.alertHistItemTop}>
-                                                        <Text style={[st.alertHistLabel, { color: info.color }]}>{info.label}</Text>
-                                                        {alert.count > 1 && <View style={[st.alertHistCountBadge, { backgroundColor: info.color + '20' }]}><Text style={[st.alertHistCountTxt, { color: info.color }]}>×{alert.count}</Text></View>}
-                                                    </View>
-                                                    <Text style={st.alertHistLoc} numberOfLines={1}>📍 {alert.locationName}</Text>
-                                                    <View style={st.alertHistMeta}>
-                                                        <Text style={st.alertHistDist}>{formatDistance(alert.distance)}</Text>
-                                                        {timeAgo ? <Text style={st.alertHistTime}>🕒 {timeAgo}</Text> : null}
-                                                        {alert.speed_limit ? <Text style={st.alertHistSpd}>🚦 {alert.speed_limit} km/h</Text> : null}
-                                                    </View>
-                                                </View>
+                                            <View key={cp.id} style={st.cpItem}>
+                                                <Text style={{ fontSize: 18 }}>{info.icon}</Text>
+                                                <View style={st.flex1}><Text style={st.cpItemLabel}>{info.label}</Text>{cp.description && <Text style={st.cpItemDesc}>{cp.description}</Text>}</View>
+                                                {cp.speed_limit && <Text style={st.cpItemSpd}>{cp.speed_limit} km/h</Text>}
+                                                <TouchableOpacity onPress={() => shareAlert({ checkpoint_type: cp.checkpoint_type, lat: cp.latitude, lng: cp.longitude, speed_limit: cp.speed_limit })} style={st.cpShareBtn}>
+                                                    <SafeIcon name="Share2" size={12} color={modernColors.textSecondary} />
+                                                </TouchableOpacity>
                                             </View>
                                         );
-                                    })
-                                )}
-                            </View>
-                        )}
-                    </NativeCard>
+                                    })}
+                                </NativeCard>
+                            )}
 
-                    {/* ━━ APERÇU SANTÉ & COACH IA ━━ */}
-                    {user && !isTracking && aiInsights && (
-                        <NativeCard style={[st.secCard, { borderLeftWidth: 4, borderLeftColor: '#7C3AED' }]}>
-                            <TouchableOpacity style={st.healthPreviewRow} onPress={() => { setShowActivityStats(true); loadActivityStats(activityPeriod); }} activeOpacity={0.7}>
-                                <View style={st.healthPreviewIcon}><Text style={{ fontSize: 24 }}>🫀</Text></View>
-                                <View style={st.flex1}>
-                                    <Text style={st.healthPreviewTitle}>Score Santé & Coach IA</Text>
-                                    <View style={st.healthPreviewStats}>
-                                        {aiInsights.health_score && <Text style={[st.healthPreviewStat, { color: aiInsights.health_score.score >= 80 ? '#10B981' : '#F59E0B' }]}>❤️ {aiInsights.health_score.score}/100</Text>}
-                                        {aiInsights.gamification && <Text style={st.healthPreviewStat}>🔥 {aiInsights.gamification.current_streak}j</Text>}
-                                        {aiInsights.co2_impact && <Text style={st.healthPreviewStat}>🌿 {((aiInsights.co2_impact.saved_grams || 0) / 1000).toFixed(1)} kg</Text>}
-                                    </View>
+                            {/* POIs */}
+                            {selectedRoute && (
+                                <View style={{ marginBottom: 12 }}>
+                                    <Text style={st.secTitle}>🏪 Points d'intérêt à proximité</Text>
+                                    {loadingPOI ? (
+                                        <NativeCard style={st.loadCard}><ActivityIndicator color={modernColors.primary} /><Text style={st.loadText}>Recherche des POI...</Text></NativeCard>
+                                    ) : pointsOfInterest.length === 0 ? (
+                                        <NativeCard style={st.emptyCard}><Text style={st.emptyText}>Aucun POI trouvé</Text></NativeCard>
+                                    ) : (
+                                        Object.entries(POI_CATEGORIES).map(([catKey, cat]) => {
+                                            const pois = groupedPOIs[catKey] || [];
+                                            if (pois.length === 0) return null;
+                                            const expanded = expandedCategories[catKey];
+                                            return (
+                                                <NativeCard key={catKey} style={[st.poiCatCard, { borderLeftWidth: 3, borderLeftColor: cat.color }]}>
+                                                    <TouchableOpacity style={st.poiCatHdr} onPress={() => toggleCategory(catKey)} activeOpacity={0.7}>
+                                                        <View style={[st.poiCatIcon, { backgroundColor: cat.color + '15' }]}><Text style={{ fontSize: 20 }}>{cat.icon}</Text></View>
+                                                        <View style={st.flex1}><Text style={st.poiCatLabel}>{cat.label}</Text><Text style={st.poiCatCount}>{pois.length} lieu{pois.length > 1 ? 'x' : ''}</Text></View>
+                                                        <SafeIcon name={expanded ? 'ChevronUp' : 'ChevronDown'} size={16} color={modernColors.textSecondary} />
+                                                    </TouchableOpacity>
+                                                    {expanded && pois.slice(0, 5).map(poi => (
+                                                        <View key={poi.id} style={st.poiItem}>
+                                                            <View style={st.flex1}>
+                                                                <Text style={st.poiName}>{typeof poi.name === 'string' ? poi.name : 'Nom inconnu'}</Text>
+                                                                {poi.address && <Text style={st.poiAddr} numberOfLines={1}>{poi.address}</Text>}
+                                                                <View style={st.poiMeta}>
+                                                                    <Text style={st.poiDist}>{formatDistance(poi.distance_from_route_meters)}</Text>
+                                                                    {poi.rating && <Text style={st.poiRating}>⭐ {poi.rating}</Text>}
+                                                                    {poi.price_level && <Text style={st.poiPrice}>{'💰'.repeat(poi.price_level)}</Text>}
+                                                                    {poi.is_open != null && <View style={[st.openBadge, { backgroundColor: poi.is_open ? '#DCFCE7' : '#FEE2E2' }]}><Text style={[st.openText, { color: poi.is_open ? '#16A34A' : '#EF4444' }]}>{poi.is_open ? 'Ouvert' : 'Fermé'}</Text></View>}
+                                                                </View>
+                                                            </View>
+                                                            <View style={{ gap: 6 }}>
+                                                                <TouchableOpacity style={st.poiNavBtn} onPress={() => navigateToPOI(poi)}><SafeIcon name="Navigation" size={14} color="#10B981" /></TouchableOpacity>
+                                                                <TouchableOpacity style={st.poiAddBtn} onPress={() => addWaypoint(poi)}><SafeIcon name="Plus" size={14} color={modernColors.primary} /></TouchableOpacity>
+                                                                <TouchableOpacity style={st.poiShareBtn} onPress={() => sharePOI(poi)}><SafeIcon name="Share2" size={12} color={modernColors.textSecondary} /></TouchableOpacity>
+                                                            </View>
+                                                        </View>
+                                                    ))}
+                                                </NativeCard>
+                                            );
+                                        })
+                                    )}
                                 </View>
-                                <SafeIcon name="ChevronRight" size={20} color="#7C3AED" />
-                            </TouchableOpacity>
-                        </NativeCard>
+                            )}
+
+                            {/* Go buttons */}
+                            {selectedRoute && (
+                                <View style={st.goSection}>
+                                    <TouchableOpacity style={st.shareRouteBtn} onPress={shareRoute} activeOpacity={0.7}>
+                                        <SafeIcon name="Share2" size={16} color={modernColors.primary} /><Text style={st.shareRouteTxt}>Partager l'itinéraire</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={st.goBtn} onPress={startTracking} activeOpacity={0.8}>
+                                        <Text style={{ fontSize: 20 }}>📡</Text>
+                                        <View><Text style={st.goBtnText}>Suivi en temps réel</Text><Text style={st.goBtnSub}>Vitesse, radars, progression</Text></View>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={st.extBtn} onPress={() => startNavigation(selectedRoute)} activeOpacity={0.8}>
+                                        <Text style={{ fontSize: 16 }}>🗺️</Text>
+                                        <Text style={st.extBtnText}>Ouvrir dans Google Maps</Text>
+                                        <Text style={st.extBtnEta}>{selectedRoute.arrival_time || formatDuration(selectedRoute.duration_in_traffic_seconds || selectedRoute.duration_seconds)}</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            )}
+
+                            {/* ━━ HISTORIQUE DES ALERTES COMMUNAUTAIRES ━━ */}
+                            <NativeCard style={[st.secCard, { borderLeftWidth: 4, borderLeftColor: '#EF4444' }]}>
+                                <TouchableOpacity style={st.alertHistHdr} onPress={() => { setShowAlertHistory(!showAlertHistory); if (!showAlertHistory) loadAlertHistory(); }} activeOpacity={0.7}>
+                                    <Text style={{ fontSize: 18 }}>🚨</Text>
+                                    <View style={st.flex1}>
+                                        <Text style={st.alertHistTitle}>Alertes communautaires</Text>
+                                        <Text style={st.alertHistSub}>{checkpoints.length > 0 ? `${checkpoints.length} alerte${checkpoints.length > 1 ? 's' : ''} active${checkpoints.length > 1 ? 's' : ''}` : 'Voir les signalements autour de vous'}</Text>
+                                    </View>
+                                    <SafeIcon name={showAlertHistory ? 'ChevronUp' : 'ChevronDown'} size={16} color={modernColors.textSecondary} />
+                                </TouchableOpacity>
+                                {showAlertHistory && (
+                                    <View style={{ marginTop: 10 }}>
+                                        {/* Bouton de test pour le développement */}
+                                        {__DEV__ && (
+                                            <TouchableOpacity
+                                                style={{ backgroundColor: '#F3F4F6', padding: 8, borderRadius: 8, marginBottom: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
+                                                onPress={createTestAlerts}
+                                            >
+                                                <Text style={{ fontSize: 12, color: '#6B7280', marginRight: 4 }}>🧪</Text>
+                                                <Text style={{ fontSize: 12, color: '#6B7280' }}>Créer alertes de test</Text>
+                                            </TouchableOpacity>
+                                        )}
+                                        {loadingAlertHistory ? (
+                                            <View style={st.loadCard}><ActivityIndicator color="#EF4444" /><Text style={st.loadText}>Chargement des alertes...</Text></View>
+                                        ) : alertHistoryData.length === 0 ? (
+                                            <View style={{ alignItems: 'center' as any, padding: 16 }}><Text style={{ fontSize: 32 }}>✅</Text><Text style={st.emptyText}>Aucune alerte signalée dans cette zone</Text></View>
+                                        ) : (
+                                            alertHistoryData.map((alert, idx) => {
+                                                const info = CHECKPOINT_LABELS[alert.checkpoint_type] || { label: alert.checkpoint_type, icon: '⚠️', color: '#6B7280' };
+                                                const timeAgo = alert.created_at ? (() => {
+                                                    const diff = Date.now() - new Date(alert.created_at).getTime();
+                                                    if (diff < 3600000) return `il y a ${Math.floor(diff / 60000)} min`;
+                                                    if (diff < 86400000) return `il y a ${Math.floor(diff / 3600000)}h`;
+                                                    return `il y a ${Math.floor(diff / 86400000)}j`;
+                                                })() : '';
+                                                return (
+                                                    <View key={alert.id || idx} style={[st.alertHistItem, { borderLeftColor: info.color }]}>
+                                                        <Text style={{ fontSize: 20 }}>{info.icon}</Text>
+                                                        <View style={st.flex1}>
+                                                            <View style={st.alertHistItemTop}>
+                                                                <Text style={[st.alertHistLabel, { color: info.color }]}>{info.label}</Text>
+                                                                {alert.count > 1 && <View style={[st.alertHistCountBadge, { backgroundColor: info.color + '20' }]}><Text style={[st.alertHistCountTxt, { color: info.color }]}>×{alert.count}</Text></View>}
+                                                            </View>
+                                                            <Text style={st.alertHistLoc} numberOfLines={1}>📍 {alert.locationName}</Text>
+                                                            <View style={st.alertHistMeta}>
+                                                                <Text style={st.alertHistDist}>{formatDistance(alert.distance)}</Text>
+                                                                {timeAgo ? <Text style={st.alertHistTime}>🕒 {timeAgo}</Text> : null}
+                                                                {alert.speed_limit ? <Text style={st.alertHistSpd}>🚦 {alert.speed_limit} km/h</Text> : null}
+                                                            </View>
+                                                        </View>
+                                                    </View>
+                                                );
+                                            })
+                                        )}
+                                    </View>
+                                )}
+                            </NativeCard>
+
+                            {/* ━━ APERÇU SANTÉ & COACH IA ━━ */}
+                            {user && !isTracking && aiInsights && (
+                                <NativeCard style={[st.secCard, { borderLeftWidth: 4, borderLeftColor: '#7C3AED' }]}>
+                                    <TouchableOpacity style={st.healthPreviewRow} onPress={() => { setShowActivityStats(true); loadActivityStats(activityPeriod); }} activeOpacity={0.7}>
+                                        <View style={st.healthPreviewIcon}><Text style={{ fontSize: 24 }}>🫀</Text></View>
+                                        <View style={st.flex1}>
+                                            <Text style={st.healthPreviewTitle}>Score Santé & Coach IA</Text>
+                                            <View style={st.healthPreviewStats}>
+                                                {aiInsights.health_score && <Text style={[st.healthPreviewStat, { color: aiInsights.health_score.score >= 80 ? '#10B981' : '#F59E0B' }]}>❤️ {aiInsights.health_score.score}/100</Text>}
+                                                {aiInsights.gamification && <Text style={st.healthPreviewStat}>🔥 {aiInsights.gamification.current_streak}j</Text>}
+                                                {aiInsights.co2_impact && <Text style={st.healthPreviewStat}>🌿 {((aiInsights.co2_impact.saved_grams || 0) / 1000).toFixed(1)} kg</Text>}
+                                            </View>
+                                        </View>
+                                        <SafeIcon name="ChevronRight" size={20} color="#7C3AED" />
+                                    </TouchableOpacity>
+                                </NativeCard>
+                            )}
+                            {user && !isTracking && !aiInsights && (
+                                <TouchableOpacity style={st.healthPreviewEmpty} onPress={() => { setShowActivityStats(true); loadActivityStats(activityPeriod); }} activeOpacity={0.7}>
+                                    <Text style={{ fontSize: 20 }}>📊</Text>
+                                    <View style={st.flex1}>
+                                        <Text style={st.healthPreviewTitle}>Statistiques & Coach IA</Text>
+                                        <Text style={st.healthPreviewSub}>VO2max, défis, CO2, badges, conseils...</Text>
+                                    </View>
+                                    <SafeIcon name="ChevronRight" size={20} color={modernColors.textSecondary} />
+                                </TouchableOpacity>
+                            )}
+                        </>
                     )}
-                    {user && !isTracking && !aiInsights && (
-                        <TouchableOpacity style={st.healthPreviewEmpty} onPress={() => { setShowActivityStats(true); loadActivityStats(activityPeriod); }} activeOpacity={0.7}>
-                            <Text style={{ fontSize: 20 }}>📊</Text>
-                            <View style={st.flex1}>
-                                <Text style={st.healthPreviewTitle}>Statistiques & Coach IA</Text>
-                                <Text style={st.healthPreviewSub}>VO2max, défis, CO2, badges, conseils...</Text>
-                            </View>
-                            <SafeIcon name="ChevronRight" size={20} color={modernColors.textSecondary} />
-                        </TouchableOpacity>
-                    )}
-                </>
-                    )}
-            </ScrollView>
-            {/* ━━ TOAST ANIMÉ DE CONFIRMATION D'ALERTE ━━ */}
-            {alertToast.visible && (
-                <Animated.View style={[st.alertToastWrap, { opacity: alertToastAnim, transform: [{ translateY: alertToastAnim.interpolate({ inputRange: [0, 1], outputRange: [-40, 0] }) }] }]}>
-                    <View style={[st.alertToastInner, { borderLeftColor: alertToast.color }]}>
-                        <Text style={{ fontSize: 22 }}>{alertToast.icon}</Text>
-                        <Text style={st.alertToastMsg}>{alertToast.message}</Text>
-                        <Text style={{ fontSize: 14 }}>✅</Text>
-                    </View>
-                </Animated.View>
-            )}
-        </KeyboardAvoidingView>
-        </SafeNativeView >
+                </ScrollView>
+                {alertToast.visible && (
+                    <Animated.View style={[st.alertToastWrap, { opacity: alertToastAnim, transform: [{ translateY: alertToastAnim.interpolate({ inputRange: [0, 1], outputRange: [-40, 0] }) }] }]}>
+                        <View style={[st.alertToastInner, { borderLeftColor: alertToast.color }]}>
+                            <Text style={{ fontSize: 22 }}>{alertToast.icon}</Text>
+                            <Text style={st.alertToastMsg}>{alertToast.message}</Text>
+                            <Text style={{ fontSize: 14 }}>✅</Text>
+                        </View>
+                    </Animated.View>
+                )}
+            </KeyboardAvoidingView>
+        </SafeNativeView>
     );
 };
 

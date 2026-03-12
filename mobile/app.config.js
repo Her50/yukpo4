@@ -76,6 +76,7 @@ module.exports = {
                 "android.permission.ACCESS_COARSE_LOCATION",
                 "android.permission.CAMERA",
                 "android.permission.RECORD_AUDIO",
+                "android.permission.MODIFY_AUDIO_SETTINGS",
                 "android.permission.WRITE_EXTERNAL_STORAGE",
                 "android.permission.READ_EXTERNAL_STORAGE",
                 "android.permission.INTERNET"
@@ -183,6 +184,7 @@ module.exports = {
             "expo-document-picker",
             "expo-file-system",
             "expo-notifications",
+            // ✅ CORRIGÉ: react-native-webrtc retiré des plugins (géré par autolinking)
             [
                 "sentry-expo",
                 {
