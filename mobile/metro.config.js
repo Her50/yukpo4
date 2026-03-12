@@ -7,6 +7,7 @@ config.resolver.alias = {
     crypto: 'react-native-crypto',
     stream: 'readable-stream',
     buffer: '@craftzdog/react-native-buffer',
+    '@assets': './assets',
 };
 
 module.exports = config;

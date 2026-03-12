@@ -82,6 +82,61 @@ const MemoizedProductCard = React.memo(ProductCard, (prevProps, nextProps) => {
     );
 });
 
+// ✅ NOUVEAU 2026-03-12: ProductCard avec coordinateur vidéo intégré
+const ProductCardWithVideoCoordinator: React.FC<{
+    product: any;
+    service: any;
+    prestataire?: any;
+    userLocation?: { latitude: number; longitude: number } | null;
+    onPress?: () => void;
+    onChatPress?: () => void;
+    isScrolling?: boolean;
+    videoCoordinator: {
+        requestVideoPlayback: (videoId: string, playCallback: () => void) => boolean;
+        releaseVideoPlayback: (videoId: string) => void;
+    };
+}> = ({ videoCoordinator, ...props }) => {
+    // Générer un ID unique pour ce produit
+    const videoId = `${props.service?.id || 'unknown'}-${props.product?.product_index || props.product?.id || 'unknown'}`;
+
+    // Wrapper pour les callbacks vidéo
+    const handleVideoRef = useCallback((videoRef: any, mediaKey: string) => {
+        // Enregistrer la référence vidéo locale si nécessaire
+        console.log(`[ProductCardWithVideoCoordinator] Vidéo enregistrée: ${videoId}-${mediaKey}`);
+    }, [videoId]);
+
+    const handleVideoPlaybackRequest = useCallback((playCallback: () => void) => {
+        return videoCoordinator.requestVideoPlayback(videoId, playCallback);
+    }, [videoCoordinator, videoId]);
+
+    const handleVideoRelease = useCallback(() => {
+        videoCoordinator.releaseVideoPlayback(videoId);
+    }, [videoCoordinator, videoId]);
+
+    return (
+        <ProductCard
+            {...props}
+            // Passer les callbacks vidéo personnalisés
+            onVideoRef={handleVideoRef}
+            onVideoPlaybackRequest={handleVideoPlaybackRequest}
+            onVideoRelease={handleVideoRelease}
+        />
+    );
+};
+
+// ✅ NOUVEAU: Memoized wrapper pour ProductCardWithVideoCoordinator
+const MemoizedProductCardWithCoordinator = React.memo(ProductCardWithVideoCoordinator, (prevProps, nextProps) => {
+    return (
+        prevProps.product?.id === nextProps.product?.id &&
+        prevProps.product?.product_id === nextProps.product?.product_id &&
+        prevProps.service?.id === nextProps.service?.id &&
+        prevProps.isScrolling === nextProps.isScrolling &&
+        prevProps.userLocation?.latitude === nextProps.userLocation?.latitude &&
+        prevProps.userLocation?.longitude === nextProps.userLocation?.longitude &&
+        prevProps.videoCoordinator === nextProps.videoCoordinator
+    );
+});
+
 const ResultatBesoinScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
@@ -102,6 +157,71 @@ const ResultatBesoinScreen: React.FC = () => {
     const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const prestatairesRef = useRef<Map<string, Prestataire>>(new Map());
     const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    // ✅ NOUVEAU 2026-03-12: Coordinateur global des vidéos pour éviter les lectures simultanées
+    const videoCoordinatorRef = useRef<{
+        currentlyPlaying: Set<string>; // IDs des vidéos en cours de lecture
+        maxConcurrentVideos: number;
+        queue: Array<{ id: string; callback: () => void }>;
+    }>({
+        currentlyPlaying: new Set(),
+        maxConcurrentVideos: 2, // Maximum 2 vidéos simultanément
+        queue: [],
+    });
+
+    // ✅ NOUVEAU: Fonction pour demander la permission de jouer une vidéo
+    const requestVideoPlayback = useCallback((videoId: string, playCallback: () => void) => {
+        const coordinator = videoCoordinatorRef.current;
+
+        // Si la vidéo joue déjà, autoriser
+        if (coordinator.currentlyPlaying.has(videoId)) {
+            playCallback();
+            return true;
+        }
+
+        // Si on peut ajouter une vidéo, jouer directement
+        if (coordinator.currentlyPlaying.size < coordinator.maxConcurrentVideos) {
+            coordinator.currentlyPlaying.add(videoId);
+            playCallback();
+            return true;
+        }
+
+        // Sinon, mettre en file d'attente
+        coordinator.queue.push({ id: videoId, callback: playCallback });
+        return false;
+    }, []);
+
+    // ✅ NOUVEAU: Fonction pour libérer une vidéo
+    const releaseVideoPlayback = useCallback((videoId: string) => {
+        const coordinator = videoCoordinatorRef.current;
+        coordinator.currentlyPlaying.delete(videoId);
+
+        // Jouer la prochaine vidéo en attente
+        if (coordinator.queue.length > 0) {
+            const next = coordinator.queue.shift();
+            if (next) {
+                coordinator.currentlyPlaying.add(next.id);
+                next.callback();
+            }
+        }
+    }, []);
+
+    // ✅ NOUVEAU: Arrêter toutes les vidéos et vider la file d'attente
+    const stopAllVideosAndClearQueue = useCallback(() => {
+        // Arrêter toutes les vidéos actuelles
+        activeVideoRefs.current.forEach((videoRef, key) => {
+            if (videoRef) {
+                videoRef.pauseAsync().catch(() => {
+                    console.log(`[ResultatBesoinScreen] Vidéo ${key} déjà arrêtée ou inaccessible`);
+                });
+            }
+        });
+        activeVideoRefs.current.clear();
+
+        // Vider la file d'attente du coordinateur
+        videoCoordinatorRef.current.currentlyPlaying.clear();
+        videoCoordinatorRef.current.queue = [];
+    }, []);
     const [prestatairesLoaded, setPrestatairesLoaded] = useState(false);
     const [showChatModal, setShowChatModal] = useState(false);
     const [showGalleryModal, setShowGalleryModal] = useState(false);
@@ -1455,15 +1575,8 @@ const ResultatBesoinScreen: React.FC = () => {
 
     // ✅ CORRIGÉ 2026-03-06: Fonction pour arrêter toutes les vidéos actuelles
     const stopAllVideos = useCallback(() => {
-        activeVideoRefs.current.forEach((videoRef, key) => {
-            if (videoRef) {
-                videoRef.pauseAsync().catch(() => {
-                    console.log(`[ResultatBesoinScreen] Vidéo ${key} déjà arrêtée ou inaccessible`);
-                });
-            }
-        });
-        activeVideoRefs.current.clear();
-    }, []);
+        stopAllVideosAndClearQueue();
+    }, [stopAllVideosAndClearQueue]);
 
     // ✅ CORRIGÉ 2026-03-06: Gestion du scroll pour arrêter les vidéos
     const handleScrollBegin = useCallback(() => {
@@ -2121,14 +2234,21 @@ const ResultatBesoinScreen: React.FC = () => {
         const productName = getProductName(productData) || 'Produit sans nom';
         const serviceId = product._serviceId || service?.id || 'unknown';
 
+        // Créer l'objet coordinateur pour ce produit
+        const videoCoordinator = {
+            requestVideoPlayback,
+            releaseVideoPlayback,
+        };
+
         return (
-            <MemoizedProductCard
+            <MemoizedProductCardWithCoordinator
                 key={`product-${serviceId}-${productName}`}
                 product={product}
                 service={service}
                 prestataire={prestataire}
                 userLocation={userLocationMemo}
                 isScrolling={isScrollingState}
+                videoCoordinator={videoCoordinator}
                 onPress={() => {
                     // ✅ CORRIGÉ 2026-02-25: Naviguer vers la boutique du prestataire pour afficher TOUS ses produits
                     if (service?.user_id) {
@@ -2159,7 +2279,7 @@ const ResultatBesoinScreen: React.FC = () => {
                 }}
             />
         );
-    }, [userLocationMemo, isScrollingState, getProductName, navigation]); // ✅ Utiliser userLocationMemo au lieu de location directement
+    }, [userLocationMemo, isScrollingState, getProductName, navigation, requestVideoPlayback, releaseVideoPlayback]); // ✅ Utiliser userLocationMemo au lieu de location directement
 
     // ✅ NOUVEAU 2026-01-XX: Fonction pour rendre ProductCard pour les services (utiliser le même visuel que les produits)
     // ✅ DÉPLACÉ avant renderListItem pour éviter les problèmes de dépendances

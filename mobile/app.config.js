@@ -36,9 +36,7 @@ module.exports = {
             backgroundColor: "#FFFFFF"  // Blanc pour visibilité maximale du Y violet
         },
         assetBundlePatterns: [
-            "assets/images/**/*",
-            "assets/fonts/**/*",
-            "assets/icons/**/*",
+            "assets/**/*",
             "!assets/**/*.md",
             "!assets/**/*.txt",
             "!node_modules/**/*"

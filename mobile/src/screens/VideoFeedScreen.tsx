@@ -876,23 +876,40 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                         </View>
                     )}
 
-                    {/* ✅ Bouton replay après 2 lectures */}
+                    {/* ✅ Boutons replay et commander après 2 lectures - Position optimisée */}
                     {!paused && isActive && !isBuffering && (playCount[contentId] || 0) >= 2 && progress >= 0.98 && (
-                        <TouchableOpacity
-                            style={styles.replayButton}
-                            onPress={() => {
-                                const videoRef = videoRefs.current.get(index);
-                                if (videoRef) {
-                                    playCountRef.current[contentId] = 0;
-                                    setPlayCount(prev => ({ ...prev, [contentId]: 0 }));
-                                    videoRef.replayAsync().catch(() => undefined);
-                                }
-                            }}
-                            activeOpacity={0.8}
-                        >
-                            <SafeIcon name="rotate-ccw" size={32} color="#fff" type="lucide" />
-                            <Text style={styles.replayText}>Rejouer</Text>
-                        </TouchableOpacity>
+                        <View style={styles.endVideoActions}>
+                            {/* ✅ Bouton Commander si livraison disponible */}
+                            {item.serviceId && item.hasDelivery && (
+                                <TouchableOpacity
+                                    style={styles.endVideoDeliveryButton}
+                                    onPress={() => handleDeliveryOrder(item)}
+                                    activeOpacity={0.8}
+                                >
+                                    <SafeIcon name="shopping-cart" size={16} color="#fff" type="lucide" />
+                                    <Text style={styles.endVideoDeliveryText}>Commander</Text>
+                                </TouchableOpacity>
+                            )}
+
+                            {/* ✅ Bouton Rejouer optimisé */}
+                            <TouchableOpacity
+                                style={styles.replayButtonOptimized}
+                                onPress={() => {
+                                    const videoRef = videoRefs.current.get(index);
+                                    if (videoRef) {
+                                        playCountRef.current[contentId] = 0;
+                                        setPlayCount(prev => ({ ...prev, [contentId]: 0 }));
+                                        videoRef.replayAsync().catch(() => undefined);
+                                    }
+                                }}
+                                activeOpacity={0.8}
+                            >
+                                <View style={styles.replayIconCircle}>
+                                    <SafeIcon name="replay" size={20} color="#fff" type="lucide" />
+                                </View>
+                                <Text style={styles.replayTextOptimized}>Rejouer</Text>
+                            </TouchableOpacity>
+                        </View>
                     )}
 
                     {doubleTapHeart === contentId && (
@@ -1826,6 +1843,74 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '700',
         marginTop: 4,
+    },
+    // ✅ NOUVEAUX STYLES OPTIMISÉS POUR ÉVITER LES CONFLITS
+    endVideoActions: {
+        position: 'absolute',
+        bottom: 160, // ✅ Positionné au-dessus des boutons CTA (bottom: 16) et actions (bottom: 80)
+        left: 16,
+        right: 16,
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: 12,
+        zIndex: 35, // ✅ Entre les CTA (25) et les actions (40)
+    },
+    endVideoDeliveryButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        paddingHorizontal: 20,
+        paddingVertical: 12,
+        borderRadius: 25,
+        backgroundColor: '#10B981', // ✅ Vert pour commander
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.2)',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 8,
+    },
+    endVideoDeliveryText: {
+        color: '#fff',
+        fontSize: 14,
+        fontWeight: '700',
+        textShadowColor: 'rgba(0,0,0,0.5)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 2,
+    },
+    replayButtonOptimized: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        paddingHorizontal: 20,
+        paddingVertical: 12,
+        borderRadius: 25,
+        backgroundColor: 'rgba(255,255,255,0.15)',
+        borderWidth: 1.5,
+        borderColor: 'rgba(255,255,255,0.3)',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 8,
+    },
+    replayIconCircle: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: '#FF2D55',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    replayTextOptimized: {
+        color: '#fff',
+        fontSize: 14,
+        fontWeight: '700',
+        textShadowColor: 'rgba(0,0,0,0.8)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 2,
     },
     searchBarContainer: {
         position: 'absolute',

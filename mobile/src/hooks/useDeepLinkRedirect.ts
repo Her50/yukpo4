@@ -95,13 +95,12 @@ export const useDeepLinkRedirect = () => {
                 console.log(`  - mapping normalisé: "${partnerTypeToScreen[normalizedType]}"`);
 
                 if (targetScreen) {
-                    console.log(`[useDeepLinkRedirect] ✅ Redirection partenaire ${user.partner_type} → tab Mon Espace (${targetScreen})`);
-                    // ✅ FIX: Naviguer vers l'onglet Mon Espace (qui rend dynamiquement le bon écran via PartnerDashboardTab)
-                    // Au lieu de pousser un écran sur la pile, on switch vers l'onglet partenaire
-                    navNavigate('MainTabs' as any, { screen: 'GestionServicesSpecialises' } as any);
+                    console.log(`[useDeepLinkRedirect] ✅ Redirection partenaire ${user.partner_type} → écran spécialisé ${targetScreen}`);
+                    // ✅ FIX: Naviguer directement vers l'écran spécialisé, pas GestionServicesSpecialises
+                    navNavigate(targetScreen as any);
                     return true;
                 } else {
-                    console.warn(`[useDeepLinkRedirect] ⚠️ Type partenaire non mappé: ${user.partner_type}, redirection vers Mon Espace`);
+                    console.warn(`[useDeepLinkRedirect] ⚠️ Type partenaire non mappé: ${user.partner_type}, redirection vers Mon Espace générique`);
                     navNavigate('MainTabs' as any, { screen: 'GestionServicesSpecialises' } as any);
                     return true;
                 }

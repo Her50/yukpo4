@@ -9,6 +9,7 @@ import * as React from 'react';
 import { useEffect, useState } from 'react';
 import {
   Alert,
+  Image,
   Platform,
   ScrollView,
   StyleSheet,
@@ -394,7 +395,7 @@ const RegisterScreen: React.FC = () => {
       <View style={styles.header}>
         {/* Logo de l'application */}
         <Image
-          source={require('../../assets/adaptive-icon.png')}
+          source={require('../../../assets/adaptive-icon.png')}
           style={styles.logo}
           resizeMode="contain"
         />

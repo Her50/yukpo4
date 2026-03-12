@@ -14,6 +14,7 @@ import {
   Alert,
   Dimensions,
   Image,
+  Linking,
   ScrollView,
   Share,
   StyleSheet,
@@ -44,6 +45,10 @@ interface ProductCardProps {
   onPress?: () => void;
   onChatPress?: () => void;
   isScrolling?: boolean; // ✅ NOUVEAU 2026-03-06: Indicateur de scroll pour arrêter les vidéos
+  // ✅ NOUVEAU 2026-03-12: Props du coordinateur vidéo
+  onVideoRef?: (videoRef: any, mediaKey: string) => void;
+  onVideoPlaybackRequest?: (playCallback: () => void) => boolean;
+  onVideoRelease?: () => void;
 }
 
 const REACTIONS = [
@@ -263,6 +268,9 @@ const ProductCard: React.FC<ProductCardProps> = ({
   onPress,
   onChatPress,
   isScrolling = false,
+  onVideoRef,
+  onVideoPlaybackRequest,
+  onVideoRelease,
 }) => {
   const navigation = useNavigation();
   // ✅ NOUVEAU: Utiliser useLocation pour calculer la distance si nécessaire
@@ -294,17 +302,44 @@ const ProductCard: React.FC<ProductCardProps> = ({
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [showDeliveryModal, setShowDeliveryModal] = useState(false);
 
-  // ✅ NOUVEAU 2026-03-06: Gestion des vidéos pour arrêter lors du scroll
+  // ✅ NOUVEAU 2026-03-12: Gestion des vidéos avec coordinateur
   const videoRefs = useRef<Map<string, any>>(new Map());
 
   const handleVideoRef = useCallback((videoRef: any, mediaKey: string) => {
     videoRefs.current.set(mediaKey, videoRef);
-  }, []);
+    // Notifier le parent si le callback est fourni
+    if (onVideoRef) {
+      onVideoRef(videoRef, mediaKey);
+    }
+  }, [onVideoRef]);
 
   const handleStopVideo = useCallback((mediaKey: string) => {
     // La vidéo est déjà arrêtée par le parent, on nettoie juste la ref
     videoRefs.current.delete(mediaKey);
-  }, []);
+    // Notifier le parent du release
+    if (onVideoRelease) {
+      onVideoRelease();
+    }
+  }, [onVideoRelease]);
+
+  // ✅ NOUVEAU 2026-03-12: Effet pour arrêter les vidéos lors du scroll avec coordinateur
+  useEffect(() => {
+    if (isScrolling) {
+      // Arrêter toutes les vidéos de cette carte
+      videoRefs.current.forEach((videoRef, mediaKey) => {
+        if (videoRef) {
+          videoRef.pauseAsync().catch(() => {
+            console.log(`[ProductCard] Vidéo ${mediaKey} déjà arrêtée ou inaccessible`);
+          });
+        }
+      });
+
+      // Notifier le coordinateur du release
+      if (onVideoRelease) {
+        onVideoRelease();
+      }
+    }
+  }, [isScrolling, onVideoRelease]);
 
   const [reactions, setReactions] = useState<Record<string, { count: number; hasReacted: boolean }>>({});
   const [loadingReactions, setLoadingReactions] = useState(false);
@@ -1392,7 +1427,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
     }
   };
 
-  // ✅ FIX 2026-03-11: Naviguer vers l'écran de navigation in-app avec destination pré-remplie
+  // ✅ FIX 2026-03-12: Ouvrir Google Maps directement pour navigation vers la boutique
   const handleOpenNavigation = () => {
     try {
       // Extraire les coordonnées GPS du produit/service
@@ -1429,12 +1464,19 @@ const ProductCard: React.FC<ProductCardProps> = ({
         return;
       }
 
-      // ✅ FIX: Naviguer vers NavigationScreen in-app avec destination pré-remplie
+      // ✅ FIX: Ouvrir Google Maps directement avec l'itinéraire
       const destName = chosenLocation || filterBooleanValue(productData?.product_name || product?.product_name, 'Destination');
-      (navigation as any).navigate('Navigation', {
-        dest_lat: lat.toString(),
-        dest_lng: lng.toString(),
-        dest_name: destName,
+      const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&destination_place_id=${encodeURIComponent(destName)}`;
+
+      // Ouvrir Google Maps
+      Linking.openURL(url).catch((error) => {
+        console.error('[ProductCard] Erreur ouverture Google Maps:', error);
+        // Fallback: ouvrir Google Maps sans itinéraire si l'URL dir échoue
+        const fallbackUrl = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+        Linking.openURL(fallbackUrl).catch((fallbackError) => {
+          console.error('[ProductCard] Erreur ouverture Google Maps fallback:', fallbackError);
+          Alert.alert('Erreur', 'Impossible d\'ouvrir Google Maps');
+        });
       });
     } catch (error) {
       console.error('[ProductCard] Erreur navigation GPS:', error);
@@ -1611,6 +1653,9 @@ const ProductCard: React.FC<ProductCardProps> = ({
                   onVideoRef={handleVideoRef}
                   onStopVideo={handleStopVideo}
                   isScrolling={isScrolling}
+                  // ✅ NOUVEAU 2026-03-12: Passer les callbacks du coordinateur vidéo
+                  onVideoPlaybackRequest={onVideoPlaybackRequest}
+                  onVideoRelease={onVideoRelease}
                 />
 
                 {/* ✅ SUPPRIMÉ 2026-01-14: Drapeau déplacé après l'adresse textuelle */}

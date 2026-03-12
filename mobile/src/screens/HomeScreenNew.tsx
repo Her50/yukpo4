@@ -298,8 +298,7 @@ const HomeScreenNew: React.FC = () => {
                     <View style={styles.mainSection}>
                         <View style={styles.titleContainer}>
                             <Text style={styles.mainTitle}>
-                                <Text style={{ color: '#3B82F6' }}>Yuk</Text>
-                                <Text style={{ color: '#7C3AED' }}>po</Text>
+                                Services
                             </Text>
                             <Text style={styles.subtitle}>
                                 Créez ou trouvez un service en un instant.

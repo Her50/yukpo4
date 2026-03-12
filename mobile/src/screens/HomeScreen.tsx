@@ -632,11 +632,10 @@ const HomeScreen: React.FC = () => {
                     </TouchableOpacity>
                 </View>
 
-                {/* Titre centré avec branding Yukpo */}
+                {/* Titre centré */}
                 <View style={styles.headerCenter}>
                     <Text style={styles.brandTitle}>
-                        <Text style={styles.brandYuk}>Yuk</Text>
-                        <Text style={styles.brandPo}>po</Text>
+                        Accueil
                     </Text>
                 </View>
 
@@ -934,20 +933,16 @@ const styles = StyleSheet.create({
         paddingRight: 40, // Plus d'espace à droite pour éviter la collision avec l'icône vélo
     },
     brandTitle: {
-        fontSize: 26,
+        fontSize: 24,
         fontWeight: '900',
         letterSpacing: -0.3,
-    },
-    brandYuk: {
-        color: '#3B82F6', // Bleu (cohérent avec le logo officiel)
-    },
-    brandPo: {
-        color: '#7C3AED', // Violet (cohérent avec le logo officiel)
+        color: '#1F2937',
     },
     headerRight: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'flex-end',
+        // ... (le reste du code reste inchangé)
         gap: 6,
         flex: 1,
         minWidth: 0,

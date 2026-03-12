@@ -256,15 +256,8 @@ const LoginScreen: React.FC = () => {
     >
       <KeyboardAwareScreen style={styles.container} contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
-          {/* Logo de l'application */}
-          <Image
-            source={require('../../assets/adaptive-icon.png')}
-            style={styles.logo}
-            resizeMode="contain"
-          />
           <Title style={styles.title}>
-            Connexion{' '}
-            <Text style={styles.brandYuk}>Yuk</Text><Text style={styles.brandPo}>po</Text>
+            Connexion
           </Title>
           <Paragraph style={styles.subtitle}>
             Connectez-vous avec votre compte{' '}
@@ -437,13 +430,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: modernStyles.spacing.xl,
   },
-  logo: {
-    width: 120,
-    height: 120,
-    marginBottom: modernStyles.spacing.lg,
-  },
   title: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: 'bold',
     textAlign: 'center',
     marginBottom: modernStyles.spacing.md,
@@ -451,12 +439,6 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0, 0, 0, 0.3)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 4,
-  },
-  brandYuk: {
-    color: '#60A5FA', // Bleu clair (lisible sur fond sombre)
-  },
-  brandPo: {
-    color: '#A78BFA', // Violet clair (lisible sur fond sombre)
   },
   subtitle: {
     textAlign: 'center',

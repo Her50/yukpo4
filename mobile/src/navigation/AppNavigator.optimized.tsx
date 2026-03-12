@@ -556,6 +556,9 @@ const getPartnerDashboardScreen = (partnerType: string | undefined): string | nu
     'demenagement': 'GestionServicesSpecialises',
     'transport': 'GestionServicesSpecialises',
     'telecom': 'GestionServicesSpecialises',
+    'ecommerce': 'GestionServicesSpecialises',
+    'prestataire': 'GestionServicesSpecialises',
+    'service': 'GestionServicesSpecialises',
     'immobilier': 'ImmobilierForm',
   };
   const normalized = partnerType.toLowerCase().trim().replace(/\s+/g, '');
