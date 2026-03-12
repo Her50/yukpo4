@@ -28,15 +28,15 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copier les fichiers de configuration Rust
-COPY backend/Cargo.toml ./backend/Cargo.toml
+COPY backend/Cargo.toml ./Cargo.toml
 
 # ✅ SQLx OFFLINE : copier le cache SQLx AVANT le code source
-COPY backend/.sqlx ./backend/.sqlx
+COPY backend/.sqlx ./.sqlx
 
 # Vérifier que le cache SQLx est présent
 RUN echo "=== Vérification du cache SQLx ===" && \
-    if [ -d "backend/.sqlx" ]; then \
-    CACHE_COUNT=$(find backend/.sqlx -type f 2>/dev/null | wc -l || echo 0) && \
+    if [ -d ".sqlx" ]; then \
+    CACHE_COUNT=$(find .sqlx -type f 2>/dev/null | wc -l || echo 0) && \
     echo "✅ Cache SQLx présent (${CACHE_COUNT} fichiers)" && \
     if [ "${CACHE_COUNT}" -eq 0 ]; then \
     echo "❌ WARNING: Le cache .sqlx est vide!" && \
@@ -49,28 +49,27 @@ RUN echo "=== Vérification du cache SQLx ===" && \
     echo "==="
 
 # Copier le code source (APRÈS le cache)
-COPY backend/src ./backend/src
+COPY backend/src ./src
 
 # Copier les fichiers nécessaires au runtime
-COPY backend/ia_prompts ./backend/ia_prompts
-COPY backend/config ./backend/config
-COPY backend/ia_intentions_instructions.md ./backend/
-COPY backend/migrations ./backend/migrations
+COPY backend/ia_prompts ./ia_prompts
+COPY backend/config ./config
+COPY backend/ia_intentions_instructions.md ./
+COPY backend/migrations ./migrations
 
 # Copier les scripts (nécessaires pour certains binaires définis dans Cargo.toml)
-COPY backend/scripts ./backend/scripts
+COPY backend/scripts ./scripts
 
 # Copier le dossier public pour les fichiers statiques (test-download.html, .well-known, etc.)
-COPY backend/public ./backend/public
+COPY backend/public ./public
 
 # Créer le dossier data
-RUN mkdir -p ./backend/data
+RUN mkdir -p ./data
 
 # Copier Blender depuis le contexte local si disponible
-COPY backend/blender/ ./backend/blender/
+COPY backend/blender/ ./blender/
 
 # Construire l'application avec optimisations pour production
-WORKDIR /app/backend
 RUN cargo build --release --features gpu
 
 ############################################
@@ -145,15 +144,15 @@ RUN mkdir -p /app/config /app/logs /app/data /app/uploads /app/migrations /app/i
     && chown -R appuser:appuser /app /var/data
 
 # Copier l'exécutable depuis le builder
-COPY --from=builder --chown=appuser:appuser /app/backend/target/release/yukpomnang_backend /app/yukpomnang_backend
+COPY --from=builder --chown=appuser:appuser /app/target/release/yukpomnang_backend /app/yukpomnang_backend
 
 # Copier les fichiers de configuration et ressources
-COPY --from=builder --chown=appuser:appuser /app/backend/config /app/config
-COPY --from=builder --chown=appuser:appuser /app/backend/migrations /app/migrations
-COPY --from=builder --chown=appuser:appuser /app/backend/ia_prompts /app/ia_prompts
-COPY --from=builder --chown=appuser:appuser /app/backend/ia_intentions_instructions.md /app/
+COPY --from=builder --chown=appuser:appuser /app/config /app/config
+COPY --from=builder --chown=appuser:appuser /app/migrations /app/migrations
+COPY --from=builder --chown=appuser:appuser /app/ia_prompts /app/ia_prompts
+COPY --from=builder --chown=appuser:appuser /app/ia_intentions_instructions.md /app/
 # ✅ CRITIQUE : Copier le dossier public pour servir les fichiers .well-known
-COPY --from=builder --chown=appuser:appuser /app/backend/public /app/public
+COPY --from=builder --chown=appuser:appuser /app/public /app/public
 
 # Copier le script de démarrage
 COPY backend/scripts/start-cloud.sh /app/start-cloud.sh
