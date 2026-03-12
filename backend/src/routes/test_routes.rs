@@ -1,4 +1,5 @@
 // Endpoint pour servir l'APK de test
+use crate::state::AppState;
 use axum::{
     body::Body,
     http::{header, StatusCode},
@@ -7,6 +8,7 @@ use axum::{
     Router,
 };
 use std::path::Path as StdPath;
+use std::sync::Arc;
 
 pub async fn get_test_apk() -> impl IntoResponse {
     let apk_path = StdPath::new("uploads/yukpo-mobile-test.apk");
@@ -53,7 +55,7 @@ pub async fn get_download_page() -> impl IntoResponse {
     )
 }
 
-pub fn create_test_routes() -> Router<(), ()> {
+pub fn create_test_routes(_state: Arc<AppState>) -> Router<Arc<AppState>> {
     Router::new()
         .route("/test-download", get(get_download_page))
         .route("/downloads/yukpo-mobile-test.apk", get(get_test_apk))

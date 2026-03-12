@@ -338,7 +338,7 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
     let whatsapp = whatsapp_routes::create_whatsapp_routes(state.clone());
 
     // ✅ NOUVEAU: Routes pour page de téléchargement APK test
-    let test_routes = crate::routes::test_routes::create_test_routes();
+    let test_routes = crate::routes::test_routes::create_test_routes(state.clone());
 
     let app = Router::new()
         .route("/healthz", get(healthz))
