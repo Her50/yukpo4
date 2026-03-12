@@ -57,7 +57,7 @@ jobs:
           sed -E \
             -e '/^COPY --from=/! s#^COPY (Cargo\.toml Cargo\.lock) #COPY backend/Cargo.toml backend/Cargo.lock #' \
             -e '/^COPY --from=/! s#^COPY \.sqlx #COPY backend/.sqlx #' \
-            -e '/^COPY --from=/! s#^COPY (src|scripts|ia_prompts|config|migrations|blender) #COPY backend/\1 #' \
+            -e '/^COPY --from=/! s#^COPY (src|scripts|ia_prompts|config|migrations|blender|public) #COPY backend/\1 #' \
             -e '/^COPY --from=/! s#^COPY ([^/ ]+\.md) #COPY backend/\1 #' \
             -e '/^COPY --from=/! s#^COPY scripts/([^ ]+) #COPY backend/scripts/\1 #' \
             backend/Dockerfile.cloud.optimized > Dockerfile.build

@@ -51,6 +51,7 @@ COPY scripts ./scripts
 COPY ia_prompts ./ia_prompts
 COPY config ./config
 COPY migrations ./migrations
+COPY public ./public
 COPY ia_intentions_instructions.md ./
 
 # Construire l'application avec optimisations maximales
@@ -108,6 +109,7 @@ COPY --from=builder --chown=appuser:appuser /app/bin/yukpomnang_backend /app/yuk
 COPY --from=builder --chown=appuser:appuser /app/config /app/config
 COPY --from=builder --chown=appuser:appuser /app/migrations /app/migrations
 COPY --from=builder --chown=appuser:appuser /app/ia_prompts /app/ia_prompts
+COPY --from=builder --chown=appuser:appuser /app/public /app/public
 COPY --from=builder --chown=appuser:appuser /app/ia_intentions_instructions.md /app/
 
 # Scripts de démarrage
