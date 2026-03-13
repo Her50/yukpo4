@@ -452,7 +452,7 @@ const ServiceMediaGallery: React.FC<ServiceMediaGalleryProps> = ({
                                 onPress={() => handleShareMedia(selectedMedia)}
                                 activeOpacity={0.7}
                             >
-                                <SafeIcon name="share-2" size={22} color="#FFFFFF" />
+                                <SafeIcon name="Redo2" size={22} color="#FFFFFF" />
                             </TouchableOpacity>
 
                             {/* Navigation précédent/suivant */}

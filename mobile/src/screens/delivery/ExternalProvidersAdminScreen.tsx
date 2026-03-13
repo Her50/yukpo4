@@ -526,7 +526,7 @@ const ExternalProvidersAdminScreen: React.FC = () => {
                                         style={[styles.shareButton, { backgroundColor: '#8B5CF6' }]}
                                         onPress={() => shareProviderCredentials(createdProvider)}
                                     >
-                                        <SafeIcon name="share-2" size={20} color="white" />
+                                        <SafeIcon name="Redo2" size={20} color="white" />
                                         <Text style={styles.shareButtonText}>Partager</Text>
                                     </TouchableOpacity>
                                 </View>
@@ -642,7 +642,7 @@ const ExternalProvidersAdminScreen: React.FC = () => {
                                         style={[styles.shareButton, { backgroundColor: '#8B5CF6' }]}
                                         onPress={() => shareProviderCredentials(selectedProvider)}
                                     >
-                                        <SafeIcon name="share-2" size={24} color="white" />
+                                        <SafeIcon name="Redo2" size={24} color="white" />
                                         <Text style={styles.shareButtonText}>Partager</Text>
                                     </TouchableOpacity>
                                 </View>

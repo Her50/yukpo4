@@ -1749,7 +1749,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                     onPress={handleShare}
                     activeOpacity={0.7}
                   >
-                    <SafeIcon name="share-2" size={14} color="#6B7280" />
+                    <SafeIcon name="share" size={14} color="#6B7280" />
                   </TouchableOpacity>
                 </View>
               </View>

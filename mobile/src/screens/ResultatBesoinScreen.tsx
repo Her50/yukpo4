@@ -206,7 +206,39 @@ const ResultatBesoinScreen: React.FC = () => {
         }
     }, []);
 
-    // ✅ NOUVEAU: Arrêter toutes les vidéos et vider la file d'attente
+    // ✅ NOUVEAU 2026-03-13: Ref pour suivre les produits visibles et déclencher l'autoplay des vidéos
+    const visibleProductsRef = useRef<Set<string>>(new Set());
+    const viewabilityConfigRef = useRef({
+        viewAreaCoveragePercentThreshold: 50, // 50% du produit doit être visible
+        minimumViewTime: 1000, // 1 seconde avant de considérer comme visible
+    });
+
+    // ✅ NOUVEAU: Fonction pour détecter quand un produit devient visible
+    const handleProductViewable = useCallback((productId: string) => {
+        if (!visibleProductsRef.current.has(productId)) {
+            visibleProductsRef.current.add(productId);
+            console.log('[ResultatBesoinScreen] Produit devenu visible:', productId);
+
+            // Libérer les vidéos des produits qui ne sont plus visibles
+            const coordinator = videoCoordinatorRef.current;
+            coordinator.currentlyPlaying.forEach((videoId) => {
+                if (!videoId.startsWith(productId)) {
+                    releaseVideoPlayback(videoId);
+                }
+            });
+        }
+    }, [releaseVideoPlayback]);
+
+    // ✅ NOUVEAU: Fonction pour gérer la visibilité des produits dans FlatList
+    const onViewableItemsChanged = useCallback(({ viewableItems, changed }) => {
+        changed.forEach((item) => {
+            if (item.isViewable) {
+                const productData = item.item.data;
+                const productId = `${productData._serviceId || 'unknown'}-${productData.product_index || productData.id || 'unknown'}`;
+                handleProductViewable(productId);
+            }
+        });
+    }, [handleProductViewable]);
     const stopAllVideosAndClearQueue = useCallback(() => {
         // Arrêter toutes les vidéos actuelles
         activeVideoRefs.current.forEach((videoRef, key) => {
@@ -2667,6 +2699,9 @@ const ResultatBesoinScreen: React.FC = () => {
                                     offset: 300 * index,
                                     index,
                                 })}
+                                // ✅ NOUVEAU 2026-03-13: Configuration de la visibilité pour autoplay vidéo
+                                viewabilityConfig={viewabilityConfigRef.current}
+                                onViewableItemsChanged={onViewableItemsChanged}
                                 refreshControl={
                                     <RefreshControl
                                         refreshing={refreshing}

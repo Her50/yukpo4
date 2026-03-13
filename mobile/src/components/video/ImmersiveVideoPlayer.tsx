@@ -228,7 +228,7 @@ export const ImmersiveVideoPlayer: React.FC<ImmersiveVideoPlayerProps> = ({
                                 onPress={onShare}
                                 activeOpacity={0.8}
                             >
-                                <SafeIcon name="share" size={24} color="#FFF" />
+                                <SafeIcon name="Redo2" size={24} color="#FFF" />
                             </TouchableOpacity>
 
                             <TouchableOpacity

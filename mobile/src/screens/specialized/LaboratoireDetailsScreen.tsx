@@ -197,7 +197,7 @@ const LaboratoireDetailsScreen: React.FC = () => {
             <LinearGradient colors={['#0F766E', '#0D9488', '#2DD4BF']} style={st.hero}>
                 <View style={st.heroTop}>
                     <TouchableOpacity onPress={() => navigation.goBack()} style={st.heroBtn}><SafeIcon name="arrow-left" size={22} color="#fff" /></TouchableOpacity>
-                    <TouchableOpacity onPress={handleShare} style={st.heroBtn}><SafeIcon name="share-2" size={22} color="#fff" /></TouchableOpacity>
+                    <TouchableOpacity onPress={handleShare} style={st.heroBtn}><SafeIcon name="share" size={22} color="#fff" /></TouchableOpacity>
                 </View>
                 <View style={st.heroContent}>
                     <View style={st.heroIconWrap}><SafeIcon name="microscope" size={28} color="#0D9488" /></View>

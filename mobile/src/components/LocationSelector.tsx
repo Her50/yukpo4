@@ -309,7 +309,7 @@ const getPlaceIcon = (
 
 const formatLocationDisplay = (location?: LocationObject | string | boolean | null): string => {
     // ✅ CORRECTION: Gérer les valeurs non-string (boolean, null, undefined)
-    if (!location || location === false || location === null) return '';
+    if (!location || location === null) return '';
     if (typeof location === 'boolean') return '';
     if (typeof location === 'string') {
         return location;

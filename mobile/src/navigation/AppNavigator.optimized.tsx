@@ -522,7 +522,7 @@ const GESTION_SUPPORTED_TYPES = [
   'ecommerce', 'prestataire', 'service',
 ];
 
-// ✅ FIX: Mapping partagé partner_type → écran spécialisé (même logique que useDeepLinkRedirect)
+// ✅ Mapping partner_type → écran spécialisé (utilisé par PartnerDashboardTab dans les onglets)
 const getPartnerDashboardScreen = (partnerType: string | undefined): string | null => {
   if (!partnerType) return null;
   const map: Record<string, string> = {
@@ -763,7 +763,7 @@ function AuthStackNavigator() {
 // ============================================================================
 
 function MainStackNavigator() {
-  // ✅ Activer la redirection automatique des partenaires vers leurs écrans spécialisés
+  // ✅ Deep links uniquement (la redirection partenaire est gérée par initialRouteName + PartnerDashboardTab)
   useDeepLinkRedirect();
 
   return (

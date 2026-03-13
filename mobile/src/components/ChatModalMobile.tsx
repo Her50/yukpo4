@@ -39,6 +39,7 @@ interface ChatModalMobileProps {
     user: any;
     conversationId?: string;  // ✅ NOUVEAU : Pour conversations privées (format UUID)
     isPrivateConversation?: boolean;  // ✅ NOUVEAU : Flag pour conversation privée
+    initialMessages?: any[];  // ✅ NOUVEAU : Messages initiaux pour les conversations historiques
 }
 
 interface Participant {
@@ -59,7 +60,8 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
     prestataireInfo,
     user,
     conversationId: privateConversationId,
-    isPrivateConversation = false
+    isPrivateConversation = false,
+    initialMessages
 }) => {
     const navigation = useNavigation();
     const [newMessage, setNewMessage] = useState('');
@@ -128,7 +130,8 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
         sendMessage,
         editMessage,
         deleteMessage,
-        markAsRead
+        markAsRead,
+        setInitialMessages  // ✅ NOUVEAU: Récupérer la fonction pour définir les messages initiaux
     } = useWebSocketChat(
         effectiveServiceId,
         prestataireUserId,
@@ -165,11 +168,27 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                 serviceId: service?.id,
                 hasPrestataire: !!prestataireInfo,
                 prestataireName: nomPrestataire,
-                effectiveServiceId,
-                prestataireUserId
+                hasInitialMessages: !!initialMessages,
+                initialMessagesCount: initialMessages?.length || 0
             });
+
+            // ✅ NOUVEAU: Utiliser les messages initiaux si fournis
+            if (initialMessages && initialMessages.length > 0 && setInitialMessages) {
+                console.log('[ChatModalMobile] Utilisation des messages initiaux:', initialMessages.length);
+                // Convertir les messages initiaux au format attendu par useWebSocketChat
+                const formattedMessages = initialMessages.map((msg: any) => ({
+                    id: msg.id || String(Date.now() + Math.random()),
+                    from: msg.isFromClient ? 'client' as const : 'prestataire' as const,
+                    content: msg.message || msg.content || '',
+                    timestamp: new Date(msg.timestamp || msg.created_at || Date.now()),
+                    status: 'read' as const,
+                    type: (msg.messageType || msg.type || 'text') as 'text' | 'audio' | 'image' | 'file',
+                    editable: msg.isFromClient  // Seuls les messages du client sont éditables
+                }));
+                setInitialMessages(formattedMessages);
+            }
         }
-    }, [visible, service?.id, prestataireInfo, nomPrestataire, effectiveServiceId, prestataireUserId]);
+    }, [visible, service, prestataireInfo, nomPrestataire, initialMessages, setInitialMessages]);
 
     // Auto-scroll vers le bas
     useEffect(() => {

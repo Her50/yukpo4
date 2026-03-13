@@ -675,7 +675,7 @@ const ImmobilierHomeScreen: React.FC = () => {
                                     style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#F9FAFB', borderRadius: 8, paddingVertical: 7, borderWidth: 1, borderColor: '#E5E7EB' }}
                                     onPress={() => handleShareProperty(item)}
                                 >
-                                    <SafeIcon name="share-2" size={14} color="#6B7280" type="lucide" />
+                                    <SafeIcon name="share" size={14} color="#6B7280" type="lucide" />
                                     <Text style={{ marginLeft: 4, fontSize: 11, color: '#6B7280' }}>Partager</Text>
                                 </TouchableOpacity>
                             </View>

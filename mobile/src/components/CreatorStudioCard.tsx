@@ -958,7 +958,7 @@ export const CreatorStudioCard: React.FC<CreatorStudioCardProps> = ({
                         }}
                         disabled={!state.deliveryId || state.dropoffPending}
                     >
-                        <SafeIcon name="share-2" size={14} color="#bfdbfe" />
+                        <SafeIcon name="Redo2" size={14} color="#bfdbfe" />
                         <Text style={styles.secondaryActionText}>
                             {state.dropoffPending ? 'Lien en attente' : 'Partager localisation client'}
                         </Text>

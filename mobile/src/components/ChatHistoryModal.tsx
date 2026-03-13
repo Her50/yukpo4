@@ -241,6 +241,32 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
       isOnline: true
     };
 
+    // ✅ NOUVEAU: Charger l'historique des messages de la conversation
+    let conversationMessages: ChatMessage[] = [];
+    try {
+      console.log('[ChatHistoryModal] Chargement des messages pour la conversation:', chat.id);
+      const response = await apiGet(`/api/chat/messages/${chat.id}`);
+
+      if (response.success && response.data && Array.isArray((response.data as any).messages)) {
+        const messagesData = (response.data as any).messages;
+        conversationMessages = messagesData.map((msg: any) => ({
+          id: msg.id || String(Date.now() + Math.random()),
+          clientId: msg.clientId || msg.client_id || chat.clientId,
+          prestataireId: msg.prestataireId || msg.prestataire_id || chat.prestataireId,
+          message: msg.message || msg.content || '',
+          timestamp: new Date(msg.timestamp || msg.created_at || Date.now()),
+          isFromClient: msg.isFromClient !== undefined ? msg.isFromClient :
+            (msg.sender === 'client' || msg.sender === currentUserId),
+          messageType: msg.messageType || msg.type || 'text',
+          metadata: msg.metadata || {}
+        }));
+        console.log(`[ChatHistoryModal] ✅ ${conversationMessages.length} messages chargés`);
+      }
+    } catch (error) {
+      console.warn('[ChatHistoryModal] Erreur chargement messages:', error);
+      // En cas d'erreur, on continue sans l'historique
+    }
+
     // ✅ CORRIGÉ: Marquer la conversation comme lue via l'API (charge les messages = déclenche le mark-as-read côté backend)
     try {
       await apiGet(`/api/chat/messages/${chat.id}`);
@@ -256,6 +282,7 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
     setSelectedChat(chat);
     setSelectedService(serviceData);
     setSelectedPrestataire(prestataireData);
+    setChatMessages(conversationMessages); // ✅ NOUVEAU: Stocker les messages chargés
     setShowChatModal(true);
     setShowChatMessages(false);
   };
@@ -608,6 +635,7 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
           user={user}
           conversationId={selectedChat?.id}
           isPrivateConversation={!selectedChat?.serviceId}
+          initialMessages={chatMessages}  // ✅ NOUVEAU: Passer les messages chargés
           onClose={() => {
             setShowChatModal(false);
             setSelectedService(null);

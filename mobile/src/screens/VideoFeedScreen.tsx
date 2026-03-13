@@ -13,6 +13,7 @@ import {
     Platform,
     Pressable,
     RefreshControl,
+    ScrollView,
     Share,
     StatusBar,
     StyleSheet,
@@ -452,12 +453,19 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
     const playCountRef = useRef<Record<string, number>>({});
     const [playCount, setPlayCount] = useState<Record<string, number>>({});
 
+    // ✅ CORRIGÉ: Réinitialiser l'état au retour sur l'écran
     useEffect(() => {
-        const item = feed[currentIndex];
-        if (item?.serviceId) {
-            checkFollowStatus(item.serviceId);
+        if (isFocused && feed.length > 0) {
+            // Réinitialiser l'état de lecture pour la vidéo actuelle
+            const currentItem = feed[currentIndex];
+            if (currentItem) {
+                const contentId = currentItem.contentId || currentItem.id;
+                if (contentId && !playCountRef.current[contentId]) {
+                    setPlayCount(prev => ({ ...prev, [contentId]: 0 }));
+                }
+            }
         }
-    }, [currentIndex, feed, checkFollowStatus]);
+    }, [isFocused, feed, currentIndex]);
 
     const handleToggleFollow = useCallback(async (serviceId: string | number) => {
         if (!serviceId || !user?.id) {
@@ -541,46 +549,69 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
 
     const handleViewableItemsChanged = useCallback(
         ({ viewableItems }: { viewableItems: Array<ViewToken> }) => {
+            if (!isFocused || viewableItems.length === 0) return;
+
             const nextIndex = viewableItems[0]?.index ?? 0;
-            if (nextIndex === currentIndex) return;
-            // ✅ CORRIGÉ 2026-03-18: Pause immédiate de TOUTES les vidéos non-courantes
-            // Empêche l'interférence audio/vidéo pendant le scroll
+            if (nextIndex === currentIndex || nextIndex < 0 || nextIndex >= filteredFeed.length) return;
+
+            // ✅ CORRIGÉ: Pause immédiate de TOUTES les vidéos non-courantes
             videoRefs.current.forEach((ref, idx) => {
                 if (ref && idx !== nextIndex) {
                     ref.pauseAsync().catch(() => undefined);
                 }
             });
+
             setCurrentIndex(nextIndex);
         },
-        [currentIndex],
+        [currentIndex, filteredFeed.length, isFocused],
     );
 
     // ✅ CORRIGÉ: Pause/play basé sur currentIndex ET focus de l'écran
     useEffect(() => {
+        if (!isFocused || filteredFeed.length === 0) return;
+
         videoRefs.current.forEach((ref, index) => {
             if (!ref) return;
-            const item = feed[index];
-            const contentId = item?.contentId || item?.id;
+            const item = filteredFeed[index];
+            if (!item) return;
+
+            const contentId = item.contentId || item.id;
             const isPaused = contentId ? (pausedMap[contentId] ?? false) : false;
-            if (index === currentIndex && !isPaused && isFocused) {
+            const isActive = index === currentIndex;
+
+            if (isActive && !isPaused && isFocused) {
+                // Jouer la vidéo active
                 ref.playAsync().catch(() => undefined);
             } else {
+                // Mettre en pause toutes les autres vidéos
                 ref.pauseAsync().catch(() => undefined);
             }
         });
-    }, [currentIndex, pausedMap, feed, isFocused]);
+    }, [currentIndex, pausedMap, filteredFeed, isFocused]);
 
-    // ✅ CORRIGÉ: Arrêter toutes les vidéos quand on quitte l'écran
+    // ✅ CORRIGÉ: Arrêter toutes les vidéos et réinitialiser l'état quand on quitte l'écran
     useFocusEffect(
         useCallback(() => {
             return () => {
-                // Cleanup: pause toutes les vidéos en quittant
+                // Cleanup: pause toutes les vidéos et réinitialiser l'état
                 videoRefs.current.forEach((ref) => {
                     if (ref) {
                         ref.pauseAsync().catch(() => undefined);
                         ref.setStatusAsync({ shouldPlay: false }).catch(() => undefined);
+                        ref.unloadAsync().catch(() => undefined);
                     }
                 });
+
+                // Réinitialiser les états pour éviter l'écran figé au retour
+                setPausedMap({});
+                setProgressMap({});
+                setBufferingMap({});
+                setMutedMap({});
+                setPlayCount({});
+                playCountRef.current = {};
+                videoRefs.current.clear();
+                viewedSet.current.clear();
+                setCurrentIndex(0);
             };
         }, [])
     );
@@ -849,7 +880,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                         videoStyle={styles.videoNative}
                         source={{ uri: item.videoUrl }}
                         posterSource={item.thumbnail ? { uri: item.thumbnail } : undefined}
-                        posterStyle={styles.poster}
+                        posterStyle={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT, resizeMode: 'cover' as any }}
                         usePoster={!!item.thumbnail}
                         resizeMode={ResizeMode.COVER}
                         shouldPlay={isActive && !paused && isFocused}
@@ -876,24 +907,24 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                         </View>
                     )}
 
-                    {/* ✅ Boutons replay et commander après 2 lectures - Position optimisée */}
+                    {/* ✅ Boutons replay et commander après 2 lectures - Centrés et modernes */}
                     {!paused && isActive && !isBuffering && (playCount[contentId] || 0) >= 2 && progress >= 0.98 && (
-                        <View style={styles.endVideoActions}>
+                        <View style={styles.centeredVideoActions}>
                             {/* ✅ Bouton Commander si livraison disponible */}
                             {item.serviceId && item.hasDelivery && (
                                 <TouchableOpacity
-                                    style={styles.endVideoDeliveryButton}
+                                    style={styles.centeredDeliveryButton}
                                     onPress={() => handleDeliveryOrder(item)}
                                     activeOpacity={0.8}
                                 >
-                                    <SafeIcon name="shopping-cart" size={16} color="#fff" type="lucide" />
-                                    <Text style={styles.endVideoDeliveryText}>Commander</Text>
+                                    <SafeIcon name="shopping-cart" size={18} color="#fff" type="lucide" />
+                                    <Text style={styles.centeredDeliveryText}>Commander</Text>
                                 </TouchableOpacity>
                             )}
 
-                            {/* ✅ Bouton Rejouer optimisé */}
+                            {/* ✅ Bouton Rejouer moderne et centré */}
                             <TouchableOpacity
-                                style={styles.replayButtonOptimized}
+                                style={styles.centeredReplayButton}
                                 onPress={() => {
                                     const videoRef = videoRefs.current.get(index);
                                     if (videoRef) {
@@ -904,10 +935,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                                 }}
                                 activeOpacity={0.8}
                             >
-                                <View style={styles.replayIconCircle}>
-                                    <SafeIcon name="replay" size={20} color="#fff" type="lucide" />
-                                </View>
-                                <Text style={styles.replayTextOptimized}>Rejouer</Text>
+                                <SafeIcon name="rotate-cw" size={24} color="#fff" type="lucide" />
                             </TouchableOpacity>
                         </View>
                     )}
@@ -938,7 +966,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                 />
 
 
-                {/* ✅ Header: bouton retour + compteur vidéo (comme TikTok) */}
+                {/* ✅ Header: bouton retour uniquement */}
                 <View style={styles.topBar}>
                     <TouchableOpacity
                         style={styles.backButton}
@@ -947,9 +975,6 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                     >
                         <SafeIcon name="arrow-left" size={22} color="#fff" type="lucide" />
                     </TouchableOpacity>
-                    <View style={styles.videoCounter}>
-                        <Text style={styles.videoCounterText}>{index + 1}/{filteredFeed.length}</Text>
-                    </View>
                     {item.isPaid && (
                         <View style={styles.sponsoredBadgeInline}>
                             <Text style={styles.sponsoredText}>Sponsorisé</Text>
@@ -1090,25 +1115,6 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                         </Text>
                     </TouchableOpacity>
 
-                    {/* ✅ NOUVEAU: Icône de réactions groupées - ouvre un picker horizontal */}
-                    <TouchableOpacity
-                        style={styles.actionButton}
-                        onPress={() => setShowReactionPicker(contentId)}
-                        onLongPress={() => setShowReactionPicker(contentId)}
-                        activeOpacity={0.7}
-                        disabled={pendingReaction !== null}
-                    >
-                        <View style={styles.actionIconBg}>
-                            <SafeIcon name="smile" size={24} color="#fff" type="lucide" />
-                        </View>
-                        <Text style={styles.actionLabel}>
-                            {formatCount(
-                                Object.values(reactionsMap[`${item.serviceId}_${item.productIndex ?? 0}`] || {}).reduce((sum, r) => sum + (r?.count || 0), 0)
-                                || (item.likesCount ?? 0)
-                            )}
-                        </Text>
-                    </TouchableOpacity>
-
                     <TouchableOpacity style={styles.actionButton} onPress={() => handleOpenComments(item)} activeOpacity={0.7}>
                         <View style={styles.actionIconBg}>
                             <SafeIcon name="message-circle" size={24} color="#fff" type="lucide" />
@@ -1236,9 +1242,6 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                 </View>
                 {searchQuery.length > 0 && filteredFeed.length === 0 && (
                     <Text style={styles.searchNoResults}>Aucune vidéo trouvée</Text>
-                )}
-                {searchQuery.length > 0 && filteredFeed.length > 0 && (
-                    <Text style={styles.searchResultCount}>{filteredFeed.length} vidéo{filteredFeed.length > 1 ? 's' : ''}</Text>
                 )}
             </View>
 
@@ -1405,9 +1408,10 @@ const styles = StyleSheet.create({
         height: SCREEN_HEIGHT,
     },
     poster: {
-        height: SCREEN_HEIGHT,
         width: SCREEN_WIDTH,
-    } as const,
+        height: SCREEN_HEIGHT,
+        resizeMode: 'cover' as const,
+    },
     pauseOverlay: {
         ...StyleSheet.absoluteFillObject,
         alignItems: 'center',
@@ -1472,17 +1476,6 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(0,0,0,0.4)',
         alignItems: 'center',
         justifyContent: 'center',
-    },
-    videoCounter: {
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 12,
-        backgroundColor: 'rgba(0,0,0,0.4)',
-    },
-    videoCounterText: {
-        color: '#fff',
-        fontSize: 12,
-        fontWeight: '700',
     },
     sponsoredBadgeInline: {
         paddingHorizontal: 10,
@@ -1749,6 +1742,17 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 6,
     },
+    reactionPickerScroll: {
+        backgroundColor: 'rgba(0,0,0,0.85)',
+        borderRadius: 30,
+    },
+    reactionPickerContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 8,
+        paddingVertical: 6,
+        gap: 4,
+    },
     reactionPicker: {
         flexDirection: 'row',
         backgroundColor: 'rgba(0,0,0,0.85)',
@@ -1774,6 +1778,15 @@ const styles = StyleSheet.create({
         fontSize: 9,
         fontWeight: '700',
         marginTop: 1,
+    },
+    reactionPickerCountActive: {
+        color: '#3B82F6',
+    },
+    reactionPickerLabel: {
+        color: '#fff',
+        fontSize: 10,
+        fontWeight: '600',
+        marginTop: 2,
     },
     reactionPickerClose: {
         width: 28,
@@ -1846,73 +1859,56 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         marginTop: 4,
     },
-    // ✅ NOUVEAUX STYLES OPTIMISÉS POUR ÉVITER LES CONFLITS
-    endVideoActions: {
+    // ✅ NOUVEAUX STYLES POUR BOUTONS CENTRÉS ET MODERNES
+    centeredVideoActions: {
         position: 'absolute',
-        bottom: 160, // ✅ Positionné au-dessus des boutons CTA (bottom: 16) et actions (bottom: 80)
-        left: 16,
-        right: 16,
+        top: '50%',
+        left: '50%',
+        transform: [{ translateX: -150 }, { translateY: -40 }],
         flexDirection: 'row',
         justifyContent: 'center',
         alignItems: 'center',
-        gap: 12,
-        zIndex: 35, // ✅ Entre les CTA (25) et les actions (40)
+        gap: 20,
+        zIndex: 35,
     },
-    endVideoDeliveryButton: {
+    centeredDeliveryButton: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 8,
-        paddingHorizontal: 20,
-        paddingVertical: 12,
-        borderRadius: 25,
-        backgroundColor: '#10B981', // ✅ Vert pour commander
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.2)',
+        paddingHorizontal: 24,
+        paddingVertical: 14,
+        borderRadius: 30,
+        backgroundColor: '#10B981',
+        borderWidth: 2,
+        borderColor: 'rgba(255,255,255,0.3)',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 8,
+        shadowOpacity: 0.4,
+        shadowRadius: 12,
+        elevation: 10,
     },
-    endVideoDeliveryText: {
+    centeredDeliveryText: {
         color: '#fff',
-        fontSize: 14,
+        fontSize: 15,
         fontWeight: '700',
         textShadowColor: 'rgba(0,0,0,0.5)',
         textShadowOffset: { width: 0, height: 1 },
         textShadowRadius: 2,
     },
-    replayButtonOptimized: {
-        flexDirection: 'row',
+    centeredReplayButton: {
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        borderWidth: 2,
+        borderColor: 'rgba(255,255,255,0.4)',
         alignItems: 'center',
-        gap: 10,
-        paddingHorizontal: 20,
-        paddingVertical: 12,
-        borderRadius: 25,
-        backgroundColor: 'rgba(255,255,255,0.15)',
-        borderWidth: 1.5,
-        borderColor: 'rgba(255,255,255,0.3)',
+        justifyContent: 'center',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 8,
         elevation: 8,
-    },
-    replayIconCircle: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        backgroundColor: '#FF2D55',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    replayTextOptimized: {
-        color: '#fff',
-        fontSize: 14,
-        fontWeight: '700',
-        textShadowColor: 'rgba(0,0,0,0.8)',
-        textShadowOffset: { width: 0, height: 1 },
-        textShadowRadius: 2,
     },
     searchBarContainer: {
         position: 'absolute',
@@ -1940,16 +1936,6 @@ const styles = StyleSheet.create({
     },
     searchNoResults: {
         color: '#EF4444',
-        fontSize: 12,
-        fontWeight: '600',
-        textAlign: 'center',
-        marginTop: 6,
-        textShadowColor: 'rgba(0,0,0,0.8)',
-        textShadowOffset: { width: 0, height: 1 },
-        textShadowRadius: 3,
-    },
-    searchResultCount: {
-        color: '#34D399',
         fontSize: 12,
         fontWeight: '600',
         textAlign: 'center',

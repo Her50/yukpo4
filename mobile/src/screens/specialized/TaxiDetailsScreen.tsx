@@ -155,7 +155,7 @@ const TaxiDetailsScreen: React.FC = () => {
             <LinearGradient colors={['#92400E', '#D97706', '#FBBF24']} style={st.hero}>
                 <View style={st.heroTop}>
                     <TouchableOpacity onPress={() => navigation.goBack()} style={st.heroBtn}><SafeIcon name="arrow-left" size={22} color="#fff" /></TouchableOpacity>
-                    <TouchableOpacity onPress={handleShare} style={st.heroBtn}><SafeIcon name="share-2" size={22} color="#fff" /></TouchableOpacity>
+                    <TouchableOpacity onPress={handleShare} style={st.heroBtn}><SafeIcon name="share" size={22} color="#fff" /></TouchableOpacity>
                 </View>
                 <View style={st.heroContent}>
                     <View style={st.heroIconWrap}><SafeIcon name="car" size={28} color="#D97706" /></View>

@@ -50,6 +50,7 @@ interface UseWebSocketChatReturn {
     editMessage: (messageId: string, newContent: string) => Promise<void>;
     deleteMessage: (messageId: string) => Promise<void>;
     markAsRead: () => Promise<void>;
+    setInitialMessages?: (messages: ChatMessage[]) => void;  // ✅ NOUVEAU: Pour définir les messages initiaux
 }
 
 export const useWebSocketChat = (serviceId: number, prestataireId: number, userId: number): UseWebSocketChatReturn => {
@@ -60,19 +61,38 @@ export const useWebSocketChat = (serviceId: number, prestataireId: number, userI
     const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-    // Initialiser le message de bienvenue
-    useEffect(() => {
-        const welcomeMessage: ChatMessage = {
-            id: Date.now().toString(),
-            from: 'prestataire',
-            content: `Bonjour 👋, je suis là pour vous aider avec votre demande. Que puis-je faire pour vous ?`,
-            timestamp: new Date(),
-            status: 'read',
-            type: 'text',
-            editable: false
-        };
-        setMessages([welcomeMessage]);
+    // Initialiser le message de bienvenue ou les messages initiaux
+    const initializeMessages = useCallback((initialMsgs?: ChatMessage[]) => {
+        if (initialMsgs && initialMsgs.length > 0) {
+            // ✅ NOUVEAU: Utiliser les messages initiaux fournis
+            setMessages(initialMsgs);
+        } else {
+            // ✅ COMPORTEMENT PAR DÉFAUT: Message de bienvenue
+            const welcomeMessage: ChatMessage = {
+                id: Date.now().toString(),
+                from: 'prestataire',
+                content: `Bonjour 👋, je suis là pour vous aider avec votre demande. Que puis-je faire pour vous ?`,
+                timestamp: new Date(),
+                status: 'read',
+                type: 'text',
+                editable: false
+            };
+            setMessages([welcomeMessage]);
+        }
     }, []);
+
+    // ✅ NOUVEAU: Fonction pour définir les messages initiaux
+    const setInitialMessages = useCallback((initialMsgs: ChatMessage[]) => {
+        if (initialMsgs && initialMsgs.length > 0) {
+            // ✅ NOUVEAU: Utiliser les messages initiaux fournis
+            setMessages(initialMsgs);
+        }
+    }, []);
+
+    // Initialisation par défaut (sera remplacée si setInitialMessages est appelé)
+    useEffect(() => {
+        initializeMessages();
+    }, [initializeMessages]);
 
     const connectWebSocket = useCallback(() => {
         // ✅ CORRIGÉ: Vérifier que les IDs sont valides avant de se connecter
@@ -568,7 +588,8 @@ export const useWebSocketChat = (serviceId: number, prestataireId: number, userI
         sendMessage,
         editMessage,
         deleteMessage,
-        markAsRead
+        markAsRead,
+        setInitialMessages  // ✅ NOUVEAU: Retourner la fonction pour définir les messages initiaux
     };
 };
 

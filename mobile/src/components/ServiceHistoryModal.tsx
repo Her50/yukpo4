@@ -1,23 +1,17 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as React from "react";
 import { useEffect, useState } from 'react';
-import { Text } from 'react-native';
-import { View } from 'react-native';
-import { TouchableOpacity } from 'react-native';
 import {
     Alert,
     Modal,
     ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+    StyleSheet, Text, TextInput, TouchableOpacity, View
 } from 'react-native';
-import { Avatar, Badge, Button, Card, IconButton, Title } from 'react-native-paper';
+import { Avatar, Badge, Card, IconButton, Title } from 'react-native-paper';
 import { useAuth } from '../contexts/AuthContext';
 import { servicesApi } from '../services/api';
 import { theme } from '../theme/theme';
+import { SafeIcon } from './SafeIcon';
 
 interface InteractedService {
     id: string;
@@ -401,7 +395,7 @@ const ServiceHistoryModal: React.FC<ServiceHistoryModalProps> = ({
                                                 style={styles.shareButton}
                                                 onPress={() => shareService(service)}
                                             >
-                                                <Ionicons name="share" size={20} color={theme.colors.textSecondary} />
+                                                <SafeIcon name="Redo2" size={20} color={theme.colors.textSecondary} />
                                             </TouchableOpacity>
                                         </View>
                                     </View>

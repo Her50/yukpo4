@@ -890,6 +890,18 @@ async fn get_points_of_interest(
     // Limiter à 40 POI les plus proches (élargi pour couvrir plus de catégories)
     all_pois.truncate(40);
 
+    // ✅ DEBUG: Log POI names to verify structure
+    log::info!("[POI] Returning {} POIs", all_pois.len());
+    for (idx, poi) in all_pois.iter().enumerate().take(5) {
+        log::info!(
+            "[POI] #{}: name='{}', type={}, distance={:.0}m",
+            idx + 1,
+            poi.name,
+            poi.poi_type,
+            poi.distance_from_route_meters
+        );
+    }
+
     Ok(Json(PointsOfInterestResponse { pois: all_pois }))
 }
 

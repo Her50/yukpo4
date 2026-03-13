@@ -185,7 +185,7 @@ const HopitalDetailsScreen: React.FC = () => {
             <LinearGradient colors={['#1E40AF', '#3B82F6', '#60A5FA']} style={st.hero}>
                 <View style={st.heroTop}>
                     <TouchableOpacity onPress={() => navigation.goBack()} style={st.heroBtn}><SafeIcon name="arrow-left" size={22} color="#fff" /></TouchableOpacity>
-                    <TouchableOpacity onPress={handleShare} style={st.heroBtn}><SafeIcon name="share-2" size={22} color="#fff" /></TouchableOpacity>
+                    <TouchableOpacity onPress={handleShare} style={st.heroBtn}><SafeIcon name="share" size={22} color="#fff" /></TouchableOpacity>
                 </View>
                 <View style={st.heroContent}>
                     <View style={st.heroIconWrap}><SafeIcon name="building-2" size={28} color="#3B82F6" /></View>

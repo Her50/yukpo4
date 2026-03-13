@@ -41,7 +41,9 @@
             "android": {
                 "buildType": "apk",
                 "credentialsSource": "remote",
-                "image": "latest"
+                "image": "latest",
+                "withoutCredentials": false,
+                "prebuildCommand": "npm run configure-build && rm -rf android/app/build android/build android/.gradle || true"
             }
         },
         "production": {
@@ -73,7 +75,7 @@
                 // "EXPO_PUBLIC_WASABI_DIRECT_URL":  "https://yukpo-video-prod.s3.eu-central-1.wasabisys.com"
             },
             "android": {
-                "buildType": "apk",
+                "buildType": "app-bundle",
                 "credentialsSource": "remote",
                 "image": "latest",
                 "withoutCredentials": false,

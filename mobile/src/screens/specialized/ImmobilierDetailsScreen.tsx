@@ -170,7 +170,7 @@ const ImmobilierDetailsScreen: React.FC = () => {
                             <TouchableOpacity onPress={handleToggleFavorite} style={st.heroBtn}>
                                 <SafeIcon name={isFavorite ? 'heart' : 'heart'} size={20} color={isFavorite ? '#EF4444' : '#fff'} />
                             </TouchableOpacity>
-                            <TouchableOpacity onPress={handleShare} style={st.heroBtn}><SafeIcon name="share-2" size={20} color="#fff" /></TouchableOpacity>
+                            <TouchableOpacity onPress={handleShare} style={st.heroBtn}><SafeIcon name="share" size={20} color="#fff" /></TouchableOpacity>
                         </View>
                     </View>
                     <View style={st.heroContent}>

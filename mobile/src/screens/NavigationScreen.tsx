@@ -307,6 +307,7 @@ const NavigationScreen: React.FC = () => {
             return { lat: loc.coords.latitude, lng: loc.coords.longitude };
         } catch { return null; }
     }, [currentLocation]);
+    const AnyMapView = MapView as any;
     const formatDuration = (s: number) => { const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60); return h > 0 ? `${h}h${m > 0 ? ` ${m}min` : ''}` : `${m} min`; };
     const formatDistance = (m: number) => m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${Math.round(m)} m`;
     const getTrafficColor = (l: string) => l === 'low' ? '#10B981' : l === 'medium' ? '#F59E0B' : l === 'high' ? '#EF4444' : '#6B7280';
@@ -318,7 +319,7 @@ const NavigationScreen: React.FC = () => {
     }, []);
 
     // ── API callbacks ──
-    const loadSavedDestinations = useCallback(async () => { try { const r = await apiGet('/api/navigation/destinations'); if (r?.data?.destinations) setSavedDestinations(r.data.destinations); } catch { } }, []);
+    const loadSavedDestinations = useCallback(async () => { try { const r = await apiGet('/api/navigation/destinations') as any; if (r?.data?.destinations) setSavedDestinations(r.data.destinations); } catch { } }, []);
     useEffect(() => {
         if (user) {
             loadSavedDestinations();
@@ -356,31 +357,49 @@ const NavigationScreen: React.FC = () => {
     }, []);
     const resolveDestination = useCallback(async (dest: string) => {
         const dl = dest.toLowerCase().trim();
-        if (dl === 'domicile' || dl === 'bureau') { try { const r = await apiGet(`/api/navigation/destinations/by-label/${dl}`); if (r?.data) return { lat: r.data.latitude, lng: r.data.longitude, address: r.data.address }; } catch { } }
-        try { const r = await apiGet(`/api/navigation/geocode?address=${encodeURIComponent(dest)}`); if (r?.data?.location) return { lat: r.data.location.lat, lng: r.data.location.lng, address: r.data.formatted_address || dest }; } catch { }
+        if (dl === 'domicile' || dl === 'bureau') { try { const r = await apiGet(`/api/navigation/destinations/by-label/${dl}`) as any; if (r?.data) return { lat: r.data.latitude, lng: r.data.longitude, address: r.data.address }; } catch { } }
+        try { const r = await apiGet(`/api/navigation/geocode?address=${encodeURIComponent(dest)}`) as any; if (r?.data?.location) return { lat: r.data.location.lat, lng: r.data.location.lng, address: r.data.formatted_address || dest }; } catch { }
         return null;
     }, []);
     const geocodeDestination = useCallback(async (addr: string) => { const r = await resolveDestination(addr); return r ? { lat: r.lat, lng: r.lng } : null; }, [resolveDestination]);
 
     const searchRoutes = useCallback(async () => {
         let destCoords = destinationCoords;
-        if (!destCoords && selectedLocation?.latitude && selectedLocation?.longitude) { destCoords = { lat: selectedLocation.latitude, lng: selectedLocation.longitude }; setDestinationCoords(destCoords); }
+        if (!destCoords && (selectedLocation as any)?.latitude && (selectedLocation as any)?.longitude) { destCoords = { lat: (selectedLocation as any).latitude, lng: (selectedLocation as any).longitude }; setDestinationCoords(destCoords); }
         if (!destCoords && !destination.trim()) { Alert.alert('Destination requise', 'Veuillez sélectionner une destination'); return; }
         setLoading(true);
+        const modeLabel = travelMode === 'walking' ? 'à pied' : travelMode === 'bicycling' ? 'vélo' : travelMode === 'transit' ? 'transport en commun' : 'voiture';
         try {
             const origin = await getCurrentPosition();
             if (!origin) { Alert.alert('Erreur', 'Position indisponible'); setLoading(false); return; }
             if (!destCoords) { destCoords = await geocodeDestination(destination); if (!destCoords) { Alert.alert('Erreur', 'Destination introuvable'); setLoading(false); return; } setDestinationCoords(destCoords); }
             const avoidList: string[] = []; if (avoidTolls) avoidList.push('tolls'); if (avoidHighways) avoidList.push('highways'); if (avoidFerries) avoidList.push('ferries');
-            const response = await apiPost('/api/navigation/routes', { origin, destination: destCoords, alternatives: true, avoid: avoidList, traffic_model: 'best_guess', mode: travelMode, waypoints: waypoints.length > 0 ? waypoints.map(wp => ({ lat: wp.lat, lng: wp.lng })) : undefined });
-            if (response?.success === false) { Alert.alert('Erreur', response?.error || 'Erreur serveur'); }
+            const response = await apiPost('/api/navigation/routes', { origin, destination: destCoords, alternatives: true, avoid: avoidList, traffic_model: 'best_guess', mode: travelMode, waypoints: waypoints.length > 0 ? waypoints.map(wp => ({ lat: wp.lat, lng: wp.lng })) : undefined }) as any;
+            if (response?.success === false) {
+                const errMsg = response?.error || response?.message || '';
+                if (errMsg.toLowerCase().includes('mode') || errMsg.toLowerCase().includes('non disponible') || errMsg.toLowerCase().includes('zero_results')) {
+                    Alert.alert(`Mode ${modeLabel} indisponible`, `Le mode ${modeLabel} n'est pas disponible pour ce trajet dans cette région.\n\nEssayez un autre mode de transport.`, [
+                        { text: '🚗 Voiture', onPress: () => { setTravelMode('driving'); setTimeout(() => searchRoutesRef.current(), 200); } },
+                        { text: '🚶 À pied', onPress: () => { setTravelMode('walking'); setTimeout(() => searchRoutesRef.current(), 200); } },
+                        { text: 'OK' }
+                    ]);
+                } else { Alert.alert('Erreur', errMsg || 'Erreur serveur'); }
+            }
             else if (response?.data?.routes?.length > 0) {
                 const valid = response.data.routes.filter((r: any) => r?.overview_polyline && r.distance_meters > 0 && r.duration_seconds > 0 && Array.isArray(r.steps));
                 if (!valid.length) { Alert.alert('Aucun itinéraire', 'Aucun itinéraire valide trouvé.'); setLoading(false); return; }
                 setRoutes(valid); setSelectedRoute(valid[0]);
                 try { await loadPointsOfInterestSafely(valid[0]); setTimeout(() => loadCheckpointsSafely(), 800); } catch { }
-            } else { Alert.alert('Aucun itinéraire', 'Aucune route trouvée.'); }
-        } catch (e: any) { Alert.alert('Erreur', e?.message || 'Erreur réseau'); } finally { setLoading(false); }
+            } else { Alert.alert('Aucun itinéraire', `Aucune route trouvée pour le mode ${modeLabel}.`); }
+        } catch (e: any) {
+            const errMsg = e?.message || e?.error || '';
+            if (errMsg.toLowerCase().includes('mode') || errMsg.toLowerCase().includes('non disponible')) {
+                Alert.alert(`Mode ${modeLabel} indisponible`, `Le mode ${modeLabel} n'est pas disponible pour ce trajet.\n\nEssayez un autre mode de transport.`, [
+                    { text: '🚗 Voiture', onPress: () => { setTravelMode('driving'); setTimeout(() => searchRoutesRef.current(), 200); } },
+                    { text: 'OK' }
+                ]);
+            } else { Alert.alert('Erreur', errMsg || 'Erreur réseau'); }
+        } finally { setLoading(false); }
     }, [destination, destinationCoords, selectedLocation, getCurrentPosition, geocodeDestination, avoidTolls, avoidHighways, avoidFerries, waypoints, travelMode]);
     useEffect(() => { searchRoutesRef.current = searchRoutes; }, [searchRoutes]);
 
@@ -391,7 +410,7 @@ const NavigationScreen: React.FC = () => {
             const origin = await getCurrentPosition(); if (!origin) { setLoadingPOI(false); return; }
             if (!route.id || !route.steps?.length) { setLoadingPOI(false); return; }
             const stepsP = route.steps.length > 0 ? `&route_steps=${encodeURIComponent(JSON.stringify(route.steps.map(s => ({ lat: s.location?.lat || 0, lng: s.location?.lng || 0 }))))}` : '';
-            const r = await apiGet(`/api/navigation/points-of-interest?route_id=${route.id}&origin_lat=${origin.lat}&origin_lng=${origin.lng}&dest_lat=${destinationCoords.lat}&dest_lng=${destinationCoords.lng}${stepsP}`);
+            const r = await apiGet(`/api/navigation/points-of-interest?route_id=${route.id}&origin_lat=${origin.lat}&origin_lng=${origin.lng}&dest_lat=${destinationCoords.lat}&dest_lng=${destinationCoords.lng}${stepsP}`) as any;
             console.log('[Navigation] POI Response:', JSON.stringify(r, null, 2));
             if (r?.data?.pois && Array.isArray(r.data.pois)) {
                 console.log('[Navigation] Raw POIs:', r.data.pois);
@@ -471,7 +490,7 @@ const NavigationScreen: React.FC = () => {
     const addWaypoint = useCallback((poi: PointOfInterest) => {
         const lat = getPoiLat(poi), lng = getPoiLng(poi);
         if (waypoints.some(wp => wp.lat === lat && wp.lng === lng)) { Alert.alert('Déjà ajouté'); return; }
-        const safeName = typeof poi.name === 'string' ? poi.name : 'Nom inconnu';
+        const safeName = typeof poi.name === 'string' ? poi.name : (typeof poi.name === 'object' && poi.name !== null ? (poi.name as any).name || (poi.name as any).text || JSON.stringify(poi.name) : 'Nom inconnu');
         setWaypoints(prev => [...prev, { lat, lng, name: safeName }]);
         Alert.alert('Étape ajoutée', `${safeName} ajouté`);
     }, [waypoints]);
@@ -507,7 +526,7 @@ const NavigationScreen: React.FC = () => {
         const lng = poi.location?.lng ?? (poi as any).longitude ?? 0;
         const catEntry = Object.entries(POI_CATEGORIES).find(([, c]) => c.types.includes(poi.type));
         const catIcon = catEntry ? catEntry[1].icon : '📍';
-        const safeName = typeof poi.name === 'string' ? poi.name : 'Nom inconnu';
+        const safeName = typeof poi.name === 'string' ? poi.name : (typeof poi.name === 'object' && poi.name !== null ? (poi.name as any).name || (poi.name as any).text || JSON.stringify(poi.name) : 'Nom inconnu');
         const lines = [`${catIcon} ${safeName}`];
         if (poi.address) lines.push(`📍 ${poi.address}`);
         if (poi.rating) lines.push(`⭐ ${poi.rating}${poi.total_ratings ? ` (${poi.total_ratings} avis)` : ''}`);
@@ -531,7 +550,7 @@ const NavigationScreen: React.FC = () => {
                 apiGet(`/api/navigation/activity/summary?period=${period}`),
                 apiGet(`/api/navigation/activity/history?limit=10`),
                 apiGet(`/api/navigation/activity/ai-insights?period=${period}`)
-            ]);
+            ]) as any[];
 
             console.log('[Navigation] Activity summary response:', sr?.data);
             console.log('[Navigation] Activity history response:', hr?.data);
@@ -588,17 +607,29 @@ const NavigationScreen: React.FC = () => {
     }, [alertToastAnim]);
 
     const reportCheckpoint = useCallback(async (type: string) => {
-        let pos = livePosition; if (!pos) pos = await getCurrentPosition(); if (!pos) { Alert.alert('Erreur', 'GPS indisponible'); return; }
-        try {
-            await apiPost('/api/navigation/checkpoints', { checkpoint_type: type, latitude: pos.lat, longitude: pos.lng, is_permanent: type === 'speed_bump' });
-            checkpointsReportedRef.current += 1;
-            const locationName = await reverseGeocode(pos.lat, pos.lng);
-            const typeLabel = CHECKPOINT_LABELS[type]?.label || type;
-            const typeIcon = CHECKPOINT_LABELS[type]?.icon || '⚠️';
-            // Toast de confirmation clair et explicite
-            showConfirmationToast(`✅ ${typeLabel} signalé avec succès !`, '✅');
-            loadCheckpointsSafely();
-        } catch { Alert.alert('Erreur', 'Échec du signalement'); }
+        const typeLabel = CHECKPOINT_LABELS[type]?.label || type;
+        const typeIcon = CHECKPOINT_LABELS[type]?.icon || '⚠️';
+        // Demander confirmation AVANT d'envoyer le signalement
+        Alert.alert(
+            `${typeIcon} Confirmer le signalement`,
+            `Voulez-vous vraiment signaler : ${typeLabel} ?`,
+            [
+                { text: 'Annuler', style: 'cancel' },
+                {
+                    text: 'Confirmer',
+                    style: 'default',
+                    onPress: async () => {
+                        let pos = livePosition; if (!pos) pos = await getCurrentPosition(); if (!pos) { Alert.alert('Erreur', 'GPS indisponible'); return; }
+                        try {
+                            await apiPost('/api/navigation/checkpoints', { checkpoint_type: type, latitude: pos.lat, longitude: pos.lng, is_permanent: type === 'speed_bump' });
+                            checkpointsReportedRef.current += 1;
+                            showConfirmationToast(`✅ ${typeLabel} signalé avec succès !`, '✅');
+                            loadCheckpointsSafely();
+                        } catch { Alert.alert('Erreur', 'Échec du signalement'); }
+                    }
+                }
+            ]
+        );
     }, [livePosition, getCurrentPosition, loadCheckpointsSafely, showConfirmationToast]);
 
     // ── Test alert creation (development only) ──
@@ -634,7 +665,7 @@ const NavigationScreen: React.FC = () => {
         } catch (e) {
             console.error('[Navigation] Error creating test alerts:', e);
         }
-    }, [getCurrentPosition, loadAlertHistory, showConfirmationToast]);
+    }, [getCurrentPosition, showConfirmationToast]);
 
     // ── Historique des alertes avec clustering et noms de lieux ──
     const loadAlertHistory = useCallback(async () => {
@@ -651,13 +682,20 @@ const NavigationScreen: React.FC = () => {
 
             // Récupérer les checkpoints dans un rayon autour de la position actuelle
             // Utiliser une bounding box de 0.1° (~11km) pour avoir un bon rayon de recherche
-            const r = await apiGet(`/api/navigation/checkpoints/along-route?origin_lat=${pos.lat - 0.05}&origin_lng=${pos.lng - 0.05}&dest_lat=${pos.lat + 0.05}&dest_lng=${pos.lng + 0.05}`);
+            const r = await apiGet(`/api/navigation/checkpoints/along-route?origin_lat=${pos.lat - 0.05}&origin_lng=${pos.lng - 0.05}&dest_lat=${pos.lat + 0.05}&dest_lng=${pos.lng + 0.05}`) as any;
 
             console.log('[Navigation] Alert history API response:', r);
 
+            // ✅ CORRIGÉ: Utiliser le même pattern robuste que loadCheckpointsSafely
+            const backendResp = r?.data as any;
+            const checkpointsArr = Array.isArray(backendResp?.data?.checkpoints)
+                ? backendResp.data.checkpoints
+                : Array.isArray(backendResp?.checkpoints)
+                    ? backendResp.checkpoints
+                    : [];
             let rawCps = [];
-            if (r?.data?.checkpoints && Array.isArray(r.data.checkpoints)) {
-                rawCps = r.data.checkpoints.filter((c: any) => c && validateCoords(c.latitude, c.longitude));
+            if (checkpointsArr.length > 0) {
+                rawCps = checkpointsArr.filter((c: any) => c && validateCoords(c.latitude, c.longitude));
                 console.log('[Navigation] Filtered checkpoints:', rawCps);
             }
 
@@ -718,7 +756,7 @@ const NavigationScreen: React.FC = () => {
         trackingStartTimeRef.current = new Date().toISOString(); speedSamplesRef.current = []; maxSpeedRef.current = 0; distanceTraveledRef.current = 0; lastPositionRef.current = null; checkpointsReportedRef.current = 0; checkpointsEncounteredRef.current = 0; wasOffRouteRef.current = false; encounteredCheckpointIdsRef.current = new Set();
         setIsTracking(true); setNextStepIndex(0); setDistanceRemaining(selectedRoute.distance_meters || 1000); setDurationRemaining(selectedRoute.duration_in_traffic_seconds || selectedRoute.duration_seconds || 300);
         loadCheckpointsSafely();
-        (async () => { try { const p = await getCurrentPosition(); if (p && destinationCoords) { const r = await apiGet(`/api/navigation/checkpoints/ai-analysis?origin_lat=${p.lat}&origin_lng=${p.lng}&dest_lat=${destinationCoords.lat}&dest_lng=${destinationCoords.lng}`); if (r?.data?.success) setCheckpointAiAnalysis(r.data.analysis); } } catch { } })();
+        (async () => { try { const p = await getCurrentPosition(); if (p && destinationCoords) { const r = await apiGet(`/api/navigation/checkpoints/ai-analysis?origin_lat=${p.lat}&origin_lng=${p.lng}&dest_lat=${destinationCoords.lat}&dest_lng=${destinationCoords.lng}`) as any; if (r?.data?.success) setCheckpointAiAnalysis(r.data.analysis); } } catch { } })();
         checkpointRefreshRef.current = setInterval(() => { loadCheckpointsSafely(); }, 60000);
         const sub = await Location.watchPositionAsync({ accuracy: Location.Accuracy.High, timeInterval: 2000, distanceInterval: 5 }, (loc) => {
             const { latitude, longitude, speed, heading } = loc.coords;
@@ -856,6 +894,65 @@ const NavigationScreen: React.FC = () => {
                         </View>
                     </View>
 
+                    {/* ━━ HISTORIQUE DES ALERTES (toggle via icône header) ━━ */}
+                    {showAlertHistory && (
+                        <NativeCard style={[st.secCard, { borderLeftWidth: 4, borderLeftColor: '#EF4444', marginBottom: 8 }]}>
+                            <View style={st.alertHistHdr}>
+                                <Text style={{ fontSize: 18 }}>🚨</Text>
+                                <View style={st.flex1}>
+                                    <Text style={st.alertHistTitle}>Alertes communautaires</Text>
+                                    <Text style={st.alertHistSub}>{checkpoints.length > 0 ? `${checkpoints.length} alerte${checkpoints.length > 1 ? 's' : ''} active${checkpoints.length > 1 ? 's' : ''}` : 'Aucune alerte active'}</Text>
+                                </View>
+                                <TouchableOpacity onPress={() => setShowAlertHistory(false)}>
+                                    <SafeIcon name="X" size={16} color={modernColors.textSecondary} />
+                                </TouchableOpacity>
+                            </View>
+                            <View style={{ marginTop: 10 }}>
+                                {__DEV__ && (
+                                    <TouchableOpacity
+                                        style={{ backgroundColor: '#F3F4F6', padding: 8, borderRadius: 8, marginBottom: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
+                                        onPress={createTestAlerts}
+                                    >
+                                        <Text style={{ fontSize: 12, color: '#6B7280', marginRight: 4 }}>🧪</Text>
+                                        <Text style={{ fontSize: 12, color: '#6B7280' }}>Créer alertes de test</Text>
+                                    </TouchableOpacity>
+                                )}
+                                {loadingAlertHistory ? (
+                                    <View style={st.loadCard}><ActivityIndicator color="#EF4444" /><Text style={st.loadText}>Chargement des alertes...</Text></View>
+                                ) : alertHistoryData.length === 0 ? (
+                                    <View style={{ alignItems: 'center' as any, padding: 16 }}><Text style={{ fontSize: 32 }}>✅</Text><Text style={st.emptyText}>Aucune alerte signalée dans cette zone</Text></View>
+                                ) : (
+                                    alertHistoryData.map((alert, idx) => {
+                                        const info = CHECKPOINT_LABELS[alert.checkpoint_type] || { label: alert.checkpoint_type, icon: '⚠️', color: '#6B7280' };
+                                        const timeAgo = alert.created_at ? (() => {
+                                            const diff = Date.now() - new Date(alert.created_at).getTime();
+                                            if (diff < 3600000) return `il y a ${Math.floor(diff / 60000)} min`;
+                                            if (diff < 86400000) return `il y a ${Math.floor(diff / 3600000)}h`;
+                                            return `il y a ${Math.floor(diff / 86400000)}j`;
+                                        })() : '';
+                                        return (
+                                            <View key={alert.id || idx} style={[st.alertHistItem, { borderLeftColor: info.color }]}>
+                                                <Text style={{ fontSize: 20 }}>{info.icon}</Text>
+                                                <View style={st.flex1}>
+                                                    <View style={st.alertHistItemTop}>
+                                                        <Text style={[st.alertHistLabel, { color: info.color }]}>{info.label}</Text>
+                                                        {alert.count > 1 && <View style={[st.alertHistCountBadge, { backgroundColor: info.color + '20' }]}><Text style={[st.alertHistCountTxt, { color: info.color }]}>×{alert.count}</Text></View>}
+                                                    </View>
+                                                    <Text style={st.alertHistLoc} numberOfLines={1}>📍 {alert.locationName}</Text>
+                                                    <View style={st.alertHistMeta}>
+                                                        <Text style={st.alertHistDist}>{formatDistance(alert.distance)}</Text>
+                                                        {timeAgo ? <Text style={st.alertHistTime}>🕒 {timeAgo}</Text> : null}
+                                                        {alert.speed_limit ? <Text style={st.alertHistSpd}>🚦 {alert.speed_limit} km/h</Text> : null}
+                                                    </View>
+                                                </View>
+                                            </View>
+                                        );
+                                    })
+                                )}
+                            </View>
+                        </NativeCard>
+                    )}
+
                     {/* ━━ BARRE D'ALERTES COMMUNAUTAIRES (compacte, toggle) ━━ */}
                     <TouchableOpacity style={st.alertToggle} onPress={() => setShowReportBar(!showReportBar)} activeOpacity={0.7}>
                         <SafeIcon name="AlertTriangle" size={14} color={modernColors.textSecondary} />
@@ -931,12 +1028,12 @@ const NavigationScreen: React.FC = () => {
                             {/* Map tracking */}
                             {showMap && mapRegion && (
                                 <View style={st.mapWrap}>
-                                    <MapView ref={mapRef} style={st.mapView} provider={Platform.OS === 'ios' ? PROVIDER_GOOGLE : undefined} initialRegion={mapRegion} showsUserLocation showsTraffic showsCompass loadingEnabled onMapReady={() => console.log('[NavigationScreen] ✅ Map ready (tracking)')} onError={(e) => console.error('[NavigationScreen] ❌ Map error (tracking):', e.nativeEvent || e)}>
+                                    <AnyMapView ref={mapRef} style={st.mapView} provider={Platform.OS === 'ios' ? PROVIDER_GOOGLE : undefined} initialRegion={mapRegion} showsUserLocation showsTraffic showsCompass loadingEnabled onMapReady={() => console.log('[NavigationScreen] ✅ Map ready (tracking)')} onError={(e: any) => console.error('[NavigationScreen] ❌ Map error (tracking):', e.nativeEvent || e)}>
                                         {routePolylineCoords.length > 1 && <Polyline coordinates={routePolylineCoords} strokeColor={modernColors.primary} strokeWidth={4} />}
                                         {destinationCoords && <Marker coordinate={{ latitude: destinationCoords.lat, longitude: destinationCoords.lng }} title="Destination" pinColor="#EF4444" tracksViewChanges={false} />}
                                         {livePosition && <Marker coordinate={{ latitude: livePosition.lat, longitude: livePosition.lng }} title="Ma position" pinColor="#3B82F6" />}
                                         {checkpoints.slice(0, 10).map(cp => <Marker key={cp.id} coordinate={{ latitude: cp.latitude, longitude: cp.longitude }} title={`${CHECKPOINT_LABELS[cp.checkpoint_type]?.icon || '⚠️'} ${CHECKPOINT_LABELS[cp.checkpoint_type]?.label || cp.checkpoint_type}`} pinColor={CHECKPOINT_LABELS[cp.checkpoint_type]?.color || '#6B7280'} tracksViewChanges={false} />)}
-                                    </MapView>
+                                    </AnyMapView>
                                     <TouchableOpacity style={st.mapBtnLabeled} onPress={() => { if (livePosition && mapRef.current) mapRef.current.animateToRegion({ latitude: livePosition.lat, longitude: livePosition.lng, latitudeDelta: 0.01, longitudeDelta: 0.01 }, 500); }}>
                                         <SafeIcon name="Locate" size={14} color={modernColors.primary} />
                                         <Text style={st.mapBtnLabelTxt}>Ma position</Text>
@@ -994,7 +1091,7 @@ const NavigationScreen: React.FC = () => {
                                             try { await Share.share({ message: msg, title: 'Mes stats Yukpo Navigation' }); } catch { }
                                         }}
                                     >
-                                        <SafeIcon name="Share2" size={18} color="#fff" />
+                                        <SafeIcon name="share" size={18} color="#fff" />
                                         <View>
                                             <Text style={st.shareStatsTxt}>Partager mes statistiques</Text>
                                             <Text style={st.shareStatsSub}>Invite tes amis à rejoindre Yukpo !</Text>
@@ -1068,18 +1165,46 @@ const NavigationScreen: React.FC = () => {
                                     {/* AI Coach */}
                                     {aiInsights ? (
                                         <>
-                                            <View style={st.coachHdr}><Text style={st.coachTitle}>🤖 Coach IA</Text><TouchableOpacity onPress={sharePerformance} style={st.shareBtn}><SafeIcon name="Share2" size={14} color="#fff" /><Text style={st.shareTxt}>Partager</Text></TouchableOpacity></View>
+                                            <View style={st.coachHdr}><Text style={st.coachTitle}>🤖 Coach IA</Text><TouchableOpacity onPress={sharePerformance} style={st.shareBtn}><SafeIcon name="share" size={14} color="#fff" /><Text style={st.shareTxt}>Partager</Text></TouchableOpacity></View>
                                             {/* Health score */}
                                             {aiInsights.health_score && (
                                                 <NativeCard style={[st.secCard, { borderLeftWidth: 4, borderLeftColor: aiInsights.health_score.score >= 80 ? '#10B981' : '#F59E0B' }]}>
-                                                    <Text style={st.secTitle}>🫀 Score Santé</Text>
+                                                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                                                        <Text style={st.secTitle}>🫀 Score Santé</Text>
+                                                        <TouchableOpacity
+                                                            style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, backgroundColor: (aiInsights.health_score.score >= 80 ? '#10B981' : '#F59E0B') + '15' }}
+                                                            onPress={async () => {
+                                                                const hs = aiInsights.health_score;
+                                                                const bk = hs.breakdown;
+                                                                const comment = hs.score >= 80 ? '🎉 Excellent ! Mon mode de vie actif porte ses fruits.'
+                                                                    : hs.score >= 60 ? '💪 Bon début ! Je continue mes efforts pour m\'améliorer.'
+                                                                        : '🚀 Je démarre mon parcours santé avec le Coach IA Yukpo !';
+                                                                let msg = `🫀 Mon Score Santé Yukpo : ${hs.score}/100 (${hs.label})\n\n`;
+                                                                if (bk) msg += `🏃 Activité: ${bk.activity || 0}/30\n⭐ Qualité: ${bk.quality || 0}/20\n🔥 Série: ${bk.streak || 0}/15\n🌍 Éco: ${bk.eco || 0}/10\n\n`;
+                                                                msg += `💬 ${comment}\n\n🤖 Analyse par le Coach IA Yukpo\n`;
+                                                                msg += Platform.OS === 'ios' ? 'https://apps.apple.com/app/yukpomnang' : 'https://play.google.com/store/apps/details?id=com.yukpomnang';
+                                                                try { await Share.share({ message: msg, title: '🫀 Mon Score Santé - Yukpo' }); } catch { }
+                                                            }}
+                                                            activeOpacity={0.7}
+                                                        >
+                                                            <SafeIcon name="share" size={12} color={aiInsights.health_score.score >= 80 ? '#10B981' : '#F59E0B'} />
+                                                            <Text style={{ fontSize: 11, fontWeight: '600', color: aiInsights.health_score.score >= 80 ? '#10B981' : '#F59E0B' }}>Partager</Text>
+                                                        </TouchableOpacity>
+                                                    </View>
                                                     <View style={{ alignItems: 'center' as any, marginVertical: 12 }}>
                                                         <View style={[st.scoreCircle, { borderColor: aiInsights.health_score.score >= 80 ? '#10B981' : '#F59E0B' }]}><Text style={[st.scoreVal, { color: aiInsights.health_score.score >= 80 ? '#10B981' : '#F59E0B' }]}>{aiInsights.health_score.score}</Text><Text style={st.scoreMax}>/100</Text></View>
                                                         <Text style={[st.scoreLbl, { color: aiInsights.health_score.score >= 80 ? '#10B981' : '#F59E0B' }]}>{aiInsights.health_score.label}</Text>
                                                     </View>
                                                     {aiInsights.health_score.breakdown && <View style={{ gap: 6 }}>
-                                                        {[{ l: 'Activité', p: aiInsights.health_score.breakdown.activity || 0, m: 30, e: '🏃' }, { l: 'Qualité', p: aiInsights.health_score.breakdown.quality || 0, m: 20, e: '⭐' }, { l: 'Série', p: aiInsights.health_score.breakdown.streak || 0, m: 15, e: '🔥' }, { l: 'Éco', p: aiInsights.health_score.breakdown.eco || 0, m: 10, e: '🌍' }].map((b, i) => (
-                                                            <View key={i} style={st.brkRow}><Text style={{ fontSize: 14 }}>{b.e}</Text><View style={st.brkBarBg}><View style={[st.brkBarFill, { width: `${(b.p / b.m) * 100}%` as any, backgroundColor: b.p >= b.m * 0.7 ? '#10B981' : '#F59E0B' }]} /></View><Text style={st.brkPts}>{b.p}/{b.m}</Text></View>
+                                                        {[
+                                                            { l: 'Activité', p: aiInsights.health_score.breakdown.activity || 0, m: 30, e: '🏃', tip: 'Points gagnés grâce à vos sessions de navigation. Plus vous vous déplacez régulièrement, plus vous gagnez de points !' },
+                                                            { l: 'Qualité', p: aiInsights.health_score.breakdown.quality || 0, m: 20, e: '⭐', tip: 'Basé sur la qualité de vos trajets : respect des limites de vitesse, fluidité de conduite, temps de trajet optimal.' },
+                                                            { l: 'Série', p: aiInsights.health_score.breakdown.streak || 0, m: 15, e: '🔥', tip: 'Bonus pour votre régularité ! Utilisez Yukpo Navigation chaque jour pour maximiser ce score.' },
+                                                            { l: 'Éco', p: aiInsights.health_score.breakdown.eco || 0, m: 10, e: '🌍', tip: 'Points pour vos choix écologiques : marche, vélo, transports en commun. Chaque mode vert rapporte plus !' },
+                                                        ].map((b, i) => (
+                                                            <TouchableOpacity key={i} style={st.brkRow} onPress={() => Alert.alert(`${b.e} ${b.l} — ${b.p}/${b.m} pts`, `${b.tip}\n\n${b.p >= b.m * 0.7 ? '✅ Bon niveau ! Continuez ainsi.' : `💡 Vous pouvez encore gagner ${b.m - b.p} points dans cette catégorie.`}`)} activeOpacity={0.7}>
+                                                                <Text style={{ fontSize: 14 }}>{b.e}</Text><View style={st.brkBarBg}><View style={[st.brkBarFill, { width: `${(b.p / b.m) * 100}%` as any, backgroundColor: b.p >= b.m * 0.7 ? '#10B981' : '#F59E0B' }]} /></View><Text style={st.brkPts}>{b.p}/{b.m}</Text>
+                                                            </TouchableOpacity>
                                                         ))}
                                                     </View>}
                                                 </NativeCard>
@@ -1116,41 +1241,154 @@ const NavigationScreen: React.FC = () => {
                                             {/* Gamification */}
                                             {aiInsights.gamification && (
                                                 <NativeCard style={[st.secCard, { borderLeftWidth: 4, borderLeftColor: '#F59E0B' }]}>
-                                                    <Text style={st.secTitle}>🎮 Gamification</Text>
-                                                    <View style={st.streakRow}>
-                                                        <View style={st.streakItem}><Text style={{ fontSize: 24 }}>🔥</Text><Text style={st.streakVal}>{aiInsights.gamification.current_streak}</Text><Text style={st.streakLbl}>jours</Text></View>
-                                                        <View style={st.streakItem}><Text style={{ fontSize: 24 }}>🏆</Text><Text style={st.streakVal}>{aiInsights.gamification.max_streak}</Text><Text style={st.streakLbl}>record</Text></View>
-                                                        <View style={st.streakItem}><Text style={{ fontSize: 24 }}>⭐</Text><Text style={st.streakVal}>{aiInsights.gamification.total_points}</Text><Text style={st.streakLbl}>points</Text></View>
+                                                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                                                        <Text style={st.secTitle}>🎮 Gamification</Text>
+                                                        <TouchableOpacity
+                                                            style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, backgroundColor: '#F59E0B15' }}
+                                                            onPress={sharePerformance}
+                                                            activeOpacity={0.7}
+                                                        >
+                                                            <SafeIcon name="share" size={12} color="#F59E0B" />
+                                                            <Text style={{ fontSize: 11, fontWeight: '600', color: '#F59E0B' }}>Partager</Text>
+                                                        </TouchableOpacity>
                                                     </View>
-                                                    {aiInsights.gamification.badges?.length > 0 && <View style={st.badgesWrap}>{aiInsights.gamification.badges.map((b: any, i: number) => <View key={i} style={st.badge}><Text style={{ fontSize: 20 }}>{b.emoji}</Text><Text style={st.badgeLbl} numberOfLines={1}>{b.label}</Text></View>)}</View>}
+                                                    <View style={st.streakRow}>
+                                                        <TouchableOpacity style={st.streakItem} onPress={() => Alert.alert('🔥 Série en cours', `Vous êtes actif depuis ${aiInsights.gamification.current_streak} jour${aiInsights.gamification.current_streak > 1 ? 's' : ''} consécutifs !\n\n${aiInsights.gamification.current_streak >= 7 ? '🎉 Bravo ! Continuez pour maintenir votre série !' : '💪 Continuez chaque jour pour augmenter votre série !'}`, [{ text: 'OK' }])} activeOpacity={0.7}>
+                                                            <Text style={{ fontSize: 24 }}>🔥</Text><Text style={st.streakVal}>{aiInsights.gamification.current_streak}</Text><Text style={st.streakLbl}>jours</Text>
+                                                        </TouchableOpacity>
+                                                        <TouchableOpacity style={st.streakItem} onPress={() => Alert.alert('🏆 Record de série', `Votre meilleur record est de ${aiInsights.gamification.max_streak} jour${aiInsights.gamification.max_streak > 1 ? 's' : ''} consécutifs.\n\n${aiInsights.gamification.current_streak >= aiInsights.gamification.max_streak ? '🔥 Vous êtes en train de battre votre record !' : `🎯 Plus que ${aiInsights.gamification.max_streak - aiInsights.gamification.current_streak} jour(s) pour battre votre record !`}`, [{ text: 'OK' }])} activeOpacity={0.7}>
+                                                            <Text style={{ fontSize: 24 }}>🏆</Text><Text style={st.streakVal}>{aiInsights.gamification.max_streak}</Text><Text style={st.streakLbl}>record</Text>
+                                                        </TouchableOpacity>
+                                                        <TouchableOpacity style={st.streakItem} onPress={() => Alert.alert('⭐ Points', `Vous avez accumulé ${aiInsights.gamification.total_points} points !\n\n📊 Comment gagner des points :\n• Chaque trajet : +10 pts\n• Série quotidienne : +5 pts/jour\n• Défi terminé : +20 pts\n• Mode écologique : +15 pts`, [{ text: 'OK' }])} activeOpacity={0.7}>
+                                                            <Text style={{ fontSize: 24 }}>⭐</Text><Text style={st.streakVal}>{aiInsights.gamification.total_points}</Text><Text style={st.streakLbl}>points</Text>
+                                                        </TouchableOpacity>
+                                                    </View>
+                                                    {aiInsights.gamification.badges?.length > 0 && <View style={st.badgesWrap}>{aiInsights.gamification.badges.map((b: any, i: number) => (
+                                                        <TouchableOpacity key={i} style={st.badge} onPress={() => Alert.alert(`${b.emoji} ${b.label}`, b.description || `Badge débloqué ! ${b.label}`, [{ text: 'Partager', onPress: sharePerformance }, { text: 'OK' }])} activeOpacity={0.7}>
+                                                            <Text style={{ fontSize: 20 }}>{b.emoji}</Text><Text style={st.badgeLbl} numberOfLines={1}>{b.label}</Text>
+                                                        </TouchableOpacity>
+                                                    ))}</View>}
                                                 </NativeCard>
                                             )}
                                             {/* CO2 */}
                                             {aiInsights.co2_impact && (
                                                 <NativeCard style={[st.secCard, { borderLeftWidth: 4, borderLeftColor: '#10B981' }]}>
-                                                    <Text style={st.secTitle}>🌍 Impact Environnemental</Text>
+                                                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                                                        <Text style={st.secTitle}>🌍 Impact Environnemental</Text>
+                                                        <TouchableOpacity
+                                                            style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, backgroundColor: '#10B98115' }}
+                                                            onPress={async () => {
+                                                                const co2 = aiInsights.co2_impact;
+                                                                const curr = co2?.currency_symbol || aiInsights.geo_context?.currency_symbol || 'FCFA';
+                                                                const msg = `🌍 Mon impact environnemental (Yukpo Navigation)\n\n` +
+                                                                    `💨 ${((co2?.emitted_grams || 0) / 1000).toFixed(1)} kg de CO2 émis\n` +
+                                                                    `🌱 ${((co2?.saved_grams || 0) / 1000).toFixed(1)} kg de CO2 économisés\n` +
+                                                                    `🌳 ${(co2?.trees_equivalent || 0).toFixed(1)} arbres équivalents\n` +
+                                                                    `💰 ${Math.round(co2?.fuel_cost_saved || co2?.fuel_cost_saved_fcfa || 0)} ${curr} économisés\n\n` +
+                                                                    `♻️ Rejoins-moi sur Yukpo pour réduire ton empreinte carbone ! 🚀`;
+                                                                try { await Share.share({ message: msg, title: '🌍 Mon impact - Yukpo' }); } catch { }
+                                                            }}
+                                                            activeOpacity={0.7}
+                                                        >
+                                                            <SafeIcon name="share" size={12} color="#10B981" />
+                                                            <Text style={{ fontSize: 11, fontWeight: '600', color: '#10B981' }}>Partager</Text>
+                                                        </TouchableOpacity>
+                                                    </View>
                                                     <View style={st.co2Grid}>
-                                                        <View style={st.co2Item}><Text style={{ fontSize: 22 }}>💨</Text><Text style={st.co2Val}>{((aiInsights.co2_impact.emitted_grams || 0) / 1000).toFixed(1)}</Text><Text style={st.co2Lbl}>kg émis</Text></View>
-                                                        <View style={st.co2Item}><Text style={{ fontSize: 22 }}>🌱</Text><Text style={[st.co2Val, { color: '#10B981' }]}>{((aiInsights.co2_impact.saved_grams || 0) / 1000).toFixed(1)}</Text><Text style={st.co2Lbl}>kg éco.</Text></View>
-                                                        <View style={st.co2Item}><Text style={{ fontSize: 22 }}>🌳</Text><Text style={st.co2Val}>{(aiInsights.co2_impact.trees_equivalent || 0).toFixed(1)}</Text><Text style={st.co2Lbl}>arbres</Text></View>
-                                                        <View style={st.co2Item}><Text style={{ fontSize: 22 }}>💰</Text><Text style={[st.co2Val, { color: '#10B981' }]}>{Math.round(aiInsights.co2_impact.fuel_cost_saved_fcfa || 0)}</Text><Text style={st.co2Lbl}>{aiInsights.co2_impact.currency_symbol || aiInsights.geo_context?.currency_symbol || 'FCFA'}</Text></View>
+                                                        <TouchableOpacity style={st.co2Item} onPress={() => Alert.alert('💨 CO2 Émis', `Vous avez émis ${((aiInsights.co2_impact.emitted_grams || 0) / 1000).toFixed(1)} kg de CO2.\n\nAstuce : Privilégiez la marche ou les transports en commun pour réduire vos émissions !`)} activeOpacity={0.7}>
+                                                            <Text style={{ fontSize: 22 }}>💨</Text><Text style={st.co2Val}>{((aiInsights.co2_impact.emitted_grams || 0) / 1000).toFixed(1)}</Text><Text style={st.co2Lbl}>kg émis</Text>
+                                                        </TouchableOpacity>
+                                                        <TouchableOpacity style={st.co2Item} onPress={() => Alert.alert('🌱 CO2 Économisé', `Vous avez économisé ${((aiInsights.co2_impact.saved_grams || 0) / 1000).toFixed(1)} kg de CO2 en choisissant des modes de transport écologiques.\n\nBravo ! Continuez ainsi ! 🎉`)} activeOpacity={0.7}>
+                                                            <Text style={{ fontSize: 22 }}>🌱</Text><Text style={[st.co2Val, { color: '#10B981' }]}>{((aiInsights.co2_impact.saved_grams || 0) / 1000).toFixed(1)}</Text><Text style={st.co2Lbl}>kg éco.</Text>
+                                                        </TouchableOpacity>
+                                                        <TouchableOpacity style={st.co2Item} onPress={() => Alert.alert('🌳 Arbres Équivalents', `Vos économies de CO2 équivalent à l'absorption de ${(aiInsights.co2_impact.trees_equivalent || 0).toFixed(1)} arbre${(aiInsights.co2_impact.trees_equivalent || 0) > 1 ? 's' : ''} sur un an.\n\nChaque trajet écologique compte !`)} activeOpacity={0.7}>
+                                                            <Text style={{ fontSize: 22 }}>🌳</Text><Text style={st.co2Val}>{(aiInsights.co2_impact.trees_equivalent || 0).toFixed(1)}</Text><Text style={st.co2Lbl}>arbres</Text>
+                                                        </TouchableOpacity>
+                                                        <TouchableOpacity style={st.co2Item} onPress={() => Alert.alert('💰 Économies', `Vous avez économisé environ ${Math.round(aiInsights.co2_impact.fuel_cost_saved || aiInsights.co2_impact.fuel_cost_saved_fcfa || 0)} ${aiInsights.co2_impact.currency_symbol || aiInsights.geo_context?.currency_symbol || 'FCFA'} en carburant.\n\nCes économies se cumulent au fil du temps !`)} activeOpacity={0.7}>
+                                                            <Text style={{ fontSize: 22 }}>💰</Text><Text style={[st.co2Val, { color: '#10B981' }]}>{Math.round(aiInsights.co2_impact.fuel_cost_saved || aiInsights.co2_impact.fuel_cost_saved_fcfa || 0)}</Text><Text style={st.co2Lbl}>{aiInsights.co2_impact.currency_symbol || aiInsights.geo_context?.currency_symbol || 'FCFA'}</Text>
+                                                        </TouchableOpacity>
                                                     </View>
                                                 </NativeCard>
                                             )}
                                             {/* Fitness */}
                                             {aiInsights.fitness?.vo2max_estimate > 0 && (
                                                 <NativeCard style={[st.secCard, { borderLeftWidth: 4, borderLeftColor: '#EF4444' }]}>
-                                                    <Text style={st.secTitle}>❤️ Condition Physique</Text>
-                                                    <View style={{ alignItems: 'center' as any, marginVertical: 8 }}>
+                                                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                                                        <Text style={st.secTitle}>❤️ Condition Physique</Text>
+                                                        <TouchableOpacity
+                                                            style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, backgroundColor: '#EF444415' }}
+                                                            onPress={async () => {
+                                                                const vo2 = aiInsights.fitness.vo2max_estimate;
+                                                                const level = aiInsights.fitness.level || 'Non évalué';
+                                                                const comment = vo2 >= 50 ? '🏅 Niveau athlétique ! Mon VO2max est au top.'
+                                                                    : vo2 >= 40 ? '💪 Bonne forme ! En route vers l\'excellence.'
+                                                                        : vo2 >= 30 ? '🏃 Je progresse ! Chaque trajet me rapproche de mes objectifs.'
+                                                                            : '🚀 Je démarre mon parcours fitness avec Yukpo !';
+                                                                const msg = `❤️ Ma Condition Physique - Coach IA Yukpo\n\n` +
+                                                                    `💪 VO2max : ${vo2} ml/kg/min\n` +
+                                                                    `📊 Niveau : ${level}\n\n` +
+                                                                    `💬 ${comment}\n\n` +
+                                                                    `🤖 Analyse par le Coach IA Yukpo Navigation\n` +
+                                                                    (Platform.OS === 'ios' ? 'https://apps.apple.com/app/yukpomnang' : 'https://play.google.com/store/apps/details?id=com.yukpomnang');
+                                                                try { await Share.share({ message: msg, title: '❤️ Ma Condition Physique - Yukpo' }); } catch { }
+                                                            }}
+                                                            activeOpacity={0.7}
+                                                        >
+                                                            <SafeIcon name="share" size={12} color="#EF4444" />
+                                                            <Text style={{ fontSize: 11, fontWeight: '600', color: '#EF4444' }}>Partager</Text>
+                                                        </TouchableOpacity>
+                                                    </View>
+                                                    <TouchableOpacity
+                                                        style={{ alignItems: 'center' as any, marginVertical: 8 }}
+                                                        onPress={() => {
+                                                            const vo2 = aiInsights.fitness.vo2max_estimate;
+                                                            const level = aiInsights.fitness.level || 'Non évalué';
+                                                            const advice = vo2 >= 50 ? 'Excellent ! Maintenez cette cadence avec des sessions régulières.'
+                                                                : vo2 >= 40 ? 'Bon niveau ! Essayez d\'augmenter la fréquence de vos marches.'
+                                                                    : vo2 >= 30 ? 'Niveau moyen. Commencez par 30 min de marche rapide 3x/semaine.'
+                                                                        : 'Débutant. Commencez doucement avec 15 min de marche par jour.';
+                                                            Alert.alert(
+                                                                `❤️ VO2max : ${vo2} ml/kg/min`,
+                                                                `Niveau : ${level}\n\n📊 Qu'est-ce que le VO2max ?\nC'est la quantité maximale d'oxygène que votre corps peut utiliser pendant l'effort. Plus il est élevé, meilleure est votre endurance.\n\n💡 Conseil :\n${advice}\n\n📈 Barème :\n• < 30 : Débutant\n• 30-40 : Moyen\n• 40-50 : Bon\n• > 50 : Excellent`,
+                                                                [
+                                                                    { text: 'Planifier une marche', onPress: () => { setShowActivityStats(false); } },
+                                                                    { text: 'OK' }
+                                                                ]
+                                                            );
+                                                        }}
+                                                        activeOpacity={0.7}
+                                                    >
                                                         <Text style={st.vo2Val}>{aiInsights.fitness.vo2max_estimate}</Text><Text style={st.vo2Unit}>VO2max (ml/kg/min)</Text>
                                                         <View style={[st.fitLevel, { backgroundColor: aiInsights.fitness.level === 'Excellent' ? '#10B98120' : '#F59E0B20' }]}><Text style={[st.fitLevelTxt, { color: aiInsights.fitness.level === 'Excellent' ? '#10B981' : '#F59E0B' }]}>{aiInsights.fitness.level}</Text></View>
-                                                    </View>
+                                                        <Text style={{ fontSize: 11, color: modernColors.textSecondary, marginTop: 6 }}>Appuyez pour en savoir plus</Text>
+                                                    </TouchableOpacity>
                                                 </NativeCard>
                                             )}
                                             {/* Challenges */}
                                             {aiInsights.challenges?.length > 0 && (
                                                 <NativeCard style={[st.secCard, { borderLeftWidth: 4, borderLeftColor: '#3B82F6' }]}>
-                                                    <Text style={st.secTitle}>🎯 Défis</Text>
+                                                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                                                        <Text style={st.secTitle}>🎯 Défis</Text>
+                                                        <TouchableOpacity
+                                                            style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, backgroundColor: '#3B82F615' }}
+                                                            onPress={async () => {
+                                                                const completed = aiInsights.challenges.filter((c: any) => c.completed).length;
+                                                                const total = aiInsights.challenges.length;
+                                                                const comment = completed === total ? '🏆 Tous mes défis sont terminés ! Prêt pour la suite.'
+                                                                    : completed > 0 ? `💪 ${completed}/${total} défis terminés, je continue !`
+                                                                        : '🎯 J\'ai des défis à relever, motivé(e) !';
+                                                                let msg = `🎯 Mes Défis Coach IA Yukpo\n\n`;
+                                                                aiInsights.challenges.forEach((c: any) => { msg += `${c.emoji || '🎯'} ${c.label} — ${Math.round(c.progress)}% ${c.completed ? '✅' : ''}\n`; });
+                                                                msg += `\n💬 ${comment}\n\n🤖 Généré par le Coach IA Yukpo\n`;
+                                                                msg += Platform.OS === 'ios' ? 'https://apps.apple.com/app/yukpomnang' : 'https://play.google.com/store/apps/details?id=com.yukpomnang';
+                                                                try { await Share.share({ message: msg, title: '🎯 Mes Défis - Yukpo' }); } catch { }
+                                                            }}
+                                                            activeOpacity={0.7}
+                                                        >
+                                                            <SafeIcon name="Redo2" size={12} color="#3B82F6" />
+                                                            <Text style={{ fontSize: 11, fontWeight: '600', color: '#3B82F6' }}>Partager</Text>
+                                                        </TouchableOpacity>
+                                                    </View>
                                                     {aiInsights.challenges.map((c: any, i: number) => (
                                                         <TouchableOpacity
                                                             key={i}
@@ -1184,7 +1422,30 @@ const NavigationScreen: React.FC = () => {
                                             {/* Records */}
                                             {aiInsights.personal_records && (
                                                 <NativeCard style={[st.secCard, { borderLeftWidth: 4, borderLeftColor: '#FFD700' }]}>
-                                                    <Text style={st.secTitle}>🏅 Records</Text>
+                                                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                                                        <Text style={st.secTitle}>🏅 Records</Text>
+                                                        <TouchableOpacity
+                                                            style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, backgroundColor: '#FFD70020' }}
+                                                            onPress={async () => {
+                                                                const pr = aiInsights.personal_records;
+                                                                let msg = `🏅 Mes Records Personnels - Coach IA Yukpo\n\n`;
+                                                                if (pr.longest_session_km) msg += `📏 Plus longue distance : ${pr.longest_session_km} km\n`;
+                                                                if (pr.fastest_speed_kmh) msg += `⚡ Vitesse max : ${pr.fastest_speed_kmh} km/h\n`;
+                                                                if (pr.most_calories) msg += `🔥 Max calories : ${pr.most_calories} cal\n`;
+                                                                const recordCount = [pr.longest_session_km, pr.fastest_speed_kmh, pr.most_calories].filter(Boolean).length;
+                                                                const comment = recordCount >= 3 ? '🔥 Impressionnant ! Mes records parlent d\'eux-mêmes.'
+                                                                    : recordCount >= 1 ? '💪 En route pour battre encore plus de records !'
+                                                                        : '🚀 Les premiers records arrivent bientôt !';
+                                                                msg += `\n💬 ${comment}\n\n🤖 Suivi par le Coach IA Yukpo\n`;
+                                                                msg += Platform.OS === 'ios' ? 'https://apps.apple.com/app/yukpomnang' : 'https://play.google.com/store/apps/details?id=com.yukpomnang';
+                                                                try { await Share.share({ message: msg, title: '🏅 Mes Records - Yukpo' }); } catch { }
+                                                            }}
+                                                            activeOpacity={0.7}
+                                                        >
+                                                            <SafeIcon name="Redo2" size={12} color="#D4A017" />
+                                                            <Text style={{ fontSize: 11, fontWeight: '600', color: '#D4A017' }}>Partager</Text>
+                                                        </TouchableOpacity>
+                                                    </View>
                                                     {[
                                                         aiInsights.personal_records.longest_session_km && { e: '📏', t: 'Plus longue', v: `${aiInsights.personal_records.longest_session_km} km` },
                                                         aiInsights.personal_records.fastest_speed_kmh && { e: '⚡', t: 'Vitesse max', v: `${aiInsights.personal_records.fastest_speed_kmh} km/h` },
@@ -1218,7 +1479,30 @@ const NavigationScreen: React.FC = () => {
                                             {/* Commute */}
                                             {aiInsights.commute_insights?.frequent_routes?.length > 0 && (
                                                 <NativeCard style={[st.secCard, { borderLeftWidth: 4, borderLeftColor: '#6366F1' }]}>
-                                                    <Text style={st.secTitle}>🏠 Trajets Habituels</Text>
+                                                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                                                        <Text style={st.secTitle}>🏠 Trajets Habituels</Text>
+                                                        <TouchableOpacity
+                                                            style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, backgroundColor: '#6366F115' }}
+                                                            onPress={async () => {
+                                                                const routes = aiInsights.commute_insights.frequent_routes;
+                                                                const peaks = aiInsights.commute_insights.peak_departure_hours;
+                                                                let msg = `🏠 Mes Trajets Habituels - Coach IA Yukpo\n\n`;
+                                                                routes.slice(0, 3).forEach((r: any) => { msg += `📍 ${r.from} → ${r.to} (${r.count}x)\n`; });
+                                                                if (peaks?.length > 0) {
+                                                                    msg += `\n🕐 Heures de pointe : ${peaks.slice(0, 3).map((h: any) => typeof h === 'number' ? `${h}h` : `${h.hour}h`).join(', ')}\n`;
+                                                                }
+                                                                const comment = routes.length >= 3 ? '🗺️ Le Coach IA connaît bien mes habitudes de déplacement !'
+                                                                    : '📊 Mes premiers trajets fréquents sont identifiés.';
+                                                                msg += `\n💬 ${comment}\n\n🤖 Analyse par le Coach IA Yukpo\n`;
+                                                                msg += Platform.OS === 'ios' ? 'https://apps.apple.com/app/yukpomnang' : 'https://play.google.com/store/apps/details?id=com.yukpomnang';
+                                                                try { await Share.share({ message: msg, title: '🏠 Mes Trajets - Yukpo' }); } catch { }
+                                                            }}
+                                                            activeOpacity={0.7}
+                                                        >
+                                                            <SafeIcon name="Redo2" size={12} color="#6366F1" />
+                                                            <Text style={{ fontSize: 11, fontWeight: '600', color: '#6366F1' }}>Partager</Text>
+                                                        </TouchableOpacity>
+                                                    </View>
                                                     {aiInsights.commute_insights.frequent_routes.map((r: any, i: number) => (
                                                         <TouchableOpacity
                                                             key={i}
@@ -1230,8 +1514,8 @@ const NavigationScreen: React.FC = () => {
                                                                     [
                                                                         {
                                                                             text: 'Démarrer la navigation', onPress: () => {
-                                                                                // Utiliser ce trajet comme destination
-                                                                                Alert.alert('Navigation', 'Fonctionnalité bientôt disponible');
+                                                                                setShowActivityStats(false);
+                                                                                if (r.to) setDestination(r.to);
                                                                             }
                                                                         },
                                                                         {
@@ -1261,48 +1545,42 @@ const NavigationScreen: React.FC = () => {
                                             )}
                                         </>
                                     ) : (
-                                        /* AI Features Preview */
-                                        <NativeCard style={[st.secCard, { borderLeftWidth: 4, borderLeftColor: '#7C3AED' }]}>
-                                            <Text style={st.secTitle}>🤖 Coach IA - Fonctionnalités</Text>
-                                            <View style={{ gap: 12 }}>
-                                                <View style={st.aiFeatureRow}>
-                                                    <Text style={{ fontSize: 20 }}>🫀</Text>
-                                                    <View style={st.flex1}>
-                                                        <Text style={st.aiFeatureTitle}>Impact Environnemental</Text>
-                                                        <Text style={st.aiFeatureDesc}>Suivi CO2, économies et équivalent arbres plantés</Text>
-                                                    </View>
+                                        /* AI Features Preview — interactif */
+                                        <NativeCard style={[st.secCard, { borderLeftWidth: 4, borderLeftColor: '#7C3AED', paddingBottom: 6 }]}>
+                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                                                <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: '#7C3AED15', alignItems: 'center', justifyContent: 'center' }}>
+                                                    <Text style={{ fontSize: 22 }}>🤖</Text>
                                                 </View>
-                                                <View style={st.aiFeatureRow}>
-                                                    <Text style={{ fontSize: 20 }}>❤️</Text>
-                                                    <View style={st.flex1}>
-                                                        <Text style={st.aiFeatureTitle}>Condition Physique</Text>
-                                                        <Text style={st.aiFeatureDesc}>Estimation VO2max et niveau de fitness basé sur vos performances</Text>
-                                                    </View>
-                                                </View>
-                                                <View style={st.aiFeatureRow}>
-                                                    <Text style={{ fontSize: 20 }}>🎯</Text>
-                                                    <View style={st.flex1}>
-                                                        <Text style={st.aiFeatureTitle}>Défis Personnalisés</Text>
-                                                        <Text style={st.aiFeatureDesc}>Objectifs adaptés à votre niveau et progrès</Text>
-                                                    </View>
-                                                </View>
-                                                <View style={st.aiFeatureRow}>
-                                                    <Text style={{ fontSize: 20 }}>🏅</Text>
-                                                    <View style={st.flex1}>
-                                                        <Text style={st.aiFeatureTitle}>Records Personnels</Text>
-                                                        <Text style={st.aiFeatureDesc}>Suivi de vos meilleures performances</Text>
-                                                    </View>
-                                                </View>
-                                                <View style={st.aiFeatureRow}>
-                                                    <Text style={{ fontSize: 20 }}>🏠</Text>
-                                                    <View style={st.flex1}>
-                                                        <Text style={st.aiFeatureTitle}>Trajets Habituels</Text>
-                                                        <Text style={st.aiFeatureDesc}>Analyse de vos routes fréquentes et heures de pointe</Text>
-                                                    </View>
+                                                <View style={st.flex1}>
+                                                    <Text style={{ fontSize: 16, fontWeight: '800', color: modernColors.text }}>Coach IA</Text>
+                                                    <Text style={{ fontSize: 12, color: modernColors.textSecondary }}>Commencez un trajet pour activer l'analyse</Text>
                                                 </View>
                                             </View>
+                                            {[
+                                                { emoji: '🌍', title: 'Impact Environnemental', desc: 'CO2 économisé, arbres équivalents', color: '#10B981', action: () => Alert.alert('🌍 Impact Environnemental', 'Effectuez votre premier trajet pour commencer à mesurer votre empreinte carbone.\n\n🌱 Chaque trajet à pied ou en transport en commun réduit vos émissions de CO2.\n\n💰 Suivez aussi les économies de carburant réalisées.', [{ text: 'Commencer un trajet', onPress: () => { setShowActivityStats(false); } }, { text: 'OK' }]) },
+                                                { emoji: '❤️', title: 'Condition Physique', desc: 'VO2max, calories, niveau fitness', color: '#EF4444', action: () => Alert.alert('❤️ Condition Physique', 'Le Coach IA estime votre VO2max à partir de :\n\n🏃 Vitesse de marche moyenne\n⏱ Durée des sessions\n📏 Distance parcourue\n\nPlus vous marchez, plus l\'estimation sera précise !', [{ text: 'Planifier une marche', onPress: () => { setShowActivityStats(false); } }, { text: 'OK' }]) },
+                                                { emoji: '🎯', title: 'Défis Personnalisés', desc: 'Objectifs adaptés à votre niveau', color: '#3B82F6', action: () => Alert.alert('🎯 Défis Personnalisés', 'Après vos premiers trajets, le Coach IA crée des défis sur mesure :\n\n📏 Distance hebdomadaire\n🔥 Calories à brûler\n🚶 Nombre de sessions\n🏆 Badges à débloquer\n\nProgressez à votre rythme !', [{ text: 'OK' }]) },
+                                                { emoji: '🏅', title: 'Records & Badges', desc: 'Performances et récompenses', color: '#FFD700', action: () => Alert.alert('🏅 Records & Badges', 'Le Coach IA suit automatiquement :\n\n📏 Plus longue distance\n⚡ Vitesse maximale\n🔥 Record de calories\n\n🎮 Débloquez des badges en atteignant des objectifs !', [{ text: 'OK' }]) },
+                                                { emoji: '🏠', title: 'Trajets Habituels', desc: 'Routes fréquentes, heures de pointe', color: '#6366F1', action: () => Alert.alert('🏠 Trajets Habituels', 'Après plusieurs trajets, le Coach IA identifie :\n\n🔄 Vos routes les plus fréquentes\n🕐 Vos heures de pointe habituelles\n⏱ Temps moyen par trajet\n\nVous pourrez relancer un trajet habituel en un tap !', [{ text: 'OK' }]) },
+                                            ].map((feat, i) => (
+                                                <TouchableOpacity
+                                                    key={i}
+                                                    style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, paddingHorizontal: 8, marginBottom: 2, borderRadius: 10, backgroundColor: feat.color + '08' }}
+                                                    onPress={feat.action}
+                                                    activeOpacity={0.6}
+                                                >
+                                                    <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: feat.color + '15', alignItems: 'center', justifyContent: 'center' }}>
+                                                        <Text style={{ fontSize: 18 }}>{feat.emoji}</Text>
+                                                    </View>
+                                                    <View style={st.flex1}>
+                                                        <Text style={{ fontSize: 14, fontWeight: '700', color: modernColors.text }}>{feat.title}</Text>
+                                                        <Text style={{ fontSize: 11, color: modernColors.textSecondary, marginTop: 1 }}>{feat.desc}</Text>
+                                                    </View>
+                                                    <SafeIcon name="ChevronRight" size={16} color={feat.color} />
+                                                </TouchableOpacity>
+                                            ))}
                                             <TouchableOpacity
-                                                style={[st.aiActivateBtn, { marginTop: 16 }]}
+                                                style={[st.aiActivateBtn, { marginTop: 12 }]}
                                                 onPress={() => loadActivityStats(activityPeriod)}
                                                 disabled={loadingActivity}
                                             >
@@ -1311,7 +1589,7 @@ const NavigationScreen: React.FC = () => {
                                                 ) : (
                                                     <>
                                                         <SafeIcon name="Zap" size={16} color="#fff" />
-                                                        <Text style={st.aiActivateBtnText}>Activer le Coach IA</Text>
+                                                        <Text style={st.aiActivateBtnText}>Charger mes données</Text>
                                                     </>
                                                 )}
                                             </TouchableOpacity>
@@ -1335,12 +1613,12 @@ const NavigationScreen: React.FC = () => {
                                     <View style={st.flex1}>
                                         <LocationSelector
                                             value={selectedLocation ? selectedLocation : (destination || '')}
-                                            onSelect={(loc: LocationObject) => {
+                                            onSelect={(loc: any) => {
                                                 setSelectedLocation(loc);
                                                 const t = loc.raw || loc.place_name || '';
                                                 setDestination(t);
-                                                if (loc.latitude && loc.longitude) {
-                                                    setDestinationCoords({ lat: loc.latitude, lng: loc.longitude });
+                                                if ((loc as any).latitude && (loc as any).longitude) {
+                                                    setDestinationCoords({ lat: (loc as any).latitude, lng: (loc as any).longitude });
                                                     setTimeout(() => searchRoutesRef.current(), 200);
                                                 }
                                                 else {
@@ -1484,13 +1762,13 @@ const NavigationScreen: React.FC = () => {
                             {/* Map */}
                             {(selectedRoute || destinationCoords) && showMap && mapRegion && (
                                 <View style={st.mapWrap}>
-                                    <MapView ref={mapRef} style={st.mapView} provider={Platform.OS === 'ios' ? PROVIDER_GOOGLE : undefined} initialRegion={mapRegion} showsUserLocation showsTraffic showsCompass loadingEnabled loadingIndicatorColor={modernColors.primary} onMapReady={() => console.log('[NavigationScreen] ✅ Map ready (navigation)')} onError={(e) => console.error('[NavigationScreen] ❌ Map error (navigation):', e.nativeEvent || e)}>
+                                    <AnyMapView ref={mapRef} style={st.mapView} provider={Platform.OS === 'ios' ? PROVIDER_GOOGLE : undefined} initialRegion={mapRegion} showsUserLocation showsTraffic showsCompass loadingEnabled loadingIndicatorColor={modernColors.primary} onMapReady={() => console.log('[NavigationScreen] ✅ Map ready (navigation)')} onError={(e: any) => console.error('[NavigationScreen] ❌ Map error (navigation):', e.nativeEvent || e)}>
                                         {routePolylineCoords.length > 1 && <Polyline coordinates={routePolylineCoords} strokeColor={modernColors.primary} strokeWidth={4} />}
                                         {destinationCoords && <Marker coordinate={{ latitude: destinationCoords.lat, longitude: destinationCoords.lng }} title={destination || 'Destination'} pinColor="#EF4444" tracksViewChanges={false} />}
                                         {livePosition && <Marker coordinate={{ latitude: livePosition.lat, longitude: livePosition.lng }} title="Ma position" pinColor="#3B82F6" />}
                                         {checkpoints.slice(0, 10).map(cp => <Marker key={cp.id} coordinate={{ latitude: cp.latitude, longitude: cp.longitude }} title={`${CHECKPOINT_LABELS[cp.checkpoint_type]?.icon || '⚠️'} ${CHECKPOINT_LABELS[cp.checkpoint_type]?.label || cp.checkpoint_type}`} pinColor={CHECKPOINT_LABELS[cp.checkpoint_type]?.color} tracksViewChanges={false} />)}
                                         {pointsOfInterest.slice(0, 5).map(poi => <Marker key={poi.id} coordinate={{ latitude: getPoiLat(poi), longitude: getPoiLng(poi) }} title={typeof poi.name === 'string' ? poi.name : 'Nom inconnu'} description={poi.address} pinColor="#10B981" tracksViewChanges={false} />)}
-                                    </MapView>
+                                    </AnyMapView>
                                     <TouchableOpacity style={st.mapBtnLabeled} onPress={() => { if (mapRef.current && routePolylineCoords.length > 1) mapRef.current.fitToCoordinates(routePolylineCoords, { edgePadding: { top: 50, right: 50, bottom: 50, left: 50 }, animated: true }); }}>
                                         <SafeIcon name="Maximize2" size={14} color={modernColors.primary} />
                                         <Text style={st.mapBtnLabelTxt}>Recentrer</Text>
@@ -1525,7 +1803,7 @@ const NavigationScreen: React.FC = () => {
                                                 <View style={st.flex1}><Text style={st.cpItemLabel}>{info.label}</Text>{cp.description && <Text style={st.cpItemDesc}>{cp.description}</Text>}</View>
                                                 {cp.speed_limit && <Text style={st.cpItemSpd}>{cp.speed_limit} km/h</Text>}
                                                 <TouchableOpacity onPress={() => shareAlert({ checkpoint_type: cp.checkpoint_type, lat: cp.latitude, lng: cp.longitude, speed_limit: cp.speed_limit })} style={st.cpShareBtn}>
-                                                    <SafeIcon name="Share2" size={12} color={modernColors.textSecondary} />
+                                                    <SafeIcon name="Redo2" size={12} color={modernColors.textSecondary} />
                                                 </TouchableOpacity>
                                             </View>
                                         );
@@ -1553,25 +1831,28 @@ const NavigationScreen: React.FC = () => {
                                                         <View style={st.flex1}><Text style={st.poiCatLabel}>{cat.label}</Text><Text style={st.poiCatCount}>{pois.length} lieu{pois.length > 1 ? 'x' : ''}</Text></View>
                                                         <SafeIcon name={expanded ? 'ChevronUp' : 'ChevronDown'} size={16} color={modernColors.textSecondary} />
                                                     </TouchableOpacity>
-                                                    {expanded && pois.slice(0, 5).map(poi => (
-                                                        <View key={poi.id} style={st.poiItem}>
-                                                            <View style={st.flex1}>
-                                                                <Text style={st.poiName}>{typeof poi.name === 'string' ? poi.name : 'Nom inconnu'}</Text>
-                                                                {poi.address && <Text style={st.poiAddr} numberOfLines={1}>{poi.address}</Text>}
-                                                                <View style={st.poiMeta}>
-                                                                    <Text style={st.poiDist}>{formatDistance(poi.distance_from_route_meters)}</Text>
-                                                                    {poi.rating && <Text style={st.poiRating}>⭐ {poi.rating}</Text>}
-                                                                    {poi.price_level && <Text style={st.poiPrice}>{'💰'.repeat(poi.price_level)}</Text>}
-                                                                    {poi.is_open != null && <View style={[st.openBadge, { backgroundColor: poi.is_open ? '#DCFCE7' : '#FEE2E2' }]}><Text style={[st.openText, { color: poi.is_open ? '#16A34A' : '#EF4444' }]}>{poi.is_open ? 'Ouvert' : 'Fermé'}</Text></View>}
+                                                    {expanded && pois.slice(0, 5).map(poi => {
+                                                        const displayName = typeof poi.name === 'string' ? poi.name : (typeof poi.name === 'object' && poi.name !== null ? (poi.name as any).name || (poi.name as any).text || JSON.stringify(poi.name) : 'Nom inconnu');
+                                                        return (
+                                                            <View key={poi.id} style={st.poiItem}>
+                                                                <View style={st.flex1}>
+                                                                    <Text style={st.poiName}>{displayName}</Text>
+                                                                    {poi.address && <Text style={st.poiAddr} numberOfLines={1}>{poi.address}</Text>}
+                                                                    <View style={st.poiMeta}>
+                                                                        <Text style={st.poiDist}>{formatDistance(poi.distance_from_route_meters)}</Text>
+                                                                        {poi.rating && <Text style={st.poiRating}>⭐ {poi.rating}</Text>}
+                                                                        {poi.price_level && <Text style={st.poiPrice}>{'💰'.repeat(poi.price_level)}</Text>}
+                                                                        {poi.is_open != null && <View style={[st.openBadge, { backgroundColor: poi.is_open ? '#DCFCE7' : '#FEE2E2' }]}><Text style={[st.openText, { color: poi.is_open ? '#16A34A' : '#EF4444' }]}>{poi.is_open ? 'Ouvert' : 'Fermé'}</Text></View>}
+                                                                    </View>
+                                                                </View>
+                                                                <View style={{ gap: 6 }}>
+                                                                    <TouchableOpacity style={st.poiNavBtn} onPress={() => navigateToPOI(poi)}><SafeIcon name="Navigation" size={14} color="#10B981" /></TouchableOpacity>
+                                                                    <TouchableOpacity style={st.poiAddBtn} onPress={() => addWaypoint(poi)}><SafeIcon name="Plus" size={14} color={modernColors.primary} /></TouchableOpacity>
+                                                                    <TouchableOpacity style={st.poiShareBtn} onPress={() => sharePOI(poi)}><SafeIcon name="Redo2" size={12} color={modernColors.textSecondary} /></TouchableOpacity>
                                                                 </View>
                                                             </View>
-                                                            <View style={{ gap: 6 }}>
-                                                                <TouchableOpacity style={st.poiNavBtn} onPress={() => navigateToPOI(poi)}><SafeIcon name="Navigation" size={14} color="#10B981" /></TouchableOpacity>
-                                                                <TouchableOpacity style={st.poiAddBtn} onPress={() => addWaypoint(poi)}><SafeIcon name="Plus" size={14} color={modernColors.primary} /></TouchableOpacity>
-                                                                <TouchableOpacity style={st.poiShareBtn} onPress={() => sharePOI(poi)}><SafeIcon name="Share2" size={12} color={modernColors.textSecondary} /></TouchableOpacity>
-                                                            </View>
-                                                        </View>
-                                                    ))}
+                                                        );
+                                                    })}
                                                 </NativeCard>
                                             );
                                         })
@@ -1583,7 +1864,7 @@ const NavigationScreen: React.FC = () => {
                             {selectedRoute && (
                                 <View style={st.goSection}>
                                     <TouchableOpacity style={st.shareRouteBtn} onPress={shareRoute} activeOpacity={0.7}>
-                                        <SafeIcon name="Share2" size={16} color={modernColors.primary} /><Text style={st.shareRouteTxt}>Partager l'itinéraire</Text>
+                                        <SafeIcon name="Redo2" size={16} color={modernColors.primary} /><Text style={st.shareRouteTxt}>Partager l'itinéraire</Text>
                                     </TouchableOpacity>
                                     <TouchableOpacity style={st.goBtn} onPress={startTracking} activeOpacity={0.8}>
                                         <Text style={{ fontSize: 20 }}>📡</Text>
@@ -1596,64 +1877,6 @@ const NavigationScreen: React.FC = () => {
                                     </TouchableOpacity>
                                 </View>
                             )}
-
-                            {/* ━━ HISTORIQUE DES ALERTES COMMUNAUTAIRES ━━ */}
-                            <NativeCard style={[st.secCard, { borderLeftWidth: 4, borderLeftColor: '#EF4444' }]}>
-                                <TouchableOpacity style={st.alertHistHdr} onPress={() => { setShowAlertHistory(!showAlertHistory); if (!showAlertHistory) loadAlertHistory(); }} activeOpacity={0.7}>
-                                    <Text style={{ fontSize: 18 }}>🚨</Text>
-                                    <View style={st.flex1}>
-                                        <Text style={st.alertHistTitle}>Alertes communautaires</Text>
-                                        <Text style={st.alertHistSub}>{checkpoints.length > 0 ? `${checkpoints.length} alerte${checkpoints.length > 1 ? 's' : ''} active${checkpoints.length > 1 ? 's' : ''}` : 'Voir les signalements autour de vous'}</Text>
-                                    </View>
-                                    <SafeIcon name={showAlertHistory ? 'ChevronUp' : 'ChevronDown'} size={16} color={modernColors.textSecondary} />
-                                </TouchableOpacity>
-                                {showAlertHistory && (
-                                    <View style={{ marginTop: 10 }}>
-                                        {/* Bouton de test pour le développement */}
-                                        {__DEV__ && (
-                                            <TouchableOpacity
-                                                style={{ backgroundColor: '#F3F4F6', padding: 8, borderRadius: 8, marginBottom: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
-                                                onPress={createTestAlerts}
-                                            >
-                                                <Text style={{ fontSize: 12, color: '#6B7280', marginRight: 4 }}>🧪</Text>
-                                                <Text style={{ fontSize: 12, color: '#6B7280' }}>Créer alertes de test</Text>
-                                            </TouchableOpacity>
-                                        )}
-                                        {loadingAlertHistory ? (
-                                            <View style={st.loadCard}><ActivityIndicator color="#EF4444" /><Text style={st.loadText}>Chargement des alertes...</Text></View>
-                                        ) : alertHistoryData.length === 0 ? (
-                                            <View style={{ alignItems: 'center' as any, padding: 16 }}><Text style={{ fontSize: 32 }}>✅</Text><Text style={st.emptyText}>Aucune alerte signalée dans cette zone</Text></View>
-                                        ) : (
-                                            alertHistoryData.map((alert, idx) => {
-                                                const info = CHECKPOINT_LABELS[alert.checkpoint_type] || { label: alert.checkpoint_type, icon: '⚠️', color: '#6B7280' };
-                                                const timeAgo = alert.created_at ? (() => {
-                                                    const diff = Date.now() - new Date(alert.created_at).getTime();
-                                                    if (diff < 3600000) return `il y a ${Math.floor(diff / 60000)} min`;
-                                                    if (diff < 86400000) return `il y a ${Math.floor(diff / 3600000)}h`;
-                                                    return `il y a ${Math.floor(diff / 86400000)}j`;
-                                                })() : '';
-                                                return (
-                                                    <View key={alert.id || idx} style={[st.alertHistItem, { borderLeftColor: info.color }]}>
-                                                        <Text style={{ fontSize: 20 }}>{info.icon}</Text>
-                                                        <View style={st.flex1}>
-                                                            <View style={st.alertHistItemTop}>
-                                                                <Text style={[st.alertHistLabel, { color: info.color }]}>{info.label}</Text>
-                                                                {alert.count > 1 && <View style={[st.alertHistCountBadge, { backgroundColor: info.color + '20' }]}><Text style={[st.alertHistCountTxt, { color: info.color }]}>×{alert.count}</Text></View>}
-                                                            </View>
-                                                            <Text style={st.alertHistLoc} numberOfLines={1}>📍 {alert.locationName}</Text>
-                                                            <View style={st.alertHistMeta}>
-                                                                <Text style={st.alertHistDist}>{formatDistance(alert.distance)}</Text>
-                                                                {timeAgo ? <Text style={st.alertHistTime}>🕒 {timeAgo}</Text> : null}
-                                                                {alert.speed_limit ? <Text style={st.alertHistSpd}>🚦 {alert.speed_limit} km/h</Text> : null}
-                                                            </View>
-                                                        </View>
-                                                    </View>
-                                                );
-                                            })
-                                        )}
-                                    </View>
-                                )}
-                            </NativeCard>
 
                             {/* ━━ APERÇU SANTÉ & COACH IA ━━ */}
                             {user && !isTracking && aiInsights && (
@@ -1695,7 +1918,7 @@ const NavigationScreen: React.FC = () => {
                     </Animated.View>
                 )}
             </KeyboardAvoidingView>
-        </SafeNativeView>
+        </SafeNativeView >
     );
 };
 
@@ -1733,12 +1956,12 @@ const st = StyleSheet.create({
     alertChipLabel: { fontSize: 12, fontWeight: '700' },
 
     // Search
-    searchCard: { marginBottom: 12, padding: 16 },
+    searchCard: { marginBottom: 12, padding: 16, zIndex: 100, elevation: 100, overflow: 'visible' as any },
     originRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 4 },
     originDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: '#10B981', borderWidth: 2, borderColor: '#DCFCE7' },
     originText: { fontSize: 14, color: modernColors.textSecondary, fontWeight: '500' },
     routeLine: { width: 2, height: 20, backgroundColor: modernColors.border, marginLeft: 5, marginVertical: 2 },
-    destRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+    destRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, zIndex: 100, overflow: 'visible' as any },
     destDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: '#EF4444', borderWidth: 2, borderColor: '#FEE2E2', marginTop: 12 },
     searchBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 12, paddingVertical: 14, backgroundColor: modernColors.primary, borderRadius: 12 },
     searchBtnTxt: { fontSize: 15, fontWeight: '700', color: 'white' },
@@ -1747,7 +1970,7 @@ const st = StyleSheet.create({
     actChipTxt: { fontSize: 12, fontWeight: '600', color: modernColors.textSecondary },
 
     // Travel modes
-    modeSelector: { flexDirection: 'row', gap: 8, marginBottom: 12 },
+    modeSelector: { flexDirection: 'row', gap: 8, marginBottom: 12, zIndex: 1 },
     modeBtn: { flex: 1, flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, paddingVertical: 8, paddingHorizontal: 4, borderRadius: 12, backgroundColor: modernColors.surface, borderWidth: 1.5, borderColor: modernColors.border, overflow: 'hidden' },
     modeBtnLbl: { fontSize: 11, fontWeight: '600', color: modernColors.textSecondary, textAlign: 'center' },
 

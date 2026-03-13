@@ -17,8 +17,8 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { apiGet, apiPost } from '../services/api';
 import { API_BASE_URL } from '../config/api';
+import { apiGet, apiPost } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import ChatModalMobile from './ChatModalMobile';
 import { NativeButton, NativeCard } from './NativeDesign';
@@ -683,7 +683,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                 style={styles.secondaryActionButton}
                 onPress={handleShare}
               >
-                <SafeIcon name="share" size={18} color={modernColors.primary} />
+                <SafeIcon name="Redo2" size={18} color={modernColors.primary} />
                 <Text style={styles.secondaryActionText}>Partager</Text>
               </TouchableOpacity>
             </View>

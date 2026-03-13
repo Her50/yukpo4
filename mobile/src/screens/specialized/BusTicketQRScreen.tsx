@@ -40,7 +40,7 @@ const BusTicketQRScreen: React.FC = () => {
                 </TouchableOpacity>
                 <Text style={styles.title}>Mon Ticket QR</Text>
                 <TouchableOpacity onPress={handleShare} style={styles.shareButton}>
-                    <SafeIcon name="share-2" size={20} color={modernColors.primary} />
+                    <SafeIcon name="share" size={20} color={modernColors.primary} />
                 </TouchableOpacity>
             </View>
 

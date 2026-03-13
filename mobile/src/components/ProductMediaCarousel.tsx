@@ -322,13 +322,24 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
             if (autoScrollTimerRef.current) clearInterval(autoScrollTimerRef.current);
             autoScrollTimerRef.current = setInterval(() => {
                 // ✅ FIX 2026-03-12: Utiliser videoActivePlayingRef pour permettre le scroll quand vidéo est en pause
-                if (userInteractingRef.current || videoActivePlayingRef.current !== null || isScrolling) return;
+                if (userInteractingRef.current || videoActivePlayingRef.current !== null || isScrolling) {
+                    console.log('[ProductMediaCarousel] Auto-scroll bloqué:', {
+                        userInteracting: userInteractingRef.current,
+                        videoActive: videoActivePlayingRef.current,
+                        isScrolling
+                    });
+                    return;
+                }
 
-                // ✅ FIX: Vérifier aussi si le slide actuel est une vidéo (même si playingVideoIndex pas encore mis à jour)
+                // ✅ FIX: Autoriser l'auto-scroll même si le slide actuel est une vidéo (si elle n'est pas en lecture)
                 const curIdx = currentIndexRef.current;
-                if (allMedia[curIdx]?.type === 'video') return;
+                if (allMedia[curIdx]?.type === 'video' && videoActivePlayingRef.current === null) {
+                    console.log('[ProductMediaCarousel] Vidéo présente mais non active, autorisation auto-scroll');
+                    // Autoriser le scroll même si c'est une vidéo (elle n'est pas en lecture)
+                }
 
                 const nextIndex = (curIdx + 1) % allMedia.length;
+                console.log('[ProductMediaCarousel] Auto-scroll vers index:', nextIndex);
                 scrollViewRef.current?.scrollTo({ x: CAROUSEL_WIDTH * nextIndex, animated: true });
                 setCurrentIndex(nextIndex);
                 currentIndexRef.current = nextIndex;
@@ -339,11 +350,15 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
                     videoActivePlayingRef.current = nextIndex; // ✅ AJOUT: Marquer comme potentiellement active
                     setTimeout(() => {
                         const videoRef = videoRefs.current.get(nextIndex);
-                        if (videoRef && !isScrolling) {
+                        if (videoRef && !isScrolling && videoPlayingRef.current === nextIndex) {
                             // Utiliser le coordinateur pour demander la permission
                             requestVideoPlayWithCoordinator(nextIndex, () => {
                                 videoRef.playAsync().catch(() => undefined);
                             });
+                        } else {
+                            // Si le scroll a recommencé entre-temps, annuler l'autoplay
+                            videoPlayingRef.current = null;
+                            videoActivePlayingRef.current = null;
                         }
                     }, 400);
                 }
@@ -428,7 +443,7 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
                                     }
                                 }
 
-                                // ✅ FIX: Détecter la fin de la vidéo pour passer au média suivant
+                                // ✅ FIX: Détecter la fin de la vidéo pour passer au média suivant et redémarrer l'auto-scroll
                                 if (status.isLoaded && status.didJustFinish && playingVideoIndex === index) {
                                     console.log('[ProductMediaCarousel] Vidéo terminée, passage au média suivant');
                                     setPlayingVideoIndex(null);
@@ -440,6 +455,13 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
                                         scrollViewRef.current?.scrollTo({ x: CAROUSEL_WIDTH * nextIndex, animated: true });
                                         setCurrentIndex(nextIndex);
                                         currentIndexRef.current = nextIndex;
+
+                                        // ✅ FIX: Forcer le redémarrage de l'auto-scroll après un délai supplémentaire
+                                        setTimeout(() => {
+                                            console.log('[ProductMediaCarousel] Redémarrage auto-scroll après vidéo terminée - FORCÉ');
+                                            // Forcer la réinitialisation complète de l'état vidéo
+                                            userInteractingRef.current = false;
+                                        }, 1000);
                                     }, 500);
                                 }
                             }}

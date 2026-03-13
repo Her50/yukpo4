@@ -311,7 +311,7 @@ const ServiceCardModern: React.FC<ServiceCardModernProps> = ({
                         onPress={() => onShare(service)}
                         activeOpacity={0.7}
                     >
-                        <SafeIcon name="share" size={18} color="#3B82F6" />
+                        <SafeIcon name="Redo2" size={18} color="#3B82F6" />
                         <Text style={[styles.actionLabel, { color: '#3B82F6' }]}>Partager</Text>
                     </TouchableOpacity>
 

@@ -355,7 +355,7 @@ const UltraModernServiceCard: React.FC<UltraModernServiceCardProps> = ({
                         )}
                     </View>
                     <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
-                        <SafeIcon name="Share2" size={18} color={modernColors.primary} />
+                        <SafeIcon name="Redo2" size={18} color={modernColors.primary} />
                     </TouchableOpacity>
                 </View>
 

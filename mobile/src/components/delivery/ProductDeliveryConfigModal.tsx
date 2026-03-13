@@ -220,7 +220,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                         };
                         setPickupAddresses([{
                             id: `pickup_reuse_${Date.now()}`,
-                            placeName: pickupLocationObj?.place_name || '',
+                            placeName: pickupAddr || pickupLocationObj?.place_name || 'Lieu non spécifié',
                             address: pickupAddr,
                             location: pickupLocationObj,
                             latitude: pickupLat,
@@ -327,10 +327,32 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                                 }
                             }
 
-                            // Si on a une adresse textuelle mais pas de coordonnées, on garde quand même l'adresse
-                            // L'utilisateur pourra la compléter avec GPS si nécessaire
+                            // ✅ FIX: Nettoyer et prioriser l'adresse textuelle pour l'affichage
+                            const cleanPlaceName = (() => {
+                                // Si addressText est disponible et valide, l'utiliser en priorité
+                                if (addressText && addressText.trim().length > 0) {
+                                    // Si addressText ressemble à des coordonnées, utiliser un fallback
+                                    if (addressText.match(/^\d+\.\d+,\s*\d+\.\d+$/)) {
+                                        return locationObj?.place_name && !locationObj.place_name.match(/^\d+\.\d+/)
+                                            ? locationObj.place_name
+                                            : 'Lieu de récupération';
+                                    }
+                                    return addressText;
+                                }
+                                // Sinon, utiliser place_name mais nettoyer les coordonnées
+                                if (locationObj?.place_name) {
+                                    const placeName = locationObj.place_name;
+                                    // Si place_name contient des coordonnées, essayer d'extraire une meilleure valeur
+                                    if (placeName.match(/^\d+\.\d+/) && locationObj.raw) {
+                                        return locationObj.raw;
+                                    }
+                                    return placeName;
+                                }
+                                return 'Lieu non spécifié';
+                            })();
                             if (addressText) {
                                 console.log('[ProductDeliveryConfigModal] ✅ Lieu produit trouvé:', addressText);
+                                console.log('[ProductDeliveryConfigModal] 📍 cleanPlaceName:', cleanPlaceName);
                                 // Initialiser pickupAddresses avec cette adresse si pas encore chargée
                                 setPickupAddresses(prev => {
                                     // Ne pas écraser si une config existe déjà
@@ -339,7 +361,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                                     }
                                     return [{
                                         id: `pickup_product_${Date.now()}`,
-                                        placeName: locationObj?.place_name || addressText,
+                                        placeName: cleanPlaceName, // ✅ CORRIGÉ: Utiliser le nom nettoyé
                                         address: addressText,
                                         location: locationObj,
                                         latitude,

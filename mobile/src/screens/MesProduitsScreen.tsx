@@ -2161,7 +2161,7 @@ const MesProduitsScreen: React.FC = () => {
                         <Text style={styles.statItemText}>{viewsLabel}</Text>
                     </View>
                     <View style={styles.statItem}>
-                        <SafeIcon name="share-2" size={14} color="#6B7280" />
+                        <SafeIcon name="share" size={14} color="#6B7280" />
                         <Text style={styles.statItemText}>{sharesLabel}</Text>
                     </View>
                     <View style={styles.statItem}>
@@ -2202,7 +2202,7 @@ const MesProduitsScreen: React.FC = () => {
                         style={styles.contextMenuRow}
                         onPress={() => handleShareProduct(product)}
                     >
-                        <SafeIcon name="share-2" size={15} color="#3B82F6" />
+                        <SafeIcon name="share" size={15} color="#3B82F6" />
                         <Text style={[styles.contextMenuLabel, { color: '#3B82F6' }]}>Partager</Text>
                     </TouchableOpacity>
                     <TouchableOpacity

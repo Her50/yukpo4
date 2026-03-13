@@ -196,7 +196,7 @@ const FlashPromosActiveScreen: React.FC = () => {
                                                 </Text>
                                             </View>
                                             <TouchableOpacity onPress={() => handleSharePromo(promo)} style={styles.shareButton}>
-                                                <SafeIcon name="share-2" size={16} color={modernColors.primary} />
+                                                <SafeIcon name="Redo2" size={16} color={modernColors.primary} />
                                             </TouchableOpacity>
                                             <View style={styles.discountBadgeInline}>
                                                 <Text style={styles.discountBadgeTextInline}>{formatDiscount(promo)}</Text>

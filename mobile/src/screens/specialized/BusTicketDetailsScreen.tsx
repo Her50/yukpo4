@@ -113,7 +113,7 @@ const BusTicketDetailsScreen: React.FC = () => {
             <LinearGradient colors={['#0C4A6E', '#0284C7', '#38BDF8']} style={st.hero}>
                 <View style={st.heroTop}>
                     <TouchableOpacity onPress={() => navigation.goBack()} style={st.heroBtn}><SafeIcon name="arrow-left" size={22} color="#fff" /></TouchableOpacity>
-                    <TouchableOpacity onPress={handleShare} style={st.heroBtn}><SafeIcon name="share-2" size={22} color="#fff" /></TouchableOpacity>
+                    <TouchableOpacity onPress={handleShare} style={st.heroBtn}><SafeIcon name="share" size={22} color="#fff" /></TouchableOpacity>
                 </View>
                 <View style={st.heroContent}>
                     {/* Route visualization */}
@@ -180,7 +180,7 @@ const BusTicketDetailsScreen: React.FC = () => {
 
                 {/* Actions */}
                 <View style={{ paddingHorizontal: 16, gap: 10 }}>
-                    <TouchableOpacity style={st.actionBtn} onPress={handleShare}><SafeIcon name="share-2" size={18} color="#0284C7" /><Text style={st.actionBtnText}>Partager le ticket</Text><SafeIcon name="chevron-right" size={18} color="#9CA3AF" /></TouchableOpacity>
+                    <TouchableOpacity style={st.actionBtn} onPress={handleShare}><SafeIcon name="share" size={18} color="#0284C7" /><Text style={st.actionBtnText}>Partager le ticket</Text><SafeIcon name="chevron-right" size={18} color="#9CA3AF" /></TouchableOpacity>
 
                     {isPaid && !ticket.is_round_trip && (
                         <TouchableOpacity style={[st.primaryBtn, { backgroundColor: '#0284C7' }]} onPress={() => navigation.navigate('BusReturnRequestForm' as never, { outboundPaymentId: ticket.payment_id, outboundTicket: ticket } as never)}>

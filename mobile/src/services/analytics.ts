@@ -4,7 +4,8 @@
  */
 
 import { Platform } from 'react-native';
-import * as Sentry from 'sentry-expo';
+import * as SentryModule from 'sentry-expo';
+const Sentry = SentryModule as any;
 
 // Types d'événements
 export enum AnalyticsEvent {

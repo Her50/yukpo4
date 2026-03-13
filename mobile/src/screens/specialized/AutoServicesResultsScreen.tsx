@@ -399,7 +399,7 @@ const AutoServicesResultsScreen: React.FC = () => {
                             onPress={() => handleShare(item)}
                             activeOpacity={0.7}
                         >
-                            <SafeIcon name="share-2" size={16} color="#8B5CF6" />
+                            <SafeIcon name="share" size={16} color="#8B5CF6" />
                             <Text style={[styles.actionBtnText, { color: '#8B5CF6' }]}>Partager</Text>
                         </TouchableOpacity>
                     </View>

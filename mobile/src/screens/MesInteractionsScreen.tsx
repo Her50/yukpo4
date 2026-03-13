@@ -361,7 +361,7 @@ const MesInteractionsScreen: React.FC = () => {
 
               <NativeCard style={styles.statCard}>
                 <View style={[styles.statIconContainer, { backgroundColor: '#8B5CF620' }]}>
-                  <SafeIcon name="share-2" size={20} color="#8B5CF6" />
+                  <SafeIcon name="Redo2" size={20} color="#8B5CF6" />
                 </View>
                 <Text style={styles.statValue}>
                   {dashboardData.shareCount ? dashboardData.shareCount.toLocaleString('fr-FR') : '0'}

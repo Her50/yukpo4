@@ -217,7 +217,7 @@ const AgenceVoyageDetailsScreen: React.FC = () => {
                     </TouchableOpacity>
                     <View style={{ flexDirection: 'row', gap: 12 }}>
                         <TouchableOpacity onPress={handleShare} style={st.heroActionBtn}>
-                            <SafeIcon name="share-2" size={18} color="#fff" />
+                            <SafeIcon name="share" size={18} color="#fff" />
                         </TouchableOpacity>
                     </View>
                 </View>

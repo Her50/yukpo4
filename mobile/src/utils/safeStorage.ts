@@ -300,7 +300,7 @@ export const SafeStorage = {
         }
 
         try {
-            return await AsyncStorage.getAllKeys();
+            return await AsyncStorage.getAllKeys() as string[];
         } catch (error: any) {
             console.error('[SafeStorage] ❌ Erreur getAllKeys:', error?.message || error);
             // Réessayer de tester le storage
@@ -310,7 +310,7 @@ export const SafeStorage = {
             }
             // Réessayer une fois
             try {
-                return await AsyncStorage.getAllKeys();
+                return await AsyncStorage.getAllKeys() as string[];
             } catch (retryError) {
                 console.error('[SafeStorage] ❌ Erreur getAllKeys après retry:', retryError);
                 return [];

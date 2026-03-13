@@ -180,7 +180,7 @@ const VideoGenerationResultScreen: React.FC = () => {
 
             <View style={styles.actions}>
                 <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
-                    <SafeIcon name="share-2" size={20} color={modernColors.primary} />
+                    <SafeIcon name="share" size={20} color={modernColors.primary} />
                 </TouchableOpacity>
                 <NativeButton title="Nouvelle vidéo" onPress={handleCreateAnother} variant="secondary" size="small" />
                 <NativeButton title="Lire la vidéo" onPress={handleOpenVideo} variant="primary" size="small" />

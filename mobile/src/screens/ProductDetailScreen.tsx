@@ -249,7 +249,7 @@ const ProductDetailScreen: React.FC = () => {
             <ScrollView style={styles.scrollView}>
                 {/* Message d'arrivée via partage */}
                 <View style={styles.welcomeBanner}>
-                    <SafeIcon name="share-2" size={20} color={modernColors.primary} />
+                    <SafeIcon name="share" size={20} color={modernColors.primary} />
                     <Text style={styles.welcomeText}>
                         Produit partagé avec vous! 🎉
                     </Text>

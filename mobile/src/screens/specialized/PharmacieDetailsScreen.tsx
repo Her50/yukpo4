@@ -244,7 +244,7 @@ const PharmacieDetailsScreen: React.FC = () => {
             <LinearGradient colors={['#059669', '#10B981', '#34D399']} style={st.hero}>
                 <View style={st.heroTop}>
                     <TouchableOpacity onPress={() => navigation.goBack()} style={st.heroBtn}><SafeIcon name="arrow-left" size={22} color="#fff" /></TouchableOpacity>
-                    <TouchableOpacity onPress={handleShare} style={st.heroBtn}><SafeIcon name="share-2" size={22} color="#fff" /></TouchableOpacity>
+                    <TouchableOpacity onPress={handleShare} style={st.heroBtn}><SafeIcon name="share" size={22} color="#fff" /></TouchableOpacity>
                 </View>
                 <View style={st.heroContent}>
                     <View style={st.heroIconWrap}><SafeIcon name="pill" size={30} color="#10B981" /></View>

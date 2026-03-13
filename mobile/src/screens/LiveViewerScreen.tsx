@@ -346,7 +346,7 @@ export default function LiveViewerScreen() {
                         } catch (_e) { /* cancelled */ }
                     }}
                 >
-                    <SafeIcon name="share-2" size={20} color="#FFF" />
+                    <SafeIcon name="Redo2" size={20} color="#FFF" />
                     <Text style={styles.bottomBtnText}>Partager</Text>
                 </TouchableOpacity>
             </View>

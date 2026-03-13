@@ -71,7 +71,7 @@ export const NativeCard: React.FC<NativeCardProps> = ({
                     if (React.isValidElement(child)) {
                         return child;
                     }
-                    return <Text key={idx}>{String(child)}</Text>;
+                    if (typeof child === 'object') { return null; } return <Text key={idx}>{String(child)}</Text>;
                 })
                 .filter(child => child != null); // Filtrer les null/undefined
 
@@ -97,24 +97,23 @@ export const NativeCard: React.FC<NativeCardProps> = ({
                 return null;
             }
             // Si c'est un tableau, le traiter récursivement
-            if (Array.isArray(child)) {
-                const processed = child.map((item, itemIndex) => processChild(item, `${idx}-${itemIndex}`)).filter(item => item != null);
+            if (Array.isArray(child)) { const isDataArray = child.length > 0 && child.every(item => item != null && typeof item === 'object' && !React.isValidElement(item)); if (isDataArray) { return null; } const processed = child.map((item, itemIndex) => processChild(item, `${idx}-${itemIndex}`)).filter(item => item != null);
                 return processed.length > 0 ? processed : null;
             }
             // ✅ CRITIQUE: Si c'est un Fragment React, traiter ses enfants
             if (React.isValidElement(child) && child.type === React.Fragment) {
-                const fragmentChildren = React.Children.toArray(child.props.children);
+                const fragmentChildren = React.Children.toArray((child.props as any).children);
                 const processed = fragmentChildren
                     .map((item, itemIndex) => processChild(item, `${idx}-fragment-${itemIndex}`))
                     .filter(item => item != null);
                 return processed.length > 0 ? processed : null;
             }
-            
+
             // ✅ CRITIQUE: Si c'est un élément React valide, vérifier qu'il n'a pas de chaînes comme enfants directs
             if (React.isValidElement(child)) {
                 // Si l'élément a des enfants, les traiter récursivement
-                if (child.props && child.props.children != null) {
-                    const processedChildren = processChild(child.props.children, `${idx}-children`);
+                if (child.props && (child.props as any).children != null) {
+                    const processedChildren = processChild((child.props as any).children, `${idx}-children`);
                     // Cloner l'élément avec les enfants traités
                     return React.cloneElement(child, { key: idx }, processedChildren);
                 }
@@ -122,8 +121,7 @@ export const NativeCard: React.FC<NativeCardProps> = ({
                 return React.cloneElement(child, { key: idx });
             }
             // ✅ CRITIQUE: Fallback - toujours wrapper dans Text si ce n'est pas un élément React valide
-            return <Text key={idx}>{String(child)}</Text>;
-        };
+            if (typeof child === 'object' && child !== null) { return null; } return <Text key={idx}>{String(child)}</Text>; };
 
         // ✅ CRITIQUE: Utiliser React.Children.map pour gérer les fragments et autres cas
         const mapped = React.Children.map(children, (child, idx) => processChild(child, idx));
@@ -260,7 +258,7 @@ export const NativeGradient: React.FC<NativeGradientProps> = ({
                     if (React.isValidElement(child)) {
                         return child;
                     }
-                    return <Text key={idx}>{String(child)}</Text>;
+                    if (typeof child === 'object') { return null; } return <Text key={idx}>{String(child)}</Text>;
                 })
                 .filter(child => child != null); // Filtrer les null/undefined
 
@@ -286,24 +284,23 @@ export const NativeGradient: React.FC<NativeGradientProps> = ({
                 return null;
             }
             // Si c'est un tableau, le traiter récursivement
-            if (Array.isArray(child)) {
-                const processed = child.map((item, itemIndex) => processChild(item, `${idx}-${itemIndex}`)).filter(item => item != null);
+            if (Array.isArray(child)) { const isDataArray = child.length > 0 && child.every(item => item != null && typeof item === 'object' && !React.isValidElement(item)); if (isDataArray) { return null; } const processed = child.map((item, itemIndex) => processChild(item, `${idx}-${itemIndex}`)).filter(item => item != null);
                 return processed.length > 0 ? processed : null;
             }
             // ✅ CRITIQUE: Si c'est un Fragment React, traiter ses enfants
             if (React.isValidElement(child) && child.type === React.Fragment) {
-                const fragmentChildren = React.Children.toArray(child.props.children);
+                const fragmentChildren = React.Children.toArray((child.props as any).children);
                 const processed = fragmentChildren
                     .map((item, itemIndex) => processChild(item, `${idx}-fragment-${itemIndex}`))
                     .filter(item => item != null);
                 return processed.length > 0 ? processed : null;
             }
-            
+
             // ✅ CRITIQUE: Si c'est un élément React valide, vérifier qu'il n'a pas de chaînes comme enfants directs
             if (React.isValidElement(child)) {
                 // Si l'élément a des enfants, les traiter récursivement
-                if (child.props && child.props.children != null) {
-                    const processedChildren = processChild(child.props.children, `${idx}-children`);
+                if (child.props && (child.props as any).children != null) {
+                    const processedChildren = processChild((child.props as any).children, `${idx}-children`);
                     // Cloner l'élément avec les enfants traités
                     return React.cloneElement(child, { key: idx }, processedChildren);
                 }
@@ -311,8 +308,7 @@ export const NativeGradient: React.FC<NativeGradientProps> = ({
                 return React.cloneElement(child, { key: idx });
             }
             // ✅ CRITIQUE: Fallback - toujours wrapper dans Text si ce n'est pas un élément React valide
-            return <Text key={idx}>{String(child)}</Text>;
-        };
+            if (typeof child === 'object' && child !== null) { return null; } return <Text key={idx}>{String(child)}</Text>; };
 
         // ✅ CRITIQUE: Utiliser React.Children.map pour gérer les fragments et autres cas
         const mapped = React.Children.map(children, (child, idx) => processChild(child, idx));
@@ -535,7 +531,7 @@ const styles = StyleSheet.create({
     // Card
     card: {
         backgroundColor: modernColors.surface,
-        borderRadius: modernStyles.borderRadius.lg,
+        borderRadius: modernStyles.borderRadius.large,
         ...modernStyles.shadowMedium,
         marginVertical: 4,
         marginHorizontal: 2,
@@ -543,7 +539,7 @@ const styles = StyleSheet.create({
 
     // Button
     button: {
-        borderRadius: modernStyles.borderRadius.md,
+        borderRadius: modernStyles.borderRadius.medium,
         alignItems: 'center',
         justifyContent: 'center',
         flexDirection: 'row',
@@ -611,14 +607,14 @@ const styles = StyleSheet.create({
 
     // Gradient
     gradient: {
-        borderRadius: modernStyles.borderRadius.lg,
+        borderRadius: modernStyles.borderRadius.large,
     },
 
     // Input
     inputContainer: {
         borderWidth: 1,
         borderColor: modernColors.border,
-        borderRadius: modernStyles.borderRadius.md,
+        borderRadius: modernStyles.borderRadius.medium,
         backgroundColor: modernColors.surface,
         paddingHorizontal: 12,
         paddingVertical: 12,
@@ -713,3 +709,10 @@ export default {
     NativeBadge,
     NativeDivider,
 };
+
+
+
+
+
+
+

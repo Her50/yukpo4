@@ -20,6 +20,22 @@
             "package_name": "com.yukpomnang.mobile",
             "certificate_hash": "e19abdde56fb324b77e348fe6ef61ebb4db5594f"
           }
+        },
+        {
+          "client_id": "376093909298-fghg1v2quhl3eb0pj1lq21s6sdfshska.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.yukpomnang.mobile",
+            "certificate_hash": "2fa4657605861e06461bdd692978b8c4824a5843"
+          }
+        },
+        {
+          "client_id": "376093909298-fghg1v2quhl3eb0pj1lq21s6sdfshska.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.yukpomnang.mobile",
+            "certificate_hash": "9dc8fe4f6a14833eb54672cd4b9ea2c6e2570b74"
+          }
         }
       ],
       "api_key": [

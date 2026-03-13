@@ -400,7 +400,7 @@ const ServiceGalleryModal: React.FC<ServiceGalleryModalProps> = ({
                                 }}
                                 activeOpacity={0.7}
                             >
-                                <SafeIcon name="share-2" size={22} color="#FFFFFF" />
+                                <SafeIcon name="Redo2" size={22} color="#FFFFFF" />
                             </TouchableOpacity>
 
                             {/* Navigation arrows */}

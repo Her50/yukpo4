@@ -96,7 +96,7 @@ const ProductGalleryModal: React.FC<ProductGalleryModalProps> = ({
             const allMedia: MediaItem[] = [];
             const seenUrls = new Set<string>();
 
-            // ✅ 1. Charger les médias depuis les produits (création produit)
+            // ✅ 1. Charger les médias depuis les produits (API优先, JSON fallback)
             if (Array.isArray(services)) {
                 for (const service of services) {
                     if (!service) continue;
@@ -112,66 +112,106 @@ const ProductGalleryModal: React.FC<ProductGalleryModalProps> = ({
                     const productName = service.title || service.nom || service.data?.nom || 'Produit sans nom';
                     const serviceName = service.service_title || service.data?.serviceTitre || 'Service sans titre';
 
-                    // Charger images depuis API
+                    // ✅ PRIORITÉ 1: Charger depuis API media table (comme ProductGalleryPickerModal)
+                    let mediaFromApi: any[] = [];
                     try {
-                        const imagesResp = await apiGet(`/api/media/product/${serviceId}/${productIndex}/images`);
-                        if (imagesResp.success && imagesResp.data) {
-                            const respImgData = imagesResp.data as any;
-                            const images = respImgData?.images || respImgData?.Images || [];
-                            if (Array.isArray(images)) {
-                                images.forEach((img: string, idx: number) => {
-                                    const url = buildMediaUrl(img);
-                                    if (url && !seenUrls.has(url)) {
-                                        seenUrls.add(url);
-                                        allMedia.push({
-                                            id: `product-img-${serviceId}-${productIndex}-${idx}`,
-                                            url,
-                                            type: 'image',
-                                            source: 'product_api',
-                                            productName,
-                                            serviceId,
-                                            productIndex,
-                                            serviceName,
-                                        });
-                                    }
-                                });
-                            }
+                        const { mediaApi } = await import('../services/api');
+                        const mediaResponse = await mediaApi.getServiceMediaDetailed(serviceId);
+                        if (mediaResponse.success && mediaResponse.data) {
+                            const respData = mediaResponse.data as any;
+                            mediaFromApi = Array.isArray(respData) ? respData
+                                : respData?.media || respData?.data || [];
+
+                            console.log(`[ProductGalleryModal] Service ${serviceId}: ${mediaFromApi.length} médias depuis API`);
                         }
                     } catch (error) {
-                        console.warn(`[ProductGalleryModal] Erreur chargement images produit ${serviceId}/${productIndex}:`, error);
+                        console.warn(`[ProductGalleryModal] Erreur API médias service ${serviceId}:`, error);
                     }
 
-                    // Charger vidéos depuis API
-                    try {
-                        const videosResp = await apiGet(`/api/media/product/${serviceId}/${productIndex}/videos`);
-                        if (videosResp.success && videosResp.data) {
-                            const respVidData = videosResp.data as any;
-                            const videos = respVidData?.videos || respVidData?.Videos || [];
-                            if (Array.isArray(videos)) {
-                                videos.forEach((vid: string, idx: number) => {
-                                    const url = buildMediaUrl(vid);
-                                    if (url && !seenUrls.has(url)) {
-                                        seenUrls.add(url);
-                                        allMedia.push({
-                                            id: `product-video-${serviceId}-${productIndex}-${idx}`,
-                                            url,
-                                            type: 'video',
-                                            source: 'product_creation',
-                                            productName,
-                                            serviceId,
-                                            productIndex,
-                                            serviceName,
-                                        });
-                                    }
-                                });
-                            }
+                    // Ajouter les médias de l'API (avec déduplication)
+                    mediaFromApi.forEach((m: any) => {
+                        const path = m.path || m.url || m.file_path;
+                        const fullUrl = buildMediaUrl(typeof path === 'string' ? path.trim() : null);
+                        if (fullUrl && !seenUrls.has(fullUrl)) {
+                            seenUrls.add(fullUrl);
+                            allMedia.push({
+                                id: `api-media-${serviceId}-${m.product_index || 0}-${m.id || Math.random()}`,
+                                url: fullUrl,
+                                type: m.type === 'video' ? 'video' : 'image',
+                                source: 'product_api',
+                                productName: m.product_index !== null && m.product_index !== undefined
+                                    ? `${productName} (Produit ${m.product_index + 1})`
+                                    : productName,
+                                serviceId,
+                                productIndex: m.product_index || productIndex,
+                                serviceName,
+                            });
                         }
-                    } catch (error) {
-                        console.warn(`[ProductGalleryModal] Erreur chargement vidéos produit ${serviceId}/${productIndex}:`, error);
+                    });
+
+                    // ✅ PRIORITÉ 2: Si l'API n'a rien retourné, essayer les anciennes APIs par produit
+                    if (mediaFromApi.length === 0) {
+                        // Charger images depuis API (ancien système)
+                        try {
+                            const imagesResp = await apiGet(`/api/media/product/${serviceId}/${productIndex}/images`);
+                            if (imagesResp.success && imagesResp.data) {
+                                const respImgData = imagesResp.data as any;
+                                const images = respImgData?.images || respImgData?.Images || [];
+                                if (Array.isArray(images)) {
+                                    images.forEach((img: string, idx: number) => {
+                                        const url = buildMediaUrl(img);
+                                        if (url && !seenUrls.has(url)) {
+                                            seenUrls.add(url);
+                                            allMedia.push({
+                                                id: `product-img-${serviceId}-${productIndex}-${idx}`,
+                                                url,
+                                                type: 'image',
+                                                source: 'product_api',
+                                                productName,
+                                                serviceId,
+                                                productIndex,
+                                                serviceName,
+                                            });
+                                        }
+                                    });
+                                }
+                            }
+                        } catch (error) {
+                            console.warn(`[ProductGalleryModal] Erreur chargement images produit ${serviceId}/${productIndex}:`, error);
+                        }
+
+                        // Charger vidéos depuis API (ancien système)
+                        try {
+                            const videosResp = await apiGet(`/api/media/product/${serviceId}/${productIndex}/videos`);
+                            if (videosResp.success && videosResp.data) {
+                                const respVidData = videosResp.data as any;
+                                const videos = respVidData?.videos || respVidData?.Videos || [];
+                                if (Array.isArray(videos)) {
+                                    videos.forEach((vid: string, idx: number) => {
+                                        const url = buildMediaUrl(vid);
+                                        if (url && !seenUrls.has(url)) {
+                                            seenUrls.add(url);
+                                            allMedia.push({
+                                                id: `product-video-${serviceId}-${productIndex}-${idx}`,
+                                                url,
+                                                type: 'video',
+                                                source: 'product_creation',
+                                                productName,
+                                                serviceId,
+                                                productIndex,
+                                                serviceName,
+                                            });
+                                        }
+                                    });
+                                }
+                            }
+                        } catch (error) {
+                            console.warn(`[ProductGalleryModal] Erreur chargement vidéos produit ${serviceId}/${productIndex}:`, error);
+                        }
                     }
 
-                    // ✅ CORRIGÉ: Extraire médias depuis service.data.produits (format JSON direct)
-                    if (service.data?.produits) {
+                    // ✅ PRIORITÉ 3: Fallback JSON direct seulement si aucune donnée de l'API
+                    if (mediaFromApi.length === 0 && service.data?.produits) {
                         const produits = extractMediaArray(service.data.produits);
 
                         produits.forEach((prod: any, prodIdx: number) => {
@@ -179,10 +219,11 @@ const ProductGalleryModal: React.FC<ProductGalleryModalProps> = ({
                             extractMediaArray(prod.images).forEach((img: any, imgIdx: number) => {
                                 const rawUrl = typeof img === 'string' ? img : (img?.url || img?.path || img?.valeur);
                                 const url = buildMediaUrl(rawUrl);
+                                // ✅ FIX: Vérifier la déduplication avec seenUrls
                                 if (url && !seenUrls.has(url)) {
                                     seenUrls.add(url);
                                     allMedia.push({
-                                        id: `prod-data-img-${serviceId}-${prodIdx}-${imgIdx}`,
+                                        id: `json-img-${serviceId}-${prodIdx}-${imgIdx}`,
                                         url,
                                         type: 'image',
                                         source: 'product_creation',
@@ -197,10 +238,11 @@ const ProductGalleryModal: React.FC<ProductGalleryModalProps> = ({
                             extractMediaArray(prod.videos).forEach((vid: any, vidIdx: number) => {
                                 const rawUrl = typeof vid === 'string' ? vid : (vid?.url || vid?.path || vid?.valeur);
                                 const url = buildMediaUrl(rawUrl);
+                                // ✅ FIX: Vérifier la déduplication avec seenUrls
                                 if (url && !seenUrls.has(url)) {
                                     seenUrls.add(url);
                                     allMedia.push({
-                                        id: `prod-data-video-${serviceId}-${prodIdx}-${vidIdx}`,
+                                        id: `json-video-${serviceId}-${prodIdx}-${vidIdx}`,
                                         url,
                                         type: 'video',
                                         source: 'product_creation',
@@ -219,9 +261,9 @@ const ProductGalleryModal: React.FC<ProductGalleryModalProps> = ({
             // ✅ 2. Charger les vidéos créées via publicités
             try {
                 const publicitesResp = await apiGet('/api/publicites/dashboard');
-                if (publicitesResp.success && publicitesResp.data?.publicites) {
-                    const publicites = Array.isArray(publicitesResp.data.publicites)
-                        ? publicitesResp.data.publicites
+                if (publicitesResp.success && (publicitesResp.data as any)?.publicites) {
+                    const publicites = Array.isArray((publicitesResp.data as any).publicites)
+                        ? (publicitesResp.data as any).publicites
                         : [];
 
                     publicites.forEach((pub: any) => {
@@ -232,23 +274,27 @@ const ProductGalleryModal: React.FC<ProductGalleryModalProps> = ({
                                         ? videoBase64
                                         : `data:video/mp4;base64,${videoBase64}`;
 
-                                    allMedia.push({
-                                        id: `publicite-${pub.id}-${vidIdx}`,
-                                        url: videoUrl,
-                                        type: 'video',
-                                        source: 'publicite',
-                                        productName: pub.titre || 'Publicité',
-                                        serviceId: 0,
-                                        productIndex: 0,
-                                        serviceName: 'Publicité',
-                                        thumbnail: pub.thumbnails?.[vidIdx]
-                                            ? (pub.thumbnails[vidIdx].startsWith('data:')
-                                                ? pub.thumbnails[vidIdx]
-                                                : `data:image/png;base64,${pub.thumbnails[vidIdx]}`)
-                                            : undefined,
-                                        title: pub.titre,
-                                        description: pub.description,
-                                    });
+                                    // ✅ FIX: Déduplication aussi pour les publicités
+                                    if (!seenUrls.has(videoUrl)) {
+                                        seenUrls.add(videoUrl);
+                                        allMedia.push({
+                                            id: `publicite-${pub.id}-${vidIdx}`,
+                                            url: videoUrl,
+                                            type: 'video',
+                                            source: 'publicite',
+                                            productName: pub.titre || 'Publicité',
+                                            serviceId: 0,
+                                            productIndex: 0,
+                                            serviceName: 'Publicité',
+                                            thumbnail: pub.thumbnails?.[vidIdx]
+                                                ? (pub.thumbnails[vidIdx].startsWith('data:')
+                                                    ? pub.thumbnails[vidIdx]
+                                                    : `data:image/png;base64,${pub.thumbnails[vidIdx]}`)
+                                                : undefined,
+                                            title: pub.titre,
+                                            description: pub.description,
+                                        });
+                                    }
                                 }
                             });
                         }
@@ -259,6 +305,7 @@ const ProductGalleryModal: React.FC<ProductGalleryModalProps> = ({
             }
 
             setMedia(allMedia);
+            console.log(`[ProductGalleryModal] ✅ Médias chargés: ${allMedia.length} éléments (déduplication: ${seenUrls.size} URLs uniques)`);
         } catch (error) {
             console.error('[ProductGalleryModal] Erreur chargement médias:', error);
             Alert.alert('Erreur', 'Impossible de charger la galerie');

@@ -103,7 +103,7 @@ const ShareTrackingLink: React.FC<ShareTrackingLinkProps> = ({
     return (
         <NativeCard style={[styles.container, style]}>
             <View style={styles.header}>
-                <SafeIcon name="share-2" size={20} color={modernColors.primary} />
+                <SafeIcon name="Redo2" size={20} color={modernColors.primary} />
                 <Text style={styles.title}>Partager le suivi</Text>
             </View>
 

@@ -199,7 +199,7 @@ const ModernServiceCard: React.FC<ModernServiceCardProps> = ({
                         <Text style={styles.statValue}>{formatNumber(normalizedService.views || 0)}</Text>
                     </View>
                     <View style={styles.statItem}>
-                        <SafeIcon name="share-2" size={16} color={modernColors.textSecondary} />
+                        <SafeIcon name="Redo2" size={16} color={modernColors.textSecondary} />
                         <Text style={styles.statValue}>{formatNumber(normalizedService.likes || 0)}</Text>
                     </View>
                     <View style={styles.statItem}>
@@ -217,7 +217,7 @@ const ModernServiceCard: React.FC<ModernServiceCardProps> = ({
                     )}
                 </View>
                 <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
-                    <SafeIcon name="share-2" size={16} color={modernColors.textSecondary} />
+                    <SafeIcon name="Redo2" size={16} color={modernColors.textSecondary} />
                 </TouchableOpacity>
             </View>
 

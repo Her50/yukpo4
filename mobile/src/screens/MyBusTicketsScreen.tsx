@@ -253,7 +253,7 @@ const MyBusTicketsScreen: React.FC = () => {
                         style={styles.actionButton}
                         onPress={() => handleShareTicket(ticket)}
                     >
-                        <SafeIcon name="share-2" size={16} color={modernColors.primary} />
+                        <SafeIcon name="share" size={16} color={modernColors.primary} />
                         <Text style={styles.actionButtonText}>Partager</Text>
                     </TouchableOpacity>
                     {status === 'upcoming' && (
