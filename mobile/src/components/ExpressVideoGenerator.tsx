@@ -15,7 +15,6 @@ import { apiPost } from '../services/api';
 import { trackUxEvent } from '../services/uxMetrics';
 import { modernColors } from '../theme/modernTheme';
 import type { ManagedProduct } from '../types/ManagedProduct';
-import { VideoGenerationPayload } from '../types/VideoGeneration';
 import { SafeIcon } from './SafeIcon';
 
 interface ExpressVideoGeneratorProps {
@@ -82,7 +81,7 @@ export const ExpressVideoGenerator: React.FC<ExpressVideoGeneratorProps> = ({
         setLoading(true);
 
         try {
-            trackUxEvent('express_video_generate_started', {
+            trackUxEvent('express_video_generate_started' as any, {
                 productId: product.id,
                 style: selectedStyle
             });
@@ -90,7 +89,7 @@ export const ExpressVideoGenerator: React.FC<ExpressVideoGeneratorProps> = ({
             const config = EXPRESS_STYLES[selectedStyle];
 
             // ✅ Payload optimisé pour génération rapide
-            const payload: VideoGenerationPayload = {
+            const payload = {
                 style: config.style,
                 duration_seconds: config.duration_seconds,
                 music_mode: config.music_mode,
@@ -117,7 +116,7 @@ export const ExpressVideoGenerator: React.FC<ExpressVideoGeneratorProps> = ({
 
             const rd: any = response.data;
             if (response.success && rd?.video_url) {
-                trackUxEvent('express_video_generate_success', {
+                trackUxEvent('express_video_generate_success' as any, {
                     productId: product.id,
                     style: selectedStyle,
                     duration: rd.duration_seconds
@@ -138,7 +137,7 @@ export const ExpressVideoGenerator: React.FC<ExpressVideoGeneratorProps> = ({
         } catch (error: any) {
             console.error('[ExpressVideoGenerator] Erreur génération:', error);
 
-            trackUxEvent('express_video_generate_error', {
+            trackUxEvent('express_video_generate_error' as any, {
                 productId: product.id,
                 style: selectedStyle,
                 error: error.message

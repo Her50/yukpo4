@@ -3779,7 +3779,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                         }}
                         onVariantSelected={(variant) => {
                             console.log('[ProductVideoCreationModal] Variante sélectionnée:', variant.variant_name);
-                            setGeneratedTimeline(variant.timeline);
+                            setGeneratedTimeline(variant.timeline as any);
                         }}
                     />
                 )}

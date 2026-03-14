@@ -75,7 +75,7 @@ const ServiceResultCard: React.FC<ServiceResultCardProps> = ({
             nom: service.prestataire?.nom || service.prestataire?.name || 'Prestataire',
             email: service.prestataire?.email || ''
         },
-        statut: service.statut || service.status || 'inactif',
+        statut: (service.statut || service.status || 'inactif') as 'actif' | 'inactif',
         date_creation: service.date_creation || service.created_at || new Date().toISOString(),
         tags: service.tags || [],
         score_relevance: service.score_relevance || service.score || 0,

@@ -78,7 +78,7 @@ const AICVAnalysisScreen: React.FC = () => {
 
         try {
             setLoading(true);
-            const response = await offreEmploiService.analyzeCV(user?.id || 0, '', cvUrl);
+            const response = await offreEmploiService.analyzeCV((user?.id || 0) as number, '', cvUrl);
             const resData = (response?.data as any);
             const analysisResult = resData?.analysis || resData?.data?.analysis || (response as any)?.analysis;
 

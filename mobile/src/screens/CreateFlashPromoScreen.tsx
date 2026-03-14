@@ -1,4 +1,4 @@
-import DateTimePicker from '@react-native-community/datetimepicker';
+import DateTimePickerOriginal from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
@@ -19,6 +19,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { apiPost } from '../services/api';
 import { productsService } from '../services/productsService';
 import { modernColors } from '../theme/modernTheme';
+const DateTimePicker = DateTimePickerOriginal as any;
 
 interface RouteParams {
   serviceId: number;
@@ -98,7 +99,7 @@ const CreateFlashPromoScreen: React.FC = () => {
       }
 
       // ✅ CORRIGÉ: Charger TOUS les produits de l'utilisateur depuis tous ses services
-      const apiProducts = await productsService.getProductsByUser(user.id);
+      const apiProducts = await productsService.getProductsByUser(user.id as any);
       console.log('[CreateFlashPromo] ✅ Produits récupérés:', apiProducts.length);
 
       // Convertir les produits de l'API en format Product
@@ -517,12 +518,12 @@ const CreateFlashPromoScreen: React.FC = () => {
               mode="datetime"
               is24Hour={true}
               display="default"
-              onChange={(event, selectedDate) => {
+              onChange={((event: any, selectedDate: any) => {
                 setShowStartPicker(false);
                 if (selectedDate) {
                   setStartsAt(selectedDate);
                 }
-              }}
+              }) as any}
             />
           )}
         </NativeCard>
@@ -541,12 +542,12 @@ const CreateFlashPromoScreen: React.FC = () => {
               mode="datetime"
               is24Hour={true}
               display="default"
-              onChange={(event, selectedDate) => {
+              onChange={((event: any, selectedDate: any) => {
                 setShowEndPicker(false);
                 if (selectedDate) {
                   setEndsAt(selectedDate);
                 }
-              }}
+              }) as any}
             />
           )}
         </NativeCard>

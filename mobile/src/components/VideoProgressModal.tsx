@@ -15,8 +15,8 @@ import Animated, {
     withTiming,
 } from 'react-native-reanimated';
 import { modernColors } from '../theme/modernTheme';
-import { NativeButton, NativeCard } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
+import { NativeButton, NativeCard } from './SafeNativeDesign';
 
 export type GenerationStep =
     | 'storyboard'
@@ -38,9 +38,11 @@ export interface GenerationProgress {
 
 interface VideoProgressModalProps {
     visible: boolean;
-    progress: GenerationProgress | null;
+    progress?: GenerationProgress | null;
     onCancel?: () => void;
     onDismiss?: () => void;
+    steps?: any[];
+    startTime?: number;
 }
 
 const getStepLabel = (step: GenerationStep): string => {

@@ -33,7 +33,7 @@ const LoyaltyPointsBadge: React.FC<LoyaltyPointsBadgeProps> = ({
             setLoading(true);
             const data = await loyaltyProgram.getLoyaltyPoints(user!.id);
             setPoints(data.available_points);
-            setLevel(data.level);
+            setLevel(data.level as any);
         } catch (error) {
             console.error('[LoyaltyBadge] Erreur:', error);
         } finally {

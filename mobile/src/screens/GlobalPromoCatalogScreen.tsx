@@ -246,10 +246,10 @@ const GlobalPromoCatalogScreen: React.FC = () => {
                                             </View>
                                         </View>
                                         <Text style={styles.itemTitle} numberOfLines={2}>
-                                            {title}
+                                            {String(title)}
                                         </Text>
                                         <Text style={styles.itemDescription} numberOfLines={3}>
-                                            {description}
+                                            {String(description)}
                                         </Text>
                                         <View style={styles.itemFooter}>
                                             <Text style={styles.itemPrice}>

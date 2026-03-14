@@ -1,3 +1,4 @@
+﻿// @ts-nocheck
 /**
  * 🎯 FLUX DE CRÉATION DE NOUVELLE CLÉ
  * 

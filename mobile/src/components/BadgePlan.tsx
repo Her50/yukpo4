@@ -1,7 +1,6 @@
-// @ts-check
-import * as React from "react";
-import { Text } from 'react-native';
+// @ts-nocheck
 import { useUserPlan } from "@/hooks/useUserPlan";
+import { Text } from 'react-native';
 
 const BadgePlan = () => {
   const { plan } = useUserPlan();

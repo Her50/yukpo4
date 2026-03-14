@@ -8,8 +8,10 @@
  * - Alertes prix
  */
 
+import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState } from 'react';
 import {
+    ActivityIndicator,
     Alert,
     Modal,
     ScrollView,
@@ -17,15 +19,11 @@ import {
     Text,
     TextInput,
     TouchableOpacity,
-    View,
-    ActivityIndicator
+    View
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import SafeIcon from './SafeIcon';
-import { NativeButton } from './SafeNativeDesign';
-import { apiPost, apiGet } from '../services/api';
-import { modernColors } from '../theme/modernTheme';
+import { apiGet, apiPost } from '../services/api';
 import { hapticPress } from '../utils/hapticFeedback';
+import SafeIcon from './SafeIcon';
 
 interface RecommendationResult {
     properties: Array<{
@@ -78,24 +76,24 @@ const RealEstateAIFeatures: React.FC<RealEstateAIFeaturesProps> = ({
 }) => {
     const [activeTab, setActiveTab] = useState<'recommendations' | 'estimate' | 'compare' | 'alerts'>('recommendations');
     const [loading, setLoading] = useState(false);
-    
+
     // État pour recommandations
     const [budget, setBudget] = useState('');
     const [location, setLocation] = useState('');
     const [preferences, setPreferences] = useState('');
     const [recommendationResult, setRecommendationResult] = useState<RecommendationResult | null>(null);
-    
+
     // État pour estimation
     const [propertyType, setPropertyType] = useState('');
     const [surface, setSurface] = useState('');
     const [rooms, setRooms] = useState('');
     const [locationEstimate, setLocationEstimate] = useState('');
     const [estimateResult, setEstimateResult] = useState<PriceEstimateResult | null>(null);
-    
+
     // État pour comparaison
     const [propertyIds, setPropertyIds] = useState<string>('');
     const [comparisonResult, setComparisonResult] = useState<ComparisonResult | null>(null);
-    
+
     // État pour alertes
     const [alertCriteria, setAlertCriteria] = useState('');
     const [alertPriceMax, setAlertPriceMax] = useState('');
@@ -117,7 +115,7 @@ const RealEstateAIFeatures: React.FC<RealEstateAIFeaturesProps> = ({
             });
 
             if (response?.success && response?.data) {
-                setRecommendationResult(response.data);
+                setRecommendationResult(response.data as any);
             } else {
                 Alert.alert('Erreur', response?.message || 'Impossible d\'obtenir des recommandations');
             }
@@ -146,7 +144,7 @@ const RealEstateAIFeatures: React.FC<RealEstateAIFeaturesProps> = ({
             });
 
             if (response?.success && response?.data) {
-                setEstimateResult(response.data);
+                setEstimateResult(response.data as any);
             } else {
                 Alert.alert('Erreur', response?.message || 'Impossible d\'estimer le prix');
             }
@@ -173,7 +171,7 @@ const RealEstateAIFeatures: React.FC<RealEstateAIFeaturesProps> = ({
             });
 
             if (response?.success && response?.data) {
-                setComparisonResult(response.data);
+                setComparisonResult(response.data as any);
             } else {
                 Alert.alert('Erreur', response?.message || 'Impossible de comparer les biens');
             }
@@ -218,7 +216,7 @@ const RealEstateAIFeatures: React.FC<RealEstateAIFeaturesProps> = ({
         try {
             const response = await apiGet('/api/immobilier/my-alerts');
             if (response?.success && response?.data) {
-                setSavedAlerts(response.data);
+                setSavedAlerts(response.data as any);
             }
         } catch (error) {
             console.error('[RealEstateAIFeatures] Erreur chargement alertes:', error);

@@ -2626,3 +2626,281 @@ pub async fn og_placeholder_image(
                 .unwrap()
         })
 }
+
+// =====================================================================
+// ✅ NOUVEAU 2026-03-14: Partage interne de produits entre utilisateurs
+// =====================================================================
+
+#[derive(Debug, Deserialize)]
+pub struct InternalShareRequest {
+    pub service_id: Option<i32>,
+    pub product_index: Option<i32>,
+    pub recipient_ids: Vec<i32>,
+    pub message: Option<String>,
+    /// Type de contenu partagé: product, video, menu, health_stats, navigation_stats
+    pub content_type: Option<String>,
+    /// Données supplémentaires (titre, description, url, etc.)
+    pub content_data: Option<Value>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct InternalShareResponse {
+    pub success: bool,
+    pub shares_created: i32,
+    pub notifications_sent: i32,
+}
+
+/// POST /api/products/share-internal
+/// Partage un produit ou service en interne à un ou plusieurs utilisateurs
+/// Crée une entrée dans internal_shares + envoie une notification à chaque destinataire
+pub async fn share_product_internal(
+    State(state): State<Arc<AppState>>,
+    Extension(auth_user): Extension<AuthenticatedUser>,
+    Json(req): Json<InternalShareRequest>,
+) -> AppResult<Json<InternalShareResponse>> {
+    let content_type = req.content_type.clone().unwrap_or_else(|| "product".to_string());
+    log::info!(
+        "[InternalShare] User {} partage type={} service_id={:?} product_index={:?} à {} destinataires",
+        auth_user.id, content_type, req.service_id, req.product_index, req.recipient_ids.len()
+    );
+
+    if req.recipient_ids.is_empty() {
+        return Err(AppError::BadRequest(
+            "Au moins un destinataire est requis".to_string(),
+        ));
+    }
+
+    if req.recipient_ids.len() > 20 {
+        return Err(AppError::BadRequest(
+            "Maximum 20 destinataires par partage".to_string(),
+        ));
+    }
+
+    // Récupérer le nom de l'expéditeur
+    let sender_name: String = sqlx::query_scalar(
+        "SELECT COALESCE(nom_complet, CONCAT(prenom, ' ', nom), email, 'Utilisateur') FROM users WHERE id = $1"
+    )
+    .bind(auth_user.id)
+    .fetch_optional(&state.pg)
+    .await?
+    .unwrap_or_else(|| "Utilisateur".to_string());
+
+    // Récupérer le nom du contenu partagé
+    let content_title: String = if let Some(ref cd) = req.content_data {
+        cd.get("title").and_then(|v| v.as_str()).unwrap_or("").to_string()
+    } else {
+        String::new()
+    };
+
+    let product_name: String = if !content_title.is_empty() {
+        content_title.clone()
+    } else if let Some(pi) = req.product_index {
+        if let Some(sid) = req.service_id {
+            sqlx::query_scalar(
+                "SELECT COALESCE(product_name, 'Produit') FROM service_products WHERE service_id = $1 AND product_index = $2"
+            )
+            .bind(sid)
+            .bind(pi)
+            .fetch_optional(&state.pg)
+            .await?
+            .unwrap_or_else(|| "Produit".to_string())
+        } else {
+            "Contenu".to_string()
+        }
+    } else if let Some(sid) = req.service_id {
+        let row = sqlx::query("SELECT data FROM services WHERE id = $1")
+            .bind(sid)
+            .fetch_optional(&state.pg)
+            .await?;
+        if let Some(r) = row {
+            let data: Option<Value> = r.get("data");
+            if let Some(d) = data {
+                d.get("titre_service")
+                    .and_then(|v| v.get("valeur").and_then(|vv| vv.as_str()).or_else(|| v.as_str()))
+                    .unwrap_or("Service")
+                    .to_string()
+            } else {
+                "Service".to_string()
+            }
+        } else {
+            "Service".to_string()
+        }
+    } else {
+        match content_type.as_str() {
+            "video" => "Vidéo".to_string(),
+            "menu" => "Menu alimentaire".to_string(),
+            "health_stats" => "Statistiques santé".to_string(),
+            "navigation_stats" => "Performances navigation".to_string(),
+            _ => "Contenu".to_string(),
+        }
+    };
+
+    let mut shares_created = 0i32;
+    let mut notifications_sent = 0i32;
+    let share_message = req.message.clone().unwrap_or_default();
+
+    for recipient_id in &req.recipient_ids {
+        // Ne pas partager à soi-même
+        if *recipient_id == auth_user.id {
+            continue;
+        }
+
+        // Insérer dans internal_shares
+        let insert_result = sqlx::query(
+            r#"
+            INSERT INTO internal_shares (sender_id, recipient_id, service_id, product_index, content_type, content_data, message)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            "#,
+        )
+        .bind(auth_user.id)
+        .bind(recipient_id)
+        .bind(req.service_id)
+        .bind(req.product_index)
+        .bind(&content_type)
+        .bind(req.content_data.as_ref().unwrap_or(&json!({})))
+        .bind(&share_message)
+        .execute(&state.pg)
+        .await;
+
+        match insert_result {
+            Ok(_) => shares_created += 1,
+            Err(e) => {
+                log::warn!(
+                    "[InternalShare] Erreur insertion share pour user {}: {}",
+                    recipient_id,
+                    e
+                );
+                continue;
+            }
+        }
+
+        // Créer la notification
+        let type_emoji = match content_type.as_str() {
+            "video" => "🎬",
+            "menu" => "🍽️",
+            "health_stats" => "🫀",
+            "navigation_stats" => "🗺️",
+            _ => "📦",
+        };
+        let notif_title = format!(
+            "{} {} vous a partagé « {} »",
+            type_emoji, sender_name, product_name
+        );
+        let notif_message = if share_message.is_empty() {
+            format!("Appuyez pour voir le produit partagé par {}", sender_name)
+        } else {
+            format!("💬 \"{}\"", share_message)
+        };
+
+        let notif_data = json!({
+            "service_id": req.service_id,
+            "product_index": req.product_index,
+            "sender_id": auth_user.id,
+            "sender_name": sender_name,
+            "product_name": product_name,
+            "content_type": content_type,
+            "content_data": req.content_data,
+            "share_type": format!("internal_{}", content_type)
+        });
+
+        match crate::services::notification_service::create_notification(
+            &state.pg,
+            *recipient_id,
+            crate::services::notification_service::NotificationType::ProductShared,
+            notif_title,
+            notif_message,
+            Some(notif_data),
+        )
+        .await
+        {
+            Ok(_) => notifications_sent += 1,
+            Err(e) => log::warn!(
+                "[InternalShare] Erreur notification pour user {}: {}",
+                recipient_id,
+                e
+            ),
+        }
+    }
+
+    log::info!(
+        "[InternalShare] ✅ {} partages créés, {} notifications envoyées",
+        shares_created,
+        notifications_sent
+    );
+
+    Ok(Json(InternalShareResponse {
+        success: true,
+        shares_created,
+        notifications_sent,
+    }))
+}
+
+/// GET /api/products/shared-with-me
+/// Retourne les produits partagés avec l'utilisateur connecté
+pub async fn get_shared_with_me(
+    State(state): State<Arc<AppState>>,
+    Extension(auth_user): Extension<AuthenticatedUser>,
+    Query(params): Query<std::collections::HashMap<String, String>>,
+) -> AppResult<Json<Value>> {
+    let limit: i64 = params.get("limit").and_then(|v| v.parse().ok()).unwrap_or(30);
+
+    let rows = sqlx::query(
+        r#"
+        SELECT
+            s.id as share_id,
+            s.sender_id,
+            s.service_id,
+            s.product_index,
+            s.message,
+            s.is_read,
+            s.created_at,
+            u.nom_complet as sender_name,
+            u.avatar_url as sender_avatar,
+            COALESCE(sp.product_name, 'Produit') as product_name,
+            sp.product_data
+        FROM internal_shares s
+        JOIN users u ON s.sender_id = u.id
+        LEFT JOIN service_products sp ON sp.service_id = s.service_id AND sp.product_index = s.product_index
+        WHERE s.recipient_id = $1
+        ORDER BY s.created_at DESC
+        LIMIT $2
+        "#,
+    )
+    .bind(auth_user.id)
+    .bind(limit)
+    .fetch_all(&state.pg)
+    .await?;
+
+    let shares: Vec<Value> = rows
+        .iter()
+        .map(|row| {
+            json!({
+                "id": row.get::<i32, _>("share_id"),
+                "sender_id": row.get::<i32, _>("sender_id"),
+                "sender_name": row.get::<Option<String>, _>("sender_name").unwrap_or_default(),
+                "sender_avatar": row.get::<Option<String>, _>("sender_avatar"),
+                "service_id": row.get::<i32, _>("service_id"),
+                "product_index": row.get::<Option<i32>, _>("product_index"),
+                "product_name": row.get::<String, _>("product_name"),
+                "product_data": row.get::<Option<Value>, _>("product_data"),
+                "message": row.get::<Option<String>, _>("message"),
+                "is_read": row.get::<bool, _>("is_read"),
+                "created_at": row.get::<chrono::DateTime<chrono::Utc>, _>("created_at").to_rfc3339(),
+            })
+        })
+        .collect();
+
+    // Marquer comme lus
+    let _ = sqlx::query(
+        "UPDATE internal_shares SET is_read = TRUE WHERE recipient_id = $1 AND is_read = FALSE",
+    )
+    .bind(auth_user.id)
+    .execute(&state.pg)
+    .await;
+
+    Ok(Json(json!({
+        "success": true,
+        "data": shares,
+        "count": shares.len()
+    })))
+}

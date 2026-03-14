@@ -329,7 +329,7 @@ const MyConsultationsScreen: React.FC = () => {
                 <FlatList
                     data={consultations}
                     renderItem={renderConsultation}
-                    keyExtractor={(item) => item.id}
+                    keyExtractor={(item) => String(item.id)}
                     contentContainerStyle={styles.listContent}
                     refreshControl={
                         <RefreshControl

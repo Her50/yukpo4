@@ -465,7 +465,7 @@ const ProfilCandidatScreen: React.FC = () => {
 
                                     const data = await response.json();
                                     if (data.success && data.data?.url) {
-                                        setFormData({ ...formData, cv_url: data.data.url });
+                                        setFormData({ ...formData, cv_url: data.data.url } as any);
                                         Alert.alert('Succès', 'CV téléchargé avec succès !');
                                     } else {
                                         Alert.alert('Erreur', 'Erreur lors du téléchargement du CV');
@@ -523,7 +523,7 @@ const ProfilCandidatScreen: React.FC = () => {
 
                                     const data = await response.json();
                                     if (data.success && data.data?.url) {
-                                        setFormData({ ...formData, lettre_motivation_url: data.data.url });
+                                        setFormData({ ...formData, lettre_motivation_url: data.data.url } as any);
                                         Alert.alert('Succès', 'Lettre de motivation téléchargée avec succès !');
                                     } else {
                                         Alert.alert('Erreur', 'Erreur lors du téléchargement de la lettre');

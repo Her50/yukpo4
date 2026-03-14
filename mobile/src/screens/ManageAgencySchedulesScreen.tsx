@@ -62,7 +62,7 @@ const ManageAgencySchedulesScreen: React.FC = () => {
             const response = await apiGet('/api/bus-tickets/agencies/schedules');
 
             if (response.success && response.data) {
-                setSchedules(response.data);
+                setSchedules(response.data as any);
             }
         } catch (error: any) {
             console.error('[ManageAgencySchedulesScreen] Erreur chargement:', error);

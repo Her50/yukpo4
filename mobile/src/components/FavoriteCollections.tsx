@@ -52,7 +52,7 @@ export const FavoriteCollections: React.FC<FavoriteCollectionsProps> = ({
         try {
             const response = await apiGet('/api/collections');
             if (response.success && response.data) {
-                setCollections(response.data);
+                setCollections(response.data as any);
             }
         } catch (error) {
             console.error('[FavoriteCollections] Erreur chargement collections:', error);

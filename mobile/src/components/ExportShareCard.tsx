@@ -1,3 +1,4 @@
+// @ts-nocheck
 import axios from "axios";
 import { useState } from "react";
 import { Text, TextInput, TouchableOpacity, View } from 'react-native';

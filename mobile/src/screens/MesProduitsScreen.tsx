@@ -24,6 +24,7 @@ import Animated, {
     useSharedValue,
 } from 'react-native-reanimated';
 import ProductDeliveryConfigModal from '../components/delivery/ProductDeliveryConfigModal';
+import InternalShareButton from '../components/InternalShareButton';
 import NavigatorToolbar from '../components/NavigatorToolbar';
 import ProductVideoCreationModal from '../components/ProductVideoCreationModal';
 import SafeIcon from '../components/SafeIcon';
@@ -2205,6 +2206,21 @@ const MesProduitsScreen: React.FC = () => {
                         <SafeIcon name="share" size={15} color="#3B82F6" />
                         <Text style={[styles.contextMenuLabel, { color: '#3B82F6' }]}>Partager</Text>
                     </TouchableOpacity>
+                    {/* ✅ NOUVEAU 2026-03-14: Partage interne produit */}
+                    <InternalShareButton
+                        payload={{
+                            contentType: 'product',
+                            serviceId: product.serviceId,
+                            productIndex: product.product_index ?? product.id,
+                            title: product.nom || 'Produit',
+                            description: product.description || '',
+                        }}
+                        iconSize={15}
+                        iconColor="#8B5CF6"
+                        showLabel
+                        label="Envoyer"
+                        style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 6 }}
+                    />
                     <TouchableOpacity
                         style={styles.contextMenuRow}
                         onPress={() => {

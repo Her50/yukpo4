@@ -248,21 +248,13 @@ const InteractiveMapView = forwardRef<InteractiveMapViewRef, InteractiveMapViewP
                 style={styles.map}
                 provider={Platform.OS === 'ios' ? PROVIDER_GOOGLE : undefined}
                 mapType={getMapType()}
-                // ✅ CORRIGÉ 2026-02-25: initialRegion (non-contrôlé) au lieu de region
-                // region={} causait des sauts visuels à chaque re-render
                 initialRegion={startRegion}
                 onRegionChangeComplete={(region) => {
-                    // Garder le zoom courant pour les animations futures
                     currentRegionRef.current = region;
                 }}
                 onPress={handleMapPress}
                 onMapReady={() => {
                     console.log('[InteractiveMapView] ✅ Map ready');
-                    setMapReady(true);
-                }}
-                onError={(error) => {
-                    console.error('[InteractiveMapView] ❌ Map error:', error.nativeEvent || error);
-                    // ✅ FIX 2026-03-11: Forcer mapReady même en cas d'erreur pour débloquer l'UI
                     setMapReady(true);
                 }}
                 showsUserLocation={true}

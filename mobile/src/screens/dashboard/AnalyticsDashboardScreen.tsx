@@ -1,20 +1,20 @@
 // ✅ Phase 10 - Écran Analytics Dashboard pour prestataires (Mobile)
 import React, { useEffect, useState } from 'react';
 import {
-  View,
-  Text,
+  ActivityIndicator,
+  Alert,
+  RefreshControl,
   ScrollView,
   StyleSheet,
-  ActivityIndicator,
+  Text,
   TouchableOpacity,
-  RefreshControl
+  View
 } from 'react-native';
-import { NativeCard, NativeButton } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
-import { modernColors } from '../../theme/modernTheme';
-import { apiCall } from '../../services/api';
+import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
-import { Alert } from 'react-native';
+import { apiCall } from '../../services/api';
+import { modernColors } from '../../theme/modernTheme';
 
 interface DeliveryStats {
   total_deliveries: number;
@@ -95,7 +95,7 @@ const AnalyticsDashboardScreen: React.FC = () => {
     try {
       const response = await apiCall(`/api/analytics/provider?days=${selectedDays}`);
       if (response.success && response.data) {
-        setAnalytics(response.data);
+        setAnalytics(response.data as any);
       } else {
         throw new Error(response.error || 'Erreur lors du chargement des analytics');
       }

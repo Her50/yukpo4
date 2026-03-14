@@ -365,15 +365,15 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
         }
     };
 
-    const handleTyping = (text: string, cursorPos?: number) => {
+    const handleTyping = (text: string) => {
         setNewMessage(text);
-        if (cursorPos !== undefined) setCursorPosition(cursorPos);
 
-        // ✅ NOUVEAU: Détecter le @ pour ouvrir le mention picker
+        // ✅ FIX: Détecter le @ pour ouvrir le mention picker
+        // On utilise text.length comme position du curseur (l'user tape à la fin)
         const lastAtIndex = text.lastIndexOf('@');
-        if (lastAtIndex !== -1 && (cursorPos === undefined || cursorPos > lastAtIndex)) {
-            // Extraire le texte après le @
-            const query = text.substring(lastAtIndex + 1, cursorPos || text.length);
+        if (lastAtIndex !== -1) {
+            // Extraire le texte après le dernier @
+            const query = text.substring(lastAtIndex + 1);
 
             // Si pas d'espace après le @, c'est une mention en cours
             if (!query.includes(' ')) {
@@ -402,17 +402,18 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
         }
     };
 
-    // ✅ NOUVEAU: Insérer une mention dans le message
+    // ✅ FIX: Insérer une mention dans le message
     const insertMention = (user: any) => {
         const lastAtIndex = newMessage.lastIndexOf('@');
         if (lastAtIndex === -1) return;
 
-        // Remplacer le @ et le query par @nom_utilisateur
+        // Remplacer le @query par @nom_utilisateur
         const before = newMessage.substring(0, lastAtIndex);
-        const mention = `@${user.nom_complet} `;
-        const after = newMessage.substring(cursorPosition);
+        const afterAt = newMessage.substring(lastAtIndex + 1);
+        const spaceIndex = afterAt.indexOf(' ');
+        const trailing = spaceIndex >= 0 ? afterAt.substring(spaceIndex) : '';
 
-        const newText = before + mention + after;
+        const newText = `${before}@${user.nom_complet} ${trailing}`.trimEnd() + ' ';
         setNewMessage(newText);
 
         // Ajouter l'ID à la liste des mentions
@@ -1292,7 +1293,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                                 Alert.alert(
                                                     'Sélectionner un produit',
                                                     'Choisissez le produit à livrer',
-                                                    products.map((product: any) => ({
+                                                    (products.map((product: any) => ({
                                                         text: product.product_name || product.product_data?.product_name || product.product_data?.nom || `Produit ${product.product_index + 1}`,
                                                         onPress: () => {
                                                             setSelectedProductForDelivery({
@@ -1301,7 +1302,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                                             });
                                                             setShowOrderModal(true);
                                                         }
-                                                    })).concat([{ text: 'Annuler', style: 'cancel' }])
+                                                    })).concat([{ text: 'Annuler', style: 'cancel' }])) as any
                                                 );
                                             }
                                         } else {
@@ -1519,11 +1520,9 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                         <TextInput
                             style={styles.textInput}
                             value={newMessage}
-                            onChangeText={(text) => handleTyping(text, cursorPosition)}
+                            onChangeText={(text) => handleTyping(text)}
                             onSelectionChange={(event) => {
-                                const position = event.nativeEvent.selection.start;
-                                setCursorPosition(position);
-                                handleTyping(newMessage, position);
+                                setCursorPosition(event.nativeEvent.selection.start);
                             }}
                             placeholder={replyingTo ? "Tapez votre réponse..." : "Tapez votre message... (@ pour mentionner)"}
                             placeholderTextColor={modernColors.textSecondary}

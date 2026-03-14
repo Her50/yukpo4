@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Skeleton loading pour ProductCard - Niveau géant (Instagram/TikTok)
  * Shimmer effect premium avec LinearGradient

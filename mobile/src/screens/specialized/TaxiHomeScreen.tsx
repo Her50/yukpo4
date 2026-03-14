@@ -158,7 +158,7 @@ const TaxiHomeScreen: React.FC = () => {
                             geometry: {
                                 coordinates: [location.coords.longitude, location.coords.latitude],
                                 type: 'Point',
-                            },
+                            } as any,
                         };
                         setDepart(locationObject);
                     } else {
@@ -170,7 +170,7 @@ const TaxiHomeScreen: React.FC = () => {
                             geometry: {
                                 coordinates: [location.coords.longitude, location.coords.latitude],
                                 type: 'Point',
-                            },
+                            } as any,
                         };
                         setDepart(locationObject);
                     }
@@ -594,7 +594,7 @@ const TaxiHomeScreen: React.FC = () => {
                                                             geometry: {
                                                                 coordinates: [location.coords.longitude, location.coords.latitude],
                                                                 type: 'Point',
-                                                            },
+                                                            } as any,
                                                         };
                                                         setDepart(locationObject);
                                                     } else {
@@ -605,7 +605,7 @@ const TaxiHomeScreen: React.FC = () => {
                                                             geometry: {
                                                                 coordinates: [location.coords.longitude, location.coords.latitude],
                                                                 type: 'Point',
-                                                            },
+                                                            } as any,
                                                         };
                                                         setDepart(locationObject);
                                                     }

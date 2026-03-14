@@ -32,6 +32,7 @@ interface ProductMediaCarouselProps {
     onVideoRef?: (videoRef: Video, mediaKey: string) => void; // ✅ NOUVEAU: Callback pour enregistrer les refs vidéos
     onStopVideo?: (mediaKey: string) => void; // ✅ NOUVEAU: Callback pour arrêter une vidéo spécifique
     isScrolling?: boolean; // ✅ NOUVEAU: Indicateur de scroll pour arrêter les vidéos
+    isVisible?: boolean; // ✅ NOUVEAU 2026-03-14: Carte visible à l'écran — gate tout auto-play
     // ✅ NOUVEAU 2026-03-12: Props du coordinateur vidéo
     onVideoPlaybackRequest?: (playCallback: () => void) => boolean;
     onVideoRelease?: () => void;
@@ -47,6 +48,7 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
     onVideoRef,
     onStopVideo,
     isScrolling = false,
+    isVisible,
     onVideoPlaybackRequest,
     onVideoRelease,
 }) => {
@@ -179,19 +181,17 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
             videoActivePlayingRef.current = null; // ✅ AJOUT: Libérer aussi la référence active
         }
 
-        // ✅ NOUVEAU 2026-03-02: Autoplay vidéo quand le slide vidéo devient visible par scroll utilisateur
-        if (allMedia[index]?.type === 'video' && playingVideoIndex !== index && !isScrolling) {
-            // ✅ FIX 2026-03-11: Mettre le ref immédiatement pour bloquer l'auto-scroll
+        // ✅ FIX 2026-03-14: Autoplay vidéo sur scroll intra-carousel SEULEMENT si isVisible === true
+        if (allMedia[index]?.type === 'video' && playingVideoIndex !== index && !isScrolling && isVisible === true) {
             videoPlayingRef.current = index;
             setTimeout(() => {
                 const videoRef = videoRefs.current.get(index);
-                if (videoRef && !isScrolling && videoPlayingRef.current === index) {
+                if (videoRef && !isScrolling && videoPlayingRef.current === index && isVisible === true) {
                     handleVideoPlay(index);
                     setPlayingVideoIndex(index);
                 } else {
-                    // Si le scroll a recommencé entre-temps, annuler l'autoplay
                     videoPlayingRef.current = null;
-                    videoActivePlayingRef.current = null; // ✅ AJOUT: Libérer aussi la référence active
+                    videoActivePlayingRef.current = null;
                 }
             }, 300);
         }
@@ -199,50 +199,23 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
 
     const playVideo = async (index: number) => {
         if (allMedia[index]?.type === 'video') {
-            // ✅ CORRIGÉ: Utiliser la ref pour démarrer la lecture de la vidéo
+            // ✅ FIX 2026-03-14: Passer par le coordinateur même pour le tap manuel
+            // Empêche les lectures simultanées quand l'utilisateur tape play sur plusieurs cartes
             const videoRef = videoRefs.current.get(index);
             if (videoRef) {
-                try {
-                    // ✅ CORRIGÉ: Vérifier le statut de la vidéo avant de jouer
-                    const status = await videoRef.getStatusAsync();
-                    if (status.isLoaded) {
-                        // La vidéo est chargée, on peut jouer
-                        await videoRef.setStatusAsync({ shouldPlay: true, isMuted: false });
-                        await videoRef.playAsync();
-                        setPlayingVideoIndex(index);
-                        videoPlayingRef.current = index;
-                        videoActivePlayingRef.current = index; // ✅ AJOUT: Marquer comme réellement active
-                        console.log('[ProductMediaCarousel] ✅ Vidéo démarrée avec succès, index:', index);
-                    } else {
-                        // La vidéo n'est pas encore chargée, attendre qu'elle se charge
-                        console.log('[ProductMediaCarousel] ⏳ Vidéo pas encore chargée, attente...');
-                        // Marquer comme devant jouer, le onPlaybackStatusUpdate démarrera la lecture
-                        setPlayingVideoIndex(index);
-                        videoPlayingRef.current = index;
-                        // Essayer de charger la vidéo
-                        await videoRef.loadAsync({ uri: allMedia[index].uri }, { shouldPlay: true, isMuted: false });
+                // Arrêter la vidéo précédente si elle existe
+                if (playingVideoIndex !== null && playingVideoIndex !== index) {
+                    const previousVideoRef = videoRefs.current.get(playingVideoIndex);
+                    if (previousVideoRef) {
+                        previousVideoRef.pauseAsync().catch(() => undefined);
                     }
-                } catch (error) {
-                    console.error('[ProductMediaCarousel] ❌ Erreur lecture vidéo:', error);
-                    // ✅ FALLBACK: Essayer de recharger la vidéo
-                    try {
-                        await videoRef.loadAsync({ uri: allMedia[index].uri }, { shouldPlay: true, isMuted: false });
-                        setPlayingVideoIndex(index);
-                        videoPlayingRef.current = index;
-                        // ✅ Note: videoActivePlayingRef sera mis à jour par onPlaybackStatusUpdate quand la vidéo démarrera réellement
-                    } catch (retryError) {
-                        console.error('[ProductMediaCarousel] ❌ Erreur retry lecture vidéo:', retryError);
-                        setPlayingVideoIndex(null);
-                        videoPlayingRef.current = null;
-                        videoActivePlayingRef.current = null; // ✅ AJOUT: Libérer aussi la référence active
-                    }
+                    releaseVideoWithCoordinator();
                 }
-            } else {
-                console.warn('[ProductMediaCarousel] ⚠️ Ref vidéo non disponible pour index:', index);
-                // Si la ref n'est pas encore disponible, marquer comme devant jouer
-                setPlayingVideoIndex(index);
-                videoPlayingRef.current = index;
-                // ✅ Note: videoActivePlayingRef sera mis à jour par onPlaybackStatusUpdate quand la vidéo démarrera réellement
+
+                requestVideoPlayWithCoordinator(index, () => {
+                    videoRef.setStatusAsync({ shouldPlay: true, isMuted: false }).catch(() => undefined);
+                    videoRef.playAsync().catch(() => undefined);
+                });
             }
         }
     };
@@ -297,14 +270,28 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
         }
     }, [isScrolling, onVideoRelease]);
 
-    // ✅ FIX 2026-03-11: Auto-play la première vidéo SEULEMENT si le carousel est visible et pas en scroll
+    // ✅ FIX 2026-03-14: Arrêter TOUTES les vidéos quand la carte quitte l'écran
     useEffect(() => {
-        if (allMedia.length > 0 && allMedia[0]?.type === 'video' && !isScrolling) {
-            // Délai pour laisser le composant se monter et la ref vidéo se créer
+        if (isVisible === false) {
+            videoRefs.current.forEach((videoRef) => {
+                if (videoRef) {
+                    videoRef.pauseAsync().catch(() => undefined);
+                }
+            });
+            setPlayingVideoIndex(null);
+            videoPlayingRef.current = null;
+            videoActivePlayingRef.current = null;
+            onVideoRelease?.();
+        }
+    }, [isVisible, onVideoRelease]);
+
+    // ✅ FIX 2026-03-14: Auto-play la première vidéo SEULEMENT si isVisible === true et pas en scroll
+    // Sans isVisible explicite, PAS d'auto-play (l'utilisateur doit taper play)
+    useEffect(() => {
+        if (isVisible === true && allMedia.length > 0 && allMedia[0]?.type === 'video' && !isScrolling) {
             const timer = setTimeout(() => {
                 const videoRef = videoRefs.current.get(0);
-                if (videoRef && videoPlayingRef.current === null && !isScrolling) {
-                    // Utiliser le coordinateur pour demander la permission
+                if (videoRef && videoPlayingRef.current === null && !isScrolling && isVisible === true) {
                     requestVideoPlayWithCoordinator(0, () => {
                         videoRef.playAsync().catch(() => undefined);
                     });
@@ -312,67 +299,49 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
             }, 600);
             return () => clearTimeout(timer);
         }
-    }, [allMedia.length, isScrolling, requestVideoPlayWithCoordinator]);
+    }, [allMedia.length, isScrolling, isVisible, requestVideoPlayWithCoordinator]);
 
-    // ✅ CORRIGÉ 2026-03-11: Auto-scroll continu — PAUSE quand une vidéo joue (utilise ref, pas state)
+    // ✅ FIX 2026-03-14: Auto-scroll continu — NE PAS auto-play les vidéos lors du scroll automatique
+    // L'auto-scroll ne fait que défiler visuellement. La lecture vidéo nécessite isVisible + coordinateur ou tap utilisateur.
     useEffect(() => {
         if (allMedia.length <= 1) return;
+        // ✅ FIX 2026-03-14: Pas d'auto-scroll si la carte n'est pas visible (économie de ressources)
+        if (isVisible === false) return;
 
         const startAutoScroll = () => {
             if (autoScrollTimerRef.current) clearInterval(autoScrollTimerRef.current);
             autoScrollTimerRef.current = setInterval(() => {
-                // ✅ FIX 2026-03-12: Utiliser videoActivePlayingRef pour permettre le scroll quand vidéo est en pause
                 if (userInteractingRef.current || videoActivePlayingRef.current !== null || isScrolling) {
-                    console.log('[ProductMediaCarousel] Auto-scroll bloqué:', {
-                        userInteracting: userInteractingRef.current,
-                        videoActive: videoActivePlayingRef.current,
-                        isScrolling
-                    });
                     return;
                 }
 
-                // ✅ FIX: Autoriser l'auto-scroll même si le slide actuel est une vidéo (si elle n'est pas en lecture)
                 const curIdx = currentIndexRef.current;
-                if (allMedia[curIdx]?.type === 'video' && videoActivePlayingRef.current === null) {
-                    console.log('[ProductMediaCarousel] Vidéo présente mais non active, autorisation auto-scroll');
-                    // Autoriser le scroll même si c'est une vidéo (elle n'est pas en lecture)
-                }
-
                 const nextIndex = (curIdx + 1) % allMedia.length;
-                console.log('[ProductMediaCarousel] Auto-scroll vers index:', nextIndex);
                 scrollViewRef.current?.scrollTo({ x: CAROUSEL_WIDTH * nextIndex, animated: true });
                 setCurrentIndex(nextIndex);
                 currentIndexRef.current = nextIndex;
 
-                // Si le prochain slide est une vidéo, lancer l'autoplay avec coordinateur
-                if (allMedia[nextIndex]?.type === 'video') {
-                    videoPlayingRef.current = nextIndex; // Bloquer immédiatement l'auto-scroll
-                    videoActivePlayingRef.current = nextIndex; // ✅ AJOUT: Marquer comme potentiellement active
+                // ✅ FIX 2026-03-14: NE PAS auto-play la vidéo ici — seulement si isVisible ET coordinateur le permet
+                if (allMedia[nextIndex]?.type === 'video' && isVisible === true) {
                     setTimeout(() => {
                         const videoRef = videoRefs.current.get(nextIndex);
-                        if (videoRef && !isScrolling && videoPlayingRef.current === nextIndex) {
-                            // Utiliser le coordinateur pour demander la permission
+                        if (videoRef && !isScrolling && isVisible === true) {
                             requestVideoPlayWithCoordinator(nextIndex, () => {
                                 videoRef.playAsync().catch(() => undefined);
                             });
-                        } else {
-                            // Si le scroll a recommencé entre-temps, annuler l'autoplay
-                            videoPlayingRef.current = null;
-                            videoActivePlayingRef.current = null;
                         }
                     }, 400);
                 }
-            }, 2000); // ✅ RÉDUIT: De 3000ms à 2000ms pour un scroll plus réactif
+            }, 4000); // ✅ FIX 2026-03-14: 4s au lieu de 2s — scroll moins agressif
         };
 
-        // Démarrer après un court délai pour laisser le composant se monter
-        const initTimer = setTimeout(startAutoScroll, 1000); // ✅ RÉDUIT: De 1500ms à 1000ms pour démarrer plus vite
+        const initTimer = setTimeout(startAutoScroll, 1500);
 
         return () => {
             clearTimeout(initTimer);
             if (autoScrollTimerRef.current) clearInterval(autoScrollTimerRef.current);
         };
-    }, [allMedia.length, isScrolling, requestVideoPlayWithCoordinator]);
+    }, [allMedia.length, isScrolling, isVisible, requestVideoPlayWithCoordinator]);
 
     if (allMedia.length === 0) {
         return (
@@ -432,23 +401,18 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
                             isMuted={playingVideoIndex !== index}
                             useNativeControls={false}
                             onPlaybackStatusUpdate={(status) => {
-                                // ✅ FIX 2026-03-12: Suivre l'état réel de lecture (pas juste chargée)
-                                if (status.isLoaded) {
-                                    if (status.isPlaying && playingVideoIndex === index) {
-                                        // La vidéo est réellement en lecture
-                                        videoActivePlayingRef.current = index;
-                                    } else if (!status.isPlaying && videoActivePlayingRef.current === index) {
-                                        // La vidéo est en pause ou arrêtée
-                                        videoActivePlayingRef.current = null;
-                                    }
-                                }
-
-                                // ✅ FIX: Détecter la fin de la vidéo pour passer au média suivant et redémarrer l'auto-scroll
+                                // ✅ FIX 2026-03-14: didJustFinish en PREMIER pour poser le sentinel
+                                // avant que le tracking isPlaying ne libère videoActivePlayingRef
                                 if (status.isLoaded && status.didJustFinish && playingVideoIndex === index) {
                                     console.log('[ProductMediaCarousel] Vidéo terminée, passage au média suivant');
-                                    setPlayingVideoIndex(null);
-                                    videoPlayingRef.current = null;
-                                    videoActivePlayingRef.current = null; // ✅ AJOUT: Libérer aussi la référence active
+
+                                    // ✅ FIX BUG 1: Libérer le coordinateur pour que d'autres cartes puissent jouer
+                                    releaseVideoWithCoordinator();
+
+                                    // ✅ FIX BUG 2: Sentinel -1 pour bloquer l'auto-scroll pendant la transition
+                                    // -1 !== null donc l'intervalle auto-scroll ne scrollera pas en parallèle
+                                    videoActivePlayingRef.current = -1;
+
                                     // Passer au média suivant après un court délai
                                     setTimeout(() => {
                                         const nextIndex = (index + 1) % allMedia.length;
@@ -456,13 +420,20 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
                                         setCurrentIndex(nextIndex);
                                         currentIndexRef.current = nextIndex;
 
-                                        // ✅ FIX: Forcer le redémarrage de l'auto-scroll après un délai supplémentaire
+                                        // Libérer le sentinel après le scroll pour que l'auto-scroll reprenne
                                         setTimeout(() => {
-                                            console.log('[ProductMediaCarousel] Redémarrage auto-scroll après vidéo terminée - FORCÉ');
-                                            // Forcer la réinitialisation complète de l'état vidéo
+                                            videoActivePlayingRef.current = null;
                                             userInteractingRef.current = false;
-                                        }, 1000);
+                                        }, 800);
                                     }, 500);
+                                } else if (status.isLoaded) {
+                                    // ✅ Tracking isPlaying — seulement si PAS didJustFinish (évite d'écraser le sentinel -1)
+                                    if (status.isPlaying && playingVideoIndex === index) {
+                                        videoActivePlayingRef.current = index;
+                                    } else if (!status.isPlaying && videoActivePlayingRef.current === index) {
+                                        // Pause normale (pas fin de vidéo) → libérer
+                                        videoActivePlayingRef.current = null;
+                                    }
                                 }
                             }}
                             onError={(error: any) => {

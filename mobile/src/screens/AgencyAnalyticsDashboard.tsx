@@ -13,12 +13,13 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { BarChart, LineChart } from 'react-native-chart-kit';
+import { BarChart as BarChartOriginal, LineChart } from 'react-native-chart-kit';
 import SafeIcon from '../components/SafeIcon';
 import SkeletonCard from '../components/SkeletonCard';
 import { useAuth } from '../contexts/AuthContext';
 import { apiGet } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
+const BarChart = BarChartOriginal as any;
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -53,7 +54,7 @@ const AgencyAnalyticsDashboard: React.FC = () => {
             const response = await apiGet(`/api/agencies/${(user as any)?.service_id}/analytics?period=${period}`);
 
             if (response.success && response.data) {
-                setData(response.data);
+                setData(response.data as any);
             } else {
                 // Données mockées pour démonstration
                 setData(generateMockData());

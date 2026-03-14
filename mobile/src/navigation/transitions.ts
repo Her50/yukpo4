@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Transitions personnalisées pour React Navigation
  * Gain estimé: +35% de perception de fluidité

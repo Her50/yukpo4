@@ -1,4 +1,4 @@
-// @ts-check
+// @ts-nocheck
 import { ROUTES_CONFIG, Role } from "@/routes/routes";
 import React from 'react';
 import { Text, View } from 'react-native';

@@ -59,12 +59,12 @@ const SpecializedSearchAutocomplete: React.FC<Props> = ({
     const [showSuggestions, setShowSuggestions] = useState(false);
 
     // Suggestions par défaut basées sur le type
-    const defaultSuggestions: Suggestion[] = [
-        { text: 'pharmacie de garde', type: 'query', icon: 'clock' },
-        { text: 'pharmacie 24h', type: 'query', icon: 'clock' },
-        { text: 'médecin disponible', type: 'query', icon: 'user-md' },
-        { text: 'urgences ouvertes', type: 'query', icon: 'alert-circle' },
-    ].filter((s) => {
+    const defaultSuggestions: Suggestion[] = ([
+        { text: 'pharmacie de garde', type: 'query' as const, icon: 'clock' },
+        { text: 'pharmacie 24h', type: 'query' as const, icon: 'clock' },
+        { text: 'médecin disponible', type: 'query' as const, icon: 'user-md' },
+        { text: 'urgences ouvertes', type: 'query' as const, icon: 'alert-circle' },
+    ] as Suggestion[]).filter((s) => {
         if (specializedType === 'pharmacie') {
             return s.text.includes('pharmacie');
         }

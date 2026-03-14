@@ -45,7 +45,7 @@ const LabAIAnalysisScreen: React.FC = () => {
             const response = await labService.getExaminationResults(params.examinationId);
 
             if (response.success && response.data) {
-                setExaminationResults(response.data.examination);
+                setExaminationResults((response.data as any).examination);
             } else {
                 Alert.alert('Erreur', response.error || 'Impossible de charger les résultats');
                 navigation.goBack();

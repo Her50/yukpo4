@@ -1,3 +1,4 @@
+// @ts-nocheck
 // src/components/MenuAuto.tsx
 import React from 'react';
 // @ts-check

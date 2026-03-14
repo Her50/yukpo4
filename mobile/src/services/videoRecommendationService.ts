@@ -96,7 +96,7 @@ class VideoRecommendationService {
                 user_id: userId,
                 limit,
                 interactions: this.interactionHistory.slice(-20), // 20 dernières interactions
-            });
+            } as any);
 
             const rd: any = response.data;
             if (response.success && Array.isArray(rd?.recommendations)) {
@@ -119,7 +119,7 @@ class VideoRecommendationService {
         try {
             const response = await apiGet('/api/video/user-profile', {
                 user_id: userId,
-            });
+            } as any);
 
             if (response.success && response.data) {
                 this.userProfile = (response.data as any).userProfile;

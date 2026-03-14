@@ -73,7 +73,7 @@ export const useServiceReviews = (serviceId: number | number[]): UseServiceRevie
                     const serviceIdsStr = serviceIds.join(',');
                     const batchResponse = await apiGet(API_ENDPOINTS.SERVICES.BATCH_REVIEWS, {
                         service_ids: serviceIdsStr,
-                    });
+                    } as any);
 
                     // Extraire les reviews du premier service (compatibilité avec l'API actuelle)
                     if (batchResponse.success && batchResponse.data) {

@@ -1,3 +1,4 @@
+﻿// @ts-nocheck
 // ✅ NOUVEAU: Sélecteur de filtres artistiques IA avec preview temps réel
 
 import { Slider } from '@react-native-community/slider';

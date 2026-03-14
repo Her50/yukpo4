@@ -108,7 +108,7 @@ const ModernBackground: React.FC<ModernBackgroundProps> = ({
                 {gradients.map((colors, index) => (
                     <LinearGradient
                         key={index}
-                        colors={colors}
+                        colors={colors as any}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 1 }}
                         style={[

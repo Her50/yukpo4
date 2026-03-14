@@ -5,7 +5,7 @@
 
 import React, { useEffect, useRef } from 'react';
 import { Animated, StyleSheet, View } from 'react-native';
-import { modernColors } from '../../theme/modernTheme';
+import { modernColors, modernStyles } from '../../theme/modernTheme';
 
 interface SkeletonDeliveryCardProps {
     style?: any;

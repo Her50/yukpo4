@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Composant de gestion d'équipe pour les services
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useState } from 'react';

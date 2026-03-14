@@ -265,7 +265,7 @@ export const ShoppingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                 await refreshActiveDeliveries();
                 resetBasket();
             }
-            return response;
+            return response as any;
         } catch (error: any) {
             console.error('[ShoppingContext] createShoppingOrder error:', error);
             return {

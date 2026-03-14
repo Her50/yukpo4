@@ -72,7 +72,7 @@ export const useServiceStats = (
                     const serviceIdsStr = serviceIds.join(',');
                     const batchResponse = await apiGet(API_ENDPOINTS.SERVICES.BATCH_STATS, {
                         service_ids: serviceIdsStr,
-                    });
+                    } as any);
 
                     // Extraire les stats du premier service (compatibilité avec l'API actuelle)
                     if (batchResponse.success && batchResponse.data) {

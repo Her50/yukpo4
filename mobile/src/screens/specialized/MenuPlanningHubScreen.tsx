@@ -851,6 +851,29 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                                 disabled={exportingRecipePDF}
                                 loading={exportingRecipePDF}
                             />
+                            {/* ✅ NOUVEAU 2026-03-14: Partage interne du menu/recette */}
+                            {generatedRecipe && (
+                                <View style={{ alignItems: 'center', marginTop: 8 }}>
+                                    <InternalShareButton
+                                        payload={{
+                                            contentType: 'menu',
+                                            title: generatedRecipe.recipe_name || 'Recette',
+                                            description: `${generatedRecipe.total_cost ? generatedRecipe.total_cost + ' FCFA' : ''} · ${generatedRecipe.servings || ''} portions`,
+                                            extraData: {
+                                                recipe_name: generatedRecipe.recipe_name,
+                                                ingredients: generatedRecipe.ingredients,
+                                                total_cost: generatedRecipe.total_cost,
+                                                servings: generatedRecipe.servings,
+                                            },
+                                        }}
+                                        iconSize={16}
+                                        iconColor="#059669"
+                                        showLabel
+                                        label="Envoyer à un utilisateur"
+                                        style={{ backgroundColor: '#ECFDF5', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 8 }}
+                                    />
+                                </View>
+                            )}
                         </View>
                     </View>
                 </View>

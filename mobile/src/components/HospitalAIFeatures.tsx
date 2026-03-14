@@ -102,7 +102,7 @@ const HospitalAIFeatures: React.FC<HospitalAIFeaturesProps> = ({
             });
 
             if (response?.success && response?.data) {
-                setTriageResult(response.data);
+                setTriageResult(response.data as any);
             } else {
                 Alert.alert('Erreur', response?.message || 'Impossible d\'effectuer le triage');
             }
@@ -128,7 +128,7 @@ const HospitalAIFeatures: React.FC<HospitalAIFeaturesProps> = ({
             });
 
             if (response?.success && response?.data) {
-                setRecommendationResult(response.data);
+                setRecommendationResult(response.data as any);
             } else {
                 Alert.alert('Erreur', response?.message || 'Impossible d\'obtenir des recommandations');
             }
@@ -152,7 +152,7 @@ const HospitalAIFeatures: React.FC<HospitalAIFeaturesProps> = ({
             const response = await apiGet(`/api/hopitaux/${hospitalId}/wait-times`);
 
             if (response?.success && response?.data) {
-                setWaitTimeResult(response.data);
+                setWaitTimeResult(response.data as any);
             } else {
                 Alert.alert('Erreur', response?.message || 'Impossible d\'obtenir les temps d\'attente');
             }

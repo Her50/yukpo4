@@ -4,7 +4,8 @@ import ReactNative from 'react-native';
 import { theme } from '../theme/theme';
 import GPSSelector from './GPSSelector';
 
-const { StyleSheet, Text, TextInput, TouchableOpacity, View, ScrollView, Alert } = ReactNative;
+const { StyleSheet, Text, TextInput: RNTextInput, TouchableOpacity, View, ScrollView, Alert } = ReactNative;
+const TextInput = RNTextInput as any;
 
 interface DynamicFieldProps {
     field: {

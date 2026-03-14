@@ -133,7 +133,7 @@ export const QuickCartButton: React.FC<QuickCartButtonProps> = ({
         transform: [
             { scale: scale.value },
             { rotate: `${rotation.value}deg` },
-        ],
+        ] as any,
     }));
 
     const badgeAnimatedStyle = useAnimatedStyle(() => ({

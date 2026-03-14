@@ -77,6 +77,7 @@ const MemoizedProductCard = React.memo(ProductCard, (prevProps, nextProps) => {
         prevProps.product?.product_id === nextProps.product?.product_id &&
         prevProps.service?.id === nextProps.service?.id &&
         prevProps.isScrolling === nextProps.isScrolling &&
+        prevProps.isVisible === nextProps.isVisible &&
         prevProps.userLocation?.latitude === nextProps.userLocation?.latitude &&
         prevProps.userLocation?.longitude === nextProps.userLocation?.longitude
     );
@@ -91,6 +92,7 @@ const ProductCardWithVideoCoordinator: React.FC<{
     onPress?: () => void;
     onChatPress?: () => void;
     isScrolling?: boolean;
+    isVisible?: boolean;
     videoCoordinator: {
         requestVideoPlayback: (videoId: string, playCallback: () => void) => boolean;
         releaseVideoPlayback: (videoId: string) => void;
@@ -116,6 +118,7 @@ const ProductCardWithVideoCoordinator: React.FC<{
     return (
         <ProductCard
             {...props}
+            isVisible={props.isVisible}
             // Passer les callbacks vidéo personnalisés
             onVideoRef={handleVideoRef}
             onVideoPlaybackRequest={handleVideoPlaybackRequest}
@@ -131,6 +134,7 @@ const MemoizedProductCardWithCoordinator = React.memo(ProductCardWithVideoCoordi
         prevProps.product?.product_id === nextProps.product?.product_id &&
         prevProps.service?.id === nextProps.service?.id &&
         prevProps.isScrolling === nextProps.isScrolling &&
+        prevProps.isVisible === nextProps.isVisible &&
         prevProps.userLocation?.latitude === nextProps.userLocation?.latitude &&
         prevProps.userLocation?.longitude === nextProps.userLocation?.longitude &&
         prevProps.videoCoordinator === nextProps.videoCoordinator
@@ -165,7 +169,7 @@ const ResultatBesoinScreen: React.FC = () => {
         queue: Array<{ id: string; callback: () => void }>;
     }>({
         currentlyPlaying: new Set(),
-        maxConcurrentVideos: 2, // Maximum 2 vidéos simultanément
+        maxConcurrentVideos: 1, // ✅ FIX 2026-03-14: Maximum 1 vidéo à la fois pour éviter la cacophonie
         queue: [],
     });
 
@@ -186,8 +190,8 @@ const ResultatBesoinScreen: React.FC = () => {
             return true;
         }
 
-        // Sinon, mettre en file d'attente
-        coordinator.queue.push({ id: videoId, callback: playCallback });
+        // ✅ FIX 2026-03-14: Refuser au lieu de mettre en file d'attente
+        // La file d'attente causait la lecture de vidéos hors-écran quand un slot se libérait
         return false;
     }, []);
 
@@ -195,50 +199,49 @@ const ResultatBesoinScreen: React.FC = () => {
     const releaseVideoPlayback = useCallback((videoId: string) => {
         const coordinator = videoCoordinatorRef.current;
         coordinator.currentlyPlaying.delete(videoId);
-
-        // Jouer la prochaine vidéo en attente
-        if (coordinator.queue.length > 0) {
-            const next = coordinator.queue.shift();
-            if (next) {
-                coordinator.currentlyPlaying.add(next.id);
-                next.callback();
-            }
-        }
+        // ✅ FIX 2026-03-14: Pas de queue — la prochaine carte visible demandera elle-même la lecture
     }, []);
 
-    // ✅ NOUVEAU 2026-03-13: Ref pour suivre les produits visibles et déclencher l'autoplay des vidéos
-    const visibleProductsRef = useRef<Set<string>>(new Set());
+    // ✅ FIX 2026-03-14: Suivi des éléments visibles à l'écran (state pour déclencher re-render des cartes)
+    const [visibleItemKeys, setVisibleItemKeys] = useState<Set<string>>(new Set());
     const viewabilityConfigRef = useRef({
-        viewAreaCoveragePercentThreshold: 50, // 50% du produit doit être visible
-        minimumViewTime: 1000, // 1 seconde avant de considérer comme visible
+        viewAreaCoveragePercentThreshold: 50,
+        minimumViewTime: 300, // ✅ FIX 2026-03-14: Réduit de 1000ms à 300ms pour réactivité
     });
 
-    // ✅ NOUVEAU: Fonction pour détecter quand un produit devient visible
-    const handleProductViewable = useCallback((productId: string) => {
-        if (!visibleProductsRef.current.has(productId)) {
-            visibleProductsRef.current.add(productId);
-            console.log('[ResultatBesoinScreen] Produit devenu visible:', productId);
+    // ✅ FIX 2026-03-14: Mettre à jour le set des éléments visibles — déclenche re-render pour passer isVisible
+    // useCallback avec [] pour stabilité — FlatList exige une référence constante
+    const onViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: any[] }) => {
+        const newKeys = new Set<string>(viewableItems.map((item: any) => item.key));
+        setVisibleItemKeys((prev) => {
+            // Éviter un re-render inutile si le set n'a pas changé
+            if (prev.size === newKeys.size && [...prev].every(k => newKeys.has(k))) {
+                return prev;
+            }
+            return newKeys;
+        });
 
-            // Libérer les vidéos des produits qui ne sont plus visibles
-            const coordinator = videoCoordinatorRef.current;
-            coordinator.currentlyPlaying.forEach((videoId) => {
-                if (!videoId.startsWith(productId)) {
-                    releaseVideoPlayback(videoId);
-                }
-            });
-        }
-    }, [releaseVideoPlayback]);
-
-    // ✅ NOUVEAU: Fonction pour gérer la visibilité des produits dans FlatList
-    const onViewableItemsChanged = useCallback(({ viewableItems, changed }) => {
-        changed.forEach((item) => {
-            if (item.isViewable) {
-                const productData = item.item.data;
-                const productId = `${productData._serviceId || 'unknown'}-${productData.product_index || productData.id || 'unknown'}`;
-                handleProductViewable(productId);
+        // ✅ FIX 2026-03-14: Libérer les vidéos des produits qui ne sont plus visibles
+        // Extraire les serviceId des éléments visibles pour correspondre au format videoId
+        const visibleServiceIds = new Set<string>();
+        viewableItems.forEach((item: any) => {
+            const data = item.item?.data;
+            if (data) {
+                const serviceId = String(data._serviceId || data.service_id || data._service?.id || 'unknown');
+                visibleServiceIds.add(serviceId);
             }
         });
-    }, [handleProductViewable]);
+
+        const coordinator = videoCoordinatorRef.current;
+        coordinator.currentlyPlaying.forEach((videoId) => {
+            // videoId format: "{serviceId}-{productIndex}" — extraire serviceId
+            const dashIdx = videoId.indexOf('-');
+            const videoServiceId = dashIdx > 0 ? videoId.substring(0, dashIdx) : videoId;
+            if (!visibleServiceIds.has(videoServiceId)) {
+                coordinator.currentlyPlaying.delete(videoId);
+            }
+        });
+    }, []);
     const stopAllVideosAndClearQueue = useCallback(() => {
         // Arrêter toutes les vidéos actuelles
         activeVideoRefs.current.forEach((videoRef, key) => {
@@ -2242,12 +2245,13 @@ const ResultatBesoinScreen: React.FC = () => {
     const userLocationMemo = useMemo(() => {
         return location?.coords ? {
             latitude: location.coords.latitude,
-            longitude: location.coords.longitude
+            longitude: location.coords.longitude,
         } : null;
     }, [location?.coords?.latitude, location?.coords?.longitude]);
 
     // ✅ CORRIGÉ 2026-01-14: Fonction pour rendre ProductCard avec React.memo pour éviter les re-renders
-    const renderProductCard = useCallback((product: any) => {
+    // ✅ FIX 2026-03-14: Accepte flatListKey pour correspondre à visibleItemKeys
+    const renderProductCard = useCallback((product: any, flatListKey?: string) => {
         // ✅ CORRIGÉ: Vérifier que product existe
         if (!product) {
             if (__DEV__) console.warn('[ResultatBesoinScreen] ⚠️ Product est undefined dans renderProductCard');
@@ -2272,14 +2276,18 @@ const ResultatBesoinScreen: React.FC = () => {
             releaseVideoPlayback,
         };
 
+        // ✅ FIX 2026-03-14: Utiliser la clé FlatList réelle pour correspondre à visibleItemKeys
+        const itemKey = flatListKey || `product-${serviceId}-${productName}`;
+
         return (
             <MemoizedProductCardWithCoordinator
-                key={`product-${serviceId}-${productName}`}
+                key={itemKey}
                 product={product}
                 service={service}
                 prestataire={prestataire}
                 userLocation={userLocationMemo}
                 isScrolling={isScrollingState}
+                isVisible={visibleItemKeys.has(itemKey)}
                 videoCoordinator={videoCoordinator}
                 onPress={() => {
                     // ✅ CORRIGÉ 2026-02-25: Naviguer vers la boutique du prestataire pour afficher TOUS ses produits
@@ -2311,7 +2319,7 @@ const ResultatBesoinScreen: React.FC = () => {
                 }}
             />
         );
-    }, [userLocationMemo, isScrollingState, getProductName, navigation, requestVideoPlayback, releaseVideoPlayback]); // ✅ Utiliser userLocationMemo au lieu de location directement
+    }, [userLocationMemo, isScrollingState, visibleItemKeys, getProductName, navigation, requestVideoPlayback, releaseVideoPlayback]);
 
     // ✅ NOUVEAU 2026-01-XX: Fonction pour rendre ProductCard pour les services (utiliser le même visuel que les produits)
     // ✅ DÉPLACÉ avant renderListItem pour éviter les problèmes de dépendances
@@ -2344,16 +2352,25 @@ const ResultatBesoinScreen: React.FC = () => {
             videos: service.videos || service.data?.videos?.valeur || service.data?.videos || [],
         };
 
+        const itemKey = `service-${service.id}`;
+
+        // ✅ FIX 2026-03-14: Utiliser le coordinateur vidéo pour les services aussi
+        const videoCoordinator = {
+            requestVideoPlayback,
+            releaseVideoPlayback,
+        };
+
         return (
-            <MemoizedProductCard
-                key={`service-${service.id}`}
+            <MemoizedProductCardWithCoordinator
+                key={itemKey}
                 product={serviceAsProduct}
                 service={service}
                 prestataire={prestataire}
                 userLocation={userLocationMemo}
                 isScrolling={isScrollingState}
+                isVisible={visibleItemKeys.has(itemKey)}
+                videoCoordinator={videoCoordinator}
                 onPress={() => {
-                    // ✅ CORRIGÉ 2026-02-25: Naviguer vers la boutique du prestataire pour afficher TOUS ses produits
                     if (service?.user_id) {
                         const prestataireNameForNav = prestataire?.nom || prestataire?.nom_complet || prestataire?.name || 'Prestataire';
                         navigation.navigate('PrestataireBoutique' as never, {
@@ -2372,7 +2389,7 @@ const ResultatBesoinScreen: React.FC = () => {
                 }}
             />
         );
-    }, [userLocationMemo, isScrollingState, getPrestataire, navigation]); // ✅ Utiliser handleServiceClick au lieu de handleServicePress
+    }, [userLocationMemo, isScrollingState, visibleItemKeys, getPrestataire, navigation, requestVideoPlayback, releaseVideoPlayback]);
 
     // ✅ NOUVEAU 2026-01-14: renderItem mémorisé pour FlatList pour éviter les re-renders
     const renderListItem = useCallback(({ item }: { item: { type: 'service' | 'product'; data: any; key: string } }) => {
@@ -2395,7 +2412,7 @@ const ResultatBesoinScreen: React.FC = () => {
                 if (__DEV__) console.warn('[ResultatBesoinScreen] ⚠️ Product est undefined');
                 return null;
             }
-            return renderProductCard(product);
+            return renderProductCard(product, item.key);
         }
     }, [renderServiceAsProductCard, renderProductCard]);
 
@@ -2699,6 +2716,8 @@ const ResultatBesoinScreen: React.FC = () => {
                                     offset: 300 * index,
                                     index,
                                 })}
+                                // ✅ FIX 2026-03-14: extraData force re-render quand la visibilité change
+                                extraData={visibleItemKeys}
                                 // ✅ NOUVEAU 2026-03-13: Configuration de la visibilité pour autoplay vidéo
                                 viewabilityConfig={viewabilityConfigRef.current}
                                 onViewableItemsChanged={onViewableItemsChanged}

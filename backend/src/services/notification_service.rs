@@ -49,6 +49,9 @@ pub enum NotificationType {
     // ✅ NOUVEAU: Notifications de validation partenaire
     PartnerApplicationApproved,
     PartnerApplicationRejected,
+    // ✅ NOUVEAU 2026-03-14: Partage interne + mention
+    ProductShared,
+    UserMention,
 }
 
 impl NotificationType {
@@ -97,6 +100,9 @@ impl NotificationType {
             // ✅ NOUVEAU: Notifications de validation partenaire
             NotificationType::PartnerApplicationApproved => "partner_application_approved",
             NotificationType::PartnerApplicationRejected => "partner_application_rejected",
+            // ✅ NOUVEAU 2026-03-14
+            NotificationType::ProductShared => "product_shared",
+            NotificationType::UserMention => "user_mention",
         }
     }
 }

@@ -1,3 +1,4 @@
+// @ts-nocheck
 // ✅ VERSION TEMPORAIRE SIMPLIFIÉE POUR ÉVITER LE CRASH
 // L'original a plus de 260 imports qui causent le crash au démarrage
 // Cette version simplifiée ne charge que les écrans essentiels

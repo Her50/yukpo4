@@ -13,8 +13,9 @@ use crate::controllers::product_stats_controller::{
 };
 use crate::controllers::products_controller::{
     delete_product, duplicate_product, get_product, get_products_by_service, get_products_by_user,
-    get_products_by_user_path, og_placeholder_image, og_product_image, share_product_redirect,
-    share_service_redirect, share_tracking_redirect, update_product,
+    get_products_by_user_path, get_shared_with_me, og_placeholder_image, og_product_image,
+    share_product_internal, share_product_redirect, share_service_redirect,
+    share_tracking_redirect, update_product,
 };
 use crate::middlewares::jwt::jwt_auth;
 use crate::state::AppState;
@@ -78,6 +79,16 @@ pub fn products_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             "/api/products/all-stats",
             get(get_all_products_stats)
                 .layer(middleware::from_fn_with_state(state.clone(), jwt_auth)),
+        )
+        // ✅ NOUVEAU 2026-03-14: Partage interne de produits entre utilisateurs
+        .route(
+            "/api/products/share-internal",
+            post(share_product_internal)
+                .layer(middleware::from_fn_with_state(state.clone(), jwt_auth)),
+        )
+        .route(
+            "/api/products/shared-with-me",
+            get(get_shared_with_me).layer(middleware::from_fn_with_state(state.clone(), jwt_auth)),
         )
         // ✅ NOUVEAU: Route publique pour partage intelligent de produits
         // GET /product/:product_id?serviceId=:service_id

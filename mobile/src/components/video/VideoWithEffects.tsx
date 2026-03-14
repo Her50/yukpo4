@@ -147,7 +147,7 @@ const StickerRenderer: React.FC<{ sticker: StickerConfig; currentTime?: number }
     };
 
     return (
-        <Animated.View style={[positionStyle, animatedStyle]}>
+        <Animated.View style={[positionStyle as any, animatedStyle]}>
             {sticker.type === 'emoji' && sticker.emoji ? (
                 <Text style={styles.emojiSticker}>{sticker.emoji}</Text>
             ) : sticker.type === 'image' && sticker.url ? (

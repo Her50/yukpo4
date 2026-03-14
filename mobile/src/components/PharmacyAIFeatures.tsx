@@ -136,7 +136,7 @@ const PharmacyAIFeatures: React.FC<PharmacyAIFeaturesProps> = ({
             });
 
             if (response?.success && response?.data) {
-                setInteractionResult(response.data);
+                setInteractionResult(response.data as any);
             } else {
                 Alert.alert('Erreur', response?.message || 'Impossible de vérifier les interactions');
             }
@@ -165,7 +165,7 @@ const PharmacyAIFeatures: React.FC<PharmacyAIFeaturesProps> = ({
             });
 
             if (response?.success && response?.data) {
-                setDosageResult(response.data);
+                setDosageResult(response.data as any);
             } else {
                 Alert.alert('Erreur', response?.message || 'Impossible de suggérer le dosage');
             }
@@ -198,7 +198,7 @@ const PharmacyAIFeatures: React.FC<PharmacyAIFeaturesProps> = ({
             });
 
             if (response?.success && response?.data) {
-                setBudgetResult(response.data);
+                setBudgetResult(response.data as any);
             } else {
                 Alert.alert('Erreur', response?.message || 'Impossible de calculer le budget');
             }

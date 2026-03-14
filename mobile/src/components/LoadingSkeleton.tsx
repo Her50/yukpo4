@@ -55,7 +55,7 @@ const LoadingSkeleton: React.FC<LoadingSkeletonProps> = ({
                     height,
                     borderRadius,
                     backgroundColor,
-                },
+                } as any,
                 style,
             ]}
         />

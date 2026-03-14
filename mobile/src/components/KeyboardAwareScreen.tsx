@@ -65,6 +65,9 @@ interface KeyboardAwareScreenProps {
    * @default false
    */
   showsVerticalScrollIndicator?: boolean;
+  keyboardDismissMode?: string;
+  enableOnAndroid?: boolean;
+  enableAutomaticScroll?: boolean;
 }
 
 /**

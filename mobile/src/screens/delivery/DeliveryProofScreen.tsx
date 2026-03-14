@@ -55,7 +55,7 @@ const DeliveryProofScreen: React.FC<{ route: any }> = ({ route }) => {
             setLoading(true);
             const response = await apiGet(`/api/delivery/${deliveryId}/proof-media`);
             if (response.success) {
-                setProofMedias(response.data || []);
+                setProofMedias((response.data || []) as any);
             }
         } catch (error) {
             console.error('Erreur chargement médias:', error);

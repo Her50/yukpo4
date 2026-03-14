@@ -6,19 +6,17 @@
 import { useNavigation, useRoute } from '@react-navigation/native';
 import React, { useCallback, useState } from 'react';
 import {
-    Alert,
     ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
-    View,
+    View
 } from 'react-native';
 import QRCodeScanner from '../../components/QRCodeScanner';
 import SafeIcon from '../../components/SafeIcon';
 import { NativeButton } from '../../components/SafeNativeDesign';
-import { apiPost } from '../../services/api';
 import { trackQRScan } from '../../services/analytics';
-import { modernColors } from '../../theme/modernTheme';
+import { apiPost } from '../../services/api';
 
 interface ValidationResult {
     success: boolean;
@@ -48,7 +46,7 @@ const BusTicketQRScannerScreen: React.FC = () => {
             });
             const d = (response?.data || response) as any;
 
-            trackQRScan('bus_ticket', d.success ? 'success' : 'failure');
+            trackQRScan('bus_ticket', (d.success ? 'success' : 'failure') as any);
 
             if (d.success) {
                 setScanCount(prev => prev + 1);
@@ -97,9 +95,9 @@ const BusTicketQRScannerScreen: React.FC = () => {
             {scannerVisible ? (
                 <View style={styles.scannerContainer}>
                     <QRCodeScanner
+                        visible={scannerVisible}
+                        onClose={() => setScannerVisible(false)}
                         onScan={handleScan}
-                        title="Scannez le QR code du ticket"
-                        subtitle="Pointez la caméra vers le QR code du passager"
                     />
                 </View>
             ) : (

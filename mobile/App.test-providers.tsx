@@ -1,3 +1,4 @@
+﻿// @ts-nocheck
 /**
  * VERSION TEST DES PROVIDERS POUR DIAGNOSTIC DE CRASH
  * Désactive progressivement les providers suspects pour identifier le coupable

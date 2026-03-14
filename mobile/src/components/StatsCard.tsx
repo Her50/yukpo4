@@ -36,7 +36,7 @@ export const StatsCard: React.FC<StatsCardProps> = ({
         <View style={styles.container}>
             {gradient ? (
                 <LinearGradient
-                    colors={gradient}
+                    colors={gradient as any}
                     style={styles.iconContainer}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}

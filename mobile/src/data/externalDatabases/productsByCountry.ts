@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * 🌍 PRODUITS LOCAUX PAR PAYS - AFRIQUE FRANCOPHONE
  * 

@@ -97,7 +97,7 @@ const MediaManager: React.FC<MediaManagerProps> = ({ mediaFiles, onMediaChange, 
                         <TouchableOpacity
                             key={tab.key}
                             style={[styles.tab, activeTab === tab.key && styles.activeTab]}
-                            onPress={() => setActiveTab(tab.key)}
+                            onPress={() => setActiveTab(tab.key as any)}
                         >
                             {tab.icon}
                             <Text style={[styles.tabText, activeTab === tab.key && styles.activeTabText]}>

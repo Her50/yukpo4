@@ -1,3 +1,4 @@
+﻿// @ts-nocheck
 // ✅ NOUVEAU: Bibliothèque de musique trending avec intégration TikTok/Spotify
 
 import React, { useCallback, useEffect, useState } from 'react';

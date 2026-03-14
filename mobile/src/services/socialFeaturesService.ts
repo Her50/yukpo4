@@ -155,7 +155,7 @@ class SocialFeaturesService {
     async getDuets(originalVideoId: string): Promise<DuetVideo[]> {
         const response = await apiGet('/api/duets', {
             original_video_id: originalVideoId,
-        });
+        } as any);
 
         if (response.success && Array.isArray(response.data)) {
             return response.data as DuetVideo[];
@@ -171,7 +171,7 @@ class SocialFeaturesService {
         const response = await apiGet('/api/duets', {
             original_video_id: originalVideoId,
             type: 'remix',
-        });
+        } as any);
 
         if (response.success && Array.isArray(response.data)) {
             return response.data as RemixVideo[];

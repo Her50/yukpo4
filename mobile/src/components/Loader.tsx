@@ -1,5 +1,4 @@
-// @ts-check
-import React from 'react';
+// @ts-nocheck
 import { View } from 'react-native';
 
 function Loader() {

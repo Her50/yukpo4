@@ -80,7 +80,7 @@ const CovoiturageBookingScreen: React.FC = () => {
             const response = await apiGet(`/api/covoiturages/${params.covoiturageId}`);
 
             if (response.success && response.data) {
-                setCovoiturage(response.data);
+                setCovoiturage(response.data as any);
             } else {
                 Alert.alert('Erreur', 'Impossible de charger les détails du trajet');
                 navigation.goBack();

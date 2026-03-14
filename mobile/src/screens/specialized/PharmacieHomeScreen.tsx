@@ -201,12 +201,12 @@ const PharmacieHomeScreen: React.FC = () => {
         setLoadingMore(true);
         try {
             const nextPage = page + 1;
-            const searchFilters: ProductSearchFilters = {
+            const searchFilters = {
                 ...filters,
                 query: searchQuery.trim() || '',
                 limit: 20,
                 offset: (nextPage - 1) * 20,
-            };
+            } as any;
             const response = await pharmacyProductService.searchProducts(searchFilters);
             const r = response.data as any;
             if (response.success && r?.products) {
@@ -1200,7 +1200,7 @@ const FiltersModal: React.FC<FiltersModalProps> = ({
                                 </View>
                                 <TouchableOpacity
                                     style={[styles.switch, onlyAvailable && styles.switchActive]}
-                                    onPress={() => setOnlyAvailable(!onlyAvailable)}
+                                    onPress={() => setOnlyAvailable(!onlyAvailable as any)}
                                 >
                                     <View style={[styles.switchThumb, onlyAvailable && styles.switchThumbActive]} />
                                 </TouchableOpacity>

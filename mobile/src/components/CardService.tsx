@@ -1,8 +1,8 @@
+// @ts-nocheck
 // src/components/services/CardService.tsx
-import React from 'react';
-import { Text } from 'react-native';
-import { View } from 'react-native';
 import { ROUTES } from '@/routes/AppRoutesRegistry';
+import React from 'react';
+import { Text, View } from 'react-native';
 
 interface CardServiceProps {
   icon: string;

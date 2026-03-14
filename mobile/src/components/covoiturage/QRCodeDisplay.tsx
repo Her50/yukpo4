@@ -4,8 +4,8 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { apiGet } from '../../services/api';
-import { NativeButton, NativeCard } from '../SafeNativeDesign';
 import { SafeIcon } from '../SafeIcon';
+import { NativeButton, NativeCard } from '../SafeNativeDesign';
 
 interface QRCodeDisplayProps {
     reservationId: number;
@@ -37,12 +37,12 @@ export const QRCodeDisplay: React.FC<QRCodeDisplayProps> = ({
             // Vérifier si QR code existe
             const existing = await apiGet(`/api/reservations/${reservationId}/qr-code`);
             if (existing && existing.qr_code) {
-                setQrCode(existing);
+                setQrCode(existing as any);
             } else {
                 // Générer nouveau QR code
                 const response = await apiGet(`/api/reservations/${reservationId}/qr-code`);
                 if (response && response.qr_code) {
-                    setQrCode(response);
+                    setQrCode(response as any);
                 } else {
                     setError('Impossible de générer le QR code');
                 }

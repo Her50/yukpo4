@@ -97,10 +97,10 @@ export const useServicesBatchData = (
             const [reviewsResponse, statsResponse] = await Promise.all([
                 apiGet(API_ENDPOINTS.SERVICES.BATCH_REVIEWS, {
                     service_ids: serviceIdsStr,
-                }),
+                } as any),
                 apiGet(API_ENDPOINTS.SERVICES.BATCH_STATS, {
                     service_ids: serviceIdsStr,
-                }),
+                } as any),
             ]);
 
             const newData: ServicesBatchData = {};
@@ -108,7 +108,7 @@ export const useServicesBatchData = (
             // Traiter les reviews
             if (reviewsResponse.success && reviewsResponse.data) {
                 const reviewsData = reviewsResponse.data as Record<string, any>;
-                
+
                 serviceIds.forEach((serviceId) => {
                     const serviceReviews = reviewsData[serviceId] || [];
                     const reviews: Review[] = Array.isArray(serviceReviews) ? serviceReviews : [];
@@ -176,7 +176,7 @@ export const useServicesBatchData = (
             // Traiter les stats
             if (statsResponse.success && statsResponse.data) {
                 const statsData = statsResponse.data as Record<string, any>;
-                
+
                 serviceIds.forEach((serviceId) => {
                     const serviceStats = statsData[serviceId];
                     const createdAt = serviceCreatedAts?.get(serviceId);
@@ -310,7 +310,7 @@ export const useServicesBatchData = (
         } catch (err) {
             console.error('❌ [useServicesBatchData] Erreur récupération données batch:', err);
             setError('Impossible de charger les données des services');
-            
+
             // Initialiser avec des données vides en cas d'erreur
             const emptyData: ServicesBatchData = {};
             serviceIds.forEach((serviceId) => {

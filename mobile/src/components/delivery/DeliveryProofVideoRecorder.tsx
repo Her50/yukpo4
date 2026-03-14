@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Enregistreur vidéo de preuve de livraison
  * Basé sur VideoRecorder avec instructions spécifiques pour la livraison

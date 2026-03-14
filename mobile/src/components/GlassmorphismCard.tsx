@@ -38,7 +38,7 @@ const GlassmorphismCard: React.FC<GlassmorphismCardProps> = ({
             {/* Dégradé optionnel */}
             {gradient && (
                 <LinearGradient
-                    colors={currentTheme.gradients.primary}
+                    colors={currentTheme.gradients.primary as any}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                     style={[styles.gradient, { opacity: 0.1 }]}

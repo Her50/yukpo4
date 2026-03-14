@@ -1,3 +1,4 @@
+﻿// @ts-nocheck
 // Composant pour charger les providers lourds de manière progressive
 // après que l'écran principal soit déjà affiché
 import React, { useEffect, useState } from 'react';

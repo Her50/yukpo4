@@ -36,7 +36,7 @@ const ImmobilierListScreen: React.FC = () => {
             setError(null);
             const response = await immobilierService.searchProperties(filters);
             if (response.success && response.data) {
-                setProperties(response.data);
+                setProperties((response as any).data);
             } else {
                 setError('Aucun bien trouvé');
             }

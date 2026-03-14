@@ -31,9 +31,11 @@ export interface SearchFilters {
 interface SearchFiltersProps {
     visible: boolean;
     onClose: () => void;
-    filters: SearchFilters;
+    filters?: SearchFilters;
     onApply: (filters: SearchFilters) => void;
     companies?: string[];
+    initialFilters?: SearchFilters;
+    specializedType?: string;
 }
 
 const SearchFiltersComponent: React.FC<SearchFiltersProps> = ({

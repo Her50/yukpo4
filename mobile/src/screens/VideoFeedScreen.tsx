@@ -23,6 +23,7 @@ import {
     ViewToken
 } from 'react-native';
 import OrderDeliveryModal from '../components/delivery/OrderDeliveryModal';
+import InternalShareButton from '../components/InternalShareButton';
 import ProductCommentsSection from '../components/ProductCommentsSection';
 import ProductDescriptionSection from '../components/ProductDescriptionSection';
 import SafeIcon from '../components/SafeIcon';
@@ -253,6 +254,17 @@ const viewabilityConfig = {
     minimumViewTime: 200,
 };
 
+// ✅ FIX 2026-03-14: Composant ProgressBar isolé pour éviter les re-renders massifs de la FlatList
+// progressMap change ~2x/sec — ce composant absorbe les updates sans re-render de renderItem
+const VideoProgressBar: React.FC<{ progress: number }> = React.memo(({ progress }) => (
+    <View style={{
+        position: 'absolute', bottom: 0, left: 0, right: 0, height: 3,
+        backgroundColor: 'rgba(255,255,255,0.15)', zIndex: 20,
+    }}>
+        <View style={{ height: '100%', width: `${progress * 100}%`, backgroundColor: '#FF2D55' }} />
+    </View>
+));
+
 const VideoFeedScreen: React.FC = ({ route }: any) => {
     const navigation = useNavigation();
     const { user } = useAuth();
@@ -268,6 +280,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
     const [pausedMap, setPausedMap] = useState<Record<string, boolean>>({});
     const [mutedMap, setMutedMap] = useState<Record<string, boolean>>({});
     const [progressMap, setProgressMap] = useState<Record<string, number>>({});
+    const progressMapRef = useRef<Record<string, number>>({});
     const [doubleTapHeart, setDoubleTapHeart] = useState<string | null>(null);
     const [commentsModalItem, setCommentsModalItem] = useState<FeedItem | null>(null);
     const [reactionsMap, setReactionsMap] = useState<Record<string, Record<string, { count: number; hasReacted: boolean }>>>({});
@@ -281,6 +294,9 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
     const [showDeliveryModal, setShowDeliveryModal] = useState(false);
     const [selectedDeliveryItem, setSelectedDeliveryItem] = useState<FeedItem | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
+    const [searchExpanded, setSearchExpanded] = useState(false);
+    const searchWidthAnim = useRef(new Animated.Value(0)).current;
+    const searchInputRef = useRef<TextInput>(null);
     const [filteredFeed, setFilteredFeed] = useState<FeedItem[]>([]);
     const filteredFeedLengthRef = useRef(0);
     const viewedSet = useRef<Set<string>>(new Set());
@@ -754,6 +770,42 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
         }
     }, []);
 
+    // ✅ FIX 2026-03-14: Barre de recherche style Facebook — icône ronde → expand au clic
+    const toggleSearch = useCallback(() => {
+        if (searchExpanded) {
+            // Fermer
+            Animated.timing(searchWidthAnim, {
+                toValue: 0,
+                duration: 250,
+                useNativeDriver: false,
+            }).start(() => {
+                setSearchExpanded(false);
+                if (!searchQuery.trim()) setSearchQuery('');
+            });
+        } else {
+            // Ouvrir
+            setSearchExpanded(true);
+            Animated.timing(searchWidthAnim, {
+                toValue: 1,
+                duration: 300,
+                useNativeDriver: false,
+            }).start(() => {
+                searchInputRef.current?.focus();
+            });
+        }
+    }, [searchExpanded, searchWidthAnim, searchQuery]);
+
+    const closeSearch = useCallback(() => {
+        setSearchQuery('');
+        Animated.timing(searchWidthAnim, {
+            toValue: 0,
+            duration: 250,
+            useNativeDriver: false,
+        }).start(() => {
+            setSearchExpanded(false);
+        });
+    }, [searchWidthAnim]);
+
     const toggleDescription = useCallback((contentId: string) => {
         setExpandedDescriptions((prev) => ({ ...prev, [contentId]: !prev[contentId] }));
     }, []);
@@ -816,8 +868,12 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
 
         if (status.durationMillis && status.durationMillis > 0) {
             const progress = status.positionMillis / status.durationMillis;
+            // ✅ FIX 2026-03-14: Mettre à jour la ref miroir TOUJOURS (pas de re-render)
+            progressMapRef.current[contentId] = progress;
             setProgressMap((prev) => {
-                if (Math.abs((prev[contentId] || 0) - progress) < 0.01) return prev;
+                // ✅ FIX 2026-03-14: Seuil 3% (au lieu de 1%) pour réduire les re-renders
+                // Exception: toujours updater quand >= 0.97 (pour déclencher les boutons replay)
+                if (progress < 0.97 && Math.abs((prev[contentId] || 0) - progress) < 0.03) return prev;
                 return { ...prev, [contentId]: progress };
             });
 
@@ -878,21 +934,21 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                         style={styles.video}
                         videoStyle={styles.videoNative}
                         source={{ uri: item.videoUrl }}
-                        posterSource={item.thumbnail ? { uri: item.thumbnail } : undefined}
-                        posterStyle={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT, resizeMode: 'cover' as any }}
-                        usePoster={!!item.thumbnail}
+                        // ✅ FIX 2026-03-14: Désactiver le poster — les thumbnails sont souvent des images produit
+                        // qui flashent avant que la vidéo charge. Fond sombre (#111) + spinner = style TikTok/Reels
+                        usePoster={false}
                         resizeMode={ResizeMode.COVER}
                         shouldPlay={isActive && !paused && isFocused}
                         isLooping={false}
                         isMuted={muted}
                         useNativeControls={false}
-                        progressUpdateIntervalMillis={250}
+                        progressUpdateIntervalMillis={500}
                         onPlaybackStatusUpdate={(status) => handlePlaybackStatus(contentId, index, status)}
                         onError={(error) => console.error(`[VideoFeedScreen] Erreur vidéo ${index}:`, error)}
                     />
 
-                    {/* ✅ Buffering spinner (comme TikTok) */}
-                    {isBuffering && isActive && (
+                    {/* ✅ FIX 2026-03-14: Spinner pendant buffering OU chargement initial (progress=0, jamais joué, pas en pause) */}
+                    {isActive && (isBuffering || (progress === 0 && !paused && (playCount[contentId] || 0) === 0)) && (
                         <View style={styles.bufferingOverlay}>
                             <ActivityIndicator size="large" color="#fff" />
                         </View>
@@ -954,9 +1010,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                     )}
                 </Pressable>
 
-                <View style={styles.progressBarContainer}>
-                    <View style={[styles.progressBarFill, { width: `${progress * 100}%` }]} />
-                </View>
+                <VideoProgressBar progress={progress} />
 
                 <LinearGradient
                     colors={['transparent', 'rgba(0,0,0,0.7)', 'rgba(0,0,0,0.9)']}
@@ -1054,16 +1108,16 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                             {item.hashtags.slice(0, 4).map(h => `#${h}`).join(' ')}
                         </Text>
                     )}
-
-                    {/* ✅ Indicateur de lecture (comme TikTok) */}
-                    {isActive && (
-                        <View style={styles.playIndicator}>
-                            <Text style={styles.playIndicatorText}>
-                                {playCount[contentId] === 1 ? '🔄' : '▶️'} {playCount[contentId] || 1}/2
-                            </Text>
-                        </View>
-                    )}
                 </View>
+
+                {/* ✅ FIX 2026-03-14: playIndicator sorti de bottomInfo → overlay indépendant (ne push plus le layout) */}
+                {isActive && (
+                    <View style={styles.playIndicator}>
+                        <Text style={styles.playIndicatorText}>
+                            {playCount[contentId] === 1 ? '🔄' : '▶️'} {playCount[contentId] || 1}/2
+                        </Text>
+                    </View>
+                )}
 
                 {/* ✅ CORRIGÉ 2026-03-18: Boutons CTA uniquement pour la vidéo active
                     Empêche le bouton "Voir produit" de rester visible sur une autre vidéo */}
@@ -1169,10 +1223,29 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
 
                     <TouchableOpacity style={styles.actionButton} onPress={() => handleShare(item)} activeOpacity={0.7}>
                         <View style={styles.actionIconBg}>
-                            <SafeIcon name="send" size={22} color="#fff" type="lucide" />
+                            <SafeIcon name="share" size={22} color="#fff" type="lucide" />
                         </View>
                         <Text style={styles.actionLabel}>Partager</Text>
                     </TouchableOpacity>
+
+                    {/* ✅ NOUVEAU 2026-03-14: Partage interne vidéo */}
+                    <View style={styles.actionButton}>
+                        <InternalShareButton
+                            payload={{
+                                contentType: 'video',
+                                serviceId: item.serviceId ?? null,
+                                productIndex: item.productIndex ?? null,
+                                title: item.titre || 'Vidéo',
+                                description: item.description || '',
+                                extraData: { videoUrl: item.videoUrl, sellerName: item.sellerName },
+                            }}
+                            iconSize={22}
+                            iconColor="#fff"
+                            showLabel
+                            label="Envoyer"
+                            style={{ alignItems: 'center', padding: 0 }}
+                        />
+                    </View>
                 </View>
 
                 {/* ✅ Disque tournant vendeur (comme TikTok) */}
@@ -1191,7 +1264,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                 {/* ✅ SUPPRIMÉ 2026-03-14: Ancien picker horizontal en bas — remplacé par picker flottant au-dessus du coeur */}
             </View>
         );
-    }, [likedMap, savedMap, pausedMap, mutedMap, progressMap, currentIndex, doubleTapHeart, heartAnim, handleTap, handleReaction, toggleSave, toggleMute, handleShare, handleViewProduct, handleOpenComments, registerRef, handlePlaybackStatus, isFocused, reactionsMap, showReactionPicker, pendingReaction, bufferingMap, spinAnim, filteredFeed.length, navigation, followMap, handleToggleFollow]);
+    }, [likedMap, savedMap, pausedMap, mutedMap, progressMap, currentIndex, doubleTapHeart, heartAnim, handleTap, handleReaction, toggleSave, toggleMute, handleShare, handleViewProduct, handleOpenComments, registerRef, handlePlaybackStatus, isFocused, reactionsMap, showReactionPicker, pendingReaction, bufferingMap, spinAnim, filteredFeed.length, navigation, followMap, handleToggleFollow, playCount, expandedDescriptions, toggleDescription, handleDeliveryOrder]);
 
     if (loading) {
         return (
@@ -1224,27 +1297,48 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
         <SafeNativeView style={styles.container}>
             <StatusBar barStyle="light-content" backgroundColor="#000" translucent />
 
-            {/* ✅ Barre de recherche: overlay absolu, toujours visible */}
-            <View style={styles.searchBarContainer}>
-                <View style={styles.searchBar}>
-                    <SafeIcon name="search" size={18} color="#9CA3AF" type="lucide" />
-                    <TextInput
-                        style={styles.searchInput}
-                        placeholder="Rechercher des vidéos..."
-                        placeholderTextColor="#9CA3AF"
-                        value={searchQuery}
-                        onChangeText={setSearchQuery}
-                    />
-                    {searchQuery.length > 0 && (
-                        <TouchableOpacity onPress={() => setSearchQuery('')}>
-                            <SafeIcon name="x" size={18} color="#9CA3AF" type="lucide" />
+            {/* ✅ FIX 2026-03-14: Recherche style Facebook Reels — icône ronde → expand au clic */}
+            {!searchExpanded ? (
+                <TouchableOpacity
+                    style={styles.searchIconButton}
+                    onPress={toggleSearch}
+                    activeOpacity={0.7}
+                >
+                    <SafeIcon name="search" size={18} color="#fff" type="lucide" />
+                </TouchableOpacity>
+            ) : (
+                <Animated.View style={[
+                    styles.searchBarContainer,
+                    {
+                        opacity: searchWidthAnim,
+                        transform: [{
+                            translateX: searchWidthAnim.interpolate({
+                                inputRange: [0, 1],
+                                outputRange: [SCREEN_WIDTH * 0.3, 0],
+                            }),
+                        }],
+                    },
+                ]}>
+                    <View style={styles.searchBar}>
+                        <SafeIcon name="search" size={18} color="#9CA3AF" type="lucide" />
+                        <TextInput
+                            ref={searchInputRef}
+                            style={styles.searchInput}
+                            placeholder="Rechercher des vidéos..."
+                            placeholderTextColor="#9CA3AF"
+                            value={searchQuery}
+                            onChangeText={setSearchQuery}
+                            autoFocus
+                        />
+                        <TouchableOpacity onPress={closeSearch} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                            <SafeIcon name="x" size={18} color="#fff" type="lucide" />
                         </TouchableOpacity>
+                    </View>
+                    {searchQuery.length > 0 && filteredFeed.length === 0 && (
+                        <Text style={styles.searchNoResults}>Aucune vidéo trouvée</Text>
                     )}
-                </View>
-                {searchQuery.length > 0 && filteredFeed.length === 0 && (
-                    <Text style={styles.searchNoResults}>Aucune vidéo trouvée</Text>
-                )}
-            </View>
+                </Animated.View>
+            )}
 
             <FlatList
                 ref={flatListRef}
@@ -1260,9 +1354,9 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                     offset: SCREEN_HEIGHT * index,
                     index,
                 })}
-                windowSize={5}
-                maxToRenderPerBatch={3}
-                removeClippedSubviews={false}
+                windowSize={3}
+                maxToRenderPerBatch={2}
+                removeClippedSubviews={true}
                 initialNumToRender={1}
                 decelerationRate="fast"
                 onScrollBeginDrag={() => {
@@ -1430,7 +1524,7 @@ const styles = StyleSheet.create({
         ...StyleSheet.absoluteFillObject,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: 'rgba(0,0,0,0.15)',
+        backgroundColor: 'rgba(0,0,0,0.4)',
     },
     heartAnimation: {
         position: 'absolute',
@@ -1605,7 +1699,7 @@ const styles = StyleSheet.create({
     // ✅ AJOUT: Conteneur pour les boutons d'action
     actionButtonsContainer: {
         position: 'absolute',
-        bottom: 16, // ✅ CORRIGÉ: Réduit de 20 à 16
+        bottom: 10, // ✅ FIX 2026-03-14: Juste au-dessus de la progressBar
         left: 16,
         right: 72,
         flexDirection: 'row',
@@ -1753,7 +1847,7 @@ const styles = StyleSheet.create({
     spinningDisc: {
         position: 'absolute',
         right: 12,
-        bottom: 20, // ✅ RÉAJUSTÉ: Juste au-dessus du CTA
+        bottom: 42, // ✅ FIX 2026-03-14: Remonté pour ne pas chevaucher le CTA
         width: 40,
         height: 40,
         borderRadius: 20,
@@ -1779,11 +1873,12 @@ const styles = StyleSheet.create({
     // ✅ AJOUT: Indicateur de lecture style TikTok
     playIndicator: {
         position: 'absolute',
-        top: Platform.OS === 'ios' ? 52 : 32,
-        left: 16,
+        top: Platform.OS === 'ios' ? 130 : 110,
+        alignSelf: 'center',
+        left: SCREEN_WIDTH / 2 - 30,
         backgroundColor: 'rgba(0,0,0,0.6)',
-        paddingHorizontal: 8,
-        paddingVertical: 4,
+        paddingHorizontal: 10,
+        paddingVertical: 5,
         borderRadius: 12,
         zIndex: 30,
     },
@@ -1816,9 +1911,9 @@ const styles = StyleSheet.create({
     // ✅ NOUVEAUX STYLES POUR BOUTONS CENTRÉS ET MODERNES
     centeredVideoActions: {
         position: 'absolute',
-        top: '50%',
-        left: '50%',
-        transform: [{ translateX: -150 }, { translateY: -40 }],
+        top: '45%',
+        left: 0,
+        right: 0,
         flexDirection: 'row',
         justifyContent: 'center',
         alignItems: 'center',
@@ -1864,23 +1959,38 @@ const styles = StyleSheet.create({
         shadowRadius: 8,
         elevation: 8,
     },
+    // ✅ FIX 2026-03-14: Bouton rond de recherche style Facebook Reels
+    searchIconButton: {
+        position: 'absolute',
+        top: Platform.OS === 'ios' ? 52 : 32,
+        right: 60,
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: 'rgba(0, 0, 0, 0.4)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 100,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.15)',
+    },
     searchBarContainer: {
         position: 'absolute',
-        top: Platform.OS === 'ios' ? 88 : 65,
-        left: 16,
+        top: Platform.OS === 'ios' ? 52 : 32,
+        left: 60,
         right: 16,
         zIndex: 100,
     },
     searchBar: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
         borderRadius: 25,
         paddingHorizontal: 16,
         paddingVertical: 10,
         gap: 10,
         borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.2)',
+        borderColor: 'rgba(255, 255, 255, 0.25)',
     },
     searchInput: {
         flex: 1,

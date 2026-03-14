@@ -11,12 +11,13 @@ const MesReservationsCovoiturageScreen: React.FC = () => {
     const navigation = useNavigation();
 
     // Passer le type de service comme paramètre
+    const ScreenComponent = MesReservationsScreen as any;
     return (
-        <MesReservationsScreen
+        <ScreenComponent
             route={{
                 params: { serviceType: 'covoiturage' }
-            } as any}
-            navigation={navigation as any}
+            }}
+            navigation={navigation}
         />
     );
 };

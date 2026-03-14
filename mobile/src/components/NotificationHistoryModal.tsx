@@ -89,7 +89,9 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
             isRead: notif.is_read || notif.isRead || false,
             category: mapNotificationCategory(backendType),
             actionUrl: notif.data?.actionUrl || notif.data?.action_url, // ✅ CORRIGÉ : Support des deux formats
-            actionText: notif.data?.actionText || notif.data?.action_text, // ✅ CORRIGÉ : Support des deux formats
+            actionText: notif.data?.actionText || notif.data?.action_text
+              || (backendType === 'product_shared' ? 'Voir le produit' : undefined)
+              || (backendType === 'user_mention' ? 'Voir la conversation' : undefined), // ✅ NOUVEAU: action auto pour partage/mention
             productName,
           };
         });
@@ -183,6 +185,7 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
 
   // ✅ Fonction pour mapper les types de notifications backend vers frontend
   const mapNotificationType = (backendType: string): 'info' | 'warning' | 'success' | 'error' => {
+    if (backendType === 'product_shared' || backendType === 'user_mention') return 'info';
     if (backendType.includes('created') || backendType.includes('activated')) return 'success';
     if (backendType.includes('deleted') || backendType.includes('deactivated')) return 'warning';
     if (backendType.includes('low_balance')) return 'error';
@@ -194,6 +197,7 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
 
   // ✅ Fonction pour mapper les catégories
   const mapNotificationCategory = (backendType: string): 'service' | 'system' | 'payment' | 'security' => {
+    if (backendType === 'product_shared' || backendType === 'user_mention') return 'service';
     if (backendType.includes('service')) return 'service';
     if (backendType.includes('payment')) return 'payment';
     if (backendType.includes('balance')) return 'payment';

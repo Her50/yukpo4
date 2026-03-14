@@ -15,15 +15,19 @@ import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
 
 interface MediaUploadManagerProps {
-  images: string[];
-  videos: string[];
-  onImagesChange: (images: string[]) => void;
-  onVideosChange: (videos: string[]) => void;
+  images?: string[];
+  videos?: string[];
+  onImagesChange?: (images: string[]) => void;
+  onVideosChange?: (videos: string[]) => void;
   readonly?: boolean;
   maxImages?: number;
   maxVideos?: number;
   onHorizontalScrollStart?: () => void;
   onHorizontalScrollEnd?: () => void;
+  mediaUris?: string[];
+  onMediaChange?: (uris: string[]) => void;
+  maxMedia?: number;
+  allowVideo?: boolean;
 }
 
 const MediaUploadManager: React.FC<MediaUploadManagerProps> = ({
@@ -40,7 +44,7 @@ const MediaUploadManager: React.FC<MediaUploadManagerProps> = ({
   // ✅ Protection contre undefined - toujours utiliser des tableaux
   const images = imagesProp || [];
   const videos = videosProp || [];
-  
+
   // ✅ NOUVEAU: Log pour diagnostiquer les médias reçus
   React.useEffect(() => {
     console.log('[MediaUploadManager] 📸 Médias reçus:', {
@@ -217,62 +221,62 @@ const MediaUploadManager: React.FC<MediaUploadManagerProps> = ({
         return;
       }
 
-        if (result.assets[0]) {
-          const videoUri = result.assets[0].uri;
+      if (result.assets[0]) {
+        const videoUri = result.assets[0].uri;
 
-          if (videoUri) {
-            // ✅ CORRECTION CRITIQUE : Ne PAS convertir en base64 pour éviter OutOfMemoryError
-            // Pour les vidéos volumineuses (>50MB), on stocke l'URI file:// directement
-            // Le backend devra gérer l'upload via FormData multipart
-            try {
-              console.log('[MediaUploadManager] 📹 Vidéo sélectionnée:', videoUri);
+        if (videoUri) {
+          // ✅ CORRECTION CRITIQUE : Ne PAS convertir en base64 pour éviter OutOfMemoryError
+          // Pour les vidéos volumineuses (>50MB), on stocke l'URI file:// directement
+          // Le backend devra gérer l'upload via FormData multipart
+          try {
+            console.log('[MediaUploadManager] 📹 Vidéo sélectionnée:', videoUri);
 
-              // Vérifier la taille du fichier avant de décider de la stratégie
-              const fileInfo = await FileSystem.getInfoAsync(videoUri);
-              const fileSize = fileInfo.exists && 'size' in fileInfo ? fileInfo.size : 0;
-              const fileSizeMB = fileSize / (1024 * 1024);
+            // Vérifier la taille du fichier avant de décider de la stratégie
+            const fileInfo = await FileSystem.getInfoAsync(videoUri);
+            const fileSize = fileInfo.exists && 'size' in fileInfo ? fileInfo.size : 0;
+            const fileSizeMB = fileSize / (1024 * 1024);
 
-              console.log('[MediaUploadManager] 📊 Taille vidéo:', fileSizeMB.toFixed(2), 'MB');
+            console.log('[MediaUploadManager] 📊 Taille vidéo:', fileSizeMB.toFixed(2), 'MB');
 
-              // ✅ Pour les vidéos < 10MB, on peut convertir en base64
-              // Pour les vidéos plus grandes, on garde l'URI file:// et on uploadera via FormData
-              if (fileSizeMB < 10) {
-                try {
-                  const base64Data = await FileSystem.readAsStringAsync(videoUri, {
-                    encoding: FileSystem.EncodingType.Base64,
-                  });
+            // ✅ Pour les vidéos < 10MB, on peut convertir en base64
+            // Pour les vidéos plus grandes, on garde l'URI file:// et on uploadera via FormData
+            if (fileSizeMB < 10) {
+              try {
+                const base64Data = await FileSystem.readAsStringAsync(videoUri, {
+                  encoding: FileSystem.EncodingType.Base64,
+                });
 
-                  const mimeType = videoUri.endsWith('.mp4')
-                    ? 'video/mp4'
-                    : videoUri.endsWith('.mov')
-                      ? 'video/quicktime'
-                      : 'video/mp4';
+                const mimeType = videoUri.endsWith('.mp4')
+                  ? 'video/mp4'
+                  : videoUri.endsWith('.mov')
+                    ? 'video/quicktime'
+                    : 'video/mp4';
 
-                  const videoBase64 = `data:${mimeType};base64,${base64Data}`;
-                  console.log('[MediaUploadManager] ✅ Vidéo < 10MB convertie en base64');
-                  onVideosChange([...videos, videoBase64]);
-                } catch (base64Error) {
-                  console.warn('[MediaUploadManager] ⚠️ Erreur conversion base64, utilisation URI directe:', base64Error);
-                  // Fallback: utiliser l'URI directement
-                  onVideosChange([...videos, videoUri]);
-                }
-              } else {
-                // ✅ Pour les vidéos volumineuses, utiliser l'URI file:// directement
-                // Le backend devra gérer l'upload via FormData multipart
-                console.log('[MediaUploadManager] ✅ Vidéo volumineuse, utilisation URI directe (upload FormData)');
+                const videoBase64 = `data:${mimeType};base64,${base64Data}`;
+                console.log('[MediaUploadManager] ✅ Vidéo < 10MB convertie en base64');
+                onVideosChange([...videos, videoBase64]);
+              } catch (base64Error) {
+                console.warn('[MediaUploadManager] ⚠️ Erreur conversion base64, utilisation URI directe:', base64Error);
+                // Fallback: utiliser l'URI directement
                 onVideosChange([...videos, videoUri]);
               }
-            } catch (error) {
-              console.error('[MediaUploadManager] ❌ Erreur traitement vidéo:', error);
-              Alert.alert(
-                'Erreur',
-                error instanceof Error && error.message.includes('OutOfMemory')
-                  ? 'La vidéo est trop volumineuse. Veuillez choisir une vidéo plus petite ou la compresser.'
-                  : 'Impossible de traiter la vidéo. Veuillez réessayer.'
-              );
+            } else {
+              // ✅ Pour les vidéos volumineuses, utiliser l'URI file:// directement
+              // Le backend devra gérer l'upload via FormData multipart
+              console.log('[MediaUploadManager] ✅ Vidéo volumineuse, utilisation URI directe (upload FormData)');
+              onVideosChange([...videos, videoUri]);
             }
+          } catch (error) {
+            console.error('[MediaUploadManager] ❌ Erreur traitement vidéo:', error);
+            Alert.alert(
+              'Erreur',
+              error instanceof Error && error.message.includes('OutOfMemory')
+                ? 'La vidéo est trop volumineuse. Veuillez choisir une vidéo plus petite ou la compresser.'
+                : 'Impossible de traiter la vidéo. Veuillez réessayer.'
+            );
           }
         }
+      }
     } catch (error) {
       console.error('Erreur sélection vidéo:', error);
       Alert.alert('Erreur', 'Impossible de sélectionner la vidéo');
@@ -381,7 +385,7 @@ const MediaUploadManager: React.FC<MediaUploadManagerProps> = ({
             onMomentumScrollEnd={() => {
               onHorizontalScrollEnd?.();
             }}
-            // ✅ OPTIMISATION: Retirer onTouchStart/onTouchEnd qui peuvent causer des conflits
+          // ✅ OPTIMISATION: Retirer onTouchStart/onTouchEnd qui peuvent causer des conflits
           >
             {images.map((image, index) => (
               <View key={index} style={styles.imageContainer}>

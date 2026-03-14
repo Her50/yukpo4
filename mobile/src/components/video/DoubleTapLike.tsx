@@ -43,7 +43,7 @@ export const DoubleTapLike: React.FC<DoubleTapLikeProps> = ({
                 );
                 opacity.value = withSequence(
                     withTiming(1, { duration: 100 }),
-                    withTiming(0, { duration: 400, delay: 200 })
+                    withTiming(0, { duration: 400, delay: 200 } as any)
                 );
                 rotation.value = withSequence(
                     withTiming(-15, { duration: 100 }),
@@ -68,15 +68,13 @@ export const DoubleTapLike: React.FC<DoubleTapLikeProps> = ({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [visible]); // ✅ CORRIGÉ: Ne pas inclure les SharedValues
 
-    const animatedStyle = useAnimatedStyle(() => {
-        return {
-            transform: [
-                { scale: scale.value },
-                { rotate: `${rotation.value}deg` },
-            ],
-            opacity: opacity.value,
-        };
-    });
+    const animatedStyle = useAnimatedStyle((() => ({
+        transform: [
+            { scale: scale.value },
+            { rotate: `${rotation.value}deg` },
+        ],
+        opacity: opacity.value,
+    })) as any);
 
     if (!visible) {
         return null;

@@ -89,7 +89,7 @@ const ModernGPSSelector: React.FC<ModernGPSSelectorProps> = ({
 
             // Géocodage inverse pour obtenir l'adresse
             try {
-                const geocodeResult = await Location.reverseGeocodeAsync(newLocation);
+                const geocodeResult = await Location.reverseGeocodeAsync(newLocation as any);
                 if (geocodeResult.length > 0) {
                     const address = geocodeResult[0];
                     const formattedAddress = `${address.street || ''} ${address.city || ''} ${address.region || ''}`.trim();

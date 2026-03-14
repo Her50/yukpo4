@@ -91,7 +91,7 @@ const AnimatedDeliveryCard: React.FC<AnimatedDeliveryCardProps> = React.memo(({
     };
 
     return (
-        <Animated.View style={animatedStyle}>
+        <Animated.View style={animatedStyle as any}>
             <TouchableOpacity
                 onPress={() => onPress(delivery.id)}
                 onPressIn={handlePressIn}

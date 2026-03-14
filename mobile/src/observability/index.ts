@@ -102,7 +102,7 @@ const startFpsMonitor = () => {
     collectFrames();
 
     if (fpsInterval) {
-        clearInterval(fpsInterval);
+        clearInterval(fpsInterval as any);
     }
 
     fpsInterval = setInterval(() => {
@@ -141,7 +141,7 @@ const startFpsMonitor = () => {
 
 const stopFpsMonitor = () => {
     if (fpsInterval) {
-        clearInterval(fpsInterval);
+        clearInterval(fpsInterval as any);
         fpsInterval = null;
     }
     stopFrameCollection();

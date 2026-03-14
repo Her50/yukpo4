@@ -1,11 +1,11 @@
 // ✅ AMÉLIORÉ: Composant carte pour afficher un service spécialisé avec design moderne et accessibilité
 
+import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { modernColors } from '../theme/modernTheme';
-import { NativeCard } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
+import { NativeCard } from './SafeNativeDesign';
 
 interface ServiceCardProps {
     service: {
@@ -26,12 +26,12 @@ interface ServiceCardProps {
     accessibilityHint?: string;
 }
 
-const ServiceCard: React.FC<ServiceCardProps> = ({ 
-    service, 
-    onPress, 
+const ServiceCard: React.FC<ServiceCardProps> = ({
+    service,
+    onPress,
     onEdit,
     accessibilityLabel,
-    accessibilityHint 
+    accessibilityHint
 }) => {
     const typeLabels: Record<string, string> = {
         pharmacie: 'Pharmacie',
@@ -76,8 +76,8 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
     const defaultAccessibilityHint = 'Double-tapez pour voir les détails';
 
     return (
-        <TouchableOpacity 
-            onPress={onPress} 
+        <TouchableOpacity
+            onPress={onPress}
             activeOpacity={0.7}
             accessibilityRole="button"
             accessibilityLabel={accessibilityLabel || defaultAccessibilityLabel}
@@ -88,15 +88,15 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
                 {/* ✅ AMÉLIORÉ: Header avec image ou gradient */}
                 <View style={styles.cardHeader}>
                     {serviceImage ? (
-                        <Image 
-                            source={{ uri: serviceImage }} 
+                        <Image
+                            source={{ uri: serviceImage }}
                             style={styles.serviceImage}
                             resizeMode="cover"
                             accessibilityIgnoresInvertColors={false}
                         />
                     ) : (
                         <LinearGradient
-                            colors={typeGradient}
+                            colors={typeGradient as any}
                             style={styles.gradientContainer}
                             start={{ x: 0, y: 0 }}
                             end={{ x: 1, y: 1 }}

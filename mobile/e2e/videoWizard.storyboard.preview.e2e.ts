@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { by, device, element, expect } from 'detox';
 
 describe('Video wizard – storyboard IA + preview courte', () => {

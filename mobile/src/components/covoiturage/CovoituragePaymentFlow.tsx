@@ -112,7 +112,7 @@ const CovoituragePaymentFlow: React.FC<CovoituragePaymentFlowProps> = ({
                         paymentId: prd.transaction_id || reservationId.toString(),
                         method: 'wallet',
                         reservationId: reservationId
-                    });
+                    } as any);
                 } else {
                     Alert.alert('Erreur', response.error || 'Paiement échoué');
                 }

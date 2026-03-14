@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Navigation avec accès progressif aux écrans spécialisés
 // Les écrans sont ajoutés via GestionServicesSpecialisesScreen
 

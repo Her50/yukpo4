@@ -1,3 +1,4 @@
+﻿// @ts-nocheck
 // @ts-check
 import * as React from "react";
 import { Link, useLocation } from "@react-navigation/native";

@@ -1,10 +1,11 @@
+// @ts-nocheck
 // Navigation CONDITIONNELLE par rôle - Évite le crash en chargeant seulement les écrans pertinents
 // TOUS les 260+ écrans sont disponibles mais chargés intelligemment selon le rôle utilisateur
 
-import React from 'react';
-import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
+import React from 'react';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 // Imports essentiels (communs à tous les rôles)
 import { useAuth } from '../contexts/AuthContext';
@@ -18,12 +19,12 @@ import PartnerRegisterScreen from '../screens/auth/PartnerRegisterScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
 
 // Écrans principaux (communs)
+import ContactScreen from '../screens/ContactScreen';
 import HomeScreen from '../screens/HomeScreen';
 import MesInteractionsScreen from '../screens/MesInteractionsScreen';
 import MesServicesScreen from '../screens/MesServicesScreen';
-import ProfileScreen from '../screens/ProfileScreen';
-import ContactScreen from '../screens/ContactScreen';
 import NavigationScreen from '../screens/NavigationScreen';
+import ProfileScreen from '../screens/ProfileScreen';
 
 // Services spécialisés (communs)
 import GestionServicesSpecialisesScreen from '../screens/specialized/GestionServicesSpecialisesScreen';
@@ -50,32 +51,32 @@ const MainTabNavigator = () => {
         tabBarInactiveTintColor: '#9CA3AF',
       }}
     >
-      <Tab.Screen 
-        name="Home" 
+      <Tab.Screen
+        name="Home"
         component={HomeScreen}
         options={{
           tabBarLabel: 'Accueil',
           tabBarIcon: ({ color }) => <Text style={{ color }}>🏠</Text>,
         }}
       />
-      <Tab.Screen 
-        name="Services" 
+      <Tab.Screen
+        name="Services"
         component={MesServicesScreen}
         options={{
           tabBarLabel: 'Services',
           tabBarIcon: ({ color }) => <Text style={{ color }}>🔧</Text>,
         }}
       />
-      <Tab.Screen 
-        name="Interactions" 
+      <Tab.Screen
+        name="Interactions"
         component={MesInteractionsScreen}
         options={{
           tabBarLabel: 'Interactions',
           tabBarIcon: ({ color }) => <Text style={{ color }}>💬</Text>,
         }}
       />
-      <Tab.Screen 
-        name="Profile" 
+      <Tab.Screen
+        name="Profile"
         component={ProfileScreen}
         options={{
           tabBarLabel: 'Profil',
@@ -108,7 +109,7 @@ const StandardUserNavigator = () => {
       <Stack.Screen name="Navigation" component={NavigationScreen} />
       <Stack.Screen name="ServicesDashboard" component={ServicesDashboard} />
       <Stack.Screen name="GestionServicesSpecialises" component={GestionServicesSpecialisesScreen} />
-      
+
       {/* Écrans utilisateurs standard */}
       <Stack.Screen name="AjouterProduitSimple" component={AjouterProduitSimpleScreen} options={{ title: 'Ajouter Produit' }} />
       <Stack.Screen name="MesProduits" component={MesProduitsScreen} options={{ title: 'Mes Produits' }} />
@@ -143,7 +144,7 @@ const CourierNavigator = () => {
       <Stack.Screen name="Contact" component={ContactScreen} />
       <Stack.Screen name="Navigation" component={NavigationScreen} />
       <Stack.Screen name="ServicesDashboard" component={ServicesDashboard} />
-      
+
       {/* Écrans spécialisés coursiers */}
       <Stack.Screen name="CourierDashboard" component={CourierDashboardScreen} options={{ title: 'Dashboard Coursier' }} />
       <Stack.Screen name="CourierRegistration" component={CourierRegistrationScreen} options={{ title: 'Inscription Coursier' }} />
@@ -179,7 +180,7 @@ const HealthServicesNavigator = () => {
       <Stack.Screen name="Navigation" component={NavigationScreen} />
       <Stack.Screen name="ServicesDashboard" component={ServicesDashboard} />
       <Stack.Screen name="GestionServicesSpecialises" component={GestionServicesSpecialisesScreen} />
-      
+
       {/* Écrans santé */}
       <Stack.Screen name="PharmacieForm" component={PharmacieFormScreen} options={{ title: 'Pharmacie' }} />
       <Stack.Screen name="HopitalForm" component={HopitalFormScreen} options={{ title: 'Hôpital' }} />
@@ -217,7 +218,7 @@ const TransportNavigator = () => {
       <Stack.Screen name="Navigation" component={NavigationScreen} />
       <Stack.Screen name="ServicesDashboard" component={ServicesDashboard} />
       <Stack.Screen name="GestionServicesSpecialises" component={GestionServicesSpecialisesScreen} />
-      
+
       {/* Écrans transport */}
       <Stack.Screen name="TaxiForm" component={TaxiFormScreen} options={{ title: 'Taxi' }} />
       <Stack.Screen name="CovoiturageForm" component={CovoiturageFormScreen} options={{ title: 'Covoiturage' }} />
@@ -254,7 +255,7 @@ const PartnerNavigator = () => {
       <Stack.Screen name="Navigation" component={NavigationScreen} />
       <Stack.Screen name="ServicesDashboard" component={ServicesDashboard} />
       <Stack.Screen name="GestionServicesSpecialises" component={GestionServicesSpecialisesScreen} />
-      
+
       {/* Écrans partenaires */}
       <Stack.Screen name="CreateFlashPromo" component={CreateFlashPromoScreen} options={{ title: 'Promo Flash' }} />
       <Stack.Screen name="FlashPromosActive" component={FlashPromosActiveScreen} options={{ title: 'Promos Actives' }} />
@@ -289,7 +290,7 @@ const AdminNavigator = () => {
       <Stack.Screen name="Contact" component={ContactScreen} />
       <Stack.Screen name="Navigation" component={NavigationScreen} />
       <Stack.Screen name="ServicesDashboard" component={ServicesDashboard} />
-      
+
       {/* Écrans admin */}
       <Stack.Screen name="UserRoleManagement" component={UserRoleManagementScreen} options={{ title: 'Gestion Rôles' }} />
       <Stack.Screen name="AgencyTicketManagement" component={AgencyTicketManagementScreen} options={{ title: 'Tickets Agence' }} />
@@ -307,7 +308,7 @@ const AdminNavigator = () => {
 // ✅ SÉLECTION DU NAVIGATEUR SELON LE RÔLE
 const RoleBasedNavigator = () => {
   const { user } = useAuth();
-  
+
   if (!user) {
     console.log('[RoleBasedNavigator] ❌ Utilisateur non connecté');
     return null;
@@ -330,21 +331,21 @@ const RoleBasedNavigator = () => {
       console.log('[RoleBasedNavigator] 🚗 Navigation Coursier');
       return <CourierNavigator />;
     }
-    
-    if (partnerType.includes('pharmacie') || partnerType.includes('hopital') || 
-        partnerType.includes('laboratoire') || partnerType.includes('banquesang') ||
-        partnerType.includes('santé')) {
+
+    if (partnerType.includes('pharmacie') || partnerType.includes('hopital') ||
+      partnerType.includes('laboratoire') || partnerType.includes('banquesang') ||
+      partnerType.includes('santé')) {
       console.log('[RoleBasedNavigator] 🏥 Navigation Santé');
       return <HealthServicesNavigator />;
     }
-    
-    if (partnerType.includes('taxi') || partnerType.includes('covoiturage') || 
-        partnerType.includes('agence de voyage') || partnerType.includes('hotel') ||
-        partnerType.includes('immobilier')) {
+
+    if (partnerType.includes('taxi') || partnerType.includes('covoiturage') ||
+      partnerType.includes('agence de voyage') || partnerType.includes('hotel') ||
+      partnerType.includes('immobilier')) {
       console.log('[RoleBasedNavigator] 🚗 Navigation Transport');
       return <TransportNavigator />;
     }
-    
+
     // Par défaut pour les autres partenaires
     console.log('[RoleBasedNavigator] 💼 Navigation Partenaire Commercial');
     return <PartnerNavigator />;

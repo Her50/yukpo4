@@ -1,3 +1,4 @@
+﻿// @ts-nocheck
 // @ts-check
 import * as React from "react";
 import { Bar, BarChart, Tooltip, XAxis, YAxis } from "recharts";

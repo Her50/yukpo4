@@ -15,6 +15,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import InternalShareButton from '../../components/InternalShareButton';
 import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 import SafeIcon from '../../components/SafeIcon';
 import { NativeButton, NativeCard, NativeInput } from '../../components/SafeNativeDesign';
@@ -480,7 +481,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
     const handleAddMeal = () => {
         setNewMealDay('Lundi');
         setNewMealDayNumber(1);
-        setNewMealType('dejeuner');
+        setNewMealType('dejeuner' as any);
         setNewMealName('');
         setNewMealServings('4');
         setNewMealCost('');
@@ -1372,6 +1373,29 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                                 disabled={exportingRecipePDF}
                                 loading={exportingRecipePDF}
                             />
+                            {/* ✅ NOUVEAU 2026-03-14: Partage interne recette */}
+                            {generatedRecipe && (
+                                <View style={{ alignItems: 'center', marginTop: 8 }}>
+                                    <InternalShareButton
+                                        payload={{
+                                            contentType: 'menu',
+                                            title: generatedRecipe.recipe_name || 'Recette',
+                                            description: `${generatedRecipe.total_cost ? generatedRecipe.total_cost + ' FCFA' : ''} · ${generatedRecipe.servings || ''} portions`,
+                                            extraData: {
+                                                recipe_name: generatedRecipe.recipe_name,
+                                                ingredients: generatedRecipe.ingredients,
+                                                total_cost: generatedRecipe.total_cost,
+                                                servings: generatedRecipe.servings,
+                                            },
+                                        }}
+                                        iconSize={16}
+                                        iconColor="#059669"
+                                        showLabel
+                                        label="Envoyer à un utilisateur"
+                                        style={{ backgroundColor: '#ECFDF5', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 8 }}
+                                    />
+                                </View>
+                            )}
                         </View>
                     </View>
                 </View>
@@ -1446,7 +1470,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                                         <Text style={[styles.shoppingTableCell, { flex: 2 }]} numberOfLines={2}>
                                             {item.recipeName}
                                         </Text>
-                                        <View style={[styles.shoppingTableCell, { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 2, paddingVertical: 2, paddingHorizontal: 2 }]}>
+                                        <View style={[styles.shoppingTableCell as any, { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 2, paddingVertical: 2, paddingHorizontal: 2 }]}>
                                             <TouchableOpacity
                                                 onPress={() => updateItemTimes(item.id, Math.max(1, item.times - 1))}
                                                 style={styles.timesButton}
@@ -1469,7 +1493,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                                                 <Text style={styles.timesButtonText}>+</Text>
                                             </TouchableOpacity>
                                         </View>
-                                        <View style={[styles.shoppingTableCell, { flex: 1.5, alignItems: 'center', justifyContent: 'center', paddingVertical: 4 }]}>
+                                        <View style={[styles.shoppingTableCell as any, { flex: 1.5, alignItems: 'center', justifyContent: 'center', paddingVertical: 4 }]}>
                                             <Text style={[styles.costCellText, { color: modernColors.primary, fontWeight: '700' }]}>
                                                 {formatPrice(calculateItemCost(item))}
                                             </Text>
@@ -1591,7 +1615,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                                         <Text style={[styles.shoppingTableCell, { flex: 2 }]} numberOfLines={2}>
                                             {item.recipeName}
                                         </Text>
-                                        <View style={[styles.shoppingTableCell, { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 2, paddingVertical: 2, paddingHorizontal: 2 }]}>
+                                        <View style={[styles.shoppingTableCell as any, { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 2, paddingVertical: 2, paddingHorizontal: 2 }]}>
                                             <TouchableOpacity
                                                 onPress={() => updateItemTimes(item.id, Math.max(1, item.times - 1))}
                                                 style={styles.timesButton}
@@ -1614,7 +1638,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                                                 <Text style={styles.timesButtonText}>+</Text>
                                             </TouchableOpacity>
                                         </View>
-                                        <View style={[styles.shoppingTableCell, { flex: 1.5, alignItems: 'center', justifyContent: 'center', paddingVertical: 4 }]}>
+                                        <View style={[styles.shoppingTableCell as any, { flex: 1.5, alignItems: 'center', justifyContent: 'center', paddingVertical: 4 }]}>
                                             <Text style={[styles.costCellText, { color: modernColors.primary, fontWeight: '700' }]}>
                                                 {formatPrice(calculateItemCost(item))}
                                             </Text>
@@ -1708,7 +1732,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
 
                                     {editableShoppingList.length > 0 ? editableShoppingList.map((item: any, index: number) => (
                                         <View key={item.id || index} style={styles.shoppingListTableRow}>
-                                            <View style={[styles.shoppingListTableCell, { flex: 2 }]}>
+                                            <View style={[styles.shoppingListTableCell as any, { flex: 2 }]}>
                                                 <TextInput
                                                     style={[styles.editableCellInput, { fontWeight: '600' }]}
                                                     value={item.ingredient_name}
@@ -1720,7 +1744,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                                                     placeholder="Ingrédient"
                                                 />
                                             </View>
-                                            <View style={[styles.shoppingListTableCell, { flex: 1.5, flexDirection: 'row', gap: 4, alignItems: 'center' }]}>
+                                            <View style={[styles.shoppingListTableCell as any, { flex: 1.5, flexDirection: 'row', gap: 4, alignItems: 'center' }]}>
                                                 <TextInput
                                                     style={[styles.editableCellInput, { flex: 1, minWidth: 50 }]}
                                                     value={String(item.quantity)}
@@ -1734,7 +1758,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                                                 />
                                                 <Text style={{ fontSize: 11, color: '#6B7280' }}>{item.unit}</Text>
                                             </View>
-                                            <View style={[styles.shoppingListTableCell, { flex: 1.5 }]}>
+                                            <View style={[styles.shoppingListTableCell as any, { flex: 1.5 }]}>
                                                 <TextInput
                                                     style={[styles.editableCellInput, { color: modernColors.primary, fontWeight: '700' }]}
                                                     value={String(item.actual_price || item.estimated_price || 0)}
@@ -1751,7 +1775,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                                             <Text style={[styles.shoppingListTableCell, { flex: 2, fontSize: 10 }]} numberOfLines={2}>
                                                 {item.associated_meals?.join(', ') || ''}
                                             </Text>
-                                            <View style={[styles.shoppingListTableCell, { flex: 0.8, alignItems: 'center', justifyContent: 'center' }]}>
+                                            <View style={[styles.shoppingListTableCell as any, { flex: 0.8, alignItems: 'center', justifyContent: 'center' }]}>
                                                 <TouchableOpacity
                                                     onPress={() => removeShoppingListItem(index)}
                                                     style={{

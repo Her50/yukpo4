@@ -219,7 +219,7 @@ const BourseLivreScreen: React.FC = () => {
                     prix_max: Math.round(base * 1.3),
                     devise: 'FCFA',
                     conseil: `Pour un livre en état "${livre.etat_livre}", le prix moyen observé est d'environ ${base} FCFA.`,
-                };
+                } as any;
             }
         );
         if (result.success && result.data) {

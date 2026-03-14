@@ -12,8 +12,8 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { NativeButton } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeButton } from '../../components/SafeNativeDesign';
 import { immobilierService } from '../../services/immobilierService';
 import { modernColors } from '../../theme/modernTheme';
 
@@ -39,7 +39,7 @@ const ImmobilierPriceAlertsScreen: React.FC = () => {
             setError(null);
             const response = await immobilierService.getMyPriceAlerts();
             if (response.success && response.data) {
-                setAlerts(response.data);
+                setAlerts((response as any).data);
             } else {
                 setError('Erreur lors du chargement des alertes');
             }

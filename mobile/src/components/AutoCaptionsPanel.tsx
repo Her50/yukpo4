@@ -12,8 +12,8 @@ import {
 } from 'react-native';
 import { captionsService, Subtitle } from '../services/captionsService';
 import { modernColors } from '../theme/modernTheme';
-import { NativeCard } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
+import { NativeCard } from './SafeNativeDesign';
 
 interface AutoCaptionsPanelProps {
     videoUrl: string;
@@ -70,7 +70,7 @@ export const AutoCaptionsPanel: React.FC<AutoCaptionsPanelProps> = ({
             const result = await captionsService.generateCaptions({
                 video_url: videoUrl,
                 lang,
-                style: selectedStyle,
+                style: selectedStyle as any,
                 position: 'auto',
             });
 
@@ -83,10 +83,10 @@ export const AutoCaptionsPanel: React.FC<AutoCaptionsPanelProps> = ({
             onCaptionsGenerated(result.subtitles, result.subtitle_file_url || '');
         } catch (error: any) {
             console.error('[AutoCaptionsPanel] Error:', error);
-            
+
             // ✅ CORRIGÉ: Messages d'erreur plus clairs selon le type d'erreur
             let errorMessage = 'Impossible de générer les sous-titres';
-            
+
             if (error?.message) {
                 if (error.message.includes('500') || error.message.includes('Erreur 500')) {
                     errorMessage = 'Erreur serveur : Les sous-titres n\'ont pas pu être générés.\n\nVérifiez que la vidéo contient de l\'audio et est accessible.';
@@ -98,7 +98,7 @@ export const AutoCaptionsPanel: React.FC<AutoCaptionsPanelProps> = ({
                     errorMessage = error.message;
                 }
             }
-            
+
             Alert.alert('Erreur de génération', errorMessage, [{ text: 'OK' }]);
         } finally {
             setLoading(false);

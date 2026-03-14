@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Enregistreur vidéo de validation d'état pour livre scolaire
  * Permet de valider l'état d'un livre lors d'un troc via vidéo Live

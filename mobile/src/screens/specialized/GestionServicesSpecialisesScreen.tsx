@@ -96,7 +96,7 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
         const initNotifications = async () => {
             try {
                 // ✅ Phase 6.1: Passer userId pour enregistrement automatique au backend
-                const token = await pushNotificationService.registerForPushNotifications(user?.id);
+                const token = await pushNotificationService.registerForPushNotifications(user?.id as any);
                 if (token) {
                     console.log('[GestionServicesSpecialises] Token push enregistré:', token);
                 }

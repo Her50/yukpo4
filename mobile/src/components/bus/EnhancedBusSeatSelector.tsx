@@ -216,15 +216,13 @@ const EnhancedBusSeatSelector: React.FC<EnhancedBusSeatSelectorProps> = ({
         },
     });
 
-    const animatedStyle = useAnimatedStyle(() => {
-        return {
-            transform: [
-                { scale: scale.value },
-                { translateX: translateX.value },
-                { translateY: translateY.value },
-            ],
-        };
-    });
+    const animatedStyle = useAnimatedStyle((() => ({
+        transform: [
+            { scale: scale.value },
+            { translateX: translateX.value },
+            { translateY: translateY.value },
+        ],
+    })) as any);
 
     const getSeatStyle = (status: string, seat: any) => {
         const baseStyle = [styles.seat];

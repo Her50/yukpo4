@@ -20,13 +20,13 @@
  * ```
  */
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { intelligentProductAutocomplete } from '../services/intelligentProductAutocomplete';
 
 export interface SmartSuggestion {
     value: string;
     weight: number;       // Poids (0-100)
-    source: 'conditional' | 'history' | 'popular' | 'ai' | 'static';
+    source: 'conditional' | 'history' | 'popular' | 'ai' | 'static' | 'rules';
     relevance: number;    // Pertinence (0-100)
 }
 
@@ -46,20 +46,20 @@ export function useSmartSuggestions(
 ): SmartSuggestion[] {
     const [suggestions, setSuggestions] = useState<SmartSuggestion[]>([]);
     const [isLoading, setIsLoading] = useState(false);
-    
+
     const enabled = options?.enabled !== false;
     const maxSuggestions = options?.maxSuggestions || 10;
     const minRelevance = options?.minRelevance || 30;
-    
+
     useEffect(() => {
         if (!enabled) {
             setSuggestions([]);
             return;
         }
-        
+
         const fetchSuggestions = async () => {
             setIsLoading(true);
-            
+
             try {
                 const rawSuggestions = await intelligentProductAutocomplete.getSuggestions(
                     productType,
@@ -67,7 +67,7 @@ export function useSmartSuggestions(
                     previousFields,
                     searchQuery
                 );
-                
+
                 // Transformer en SmartSuggestion avec pertinence
                 const smartSuggestions: SmartSuggestion[] = rawSuggestions
                     .map(sug => ({
@@ -79,9 +79,9 @@ export function useSmartSuggestions(
                     .filter(sug => sug.relevance >= minRelevance)
                     .sort((a, b) => b.relevance - a.relevance)
                     .slice(0, maxSuggestions);
-                
+
                 setSuggestions(smartSuggestions);
-                
+
             } catch (error) {
                 console.error('[useSmartSuggestions] Erreur:', error);
                 setSuggestions([]);
@@ -89,13 +89,13 @@ export function useSmartSuggestions(
                 setIsLoading(false);
             }
         };
-        
+
         // Debounce pour éviter trop d'appels
         const timeoutId = setTimeout(fetchSuggestions, 200);
-        
+
         return () => clearTimeout(timeoutId);
     }, [productType, fieldKey, JSON.stringify(previousFields), searchQuery, enabled]);
-    
+
     return suggestions;
 }
 
@@ -104,29 +104,29 @@ export function useSmartSuggestions(
  */
 function calculateRelevance(value: string, query: string, baseWeight: number): number {
     if (!query) return baseWeight;
-    
+
     const valueLower = value.toLowerCase();
     const queryLower = query.toLowerCase();
-    
+
     // Match exact au début
     if (valueLower.startsWith(queryLower)) {
         return Math.min(100, baseWeight + 30);
     }
-    
+
     // Match exact quelque part
     if (valueLower.includes(queryLower)) {
         return Math.min(100, baseWeight + 20);
     }
-    
+
     // Match fuzzy (mots)
     const queryWords = queryLower.split(' ');
     const matchingWords = queryWords.filter(word => valueLower.includes(word));
-    
+
     if (matchingWords.length > 0) {
         const matchRatio = matchingWords.length / queryWords.length;
         return Math.min(100, baseWeight + Math.round(matchRatio * 15));
     }
-    
+
     // Pas de match direct, retourner poids de base
     return baseWeight;
 }
@@ -154,7 +154,7 @@ export function useConditionalSuggestions(
     previousFields: Record<string, any> = {}
 ): string[] {
     const [suggestions, setSuggestions] = useState<string[]>([]);
-    
+
     useEffect(() => {
         const fetchConditional = async () => {
             try {
@@ -165,26 +165,26 @@ export function useConditionalSuggestions(
                     setSuggestions(modeles);
                     return;
                 }
-                
+
                 if (fieldKey === 'modeleAutomobile' && previousFields.marqueAutomobile) {
                     const { getModelesByMarque } = await import('../utils/parseExistingModalities');
                     const modeles = getModelesByMarque(previousFields.marqueAutomobile, 'automobile');
                     setSuggestions(modeles);
                     return;
                 }
-                
+
                 // Autres règles conditionnelles...
                 setSuggestions([]);
-                
+
             } catch (error) {
                 console.error('[useConditionalSuggestions] Erreur:', error);
                 setSuggestions([]);
             }
         };
-        
+
         fetchConditional();
     }, [productType, fieldKey, JSON.stringify(previousFields)]);
-    
+
     return suggestions;
 }
 

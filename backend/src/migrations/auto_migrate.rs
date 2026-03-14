@@ -19443,6 +19443,54 @@ pub async fn ensure_platform_settings_table(pool: &PgPool) -> Result<(), sqlx::E
     Ok(())
 }
 
+/// ✅ NOUVEAU 2026-03-14 : Table internal_shares pour le partage interne de produits entre utilisateurs
+pub async fn ensure_internal_shares_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification de la table internal_shares...");
+
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS internal_shares (
+            id SERIAL PRIMARY KEY,
+            sender_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            recipient_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            service_id INTEGER,
+            product_index INTEGER,
+            content_type TEXT NOT NULL DEFAULT 'product',
+            content_data JSONB DEFAULT '{}'::jsonb,
+            message TEXT DEFAULT '',
+            is_read BOOLEAN DEFAULT FALSE,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    // Ajouter les colonnes si elles n'existent pas (pour migration sur table existante)
+    let _ = sqlx::query("ALTER TABLE internal_shares ADD COLUMN IF NOT EXISTS content_type TEXT NOT NULL DEFAULT 'product'")
+        .execute(pool).await;
+    let _ = sqlx::query("ALTER TABLE internal_shares ADD COLUMN IF NOT EXISTS content_data JSONB DEFAULT '{}'::jsonb")
+        .execute(pool).await;
+    let _ = sqlx::query("ALTER TABLE internal_shares ALTER COLUMN service_id DROP NOT NULL")
+        .execute(pool)
+        .await;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_internal_shares_recipient ON internal_shares(recipient_id, created_at DESC)",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_internal_shares_sender ON internal_shares(sender_id, created_at DESC)",
+    )
+    .execute(pool)
+    .await?;
+
+    info!("✅ Table internal_shares créée avec succès");
+    Ok(())
+}
+
 /// ✅ NOUVEAU 2026-03-14 : Table navigation_checkpoint_comments pour les commentaires sur les alertes de navigation
 pub async fn ensure_navigation_checkpoint_comments_table(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification de la table navigation_checkpoint_comments...");

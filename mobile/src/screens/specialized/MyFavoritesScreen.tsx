@@ -27,7 +27,7 @@ const MyFavoritesScreen: React.FC = () => {
             setError(null);
             const response = await immobilierService.getMyFavorites();
             if (response.success && response.data) {
-                setFavorites(response.data);
+                setFavorites((response as any).data);
             } else {
                 setError('Erreur lors du chargement des favoris');
             }

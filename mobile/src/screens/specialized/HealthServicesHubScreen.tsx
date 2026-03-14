@@ -268,7 +268,7 @@ const HealthServicesHubScreen: React.FC = () => {
                             activeOpacity={0.8}
                         >
                             <LinearGradient
-                                colors={service.gradient}
+                                colors={service.gradient as any}
                                 style={styles.cardGradient}
                                 start={{ x: 0, y: 0 }}
                                 end={{ x: 1, y: 1 }}

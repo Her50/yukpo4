@@ -47,7 +47,7 @@ export const ColorGradingPanel: React.FC<ColorGradingPanelProps> = ({
             const response = await colorGradingService.applyGrading({
                 media_url: mediaUrl,
                 media_id: mediaId,
-                style_preset: preset,
+                style_preset: preset as any,
                 intensity,
                 maintain_skin_tones: true,
             });

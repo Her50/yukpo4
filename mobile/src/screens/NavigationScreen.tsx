@@ -10,6 +10,8 @@ import {
     TouchableOpacity, View
 } from 'react-native';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE, Region } from 'react-native-maps';
+import CheckpointCommentsSection from '../components/CheckpointCommentsSection';
+import InternalShareButton from '../components/InternalShareButton';
 import LocationSelector, { LocationObject } from '../components/LocationSelector';
 import { NativeCard } from '../components/NativeDesign';
 import SafeIcon from '../components/SafeIcon';
@@ -565,7 +567,7 @@ const NavigationScreen: React.FC = () => {
     const sharePerformance = useCallback(async () => {
         if (!aiInsights) return;
         const hs = aiInsights.health_score || {}, co2 = aiInsights.co2_impact || {}, gam = aiInsights.gamification || {};
-        await socialSharing.shareNavigationPerformance({ period: activityPeriod, distanceKm: (aiInsights.summary?.total_distance_meters || 0) / 1000, sessions: aiInsights.summary?.total_sessions || 0, calories: aiInsights.summary?.total_calories || 0, healthScore: hs.score || 0, healthLabel: hs.label || '', co2SavedKg: (co2.saved_grams || 0) / 1000, vo2max: aiInsights.fitness?.vo2max || 0, fitnessLevel: aiInsights.fitness?.level || '', streak: gam.streak?.current || 0, badgeCount: gam.badges?.length || 0, points: gam.points || 0, userId: user?.id });
+        await socialSharing.shareNavigationPerformance({ period: activityPeriod, distanceKm: (aiInsights.summary?.total_distance_meters || 0) / 1000, sessions: aiInsights.summary?.total_sessions || 0, calories: aiInsights.summary?.total_calories || 0, healthScore: hs.score || 0, healthLabel: hs.label || '', co2SavedKg: (co2.saved_grams || 0) / 1000, vo2max: aiInsights.fitness?.vo2max || 0, fitnessLevel: aiInsights.fitness?.level || '', streak: gam.streak?.current || 0, badgeCount: gam.badges?.length || 0, points: Number(gam.points) || 0, userId: user?.id as any });
     }, [aiInsights, activityPeriod, user]);
 
     const loadActivityStats = useCallback(async (period: string = 'week') => {
@@ -1383,6 +1385,29 @@ const NavigationScreen: React.FC = () => {
                                             <Text style={st.shareStatsSub}>Invite tes amis à rejoindre Yukpo !</Text>
                                         </View>
                                     </TouchableOpacity>
+                                    {/* ✅ NOUVEAU 2026-03-14: Partage interne des stats navigation */}
+                                    <View style={{ flexDirection: 'row', justifyContent: 'center', marginBottom: 8 }}>
+                                        <InternalShareButton
+                                            payload={{
+                                                contentType: 'navigation_stats',
+                                                title: 'Mes statistiques de navigation',
+                                                description: `${(activitySummary.total_distance_km || 0).toFixed(1)} km · ${activitySummary.total_sessions || 0} sessions · ${Math.round(activitySummary.total_calories || 0)} cal`,
+                                                extraData: {
+                                                    total_distance_km: activitySummary.total_distance_km,
+                                                    total_sessions: activitySummary.total_sessions,
+                                                    total_calories: activitySummary.total_calories,
+                                                    total_duration_minutes: activitySummary.total_duration_minutes,
+                                                    health_score: aiInsights?.health_score?.score,
+                                                    period: activityPeriod,
+                                                },
+                                            }}
+                                            iconSize={16}
+                                            iconColor="#6366F1"
+                                            showLabel
+                                            label="Envoyer à un ami"
+                                            style={{ backgroundColor: '#EEF2FF', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 8 }}
+                                        />
+                                    </View>
                                     {/* Best session */}
                                     {activitySummary.best_session && (
                                         <NativeCard style={[st.secCard, { backgroundColor: '#FFFBEB' }]}>
@@ -1542,6 +1567,26 @@ const NavigationScreen: React.FC = () => {
                                                             </TouchableOpacity>
                                                         ))}
                                                     </View>}
+                                                    {/* ✅ NOUVEAU 2026-03-14: Partage interne score santé */}
+                                                    <View style={{ alignItems: 'center', marginTop: 10 }}>
+                                                        <InternalShareButton
+                                                            payload={{
+                                                                contentType: 'health_stats',
+                                                                title: `Score Santé : ${aiInsights.health_score.score}/100`,
+                                                                description: aiInsights.health_score.label || '',
+                                                                extraData: {
+                                                                    score: aiInsights.health_score.score,
+                                                                    label: aiInsights.health_score.label,
+                                                                    breakdown: aiInsights.health_score.breakdown,
+                                                                },
+                                                            }}
+                                                            iconSize={14}
+                                                            iconColor={aiInsights.health_score.score >= 80 ? '#10B981' : '#F59E0B'}
+                                                            showLabel
+                                                            label="Envoyer à un ami"
+                                                            style={{ backgroundColor: (aiInsights.health_score.score >= 80 ? '#10B981' : '#F59E0B') + '15', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 6 }}
+                                                        />
+                                                    </View>
                                                 </NativeCard>
                                             )}
                                             {/* Tips */}

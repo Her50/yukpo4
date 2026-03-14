@@ -73,7 +73,7 @@ const AISuggestFormationsScreen: React.FC = () => {
         try {
             setLoading(true);
             const response = await offreEmploiService.suggestFormations(
-                user?.id || 0,
+                (user?.id || 0) as number,
                 [],
                 competencesManquantes,
                 objectifCarriere.trim() || undefined

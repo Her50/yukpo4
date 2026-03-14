@@ -88,15 +88,18 @@ const UserMentionPicker: React.FC<UserMentionPickerProps> = ({
             );
 
             if (response.success && response.data) {
-                const users = response.data.data || [];
+                // response.data = backend JSON = { success, data: User[], count }
+                const backendResp = response.data as any;
+                const users: User[] = backendResp?.data || (Array.isArray(backendResp) ? backendResp : []);
+                console.log('[UserMentionPicker] searchUsers résultats:', users.length);
 
                 // Tri intelligent : exact matches d'abord, puis partiels
                 const sortedUsers = users.sort((a, b) => {
                     const queryLower = query.toLowerCase();
-                    const aName = a.nom_complet.toLowerCase();
-                    const bName = b.nom_complet.toLowerCase();
-                    const aEmail = a.email.toLowerCase();
-                    const bEmail = b.email.toLowerCase();
+                    const aName = (a.nom_complet || '').toLowerCase();
+                    const bName = (b.nom_complet || '').toLowerCase();
+                    const aEmail = (a.email || '').toLowerCase();
+                    const bEmail = (b.email || '').toLowerCase();
 
                     // Priorité aux correspondances exactes
                     const aExactName = aName === queryLower;
@@ -145,7 +148,8 @@ const UserMentionPicker: React.FC<UserMentionPickerProps> = ({
             );
 
             if (response.success && response.data) {
-                setSearchResults(response.data.data || []);
+                const backendResp = response.data as any;
+                setSearchResults(backendResp?.data || (Array.isArray(backendResp) ? backendResp : []));
             }
         } catch (error) {
             console.error('[UserMentionPicker] Erreur recherche catégorie:', error);

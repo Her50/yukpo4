@@ -11,15 +11,15 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import { KeyboardAwareScreen } from '../components/KeyboardAwareScreen';
 import ModernGPSModal from '../components/ModernGPSModal';
-import { NativeButton } from '../components/SafeNativeDesign';
 import SafeIcon from '../components/SafeIcon';
+import { NativeButton } from '../components/SafeNativeDesign';
 import SavedSearches from '../components/SavedSearches';
 import SearchFilters, { SearchFilters as SearchFiltersType } from '../components/SearchFilters';
 import SearchHistory from '../components/SearchHistory';
 import SpecializedSearchAutocomplete from '../components/SpecializedSearchAutocomplete';
 import VoiceSearchButton from '../components/VoiceSearchButton';
-import { KeyboardAwareScreen } from '../components/KeyboardAwareScreen';
 import { useLocation } from '../contexts/LocationContext';
 import { apiPost } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
@@ -61,7 +61,7 @@ const SpecializedSearchScreen: React.FC = () => {
     const [searchMoment, setSearchMoment] = useState<'now' | 'later' | 'specific'>('now');
     const [loading, setLoading] = useState(false);
     const [showFilters, setShowFilters] = useState(false);
-    const [filters, setFilters] = useState<SearchFiltersType>({});
+    const [filters, setFilters] = useState<SearchFiltersType>({} as any);
 
     // Initialiser le GPS avec la position actuelle si disponible
     useEffect(() => {
@@ -193,186 +193,186 @@ const SpecializedSearchScreen: React.FC = () => {
 
     return (
         <KeyboardAwareScreen style={styles.container}>
-                {/* Header */}
-                <View style={styles.header}>
+            {/* Header */}
+            <View style={styles.header}>
+                <TouchableOpacity
+                    style={styles.backButton}
+                    onPress={() => navigation.goBack()}
+                >
+                    <SafeIcon name="arrow-left" size={24} color={modernColors.text} />
+                </TouchableOpacity>
+                <View style={styles.headerContent}>
+                    {serviceIcon && (
+                        <Text style={styles.serviceIcon}>{serviceIcon}</Text>
+                    )}
+                    <Text style={styles.serviceTitle}>{serviceName}</Text>
+                    <Text style={styles.serviceSubtitle}>Recherche spécialisée</Text>
+                </View>
+            </View>
+
+            {/* ✅ NOUVEAU Phase 4.4 & 4.5: Historique et recherches sauvegardées */}
+            {!searchQuery && (
+                <>
+                    <SavedSearches
+                        onSelect={(query, type) => {
+                            setSearchQuery(query);
+                            if (type) {
+                                // Optionnel: mettre à jour le type si différent
+                            }
+                        }}
+                        specializedType={specializedType}
+                    />
+                    <SearchHistory
+                        onSelect={(query, type) => {
+                            setSearchQuery(query);
+                        }}
+                        specializedType={specializedType}
+                    />
+                </>
+            )}
+
+            {/* Formulaire de recherche */}
+            <View style={styles.formContainer}>
+                {/* ✅ NOUVEAU Phase 4.2: Bouton filtres */}
+                <View style={styles.filtersHeader}>
+                    <Text style={styles.filtersTitle}>Filtres de recherche</Text>
                     <TouchableOpacity
-                        style={styles.backButton}
-                        onPress={() => navigation.goBack()}
+                        style={styles.filtersButton}
+                        onPress={() => setShowFilters(true)}
                     >
-                        <SafeIcon name="arrow-left" size={24} color={modernColors.text} />
+                        <SafeIcon name="filter" size={20} color={modernColors.primary} />
+                        <Text style={styles.filtersButtonText}>
+                            {Object.keys(filters).length > 0
+                                ? `${Object.keys(filters).length} filtre(s)`
+                                : 'Filtres'}
+                        </Text>
                     </TouchableOpacity>
-                    <View style={styles.headerContent}>
-                        {serviceIcon && (
-                            <Text style={styles.serviceIcon}>{serviceIcon}</Text>
-                        )}
-                        <Text style={styles.serviceTitle}>{serviceName}</Text>
-                        <Text style={styles.serviceSubtitle}>Recherche spécialisée</Text>
-                    </View>
                 </View>
 
-                {/* ✅ NOUVEAU Phase 4.4 & 4.5: Historique et recherches sauvegardées */}
-                {!searchQuery && (
-                    <>
-                        <SavedSearches
-                            onSelect={(query, type) => {
-                                setSearchQuery(query);
-                                if (type) {
-                                    // Optionnel: mettre à jour le type si différent
-                                }
-                            }}
-                            specializedType={specializedType}
-                        />
-                        <SearchHistory
-                            onSelect={(query, type) => {
-                                setSearchQuery(query);
-                            }}
-                            specializedType={specializedType}
-                        />
-                    </>
-                )}
-
-                {/* Formulaire de recherche */}
-                <View style={styles.formContainer}>
-                    {/* ✅ NOUVEAU Phase 4.2: Bouton filtres */}
-                    <View style={styles.filtersHeader}>
-                        <Text style={styles.filtersTitle}>Filtres de recherche</Text>
-                        <TouchableOpacity
-                            style={styles.filtersButton}
-                            onPress={() => setShowFilters(true)}
-                        >
-                            <SafeIcon name="filter" size={20} color={modernColors.primary} />
-                            <Text style={styles.filtersButtonText}>
-                                {Object.keys(filters).length > 0
-                                    ? `${Object.keys(filters).length} filtre(s)`
-                                    : 'Filtres'}
-                            </Text>
-                        </TouchableOpacity>
-                    </View>
-
-                    {/* ✅ NOUVEAU Phase 4.1: Champ de recherche avec autocomplete */}
-                    <View style={styles.inputGroup}>
-                        <View style={styles.searchHeader}>
-                            <Text style={styles.label}>Que recherchez-vous ?</Text>
-                            {/* ✅ NOUVEAU Phase 4.3: Bouton recherche vocale */}
-                            <VoiceSearchButton
-                                onTranscript={(text) => {
-                                    setSearchQuery(text);
-                                    // Optionnel: lancer la recherche automatiquement
-                                    // handleSearch();
-                                }}
-                            />
-                        </View>
-                        <SpecializedSearchAutocomplete
-                            specializedType={specializedType}
-                            onSelect={(query) => {
-                                setSearchQuery(query);
+                {/* ✅ NOUVEAU Phase 4.1: Champ de recherche avec autocomplete */}
+                <View style={styles.inputGroup}>
+                    <View style={styles.searchHeader}>
+                        <Text style={styles.label}>Que recherchez-vous ?</Text>
+                        {/* ✅ NOUVEAU Phase 4.3: Bouton recherche vocale */}
+                        <VoiceSearchButton
+                            onTranscript={(text) => {
+                                setSearchQuery(text);
                                 // Optionnel: lancer la recherche automatiquement
+                                // handleSearch();
                             }}
-                            placeholder={getPlaceholderExample(specializedType)}
-                            prefillQuery={searchQuery}
                         />
                     </View>
-
-                    {/* GPS */}
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Localisation (optionnel)</Text>
-                        <TouchableOpacity
-                            style={styles.gpsButton}
-                            onPress={() => setShowGPSModal(true)}
-                        >
-                            <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
-                            <Text style={styles.gpsButtonText}>
-                                {gpsData
-                                    ? `${gpsData.lat.toFixed(4)}, ${gpsData.lng.toFixed(4)}`
-                                    : 'Sélectionner une position GPS'}
-                            </Text>
-                            <SafeIcon name="chevron-right" size={20} color={modernColors.textSecondary} />
-                        </TouchableOpacity>
-                    </View>
-
-                    {/* Rayon de recherche */}
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Rayon de recherche : {searchRadius} km</Text>
-                        <View style={styles.radiusSelector}>
-                            {[10, 25, 50, 100].map((radius) => (
-                                <TouchableOpacity
-                                    key={radius}
-                                    style={[
-                                        styles.radiusButton,
-                                        searchRadius === radius && styles.radiusButtonActive,
-                                    ]}
-                                    onPress={() => setSearchRadius(radius)}
-                                >
-                                    <Text
-                                        style={[
-                                            styles.radiusButtonText,
-                                            searchRadius === radius && styles.radiusButtonTextActive,
-                                        ]}
-                                    >
-                                        {radius} km
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
-                        </View>
-                    </View>
-
-                    {/* Moment/Planning */}
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Quand ?</Text>
-                        <View style={styles.momentSelector}>
-                            <TouchableOpacity
-                                style={[
-                                    styles.momentButton,
-                                    searchMoment === 'now' && styles.momentButtonActive,
-                                ]}
-                                onPress={() => setSearchMoment('now')}
-                            >
-                                <SafeIcon
-                                    name="clock"
-                                    size={20}
-                                    color={searchMoment === 'now' ? '#fff' : modernColors.textSecondary}
-                                />
-                                <Text
-                                    style={[
-                                        styles.momentButtonText,
-                                        searchMoment === 'now' && styles.momentButtonTextActive,
-                                    ]}
-                                >
-                                    Maintenant
-                                </Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={[
-                                    styles.momentButton,
-                                    searchMoment === 'later' && styles.momentButtonActive,
-                                ]}
-                                onPress={() => setSearchMoment('later')}
-                            >
-                                <SafeIcon
-                                    name="calendar"
-                                    size={20}
-                                    color={searchMoment === 'later' ? '#fff' : modernColors.textSecondary}
-                                />
-                                <Text
-                                    style={[
-                                        styles.momentButtonText,
-                                        searchMoment === 'later' && styles.momentButtonTextActive,
-                                    ]}
-                                >
-                                    Plus tard
-                                </Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-
-                    {/* Bouton de recherche */}
-                    <NativeButton
-                        title={loading ? "Recherche en cours..." : "Rechercher"}
-                        onPress={handleSearch}
-                        variant="primary"
-                        style={styles.searchButton}
+                    <SpecializedSearchAutocomplete
+                        specializedType={specializedType}
+                        onSelect={(query) => {
+                            setSearchQuery(query);
+                            // Optionnel: lancer la recherche automatiquement
+                        }}
+                        placeholder={getPlaceholderExample(specializedType)}
+                        prefillQuery={searchQuery}
                     />
                 </View>
+
+                {/* GPS */}
+                <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Localisation (optionnel)</Text>
+                    <TouchableOpacity
+                        style={styles.gpsButton}
+                        onPress={() => setShowGPSModal(true)}
+                    >
+                        <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
+                        <Text style={styles.gpsButtonText}>
+                            {gpsData
+                                ? `${gpsData.lat.toFixed(4)}, ${gpsData.lng.toFixed(4)}`
+                                : 'Sélectionner une position GPS'}
+                        </Text>
+                        <SafeIcon name="chevron-right" size={20} color={modernColors.textSecondary} />
+                    </TouchableOpacity>
+                </View>
+
+                {/* Rayon de recherche */}
+                <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Rayon de recherche : {searchRadius} km</Text>
+                    <View style={styles.radiusSelector}>
+                        {[10, 25, 50, 100].map((radius) => (
+                            <TouchableOpacity
+                                key={radius}
+                                style={[
+                                    styles.radiusButton,
+                                    searchRadius === radius && styles.radiusButtonActive,
+                                ]}
+                                onPress={() => setSearchRadius(radius)}
+                            >
+                                <Text
+                                    style={[
+                                        styles.radiusButtonText,
+                                        searchRadius === radius && styles.radiusButtonTextActive,
+                                    ]}
+                                >
+                                    {radius} km
+                                </Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                </View>
+
+                {/* Moment/Planning */}
+                <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Quand ?</Text>
+                    <View style={styles.momentSelector}>
+                        <TouchableOpacity
+                            style={[
+                                styles.momentButton,
+                                searchMoment === 'now' && styles.momentButtonActive,
+                            ]}
+                            onPress={() => setSearchMoment('now')}
+                        >
+                            <SafeIcon
+                                name="clock"
+                                size={20}
+                                color={searchMoment === 'now' ? '#fff' : modernColors.textSecondary}
+                            />
+                            <Text
+                                style={[
+                                    styles.momentButtonText,
+                                    searchMoment === 'now' && styles.momentButtonTextActive,
+                                ]}
+                            >
+                                Maintenant
+                            </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[
+                                styles.momentButton,
+                                searchMoment === 'later' && styles.momentButtonActive,
+                            ]}
+                            onPress={() => setSearchMoment('later')}
+                        >
+                            <SafeIcon
+                                name="calendar"
+                                size={20}
+                                color={searchMoment === 'later' ? '#fff' : modernColors.textSecondary}
+                            />
+                            <Text
+                                style={[
+                                    styles.momentButtonText,
+                                    searchMoment === 'later' && styles.momentButtonTextActive,
+                                ]}
+                            >
+                                Plus tard
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+
+                {/* Bouton de recherche */}
+                <NativeButton
+                    title={loading ? "Recherche en cours..." : "Rechercher"}
+                    onPress={handleSearch}
+                    variant="primary"
+                    style={styles.searchButton}
+                />
+            </View>
 
             {/* Modal GPS */}
             <ModernGPSModal

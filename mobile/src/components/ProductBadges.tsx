@@ -120,7 +120,7 @@ export const ProductBadges: React.FC<ProductBadgesProps> = ({ product, service }
                 badge.gradient ? (
                     <LinearGradient
                         key={badge.type}
-                        colors={badge.gradient}
+                        colors={badge.gradient as any}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 1 }}
                         style={styles.badge}
