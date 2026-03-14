@@ -20,12 +20,13 @@ import {
 } from 'react-native';
 import SafeIcon from '../../components/SafeIcon';
 import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
+import ServiceTeamManager from '../../components/ServiceTeamManager';
 import { useAuth } from '../../contexts/AuthContext';
 import { immobilierService } from '../../services/immobilierService';
 import { modernColors } from '../../theme/modernTheme';
 import { getCurrencyIntelligently } from '../../utils/currencyUtils';
 
-type TabType = 'overview' | 'reservations' | 'properties' | 'ai';
+type TabType = 'overview' | 'reservations' | 'properties' | 'ai' | 'team';
 
 interface HotelProperty {
     id: number;
@@ -923,6 +924,7 @@ const HotelDashboardScreen: React.FC = () => {
                         { key: 'reservations', label: 'Réservations', icon: 'calendar' },
                         { key: 'properties', label: 'Mes biens', icon: 'building' },
                         { key: 'ai', label: 'IA', icon: 'sparkles' },
+                        { key: 'team', label: 'Équipe', icon: 'users' },
                     ] as { key: TabType; label: string; icon: string }[]).map(tab => (
                         <TouchableOpacity
                             key={tab.key}
@@ -949,6 +951,7 @@ const HotelDashboardScreen: React.FC = () => {
                 {activeTab === 'reservations' && renderReservationsTab()}
                 {activeTab === 'properties' && renderPropertiesTab()}
                 {activeTab === 'ai' && renderAITab()}
+                {activeTab === 'team' && <ServiceTeamManager serviceId={properties[0]?.service_id?.toString()} onClose={() => setActiveTab('overview')} />}
             </View>
 
             {/* Modals */}

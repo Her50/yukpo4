@@ -1,0 +1,18 @@
+﻿src/screens/specialized/AgenceVoyageFormScreen.tsx(692,29): error TS2657: JSX expressions must have one parent element.
+src/screens/specialized/AgenceVoyageFormScreen.tsx(694,25): error TS1005: ',' expected.
+src/screens/specialized/AgenceVoyageFormScreen.tsx(695,21): error TS1109: Expression expected.
+src/screens/specialized/AgenceVoyageFormScreen.tsx(702,17): error TS1128: Declaration or statement expected.
+src/screens/specialized/AgenceVoyageFormScreen.tsx(703,17): error TS2657: JSX expressions must have one parent element.
+src/screens/specialized/AgenceVoyageFormScreen.tsx(715,13): error TS1128: Declaration or statement expected.
+src/screens/specialized/AgenceVoyageFormScreen.tsx(716,9): error TS1109: Expression expected.
+src/screens/specialized/AgenceVoyageFormScreen.tsx(717,5): error TS1128: Declaration or statement expected.
+src/screens/specialized/AgenceVoyageFormScreen.tsx(731,1): error TS1128: Declaration or statement expected.
+src/screens/specialized/LaboratoireFormScreen.tsx(438,29): error TS2657: JSX expressions must have one parent element.
+src/screens/specialized/LaboratoireFormScreen.tsx(440,25): error TS1128: Declaration or statement expected.
+src/screens/specialized/LaboratoireFormScreen.tsx(441,21): error TS1109: Expression expected.
+src/screens/specialized/LaboratoireFormScreen.tsx(448,17): error TS1128: Declaration or statement expected.
+src/screens/specialized/LaboratoireFormScreen.tsx(449,17): error TS2657: JSX expressions must have one parent element.
+src/screens/specialized/LaboratoireFormScreen.tsx(458,13): error TS1128: Declaration or statement expected.
+src/screens/specialized/LaboratoireFormScreen.tsx(459,9): error TS1109: Expression expected.
+src/screens/specialized/LaboratoireFormScreen.tsx(460,5): error TS1128: Declaration or statement expected.
+src/screens/specialized/LaboratoireFormScreen.tsx(474,1): error TS1128: Declaration or statement expected.

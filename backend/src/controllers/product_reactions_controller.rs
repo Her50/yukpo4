@@ -90,11 +90,10 @@ pub async fn toggle_product_reaction(
     })?;
 
     if let Some(reaction) = existing {
-        // Retirer la réaction
+        // L'utilisateur a déjà cette réaction → la retirer (toggle off)
         let reaction_id: i32 =
             reaction.try_get("id").map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-        // ✅ CORRIGÉ 2025-12-11: Ajouter retry pour DELETE
         retry_query(
             &pool,
             || {
@@ -123,7 +122,42 @@ pub async fn toggle_product_reaction(
             "action": "removed"
         })))
     } else {
-        // ✅ CORRIGÉ 2025-12-11: Ajouter retry pour INSERT
+        // ✅ CORRIGÉ 2026-03-14: Une seule réaction par utilisateur par produit
+        // Supprimer toute réaction existante d'un autre type avant d'ajouter la nouvelle
+        let product_id_del = product_id_clone.clone();
+        retry_query(
+            &pool,
+            || {
+                let pool = pool.clone();
+                let user_id = user_id;
+                let service_id = service_id;
+                let product_id = product_id_del.clone();
+                Box::pin(async move {
+                    sqlx::query(
+                        r#"
+                        DELETE FROM product_reactions
+                        WHERE user_id = $1 AND service_id = $2 AND product_id = $3
+                        "#,
+                    )
+                    .bind(user_id)
+                    .bind(service_id)
+                    .bind(&product_id)
+                    .execute(&pool)
+                    .await
+                })
+            },
+            3,
+        )
+        .await
+        .map_err(|e| {
+            log::error!(
+                "[ProductReactions] Erreur suppression ancienne réaction: {}",
+                e
+            );
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+        // Insérer la nouvelle réaction
         retry_query(
             &pool,
             || {

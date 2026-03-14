@@ -21,6 +21,7 @@ import ModernGPSModal from '../../components/ModernGPSModal';
 import PrestationSelectorWithSchedule, { PrestationWithSchedule } from '../../components/PrestationSelectorWithSchedule';
 import SafeIcon from '../../components/SafeIcon';
 import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
+import ServiceTeamManager from '../../components/ServiceTeamManager';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { clearSavedFormData, useFormAutoSave } from '../../hooks/useFormAutoSave';
@@ -30,7 +31,7 @@ import { apiGet, apiPost, servicesApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 
 const STORAGE_KEY = '@hopital_form';
-type TabType = 'overview' | 'service' | 'slots' | 'analytics';
+type TabType = 'overview' | 'service' | 'slots' | 'analytics' | 'team';
 
 const TYPES_ETABLISSEMENT = [
     { key: 'Hôpital', icon: 'building' },
@@ -413,6 +414,7 @@ const HopitalFormScreen: React.FC = () => {
             { key: 'service', label: 'Service', icon: 'settings' },
             { key: 'slots', label: 'Créneaux', icon: 'calendar' },
             { key: 'analytics', label: 'Stats', icon: 'bar-chart-2' },
+            { key: 'team', label: 'Équipe', icon: 'users' },
         ];
         return (
             <View style={s.container}>
@@ -436,6 +438,7 @@ const HopitalFormScreen: React.FC = () => {
                     {activeTab === 'service' && renderServiceForm()}
                     {activeTab === 'slots' && renderSlotsTab()}
                     {activeTab === 'analytics' && renderAnalytics()}
+                    {activeTab === 'team' && <ServiceTeamManager serviceId={serviceId?.toString()} onClose={() => setActiveTab('overview')} />}
                 </View>
                 <ModernGPSModal visible={showGPSModal} onClose={() => setShowGPSModal(false)} onSelect={handleGPSSelect} currentLocation={location ? { lat: location.coords.latitude, lng: location.coords.longitude } : null} title="Localisation" />
             </View>

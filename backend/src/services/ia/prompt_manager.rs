@@ -57,6 +57,16 @@ impl PromptManager {
                 .map_err(|e| format!("Erreur lecture prompt creation_offre_emploi: {}", e))?,
         );
 
+        // ✅ NOUVEAU 2026-03-14: Prompt pour classification d'équivalence produits (comparaison prix supermarché)
+        prompts.insert(
+            "comparaison_prix_equivalence".to_string(),
+            fs::read_to_string("ia_prompts/comparaison_prix_equivalence_prompt.md")
+                .await
+                .map_err(|e| {
+                    format!("Erreur lecture prompt comparaison_prix_equivalence: {}", e)
+                })?,
+        );
+
         Ok(Self { prompts })
     }
 
@@ -86,6 +96,13 @@ impl PromptManager {
                 .map(|p| p.replace("{user_input}", user_input))
                 .unwrap_or_else(|| format!("Question: {}", user_input))
         })
+    }
+
+    /// ✅ NOUVEAU 2026-03-14: Obtient le prompt de classification d'équivalence pour comparaison de prix
+    pub fn get_price_comparison_equivalence_prompt(&self, user_input: &str) -> Option<String> {
+        self.prompts
+            .get("comparaison_prix_equivalence")
+            .map(|prompt| prompt.replace("{user_input}", user_input))
     }
 
     /// Liste toutes les intentions support?es

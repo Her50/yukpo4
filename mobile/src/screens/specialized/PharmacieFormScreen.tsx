@@ -22,6 +22,7 @@ import LocationSelector, { LocationObject } from '../../components/LocationSelec
 import ModernGPSModal from '../../components/ModernGPSModal';
 import SafeIcon from '../../components/SafeIcon';
 import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
+import ServiceTeamManager from '../../components/ServiceTeamManager';
 import SimplePrestationSelector from '../../components/SimplePrestationSelector';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLocation } from '../../contexts/LocationContext';
@@ -33,7 +34,7 @@ import { modernColors } from '../../theme/modernTheme';
 import { getCurrencyIntelligently } from '../../utils/currencyUtils';
 
 const STORAGE_KEY = '@pharmacie_form';
-type TabType = 'overview' | 'service' | 'products' | 'analytics';
+type TabType = 'overview' | 'service' | 'products' | 'analytics' | 'team';
 
 interface PharmacyProduct {
     id: number;
@@ -778,6 +779,7 @@ const PharmacieFormScreen: React.FC = () => {
             { key: 'service', label: 'Service', icon: 'settings' },
             { key: 'products', label: 'Produits', icon: 'package' },
             { key: 'analytics', label: 'Stats', icon: 'bar-chart-2' },
+            { key: 'team', label: 'Équipe', icon: 'users' },
         ];
 
         return (
@@ -804,6 +806,7 @@ const PharmacieFormScreen: React.FC = () => {
                     {activeTab === 'service' && renderServiceForm()}
                     {activeTab === 'products' && renderProductsTab()}
                     {activeTab === 'analytics' && renderAnalytics()}
+                    {activeTab === 'team' && <ServiceTeamManager serviceId={serviceId?.toString()} onClose={() => setActiveTab('overview')} />}
                 </View>
                 <ModernGPSModal visible={showGPSModal} onClose={() => setShowGPSModal(false)} onSelect={handleGPSSelect} currentLocation={location ? { lat: location.coords.latitude, lng: location.coords.longitude } : null} title="Localisation pharmacie" />
                 <GuardDaysSelector visible={showGuardDaysModal} onClose={() => setShowGuardDaysModal(false)} onSave={handleGuardDaysSave} initialDays={formData.jours_garde} title="Jours de garde" />

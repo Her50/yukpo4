@@ -344,6 +344,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
   const [reactions, setReactions] = useState<Record<string, { count: number; hasReacted: boolean }>>({});
   const [loadingReactions, setLoadingReactions] = useState(false);
   const [pendingReaction, setPendingReaction] = useState<string | null>(null);
+  const [showReactionPicker, setShowReactionPicker] = useState(false);
 
   // ✅ NOUVEAU 2026-01-23: Tracking des produits consultés
   useEffect(() => {
@@ -1742,28 +1743,70 @@ const ProductCard: React.FC<ProductCardProps> = ({
                   </View>
                 )}
 
-                {/* Boutons réaction + partage à droite */}
+                {/* ✅ CORRIGÉ 2026-03-14: Boutons réaction (long-press = picker) + partage */}
                 <View style={styles.topHeaderActions}>
-                  <TouchableOpacity
-                    style={styles.heartButtonCompact}
-                    onPress={() => handleReaction('love')}
-                    activeOpacity={0.7}
-                    disabled={pendingReaction === 'love'}
-                  >
-                    <SafeIcon
-                      name="heart"
-                      size={16}
-                      color={reactions.love?.hasReacted ? '#EF4444' : '#6B7280'}
-                    />
-                    {(reactions.love?.count || 0) > 0 && (
-                      <Text style={[
-                        styles.heartCountText,
-                        reactions.love?.hasReacted && { color: '#EF4444' }
-                      ]}>
-                        {formatCompactNumber(reactions.love?.count || 0)}
-                      </Text>
+                  <View style={{ position: 'relative' }}>
+                    <TouchableOpacity
+                      style={styles.heartButtonCompact}
+                      onPress={() => {
+                        if (showReactionPicker) {
+                          setShowReactionPicker(false);
+                        } else {
+                          handleReaction('love');
+                        }
+                      }}
+                      onLongPress={() => setShowReactionPicker(!showReactionPicker)}
+                      activeOpacity={0.7}
+                      disabled={pendingReaction !== null}
+                    >
+                      {(() => {
+                        const userReaction = REACTIONS.find(r => reactions[r.type]?.hasReacted);
+                        if (userReaction && userReaction.type !== 'love') {
+                          return <Text style={{ fontSize: 14 }}>{userReaction.emoji}</Text>;
+                        }
+                        return (
+                          <SafeIcon
+                            name="heart"
+                            size={16}
+                            color={reactions.love?.hasReacted ? '#EF4444' : '#6B7280'}
+                          />
+                        );
+                      })()}
+                      {totalReactions > 0 && (
+                        <Text style={[
+                          styles.heartCountText,
+                          REACTIONS.some(r => reactions[r.type]?.hasReacted) && { color: '#EF4444' }
+                        ]}>
+                          {formatCompactNumber(totalReactions)}
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                    {showReactionPicker && (
+                      <View style={styles.reactionPickerBubble}>
+                        {REACTIONS.map((reaction) => {
+                          const hasReacted = reactions[reaction.type]?.hasReacted || false;
+                          const count = reactions[reaction.type]?.count || 0;
+                          return (
+                            <TouchableOpacity
+                              key={reaction.type}
+                              style={[styles.reactionPickerBubbleItem, hasReacted && styles.reactionPickerBubbleItemActive]}
+                              onPress={() => {
+                                handleReaction(reaction.type);
+                                setShowReactionPicker(false);
+                              }}
+                              activeOpacity={0.7}
+                              disabled={pendingReaction !== null}
+                            >
+                              <Text style={styles.reactionPickerBubbleEmoji}>{reaction.emoji}</Text>
+                              {count > 0 && (
+                                <Text style={[styles.reactionPickerBubbleCount, hasReacted && { color: '#3B82F6' }]}>{count}</Text>
+                              )}
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
                     )}
-                  </TouchableOpacity>
+                  </View>
                   <TouchableOpacity
                     style={styles.shareButtonCompact}
                     onPress={handleShare}
@@ -2459,6 +2502,44 @@ const styles = StyleSheet.create({
     padding: 4,
     borderRadius: 6,
     backgroundColor: 'transparent',
+  },
+  reactionPickerBubble: {
+    position: 'absolute',
+    top: 32,
+    right: 0,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    paddingHorizontal: 6,
+    paddingVertical: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    zIndex: 100,
+    elevation: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  reactionPickerBubbleItem: {
+    alignItems: 'center',
+    paddingVertical: 4,
+    paddingHorizontal: 5,
+    borderRadius: 12,
+  },
+  reactionPickerBubbleItemActive: {
+    backgroundColor: '#EEF2FF',
+  },
+  reactionPickerBubbleEmoji: {
+    fontSize: 20,
+  },
+  reactionPickerBubbleCount: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#6B7280',
+    marginTop: 1,
   },
   // ✅ OPTIMISÉ 2026-01-14: Section produit - Titre et description avec hiérarchie claire
   productHeaderSection: {

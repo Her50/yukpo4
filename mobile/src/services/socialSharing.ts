@@ -131,6 +131,7 @@ class SocialSharingService {
         points: number;
         bestDistanceKm?: number;
         bestSpeedKmh?: number;
+        userId?: number;
     }): Promise<boolean> {
         try {
             const lines = [
@@ -148,9 +149,14 @@ class SocialSharingService {
             if (stats.bestSpeedKmh) lines.push(`⚡ Record vitesse: ${stats.bestSpeedKmh.toFixed(1)} km/h`);
             lines.push(``);
             lines.push(`Rejoins-moi sur Yukpo ! 🚀`);
-            lines.push(Platform.OS === 'ios'
-                ? 'https://apps.apple.com/app/yukpomnang'
-                : 'https://play.google.com/store/apps/details?id=com.yukpomnang');
+            // URL de la page de partage backend (avec OG tags pour preview WhatsApp/Facebook + deep link + store fallback)
+            if (stats.userId) {
+                lines.push(`https://yukpo-backend-376093909298.europe-west1.run.app/navigation/share/${stats.userId}`);
+            } else {
+                lines.push(Platform.OS === 'ios'
+                    ? 'https://apps.apple.com/app/yukpomnang'
+                    : 'https://play.google.com/store/apps/details?id=com.yukpomnang');
+            }
 
             const message = lines.join('\n');
             const result = await Share.share({

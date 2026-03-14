@@ -3469,7 +3469,7 @@ async fn share_navigation_performance(
 
     // Username
     let username: String = sqlx::query_as::<_, (String,)>(
-        "SELECT COALESCE(name, email, 'Utilisateur Yukpo') FROM users WHERE id = $1",
+        "SELECT COALESCE(nom_complet, CONCAT(prenom, ' ', nom), email, 'Utilisateur Yukpo') FROM users WHERE id = $1",
     )
     .bind(user_id)
     .fetch_optional(&state.pg)
@@ -3528,24 +3528,27 @@ async fn share_navigation_performance(
     // Deep link: tente d'ouvrir l'app, sinon redirige vers le store
     let deep_link = format!("yukpomnang://navigation?tab=stats&userId={}", user_id);
     let intent_url = format!("intent://navigation?tab=stats&userId={}#Intent;scheme=yukpomnang;package=com.yukpomnang.mobile;end", user_id);
-    let store_url = "https://play.google.com/store/apps/details?id=com.yukpomnang";
+    let android_store = "https://play.google.com/store/apps/details?id=com.yukpomnang";
+    let ios_store = "https://apps.apple.com/app/yukpomnang";
     html.push_str(&format!(
         "<a class='cta' id='openApp' href='{}'>Ouvrir dans Yukpo 🚀</a>",
         deep_link
     ));
-    html.push_str(&format!(
-        "<a class='cta' style='background:#475569;margin-top:8px' href='{}'>Télécharger Yukpo</a>",
-        store_url
-    ));
+    html.push_str(
+        "<a class='cta' style='background:#475569;margin-top:8px' id='storeLink' href='#'>Télécharger Yukpo</a>",
+    );
     // Auto-redirect: essaie le deep link, puis intent://, puis store
     html.push_str("<script>");
     html.push_str(&format!(
-        "var dl='{}',intent='{}',store='{}';",
-        deep_link, intent_url, store_url
+        "var dl='{}',intent='{}',astore='{}',istore='{}';",
+        deep_link, intent_url, android_store, ios_store
     ));
-    html.push_str("var ua=navigator.userAgent||'';");
+    html.push_str("var ua=navigator.userAgent||'';var isIos=/iphone|ipad|ipod/i.test(ua);var store=isIos?istore:astore;");
+    html.push_str("document.getElementById('storeLink').href=store;");
     html.push_str("if(/android/i.test(ua)){document.getElementById('openApp').href=intent;setTimeout(function(){window.location=intent;},100);setTimeout(function(){window.location=store;},2000);}");
-    html.push_str("else if(/iphone|ipad|ipod/i.test(ua)){window.location=dl;setTimeout(function(){window.location=store;},1500);}");
+    html.push_str(
+        "else if(isIos){window.location=dl;setTimeout(function(){window.location=store;},1500);}",
+    );
     html.push_str("</script>");
     html.push_str("</div></body></html>");
 

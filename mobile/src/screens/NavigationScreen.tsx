@@ -565,8 +565,8 @@ const NavigationScreen: React.FC = () => {
     const sharePerformance = useCallback(async () => {
         if (!aiInsights) return;
         const hs = aiInsights.health_score || {}, co2 = aiInsights.co2_impact || {}, gam = aiInsights.gamification || {};
-        await socialSharing.shareNavigationPerformance({ period: activityPeriod, distanceKm: (aiInsights.summary?.total_distance_meters || 0) / 1000, sessions: aiInsights.summary?.total_sessions || 0, calories: aiInsights.summary?.total_calories || 0, healthScore: hs.score || 0, healthLabel: hs.label || '', co2SavedKg: (co2.saved_grams || 0) / 1000, vo2max: aiInsights.fitness?.vo2max || 0, fitnessLevel: aiInsights.fitness?.level || '', streak: gam.streak?.current || 0, badgeCount: gam.badges?.length || 0, points: gam.points || 0 });
-    }, [aiInsights, activityPeriod]);
+        await socialSharing.shareNavigationPerformance({ period: activityPeriod, distanceKm: (aiInsights.summary?.total_distance_meters || 0) / 1000, sessions: aiInsights.summary?.total_sessions || 0, calories: aiInsights.summary?.total_calories || 0, healthScore: hs.score || 0, healthLabel: hs.label || '', co2SavedKg: (co2.saved_grams || 0) / 1000, vo2max: aiInsights.fitness?.vo2max || 0, fitnessLevel: aiInsights.fitness?.level || '', streak: gam.streak?.current || 0, badgeCount: gam.badges?.length || 0, points: gam.points || 0, userId: user?.id });
+    }, [aiInsights, activityPeriod, user]);
 
     const loadActivityStats = useCallback(async (period: string = 'week') => {
         setLoadingActivity(true);

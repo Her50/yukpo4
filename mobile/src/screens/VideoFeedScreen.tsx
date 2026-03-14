@@ -13,7 +13,6 @@ import {
     Platform,
     Pressable,
     RefreshControl,
-    ScrollView,
     Share,
     StatusBar,
     StyleSheet,
@@ -1096,24 +1095,63 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                 )}
 
                 <View style={styles.actions}>
-                    {/* ✅ Réaction coeur: tap = love, long-press = picker multi-réactions */}
-                    <TouchableOpacity
-                        style={styles.actionButton}
-                        onPress={() => handleReaction(item, 'love')}
-                        onLongPress={() => setShowReactionPicker(contentId)}
-                        activeOpacity={0.7}
-                        disabled={pendingReaction !== null}
-                    >
-                        <View style={[styles.actionIconBg, liked && styles.actionIconBgActive]}>
-                            <SafeIcon name="heart" size={24} color={liked ? '#FF2D55' : '#fff'} type="lucide" />
-                        </View>
-                        <Text style={styles.actionLabel}>
-                            {formatCount(
-                                Object.values(reactionsMap[`${item.serviceId}_${item.productIndex ?? 0}`] || {}).reduce((sum, r) => sum + (r?.count || 0), 0)
-                                || (item.likesCount ?? 0)
-                            )}
-                        </Text>
-                    </TouchableOpacity>
+                    {/* ✅ CORRIGÉ 2026-03-14: Réaction coeur + picker flottant au-dessus */}
+                    <View style={{ alignItems: 'center' }}>
+                        {/* Picker de réactions flottant au-dessus du coeur */}
+                        {showReactionPicker === contentId && (
+                            <View style={styles.reactionPickerFloating}>
+                                {REACTIONS.map((reaction) => {
+                                    const itemReactions = reactionsMap[`${item.serviceId}_${item.productIndex ?? 0}`] || {};
+                                    const hasReacted = itemReactions[reaction.type]?.hasReacted || false;
+                                    const reactionCount = itemReactions[reaction.type]?.count || 0;
+                                    return (
+                                        <TouchableOpacity
+                                            key={reaction.type}
+                                            style={[styles.reactionPickerFloatingItem, hasReacted && styles.reactionPickerFloatingItemActive]}
+                                            onPress={() => handleReaction(item, reaction.type)}
+                                            activeOpacity={0.7}
+                                            disabled={pendingReaction !== null}
+                                        >
+                                            <Text style={styles.reactionPickerFloatingEmoji}>{reaction.emoji}</Text>
+                                            {reactionCount > 0 && (
+                                                <Text style={[styles.reactionPickerFloatingCount, hasReacted && { color: '#3B82F6' }]}>{reactionCount}</Text>
+                                            )}
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                                <TouchableOpacity
+                                    style={styles.reactionPickerFloatingClose}
+                                    onPress={() => setShowReactionPicker(null)}
+                                >
+                                    <SafeIcon name="x" size={12} color="#fff" type="lucide" />
+                                </TouchableOpacity>
+                            </View>
+                        )}
+                        <TouchableOpacity
+                            style={styles.actionButton}
+                            onPress={() => handleReaction(item, 'love')}
+                            onLongPress={() => setShowReactionPicker(showReactionPicker === contentId ? null : contentId)}
+                            activeOpacity={0.7}
+                            disabled={pendingReaction !== null}
+                        >
+                            <View style={[styles.actionIconBg, liked && styles.actionIconBgActive]}>
+                                {(() => {
+                                    const itemReactions = reactionsMap[`${item.serviceId}_${item.productIndex ?? 0}`] || {};
+                                    const userReaction = REACTIONS.find(r => itemReactions[r.type]?.hasReacted);
+                                    if (userReaction && userReaction.type !== 'love') {
+                                        return <Text style={{ fontSize: 22 }}>{userReaction.emoji}</Text>;
+                                    }
+                                    return <SafeIcon name="heart" size={24} color={liked ? '#FF2D55' : '#fff'} type="lucide" />;
+                                })()}
+                            </View>
+                            <Text style={styles.actionLabel}>
+                                {formatCount(
+                                    Object.values(reactionsMap[`${item.serviceId}_${item.productIndex ?? 0}`] || {}).reduce((sum, r) => sum + (r?.count || 0), 0)
+                                    || (item.likesCount ?? 0)
+                                )}
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
 
                     <TouchableOpacity style={styles.actionButton} onPress={() => handleOpenComments(item)} activeOpacity={0.7}>
                         <View style={styles.actionIconBg}>
@@ -1150,44 +1188,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                     </Animated.View>
                 </TouchableOpacity>
 
-                {/* ✅ NOUVEAU: Picker horizontal de réactions optimisé */}
-                {showReactionPicker === contentId && (
-                    <View style={styles.reactionPickerContainer}>
-                        <ScrollView
-                            horizontal
-                            showsHorizontalScrollIndicator={false}
-                            style={styles.reactionPickerScroll}
-                            contentContainerStyle={styles.reactionPickerContent}
-                        >
-                            {REACTIONS.map((reaction) => {
-                                const itemReactions = reactionsMap[`${item.serviceId}_${item.productIndex ?? 0}`] || {};
-                                const hasReacted = itemReactions[reaction.type]?.hasReacted || false;
-                                const reactionCount = itemReactions[reaction.type]?.count || 0;
-                                return (
-                                    <TouchableOpacity
-                                        key={reaction.type}
-                                        style={[styles.reactionPickerItem, hasReacted && styles.reactionPickerItemActive]}
-                                        onPress={() => handleReaction(item, reaction.type)}
-                                        activeOpacity={0.7}
-                                        disabled={pendingReaction !== null}
-                                    >
-                                        <Text style={styles.reactionPickerEmoji}>{reaction.emoji}</Text>
-                                        <Text style={styles.reactionPickerLabel}>{reaction.label}</Text>
-                                        <Text style={[styles.reactionPickerCount, hasReacted && styles.reactionPickerCountActive]}>
-                                            {reactionCount > 0 ? reactionCount : ''}
-                                        </Text>
-                                    </TouchableOpacity>
-                                );
-                            })}
-                        </ScrollView>
-                        <TouchableOpacity
-                            style={styles.reactionPickerClose}
-                            onPress={() => setShowReactionPicker(null)}
-                        >
-                            <SafeIcon name="x" size={16} color="#fff" type="lucide" />
-                        </TouchableOpacity>
-                    </View>
-                )}
+                {/* ✅ SUPPRIMÉ 2026-03-14: Ancien picker horizontal en bas — remplacé par picker flottant au-dessus du coeur */}
             </View>
         );
     }, [likedMap, savedMap, pausedMap, mutedMap, progressMap, currentIndex, doubleTapHeart, heartAnim, handleTap, handleReaction, toggleSave, toggleMute, handleShare, handleViewProduct, handleOpenComments, registerRef, handlePlaybackStatus, isFocused, reactionsMap, showReactionPicker, pendingReaction, bufferingMap, spinAnim, filteredFeed.length, navigation, followMap, handleToggleFollow]);
@@ -1655,39 +1656,6 @@ const styles = StyleSheet.create({
     actionIconBgActive: {
         backgroundColor: 'rgba(0,0,0,0.5)',
     },
-    quickReactionsBar: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        justifyContent: 'center',
-        gap: 4,
-        maxWidth: 80,
-        paddingVertical: 2,
-    },
-    quickReactionBtn: {
-        width: 34,
-        height: 34,
-        borderRadius: 17,
-        backgroundColor: 'rgba(0,0,0,0.3)',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    quickReactionBtnActive: {
-        backgroundColor: 'rgba(59,130,246,0.35)',
-        borderWidth: 1.5,
-        borderColor: '#3B82F6',
-    },
-    quickReactionEmoji: {
-        fontSize: 15,
-    },
-    quickReactionCount: {
-        color: 'rgba(255,255,255,0.8)',
-        fontSize: 9,
-        fontWeight: '700',
-        marginTop: 1,
-    },
-    quickReactionCountActive: {
-        color: '#3B82F6',
-    },
     actionLabel: {
         color: '#fff',
         fontSize: 12,
@@ -1734,67 +1702,53 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         backgroundColor: '#F3F4F6',
     },
-    reactionPickerContainer: {
+    reactionPickerFloating: {
         position: 'absolute',
-        right: 64,
-        bottom: 160,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-    },
-    reactionPickerScroll: {
-        backgroundColor: 'rgba(0,0,0,0.85)',
-        borderRadius: 30,
-    },
-    reactionPickerContent: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 8,
-        paddingVertical: 6,
-        gap: 4,
-    },
-    reactionPicker: {
-        flexDirection: 'row',
-        backgroundColor: 'rgba(0,0,0,0.85)',
-        borderRadius: 30,
-        paddingHorizontal: 8,
-        paddingVertical: 6,
-        gap: 4,
-    },
-    reactionPickerItem: {
-        alignItems: 'center',
-        paddingHorizontal: 6,
-        paddingVertical: 4,
+        bottom: 52,
+        right: -4,
+        backgroundColor: 'rgba(0,0,0,0.9)',
         borderRadius: 20,
+        paddingHorizontal: 6,
+        paddingVertical: 8,
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 2,
+        zIndex: 100,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.5,
+        shadowRadius: 10,
+        elevation: 20,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.15)',
     },
-    reactionPickerItemActive: {
+    reactionPickerFloatingItem: {
+        alignItems: 'center',
+        paddingVertical: 4,
+        paddingHorizontal: 6,
+        borderRadius: 16,
+        minWidth: 44,
+    },
+    reactionPickerFloatingItemActive: {
         backgroundColor: 'rgba(255,255,255,0.2)',
     },
-    reactionPickerEmoji: {
-        fontSize: 24,
+    reactionPickerFloatingEmoji: {
+        fontSize: 22,
     },
-    reactionPickerCount: {
+    reactionPickerFloatingCount: {
         color: '#fff',
         fontSize: 9,
         fontWeight: '700',
         marginTop: 1,
     },
-    reactionPickerCountActive: {
-        color: '#3B82F6',
-    },
-    reactionPickerLabel: {
-        color: '#fff',
-        fontSize: 10,
-        fontWeight: '600',
-        marginTop: 2,
-    },
-    reactionPickerClose: {
-        width: 28,
-        height: 28,
-        borderRadius: 14,
-        backgroundColor: 'rgba(0,0,0,0.6)',
+    reactionPickerFloatingClose: {
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        backgroundColor: 'rgba(255,255,255,0.15)',
         alignItems: 'center',
         justifyContent: 'center',
+        marginTop: 4,
     },
     spinningDisc: {
         position: 'absolute',

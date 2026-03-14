@@ -627,10 +627,10 @@ const styles = StyleSheet.create({
         backgroundColor: '#F9FAFB',
         alignItems: 'center',
     },
-    urgenceLevelButtonSelected: (color: string) => ({
-        borderColor: color,
-        backgroundColor: `${color}20`,
-    }),
+    urgenceLevelButtonSelected: {
+        borderColor: '#DC2626',
+        backgroundColor: '#DC262620',
+    },
     urgenceLevelText: {
         fontSize: 14,
         fontWeight: '600',

@@ -21,6 +21,7 @@ import LocationSelector, { LocationObject } from '../../components/LocationSelec
 import ModernGPSModal from '../../components/ModernGPSModal';
 import SafeIcon from '../../components/SafeIcon';
 import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
+import ServiceTeamManager from '../../components/ServiceTeamManager';
 import SimplePrestationSelector from '../../components/SimplePrestationSelector';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLocation } from '../../contexts/LocationContext';
@@ -31,7 +32,7 @@ import { apiGet, apiPost, servicesApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 
 const STORAGE_KEY = '@laboratoire_form';
-type TabType = 'overview' | 'service' | 'exams' | 'analytics';
+type TabType = 'overview' | 'service' | 'exams' | 'analytics' | 'team';
 
 interface ExaminationType {
     id?: number;
@@ -440,7 +441,9 @@ const LaboratoireFormScreen: React.FC = () => {
             { key: 'service', label: 'Service', icon: 'settings' },
             { key: 'exams', label: 'Examens', icon: 'flask-conical' },
             { key: 'analytics', label: 'Stats', icon: 'bar-chart-2' },
+            { key: 'team', label: 'Équipe', icon: 'users' },
         ];
+
         return (
             <View style={s.container}>
                 <LinearGradient colors={['#155E75', '#0891B2']} style={s.dashHeader}>
@@ -463,6 +466,7 @@ const LaboratoireFormScreen: React.FC = () => {
                     {activeTab === 'service' && renderServiceForm()}
                     {activeTab === 'exams' && renderExamsTab()}
                     {activeTab === 'analytics' && renderAnalytics()}
+                    {activeTab === 'team' && <ServiceTeamManager serviceId={serviceId?.toString()} onClose={() => setActiveTab('overview')} />}
                 </View>
                 <ModernGPSModal visible={showGPSModal} onClose={() => setShowGPSModal(false)} onSelect={handleGPSSelect} currentLocation={location ? { lat: location.coords.latitude, lng: location.coords.longitude } : null} title="Localisation" />
                 {renderExamModal()}

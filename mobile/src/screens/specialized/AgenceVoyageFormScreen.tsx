@@ -23,6 +23,7 @@ import LocationSelector, { LocationObject } from '../../components/LocationSelec
 import ModernGPSModal from '../../components/ModernGPSModal';
 import SafeIcon from '../../components/SafeIcon';
 import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
+import ServiceTeamManager from '../../components/ServiceTeamManager';
 import WeekDaysSelector from '../../components/WeekDaysSelector';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLocation } from '../../contexts/LocationContext';
@@ -33,7 +34,7 @@ import { apiDelete, apiGet, apiPost, apiPut, servicesApi } from '../../services/
 import { getCurrencyIntelligently } from '../../utils/currencyUtils';
 
 const STORAGE_KEY = '@agence_voyage_form';
-type TabType = 'overview' | 'service' | 'schedules' | 'bus' | 'tickets';
+type TabType = 'overview' | 'service' | 'schedules' | 'bus' | 'tickets' | 'team';
 
 const DAYS_OF_WEEK = [
     { value: 1, label: 'Lundi', short: 'Lun' },
@@ -692,9 +693,11 @@ const AgenceVoyageFormScreen: React.FC = () => {
             { key: 'overview', label: 'Accueil', icon: 'layout-dashboard' },
             { key: 'service', label: 'Service', icon: 'settings' },
             { key: 'schedules', label: 'Horaires', icon: 'clock' },
-            { key: 'bus', label: 'Bus', icon: 'truck' },
+            { key: 'bus', label: 'Bus', icon: 'bus' },
             { key: 'tickets', label: 'Tickets', icon: 'ticket' },
+            { key: 'team', label: 'Équipe', icon: 'users' },
         ];
+
         return (
             <View style={s.container}>
                 <LinearGradient colors={['#1E3A8A', '#2563EB']} style={s.dashHeader}>
@@ -718,6 +721,7 @@ const AgenceVoyageFormScreen: React.FC = () => {
                     {activeTab === 'schedules' && renderSchedulesTab()}
                     {activeTab === 'bus' && renderBusTab()}
                     {activeTab === 'tickets' && renderTicketsTab()}
+                    {activeTab === 'team' && <ServiceTeamManager serviceId={serviceId?.toString()} onClose={() => setActiveTab('overview')} />}
                 </View>
                 <ModernGPSModal visible={showGPSModal} onClose={() => setShowGPSModal(false)} onSelect={(c: string) => { setSelectedGPS(c); setShowGPSModal(false); }} currentLocation={location ? { lat: location.coords.latitude, lng: location.coords.longitude } : null} title="Localisation" />
                 {renderScheduleModal()}

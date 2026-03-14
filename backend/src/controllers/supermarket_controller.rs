@@ -546,6 +546,66 @@ pub async fn compare_prices(
 
     let cheapest = supermarkets.first().cloned().unwrap_or(json!({}));
 
+    // ✅ Phase 3: Classification d'équivalence LLM (optionnelle, non-bloquante)
+    // Regroupe les produits par équivalence réelle (même contenance, même type)
+    // pour éviter de comparer "Lait 400g" avec "Lait 900ml"
+    let equivalence_groups = if supermarkets.len() >= 2 {
+        // Construire l'input JSON pour le prompt LLM
+        let candidates: Vec<serde_json::Value> = supermarkets
+            .iter()
+            .filter_map(|s| {
+                let product = s.get("product")?;
+                Some(json!({
+                    "id": product.get("id")?,
+                    "name": product.get("name")?,
+                    "price": product.get("price")?
+                }))
+            })
+            .collect();
+
+        let llm_input = json!({
+            "reference_product": search_term,
+            "candidates": candidates
+        })
+        .to_string();
+
+        // Appel LLM avec timeout de 5s (non-bloquant)
+        match tokio::time::timeout(
+            std::time::Duration::from_secs(5),
+            state.ia.predict(&format!(
+                "Analyse ces produits et regroupe-les par équivalence pour comparaison de prix.\n\nDonnées:\n{}",
+                llm_input
+            )),
+        )
+        .await
+        {
+            Ok(Ok((_model, response, _tokens))) => {
+                info!("[compare_prices] Phase 3 LLM équivalence: réponse reçue");
+                // Tenter de parser la réponse JSON du LLM
+                match serde_json::from_str::<serde_json::Value>(&response) {
+                    Ok(parsed) => Some(parsed),
+                    Err(e) => {
+                        info!(
+                            "[compare_prices] Phase 3: réponse LLM non-JSON, fallback: {}",
+                            e
+                        );
+                        None
+                    }
+                }
+            }
+            Ok(Err(e)) => {
+                info!("[compare_prices] Phase 3 LLM erreur (fallback): {}", e);
+                None
+            }
+            Err(_) => {
+                info!("[compare_prices] Phase 3 LLM timeout 5s (fallback)");
+                None
+            }
+        }
+    } else {
+        None
+    };
+
     Ok((
         StatusCode::OK,
         Json(json!({
@@ -566,7 +626,8 @@ pub async fn compare_prices(
                 "price_range": {
                     "min": min_price,
                     "max": max_price
-                }
+                },
+                "equivalence_groups": equivalence_groups
             }
         })),
     ))

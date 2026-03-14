@@ -7027,7 +7027,7 @@ async fn approve_fleet_application(
         vehicle_image_url: None,
     });
 
-    let (updated_app, courier, _asset) = service
+    let (_updated_app, courier, _asset) = service
         .approve_courier_application(
             application_id,
             user.id,

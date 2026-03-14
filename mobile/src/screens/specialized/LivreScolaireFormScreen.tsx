@@ -688,11 +688,10 @@ const LivreScolaireFormScreen: React.FC = () => {
                             label="Quartier"
                             value={formData.quartier ? (typeof formData.quartier === 'string' ? { raw: formData.quartier, place_name: formData.quartier } : formData.quartier) : ''}
                             onSelect={(location: LocationObject) => {
-                                // ✅ CORRECTION: Extraire la valeur à stocker (string ou LocationObject selon besoin)
-                                const quartierValue = location.raw || location.place_name || '';
+                                // ✅ CORRECTION: Stocker le LocationObject directement
                                 setFormData({
                                     ...formData,
-                                    quartier: quartierValue,
+                                    quartier: location,
                                     // ✅ NOUVEAU: Extraire automatiquement ville si disponible
                                     ville: location.components?.ville || formData.ville,
                                 });
@@ -771,7 +770,7 @@ const LivreScolaireFormScreen: React.FC = () => {
                 visible={showGPSModal}
                 onClose={() => setShowGPSModal(false)}
                 onSelect={handleGPSSelect}
-                currentLocation={selectedGPS}
+                currentLocation={selectedGPS as any}
             />
 
             {/* ✅ NOUVEAU: Modal d'affichage des résultats de l'analyse IA */}
