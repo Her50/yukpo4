@@ -1,0 +1,48 @@
+{
+    "home": {
+        "title": "Inicio",
+        "welcome": "Bienvenido",
+        "specialOffers": "Ofertas Especiales",
+        "flashPromo": "Flash Promo",
+        "blackFriday": "Black Friday",
+        "lives": "Lives",
+        "see": "Ver",
+        "searchMode": "Buscar",
+        "createMode": "Crear producto",
+        "searchPlaceholder": "Describe tu necesidad...",
+        "createPlaceholder": "Describe el servicio que quieres crear...",
+        "selectLocation": "Seleccionar tu ubicación"
+    },
+    "services": {
+        "title": "Tienda | Servicios",
+        "catalog": "Catálogo de Servicios"
+    },
+    "activity": {
+        "title": "Actividad",
+        "list_view": "Lista",
+        "dashboard_view": "Panel",
+        "all_services": "Todos mis servicios"
+    },
+    "interactions": { "title": "Mis Interacciones" },
+    "account": { "title": "Mi Cuenta" },
+    "period": { "7d": "7d", "30d": "30d", "90d": "90d" },
+    "search": { "placeholder": "Buscar un servicio...", "create": "Crear un servicio", "find": "Buscar", "results": "Resultados de búsqueda" },
+    "settings": { "title": "Configuración" },
+    "contact": { "title": "Contacto" },
+    "tokens": { "recharge": "Recargar Tokens", "history": "Historial de Consumo" },
+    "service": { "shared": "Servicio compartido", "title": "Servicio", "create": "Crear servicio", "edit": "Editar servicio", "delete": "Eliminar servicio", "name": "Nombre del servicio", "description": "Descripción del servicio", "category": "Categoría del servicio" },
+    "button": { "create": "Crear", "save": "Guardar", "cancel": "Cancelar", "edit": "Editar", "delete": "Eliminar", "add": "Agregar", "close": "Cerrar", "back": "Atrás", "next": "Siguiente", "previous": "Anterior", "confirm": "Confirmar", "yes": "Sí", "no": "No" },
+    "product": { "title": "Producto", "name": "Nombre del producto", "price": "Precio", "description": "Descripción", "category": "Categoría", "images": "Imágenes", "videos": "Videos", "add": "Agregar producto", "edit": "Editar producto", "delete": "Eliminar producto", "new": "Nuevo producto" },
+    "message": { "success": "Éxito", "error": "Error", "loading": "Cargando...", "no_data": "Sin datos", "confirm_delete": "¿Estás seguro de que quieres eliminar?" },
+    "form": { "required": "Este campo es obligatorio", "invalid": "Formato inválido", "save_success": "Guardado exitosamente", "save_error": "Error al guardar" },
+    "location": { "title": "Ubicación", "select": "Seleccionar ubicación", "current": "Posición actual", "search": "Buscar lugar" },
+    "payment": { "title": "Pago", "method": "Método de pago", "mobile_money": "Mobile Money", "orange_money": "Orange Money", "visa": "Tarjeta Visa", "phone": "Número de teléfono", "card_number": "Número de tarjeta", "expiry": "Fecha de vencimiento" },
+    "chat": { "title": "Chat", "message": "Mensaje", "send": "Enviar", "typing": "Escribiendo...", "online": "En línea", "offline": "Desconectado" },
+    "profile": { "title": "Perfil", "edit": "Editar perfil", "name": "Nombre", "email": "Email", "phone": "Teléfono", "address": "Dirección", "avatar": "Foto de perfil" },
+    "stats": { "title": "Estadísticas", "views": "Vistas", "interactions": "Interacciones", "balance": "Saldo", "budget": "Presupuesto", "total": "Total" },
+    "language": { "title": "Idioma", "french": "Français", "english": "English", "spanish": "Español", "chinese": "中文", "hindi": "हिन्दी", "arabic": "العربية", "russian": "Русский", "locked": "La aplicación está actualmente disponible solo en francés. Otros idiomas se agregarán próximamente.", "othersSoon": "Otros idiomas próximamente", "changeTo": "Cambiar a {{lang}}" },
+    "menu": { "logout": "Cerrar sesión", "logoutDescription": "Desconectarse de la aplicación", "navigation": "Navegación inteligente", "navigationDescription": "Encuentra la mejor ruta con tráfico y puntos de interés", "teams": "Mis Equipos ({{count}})", "teamsDescription": "Servicios que co-gestionas", "balance": "Saldo", "user": "Usuario" },
+    "tabs": { "home": "Inicio", "services": "Tienda", "activity": "Actividad", "interactions": "Interacciones", "account": "Cuenta" },
+    "errors": { "searchTitle": "Error de búsqueda", "searchGeneric": "Ocurrió un error durante la búsqueda", "noResults": "Sin resultados", "noResultsMessage": "No se encontró ningún servicio para tu búsqueda", "mustBeConnected": "Debes iniciar sesión para buscar", "mustBeConnectedCreate": "Debes iniciar sesión para crear un servicio" },
+    "publicite": { "create": "Crear anuncio", "title": "Título del anuncio", "description": "Descripción", "products": "Productos a promover", "videos": "Videos promocionales", "duration": "Duración (días)", "zone": { "title": "Zona geográfica", "select": "Seleccionar zona de impacto", "local": "Local (ciudad)", "regional": "Regional (país)", "international": "Internacional" }, "pricing": "Precio", "price_per_day": "500 FCFA por día", "total_cost": "Costo total", "summary": "Resumen y facturación", "products_selected": "Productos seleccionados", "videos_added": "Videos agregados", "balance_insufficient": "Saldo insuficiente", "recharge_account": "Por favor recargue su cuenta", "create_success": "Anuncio creado exitosamente", "dashboard": "Panel de anuncios", "analytics": "Analíticas", "views": "Vistas", "clicks": "Clics", "conversion_rate": "Tasa de conversión", "active": "Activo", "expired": "Expirado", "promotions": "Promociones actuales", "selected_for_you": "Seleccionadas para ti", "discover_offers": "Descubre ofertas" }
+}

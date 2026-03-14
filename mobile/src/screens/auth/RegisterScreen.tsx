@@ -21,6 +21,7 @@ import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import { useToaster } from '../../components/ToasterProvider';
 import { API_BASE_URL } from '../../config/api';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { theme } from '../../theme/theme';
 
 // Configuration WebBrowser pour OAuth
@@ -55,6 +56,7 @@ const COUNTRY_CODES = [
 const RegisterScreen: React.FC = () => {
   const navigation = useNavigation();
   const { register, loading, updateUser } = useAuth();
+  const { t } = useLanguageSafe();
   const toaster = useToaster();
 
   // États du formulaire
@@ -111,7 +113,7 @@ const RegisterScreen: React.FC = () => {
       console.error('[RegisterScreen] URL erreur:', googleResponse.error?.url);
 
       // Messages d'erreur spécifiques selon le type d'erreur
-      let errorMessage = 'Erreur de connexion Google. Veuillez réessayer.';
+      let errorMessage = t('auth.serverError');
 
       if (googleResponse.error?.code === 'invalid_request' ||
         googleResponse.error?.message?.includes('Custom URI scheme') ||
@@ -164,7 +166,7 @@ const RegisterScreen: React.FC = () => {
           });
 
           setRegistrationSuccess(true);
-          toaster.success('Bienvenue ! Votre compte a été créé avec Google.');
+          toaster.success(t('auth.welcomeOAuth'));
         } else {
           throw new Error('Token non reçu du serveur');
         }
@@ -174,8 +176,8 @@ const RegisterScreen: React.FC = () => {
       }
     } catch (error: any) {
       console.error('[RegisterScreen] Erreur OAuth:', error);
-      setError(error.message || 'Inscription échouée. Veuillez réessayer.');
-      Alert.alert('Erreur', error.message || 'Inscription échouée.');
+      setError(error.message || t('auth.registerError'));
+      Alert.alert(t('message.error'), error.message || t('auth.registerError'));
     } finally {
       setFormLoading(false);
     }
@@ -218,7 +220,7 @@ const RegisterScreen: React.FC = () => {
   const validatePassword = (password: string): string | null => {
     const passwordRegex = /^(?=.*[A-Z])(?=.*\d).{8,}$/;
     if (!passwordRegex.test(password)) {
-      return "Mot de passe trop faible : 8 caractères, 1 majuscule, 1 chiffre minimum.";
+      return t('auth.passwordWeak');
     }
     return null;
   };
@@ -230,14 +232,14 @@ const RegisterScreen: React.FC = () => {
   const handleRegister = async () => {
     // Validation des champs
     if (!form.nom || !form.prenom || !form.email || !form.phone || !form.password || !form.confirmPassword) {
-      setError('Veuillez remplir tous les champs, y compris le numéro de téléphone');
+      setError(t('auth.fillAllFields'));
       return;
     }
 
     // Validation du téléphone (au moins 8 chiffres)
     const phoneDigits = form.phone.replace(/\D/g, '');
     if (phoneDigits.length < 8) {
-      setError('Numéro de téléphone invalide. Minimum 8 chiffres.');
+      setError(t('auth.phoneInvalid'));
       return;
     }
 
@@ -249,7 +251,7 @@ const RegisterScreen: React.FC = () => {
     }
 
     if (form.password !== form.confirmPassword) {
-      setError('Les mots de passe ne correspondent pas.');
+      setError(t('auth.passwordMismatch'));
       return;
     }
 
@@ -273,7 +275,7 @@ const RegisterScreen: React.FC = () => {
         console.log('[RegisterScreen] Inscription réussie, redirection vers OTP');
 
         // ✅ Toast de confirmation de création du compte
-        toaster.success('Compte créé avec succès ! Vérifiez votre téléphone.');
+        toaster.success(t('auth.accountCreatedCheck'));
 
         // Naviguer vers l'écran de vérification OTP
         const userId = response.data?.id || response.data?.user_id;
@@ -290,7 +292,7 @@ const RegisterScreen: React.FC = () => {
           setRegistrationSuccess(true);
         }
       } else {
-        throw new Error('Erreur lors de l\'inscription');
+        throw new Error(t('auth.registerError'));
       }
     } catch (error: any) {
       console.error('[RegisterScreen] Erreur inscription:', error);
@@ -298,11 +300,11 @@ const RegisterScreen: React.FC = () => {
       let errorMessage = error.message || 'Erreur lors de l\'inscription';
 
       if (error.message?.includes('409') || error.message?.includes('deja utilise') || error.message?.includes('already exists')) {
-        errorMessage = 'Cet email est déjà utilisé. Essayez de vous connecter ou utilisez un autre email.';
+        errorMessage = t('auth.emailAlreadyUsed');
       } else if (error.message?.includes('400') || error.message?.includes('validation')) {
-        errorMessage = 'Données invalides. Vérifiez vos informations.';
+        errorMessage = t('auth.invalidData');
       } else if (error.message?.includes('network') || error.message?.includes('fetch')) {
-        errorMessage = 'Problème de connexion. Vérifiez votre internet.';
+        errorMessage = t('auth.connectionProblem');
       }
 
       setError(errorMessage);
@@ -329,7 +331,7 @@ const RegisterScreen: React.FC = () => {
         disabled={formLoading || loading}
       >
         <Envelope size={20} color="white" />
-        <Text style={styles.oauthButtonText}>Continuer avec {label}</Text>
+        <Text style={styles.oauthButtonText}>{t('auth.continueWith', { provider: label })}</Text>
       </TouchableOpacity>
     );
   };
@@ -346,17 +348,16 @@ const RegisterScreen: React.FC = () => {
               </View>
 
               <Title style={styles.successTitle}>
-                Inscription réussie ! 🎉
+                {t('auth.registerSuccessTitle')}
               </Title>
 
               <Paragraph style={styles.successText}>
-                Votre compte{' '}
-                <Text style={styles.successEmail}>{form.email}</Text>{' '}
-                a été créé avec succès.
+                {t('auth.accountCreatedFor')}{' '}
+                <Text style={styles.successEmail}>{form.email}</Text>
               </Paragraph>
 
               <Paragraph style={styles.successSubtext}>
-                Vous pouvez maintenant vous connecter pour accéder à toutes les fonctionnalités de Yukpo.
+                {t('auth.canNowLogin')}
               </Paragraph>
 
               <View style={styles.successActions}>
@@ -365,7 +366,7 @@ const RegisterScreen: React.FC = () => {
                   style={styles.successButton}
                 >
                   <Text style={styles.successButtonLabel}>
-                    Se connecter maintenant →
+                    {t('auth.loginNow')}
                   </Text>
                 </TouchableOpacity>
 
@@ -374,13 +375,13 @@ const RegisterScreen: React.FC = () => {
                   style={styles.homeButton}
                 >
                   <Text style={styles.homeButtonLabel}>
-                    Retour à l'accueil
+                    {t('auth.backToHome')}
                   </Text>
                 </TouchableOpacity>
               </View>
 
               <Text style={styles.supportText}>
-                En cas de problème, contactez notre support à support@yukpo.com
+                {t('auth.supportContact')}
               </Text>
             </Card.Content>
           </Card>
@@ -393,13 +394,11 @@ const RegisterScreen: React.FC = () => {
     <KeyboardAwareScreen style={styles.container} contentContainerStyle={styles.scrollContent}>
       <View style={styles.header}>
         <Title style={styles.title}>
-          Créer un compte{' '}
+          {t('auth.registerTitle')}{' '}
           <Text style={styles.brandYuk}>Yuk</Text><Text style={styles.brandPo}>po</Text>
         </Title>
         <Paragraph style={styles.subtitle}>
-          Utilisez votre compte{' '}
-          <Text style={styles.bold}>Google</Text> ou{' '}
-          <Text style={styles.bold}>Facebook</Text> pour vous inscrire rapidement :
+          {t('auth.oauthSubtitle')}
         </Paragraph>
       </View>
 
@@ -417,7 +416,7 @@ const RegisterScreen: React.FC = () => {
 
       <View style={styles.divider}>
         <View style={styles.dividerLine} />
-        <Text style={styles.dividerText}>ou créez un compte manuellement</Text>
+        <Text style={styles.dividerText}>{t('auth.orCreateManually')}</Text>
         <View style={styles.dividerLine} />
       </View>
 
@@ -435,7 +434,7 @@ const RegisterScreen: React.FC = () => {
       <Card style={styles.formCard}>
         <Card.Content>
           <TextInput
-            label="Nom de famille"
+            label={t('auth.lastName')}
             value={form.nom}
             onChangeText={(text) => setForm({ ...form, nom: text })}
             disabled={formLoading || loading}
@@ -444,7 +443,7 @@ const RegisterScreen: React.FC = () => {
           />
 
           <TextInput
-            label="Prénom"
+            label={t('auth.firstName')}
             value={form.prenom}
             onChangeText={(text) => setForm({ ...form, prenom: text })}
             disabled={formLoading || loading}
@@ -453,7 +452,7 @@ const RegisterScreen: React.FC = () => {
           />
 
           <TextInput
-            label="Adresse email"
+            label={t('auth.emailLabel')}
             value={form.email}
             onChangeText={(text) => setForm({ ...form, email: text })}
             keyboardType="email-address"
@@ -476,7 +475,7 @@ const RegisterScreen: React.FC = () => {
               <Text style={styles.countrySelectorArrow}>▼</Text>
             </TouchableOpacity>
             <TextInput
-              label="Numéro de téléphone"
+              label={t('auth.phonePlaceholder')}
               value={form.phone}
               onChangeText={(text) => setForm({ ...form, phone: text.replace(/\D/g, '') })}
               keyboardType="phone-pad"
@@ -513,7 +512,7 @@ const RegisterScreen: React.FC = () => {
           )}
 
           <TextInput
-            label="Mot de passe"
+            label={t('auth.passwordLabel')}
             value={form.password}
             onChangeText={(text) => setForm({ ...form, password: text })}
             secureTextEntry
@@ -523,7 +522,7 @@ const RegisterScreen: React.FC = () => {
           />
 
           <TextInput
-            label="Confirmer le mot de passe"
+            label={t('auth.confirmPassword')}
             value={form.confirmPassword}
             onChangeText={(text) => setForm({ ...form, confirmPassword: text })}
             secureTextEntry
@@ -533,7 +532,7 @@ const RegisterScreen: React.FC = () => {
           />
 
           <Text style={styles.passwordHint}>
-            Mot de passe requis : 8 caractères, 1 majuscule, 1 chiffre.
+            {t('auth.passwordHint')}
           </Text>
 
           <TouchableOpacity
@@ -542,7 +541,7 @@ const RegisterScreen: React.FC = () => {
             style={styles.registerButton}
           >
             <Text style={styles.registerButtonLabel}>
-              {formLoading || loading ? 'Création du compte...' : 'Créer mon compte'}
+              {formLoading || loading ? t('message.loading') : t('auth.registerButton')}
             </Text>
           </TouchableOpacity>
         </Card.Content>
@@ -550,9 +549,9 @@ const RegisterScreen: React.FC = () => {
 
       {/* Lien vers la connexion */}
       <View style={styles.footer}>
-        <Text style={styles.footerText}>Vous avez déjà un compte ? </Text>
+        <Text style={styles.footerText}>{t('auth.hasAccount')} </Text>
         <TouchableOpacity onPress={() => navigation.navigate('Login' as never)}>
-          <Text style={styles.footerLink}>Connectez-vous</Text>
+          <Text style={styles.footerLink}>{t('auth.signIn')}</Text>
         </TouchableOpacity>
       </View>
     </KeyboardAwareScreen>

@@ -7,6 +7,7 @@
 import { Audio } from 'expo-av';
 import * as Notifications from 'expo-notifications';
 import * as Speech from 'expo-speech';
+import i18n from 'i18next';
 
 export type NotificationSoundType = 'order' | 'courier' | 'ready' | 'delivery_request';
 
@@ -220,53 +221,71 @@ class NotificationSoundService {
     // ══════════════════════════════════════════════════════════════════════
 
     /**
+     * Mappe le code langue i18n vers un code BCP-47 compatible Speech/TTS
+     */
+    private getTTSLanguage(): string {
+        const langMap: Record<string, string> = {
+            fr: 'fr-FR', en: 'en-US', de: 'de-DE', es: 'es-ES', pt: 'pt-BR',
+            zh: 'zh-CN', ja: 'ja-JP', hi: 'hi-IN', ar: 'ar-SA', ru: 'ru-RU',
+            sw: 'sw-KE', ha: 'ha-NG', yo: 'yo-NG', am: 'am-ET', wo: 'wo-SN',
+            zu: 'zu-ZA', ig: 'ig-NG', ln: 'ln-CD', ff: 'ff-GN', rw: 'rw-RW',
+            sn: 'sn-ZW', so: 'so-SO', ti: 'ti-ER', mg: 'mg-MG',
+            ht: 'ht-HT', pap: 'nl-CW', // Papiamentu fallback to Dutch for TTS
+        };
+        const current = i18n.language || 'fr';
+        return langMap[current] || `${current}-${current.toUpperCase()}`;
+    }
+
+    /**
      * Génère un message vocal contextuel pour un événement de livraison
+     * Utilise les traductions i18n dans la langue choisie par l'utilisateur
      */
     private getDeliveryContextualMessage(
         eventType: string,
         details?: { courierName?: string; etaMinutes?: number; distance?: string; itemCount?: number; destination?: string }
     ): string {
-        const courier = details?.courierName || 'un coursier';
+        const t = i18n.t.bind(i18n);
+        const courier = details?.courierName || t('menu.user');
         const eta = details?.etaMinutes;
-        const dest = details?.destination || 'votre destination';
+        const dest = details?.destination || '';
 
         switch (eventType) {
             case 'courier_found':
                 return eta
-                    ? `Bonne nouvelle ! ${courier} a accepté votre course. Il sera là dans environ ${eta} minutes.`
-                    : `Bonne nouvelle ! ${courier} a accepté votre course et est en route vers vous.`;
+                    ? t('delivery_notifications.courier_found', { courier, eta })
+                    : t('delivery_notifications.courier_found_no_eta', { courier });
             case 'courier_searching':
-                return 'Recherche d\'un coursier disponible près de vous. Veuillez patienter.';
+                return t('delivery_notifications.courier_searching');
             case 'courier_en_route_pickup':
                 return eta
-                    ? `${courier} est en route vers le point de collecte. Arrivée estimée dans ${eta} minutes.`
-                    : `${courier} est en route vers le point de collecte.`;
+                    ? t('delivery_notifications.courier_en_route_pickup', { courier, eta })
+                    : t('delivery_notifications.courier_en_route_pickup_no_eta', { courier });
             case 'courier_arrived_pickup':
-                return `${courier} est arrivé au point de collecte et récupère votre colis.`;
+                return t('delivery_notifications.courier_arrived_pickup', { courier });
             case 'courier_picked_up':
-                return `Votre colis a été récupéré par ${courier}. Il est maintenant en route vers ${dest}.`;
+                return t('delivery_notifications.courier_picked_up', { courier, dest });
             case 'courier_en_route_delivery':
                 return eta
-                    ? `${courier} est en route vers vous avec votre livraison. Arrivée dans environ ${eta} minutes.`
-                    : `${courier} est en route vers vous avec votre livraison.`;
+                    ? t('delivery_notifications.courier_en_route_delivery', { courier, eta })
+                    : t('delivery_notifications.courier_en_route_delivery_no_eta', { courier });
             case 'courier_arrived_destination':
-                return `${courier} est arrivé à destination. Veuillez récupérer votre livraison.`;
+                return t('delivery_notifications.courier_arrived_destination', { courier });
             case 'delivery_completed':
-                return 'Votre livraison est terminée avec succès. Merci d\'utiliser Yukpo !';
+                return t('delivery_notifications.delivery_completed');
             case 'shopping_in_progress':
                 return details?.itemCount
-                    ? `${courier} fait vos courses. ${details.itemCount} article${details.itemCount > 1 ? 's' : ''} à trouver.`
-                    : `${courier} est en train de faire vos courses au marché.`;
+                    ? t('delivery_notifications.shopping_in_progress', { courier, count: details.itemCount })
+                    : t('delivery_notifications.shopping_in_progress_no_count', { courier });
             case 'shopping_completed':
-                return `Les courses sont terminées. ${courier} va maintenant se diriger vers vous.`;
+                return t('delivery_notifications.shopping_completed', { courier });
             case 'delivery_cancelled':
-                return 'Votre livraison a été annulée. Vous pouvez en créer une nouvelle.';
+                return t('delivery_notifications.delivery_cancelled');
             case 'new_delivery_available':
                 return details?.distance
-                    ? `Nouvelle livraison disponible à ${details.distance}. Consultez l'application pour accepter.`
-                    : 'Nouvelle livraison disponible près de vous. Consultez l\'application pour accepter.';
+                    ? t('delivery_notifications.new_delivery_available', { distance: details.distance })
+                    : t('delivery_notifications.new_delivery_available_no_distance');
             default:
-                return `Mise à jour de votre livraison : ${eventType}`;
+                return t('delivery_notifications.default', { event: eventType });
         }
     }
 
@@ -305,7 +324,7 @@ class NotificationSoundService {
         if (opts.speak) {
             setTimeout(() => {
                 Speech.speak(message, {
-                    language: 'fr-FR',
+                    language: this.getTTSLanguage(),
                     pitch: 1.0,
                     rate: 0.9,
                     onError: (e) => console.warn('[NotificationSoundService] TTS erreur:', e),
@@ -315,25 +334,26 @@ class NotificationSoundService {
 
         // 4. Notification push locale (visible même app fermée / en arrière-plan)
         if (opts.pushNotification) {
+            const t = i18n.t.bind(i18n);
             const titleMap: Record<string, string> = {
-                courier_found: '🏍️ Coursier trouvé !',
-                courier_searching: '🔍 Recherche coursier...',
-                courier_en_route_pickup: '📦 Coursier en route',
-                courier_arrived_pickup: '📍 Coursier arrivé au retrait',
-                courier_picked_up: '📦 Colis récupéré',
-                courier_en_route_delivery: '🚀 En route vers vous',
-                courier_arrived_destination: '🏁 Coursier arrivé !',
-                delivery_completed: '✅ Livraison terminée',
-                shopping_in_progress: '🛒 Courses en cours',
-                shopping_completed: '✅ Courses terminées',
-                delivery_cancelled: '❌ Livraison annulée',
-                new_delivery_available: '📦 Nouvelle livraison !',
+                courier_found: t('delivery_notifications.push_courier_found'),
+                courier_searching: t('delivery_notifications.push_courier_searching'),
+                courier_en_route_pickup: t('delivery_notifications.push_courier_en_route_pickup'),
+                courier_arrived_pickup: t('delivery_notifications.push_courier_arrived_pickup'),
+                courier_picked_up: t('delivery_notifications.push_courier_picked_up'),
+                courier_en_route_delivery: t('delivery_notifications.push_courier_en_route_delivery'),
+                courier_arrived_destination: t('delivery_notifications.push_courier_arrived_destination'),
+                delivery_completed: t('delivery_notifications.push_delivery_completed'),
+                shopping_in_progress: t('delivery_notifications.push_shopping_in_progress'),
+                shopping_completed: t('delivery_notifications.push_shopping_completed'),
+                delivery_cancelled: t('delivery_notifications.push_delivery_cancelled'),
+                new_delivery_available: t('delivery_notifications.push_new_delivery_available'),
             };
 
             try {
                 await Notifications.scheduleNotificationAsync({
                     content: {
-                        title: titleMap[eventType] || '📦 Mise à jour livraison',
+                        title: titleMap[eventType] || t('delivery_notifications.push_default'),
                         body: message,
                         sound: true,
                         data: { type: 'delivery_event', eventType, ...details },

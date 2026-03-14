@@ -8,6 +8,7 @@ import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, Text, Touchabl
 import SafeIcon from '../components/SafeIcon';
 import { SafeNativeView } from '../components/SafeNativeView';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 import { apiPatch, servicesApi, userApi } from '../services/api';
 import { theme } from '../theme/theme';
 import { isAdminRole } from '../utils/roleHelpers'; // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
@@ -59,11 +60,12 @@ const cleanUserName = (name: string | undefined | null): string => {
 
 const ProfileScreen: React.FC = () => {
   const { user, logout, updateUser } = useAuth();
+  const { t } = useLanguageSafe();
   const navigation = useNavigation();
   const [stats, setStats] = useState([
-    { label: 'Services', value: '0' },
-    { label: 'Clients', value: '0' },
-    { label: 'Évaluations', value: '0' },
+    { labelKey: 'services.title', value: '0' },
+    { labelKey: 'stats.interactions', value: '0' },
+    { labelKey: 'stats.views', value: '0' },
   ]);
   const [loading, setLoading] = useState(true);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -106,14 +108,14 @@ const ProfileScreen: React.FC = () => {
       if (profileResponse && profileResponse.success && profileResponse.data) {
         const profileData = profileResponse.data as any;
         setAccountInfo({
-          memberSince: profileData.created_at ? new Date(profileData.created_at).toLocaleDateString('fr-FR', {
+          memberSince: profileData.created_at ? new Date(profileData.created_at).toLocaleDateString(undefined, {
             year: 'numeric',
             month: 'long'
-          }) : 'Non disponible',
+          }) : t('profile.unavailable'),
           // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
-          accountType: isAdminRole(profileData.role) ? 'Administrateur' :
-            profileData.role === 'prestataire' ? 'Prestataire' : 'Utilisateur',
-          status: profileData.is_active ? 'Actif' : 'Inactif'
+          accountType: isAdminRole(profileData.role) ? t('profile.administrator') :
+            profileData.role === 'prestataire' ? t('profile.provider') : t('profile.user'),
+          status: profileData.is_active ? t('profile.active') : t('profile.inactive')
         });
       }
 
@@ -127,15 +129,15 @@ const ProfileScreen: React.FC = () => {
           : '0';
 
         setStats([
-          { label: 'Services', value: totalServices.toString() },
-          { label: 'Interactions', value: totalInteractions.toString() },
-          { label: 'Évaluations', value: averageRating },
+          { labelKey: 'services.title', value: totalServices.toString() },
+          { labelKey: 'stats.interactions', value: totalInteractions.toString() },
+          { labelKey: 'stats.views', value: averageRating },
         ]);
       }
     } catch (error: any) {
       console.error('Erreur chargement profil:', error);
       const errorMessage = error?.message || 'Une erreur inattendue s\'est produite';
-      Alert.alert('Erreur', `Impossible de charger les données du profil: ${errorMessage}`);
+      Alert.alert(t('message.error'), errorMessage);
     } finally {
       setLoading(false);
     }
@@ -143,11 +145,11 @@ const ProfileScreen: React.FC = () => {
 
   const handleLogout = () => {
     Alert.alert(
-      'Déconnexion',
-      'Êtes-vous sûr de vouloir vous déconnecter ?',
+      t('profile.logout'),
+      t('profile.logoutConfirm'),
       [
-        { text: 'Annuler', style: 'cancel' },
-        { text: 'Déconnexion', style: 'destructive', onPress: logout },
+        { text: t('button.cancel'), style: 'cancel' },
+        { text: t('profile.logout'), style: 'destructive', onPress: logout },
       ]
     );
   };
@@ -162,11 +164,11 @@ const ProfileScreen: React.FC = () => {
           navigation.navigate(action.route as never);
         }
       } else {
-        Alert.alert('Information', 'Cette fonctionnalité sera bientôt disponible');
+        Alert.alert(t('message.success'), t('profile.featureComingSoon'));
       }
     } catch (error) {
       console.error('Erreur navigation:', error);
-      Alert.alert('Erreur', 'Impossible d\'accéder à cette section');
+      Alert.alert(t('message.error'), t('profile.cannotAccess'));
     }
   };
 
@@ -176,22 +178,22 @@ const ProfileScreen: React.FC = () => {
       // Demander les permissions
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission requise', 'Veuillez autoriser l\'accès à vos photos');
+        Alert.alert(t('profile.permissionRequired'), t('profile.allowPhotos'));
         return;
       }
 
       // Afficher les options (galerie ou caméra)
       Alert.alert(
-        'Changer la photo de profil',
-        'Choisissez une option',
+        t('profile.changePhoto'),
+        t('profile.chooseOption'),
         [
           {
-            text: 'Galerie',
+            text: t('profile.gallery'),
             onPress: async () => {
               // ✅ CORRIGÉ: Protection contre undefined pour MediaType.Images
               if (!ImagePicker || !ImagePicker.MediaType) {
                 console.error('[ProfileScreen] ImagePicker ou MediaType est undefined');
-                Alert.alert('Erreur', 'Impossible d\'accéder à la galerie. Veuillez réessayer.');
+                Alert.alert(t('message.error'), t('profile.cannotAccess'));
                 return;
               }
 
@@ -209,18 +211,18 @@ const ProfileScreen: React.FC = () => {
             },
           },
           {
-            text: 'Caméra',
+            text: t('profile.camera'),
             onPress: async () => {
               const cameraStatus = await ImagePicker.requestCameraPermissionsAsync();
               if (cameraStatus.status !== 'granted') {
-                Alert.alert('Permission requise', 'Veuillez autoriser l\'accès à la caméra');
+                Alert.alert(t('profile.permissionRequired'), t('profile.allowCamera'));
                 return;
               }
 
               // ✅ CORRIGÉ: Protection contre undefined pour MediaType.Images
               if (!ImagePicker || !ImagePicker.MediaType) {
                 console.error('[ProfileScreen] ImagePicker ou MediaType est undefined');
-                Alert.alert('Erreur', 'Impossible d\'accéder à la caméra. Veuillez réessayer.');
+                Alert.alert(t('message.error'), t('profile.cannotAccess'));
                 return;
               }
 
@@ -237,12 +239,12 @@ const ProfileScreen: React.FC = () => {
               }
             },
           },
-          { text: 'Annuler', style: 'cancel' },
+          { text: t('button.cancel'), style: 'cancel' },
         ]
       );
     } catch (error) {
       console.error('Erreur changement photo:', error);
-      Alert.alert('Erreur', 'Impossible de changer la photo');
+      Alert.alert(t('message.error'), t('profile.cannotAccess'));
     }
   };
 
@@ -270,13 +272,13 @@ const ProfileScreen: React.FC = () => {
         // Recharger les données du profil
         await loadProfileData();
 
-        Alert.alert('Succès', 'Photo de profil mise à jour avec succès');
+        Alert.alert(t('message.success'), t('profile.photoUpdated'));
       } else {
-        throw new Error(response.error || 'Erreur lors de la mise à jour');
+        throw new Error(response.error || t('message.error'));
       }
     } catch (error: any) {
       console.error('Erreur upload photo:', error);
-      Alert.alert('Erreur', error.message || 'Impossible de mettre à jour la photo de profil');
+      Alert.alert(t('message.error'), error.message || t('profile.cannotAccess'));
     } finally {
       setUploadingPhoto(false);
     }
@@ -286,100 +288,100 @@ const ProfileScreen: React.FC = () => {
 
   const profileActions = [
     {
-      title: 'Recharger Tokens',
-      icon: 'wallet', // ✅ CORRIGÉ: Icône Lucide pour wallet
+      title: t('profile.rechargeTokens'),
+      icon: 'wallet',
       color: '#EC4899',
       route: 'RechargeTokens',
-      description: 'Ajouter des tokens à votre compte'
+      description: t('profile.rechargeTokensDesc')
     },
     {
-      title: '🎥 Démarrer un Live',
+      title: '🎥 ' + t('profile.startLive'),
       icon: 'radio',
       color: '#DC2626',
       route: 'StartLive',
-      description: 'Créer et démarrer une session live'
+      description: t('profile.startLiveDesc')
     },
     {
-      title: 'Mes Suivis',
+      title: t('profile.myFollows'),
       icon: 'heart',
       color: '#FF2D55',
       route: 'MesSuivis',
-      description: 'Vendeurs et prestataires que vous suivez'
+      description: t('profile.myFollowsDesc')
     },
     {
-      title: 'Mes Vidéos',
-      icon: 'video', // ✅ NOUVEAU: Accès aux vidéos créées
+      title: t('profile.myVideos'),
+      icon: 'video',
       color: '#EC4899',
       route: 'VideoFeed',
-      params: { showOnlyMyVideos: true }, // ✅ NOUVEAU: Afficher uniquement les vidéos du prestataire
-      description: 'Voir et gérer vos vidéos créées'
+      params: { showOnlyMyVideos: true },
+      description: t('profile.myVideosDesc')
     },
     {
-      title: 'Analytiques Vidéos',
-      icon: 'bar-chart', // ✅ NOUVEAU: Statistiques des vidéos
+      title: t('profile.videoAnalytics'),
+      icon: 'bar-chart',
       color: '#8B5CF6',
       route: 'VideoAnalytics',
-      description: 'Statistiques et performances de vos vidéos'
+      description: t('profile.videoAnalyticsDesc')
     },
     // ✅ SUPPRIMÉ 2026-03-05: Accès services spécialisés retiré de "Mon compte"
     // Les partenaires sont redirigés automatiquement vers leur écran après connexion
     {
-      title: 'Mes tickets de voyage',
-      icon: 'ticket', // ✅ CORRIGÉ: Icône Lucide pour tickets
+      title: t('profile.travelTickets'),
+      icon: 'ticket',
       color: '#8B5CF6',
       route: 'MyBusTickets',
-      description: 'Voir et gérer vos tickets de bus'
+      description: t('profile.travelTicketsDesc')
     },
     {
-      title: 'Don de sang',
-      icon: 'activity', // ✅ CORRIGÉ: Icône Lucide pour don de sang (pouls/cœur) avec fallback emoji 💊
+      title: t('profile.bloodDonation'),
+      icon: 'activity',
       color: '#DC2626',
       route: 'BloodGroupManagement',
-      description: 'Enregistrer votre groupe sanguin et être notifié en cas d\'urgence'
+      description: t('profile.bloodDonationDesc')
     },
     {
-      title: 'Devenir coursier Yukpo',
-      icon: 'truck', // ✅ CORRIGÉ: Icône Lucide pour coursier (camion de livraison) avec fallback emoji 🚚
+      title: t('profile.becomeCourier'),
+      icon: 'truck',
       color: '#10B981',
       route: 'CourierRegistration',
-      description: 'Rejoignez notre équipe de coursiers'
+      description: t('profile.becomeCourierDesc')
     },
     {
-      title: 'Mon historique',
-      icon: 'history', // ✅ CORRIGÉ: Icône Lucide pour historique
+      title: t('profile.myHistory'),
+      icon: 'history',
       color: '#F59E0B',
       route: 'History',
-      description: 'Voir mon historique de transactions'
+      description: t('profile.myHistoryDesc')
     },
     {
-      title: 'Produits consultés',
-      icon: 'clock', // ✅ NOUVEAU 2026-01-23: Icône pour produits consultés
+      title: t('profile.viewedProducts'),
+      icon: 'clock',
       color: '#6366F1',
       route: 'HistoriqueProduitsConsultes',
-      description: 'Voir les produits que vous avez consultés'
+      description: t('profile.viewedProductsDesc')
     },
     {
-      title: 'Paramètres',
-      icon: 'settings', // ✅ CORRIGÉ: Icône Lucide pour paramètres
+      title: t('profile.settings'),
+      icon: 'settings',
       color: '#757575',
       route: 'Settings',
-      params: { initialSection: 'security' }, // ✅ NOUVEAU 2026-02-06: Ouvrir directement l'onglet sécurité
-      description: 'Configurer votre compte'
+      params: { initialSection: 'security' },
+      description: t('profile.settingsDesc')
     },
     {
-      title: 'Changer le mot de passe',
-      icon: 'key', // ✅ NOUVEAU 2026-02-06: Icône pour changement de mot de passe
+      title: t('profile.changePassword'),
+      icon: 'key',
       color: '#6366F1',
       route: 'Settings',
-      params: { initialSection: 'security', showPasswordModal: true }, // ✅ NOUVEAU: Ouvrir le modal de changement de mot de passe
-      description: 'Modifier votre mot de passe'
+      params: { initialSection: 'security', showPasswordModal: true },
+      description: t('profile.changePasswordDesc')
     },
     {
-      title: 'Contacter le Support',
-      icon: 'message-circle', // ✅ CORRIGÉ: Icône Lucide pour support
+      title: t('profile.contactSupport'),
+      icon: 'message-circle',
       color: '#2196F3',
       route: 'Contact',
-      description: 'Besoin d\'aide ?'
+      description: t('profile.contactSupportDesc')
     },
   ];
 
@@ -387,7 +389,7 @@ const ProfileScreen: React.FC = () => {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={theme.colors.primary} />
-        <Text style={styles.loadingText}>Chargement du profil...</Text>
+        <Text style={styles.loadingText}>{t('profile.loadingProfile')}</Text>
       </View>
     );
   }
@@ -443,7 +445,7 @@ const ProfileScreen: React.FC = () => {
             <Text style={styles.userEmail}>{user?.email || 'email@example.com'}</Text>
             <View style={styles.verificationBadge}>
               <Text style={styles.verificationIcon}>✓</Text>
-              <Text style={styles.verificationText}>Compte vérifié</Text>
+              <Text style={styles.verificationText}>{t('profile.verified')}</Text>
             </View>
           </View>
         </View>
@@ -453,7 +455,7 @@ const ProfileScreen: React.FC = () => {
           {stats.map((stat, index) => (
             <View key={index} style={styles.statItem}>
               <Text style={styles.statValue}>{stat.value}</Text>
-              <Text style={styles.statLabel}>{stat.label}</Text>
+              <Text style={styles.statLabel}>{t(stat.labelKey)}</Text>
             </View>
           ))}
         </View>
@@ -468,7 +470,7 @@ const ProfileScreen: React.FC = () => {
                 if (action.route) {
                   (navigation as any).navigate(action.route);
                 } else {
-                  Alert.alert('Information', 'Fonctionnalité en cours de développement');
+                  Alert.alert(t('message.success'), t('profile.featureComingSoon'));
                 }
               }}
             >
@@ -496,17 +498,17 @@ const ProfileScreen: React.FC = () => {
         {/* Informations du compte */}
         <View style={styles.infoCard}>
           <View style={styles.infoCardContent}>
-            <Text style={styles.cardTitle}>Informations du Compte</Text>
+            <Text style={styles.cardTitle}>{t('profile.accountInfo')}</Text>
             <View style={styles.infoItem}>
-              <Text style={styles.infoLabel}>Membre depuis</Text>
+              <Text style={styles.infoLabel}>{t('profile.memberSince')}</Text>
               <Text style={styles.infoValue}>{accountInfo.memberSince}</Text>
             </View>
             <View style={styles.infoItem}>
-              <Text style={styles.infoLabel}>Type de compte</Text>
+              <Text style={styles.infoLabel}>{t('profile.accountType')}</Text>
               <Text style={styles.infoValue}>{accountInfo.accountType}</Text>
             </View>
             <View style={styles.infoItem}>
-              <Text style={styles.infoLabel}>Statut</Text>
+              <Text style={styles.infoLabel}>{t('profile.status')}</Text>
               <Text style={[styles.infoValue, { color: accountInfo.status === 'Actif' ? '#4CAF50' : '#F44336' }]}>
                 {accountInfo.status}
               </Text>
@@ -521,7 +523,7 @@ const ProfileScreen: React.FC = () => {
             style={styles.logoutButton}
           >
             <Text style={styles.logoutIcon}>🚪</Text>
-            <Text style={{ color: "#DC2626" }}>Se déconnecter</Text>
+            <Text style={{ color: "#DC2626" }}>{t('profile.logout')}</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

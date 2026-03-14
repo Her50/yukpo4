@@ -24,6 +24,7 @@ import { SkeletonLoader } from '../components/SkeletonLoader';
 import { StatsCard } from '../components/StatsCard';
 import { useToaster } from '../components/ToasterProvider';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useDeviceOrientation } from '../hooks/useDeviceOrientation';
 import { useDeviceType } from '../hooks/useDeviceType';
@@ -56,6 +57,7 @@ interface Service {
 const MesServicesScreen: React.FC = () => {
   const navigation = useNavigation();
   const { user } = useAuth();
+  const { t } = useLanguageSafe();
   const { colors } = useTheme(); // ✅ NOUVEAU: Support thème
   const toaster = useToaster(); // ✅ NOUVEAU: Toast notifications au lieu de Alert
   const deviceType = useDeviceType(); // ✅ NOUVEAU: Responsive design
@@ -113,14 +115,14 @@ const MesServicesScreen: React.FC = () => {
           if (lastNumericIndex > 2) {
             productDescription = parts.slice(2, lastNumericIndex).join(', ').trim();
           } else if (parts.length >= 3) {
-            productDescription = parts[2] || 'Aucune description';
+            productDescription = parts[2] || t('mesServices.noDescription');
           } else {
-            productDescription = parts[1] || 'Aucune description';
+            productDescription = parts[1] || t('mesServices.noDescription');
           }
         } else if (parts.length === 2) {
-          productDescription = parts[1] || 'Aucune description';
+          productDescription = parts[1] || t('mesServices.noDescription');
         } else {
-          productDescription = 'Aucune description';
+          productDescription = t('mesServices.noDescription');
         }
       } else if (product && typeof product === 'object') {
         productTitle = product.nom ||
@@ -139,10 +141,10 @@ const MesServicesScreen: React.FC = () => {
           product.description_produit ||
           (typeof product.description_produit === 'object' && product.description_produit?.valeur) ||
           (typeof product.description_produit === 'string' && product.description_produit) ||
-          'Aucune description';
+          t('mesServices.noDescription');
       } else {
         productTitle = `Produit ${index + 1}`;
-        productDescription = 'Aucune description';
+        productDescription = t('mesServices.noDescription');
       }
 
       const productIndex = typeof product.product_index === 'number' ? product.product_index : index;
@@ -480,10 +482,10 @@ const MesServicesScreen: React.FC = () => {
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'active': return 'Actif';
-      case 'inactive': return 'Inactif';
-      case 'pending': return 'En attente';
-      default: return 'Inconnu';
+      case 'active': return t('mesServices.statusActive');
+      case 'inactive': return t('mesServices.statusInactive');
+      case 'pending': return t('mesServices.statusPending');
+      default: return t('mesServices.statusUnknown');
     }
   };
 
@@ -570,7 +572,7 @@ const MesServicesScreen: React.FC = () => {
       });
     } catch (error) {
       logger.error('[MesServicesScreen] Erreur handleAddProduct:', error);
-      toaster.error('Impossible d\'ouvrir le formulaire d\'ajout de produit');
+      toaster.error(t('mesServices.cannotOpenForm'));
     }
   }, [rawServices, services, navigation, loading, loadServices]);
 
@@ -593,7 +595,7 @@ const MesServicesScreen: React.FC = () => {
       });
     } catch (error) {
       logger.error('Erreur navigation modification:', error);
-      toaster.error('Impossible d\'ouvrir la modification du service');
+      toaster.error(t('mesServices.cannotOpenEdit'));
     }
   };
 
@@ -615,7 +617,7 @@ const MesServicesScreen: React.FC = () => {
       });
     } catch (error) {
       logger.error('Erreur navigation visualisation:', error);
-      toaster.error('Impossible d\'ouvrir la visualisation du service');
+      toaster.error(t('mesServices.cannotOpenView'));
     }
   };
 
@@ -652,11 +654,11 @@ const MesServicesScreen: React.FC = () => {
 
       if (result.action === Share.sharedAction) {
         logger.log('[MesServicesScreen] Service partagé:', serviceUrl);
-        toaster.success('Service partagé avec succès !');
+        toaster.success(t('mesServices.serviceShared'));
       }
     } catch (error) {
       logger.error('Erreur lors du partage:', error);
-      toaster.error('Impossible de partager le service');
+      toaster.error(t('mesServices.cannotShare'));
     }
   };
 
@@ -701,11 +703,11 @@ const MesServicesScreen: React.FC = () => {
             });
 
             Alert.alert(
-              '💸 Solde insuffisant',
-              `Coût de réactivation : ${activationCost.toLocaleString()} FCFA\nVotre solde : ${currentBalance.toLocaleString()} FCFA\n\nVeuillez recharger votre compte.`,
+              `💸 ${t('mesServices.insufficientBalance')}`,
+              t('mesServices.reactivationCost', { cost: activationCost.toLocaleString(), balance: currentBalance.toLocaleString() }),
               [
-                { text: 'Annuler', style: 'cancel' },
-                { text: 'Recharger', onPress: () => (navigation as any).navigate('RechargeTokens') },
+                { text: t('mesServices.cancel'), style: 'cancel' },
+                { text: t('mesServices.recharge'), onPress: () => (navigation as any).navigate('RechargeTokens') },
               ]
             );
             return;
@@ -719,7 +721,7 @@ const MesServicesScreen: React.FC = () => {
 
           if (deductResponse.success) {
             const newBalance = currentBalance - activationCost;
-            toaster.success(`Service réactivé ! Coût: ${activationCost} FCFA (Solde: ${newBalance} FCFA)`);
+            toaster.success(t('mesServices.serviceReactivated', { cost: activationCost, balance: newBalance }));
             loadServices(true);
           } else {
             // Rollback
@@ -728,7 +730,7 @@ const MesServicesScreen: React.FC = () => {
                 s.id === service.id ? previousState : s
               )
             );
-            toaster.error('Erreur lors de la réactivation');
+            toaster.error(t('mesServices.reactivationError'));
           }
         }
       }
@@ -746,7 +748,7 @@ const MesServicesScreen: React.FC = () => {
         });
 
         if (currentStatus) {
-          toaster.success('Service désactivé avec succès');
+          toaster.success(t('mesServices.serviceDeactivated'));
         }
         // Rafraîchir la liste des services
         loadServices(true);
@@ -764,7 +766,7 @@ const MesServicesScreen: React.FC = () => {
         });
 
         logger.error('[MesServicesScreen] Erreur API toggle status:', response.status);
-        toaster.error(`Impossible de changer le statut (Code: ${response.status})`);
+        toaster.error(t('mesServices.cannotChangeStatus'));
       }
     } catch (error: any) {
       // ✅ ROLLBACK en cas d'exception
@@ -781,19 +783,19 @@ const MesServicesScreen: React.FC = () => {
       });
 
       logger.error('[MesServicesScreen] Erreur toggle status:', error);
-      toaster.error(error.message || 'Impossible de changer le statut du service');
+      toaster.error(error.message || t('mesServices.cannotChangeStatus'));
     }
   };
 
   const handleDeleteService = async (service: any) => {
     // Confirmation avant suppression comme dans le frontend
     Alert.alert(
-      'Supprimer le service',
-      `Êtes-vous sûr de vouloir supprimer définitivement le service "${service.title}" ?\n\nCette action est irréversible.`,
+      t('mesServices.deleteTitle'),
+      t('mesServices.deleteConfirm', { title: service.title }),
       [
-        { text: 'Annuler', style: 'cancel' },
+        { text: t('mesServices.cancel'), style: 'cancel' },
         {
-          text: 'Supprimer',
+          text: t('mesServices.delete'),
           style: 'destructive',
           onPress: async () => {
             try {
@@ -806,7 +808,7 @@ const MesServicesScreen: React.FC = () => {
               const deleteData = (response?.data || response) as any;
 
               if (response.success) {
-                toaster.success('Service supprimé avec succès');
+                toaster.success(t('mesServices.serviceDeleted'));
                 // Déclencher un rafraîchissement pour mettre à jour l'interface
                 loadServices(true);
               } else {
@@ -817,9 +819,7 @@ const MesServicesScreen: React.FC = () => {
                 const errorMsg = deleteData?.message || response.error || '';
 
                 if (errorMsg.includes('2 or more products')) {
-                  toaster.warning(
-                    'Ce service contient 2 produits ou plus. Supprimez-les individuellement d\'abord.'
-                  );
+                  toaster.warning(t('mesServices.deleteBlockedMultiple'));
                 } else {
                   throw new Error(errorMsg || 'Erreur lors de la suppression');
                 }
@@ -835,7 +835,7 @@ const MesServicesScreen: React.FC = () => {
               // ✅ AMÉLIORATION: Message d'erreur plus précis avec Toast
               const message = error.response?.data?.message ||
                 error.message ||
-                'Impossible de supprimer le service. Vérifiez votre connexion.';
+                t('mesServices.cannotDelete');
               toaster.error(message);
             }
           }
@@ -913,7 +913,7 @@ const MesServicesScreen: React.FC = () => {
         serviceId = parts[0];
       } else {
         logger.error('[MesServicesScreen] ❌ Format ID produit invalide:', productItem.id);
-        toaster.error('Impossible de déterminer le service pour ce produit');
+        toaster.error(t('mesServices.cannotDetermineService'));
         return;
       }
     }
@@ -927,7 +927,7 @@ const MesServicesScreen: React.FC = () => {
         service_id: productItem.service_id,
         data_serviceId: productItem.data?.serviceId
       });
-      toaster.error('Impossible de déterminer le service pour ce produit');
+      toaster.error(t('mesServices.cannotDetermineService'));
       return;
     }
 
@@ -935,7 +935,7 @@ const MesServicesScreen: React.FC = () => {
     const numericServiceId = Number(serviceId);
     if (!Number.isFinite(numericServiceId) || numericServiceId <= 0) {
       logger.error('[MesServicesScreen] ❌ serviceId invalide:', serviceId);
-      toaster.error('Service invalide pour ce produit');
+      toaster.error(t('mesServices.invalidService'));
       return;
     }
 
@@ -943,7 +943,7 @@ const MesServicesScreen: React.FC = () => {
 
     // ✅ CORRECTION: S'assurer que services est un tableau avant filter
     if (!Array.isArray(services)) {
-      toaster.error('Impossible de créer une vidéo : données de services invalides');
+      toaster.error(t('mesServices.cannotCreateVideo'));
       return;
     }
 
@@ -989,12 +989,12 @@ const MesServicesScreen: React.FC = () => {
     if (produitsDuService.length === 0) {
       // Utiliser Alert pour confirmation avec actions multiples
       Alert.alert(
-        'Produit requis',
-        'Aucun produit trouvé pour ce service. Créez d\'abord un produit pour pouvoir créer une vidéo.',
+        t('mesServices.productRequired'),
+        t('mesServices.noProductForVideo'),
         [
-          { text: 'Annuler', style: 'cancel' },
+          { text: t('mesServices.cancel'), style: 'cancel' },
           {
-            text: 'Créer un produit',
+            text: t('mesServices.createAProduct'),
             onPress: () => {
               handleAddProduct(numericServiceId);
             }
@@ -1006,7 +1006,7 @@ const MesServicesScreen: React.FC = () => {
 
     // ✅ CORRECTION: S'assurer que produitsDuService est un tableau avant map
     if (!Array.isArray(produitsDuService) || produitsDuService.length === 0) {
-      toaster.error('Aucun produit trouvé pour ce service');
+      toaster.error(t('mesServices.noProductFound'));
       return;
     }
 
@@ -1047,7 +1047,7 @@ const MesServicesScreen: React.FC = () => {
     setShowVideoCreationModal(false);
     setProductsForVideoCreation([]);
     setSelectedServiceForVideo(null);
-    toaster.success('Votre vidéo a été créée avec succès !');
+    toaster.success(t('mesServices.videoCreated'));
   };
 
   const handlePromotionService = (service: any) => {
@@ -1055,12 +1055,12 @@ const MesServicesScreen: React.FC = () => {
 
     // Afficher un modal de gestion des promotions comme dans le frontend
     Alert.alert(
-      '📢 Promotion du service',
-      `Service: ${titre}\n\nQue souhaitez-vous faire ?`,
+      `📢 ${t('mesServices.promotionTitle')}`,
+      t('mesServices.promotionQuestion', { title: titre }),
       [
-        { text: 'Annuler', style: 'cancel' },
+        { text: t('mesServices.cancel'), style: 'cancel' },
         {
-          text: '⚡ Créer un flash promotionnel',
+          text: `⚡ ${t('mesServices.createFlashPromo')}`,
           onPress: () => {
             try {
               // Navigation vers l'écran de création de flash promotionnel
@@ -1071,12 +1071,12 @@ const MesServicesScreen: React.FC = () => {
               });
             } catch (error) {
               logger.error('Erreur navigation flash promo:', error);
-              Alert.alert('Erreur', 'Impossible d\'ouvrir la création de flash promotionnel');
+              Alert.alert(t('message.error'), t('mesServices.cannotOpenFlashPromo'));
             }
           }
         },
         {
-          text: '🎉 Créer une promotion',
+          text: `🎉 ${t('mesServices.createPromotion')}`,
           onPress: () => {
             try {
               // Navigation vers l'écran de modification pour créer une promotion
@@ -1095,12 +1095,12 @@ const MesServicesScreen: React.FC = () => {
               });
             } catch (error) {
               logger.error('Erreur navigation promotion:', error);
-              Alert.alert('Erreur', 'Impossible d\'ouvrir la gestion des promotions');
+              Alert.alert(t('message.error'), t('mesServices.cannotOpenPromotion'));
             }
           }
         },
         {
-          text: 'Modifier la promotion',
+          text: t('mesServices.editPromotion'),
           onPress: () => {
             try {
               // Navigation vers l'écran de modification pour modifier la promotion
@@ -1119,7 +1119,7 @@ const MesServicesScreen: React.FC = () => {
               });
             } catch (error) {
               logger.error('Erreur navigation promotion:', error);
-              Alert.alert('Erreur', 'Impossible d\'ouvrir la gestion des promotions');
+              Alert.alert(t('message.error'), t('mesServices.cannotOpenPromotion'));
             }
           }
         }
@@ -1171,7 +1171,7 @@ const MesServicesScreen: React.FC = () => {
               <View style={dynamicStyles.logoContainer}>
                 <SafeIcon name="briefcase" size={18} color="#fff" />
                 <View style={dynamicStyles.titleContainer}>
-                  <Text style={dynamicStyles.title} numberOfLines={1} ellipsizeMode="tail">Produits</Text>
+                  <Text style={dynamicStyles.title} numberOfLines={1} ellipsizeMode="tail">{t('mesServices.products')}</Text>
                 </View>
               </View>
             </View>
@@ -1189,15 +1189,15 @@ const MesServicesScreen: React.FC = () => {
   const breadcrumbItems: BreadcrumbItem[] = useMemo(() => {
     const items: BreadcrumbItem[] = [
       {
-        label: 'Accueil',
+        label: t('mesServices.home'),
         onPress: () => navigation.navigate('Home' as never),
       },
       {
-        label: 'Produits',
+        label: t('mesServices.products'),
       },
     ];
     return items;
-  }, [navigation]);
+  }, [navigation, t]);
 
   return (
     <ErrorBoundaryWithRetry
@@ -1233,10 +1233,10 @@ const MesServicesScreen: React.FC = () => {
                     (navigation as any).navigate('VideoCreationIntro');
                   } catch (error) {
                     logger.error('[MesServicesScreen] Erreur navigation vers VideoCreationIntro:', error);
-                    toaster.error('Impossible d\'ouvrir la création de vidéo');
+                    toaster.error(t('mesServices.cannotCreateVideo'));
                   }
                 }}
-                accessibilityLabel="Créer une vidéo"
+                accessibilityLabel={t('mesServices.createProduct')}
                 accessibilityRole="button"
               >
                 <SafeIcon name="plus" size={20} color="#fff" type="lucide" />
@@ -1254,7 +1254,7 @@ const MesServicesScreen: React.FC = () => {
                   setProductSelectorMode('flash-promo');
                   setShowProductSelector(true);
                 }}
-                accessibilityLabel="Configuration Flash Promo"
+                accessibilityLabel={t('mesServices.createFlash')}
                 accessibilityRole="button"
               >
                 <SafeIcon name="zap" size={20} color="#fff" type="lucide" />
@@ -1265,7 +1265,7 @@ const MesServicesScreen: React.FC = () => {
                 onPress={() => {
                   const productsList = prepareProductsForSelector();
                   if (productsList.length === 0) {
-                    toaster.warning('Vous devez d\'abord créer des produits avant de configurer la livraison.');
+                    toaster.warning(t('mesServices.createProductsFirst'));
                     return;
                   }
                   setProductsForSelection(productsList);
@@ -1315,7 +1315,7 @@ const MesServicesScreen: React.FC = () => {
                 }}
               >
                 <SafeIcon name="image" size={18} color={colors.success} />
-                <Text style={[dynamicStyles.menuItemText, { color: colors.success }]}>Galerie Médias</Text>
+                <Text style={[dynamicStyles.menuItemText, { color: colors.success }]}>{t('mesServices.mediaGallery')}</Text>
               </TouchableOpacity>
 
               {/* ✅ Bouton Membres existant - amélioré pour sélection produits/services */}
@@ -1326,7 +1326,7 @@ const MesServicesScreen: React.FC = () => {
                   // ✅ Préparer la liste des produits et ouvrir le sélecteur
                   const productsList = prepareProductsForSelector();
                   if (productsList.length === 0) {
-                    toaster.warning('Vous devez d\'abord créer des produits avant de gérer l\'équipe.');
+                    toaster.warning(t('mesServices.createProductsFirstTeam'));
                     return;
                   }
                   setProductsForSelection(productsList);
@@ -1335,7 +1335,7 @@ const MesServicesScreen: React.FC = () => {
                 }}
               >
                 <SafeIcon name="users" size={18} color="#6366F1" />
-                <Text style={dynamicStyles.menuItemText}>Membres</Text>
+                <Text style={dynamicStyles.menuItemText}>{t('mesServices.members')}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -1346,7 +1346,7 @@ const MesServicesScreen: React.FC = () => {
                 }}
               >
                 <SafeIcon name="plus-circle" size={18} color="#10B981" />
-                <Text style={dynamicStyles.menuItemText}>Créer produit</Text>
+                <Text style={dynamicStyles.menuItemText}>{t('mesServices.createProduct')}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -1357,7 +1357,7 @@ const MesServicesScreen: React.FC = () => {
                 }}
               >
                 <SafeIcon name="tablet" size={18} color="#3B82F6" />
-                <Text style={dynamicStyles.menuItemText}>Statistiques</Text>
+                <Text style={dynamicStyles.menuItemText}>{t('mesServices.statistics')}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -1368,7 +1368,7 @@ const MesServicesScreen: React.FC = () => {
                 }}
               >
                 <SafeIcon name="megaphone" size={18} color="#8B5CF6" />
-                <Text style={dynamicStyles.menuItemText}>Mes Publicités</Text>
+                <Text style={dynamicStyles.menuItemText}>{t('mesServices.myAds')}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -1379,7 +1379,7 @@ const MesServicesScreen: React.FC = () => {
                 }}
               >
                 <SafeIcon name="plus-circle" size={18} color="#EC4899" />
-                <Text style={dynamicStyles.menuItemText}>Nouvelle Publicité</Text>
+                <Text style={dynamicStyles.menuItemText}>{t('mesServices.newAd')}</Text>
               </TouchableOpacity>
 
               {/* ✅ NOUVEAU: Créer Flash Promo - Sélection multiple de produits */}
@@ -1390,7 +1390,7 @@ const MesServicesScreen: React.FC = () => {
                   // Préparer la liste des produits et ouvrir le sélecteur
                   const productsList = prepareProductsForSelector();
                   if (productsList.length === 0) {
-                    toaster.warning('Vous devez d\'abord créer des produits avant de créer un flash promo.');
+                    toaster.warning(t('mesServices.createProductsFirstFlash'));
                     return;
                   }
                   setProductsForSelection(productsList);
@@ -1399,7 +1399,7 @@ const MesServicesScreen: React.FC = () => {
                 }}
               >
                 <Text style={{ fontSize: 18, marginRight: 8 }}>⚡</Text>
-                <Text style={[dynamicStyles.menuItemText, { color: '#F59E0B', fontWeight: '700' }]}>Créer Flash Promo</Text>
+                <Text style={[dynamicStyles.menuItemText, { color: '#F59E0B', fontWeight: '700' }]}>{t('mesServices.createFlash')}</Text>
               </TouchableOpacity>
 
               {/* ✅ NOUVEAU: Voir Flash Promotionnels actifs */}
@@ -1416,7 +1416,7 @@ const MesServicesScreen: React.FC = () => {
                 }}
               >
                 <SafeIcon name="zap" size={18} color="#F59E0B" />
-                <Text style={dynamicStyles.menuItemText}>Voir Flash Actifs</Text>
+                <Text style={dynamicStyles.menuItemText}>{t('mesServices.viewActiveFlash')}</Text>
               </TouchableOpacity>
 
               {/* ✅ NOUVEAU: Mes Vidéos - Créées */}
@@ -1438,7 +1438,7 @@ const MesServicesScreen: React.FC = () => {
                 }}
               >
                 <SafeIcon name="video" size={18} color={colors.primary} />
-                <Text style={[dynamicStyles.menuItemText, { color: colors.primary }]}>Mes Vidéos Créées</Text>
+                <Text style={[dynamicStyles.menuItemText, { color: colors.primary }]}>{t('mesServices.myCreatedVideos')}</Text>
               </TouchableOpacity>
 
               {/* ✅ NOUVEAU: Démarrer un Live */}
@@ -1447,7 +1447,7 @@ const MesServicesScreen: React.FC = () => {
                 onPress={() => (navigation as any).navigate('StartLive')}
               >
                 <SafeIcon name="radio" size={18} color="#DC2626" />
-                <Text style={[dynamicStyles.menuItemText, { color: '#DC2626' }]}>🎥 Démarrer un Live</Text>
+                <Text style={[dynamicStyles.menuItemText, { color: '#DC2626' }]}>🎥 {t('mesServices.startLive')}</Text>
               </TouchableOpacity>
 
               {/* ✅ NOUVEAU: Analytiques Vidéos */}
@@ -1469,7 +1469,7 @@ const MesServicesScreen: React.FC = () => {
                 }}
               >
                 <SafeIcon name="bar-chart" size={18} color={colors.primary} />
-                <Text style={[dynamicStyles.menuItemText, { color: colors.primary }]}>Analytiques Vidéos</Text>
+                <Text style={[dynamicStyles.menuItemText, { color: colors.primary }]}>{t('mesServices.videoAnalytics')}</Text>
               </TouchableOpacity>
 
               {/* ✅ Bouton Paramètres */}
@@ -1481,7 +1481,7 @@ const MesServicesScreen: React.FC = () => {
                 }}
               >
                 <SafeIcon name="settings" size={18} color="#6B7280" />
-                <Text style={dynamicStyles.menuItemText}>Paramètres</Text>
+                <Text style={dynamicStyles.menuItemText}>{t('mesServices.settings')}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -1492,7 +1492,7 @@ const MesServicesScreen: React.FC = () => {
                 }}
               >
                 <SafeIcon name="refresh-cw" size={18} color="#6B7280" />
-                <Text style={dynamicStyles.menuItemText}>Actualiser</Text>
+                <Text style={dynamicStyles.menuItemText}>{t('mesServices.refresh')}</Text>
               </TouchableOpacity>
             </View>
           )}

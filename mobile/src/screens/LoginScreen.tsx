@@ -10,6 +10,7 @@ import {
   View
 } from 'react-native';
 import { APP_CONFIG } from '../config/appConfig';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 import { authApi } from '../services/api';
 // ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
 import SafeStorage from '../utils/safeStorage';
@@ -18,6 +19,7 @@ import { KeyboardAwareScreen } from '../components/KeyboardAwareScreen';
 
 const LoginScreen: React.FC = () => {
   const navigation = useNavigation();
+  const { t } = useLanguageSafe();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -53,11 +55,11 @@ const LoginScreen: React.FC = () => {
 
       } else {
         console.error('[LoginScreen] Erreur de connexion:', response.error);
-        setError(response.error || 'Erreur de connexion');
+        setError(response.error || t('auth.loginError'));
       }
     } catch (error: any) {
       console.error('[LoginScreen] Erreur lors de la connexion:', error);
-      setError('Erreur de connexion au serveur. V�rifiez votre connexion internet.');
+      setError(t('auth.serverError'));
     } finally {
       setLoading(false);
     }
@@ -79,33 +81,33 @@ const LoginScreen: React.FC = () => {
         </Text>
 
         <Text style={styles.subtitle}>
-          Connectez-vous avec votre compte Google ou Facebook
+          {t('auth.loginSubtitle')}
         </Text>
 
         {/* Boutons OAuth */}
         <TouchableOpacity style={[styles.oauthButton, styles.googleButton]}>
-          <Text style={styles.oauthButtonText}>Continuer avec Google</Text>
+          <Text style={styles.oauthButtonText}>{t('auth.continueGoogle')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={[styles.oauthButton, styles.facebookButton]}>
-          <Text style={styles.oauthButtonText}>Continuer avec Facebook</Text>
+          <Text style={styles.oauthButtonText}>{t('auth.continueFacebook')}</Text>
         </TouchableOpacity>
 
         <View style={styles.separator}>
           <View style={styles.separatorLine} />
-          <Text style={styles.separatorText}>ou utilisez vos identifiants :</Text>
+          <Text style={styles.separatorText}>{t('auth.orUseCredentials')}</Text>
           <View style={styles.separatorLine} />
         </View>
 
         {/* Formulaire de connexion */}
         <View style={styles.formContainer}>
           <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>Adresse email</Text>
+            <Text style={styles.inputLabel}>{t('auth.emailLabel')}</Text>
             <TextInput
               style={styles.input}
               value={email}
               onChangeText={setEmail}
-              placeholder="Votre email"
+              placeholder={t('auth.emailPlaceholder')}
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
@@ -113,12 +115,12 @@ const LoginScreen: React.FC = () => {
           </View>
 
           <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>Mot de passe</Text>
+            <Text style={styles.inputLabel}>{t('auth.passwordLabel')}</Text>
             <TextInput
               style={styles.input}
               value={password}
               onChangeText={setPassword}
-              placeholder="Votre mot de passe"
+              placeholder={t('auth.passwordPlaceholder')}
               secureTextEntry
             />
           </View>
@@ -135,14 +137,14 @@ const LoginScreen: React.FC = () => {
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.loginButtonText}>Se connecter</Text>
+              <Text style={styles.loginButtonText}>{t('auth.login')}</Text>
             )}
           </TouchableOpacity>
         </View>
 
         <TouchableOpacity onPress={handleRegister} style={styles.registerLink}>
           <Text style={styles.registerText}>
-            Pas encore inscrit ? <Text style={styles.registerLinkText}>Cr�er un compte</Text>
+            {t('auth.noAccount')} <Text style={styles.registerLinkText}>{t('auth.createAccount')}</Text>
           </Text>
         </TouchableOpacity>
 

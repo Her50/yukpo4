@@ -42,12 +42,13 @@ import { hapticError } from '../utils/hapticFeedback';
 
 // Barre promotions regroupée sous un bouton "Offres Spéciales"
 const PromotionsBar: React.FC<{ navigate: (route: string) => boolean }> = ({ navigate }) => {
+    const { t } = useLanguageSafe();
     const [showDropdown, setShowDropdown] = useState(false);
 
     const promotions = [
-        { id: 'flash', icon: 'zap', title: 'Flash Promo', route: 'FlashPromosActive', color: '#F59E0B' },
-        { id: 'blackfriday', icon: 'shopping-bag', title: 'Black Friday', route: 'GlobalPromoCatalog', color: '#DC2626' },
-        { id: 'live', icon: 'video', title: 'Lives', route: 'LivesList', color: '#8B5CF6' },
+        { id: 'flash', icon: 'zap', titleKey: 'home.flashPromo', route: 'FlashPromosActive', color: '#F59E0B' },
+        { id: 'blackfriday', icon: 'shopping-bag', titleKey: 'home.blackFriday', route: 'GlobalPromoCatalog', color: '#DC2626' },
+        { id: 'live', icon: 'video', titleKey: 'home.lives', route: 'LivesList', color: '#8B5CF6' },
     ];
 
     return (
@@ -61,7 +62,7 @@ const PromotionsBar: React.FC<{ navigate: (route: string) => boolean }> = ({ nav
                     <View style={[styles.promoBarIcon, { backgroundColor: '#F59E0B20' }]}>
                         <SafeIcon name="gift" size={20} color="#F59E0B" />
                     </View>
-                    <Text style={styles.promoBarButtonText}>Offres Spéciales</Text>
+                    <Text style={styles.promoBarButtonText}>{t('home.specialOffers')}</Text>
                     <SafeIcon
                         name={showDropdown ? "chevron-up" : "chevron-down"}
                         size={16}
@@ -97,10 +98,10 @@ const PromotionsBar: React.FC<{ navigate: (route: string) => boolean }> = ({ nav
                                 <View style={[styles.promoCardIcon, { backgroundColor: `${promo.color}15` }]}>
                                     <SafeIcon name={promo.icon as any} size={20} color={promo.color} />
                                 </View>
-                                <Text style={styles.promoCardTitle}>{promo.title}</Text>
+                                <Text style={styles.promoCardTitle}>{t(promo.titleKey)}</Text>
                                 <View style={styles.promoCardBadge}>
                                     <Text style={[styles.promoCardBadgeText, { color: promo.color }]}>
-                                        Voir
+                                        {t('home.see')}
                                     </Text>
                                 </View>
                             </TouchableOpacity>
@@ -116,7 +117,7 @@ const HomeScreen: React.FC = () => {
     // Navigation et contextes
     const navigation = ReactNavigation.useNavigation();
     const { user } = useAuth();
-    const { language, setLanguage } = useLanguageSafe();
+    const { language, setLanguage, t } = useLanguageSafe();
 
     // États simples
     const [isCreateService, setIsCreateService] = useState(false);
@@ -271,7 +272,7 @@ const HomeScreen: React.FC = () => {
     const handleSearch = useCallback(async (input: any) => {
         try {
             if (!user) {
-                Alert.alert('Erreur', 'Vous devez être connecté pour effectuer une recherche');
+                Alert.alert(t('message.error'), t('errors.mustBeConnected'));
                 return;
             }
 
@@ -289,35 +290,32 @@ const HomeScreen: React.FC = () => {
             // Vérifier si la recherche a réussi
             if (!result.success) {
                 // ✅ AMÉLIORÉ: Messages d'erreur plus clairs selon le type d'erreur
-                let errorTitle = 'Erreur de recherche';
-                let errorMessage = result.message || 'Une erreur est survenue lors de la recherche';
+                let errorTitle = t('errors.searchTitle');
+                let errorMessage = result.message || t('errors.searchGeneric');
 
                 if (result.error === 'TIMEOUT') {
-                    errorTitle = 'Recherche trop longue';
-                    errorMessage = 'La recherche a pris trop de temps. Cela peut être dû à une connexion internet lente ou à un serveur occupé. Veuillez réessayer.';
+                    errorTitle = t('errors.searchTimeoutTitle');
+                    errorMessage = t('errors.searchTimeout');
                 } else if (result.error === 'NETWORK_ERROR') {
-                    errorTitle = 'Problème de connexion';
-                    errorMessage = 'Impossible de se connecter au serveur. Vérifiez votre connexion internet et réessayez.';
+                    errorTitle = t('errors.networkTitle');
+                    errorMessage = t('errors.networkMessage');
                 } else if (result.error === 'AUTH_REQUIRED') {
-                    errorTitle = 'Authentification requise';
-                    errorMessage = 'Vous devez être connecté pour effectuer une recherche. Veuillez vous reconnecter.';
+                    errorTitle = t('errors.authTitle');
+                    errorMessage = t('errors.authMessage');
                 } else if (result.error?.startsWith('HTTP_')) {
                     const statusCode = result.error.replace('HTTP_', '');
                     if (statusCode === '502') {
-                        errorTitle = 'Serveur en démarrage';
-                        errorMessage = 'Le serveur est en cours de démarrage (Bad Gateway). Cela peut prendre quelques secondes. Veuillez réessayer.';
+                        errorTitle = t('errors.serverStartingTitle');
+                        errorMessage = t('errors.serverStarting');
                     } else if (statusCode === '503') {
-                        errorTitle = 'Service indisponible';
-                        errorMessage = 'Le service est temporairement indisponible. Veuillez réessayer dans quelques instants.';
+                        errorTitle = t('errors.serviceUnavailableTitle');
+                        errorMessage = t('errors.serviceUnavailable');
                     } else if (statusCode === '504') {
-                        errorTitle = 'Timeout serveur';
-                        errorMessage = 'Le serveur a pris trop de temps à répondre. Veuillez réessayer.';
+                        errorTitle = t('errors.serverTimeoutTitle');
+                        errorMessage = t('errors.serverTimeout');
                     } else if (statusCode === '500') {
-                        errorTitle = 'Erreur serveur';
-                        errorMessage = 'Une erreur interne du serveur s\'est produite. Veuillez réessayer.';
-                    } else if (statusCode === '500' || statusCode === '503' || statusCode === '504') {
-                        errorTitle = 'Serveur indisponible';
-                        errorMessage = 'Le serveur est temporairement indisponible. Veuillez réessayer dans quelques instants.';
+                        errorTitle = t('errors.serverErrorTitle');
+                        errorMessage = t('errors.serverError');
                     }
                 }
 
@@ -386,14 +384,14 @@ const HomeScreen: React.FC = () => {
                         hasError: false,
                     });
                 } else {
-                    Alert.alert('Aucun résultat', 'Aucun service trouvé pour votre recherche');
+                    Alert.alert(t('errors.noResults'), t('errors.noResultsMessage'));
                 }
             } catch (extractError: any) {
                 console.error('[HomeScreen] ÔØî Erreur lors de l\'extraction des résultats:', extractError);
                 console.error('[HomeScreen] Structure reçue:', JSON.stringify(result, null, 2));
                 Alert.alert(
-                    'Erreur',
-                    'Erreur lors du traitement des résultats de recherche. Veuillez réessayer.'
+                    t('message.error'),
+                    t('errors.extractionError')
                 );
             }
 
@@ -403,18 +401,18 @@ const HomeScreen: React.FC = () => {
             setLoading(false);
 
             // ✅ AMÉLIORÉ: Messages d'erreur plus clairs selon le type d'erreur
-            let errorTitle = 'Erreur de recherche';
-            let errorMessage = error?.message || 'Une erreur est survenue lors de la recherche';
+            let errorTitle = t('errors.searchTitle');
+            let errorMessage = error?.message || t('errors.searchGeneric');
 
             if (error?.name === 'AbortError' || error?.message?.includes('timeout') || error?.message?.includes('Timeout')) {
-                errorTitle = 'Recherche trop longue';
-                errorMessage = 'La recherche a pris trop de temps. Vérifiez votre connexion internet et réessayez.';
+                errorTitle = t('errors.searchTimeoutTitle');
+                errorMessage = t('errors.searchTimeout');
             } else if (error?.message?.includes('Network request failed') || error?.message?.includes('Failed to fetch')) {
-                errorTitle = 'Problème de connexion';
-                errorMessage = 'Impossible de se connecter au serveur. Vérifiez votre connexion internet et réessayez.';
+                errorTitle = t('errors.networkTitle');
+                errorMessage = t('errors.networkMessage');
             } else if (error?.message?.includes('Token') || error?.message?.includes('authentification')) {
-                errorTitle = 'Authentification requise';
-                errorMessage = 'Vous devez être connecté pour effectuer une recherche. Veuillez vous reconnecter.';
+                errorTitle = t('errors.authTitle');
+                errorMessage = t('errors.authMessage');
             }
 
             hapticError(); // ✅ Haptic feedback pour erreur critique
@@ -427,7 +425,7 @@ const HomeScreen: React.FC = () => {
         try {
             if (!user) {
                 hapticError(); // ✅ Haptic feedback pour erreur critique
-                Alert.alert('Erreur', 'Vous devez être connecté pour créer un service');
+                Alert.alert(t('message.error'), t('errors.mustBeConnectedCreate'));
                 return;
             }
 
@@ -547,14 +545,14 @@ const HomeScreen: React.FC = () => {
                 });
             } else {
                 console.error('[HomeScreen] Données invalides reçues:', result);
-                Alert.alert('Erreur', 'Impossible de générer les suggestions. Veuillez réessayer.');
+                Alert.alert(t('message.error'), t('errors.suggestionsError'));
             }
 
             setLoading(false);
         } catch (error: any) {
             console.error('[HomeScreen] Erreur création service:', error);
             setLoading(false);
-            Alert.alert('Erreur', error?.message || 'Une erreur est survenue lors de la création');
+            Alert.alert(t('message.error'), error?.message || t('errors.createGeneric'));
         }
     }, [user, navigate]);
 
@@ -725,7 +723,7 @@ const HomeScreen: React.FC = () => {
                             numberOfLines={1}
                             adjustsFontSizeToFit={false} // ✅ DÉSACTIVÉ: Pour éviter le rétrécissement du texte
                         >
-                            🔍 Rechercher
+                            🔍 {t('home.searchMode')}
                         </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -747,7 +745,7 @@ const HomeScreen: React.FC = () => {
                             numberOfLines={1}
                             adjustsFontSizeToFit={false} // ✅ DÉSACTIVÉ: Pour éviter le rétrécissement du texte
                         >
-                            Créer produit
+                            {t('home.createMode')}
                         </Text>
                     </TouchableOpacity>
                 </View>
@@ -761,8 +759,8 @@ const HomeScreen: React.FC = () => {
                             loading={loading}
                             placeholder={
                                 isCreateService
-                                    ? 'Décrivez le service que vous voulez créer...'
-                                    : 'Décrivez votre besoin...'
+                                    ? t('home.createPlaceholder')
+                                    : t('home.searchPlaceholder')
                             }
                             onGPSPress={handleGPSPress}
                             showSendButton={true}
@@ -825,7 +823,7 @@ const HomeScreen: React.FC = () => {
                                 const success = navigate(route, routeParams);
                                 if (!success) {
                                     console.error('[HomeScreen] Échec navigation vers:', route);
-                                    Alert.alert('Navigation', `L'écran ${route} n'est pas encore disponible.`);
+                                    Alert.alert(t('message.error'), t('errors.navigationUnavailable', { route }));
                                 }
                             }}
                         />
@@ -841,7 +839,7 @@ const HomeScreen: React.FC = () => {
                     onClose={() => setShowGPSModal(false)}
                     onSelect={handleGPSSelect}
                     currentLocation={selectedLocation}
-                    title="Sélectionner votre localisation"
+                    title={t('home.selectLocation')}
                     allowZoneSelection={true}
                 />
             )}

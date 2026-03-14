@@ -13,9 +13,10 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-import { NativeButton, NativeCard } from '../components/SafeNativeDesign';
 import SafeIcon from '../components/SafeIcon';
+import { NativeButton, NativeCard } from '../components/SafeNativeDesign';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 import { apiGet } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 
@@ -44,6 +45,7 @@ interface CategoryInteraction {
 const MesInteractionsScreen: React.FC = () => {
   const navigation = useNavigation();
   const { user } = useAuth();
+  const { t } = useLanguageSafe();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState<'7d' | '30d' | '90d'>('30d');
@@ -208,9 +210,9 @@ const MesInteractionsScreen: React.FC = () => {
     const hours = Math.floor(diff / (1000 * 60 * 60));
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
 
-    if (minutes < 60) return `Il y a ${minutes}min`;
-    if (hours < 24) return `Il y a ${hours}h`;
-    return `Il y a ${days}j`;
+    if (minutes < 60) return t('interactions.minutesAgo', { count: minutes });
+    if (hours < 24) return t('interactions.hoursAgo', { count: hours });
+    return t('interactions.daysAgo', { count: days });
   };
 
   const getInteractionIcon = (type: string) => {
@@ -238,15 +240,15 @@ const MesInteractionsScreen: React.FC = () => {
   };
 
   const getInteractionLabel = (type: string) => {
-    const labels: { [key: string]: string } = {
-      'message': 'Message',
-      'like': 'J\'aime',
-      'share': 'Partage',
-      'review': 'Avis',
-      'favorite': 'Favori',
-      'view': 'Vue'
+    const labelKeys: { [key: string]: string } = {
+      'message': 'interactions.typeMessage',
+      'like': 'interactions.typeLike',
+      'share': 'interactions.typeShare',
+      'review': 'interactions.typeReview',
+      'favorite': 'interactions.typeFavorite',
+      'view': 'interactions.typeView'
     };
-    return labels[type] || type;
+    return labelKeys[type] ? t(labelKeys[type]) : type;
   };
 
   if (loading) {
@@ -256,7 +258,7 @@ const MesInteractionsScreen: React.FC = () => {
         style={styles.loadingContainer}
       >
         <ActivityIndicator size="large" color="#fff" />
-        <Text style={styles.loadingText}>Chargement de vos interactions...</Text>
+        <Text style={styles.loadingText}>{t('interactions.loading')}</Text>
       </LinearGradient>
     );
   }
@@ -276,7 +278,7 @@ const MesInteractionsScreen: React.FC = () => {
               <SafeIcon name="message-circle" size={28} color="#fff" />
             </View>
             <View style={styles.headerTextContainer}>
-              <Text style={styles.headerTitle}>Mes Interactions</Text>
+              <Text style={styles.headerTitle}>{t('interactions.title')}</Text>
               <Text style={styles.headerSubtitle}>
                 {String(interactions.length)} interaction{interactions.length > 1 ? 's' : ''} • {String(favorites.length)} favori{favorites.length > 1 ? 's' : ''}
               </Text>
@@ -317,7 +319,7 @@ const MesInteractionsScreen: React.FC = () => {
         {/* Dashboard Stats - ✅ UNIQUEMENT DONNÉES RÉELLES */}
         {dashboardData && (
           <View style={styles.dashboardSection}>
-            <Text style={styles.sectionTitle}>Vue d'ensemble</Text>
+            <Text style={styles.sectionTitle}>{t('interactions.overview')}</Text>
             <View style={styles.statsGrid}>
               <NativeCard style={styles.statCard}>
                 <View style={[styles.statIconContainer, { backgroundColor: '#3B82F620' }]}>
@@ -326,7 +328,7 @@ const MesInteractionsScreen: React.FC = () => {
                 <Text style={styles.statValue}>
                   {dashboardData.totalInteractions ? dashboardData.totalInteractions.toLocaleString('fr-FR') : '0'}
                 </Text>
-                <Text style={styles.statLabel}>Total</Text>
+                <Text style={styles.statLabel}>{t('interactions.total')}</Text>
               </NativeCard>
 
               <NativeCard style={styles.statCard}>
@@ -336,7 +338,7 @@ const MesInteractionsScreen: React.FC = () => {
                 <Text style={styles.statValue}>
                   {dashboardData.messageCount ? dashboardData.messageCount.toLocaleString('fr-FR') : '0'}
                 </Text>
-                <Text style={styles.statLabel}>Messages</Text>
+                <Text style={styles.statLabel}>{t('interactions.messages')}</Text>
               </NativeCard>
 
               <NativeCard style={styles.statCard}>
@@ -346,7 +348,7 @@ const MesInteractionsScreen: React.FC = () => {
                 <Text style={styles.statValue}>
                   {dashboardData.likeCount ? dashboardData.likeCount.toLocaleString('fr-FR') : '0'}
                 </Text>
-                <Text style={styles.statLabel}>J'aimes</Text>
+                <Text style={styles.statLabel}>{t('interactions.likes')}</Text>
               </NativeCard>
 
               <NativeCard style={styles.statCard}>
@@ -356,7 +358,7 @@ const MesInteractionsScreen: React.FC = () => {
                 <Text style={styles.statValue}>
                   {dashboardData.reviewCount ? dashboardData.reviewCount.toLocaleString('fr-FR') : '0'}
                 </Text>
-                <Text style={styles.statLabel}>Avis</Text>
+                <Text style={styles.statLabel}>{t('interactions.reviews')}</Text>
               </NativeCard>
 
               <NativeCard style={styles.statCard}>
@@ -366,7 +368,7 @@ const MesInteractionsScreen: React.FC = () => {
                 <Text style={styles.statValue}>
                   {dashboardData.shareCount ? dashboardData.shareCount.toLocaleString('fr-FR') : '0'}
                 </Text>
-                <Text style={styles.statLabel}>Partages</Text>
+                <Text style={styles.statLabel}>{t('interactions.shares')}</Text>
               </NativeCard>
 
               <NativeCard style={styles.statCard}>
@@ -376,7 +378,7 @@ const MesInteractionsScreen: React.FC = () => {
                 <Text style={styles.statValue}>
                   {favorites.length ? favorites.length.toLocaleString('fr-FR') : '0'}
                 </Text>
-                <Text style={styles.statLabel}>Favoris</Text>
+                <Text style={styles.statLabel}>{t('interactions.favorites')}</Text>
               </NativeCard>
             </View>
 
@@ -385,13 +387,13 @@ const MesInteractionsScreen: React.FC = () => {
               <View style={styles.additionalStatItem}>
                 <SafeIcon name="briefcase" size={16} color={modernColors.primary} />
                 <Text style={styles.additionalStatText}>
-                  {String(dashboardData.uniqueServices || 0)} service{(dashboardData.uniqueServices || 0) > 1 ? 's' : ''} consulté{(dashboardData.uniqueServices || 0) > 1 ? 's' : ''}
+                  {t('interactions.servicesConsulted', { count: dashboardData.uniqueServices || 0 })}
                 </Text>
               </View>
               <View style={styles.additionalStatItem}>
                 <SafeIcon name="users" size={16} color={modernColors.primary} />
                 <Text style={styles.additionalStatText}>
-                  {String(dashboardData.uniqueProviders || 0)} prestataire{(dashboardData.uniqueProviders || 0) > 1 ? 's' : ''}
+                  {t('interactions.providers', { count: dashboardData.uniqueProviders || 0 })}
                 </Text>
               </View>
             </View>
@@ -402,7 +404,7 @@ const MesInteractionsScreen: React.FC = () => {
         {categoryStats.length > 0 && (
           <View style={styles.categorySection}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Par catégorie</Text>
+              <Text style={styles.sectionTitle}>{t('interactions.byCategory')}</Text>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
               {categoryStats.map((category, index) => (
@@ -436,10 +438,10 @@ const MesInteractionsScreen: React.FC = () => {
         <View style={styles.filtersSection}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             {[
-              { key: 'all', label: 'Tout', icon: 'grid' },
-              { key: 'favorites', label: 'Favoris', icon: 'heart' },
-              { key: 'messages', label: 'Messages', icon: 'message-circle' },
-              { key: 'reviews', label: 'Avis', icon: 'star' },
+              { key: 'all', label: t('interactions.filterAll'), icon: 'grid' },
+              { key: 'favorites', label: t('interactions.filterFavorites'), icon: 'heart' },
+              { key: 'messages', label: t('interactions.filterMessages'), icon: 'message-circle' },
+              { key: 'reviews', label: t('interactions.filterReviews'), icon: 'star' },
             ].map((filter) => (
               <TouchableOpacity
                 key={filter.key}
@@ -468,20 +470,20 @@ const MesInteractionsScreen: React.FC = () => {
         {/* Liste des interactions */}
         <View style={styles.interactionsSection}>
           <Text style={styles.sectionTitle}>
-            {selectedFilter === 'all' ? 'Toutes les interactions' :
-              selectedFilter === 'favorites' ? 'Mes favoris' :
-                selectedFilter === 'messages' ? 'Mes messages' :
-                  selectedFilter === 'reviews' ? 'Mes avis' : ''}
+            {selectedFilter === 'all' ? t('interactions.allInteractions') :
+              selectedFilter === 'favorites' ? t('interactions.myFavorites') :
+                selectedFilter === 'messages' ? t('interactions.myMessages') :
+                  selectedFilter === 'reviews' ? t('interactions.myReviews') : ''}
           </Text>
 
           {filteredInteractions.length === 0 ? (
             <NativeCard style={styles.emptyCard}>
               <SafeIcon name="inbox" size={48} color={modernColors.textSecondary} />
-              <Text style={styles.emptyTitle}>Aucune interaction</Text>
+              <Text style={styles.emptyTitle}>{t('interactions.noInteraction')}</Text>
               <Text style={styles.emptyText}>
                 {selectedFilter === 'all'
-                  ? 'Commencez à interagir avec des services pour voir votre historique'
-                  : `Aucun élément dans ${selectedFilter === 'favorites' ? 'vos favoris' : selectedFilter === 'messages' ? 'vos messages' : 'vos avis'}`}
+                  ? t('interactions.startInteracting')
+                  : t('interactions.noItemsIn', { section: selectedFilter === 'favorites' ? t('interactions.myFavorites') : selectedFilter === 'messages' ? t('interactions.myMessages') : t('interactions.myReviews') })}
               </Text>
             </NativeCard>
           ) : (
@@ -503,7 +505,7 @@ const MesInteractionsScreen: React.FC = () => {
 
                 <View style={styles.interactionContent}>
                   <Text style={styles.interactionTitle}>{interaction.serviceTitle}</Text>
-                  <Text style={styles.interactionProvider}>par {interaction.providerName}</Text>
+                  <Text style={styles.interactionProvider}>{t('interactions.by')} {interaction.providerName}</Text>
                   <View style={styles.interactionMeta}>
                     <View style={styles.interactionCategoryBadge}>
                       <Text style={styles.interactionCategoryText}>{interaction.category}</Text>
@@ -525,7 +527,7 @@ const MesInteractionsScreen: React.FC = () => {
         {/* ✅ Bouton Dashboard Client/Utilisateur */}
         <View style={styles.dashboardSection}>
           <NativeButton
-            title="📊 Dashboard Complet"
+            title={`📊 ${t('interactions.dashboardFull')}`}
             onPress={() => (navigation as any).navigate('Dashboard')}
             variant="primary"
             size="large"

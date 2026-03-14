@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, Dimensions, Image, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Dimensions, Image, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguageSafe } from '../contexts/LanguageContext';
+import { SUPPORTED_LANGUAGES } from '../i18n';
 import { apiGet } from '../services/api';
 import { theme } from '../theme/theme';
 import { isAdminUser } from '../utils/roleHelpers'; // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
@@ -15,8 +16,12 @@ interface UserAvatarMenuProps {
 
 const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0, weatherLocation }) => {
     const { user, logout } = useAuth();
-    const { language, setLanguage } = useLanguageSafe();
+    const { language, setLanguage, t } = useLanguageSafe();
     const [showMenu, setShowMenu] = useState(false);
+    const [showLanguagePicker, setShowLanguagePicker] = useState(false);
+
+    // Trouver la langue courante dans la liste
+    const currentLang = SUPPORTED_LANGUAGES.find(l => l.code === language) || SUPPORTED_LANGUAGES[0];
     const [teamMembershipCount, setTeamMembershipCount] = useState(0);
 
     // ✅ NOUVEAU: Charger le nombre d'équipes dont l'utilisateur est membre
@@ -95,12 +100,11 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0
         }
     ] : [
         // ✅ MENU UTILISATEUR STANDARD: Pour les non-admins
-        // ✅ Langue figée en français pour le moment
         {
-            title: '🇫🇷 Français',
-            icon: '🇫🇷',
+            title: `${currentLang.flag} ${currentLang.name}`,
+            icon: currentLang.flag,
             route: 'language',
-            description: 'Autres langues bientôt disponibles',
+            description: t('language.changeTo', { lang: currentLang.name }),
             isLanguageSelector: true
         },
         // ✅ NOUVEAU 2026-01-XX: Navigation intelligente en deuxième position
@@ -169,12 +173,8 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0
         if (item.route === 'logout') {
             logout();
         } else if (item.route === 'language') {
-            // ✅ Langue figée en français — changement désactivé pour le moment
-            Alert.alert(
-                '🇫🇷 Langue',
-                'L\'application est actuellement disponible en français uniquement. D\'autres langues seront ajoutées prochainement.',
-                [{ text: 'OK' }]
-            );
+            // ✅ Ouvrir le sélecteur de langue
+            setShowLanguagePicker(true);
         } else if (item.route === 'BlackFridayAdminConfig') {
             // ✅ NOUVEAU : Navigation vers la configuration de lancement Black Friday (admin)
             onNavigate('GlobalPromoManager');
@@ -396,6 +396,48 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0
                     </View>
                 </TouchableOpacity>
             </Modal>
+
+            {/* ✅ Modal sélecteur de langue */}
+            <Modal
+                visible={showLanguagePicker}
+                transparent={true}
+                animationType="slide"
+                onRequestClose={() => setShowLanguagePicker(false)}
+            >
+                <TouchableOpacity
+                    style={styles.modalOverlay}
+                    activeOpacity={1}
+                    onPress={() => setShowLanguagePicker(false)}
+                >
+                    <View style={styles.languagePickerContainer}>
+                        <Text style={styles.languagePickerTitle}>{t('language.title')}</Text>
+                        <ScrollView bounces={false}>
+                            {SUPPORTED_LANGUAGES.map((lang) => (
+                                <TouchableOpacity
+                                    key={lang.code}
+                                    style={[
+                                        styles.languagePickerItem,
+                                        lang.code === language && styles.languagePickerItemActive
+                                    ]}
+                                    onPress={() => {
+                                        setLanguage(lang.code);
+                                        setShowLanguagePicker(false);
+                                    }}
+                                >
+                                    <Text style={styles.languagePickerFlag}>{lang.flag}</Text>
+                                    <Text style={[
+                                        styles.languagePickerLabel,
+                                        lang.code === language && styles.languagePickerLabelActive
+                                    ]}>{lang.name}</Text>
+                                    {lang.code === language && (
+                                        <Text style={styles.languagePickerCheck}>✓</Text>
+                                    )}
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+                    </View>
+                </TouchableOpacity>
+            </Modal>
         </>
     );
 };
@@ -609,6 +651,59 @@ const styles = StyleSheet.create({
     languageSelectorBadgeText: {
         fontSize: 12,
         color: '#FFFFFF',
+        fontWeight: 'bold',
+    },
+    // ✅ Styles pour le picker de langue
+    languagePickerContainer: {
+        backgroundColor: 'white',
+        marginHorizontal: 30,
+        marginTop: 100,
+        borderRadius: 16,
+        padding: 20,
+        maxHeight: 450,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 8,
+    },
+    languagePickerTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        textAlign: 'center',
+        marginBottom: 16,
+        color: '#1F2937',
+    },
+    languagePickerItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 14,
+        paddingHorizontal: 16,
+        borderRadius: 12,
+        marginBottom: 4,
+    },
+    languagePickerItemActive: {
+        backgroundColor: '#EFF6FF',
+        borderWidth: 1,
+        borderColor: '#3B82F6',
+    },
+    languagePickerFlag: {
+        fontSize: 24,
+        marginRight: 14,
+    },
+    languagePickerLabel: {
+        fontSize: 16,
+        fontWeight: '500',
+        color: '#374151',
+        flex: 1,
+    },
+    languagePickerLabelActive: {
+        color: '#1D4ED8',
+        fontWeight: '700',
+    },
+    languagePickerCheck: {
+        fontSize: 18,
+        color: '#3B82F6',
         fontWeight: 'bold',
     },
 });

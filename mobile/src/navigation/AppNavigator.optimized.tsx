@@ -12,6 +12,7 @@ import React, { memo, useEffect, useState } from 'react';
 import { ActivityIndicator, Platform, StyleSheet, Text, View } from 'react-native';
 import SafeIcon from '../components/SafeIcon';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 import { useDeepLinkRedirect } from '../hooks/useDeepLinkRedirect';
 import { apiGet } from '../services/api';
 import { PassiveActivityTracker } from '../services/PassiveActivityTracker';
@@ -39,7 +40,6 @@ import NavigationScreen from '../screens/NavigationScreen';
 
 // Services spécialisés (core)
 import GestionServicesSpecialisesScreen from '../screens/specialized/GestionServicesSpecialisesScreen';
-import ServicesDashboardScreen from '../screens/specialized/ServicesDashboard';
 
 // ============================================================================
 // NAVIGATEURS
@@ -52,20 +52,26 @@ const Stack = createStackNavigator();
 // COMPOSANTS UTILITAIRES
 // ============================================================================
 
-const ScreenLoader = memo(() => (
-  <View style={styles.center}>
-    <ActivityIndicator size="large" color="#6366F1" />
-    <Text style={styles.loadingText}>Chargement...</Text>
-  </View>
-));
+const ScreenLoader = memo(() => {
+  const { t } = useLanguageSafe();
+  return (
+    <View style={styles.center}>
+      <ActivityIndicator size="large" color="#6366F1" />
+      <Text style={styles.loadingText}>{t('message.loading')}</Text>
+    </View>
+  );
+});
 
-const ScreenError = memo(({ name }: { name: string }) => (
-  <View style={styles.center}>
-    <Text style={{ fontSize: 48, marginBottom: 12 }}>⚠️</Text>
-    <Text style={styles.errorTitle}>Écran indisponible</Text>
-    <Text style={styles.errorSub}>« {name} » n'a pas pu être chargé</Text>
-  </View>
-));
+const ScreenError = memo(({ name }: { name: string }) => {
+  const { t } = useLanguageSafe();
+  return (
+    <View style={styles.center}>
+      <Text style={{ fontSize: 48, marginBottom: 12 }}>⚠️</Text>
+      <Text style={styles.errorTitle}>{t('errors.screenUnavailable') || 'Écran indisponible'}</Text>
+      <Text style={styles.errorSub}>« {name} » {t('errors.couldNotLoad') || "n'a pas pu être chargé"}</Text>
+    </View>
+  );
+});
 
 // ============================================================================
 // FACTORY LAZY SCREEN
@@ -594,6 +600,7 @@ const PartnerDashboardTab: React.FC<any> = (props) => {
 
 function MainTabNavigator() {
   const { user } = useAuth();
+  const { t } = useLanguageSafe();
   const [isCourier, setIsCourier] = useState(false);
 
   // ✅ FIX CRITIQUE: Calcul SYNCHRONE de hasSpecializedServices (pas useEffect)
@@ -625,8 +632,8 @@ function MainTabNavigator() {
         setIsCourier(false);
       }
     };
-    const t = setTimeout(check, 100);
-    return () => clearTimeout(t);
+    const timer = setTimeout(check, 100);
+    return () => clearTimeout(timer);
   }, [user?.id]);
 
   return (
@@ -660,7 +667,7 @@ function MainTabNavigator() {
         name="Home"
         component={HomeScreen}
         options={{
-          tabBarLabel: 'Accueil',
+          tabBarLabel: t('tabs.home'),
           tabBarIcon: ({ focused, color, size }) => (
             <SafeIcon name="home" size={size} color={focused ? modernColors.primary : color} type="lucide" />
           ),
@@ -673,8 +680,8 @@ function MainTabNavigator() {
           name="GestionServicesSpecialises"
           component={PartnerDashboardTab}
           options={{
-            tabBarLabel: 'Mon Espace',
-            title: 'Mon Espace Partenaire',
+            tabBarLabel: t('tabs.partnerSpace') || 'Mon Espace',
+            title: t('tabs.partnerSpace') || 'Mon Espace Partenaire',
             tabBarIcon: ({ focused, color, size }) => (
               <SafeIcon name="briefcase" size={size} color={focused ? modernColors.primary : color} type="lucide" />
             ),
@@ -685,7 +692,7 @@ function MainTabNavigator() {
           name="Services"
           component={S['MesProduits'] || MesServicesScreen}
           options={{
-            tabBarLabel: 'Mes Services',
+            tabBarLabel: t('tabs.services'),
             tabBarIcon: ({ focused, color, size }) => (
               <SafeIcon name="shopping-bag" size={size} color={focused ? modernColors.primary : color} type="lucide" />
             ),
@@ -699,7 +706,7 @@ function MainTabNavigator() {
           name="VideoCreationIntro"
           component={S['VideoCreationIntro'] || MesServicesScreen}
           options={{
-            tabBarLabel: 'Créer',
+            tabBarLabel: t('tabs.create') || 'Créer',
             tabBarIcon: ({ focused, color, size }) => (
               <SafeIcon name="plus" size={size} color={focused ? modernColors.primary : color} type="lucide" />
             ),
@@ -712,7 +719,7 @@ function MainTabNavigator() {
         name="Videos"
         component={S['VideoFeed'] || MesInteractionsScreen}
         options={{
-          tabBarLabel: 'Vidéos',
+          tabBarLabel: t('tabs.videos') || 'Vidéos',
           tabBarIcon: ({ focused, color, size }) => (
             <SafeIcon name="play" size={size} color={focused ? modernColors.primary : color} type="lucide" />
           ),
@@ -725,7 +732,7 @@ function MainTabNavigator() {
           name="CourierDashboard"
           component={S['CourierDashboard'] || MesInteractionsScreen}
           options={{
-            tabBarLabel: 'Mes Courses',
+            tabBarLabel: t('tabs.myCourses') || 'Mes Courses',
             tabBarIcon: ({ focused, color, size }) => (
               <SafeIcon name="truck" size={size} color={focused ? modernColors.primary : color} type="lucide" />
             ),
@@ -738,7 +745,7 @@ function MainTabNavigator() {
         name="Profile"
         component={ProfileScreen}
         options={{
-          tabBarLabel: 'Mon Compte',
+          tabBarLabel: t('tabs.account'),
           tabBarIcon: ({ focused, color, size }) => (
             <SafeIcon name="user" size={size} color={focused ? modernColors.primary : color} type="lucide" />
           ),
@@ -790,7 +797,7 @@ function MainStackNavigator() {
       <Stack.Screen name="Contact" component={ContactScreen} />
       <Stack.Screen name="Navigation" component={NavigationScreen} />
       <Stack.Screen name="GestionServicesSpecialises" component={GestionServicesSpecialisesScreen} />
-      <Stack.Screen name="ServicesDashboard" component={ServicesDashboardScreen} />
+      <Stack.Screen name="ServicesDashboard" component={ServicesDashboard} />
 
       {/* === Tous les écrans lazy (chargés à la demande) === */}
       {Object.entries(S).map(([name, component]) =>

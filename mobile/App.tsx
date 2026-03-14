@@ -1,6 +1,9 @@
 // ✅ CRITIQUE: Polyfills pour React Native/Expo - DOIT être en premier
 import './polyfills';
 
+// ✅ i18next — initialisation avant tout composant React
+import './src/i18n';
+
 import { StatusBar } from 'expo-status-bar';
 import * as React from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
