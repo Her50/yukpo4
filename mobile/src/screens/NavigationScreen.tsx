@@ -278,6 +278,7 @@ const NavigationScreen: React.FC = () => {
     const [isHorizontalScrolling, setIsHorizontalScrolling] = useState(false);
     const [showReportBar, setShowReportBar] = useState(false);
     const [showAlertHistory, setShowAlertHistory] = useState(false);
+    const [expandedCommentsId, setExpandedCommentsId] = useState<string | null>(null);
     const [alertHistoryData, setAlertHistoryData] = useState<Array<{
         id: string; checkpoint_type: string; lat: number; lng: number;
         locationName: string; distance: number; count: number;
@@ -1164,7 +1165,20 @@ const NavigationScreen: React.FC = () => {
                                                             <Text style={{ fontSize: 14 }}>👎</Text>
                                                             <Text style={[st.voteBtnTxt, { color: '#EF4444' }]}>Infirmer</Text>
                                                         </TouchableOpacity>
+                                                        <TouchableOpacity
+                                                            style={[st.voteBtn, expandedCommentsId === alert.id && { backgroundColor: '#DBEAFE', borderColor: '#93C5FD' }]}
+                                                            onPress={() => setExpandedCommentsId(prev => prev === alert.id ? null : alert.id)}
+                                                            activeOpacity={0.7}
+                                                        >
+                                                            <SafeIcon name="message-circle" size={14} color={expandedCommentsId === alert.id ? '#2563EB' : '#6B7280'} />
+                                                            <Text style={[st.voteBtnTxt, { color: expandedCommentsId === alert.id ? '#2563EB' : '#6B7280' }]}>Commenter</Text>
+                                                        </TouchableOpacity>
                                                     </View>
+                                                    {/* ✅ Section commentaires (expandable) */}
+                                                    <CheckpointCommentsSection
+                                                        checkpointId={alert.id}
+                                                        visible={expandedCommentsId === alert.id}
+                                                    />
                                                 </View>
                                             </View>
                                         );

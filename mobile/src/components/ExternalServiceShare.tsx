@@ -1,11 +1,10 @@
-import * as React from "react";
-import { useState, useEffect } from 'react';
-import { TouchableOpacity } from 'react-native';
-import { View, Text, StyleSheet, ScrollView, Share, Alert } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Card, Title, Paragraph, Button, ActivityIndicator } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import * as React from "react";
+import { useEffect, useState } from 'react';
+import { Alert, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Button, Card, Paragraph, Title } from 'react-native-paper';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '../theme/theme';
 
 interface ServiceData {
@@ -56,7 +55,7 @@ const ExternalServiceShare: React.FC = () => {
 
     try {
       const shareMessage = `Découvrez ce service sur Yukpo:\n\n${service.title}\n\n${service.description}\n\nPrix: ${service.price.toLocaleString()} XAF\nLocalisation: ${service.location}\n\nTéléchargez Yukpo pour plus de services!`;
-      
+
       await Share.share({
         message: shareMessage,
         title: service.title,
@@ -73,8 +72,8 @@ const ExternalServiceShare: React.FC = () => {
       'Voulez-vous contacter ce prestataire ?',
       [
         { text: 'Annuler', style: 'cancel' },
-        { 
-          text: 'Contacter', 
+        {
+          text: 'Contacter',
           onPress: () => {
             Alert.alert('Contact', 'Fonctionnalité de contact à implémenter');
           }
@@ -103,13 +102,13 @@ const ExternalServiceShare: React.FC = () => {
           <Text style={styles.errorText}>
             Le service que vous recherchez n'existe pas ou a été supprimé.
           </Text>
-          <TouchableOpacity
+          <Button
             mode="contained"
             onPress={() => navigation.goBack()}
             style={styles.backButton}
           >
             Retour
-          </TouchableOpacity>
+          </Button>
         </View>
       </SafeAreaView>
     );
@@ -121,58 +120,58 @@ const ExternalServiceShare: React.FC = () => {
         <Card style={styles.serviceCard}>
           <Card.Content>
             <Title style={styles.serviceTitle}>{service.title}</Title>
-            
+
             <View style={styles.serviceMeta}>
               <View style={styles.metaItem}>
                 <Ionicons name="business" size={16} color={theme.colors.primary} />
                 <Text style={styles.metaText}>{service.provider}</Text>
               </View>
-              
+
               <View style={styles.metaItem}>
                 <Ionicons name="location" size={16} color={theme.colors.primary} />
                 <Text style={styles.metaText}>{service.location}</Text>
               </View>
-              
+
               <View style={styles.metaItem}>
                 <Ionicons name="star" size={16} color="#FFD700" />
                 <Text style={styles.metaText}>{service.rating}/5</Text>
               </View>
             </View>
-            
+
             <Paragraph style={styles.description}>{service.description}</Paragraph>
-            
+
             <View style={styles.priceContainer}>
               <Text style={styles.priceLabel}>Prix:</Text>
               <Text style={styles.price}>{service.price.toLocaleString()} XAF</Text>
             </View>
           </Card.Content>
         </Card>
-        
+
         <View style={styles.actionsContainer}>
-          <TouchableOpacity
+          <Button
             mode="contained"
             onPress={handleContact}
             style={styles.contactButton}
             icon="message"
           >
             Contacter le prestataire
-          </TouchableOpacity>
-          
-          <TouchableOpacity
+          </Button>
+
+          <Button
             mode="outlined"
             onPress={handleShare}
             style={styles.shareButton}
             icon="share"
           >
             Partager ce service
-          </TouchableOpacity>
+          </Button>
         </View>
-        
+
         <Card style={styles.infoCard}>
           <Card.Content>
             <Title style={styles.infoTitle}>À propos de Yukpo</Title>
             <Paragraph style={styles.infoText}>
-              Yukpo est une plateforme de connexion directe entre les besoins exprimés et les solutions concrètes. 
+              Yukpo est une plateforme de connexion directe entre les besoins exprimés et les solutions concrètes.
               Téléchargez l'application pour découvrir plus de services et créer votre propre profil de prestataire.
             </Paragraph>
           </Card.Content>

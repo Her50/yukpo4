@@ -4211,6 +4211,151 @@ async fn vote_checkpoint(
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ✅ NOUVEAU 2026-03-14: Commentaires sur les alertes/checkpoints
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+#[derive(Deserialize)]
+struct CreateCheckpointCommentRequest {
+    content: String,
+}
+
+#[derive(Deserialize)]
+struct CheckpointCommentsQuery {
+    limit: Option<i32>,
+    offset: Option<i32>,
+}
+
+/// GET /api/navigation/checkpoints/{id}/comments — Liste les commentaires d'un checkpoint
+async fn get_checkpoint_comments(
+    State(state): State<Arc<AppState>>,
+    Path(checkpoint_id): Path<Uuid>,
+    Query(params): Query<CheckpointCommentsQuery>,
+) -> AppResult<Json<serde_json::Value>> {
+    let limit = params.limit.unwrap_or(30).min(100);
+    let offset = params.offset.unwrap_or(0).max(0);
+
+    let rows = sqlx::query(
+        r#"
+        SELECT c.id, c.content, c.created_at, c.user_id,
+               COALESCE(u.nom_complet, CONCAT(u.prenom, ' ', u.nom), u.email, 'Utilisateur') AS user_name,
+               u.avatar_url AS user_avatar
+        FROM navigation_checkpoint_comments c
+        JOIN users u ON u.id = c.user_id
+        WHERE c.checkpoint_id = $1
+        ORDER BY c.created_at DESC
+        LIMIT $2 OFFSET $3
+        "#,
+    )
+    .bind(checkpoint_id)
+    .bind(limit)
+    .bind(offset)
+    .fetch_all(&state.pg)
+    .await?;
+
+    let total: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*)::bigint FROM navigation_checkpoint_comments WHERE checkpoint_id = $1",
+    )
+    .bind(checkpoint_id)
+    .fetch_one(&state.pg)
+    .await?;
+
+    let comments: Vec<serde_json::Value> = rows
+        .iter()
+        .map(|row| {
+            use sqlx::Row;
+            serde_json::json!({
+                "id": row.get::<i32, _>("id"),
+                "content": row.get::<String, _>("content"),
+                "user_id": row.get::<i32, _>("user_id"),
+                "user_name": row.get::<String, _>("user_name"),
+                "user_avatar": row.get::<Option<String>, _>("user_avatar"),
+                "created_at": row.get::<chrono::DateTime<chrono::Utc>, _>("created_at").to_rfc3339(),
+            })
+        })
+        .collect();
+
+    Ok(Json(serde_json::json!({
+        "success": true,
+        "comments": comments,
+        "total": total,
+    })))
+}
+
+/// POST /api/navigation/checkpoints/{id}/comments — Créer un commentaire sur un checkpoint
+async fn create_checkpoint_comment(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path(checkpoint_id): Path<Uuid>,
+    Json(request): Json<CreateCheckpointCommentRequest>,
+) -> AppResult<Json<serde_json::Value>> {
+    let trimmed = request.content.trim();
+    if trimmed.is_empty() {
+        return Err(AppError::BadRequest(
+            "Le commentaire ne peut pas être vide".to_string(),
+        ));
+    }
+    if trimmed.len() > 1000 {
+        return Err(AppError::BadRequest(
+            "Le commentaire est trop long (max 1000 caractères)".to_string(),
+        ));
+    }
+
+    // Vérifier que le checkpoint existe
+    let exists: bool =
+        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM navigation_checkpoints WHERE id = $1)")
+            .bind(checkpoint_id)
+            .fetch_one(&state.pg)
+            .await?;
+
+    if !exists {
+        return Err(AppError::NotFound("Checkpoint introuvable".to_string()));
+    }
+
+    let row = sqlx::query(
+        r#"
+        INSERT INTO navigation_checkpoint_comments (checkpoint_id, user_id, content)
+        VALUES ($1, $2, $3)
+        RETURNING id, created_at
+        "#,
+    )
+    .bind(checkpoint_id)
+    .bind(user.id)
+    .bind(trimmed)
+    .fetch_one(&state.pg)
+    .await?;
+
+    use sqlx::Row;
+    let comment_id: i32 = row.get::<i32, _>("id");
+    let created_at: chrono::DateTime<chrono::Utc> = row.get("created_at");
+
+    // Récupérer le nom de l'utilisateur pour la réponse immédiate
+    let user_name: String = sqlx::query_scalar(
+        "SELECT COALESCE(nom_complet, CONCAT(prenom, ' ', nom), email, 'Utilisateur') FROM users WHERE id = $1",
+    )
+    .bind(user.id)
+    .fetch_one(&state.pg)
+    .await?;
+
+    let user_avatar: Option<String> =
+        sqlx::query_scalar("SELECT avatar_url FROM users WHERE id = $1")
+            .bind(user.id)
+            .fetch_one(&state.pg)
+            .await?;
+
+    Ok(Json(serde_json::json!({
+        "success": true,
+        "comment": {
+            "id": comment_id,
+            "content": trimmed,
+            "user_id": user.id,
+            "user_name": user_name,
+            "user_avatar": user_avatar,
+            "created_at": created_at.to_rfc3339(),
+        }
+    })))
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // ✅ NOUVEAU 2026-03-05: Endpoints admin configuration régionale dynamique
 // Permet de mettre à jour les prix carburant, CO2, etc. sans redéploiement
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -4516,6 +4661,15 @@ pub fn navigation_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route(
             "/api/navigation/checkpoints/{id}/vote",
             post(vote_checkpoint).layer(middleware::from_fn(jwt_auth)),
+        )
+        // ✅ NOUVEAU 2026-03-14: Commentaires sur les checkpoints/alertes
+        .route(
+            "/api/navigation/checkpoints/{id}/comments",
+            get(get_checkpoint_comments),
+        )
+        .route(
+            "/api/navigation/checkpoints/{id}/comments",
+            post(create_checkpoint_comment).layer(middleware::from_fn(jwt_auth)),
         )
         // ✅ NOUVEAU: Configuration régionale dynamique (admin)
         .route(

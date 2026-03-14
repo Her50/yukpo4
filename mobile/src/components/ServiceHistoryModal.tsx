@@ -328,7 +328,7 @@ const ServiceHistoryModal: React.FC<ServiceHistoryModalProps> = ({
                                                     <Badge style={[styles.statusBadge, { backgroundColor: getStatusColor(service.status) }]}>
                                                         {getStatusText(service.status)}
                                                     </Badge>
-                                                    <Badge style={[styles.interactionBadge, { backgroundColor: getInteractionColor(service.interactionType) }]}>
+                                                    <View style={[styles.interactionBadge, { backgroundColor: getInteractionColor(service.interactionType), flexDirection: 'row', alignItems: 'center', borderRadius: 12, paddingHorizontal: 8, paddingVertical: 2 }]}>
                                                         <Ionicons
                                                             name={getInteractionIcon(service.interactionType)}
                                                             size={12}
@@ -336,7 +336,7 @@ const ServiceHistoryModal: React.FC<ServiceHistoryModalProps> = ({
                                                             style={styles.badgeIcon}
                                                         />
                                                         <Text style={styles.badgeText}>{getInteractionText(service.interactionType)}</Text>
-                                                    </Badge>
+                                                    </View>
                                                 </View>
                                             </View>
 
@@ -403,25 +403,19 @@ const ServiceHistoryModal: React.FC<ServiceHistoryModalProps> = ({
                                     {/* Boutons d'action principaux */}
                                     <View style={styles.primaryActions}>
                                         <TouchableOpacity
-                                            mode="outlined"
-                                            compact
                                             onPress={() => onOpenChat(service.serviceId, service.prestataireName)}
                                             style={styles.chatButton}
-                                            labelStyle={styles.chatButtonLabel}
                                         >
                                             <Ionicons name="chatbubbles" size={16} color={theme.colors.primary} style={styles.buttonIcon} />
-                                            Chat
+                                            <Text style={styles.chatButtonLabel}>Chat</Text>
                                         </TouchableOpacity>
 
                                         <TouchableOpacity
-                                            mode="outlined"
-                                            compact
                                             onPress={() => onCall(service.serviceId, service.prestataireName)}
                                             style={styles.callButton}
-                                            labelStyle={styles.callButtonLabel}
                                         >
                                             <Ionicons name="call" size={16} color="#4CAF50" style={styles.buttonIcon} />
-                                            Appeler
+                                            <Text style={styles.callButtonLabel}>Appeler</Text>
                                         </TouchableOpacity>
                                     </View>
                                 </Card.Content>

@@ -290,7 +290,7 @@ export function withComponentDebugger<P extends object>(
     Component: React.ComponentType<P>,
     componentName: string
 ): React.ComponentType<P> {
-    return React.memo((props: P) => {
+    return React.memo((props: P): React.ReactElement => {
         React.useEffect(() => {
             componentDebugger.logComponent(componentName, props, (props as any).children);
         });

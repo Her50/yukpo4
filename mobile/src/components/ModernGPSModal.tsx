@@ -42,6 +42,7 @@ interface ModernGPSModalProps {
     currentLocation?: { lat: number; lng: number } | null;
     title?: string;
     allowZoneSelection?: boolean;
+    initialCoordinates?: string;
 }
 
 const ModernGPSModal: React.FC<ModernGPSModalProps> = ({

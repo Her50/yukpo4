@@ -402,7 +402,7 @@ const InsuranceServicesSearchScreen: React.FC = () => {
                 visible={showGPSModal}
                 onClose={() => setShowGPSModal(false)}
                 onSelect={handleGPSSelect}
-                currentLocation={gpsString}
+                currentLocation={gpsString as any}
             />
         </SafeNativeView>
     );

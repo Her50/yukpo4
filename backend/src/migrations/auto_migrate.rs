@@ -9052,6 +9052,21 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Err(e) => error!("❌ Erreur migration auto platform_settings: {}", e),
     }
 
+    // ✅ NOUVEAU 2026-03-14 : Table navigation_checkpoint_comments (commentaires sur alertes navigation)
+    match ensure_navigation_checkpoint_comments_table(pool).await {
+        Ok(_) => info!("✅ Migration auto: navigation_checkpoint_comments OK"),
+        Err(e) => error!(
+            "❌ Erreur migration auto navigation_checkpoint_comments: {}",
+            e
+        ),
+    }
+
+    // ✅ NOUVEAU 2026-03-14 : Backfill services.category depuis data JSONB (corrige NULL pour supermarchés etc.)
+    match backfill_services_category_from_data(pool).await {
+        Ok(_) => info!("✅ Migration auto: backfill services.category OK"),
+        Err(e) => error!("❌ Erreur migration auto backfill services.category: {}", e),
+    }
+
     info!("✅ Migrations automatiques terminées");
 }
 
@@ -19425,5 +19440,92 @@ pub async fn ensure_platform_settings_table(pool: &PgPool) -> Result<(), sqlx::E
     .await?;
 
     info!("✅ Table platform_settings créée avec succès");
+    Ok(())
+}
+
+/// ✅ NOUVEAU 2026-03-14 : Table navigation_checkpoint_comments pour les commentaires sur les alertes de navigation
+pub async fn ensure_navigation_checkpoint_comments_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification de la table navigation_checkpoint_comments...");
+
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS navigation_checkpoint_comments (
+            id SERIAL PRIMARY KEY,
+            checkpoint_id UUID NOT NULL REFERENCES navigation_checkpoints(id) ON DELETE CASCADE,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            content TEXT NOT NULL,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_nav_cp_comments_checkpoint ON navigation_checkpoint_comments(checkpoint_id, created_at DESC)",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_nav_cp_comments_user ON navigation_checkpoint_comments(user_id)",
+    )
+    .execute(pool)
+    .await?;
+
+    info!("✅ Table navigation_checkpoint_comments créée avec succès");
+    Ok(())
+}
+
+/// ✅ NOUVEAU 2026-03-14 : Backfill services.category depuis data JSONB
+/// Corrige les services existants dont services.category est NULL
+/// mais dont la catégorie est stockée dans le JSONB data.
+/// Garantit que les requêtes SQL filtrant sur services.category
+/// trouvent tous les services (notamment supermarchés).
+pub async fn backfill_services_category_from_data(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Backfill services.category depuis data JSONB...");
+
+    // Étape 1: Backfill depuis data->>'category' (format string directe)
+    let r1 = sqlx::query(
+        r#"
+        UPDATE services
+        SET category = data->>'category'
+        WHERE category IS NULL
+          AND data->>'category' IS NOT NULL
+          AND data->>'category' != ''
+          AND jsonb_typeof(data->'category') = 'string'
+        "#,
+    )
+    .execute(pool)
+    .await?;
+    info!(
+        "  → Étape 1 (string directe): {} services mis à jour",
+        r1.rows_affected()
+    );
+
+    // Étape 2: Backfill depuis data->'category'->>'valeur' (format structuré IA)
+    let r2 = sqlx::query(
+        r#"
+        UPDATE services
+        SET category = data->'category'->>'valeur'
+        WHERE category IS NULL
+          AND data->'category'->>'valeur' IS NOT NULL
+          AND data->'category'->>'valeur' != ''
+          AND jsonb_typeof(data->'category') = 'object'
+        "#,
+    )
+    .execute(pool)
+    .await?;
+    info!(
+        "  → Étape 2 (format IA valeur): {} services mis à jour",
+        r2.rows_affected()
+    );
+
+    let total = r1.rows_affected() + r2.rows_affected();
+    info!(
+        "✅ Backfill services.category terminé: {} services corrigés",
+        total
+    );
     Ok(())
 }

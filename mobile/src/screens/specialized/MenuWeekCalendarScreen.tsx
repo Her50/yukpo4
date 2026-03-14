@@ -1476,7 +1476,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                                         </View>
                                         <TouchableOpacity
                                             onPress={() => removeItem(item.id)}
-                                            style={[styles.shoppingTableCell, { flex: 0.8 }]}
+                                            style={[styles.shoppingTableCell as any, { flex: 0.8 }]}
                                         >
                                             <SafeIcon name="trash-2" size={16} color="#EF4444" type="lucide" />
                                         </TouchableOpacity>
@@ -1621,7 +1621,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                                         </View>
                                         <TouchableOpacity
                                             onPress={() => removeItem(item.id)}
-                                            style={[styles.shoppingTableCell, { flex: 0.8 }]}
+                                            style={[styles.shoppingTableCell as any, { flex: 0.8 }]}
                                         >
                                             <SafeIcon name="trash-2" size={16} color="#EF4444" type="lucide" />
                                         </TouchableOpacity>

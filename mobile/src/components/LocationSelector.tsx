@@ -462,6 +462,8 @@ interface LocationSelectorProps {
     enrichWithBackend?: boolean;  // ✅ Si true, appelle /api/places/enrich
     onFocusChange?: (focused: boolean) => void; // ✅ NOUVEAU: Callback pour notifier le parent du changement de focus
     style?: any; // ✅ Style personnalisé pour le conteneur
+    filterTypes?: string[];
+    allowNew?: boolean;
 }
 
 // ✅ NOUVEAU: Fonction pour déterminer automatiquement le scope basé sur le label

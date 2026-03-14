@@ -898,6 +898,26 @@ const ProductCard: React.FC<ProductCardProps> = ({
     return serviceId ? `${serviceId}-${productData?.nom || productData?.name || 'unknown'}` : null;
   })();
 
+  // ✅ NOUVEAU 2026-03-14: Détection catégorie spécialisée (automobile, pharmacie, supermarché)
+  const detectedCategory = useMemo(() => {
+    const cat = (
+      service?.category ||
+      service?.data?.category?.valeur ||
+      service?.data?.category ||
+      productData?.category ||
+      productData?.categorie_service ||
+      product?.category ||
+      ''
+    ).toString().toLowerCase().trim();
+    if (cat.includes('auto') || cat.includes('vehicule') || cat.includes('voiture') || cat.includes('moto'))
+      return 'automobile';
+    if (cat.includes('pharma') || cat.includes('medicament') || cat.includes('médicament'))
+      return 'pharmacie';
+    if (cat.includes('supermarche') || cat.includes('supermarket') || cat.includes('epicerie') || cat.includes('alimentation'))
+      return 'supermarche';
+    return null;
+  }, [service?.category, service?.data?.category, productData?.category, productData?.categorie_service, product?.category]);
+
   // ✅ CORRIGÉ 2026-01-13: Distinction stricte entre produits et prestations
   // Le bouton "Me livrer" ne doit s'afficher QUE pour les produits, jamais pour les prestations
   const serviceType = filterBooleanValue(service?.data?.type?.valeur || service?.data?.type || service?.category || '', '');
@@ -1864,6 +1884,91 @@ const ProductCard: React.FC<ProductCardProps> = ({
                   </TouchableOpacity>
                 )}
               </View>
+
+              {/* ✅ NOUVEAU 2026-03-14: Specs spécialisées selon la catégorie détectée */}
+              {detectedCategory === 'automobile' && (
+                <View style={styles.specializedSpecsRow}>
+                  <View style={styles.specializedSpecsBadge}>
+                    <SafeIcon name="car" size={10} color="#3B82F6" type="lucide" />
+                    <Text style={styles.specializedSpecsBadgeText}>Auto</Text>
+                  </View>
+                  {(() => {
+                    const specs = [
+                      productData.annee || productData.année,
+                      productData.kilometrage ? `${Number(productData.kilometrage).toLocaleString()} km` : null,
+                      productData.carburant,
+                      productData.transmission,
+                      productData.couleur,
+                      productData.etat || productData.état,
+                      productData.marque,
+                      productData.modele || productData.modèle,
+                      productData.type_vehicule,
+                    ].filter(Boolean);
+                    return specs.length > 0 ? (
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }}>
+                        {specs.map((spec, i) => (
+                          <View key={i} style={styles.specializedSpecChip}>
+                            <Text style={styles.specializedSpecChipText}>{String(spec)}</Text>
+                          </View>
+                        ))}
+                      </ScrollView>
+                    ) : null;
+                  })()}
+                </View>
+              )}
+              {detectedCategory === 'pharmacie' && (
+                <View style={styles.specializedSpecsRow}>
+                  <View style={[styles.specializedSpecsBadge, { backgroundColor: '#ECFDF5' }]}>
+                    <SafeIcon name="pill" size={10} color="#059669" type="lucide" />
+                    <Text style={[styles.specializedSpecsBadgeText, { color: '#059669' }]}>Pharma</Text>
+                  </View>
+                  {(() => {
+                    const specs = [
+                      productData.categorie,
+                      productData.forme_galenique || productData.forme,
+                      productData.dosage || productData.posologie,
+                      productData.dci || productData.molecule || productData.molécule,
+                      productData.ordonnance_requise === true ? 'Ordonnance' : null,
+                      productData.stock ? `Stock: ${productData.stock} ${productData.unite || ''}`.trim() : null,
+                    ].filter(Boolean);
+                    return specs.length > 0 ? (
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }}>
+                        {specs.map((spec, i) => (
+                          <View key={i} style={[styles.specializedSpecChip, { backgroundColor: '#ECFDF5', borderColor: '#A7F3D0' }]}>
+                            <Text style={[styles.specializedSpecChipText, { color: '#065F46' }]}>{String(spec)}</Text>
+                          </View>
+                        ))}
+                      </ScrollView>
+                    ) : null;
+                  })()}
+                </View>
+              )}
+              {detectedCategory === 'supermarche' && (
+                <View style={styles.specializedSpecsRow}>
+                  <View style={[styles.specializedSpecsBadge, { backgroundColor: '#FFF7ED' }]}>
+                    <SafeIcon name="shopping-cart" size={10} color="#EA580C" type="lucide" />
+                    <Text style={[styles.specializedSpecsBadgeText, { color: '#EA580C' }]}>Supermarché</Text>
+                  </View>
+                  {(() => {
+                    const specs = [
+                      productData.categorie || productData.rayon,
+                      productData.marque || productData.brand,
+                      productData.poids || productData.contenance || productData.volume,
+                      productData.code_barre ? `EAN: ${productData.code_barre}` : null,
+                      productData.en_promotion ? 'Promo' : null,
+                    ].filter(Boolean);
+                    return specs.length > 0 ? (
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }}>
+                        {specs.map((spec, i) => (
+                          <View key={i} style={[styles.specializedSpecChip, { backgroundColor: '#FFF7ED', borderColor: '#FED7AA' }]}>
+                            <Text style={[styles.specializedSpecChipText, { color: '#9A3412' }]}>{String(spec)}</Text>
+                          </View>
+                        ))}
+                      </ScrollView>
+                    ) : null;
+                  })()}
+                </View>
+              )}
 
               {/* ✅ OPTIMISÉ 2026-01-14: Section prestataire et localisation - Ligne compacte et équilibrée */}
               <View style={styles.prestataireLocationRow}>
@@ -2881,6 +2986,43 @@ const styles = StyleSheet.create({
     borderRadius: 16, // ✅ OPTIMISÉ 2026-03-04: 18 → 16
     padding: 1,
     marginBottom: 10, // ✅ OPTIMISÉ 2026-03-04: 8 → 10 un peu d'air entre les cartes
+  },
+  // ✅ NOUVEAU 2026-03-14: Styles pour les specs spécialisées (automobile, pharmacie, supermarché)
+  specializedSpecsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+  },
+  specializedSpecsBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  specializedSpecsBadgeText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#3B82F6',
+    textTransform: 'uppercase',
+  },
+  specializedSpecChip: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#BFDBFE',
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    marginRight: 4,
+  },
+  specializedSpecChipText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#1E40AF',
   },
 });
 
