@@ -11020,31 +11020,64 @@ pub async fn ensure_delivery_payment_reservations_table(pool: &PgPool) -> Result
     Ok(())
 }
 
-/// Vérifie et crée les tables token_consumption_logs et purchase_history si elles n'existent pas
+/// ✅ Crée les tables token_consumption_logs et purchase_history si elles n'existent pas (sécurisé)
 pub async fn ensure_token_consumption_and_purchase_history_tables(
     pool: &PgPool,
 ) -> Result<(), sqlx::Error> {
-    info!("🔍 Vérification des tables token_consumption_logs et purchase_history...");
+    info!("🔍 Vérification/création des tables token_consumption_logs et purchase_history...");
 
-    let token_consumption_exists = sqlx::query_scalar::<_, bool>(
-        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'token_consumption_logs')"
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS token_consumption_logs (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            service_name TEXT,
+            amount_consumed BIGINT NOT NULL DEFAULT 0,
+            description TEXT,
+            metadata JSONB
+        )
+        "#,
     )
-    .fetch_one(pool)
+    .execute(pool)
     .await?;
 
-    let purchase_history_exists = sqlx::query_scalar::<_, bool>(
-        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'purchase_history')"
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS purchase_history (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            amount_paid BIGINT NOT NULL DEFAULT 0,
+            tokens_received BIGINT NOT NULL DEFAULT 0,
+            payment_method TEXT,
+            status TEXT NOT NULL DEFAULT 'pending',
+            transaction_id TEXT,
+            metadata JSONB
+        )
+        "#,
     )
-    .fetch_one(pool)
+    .execute(pool)
     .await?;
 
-    if !token_consumption_exists || !purchase_history_exists {
-        // ✅ CORRECTION: Réduire verbosité - passer en debug au lieu de warn
-        debug!("ℹ️ Tables token_consumption_logs ou purchase_history manquantes (seront créées par les migrations individuelles)");
-    } else {
-        debug!("✅ Tables token_consumption_logs et purchase_history présentes");
-    }
+    let _ = sqlx::query("CREATE INDEX IF NOT EXISTS idx_token_consumption_logs_user_id ON token_consumption_logs(user_id)").execute(pool).await;
+    let _ = sqlx::query("CREATE INDEX IF NOT EXISTS idx_token_consumption_logs_created_at ON token_consumption_logs(created_at DESC)").execute(pool).await;
+    let _ = sqlx::query("CREATE INDEX IF NOT EXISTS idx_token_consumption_logs_user_created ON token_consumption_logs(user_id, created_at DESC)").execute(pool).await;
+    let _ = sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_purchase_history_user_id ON purchase_history(user_id)",
+    )
+    .execute(pool)
+    .await;
+    let _ = sqlx::query("CREATE INDEX IF NOT EXISTS idx_purchase_history_created_at ON purchase_history(created_at DESC)").execute(pool).await;
+    let _ = sqlx::query("CREATE INDEX IF NOT EXISTS idx_purchase_history_user_created ON purchase_history(user_id, created_at DESC)").execute(pool).await;
+    let _ = sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_purchase_history_status ON purchase_history(status)",
+    )
+    .execute(pool)
+    .await;
+    let _ = sqlx::query("CREATE INDEX IF NOT EXISTS idx_purchase_history_transaction_id ON purchase_history(transaction_id) WHERE transaction_id IS NOT NULL").execute(pool).await;
 
+    info!("✅ Tables token_consumption_logs et purchase_history créées/vérifiées");
     Ok(())
 }
 
@@ -11201,28 +11234,53 @@ pub async fn ensure_service_products_table(pool: &PgPool) -> Result<(), sqlx::Er
     Ok(())
 }
 
-/// Vérifie que la table echanges existe (créée via les migrations individuelles)
+/// ✅ Crée la table echanges si elle n'existe pas (sécurisé)
 pub async fn ensure_echanges_table(pool: &PgPool) -> Result<(), sqlx::Error> {
-    info!("🔍 Vérification de la table echanges...");
+    info!("🔍 Vérification/création de la table echanges...");
 
-    let echanges_exists = sqlx::query_scalar::<_, bool>(
-        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'echanges')",
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS echanges (
+            id SERIAL PRIMARY KEY,
+            user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            offre JSONB NOT NULL,
+            besoin JSONB NOT NULL,
+            statut VARCHAR(32) NOT NULL DEFAULT 'en_attente',
+            matched_with INT REFERENCES echanges(id),
+            quantite_offerte DOUBLE PRECISION,
+            quantite_requise DOUBLE PRECISION,
+            lot_id INT,
+            disponibilite JSONB,
+            contraintes JSONB,
+            reputation DOUBLE PRECISION,
+            gps_fixe_lat DOUBLE PRECISION,
+            gps_fixe_lon DOUBLE PRECISION,
+            don BOOLEAN DEFAULT false,
+            created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+        )
+        "#,
     )
-    .fetch_one(pool)
+    .execute(pool)
     .await?;
 
-    if !echanges_exists {
-        warn!("⚠️ Table echanges manquante (sera créée par les migrations individuelles)");
-    } else {
-        info!("✅ Table echanges présente");
-    }
+    let _ = sqlx::query("CREATE INDEX IF NOT EXISTS idx_echanges_statut ON echanges(statut)")
+        .execute(pool)
+        .await;
+    let _ = sqlx::query("CREATE INDEX IF NOT EXISTS idx_echanges_don ON echanges(don)")
+        .execute(pool)
+        .await;
+    let _ = sqlx::query("CREATE INDEX IF NOT EXISTS idx_echanges_user_id ON echanges(user_id)")
+        .execute(pool)
+        .await;
 
+    info!("✅ Table echanges créée/vérifiée");
     Ok(())
 }
 
-/// Vérifie que les tables de chat existent (créées via 00000012_create_communication_tables.sql)
+/// ✅ Crée les tables de chat si elles n'existent pas (sécurisé)
 pub async fn ensure_chat_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
-    info!("🔍 Vérification des tables de chat...");
+    info!("🔍 Vérification/création des tables de chat...");
 
     let conversations_exists = sqlx::query_scalar::<_, bool>(
         "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'conversations')",
@@ -11230,17 +11288,86 @@ pub async fn ensure_chat_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
     .fetch_one(pool)
     .await?;
 
+    if !conversations_exists {
+        warn!("⚠️ Table conversations manquante, création en cours...");
+        sqlx::query(
+            r#"
+            CREATE TABLE IF NOT EXISTS conversations (
+                id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+                client_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                prestataire_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                service_id INTEGER REFERENCES services(id) ON DELETE SET NULL,
+                service_title TEXT,
+                status VARCHAR(20) DEFAULT 'active',
+                is_active BOOLEAN DEFAULT TRUE,
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                last_message_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+            )
+            "#,
+        )
+        .execute(pool)
+        .await?;
+        info!("✅ Table conversations créée");
+    }
+
     let chat_messages_exists = sqlx::query_scalar::<_, bool>(
         "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'chat_messages')",
     )
     .fetch_one(pool)
     .await?;
 
-    if !conversations_exists || !chat_messages_exists {
-        warn!("⚠️ Tables de chat manquantes (seront créées par 00000012_create_communication_tables.sql)");
-    } else {
-        info!("✅ Tables de chat présentes");
+    if !chat_messages_exists {
+        warn!("⚠️ Table chat_messages manquante, création en cours...");
+        sqlx::query(
+            r#"
+            CREATE TABLE IF NOT EXISTS chat_messages (
+                id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+                conversation_id TEXT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+                from_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                content TEXT NOT NULL,
+                message_type VARCHAR(20) DEFAULT 'text',
+                metadata JSONB,
+                is_read BOOLEAN DEFAULT FALSE,
+                is_edited BOOLEAN DEFAULT FALSE,
+                edited_at TIMESTAMP WITH TIME ZONE,
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+            )
+            "#,
+        )
+        .execute(pool)
+        .await?;
+
+        let _ = sqlx::query("CREATE INDEX IF NOT EXISTS idx_chat_messages_conversation_id ON chat_messages(conversation_id)").execute(pool).await;
+        let _ = sqlx::query("CREATE INDEX IF NOT EXISTS idx_chat_messages_from_user_id ON chat_messages(from_user_id)").execute(pool).await;
+        let _ = sqlx::query("CREATE INDEX IF NOT EXISTS idx_chat_messages_created_at ON chat_messages(created_at DESC)").execute(pool).await;
+        let _ = sqlx::query(
+            "CREATE INDEX IF NOT EXISTS idx_chat_messages_is_read ON chat_messages(is_read)",
+        )
+        .execute(pool)
+        .await;
+        let _ = sqlx::query("CREATE INDEX IF NOT EXISTS idx_chat_messages_conversation_created ON chat_messages(conversation_id, created_at DESC)").execute(pool).await;
+        info!("✅ Table chat_messages créée");
     }
+
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS chat_unread_counts (
+            id SERIAL PRIMARY KEY,
+            conversation_id TEXT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            unread_count INTEGER DEFAULT 0,
+            last_read_message_id TEXT,
+            last_read_at TIMESTAMP WITH TIME ZONE,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+            UNIQUE(conversation_id, user_id)
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
 
     // ✅ CORRIGÉ 2026-03-11: S'assurer que la table conversations a TOUTES les colonnes requises
     // La table peut avoir été créée par les migrations "fix" (00000071, 00000073) avec un schéma minimal
@@ -11443,84 +11570,177 @@ pub async fn ensure_push_tokens_table(pool: &PgPool) -> Result<(), sqlx::Error> 
     Ok(())
 }
 
-/// Vérifie que la table image_analyses existe (créée via les migrations individuelles)
+/// ✅ Crée la table image_analyses si elle n'existe pas (sécurisé)
 pub async fn ensure_image_analyses_table(pool: &PgPool) -> Result<(), sqlx::Error> {
-    info!("🔍 Vérification de la table image_analyses...");
+    info!("🔍 Vérification/création de la table image_analyses...");
 
-    let image_analyses_exists = sqlx::query_scalar::<_, bool>(
-        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'image_analyses')"
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS image_analyses (
+            id SERIAL PRIMARY KEY,
+            service_id INTEGER REFERENCES services(id) ON DELETE CASCADE,
+            media_id INTEGER REFERENCES media(id) ON DELETE CASCADE,
+            user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            description TEXT NOT NULL,
+            tags TEXT[] NOT NULL DEFAULT '{}',
+            category_detected VARCHAR(100),
+            marque VARCHAR(100),
+            couleurs TEXT[] NOT NULL DEFAULT '{}',
+            caracteristiques_cles JSONB NOT NULL DEFAULT '{}',
+            search_query_exact TEXT,
+            search_query_broad TEXT,
+            search_query_semantic TEXT,
+            confiance FLOAT DEFAULT 0.0,
+            model_used VARCHAR(50),
+            tokens_consumed INTEGER DEFAULT 0,
+            cost_usd DECIMAL(10, 6) DEFAULT 0.0,
+            analysis_type VARCHAR(20) DEFAULT 'search',
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        )
+        "#,
     )
-    .fetch_one(pool)
+    .execute(pool)
     .await?;
 
-    if !image_analyses_exists {
-        warn!("⚠️ Table image_analyses manquante (sera créée par les migrations individuelles)");
-    } else {
-        info!("✅ Table image_analyses présente");
-    }
+    let _ = sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_image_analyses_service_id ON image_analyses(service_id)",
+    )
+    .execute(pool)
+    .await;
+    let _ = sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_image_analyses_media_id ON image_analyses(media_id)",
+    )
+    .execute(pool)
+    .await;
+    let _ = sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_image_analyses_user_id ON image_analyses(user_id)",
+    )
+    .execute(pool)
+    .await;
+    let _ = sqlx::query("CREATE INDEX IF NOT EXISTS idx_image_analyses_category ON image_analyses(category_detected) WHERE category_detected IS NOT NULL").execute(pool).await;
+    let _ = sqlx::query("CREATE INDEX IF NOT EXISTS idx_image_analyses_marque ON image_analyses(marque) WHERE marque IS NOT NULL").execute(pool).await;
+    let _ = sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_image_analyses_type ON image_analyses(analysis_type)",
+    )
+    .execute(pool)
+    .await;
+    let _ = sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_image_analyses_tags ON image_analyses USING GIN(tags)",
+    )
+    .execute(pool)
+    .await;
+    let _ = sqlx::query("CREATE INDEX IF NOT EXISTS idx_image_analyses_caracteristiques ON image_analyses USING GIN(caracteristiques_cles)").execute(pool).await;
 
+    info!("✅ Table image_analyses créée/vérifiée");
     Ok(())
 }
 
-/// Vérifie que la table programmes_scolaires existe (créée via 00000039_create_orientation_scolaire_advanced_tables.sql)
+/// ✅ Crée la table programmes_scolaires si elle n'existe pas (sécurisé)
 pub async fn ensure_programmes_scolaires_table(pool: &PgPool) -> Result<(), sqlx::Error> {
-    info!("🔍 Vérification de la table programmes_scolaires...");
+    info!("🔍 Vérification/création de la table programmes_scolaires...");
 
-    let programmes_scolaires_exists = sqlx::query_scalar::<_, bool>(
-        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'programmes_scolaires')"
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS programmes_scolaires (
+            id SERIAL PRIMARY KEY,
+            etablissement TEXT NOT NULL,
+            classe TEXT NOT NULL,
+            annee TEXT,
+            programme JSONB NOT NULL,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            updated_at TIMESTAMPTZ DEFAULT NOW(),
+            UNIQUE (etablissement, classe, annee)
+        )
+        "#,
     )
-    .fetch_one(pool)
+    .execute(pool)
     .await?;
 
-    if !programmes_scolaires_exists {
-        warn!(
-            "⚠️ Table programmes_scolaires manquante (sera créée par 00000039_create_orientation_scolaire_advanced_tables.sql)"
-        );
-    } else {
-        info!("✅ Table programmes_scolaires présente");
-    }
+    let _ = sqlx::query("CREATE INDEX IF NOT EXISTS idx_programmes_scolaires_etablissement ON programmes_scolaires(etablissement)").execute(pool).await;
+    let _ = sqlx::query("CREATE INDEX IF NOT EXISTS idx_programmes_scolaires_classe ON programmes_scolaires(classe)").execute(pool).await;
 
+    info!("✅ Table programmes_scolaires créée/vérifiée");
     Ok(())
 }
 
-/// Vérifie que les tables de modèles produits existent (créées via les migrations individuelles)
+/// ✅ Crée la table product_models si elle n'existe pas (sécurisé)
 pub async fn ensure_product_models_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
-    info!("🔍 Vérification des tables de modèles produits...");
+    info!("🔍 Vérification/création de la table product_models...");
 
-    let product_models_exists = sqlx::query_scalar::<_, bool>(
-        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'product_models')"
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS product_models (
+            id SERIAL PRIMARY KEY,
+            category VARCHAR(100) NOT NULL,
+            subcategory VARCHAR(100),
+            model_name VARCHAR(200) NOT NULL,
+            brand VARCHAR(100),
+            attributes JSONB NOT NULL DEFAULT '{}',
+            tags TEXT[] NOT NULL DEFAULT '{}',
+            image_url TEXT,
+            is_active BOOLEAN DEFAULT TRUE,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            updated_at TIMESTAMPTZ DEFAULT NOW()
+        )
+        "#,
     )
-    .fetch_one(pool)
+    .execute(pool)
     .await?;
 
-    if !product_models_exists {
-        // ✅ CORRECTION: Réduire verbosité - passer en debug au lieu de warn
-        debug!("ℹ️ Tables de modèles produits manquantes (seront créées par les migrations individuelles)");
-    } else {
-        debug!("✅ Tables de modèles produits présentes");
-    }
+    let _ = sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_product_models_category ON product_models(category)",
+    )
+    .execute(pool)
+    .await;
+    let _ = sqlx::query("CREATE INDEX IF NOT EXISTS idx_product_models_brand ON product_models(brand) WHERE brand IS NOT NULL").execute(pool).await;
+    let _ = sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_product_models_tags ON product_models USING GIN(tags)",
+    )
+    .execute(pool)
+    .await;
 
+    info!("✅ Table product_models créée/vérifiée");
     Ok(())
 }
 
-/// Vérifie que la table visibility_tracking existe (créée via les migrations individuelles)
+/// ✅ Crée la table content_visibility_tracking si elle n'existe pas (sécurisé)
 pub async fn ensure_visibility_tracking_table(pool: &PgPool) -> Result<(), sqlx::Error> {
-    info!("🔍 Vérification de la table visibility_tracking...");
+    info!("🔍 Vérification/création de la table content_visibility_tracking...");
 
-    let visibility_tracking_exists = sqlx::query_scalar::<_, bool>(
-        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'content_visibility_tracking')"
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS content_visibility_tracking (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            content_id VARCHAR(100) NOT NULL,
+            content_type VARCHAR(20) NOT NULL CHECK (content_type IN ('organic', 'paid')),
+            session_id VARCHAR(100) NOT NULL,
+            appeared_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            position_in_feed INTEGER,
+            viewed BOOLEAN DEFAULT FALSE,
+            view_duration_ms INTEGER,
+            clicked BOOLEAN DEFAULT FALSE,
+            clicked_at TIMESTAMPTZ,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+        "#,
     )
-    .fetch_one(pool)
+    .execute(pool)
     .await?;
 
-    if !visibility_tracking_exists {
-        warn!(
-            "⚠️ Table visibility_tracking manquante (sera créée par les migrations individuelles)"
-        );
-    } else {
-        info!("✅ Table visibility_tracking présente");
-    }
+    let _ = sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_visibility_user_id ON content_visibility_tracking(user_id)",
+    )
+    .execute(pool)
+    .await;
+    let _ = sqlx::query("CREATE INDEX IF NOT EXISTS idx_visibility_content ON content_visibility_tracking(content_id, content_type)").execute(pool).await;
+    let _ = sqlx::query("CREATE INDEX IF NOT EXISTS idx_visibility_session ON content_visibility_tracking(session_id)").execute(pool).await;
+    let _ = sqlx::query("CREATE INDEX IF NOT EXISTS idx_visibility_appeared_at ON content_visibility_tracking(appeared_at)").execute(pool).await;
+    let _ = sqlx::query("CREATE INDEX IF NOT EXISTS idx_visibility_user_content ON content_visibility_tracking(user_id, content_id, appeared_at DESC)").execute(pool).await;
+    let _ = sqlx::query("CREATE INDEX IF NOT EXISTS idx_visibility_session_content ON content_visibility_tracking(session_id, content_id)").execute(pool).await;
 
+    info!("✅ Table content_visibility_tracking créée/vérifiée");
     Ok(())
 }
 
@@ -11723,24 +11943,117 @@ pub async fn ensure_service_team_management_table(pool: &PgPool) -> Result<(), s
     Ok(())
 }
 
-/// Vérifie que la table bus_return_trips existe (créée via 00000031_create_bus_tables.sql)
+/// ✅ Crée les tables bus_return_trips si elles n'existent pas (sécurisé)
 pub async fn ensure_bus_return_trips_table(pool: &PgPool) -> Result<(), sqlx::Error> {
-    info!("🔍 Vérification de la table bus_return_trips...");
+    info!("🔍 Vérification/création des tables bus return trips...");
 
-    let bus_return_trips_exists = sqlx::query_scalar::<_, bool>(
-        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'return_trip_requests')"
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS bus_ticket_payments (
+            id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            agency_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            product_id TEXT NOT NULL,
+            reservation_ids TEXT[] NOT NULL,
+            ticket_price INTEGER NOT NULL,
+            number_of_tickets INTEGER NOT NULL DEFAULT 1,
+            subtotal INTEGER NOT NULL,
+            booking_fee INTEGER NOT NULL DEFAULT 500,
+            total_amount INTEGER NOT NULL,
+            currency VARCHAR(10) NOT NULL DEFAULT 'XAF',
+            bus_number VARCHAR(50),
+            departure_city TEXT NOT NULL,
+            arrival_city TEXT NOT NULL,
+            departure_date VARCHAR(20) NOT NULL,
+            departure_time VARCHAR(10) NOT NULL,
+            company_name TEXT,
+            payment_status VARCHAR(20) NOT NULL DEFAULT 'completed' CHECK (payment_status IN ('completed', 'refunded', 'partial_refund')),
+            payment_method JSONB,
+            created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+            refunded_at TIMESTAMP WITH TIME ZONE,
+            refund_amount INTEGER DEFAULT 0,
+            refund_reason TEXT,
+            CONSTRAINT positive_amounts CHECK (ticket_price > 0 AND subtotal > 0 AND total_amount > 0)
+        )
+        "#,
     )
-    .fetch_one(pool)
+    .execute(pool)
     .await?;
 
-    if !bus_return_trips_exists {
-        warn!(
-            "⚠️ Table bus_return_trips manquante (sera créée par 00000031_create_bus_tables.sql)"
-        );
-    } else {
-        info!("✅ Table bus_return_trips présente");
-    }
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS return_trip_requests (
+            id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            outbound_ticket_id TEXT NOT NULL,
+            outbound_payment_id TEXT REFERENCES bus_ticket_payments(id),
+            return_from TEXT NOT NULL,
+            return_to TEXT NOT NULL,
+            preferred_return_date VARCHAR(20) NOT NULL,
+            preferred_return_time VARCHAR(10),
+            date_flexibility_days INTEGER DEFAULT 1,
+            passenger_names TEXT[] NOT NULL,
+            number_of_seats INTEGER NOT NULL,
+            already_paid BOOLEAN DEFAULT TRUE,
+            paid_amount INTEGER,
+            matched_product_id TEXT,
+            matched_at TIMESTAMP WITH TIME ZONE,
+            notification_sent BOOLEAN DEFAULT FALSE,
+            notification_sent_at TIMESTAMP WITH TIME ZONE,
+            reservation_completed BOOLEAN DEFAULT FALSE,
+            reservation_ids TEXT[],
+            completed_at TIMESTAMP WITH TIME ZONE,
+            status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'matched', 'completed', 'cancelled', 'expired')),
+            expires_at TIMESTAMP WITH TIME ZONE DEFAULT (NOW() + INTERVAL '90 days'),
+            created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
 
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS prebooked_return_seats (
+            id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+            return_request_id TEXT NOT NULL REFERENCES return_trip_requests(id) ON DELETE CASCADE,
+            product_id TEXT NOT NULL,
+            seat_ids TEXT[] NOT NULL,
+            passenger_names TEXT[] NOT NULL,
+            status VARCHAR(20) DEFAULT 'reserved' CHECK (status IN ('reserved', 'confirmed', 'released')),
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+            confirmed_at TIMESTAMP WITH TIME ZONE
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    let _ = sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_bus_ticket_payments_user ON bus_ticket_payments(user_id)",
+    )
+    .execute(pool)
+    .await;
+    let _ = sqlx::query("CREATE INDEX IF NOT EXISTS idx_bus_ticket_payments_agency ON bus_ticket_payments(agency_user_id)").execute(pool).await;
+    let _ = sqlx::query("CREATE INDEX IF NOT EXISTS idx_bus_ticket_payments_date ON bus_ticket_payments(departure_date, departure_time)").execute(pool).await;
+    let _ = sqlx::query("CREATE INDEX IF NOT EXISTS idx_bus_ticket_payments_route ON bus_ticket_payments(departure_city, arrival_city)").execute(pool).await;
+    let _ = sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_return_requests_user ON return_trip_requests(user_id)",
+    )
+    .execute(pool)
+    .await;
+    let _ = sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_return_requests_status ON return_trip_requests(status)",
+    )
+    .execute(pool)
+    .await;
+    let _ = sqlx::query("CREATE INDEX IF NOT EXISTS idx_return_requests_route ON return_trip_requests(return_from, return_to)").execute(pool).await;
+    let _ = sqlx::query("CREATE INDEX IF NOT EXISTS idx_return_requests_date ON return_trip_requests(preferred_return_date)").execute(pool).await;
+    let _ = sqlx::query("CREATE INDEX IF NOT EXISTS idx_prebooked_seats_product ON prebooked_return_seats(product_id)").execute(pool).await;
+    let _ = sqlx::query("CREATE INDEX IF NOT EXISTS idx_prebooked_seats_request ON prebooked_return_seats(return_request_id)").execute(pool).await;
+
+    info!("✅ Tables bus return trips créées/vérifiées");
     Ok(())
 }
 

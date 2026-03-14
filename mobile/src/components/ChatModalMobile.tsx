@@ -1290,20 +1290,18 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                                 setShowOrderModal(true);
                                             } else {
                                                 // Si plusieurs produits, afficher un sélecteur
-                                                (Alert.alert as any)(
-                                                    'Sélectionner un produit',
-                                                    'Choisissez le produit à livrer',
-                                                    products.map((product: any) => ({
-                                                        text: product.product_name || product.product_data?.product_name || product.product_data?.nom || `Produit ${product.product_index + 1}`,
-                                                        onPress: () => {
-                                                            setSelectedProductForDelivery({
-                                                                product: product.product_data || product,
-                                                                productIndex: product.product_index || 0
-                                                            });
-                                                            setShowOrderModal(true);
-                                                        }
-                                                    })).concat([{ text: 'Annuler', style: 'cancel' }])
-                                                );
+                                                const buttons: any = products.map((product: any) => ({
+                                                    text: product.product_name || product.product_data?.product_name || product.product_data?.nom || `Produit ${product.product_index + 1}`,
+                                                    onPress: () => {
+                                                        setSelectedProductForDelivery({
+                                                            product: product.product_data || product,
+                                                            productIndex: product.product_index || 0
+                                                        });
+                                                        setShowOrderModal(true);
+                                                    }
+                                                }));
+                                                buttons.push({ text: 'Annuler', style: 'cancel' });
+                                                Alert.alert('Sélectionner un produit', 'Choisissez le produit à livrer', buttons);
                                             }
                                         } else {
                                             Alert.alert('Erreur', 'Impossible de charger les produits');

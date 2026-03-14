@@ -46,7 +46,7 @@ const BusTicketQRScannerScreen: React.FC = () => {
             });
             const d = (response?.data || response) as any;
 
-            trackQRScan('bus_ticket', (d.success ? 'success' : 'failure') as any);
+            trackQRScan(d.success as boolean);
 
             if (d.success) {
                 setScanCount(prev => prev + 1);

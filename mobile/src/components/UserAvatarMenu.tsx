@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Dimensions, Image, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Dimensions, Image, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguageSafe } from '../contexts/LanguageContext';
 import { apiGet } from '../services/api';
@@ -95,12 +95,12 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0
         }
     ] : [
         // ✅ MENU UTILISATEUR STANDARD: Pour les non-admins
-        // ✅ NOUVEAU: Langue en premier (drapeau)
+        // ✅ Langue figée en français pour le moment
         {
-            title: language === 'fr' ? '🇫🇷 Français' : language === 'en' ? '🇬🇧 English' : language === 'es' ? '🇪🇸 Español' : '🌐 Langue',
-            icon: language === 'fr' ? '🇫🇷' : language === 'en' ? '🇬🇧' : language === 'es' ? '🇪🇸' : '🌐',
+            title: '🇫🇷 Français',
+            icon: '🇫🇷',
             route: 'language',
-            description: language === 'fr' ? 'Changer la langue' : language === 'en' ? 'Change language' : language === 'es' ? 'Cambiar idioma' : 'Change language',
+            description: 'Autres langues bientôt disponibles',
             isLanguageSelector: true
         },
         // ✅ NOUVEAU 2026-01-XX: Navigation intelligente en deuxième position
@@ -169,19 +169,12 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0
         if (item.route === 'logout') {
             logout();
         } else if (item.route === 'language') {
-            // ✅ NOUVEAU: Gérer le changement de langue
-            const languages = [
-                { code: 'fr', name: '🇫🇷 Français', flag: '🇫🇷' },
-                { code: 'en', name: '🇬🇧 English', flag: '🇬🇧' },
-                { code: 'es', name: '🇪🇸 Español', flag: '🇪🇸' }
-            ];
-
-            // Trouver la langue suivante dans la liste
-            const currentIndex = languages.findIndex(lang => lang.code === language);
-            const nextIndex = (currentIndex + 1) % languages.length;
-            const nextLanguage = languages[nextIndex];
-
-            setLanguage(nextLanguage.code);
+            // ✅ Langue figée en français — changement désactivé pour le moment
+            Alert.alert(
+                '🇫🇷 Langue',
+                'L\'application est actuellement disponible en français uniquement. D\'autres langues seront ajoutées prochainement.',
+                [{ text: 'OK' }]
+            );
         } else if (item.route === 'BlackFridayAdminConfig') {
             // ✅ NOUVEAU : Navigation vers la configuration de lancement Black Friday (admin)
             onNavigate('GlobalPromoManager');
