@@ -19,7 +19,7 @@ interface ServiceStatsData {
 
 const ServiceStats: React.FC<ServiceStatsProps> = ({ serviceId, compact = false }) => {
   // Utiliser le hook pour récupérer les vraies statistiques
-  const { stats: realStats, loading, error } = useServiceStats(serviceId);
+  const { stats: realStats, loading, error } = (useServiceStats as any)(serviceId);
 
   // Adapter les données du hook aux données attendues par le composant
   const stats: ServiceStatsData | null = realStats ? {

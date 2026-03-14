@@ -142,12 +142,12 @@ export const VideoGestureHandler: React.FC<VideoGestureHandlerProps> = ({
         }
     }, [onDoubleTap, onSingleTap]);
 
-    const animatedStyle = useAnimatedStyle(() => ({
+    const animatedStyle = useAnimatedStyle((() => ({
         transform: [
             { translateY: translateY.value },
             { translateX: translateX.value },
         ],
-    }));
+    })) as any);
 
     if (!enabled) {
         // ✅ CORRIGÉ: S'assurer que les enfants sont toujours des éléments React valides

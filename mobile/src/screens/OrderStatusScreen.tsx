@@ -261,7 +261,7 @@ const OrderStatusScreen: React.FC = () => {
                 )}
 
                 {/* Actions selon le statut */}
-                {order.status === 'pending' && order.provider_user_id === user?.id && (
+                {order.status === 'pending' && order.provider_user_id === (user?.id as any) && (
                     <View style={styles.actionsSection}>
                         <TouchableOpacity
                             style={[styles.actionButton, styles.validateButton]}

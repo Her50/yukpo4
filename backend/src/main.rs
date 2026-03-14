@@ -2851,6 +2851,12 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
             &app_state.pg,
         )
         .await;
+
+        // ✅ NOUVEAU 2026-03-14: Tables gestion d'équipe (rôles, permissions, membres, invitations)
+        let _ = yukpomnang_backend::migrations::auto_migrate::ensure_service_team_management_table(
+            &app_state.pg,
+        )
+        .await;
     }
 
     // ✅ OPTIMISÉ Cloud Run: Index MongoDB en arrière-plan
