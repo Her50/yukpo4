@@ -20,7 +20,7 @@ import { FormationSuggestion, offreEmploiService } from '../../services/offreEmp
 import { modernColors } from '../../theme/modernTheme';
 
 const AISuggestFormationsScreen: React.FC = () => {
-    const navigation = useNavigation<any>();
+    const navigation = useNavigation() as any;
     const { user } = useAuth();
     const [loading, setLoading] = useState(false);
     const [loadingProfile, setLoadingProfile] = useState(true);

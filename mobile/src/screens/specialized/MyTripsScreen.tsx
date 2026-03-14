@@ -6,13 +6,14 @@ import {
     Alert,
     FlatList,
     RefreshControl,
+    ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
     View
 } from 'react-native';
-import { NativeCard } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeCard } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiGet } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
@@ -80,7 +81,7 @@ const MyTripsScreen: React.FC = () => {
             const response = await apiGet(`/api/covoiturages/my-trips?${queryParams.toString()}`);
 
             if (response.success && response.data) {
-                const newTrips = response.data.data || [];
+                const newTrips = (response.data as any).data || [];
                 if (isRefresh || currentPage === 1) {
                     setTrips(newTrips);
                 } else {

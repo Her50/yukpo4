@@ -99,8 +99,9 @@ const HealthServicesHubScreen: React.FC = () => {
                 params.radius_km = 20;
             }
             const response = await apiGet('/api/pharmacies/products/search', { params: { query: 'garde', ...params } });
-            if (response?.success && response?.data?.products?.length > 0) {
-                const p = response.data.products[0];
+            const rd: any = response?.data;
+            if (response?.success && rd?.products?.length > 0) {
+                const p = rd.products[0];
                 setDutyPharmacy({
                     id: p.pharmacy_service_id || p.id,
                     nom: p.pharmacy_name || 'Pharmacie de garde',

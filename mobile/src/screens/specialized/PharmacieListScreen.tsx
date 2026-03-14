@@ -11,8 +11,8 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import { NativeCard } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeCard } from '../../components/SafeNativeDesign';
 import { apiGet } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 
@@ -70,7 +70,7 @@ const PharmacieListScreen: React.FC = () => {
             const response = await apiGet(`/api/pharmacies/search?${queryParams.toString()}`);
 
             if (response.success && response.data) {
-                const newPharmacies = response.data.data || [];
+                const newPharmacies = (response.data as any).data || [];
                 if (isRefresh || currentPage === 1) {
                     setPharmacies(newPharmacies);
                 } else {

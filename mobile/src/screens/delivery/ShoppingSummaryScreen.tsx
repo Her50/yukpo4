@@ -11,7 +11,7 @@ import { useShoppingBasket } from '../../hooks/useShoppingBasket';
 import { modernColors } from '../../theme/modernTheme';
 
 const ShoppingSummaryScreen: React.FC = () => {
-    const navigation = useNavigation<any>();
+    const navigation = useNavigation() as any;
     const { setActiveDeliveryId } = useDeliveryContext();
     const {
         items,

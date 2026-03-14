@@ -40,6 +40,7 @@ export interface GlobalPromoEntry {
     publishedAt?: string | null;
     createdAt: string;
     updatedAt: string;
+    product?: any;
 }
 
 export interface GlobalPromoProductSnapshot {

@@ -11,8 +11,8 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import { SkeletonList } from '../../components/SkeletonLoader';
 import { useAuth } from '../../contexts/AuthContext';
 import { HospitalConsultation, hospitalService } from '../../services/hospitalService';
@@ -53,7 +53,7 @@ const MyConsultationsScreen: React.FC = () => {
             }
 
             const currentPage = reset ? 1 : page;
-            const response = await hospitalService.getMyConsultations(currentPage, limit);
+            const response = await (hospitalService as any).getMyConsultations(currentPage, limit);
 
             if (response.success && response.data) {
                 const newConsultations = response.data.consultations || [];

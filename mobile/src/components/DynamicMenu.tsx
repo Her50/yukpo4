@@ -1,19 +1,19 @@
 // @ts-check
-import React from 'react';
-import { Text } from 'react-native';
-import { View } from 'react-native';
 import { ROUTES_CONFIG, Role } from "@/routes/routes";
+import React from 'react';
+import { Text, View } from 'react-native';
 import { isAdminRole } from "../utils/roleHelpers"; // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
 
 interface Props {
   role: Role;
 }
 
-const DynamicMenu: React.FC<Textrops> = ({ role }) => {
+const DynamicMenu: React.FC<Props> = ({ role }) => {
+  const rc: any = ROUTES_CONFIG;
   const routesByRole = {
-    public: ROUTES_CONFIG.filter((r) => r.roles.includes('public')),
-    user: ROUTES_CONFIG.filter((r) => r.roles.includes('user')),
-    admin: ROUTES_CONFIG.filter((r) => r.roles.includes('admin')),
+    public: Array.isArray(rc) ? rc.filter((r: any) => r.roles?.includes('public')) : rc.public || [],
+    user: Array.isArray(rc) ? rc.filter((r: any) => r.roles?.includes('user')) : rc.protected || [],
+    admin: Array.isArray(rc) ? rc.filter((r: any) => r.roles?.includes('admin')) : rc.admin || [],
   };
 
   return (

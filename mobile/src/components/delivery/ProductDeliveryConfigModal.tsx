@@ -1502,7 +1502,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                     // Le gros du travail est fait dans onSelectLocation ci-dessous
                     console.log('[ProductDeliveryConfigModal] onSelect (fallback):', coordinatesString);
                 }}
-                onSelectLocation={(locationData: SelectedLocationData) => {
+                onSelectLocation={(locationData: any) => {
                     // ✅ FIX 2026-03-11: Utiliser directement le nom du lieu depuis le modal
                     const index = gpsModalForIndex ?? 0;
                     const currentAddr = pickupAddresses[index];

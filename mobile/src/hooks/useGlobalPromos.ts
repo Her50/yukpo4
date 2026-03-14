@@ -20,7 +20,9 @@ interface UseGlobalPromosResult {
     selectedEvent?: GlobalPromoEvent;
     loadingEvents: boolean;
     loadingEntries: boolean;
+    loading?: boolean;
     error?: string | null;
+    refresh?: () => Promise<void>;
     selectEvent: (eventId: string | null) => Promise<void>;
     refreshEvents: () => Promise<void>;
     createEvent: (payload: CreateGlobalPromoEventPayload) => Promise<void>;

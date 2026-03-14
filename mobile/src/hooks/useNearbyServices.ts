@@ -38,8 +38,9 @@ export const useNearbyServices = (latitude?: number, longitude?: number, radius:
                 }
             });
 
-            if (response.data && response.data.services) {
-                const servicesData: Service[] = response.data.services.map((service: any) => ({
+            const rd: any = response.data;
+            if (rd && rd.services) {
+                const servicesData: Service[] = rd.services.map((service: any) => ({
                     id: service.id,
                     name: service.name,
                     description: service.description || 'Service disponible',

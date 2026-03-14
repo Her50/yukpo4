@@ -1,6 +1,6 @@
 // ✅ REFONTE 2026-03-07: ImmobilierDetailsScreen → UX moderne
 // Hero gradient indigo, galerie photos, caractéristiques, IA estimation/recommandations, simulation prêt, partage, pull-to-refresh
-import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
@@ -26,7 +26,7 @@ type RouteParams = { propertyId: number };
 
 const ImmobilierDetailsScreen: React.FC = () => {
     const navigation = useNavigation();
-    const route = useRoute<RouteProp<{ params: RouteParams }, 'params'>>();
+    const route = useRoute() as any;
     const propertyId = route.params?.propertyId;
 
     const [property, setProperty] = useState<RealEstateProperty | null>(null);
@@ -59,7 +59,7 @@ const ImmobilierDetailsScreen: React.FC = () => {
             const response = await immobilierService.getPropertyDetails(propertyId);
             if (response.success && response.data) {
                 setProperty(response.data);
-                try { const fav = await immobilierService.getMyFavorites(); if (fav.success && fav.data) setIsFavorite(fav.data.some((p) => p.id === propertyId)); } catch { }
+                try { const fav = await immobilierService.getMyFavorites(); if (fav.success && fav.data) setIsFavorite((fav.data as any[]).some((p: any) => p.id === propertyId)); } catch { }
             } else { setError('Bien non trouvé'); }
         } catch (err: any) { setError(err.message || 'Erreur lors du chargement'); }
         finally { setLoading(false); }

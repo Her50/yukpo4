@@ -322,7 +322,8 @@ class GamificationService {
             const response = await apiGet(`/api/gamification/leaderboard?period=${period}&limit=${limit}`);
 
             if (response.success && response.data) {
-                return Array.isArray(response.data) ? response.data : (response.data.leaderboard || []);
+                const rd: any = response.data;
+                return Array.isArray(rd) ? rd : (rd.leaderboard || []);
             }
 
             return [];
@@ -338,7 +339,7 @@ class GamificationService {
             const response = await apiGet(`/api/gamification/user/${userId}/rank?period=${period}`);
 
             if (response.success && response.data) {
-                return response.data.rank || 0;
+                return (response.data as any).rank || 0;
             }
 
             return 0;
@@ -354,7 +355,8 @@ class GamificationService {
             const response = await apiGet(`/api/gamification/challenges?user_id=${userId}`);
 
             if (response.success && response.data) {
-                return Array.isArray(response.data) ? response.data : (response.data.challenges || []);
+                const rd: any = response.data;
+                return Array.isArray(rd) ? rd : (rd.challenges || []);
             }
 
             // ✅ Fallback: Challenges par défaut
@@ -415,9 +417,10 @@ class GamificationService {
                 progress,
             });
 
-            if (response.success && response.data?.completed) {
+            const rd: any = response.data;
+            if (response.success && rd?.completed) {
                 // ✅ Challenge complété, donner la récompense
-                const challenge = response.data.challenge;
+                const challenge = rd.challenge;
                 if (challenge?.reward) {
                     await this.addPoints(userId, challenge.reward, `Challenge "${challenge.name}" complété`);
                 }

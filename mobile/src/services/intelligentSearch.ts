@@ -1,4 +1,4 @@
-import { servicesApi, iaApi } from './api';
+import { iaApi, servicesApi } from './api';
 
 export interface IntelligentSearchResult {
   service_id: string;
@@ -68,14 +68,14 @@ export class IntelligentSearchService {
   ): Promise<IntelligentSearchResult[]> {
     const searchData = {
       texte: query,
-      gps_mobile: context.location 
-        ? `${context.location.latitude},${context.location.longitude}` 
+      gps_mobile: context.location
+        ? `${context.location.latitude},${context.location.longitude}`
         : null,
       user_id: context.user_id || null
     };
 
     const response = await servicesApi.searchDirect(searchData);
-    
+
     if (response.success && response.data) {
       const results = (response.data as any).resultats || [];
       return results.map((result: any) => ({
@@ -106,16 +106,16 @@ export class IntelligentSearchService {
   ): Promise<IntelligentSearchResult[]> {
     try {
       // 1. Analyser le texte avec IA pour extraire des mots-clés
-      const textAnalysis = await iaApi.analyzeText(query);
+      const textAnalysis = await (iaApi as any).analyzeText(query);
       console.log('[IntelligentSearch] 🔍 Analyse IA:', textAnalysis);
 
       // 2. Générer des suggestions de recherche alternatives
-      const suggestions = await iaApi.generateSuggestions(query);
+      const suggestions = await (iaApi as any).generateSuggestions(query);
       console.log('[IntelligentSearch] 💡 Suggestions IA:', suggestions);
 
       // 3. Recherches supplémentaires avec les suggestions
       const additionalResults: IntelligentSearchResult[] = [];
-      
+
       for (const suggestion of suggestions.slice(0, 2)) { // Limiter à 2 suggestions
         try {
           const additionalSearch = await this.nativeSearch(suggestion, context);
@@ -164,7 +164,7 @@ export class IntelligentSearchService {
 
     try {
       const response = await iaApi.suggestKeywords(partialQuery);
-      return response.data?.keywords || [];
+      return (response.data as any)?.keywords || [];
     } catch (error) {
       console.error('[IntelligentSearch] ❌ Erreur suggestions:', error);
       return [];

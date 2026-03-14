@@ -18,7 +18,7 @@ import { offreEmploiService } from '../../services/offreEmploiService';
 import { modernColors } from '../../theme/modernTheme';
 
 const AISalaryPredictionScreen: React.FC = () => {
-    const navigation = useNavigation<any>();
+    const navigation = useNavigation() as any;
     const [loading, setLoading] = useState(false);
     const [prediction, setPrediction] = useState<any>(null);
 

@@ -169,15 +169,12 @@ export const extractPriceVariant = (
         'variante';
 
     return {
+        ...candidate,
         type_donnee: 'price_variant',
         variable,
         modalites,
         filtrable: candidate.filtrable !== false,
         origine_champs: candidate.origine_champs || source.origine_champs || fallbackOrigine,
-        ...candidate,
-        modalites,
-        variable,
-        type_donnee: 'price_variant',
     };
 };
 

@@ -1232,7 +1232,7 @@ const styles = StyleSheet.create({
         marginTop: 12,
         fontStyle: 'italic',
     },
-    searchButton: {
+    mainSearchButton: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
@@ -1247,7 +1247,7 @@ const styles = StyleSheet.create({
         shadowRadius: 8,
         elevation: 4,
     },
-    searchButtonDisabled: {
+    mainSearchButtonDisabled: {
         backgroundColor: '#D1D5DB',
         shadowOpacity: 0,
         elevation: 0,
@@ -1481,7 +1481,7 @@ const styles = StyleSheet.create({
         color: '#DC2626',
         fontWeight: '600',
     },
-    recommendationItem: {
+    recommendationItemRow: {
         flexDirection: 'row',
         alignItems: 'flex-start',
         gap: 8,
@@ -1579,6 +1579,110 @@ const styles = StyleSheet.create({
     sortOptionTextActive: {
         color: '#DC2626',
         fontWeight: '600',
+    },
+    contentContainer: {
+        padding: 16,
+    },
+    availabilityHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 12,
+    },
+    availabilityHeaderText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#111827',
+    },
+    serviceCard: {
+        backgroundColor: '#fff',
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 12,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    serviceCardHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    serviceCardTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#111827',
+        flex: 1,
+    },
+    badge24h: {
+        backgroundColor: '#FEE2E2',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 8,
+    },
+    badge24hText: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: '#DC2626',
+    },
+    servicesList: {
+        marginTop: 8,
+    },
+    servicesListTitle: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#374151',
+        marginBottom: 4,
+    },
+    serviceItemAvail: {
+        fontSize: 13,
+        color: '#6B7280',
+        marginLeft: 4,
+    },
+    distanceText: {
+        fontSize: 13,
+        color: '#6B7280',
+        marginTop: 4,
+    },
+    serviceItemMore: {
+        fontSize: 12,
+        color: '#9CA3AF',
+        fontStyle: 'italic',
+        marginTop: 4,
+    },
+    bloodBankBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        backgroundColor: '#FEF2F2',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 8,
+        alignSelf: 'flex-start',
+        marginTop: 8,
+    },
+    bloodBankText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#DC2626',
+    },
+    searchAvailableButton: {
+        backgroundColor: '#DC2626',
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 12,
+        borderRadius: 10,
+        gap: 8,
+        marginTop: 12,
+    },
+    searchAvailableButtonText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: '700',
     },
 });
 

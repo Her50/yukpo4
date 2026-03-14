@@ -47,7 +47,7 @@ export const CustomAudienceManager: React.FC<CustomAudienceManagerProps> = ({
             const response = await apiGet(`/api/publicites/audiences?user_id=${userId}`);
 
             if (response.success && response.data) {
-                setAudiences(response.data.audiences || []);
+                setAudiences((response.data as any).audiences || []);
             }
         } catch (error) {
             console.error('[CustomAudienceManager] Erreur chargement:', error);
@@ -108,7 +108,7 @@ export const CustomAudienceManager: React.FC<CustomAudienceManagerProps> = ({
                     copyToCacheDirectory: true,
                 });
 
-                if (result.type === 'success') {
+                if ((result as any).type === 'success') {
                     // Lire le fichier CSV et extraire les données
                     // TODO: Implémenter la lecture du CSV
                     Alert.alert('Info', 'Import CSV à implémenter');
@@ -356,8 +356,8 @@ export const CustomAudienceManager: React.FC<CustomAudienceManagerProps> = ({
                                                 type: 'text/csv',
                                                 copyToCacheDirectory: true,
                                             });
-                                            if (result.type === 'success') {
-                                                Alert.alert('Info', `Fichier sélectionné: ${result.name}`);
+                                            if ((result as any).type === 'success') {
+                                                Alert.alert('Info', `Fichier sélectionné: ${(result as any).name}`);
                                                 // TODO: Lire et parser le CSV
                                             }
                                         } catch (error) {

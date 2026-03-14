@@ -28,7 +28,7 @@ interface Conference {
 }
 
 const ConferencesLivesScreen: React.FC = () => {
-    const navigation = useNavigation<any>();
+    const navigation = useNavigation() as any;
     const { user } = useAuth();
     const route = useRoute();
     const programmeesOnly = (route.params as any)?.programmees === true;

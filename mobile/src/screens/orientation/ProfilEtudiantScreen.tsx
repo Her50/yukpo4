@@ -2,7 +2,8 @@
 // Pas de données personnelles, juste description du profil académique
 
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import React, { useCallback, useState, useRef } from 'react';
+import { Audio } from 'expo-av';
+import React, { useCallback, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -13,23 +14,22 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import * as Audio from 'expo-av';
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useAuth } from '../../contexts/AuthContext';
-import { orientationScolaireService } from '../../services/orientationScolaireService';
 import { apiPost } from '../../services/api';
+import { orientationScolaireService } from '../../services/orientationScolaireService';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
 
 const ProfilEtudiantScreen: React.FC = () => {
-    const navigation = useNavigation<any>();
+    const navigation = useNavigation() as any;
     const { user } = useAuth();
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [profileDescription, setProfileDescription] = useState('');
     const [recommendation, setRecommendation] = useState<string | null>(null);
-    
+
     // États pour l'enregistrement audio
     const [recording, setRecording] = useState<Audio.Recording | null>(null);
     const [isRecording, setIsRecording] = useState(false);
@@ -127,10 +127,10 @@ const ProfilEtudiantScreen: React.FC = () => {
                 const response = await fetch(uri);
                 const blob = await response.blob();
                 const reader = new FileReader();
-                
+
                 reader.onloadend = async () => {
                     const base64Audio = (reader.result as string).split(',')[1];
-                    
+
                     try {
                         // Appeler l'API de transcription
                         const transcribeResponse = await apiPost('/api/ia/transcribe', {
@@ -139,8 +139,9 @@ const ProfilEtudiantScreen: React.FC = () => {
                             format: 'base64',
                         });
 
-                        if (transcribeResponse.success && transcribeResponse.data?.transcription) {
-                            const transcription = transcribeResponse.data.transcription;
+                        const trd: any = transcribeResponse.data;
+                        if (transcribeResponse.success && trd?.transcription) {
+                            const transcription = trd.transcription;
                             setProfileDescription(prev => prev ? `${prev}\n${transcription}` : transcription);
                             Alert.alert('Succès', 'Audio transcrit avec succès');
                         } else {
@@ -179,9 +180,9 @@ const ProfilEtudiantScreen: React.FC = () => {
 
         try {
             setSaving(true);
-            
+
             // Sauvegarder le profil avec la description
-            const response = await orientationScolaireService.createOrUpdateProfile({
+            const response = await (orientationScolaireService as any).createOrUpdateProfile({
                 description_profil: profileDescription.trim(),
             });
 
@@ -203,19 +204,20 @@ const ProfilEtudiantScreen: React.FC = () => {
     const generateRecommendation = async () => {
         try {
             setLoading(true);
-            
+
             // Appeler l'API pour générer une recommandation d'orientation
             const response = await apiPost('/api/orientation/ai/generate-recommendation', {
                 profile_description: profileDescription.trim(),
             });
 
-            if (response.success && response.data?.recommendation) {
-                setRecommendation(response.data.recommendation);
-                
+            const rd: any = response.data;
+            if (response.success && rd?.recommendation) {
+                setRecommendation(rd.recommendation);
+
                 // Sauvegarder la recommandation dans le profil
-                await orientationScolaireService.createOrUpdateProfile({
+                await (orientationScolaireService as any).createOrUpdateProfile({
                     description_profil: profileDescription.trim(),
-                    recommendation_ia: response.data.recommendation,
+                    recommendation_ia: rd.recommendation,
                 });
             } else {
                 Alert.alert('Erreur', 'Impossible de générer la recommandation');

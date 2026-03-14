@@ -18,7 +18,7 @@ import { offreEmploiService } from '../../services/offreEmploiService';
 import { modernColors, modernStyles } from '../../theme/modernTheme';
 
 const AnalyseCVScreen: React.FC = () => {
-    const navigation = useNavigation<any>();
+    const navigation = useNavigation() as any;
     const { user } = useAuth();
     const [loading, setLoading] = useState(false);
     const [cvText, setCvText] = useState('');

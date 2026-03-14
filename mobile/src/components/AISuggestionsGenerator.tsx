@@ -63,7 +63,7 @@ export const AISuggestionsGenerator: React.FC<AISuggestionsGeneratorProps> = ({
             });
 
             if (response.success && response.data) {
-                setSuggestions(response.data.suggestions || []);
+                setSuggestions((response.data as any).suggestions || []);
                 setExpanded(true);
             } else {
                 setError(response.error || 'Erreur lors de la génération');

@@ -56,7 +56,12 @@ const CovoiturageHomeScreen: React.FC = () => {
                     (user as any)?.driver_status === 'validated' ||
                     (user as any)?.driver_status === 'approved';
 
-                if (localCheck) {
+                // ✅ FIX 2026-03-14: Reconnaître aussi les partenaires chauffeur/taxi/covoiturage
+                const partnerType = ((user as any)?.partner_type || '').toLowerCase().trim();
+                const isPartnerDriver = user?.role === 'partenaire' &&
+                    ['chauffeur', 'taxi', 'covoiturage'].includes(partnerType);
+
+                if (localCheck || isPartnerDriver) {
                     setIsDriverValidated(true);
                     setCheckingDriverStatus(false);
                     return;
@@ -67,7 +72,8 @@ const CovoiturageHomeScreen: React.FC = () => {
                 const response = await apiGet(`/api/users/${user.id}/driver-status`);
 
                 if (response.success && response.data) {
-                    const driverStatus = response.data.driver_status || response.data.is_driver;
+                    const rd: any = response.data;
+                    const driverStatus = rd.driver_status || rd.is_driver;
                     setIsDriverValidated(driverStatus === 'validated' || driverStatus === 'approved' || driverStatus === true);
                 } else {
                     setIsDriverValidated(false);
@@ -75,11 +81,13 @@ const CovoiturageHomeScreen: React.FC = () => {
             } catch (error) {
                 console.warn('[CovoiturageHomeScreen] Erreur vérification statut chauffeur:', error);
                 // En cas d'erreur, utiliser la vérification locale
+                const pt = ((user as any)?.partner_type || '').toLowerCase().trim();
                 setIsDriverValidated(
                     user?.role === 'driver' ||
                     (user as any)?.is_driver === true ||
                     (user as any)?.driver_status === 'validated' ||
-                    (user as any)?.driver_status === 'approved'
+                    (user as any)?.driver_status === 'approved' ||
+                    (user?.role === 'partenaire' && ['chauffeur', 'taxi', 'covoiturage'].includes(pt))
                 );
             } finally {
                 setCheckingDriverStatus(false);
@@ -799,7 +807,7 @@ const CreateTrajetForm: React.FC<CreateTrajetFormProps> = ({
                         <LocationSelector
                             label="Lieu de départ"
                             value={trajetForm.depart as LocationObject | string || ''}
-                            onSelect={(location) => {
+                            onSelect={(location: any) => {
                                 const departStr = location?.place_name || '';
                                 const gps = location?.geometry?.coordinates
                                     ? `${location.geometry.coordinates[1]},${location.geometry.coordinates[0]}`
@@ -817,7 +825,7 @@ const CreateTrajetForm: React.FC<CreateTrajetFormProps> = ({
                         <LocationSelector
                             label="Destination"
                             value={trajetForm.destination as LocationObject | string || ''}
-                            onSelect={(location) => {
+                            onSelect={(location: any) => {
                                 const destStr = location?.place_name || '';
                                 const gps = location?.geometry?.coordinates
                                     ? `${location.geometry.coordinates[1]},${location.geometry.coordinates[0]}`
@@ -1437,6 +1445,24 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '700',
         color: '#FFFFFF',
+    },
+    locationInputs: {
+        gap: 8,
+        marginBottom: 12,
+    },
+    locationInput: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#F3F4F6',
+        borderRadius: 10,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+    },
+    locationIcon: {
+        marginRight: 8,
+    },
+    locationIconDest: {
+        marginRight: 8,
     },
 });
 

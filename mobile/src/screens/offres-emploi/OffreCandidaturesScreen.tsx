@@ -19,7 +19,6 @@ import { NativeCard } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
 import { offreEmploiService } from '../../services/offreEmploiService';
 import { modernColors } from '../../theme/modernTheme';
-import { hapticPress } from '../../utils/hapticFeedback';
 
 interface Candidature {
     id: number;
@@ -162,17 +161,27 @@ const OffreCandidaturesScreen: React.FC = () => {
                                 </Text>
                             </View>
                         </View>
-                        <TouchableOpacity
-                            style={styles.matchingButton}
-                            onPress={() => {
-                                hapticPress();
-                                // Naviguer vers la liste des matchings
-                                Alert.alert('Matching IA', 'Fonctionnalité à venir : voir les candidats recommandés');
-                            }}
-                        >
-                            <Text style={styles.matchingButtonText}>Voir les matchings</Text>
-                            <SafeIcon name="arrow-right" size={20} color="#FFFFFF" type="lucide" />
-                        </TouchableOpacity>
+                        {/* ✅ FIX 2026-03-14: Afficher les candidats recommandés inline */}
+                        {matchingCandidats.slice(0, 5).map((mc: any, idx: number) => (
+                            <View key={idx} style={styles.matchingItem}>
+                                <View style={styles.matchingItemLeft}>
+                                    <SafeIcon name="user" size={16} color={modernColors.primary} type="lucide" />
+                                    <Text style={styles.matchingItemName} numberOfLines={1}>
+                                        {mc.candidat_nom || mc.nom || `Candidat #${mc.candidat_id || mc.id || idx + 1}`}
+                                    </Text>
+                                </View>
+                                <View style={styles.matchingScoreBadge}>
+                                    <Text style={styles.matchingScoreText}>
+                                        {(mc.score_total || mc.score || 0).toFixed(0)}%
+                                    </Text>
+                                </View>
+                            </View>
+                        ))}
+                        {matchingCandidats.length > 5 && (
+                            <Text style={styles.matchingMore}>
+                                +{matchingCandidats.length - 5} autre{matchingCandidats.length - 5 > 1 ? 's' : ''}
+                            </Text>
+                        )}
                     </NativeCard>
                 )}
 
@@ -464,20 +473,44 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: modernColors.textSecondary,
     },
-    matchingButton: {
+    matchingItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: modernColors.primary,
-        borderRadius: 8,
-        paddingVertical: 12,
-        paddingHorizontal: 16,
+        justifyContent: 'space-between',
+        paddingVertical: 10,
+        paddingHorizontal: 4,
+        borderTopWidth: 1,
+        borderTopColor: '#D1D5DB20',
+    },
+    matchingItemLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flex: 1,
         gap: 8,
     },
-    matchingButtonText: {
-        fontSize: 16,
+    matchingItemName: {
+        fontSize: 14,
         fontWeight: '600',
+        color: modernColors.text,
+        flex: 1,
+    },
+    matchingScoreBadge: {
+        backgroundColor: modernColors.primary,
+        borderRadius: 12,
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+    },
+    matchingScoreText: {
+        fontSize: 13,
+        fontWeight: '700',
         color: '#FFFFFF',
+    },
+    matchingMore: {
+        fontSize: 13,
+        color: modernColors.textSecondary,
+        textAlign: 'center',
+        marginTop: 8,
+        fontStyle: 'italic',
     },
     sectionTitle: {
         fontSize: 20,

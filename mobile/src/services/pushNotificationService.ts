@@ -117,8 +117,9 @@ class PushNotificationService {
                     priority: Notifications.AndroidNotificationPriority.HIGH,
                 },
                 trigger: {
+                    type: 'date',
                     date: triggerTime,
-                },
+                } as any,
             });
 
             console.log(`[PushNotificationService] Rappel ${reminder.reminderType} planifié:`, notificationId);

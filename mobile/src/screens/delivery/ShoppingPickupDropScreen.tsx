@@ -25,7 +25,7 @@ const parseCoordinates = (value: string) => {
 };
 
 const ShoppingPickupDropScreen: React.FC = () => {
-    const navigation = useNavigation<any>();
+    const navigation = useNavigation() as any;
     const { pickup, setPickup, dropoff, setDropoff } = useShoppingBasket();
     const [modalType, setModalType] = useState<ModalType>(null);
     const [pickupLabel, setPickupLabel] = useState(pickup?.label ?? '');

@@ -5,6 +5,7 @@ import {
     ActivityIndicator,
     Alert,
     Modal,
+    ScrollView,
     StyleSheet,
     Text,
     TextInput,

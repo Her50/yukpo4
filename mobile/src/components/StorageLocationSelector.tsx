@@ -57,8 +57,9 @@ const StorageLocationSelector: React.FC<StorageLocationSelectorProps> = ({
         setLoading(true);
         try {
             const response = await deliveryApi.listStorageLocations();
-            if (response.success && response.data?.locations) {
-                setLocations(response.data.locations.filter((loc: StorageLocation) => loc.is_active));
+            const rd: any = response.data;
+            if (response.success && rd?.locations) {
+                setLocations(rd.locations.filter((loc: StorageLocation) => loc.is_active));
             }
         } catch (error: any) {
             console.error('[StorageLocationSelector] Erreur chargement lieux:', error);
@@ -83,10 +84,12 @@ const StorageLocationSelector: React.FC<StorageLocationSelectorProps> = ({
                     setShowGPSModal(true);
                 }
             }] : []),
-            { text: 'Gérer les lieux de stock', onPress: () => {
-                // @ts-ignore
-                navigation.navigate('StorageLocations');
-            }},
+            {
+                text: 'Gérer les lieux de stock', onPress: () => {
+                    // @ts-ignore
+                    navigation.navigate('StorageLocations');
+                }
+            },
             { text: 'Annuler', style: 'cancel' as const }
         ];
         Alert.alert('Sélectionner un lieu de stockage', '', options);
@@ -101,13 +104,13 @@ const StorageLocationSelector: React.FC<StorageLocationSelectorProps> = ({
             longitude: lng
         }));
         setShowGPSModal(false);
-        
+
         // Demander le nom et l'adresse
         Alert.prompt(
             'Nom du lieu de stockage',
             'Donnez un nom à ce lieu de stockage (ex: Entrepôt principal, Magasin centre-ville)',
             [
-                { text: 'Annuler', style: 'cancel', onPress: () => {} },
+                { text: 'Annuler', style: 'cancel', onPress: () => { } },
                 {
                     text: 'Continuer',
                     onPress: (name) => {
@@ -117,7 +120,7 @@ const StorageLocationSelector: React.FC<StorageLocationSelectorProps> = ({
                                 'Adresse',
                                 'Entrez l\'adresse complète de ce lieu de stockage',
                                 [
-                                    { text: 'Annuler', style: 'cancel', onPress: () => {} },
+                                    { text: 'Annuler', style: 'cancel', onPress: () => { } },
                                     {
                                         text: 'Créer',
                                         onPress: async (address) => {
@@ -155,11 +158,12 @@ const StorageLocationSelector: React.FC<StorageLocationSelectorProps> = ({
                 zone_id: null,
                 is_active: true,
             };
-            
+
             const response = await deliveryApi.createStorageLocation(payload);
-            if (response.success && response.data?.location) {
+            const crd: any = response.data;
+            if (response.success && crd?.location) {
                 await loadLocations();
-                onSelect(response.data.location.id);
+                onSelect(crd.location.id);
                 Alert.alert('Succès', 'Lieu de stockage créé avec succès');
             } else {
                 throw new Error(response.message || 'Erreur lors de la création');
@@ -176,7 +180,7 @@ const StorageLocationSelector: React.FC<StorageLocationSelectorProps> = ({
             <Text style={styles.label}>
                 {label} {required && <Text style={styles.required}>*</Text>}
             </Text>
-            
+
             <TouchableOpacity
                 style={[styles.selectButton, !selectedLocation && styles.selectButtonEmpty]}
                 onPress={handleSelectLocation}

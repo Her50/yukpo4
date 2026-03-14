@@ -10,6 +10,7 @@ interface ToastData {
 }
 
 interface ToasterContextType {
+  show: (message: string, type?: ToastType) => void;
   success: (message: string) => void;
   error: (message: string) => void;
   info: (message: string) => void;
@@ -54,7 +55,12 @@ export const ToasterProvider: React.FC<ToasterProviderProps> = ({ children }) =>
     showToast(message, 'warning');
   };
 
+  const show = (message: string, type?: ToastType) => {
+    showToast(message, type || 'info');
+  };
+
   const value: ToasterContextType = {
+    show,
     success,
     error,
     info,

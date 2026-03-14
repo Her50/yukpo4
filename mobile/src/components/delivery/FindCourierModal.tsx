@@ -1,3 +1,4 @@
+import * as Location from 'expo-location';
 import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
@@ -10,12 +11,11 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import * as Location from 'expo-location';
 import { deliveryApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
-import { NativeButton } from '../SafeNativeDesign';
-import SafeIcon from '../SafeIcon';
 import ModernGPSModal from '../ModernGPSModal';
+import SafeIcon from '../SafeIcon';
+import { NativeButton } from '../SafeNativeDesign';
 
 interface FindCourierModalProps {
     visible: boolean;
@@ -40,12 +40,12 @@ const FindCourierModal: React.FC<FindCourierModalProps> = ({
     onSuccess,
 }) => {
     const [loading, setLoading] = useState(false);
-    
+
     // Points de pickup et delivery
     const [pickupLocation, setPickupLocation] = useState<LocationData | null>(null);
     const [deliveryLocation, setDeliveryLocation] = useState<LocationData | null>(null);
     const [showDeliveryGPSModal, setShowDeliveryGPSModal] = useState(false);
-    
+
     // ✅ NOUVEAU: Configuration de livraison du produit
     const [deliveryConfig, setDeliveryConfig] = useState<{
         pickup_address?: string;
@@ -55,13 +55,13 @@ const FindCourierModal: React.FC<FindCourierModalProps> = ({
         preparation_time_minutes?: number;
     } | null>(null);
     const [loadingConfig, setLoadingConfig] = useState(false);
-    
+
     // Type de transport (récupéré depuis la configuration)
     const [transportType, setTransportType] = useState<string>('any'); // 'bike', 'car', 'motorcycle', 'any'
-    
+
     // Notes de livraison
     const [deliveryNotes, setDeliveryNotes] = useState('');
-    
+
     // ✅ NOUVEAU: Informations de disponibilité et délai
     const [availabilityInfo, setAvailabilityInfo] = useState<{
         is_available: boolean;
@@ -73,17 +73,17 @@ const FindCourierModal: React.FC<FindCourierModalProps> = ({
     useEffect(() => {
         const loadDeliveryConfig = async () => {
             if (!visible || !product || !service) return;
-            
+
             const serviceId = service?.id || service?.service_id;
-            let productIndex: number | undefined = 
-                typeof product.product_index === 'number' 
-                    ? product.product_index 
+            let productIndex: number | undefined =
+                typeof product.product_index === 'number'
+                    ? product.product_index
                     : (typeof product.index === 'number' ? product.index : undefined);
-            
+
             // Si l'index n'est pas disponible, essayer de le calculer depuis le service
             if (productIndex === undefined && service?.data?.produits && Array.isArray(service.data.produits)) {
-                const produitIndex = service.data.produits.findIndex((p: any) => 
-                    p.nom === product?.nom || 
+                const produitIndex = service.data.produits.findIndex((p: any) =>
+                    p.nom === product?.nom ||
                     p.id === product?.id ||
                     JSON.stringify(p) === JSON.stringify(product)
                 );
@@ -91,18 +91,18 @@ const FindCourierModal: React.FC<FindCourierModalProps> = ({
                     productIndex = produitIndex;
                 }
             }
-            
+
             if (!serviceId || productIndex === undefined) {
                 console.warn('[FindCourierModal] Service ID ou Product Index manquant');
                 return;
             }
-            
+
             setLoadingConfig(true);
             try {
                 // ✅ Charger la configuration de livraison du produit
                 const configResponse = await deliveryApi.getProductDeliveryConfig(serviceId, productIndex);
                 const configData = (configResponse as any)?.config || configResponse?.data || configResponse;
-                
+
                 if (configData) {
                     setDeliveryConfig({
                         pickup_address: configData.pickup_address || '',
@@ -111,7 +111,7 @@ const FindCourierModal: React.FC<FindCourierModalProps> = ({
                         required_vehicle_type_id: configData.required_vehicle_type_id,
                         preparation_time_minutes: configData.preparation_time_minutes,
                     });
-                    
+
                     // ✅ Utiliser le point de pickup de la configuration
                     if (configData.pickup_latitude && configData.pickup_longitude) {
                         setPickupLocation({
@@ -120,7 +120,7 @@ const FindCourierModal: React.FC<FindCourierModalProps> = ({
                             address: configData.pickup_address || '',
                         });
                     }
-                    
+
                     // ✅ Utiliser le type de transport de la configuration
                     if (configData.required_vehicle_type_id) {
                         // Mapper l'ID vers le type de transport
@@ -137,19 +137,19 @@ const FindCourierModal: React.FC<FindCourierModalProps> = ({
                         setTransportType(mappedType);
                     }
                 }
-                
+
                 // ✅ Charger les informations de disponibilité
                 try {
                     const availabilityResponse = await deliveryApi.checkProductAvailability(serviceId, productIndex);
                     if (availabilityResponse.success && availabilityResponse.availability) {
                         const availability = availabilityResponse.availability;
                         let estimatedReadyTime: Date | undefined;
-                        
+
                         if (availability.preparation_time_minutes && availability.preparation_time_minutes > 0) {
                             estimatedReadyTime = new Date();
                             estimatedReadyTime.setMinutes(estimatedReadyTime.getMinutes() + availability.preparation_time_minutes);
                         }
-                        
+
                         setAvailabilityInfo({
                             is_available: availability.is_available || false,
                             preparation_time_minutes: availability.preparation_time_minutes,
@@ -165,7 +165,7 @@ const FindCourierModal: React.FC<FindCourierModalProps> = ({
                 const productGPS = product.gps || product.gpsFixe;
                 const serviceGPS = service?.data?.gps_fixe?.valeur || service?.data?.gps_fixe || service?.gps;
                 const pickupGPS = productGPS || serviceGPS;
-                
+
                 if (pickupGPS && typeof pickupGPS === 'string' && pickupGPS.includes(',')) {
                     try {
                         const [lat, lng] = pickupGPS.split(',').map(c => parseFloat(c.trim()));
@@ -179,11 +179,11 @@ const FindCourierModal: React.FC<FindCourierModalProps> = ({
             } finally {
                 setLoadingConfig(false);
             }
-            
+
             // Point de delivery : GPS de l'utilisateur actuel
             loadUserLocation();
         };
-        
+
         loadDeliveryConfig();
     }, [visible, product, service]);
 
@@ -207,29 +207,30 @@ const FindCourierModal: React.FC<FindCourierModalProps> = ({
             });
 
             if (address) {
+                const addr = address as any;
                 // ✅ Construire une adresse complète avec nom du lieu
                 const addressParts: string[] = [];
-                
+
                 // Nom du lieu (street, name, ou subThoroughfare)
-                if (address.street) addressParts.push(address.street);
-                else if (address.name) addressParts.push(address.name);
-                else if (address.subThoroughfare) addressParts.push(address.subThoroughfare);
-                
+                if (addr.street) addressParts.push(addr.street);
+                else if (addr.name) addressParts.push(addr.name);
+                else if (addr.subThoroughfare) addressParts.push(addr.subThoroughfare);
+
                 // Ville
-                if (address.city) addressParts.push(address.city);
-                else if (address.subAdministrativeArea) addressParts.push(address.subAdministrativeArea);
-                
+                if (addr.city) addressParts.push(addr.city);
+                else if (addr.subAdministrativeArea) addressParts.push(addr.subAdministrativeArea);
+
                 // Région/Pays
-                if (address.region) addressParts.push(address.region);
-                if (address.country) addressParts.push(address.country);
-                
-                const fullAddress = addressParts.length > 0 
+                if (addr.region) addressParts.push(addr.region);
+                if (addr.country) addressParts.push(addr.country);
+
+                const fullAddress = addressParts.length > 0
                     ? addressParts.join(', ')
                     : `${location.coords.latitude.toFixed(6)}, ${location.coords.longitude.toFixed(6)}`;
-                
+
                 // ✅ Construire le nom du lieu (première partie de l'adresse)
-                const placeName = address.street || address.name || address.subThoroughfare || 'Localisation';
-                
+                const placeName = addr.street || addr.name || addr.subThoroughfare || 'Localisation';
+
                 setDeliveryLocation({
                     latitude: location.coords.latitude,
                     longitude: location.coords.longitude,
@@ -262,15 +263,15 @@ const FindCourierModal: React.FC<FindCourierModalProps> = ({
         setLoading(true);
         try {
             // ✅ Extraire l'index du produit
-            let productIndex: number | undefined = 
-                typeof product.product_index === 'number' 
-                    ? product.product_index 
+            let productIndex: number | undefined =
+                typeof product.product_index === 'number'
+                    ? product.product_index
                     : (typeof product.index === 'number' ? product.index : undefined);
-            
+
             // Si l'index n'est pas disponible, essayer de le calculer depuis le service
             if (productIndex === undefined && service?.data?.produits && Array.isArray(service.data.produits)) {
-                const produitIndex = service.data.produits.findIndex((p: any) => 
-                    p.nom === product?.nom || 
+                const produitIndex = service.data.produits.findIndex((p: any) =>
+                    p.nom === product?.nom ||
                     p.id === product?.id ||
                     JSON.stringify(p) === JSON.stringify(product)
                 );
@@ -278,9 +279,9 @@ const FindCourierModal: React.FC<FindCourierModalProps> = ({
                     productIndex = produitIndex;
                 }
             }
-            
+
             const serviceId = service?.id || service?.service_id;
-            
+
             // ✅ Créer la commande client directe - Le backend gère automatiquement :
             // - Récupération de la configuration de livraison
             // - Vérification de disponibilité
@@ -300,10 +301,10 @@ const FindCourierModal: React.FC<FindCourierModalProps> = ({
                     preparation_time_minutes: availabilityInfo?.preparation_time_minutes,
                 },
             });
-            
+
             if (response.success !== false && (response.delivery?.id || response.id)) {
                 const deliveryId = response.delivery?.id || response.id;
-                
+
                 Alert.alert(
                     '✅ Commande créée',
                     'Votre commande a été créée avec succès. Le matching intelligent est en cours. Vous recevrez une notification dès qu\'un coursier sera assigné.',
@@ -379,7 +380,7 @@ const FindCourierModal: React.FC<FindCourierModalProps> = ({
                         {/* Points de pickup et delivery */}
                         <View style={styles.section}>
                             <Text style={styles.sectionTitle}>Points de livraison</Text>
-                            
+
                             {/* ✅ Point de pickup - Récupéré depuis la configuration (non modifiable) */}
                             {loadingConfig ? (
                                 <View style={styles.locationCard}>
@@ -463,18 +464,18 @@ const FindCourierModal: React.FC<FindCourierModalProps> = ({
                                 <Text style={styles.sectionTitle}>Type de transport</Text>
                                 <View style={styles.transportInfoCard}>
                                     <View style={styles.transportInfoHeader}>
-                                        <SafeIcon 
-                                            name={transportType === 'bike' ? 'bike' : transportType === 'motorcycle' ? 'zap' : transportType === 'car' ? 'car' : 'truck'} 
-                                            size={20} 
-                                            color={modernColors.primary} 
+                                        <SafeIcon
+                                            name={transportType === 'bike' ? 'bike' : transportType === 'motorcycle' ? 'zap' : transportType === 'car' ? 'car' : 'truck'}
+                                            size={20}
+                                            color={modernColors.primary}
                                         />
                                         <Text style={styles.transportInfoLabel}>
-                                            {transportType === 'bike' ? 'Vélo' : 
-                                             transportType === 'motorcycle' ? 'Moto' : 
-                                             transportType === 'car' ? 'Voiture' : 
-                                             transportType === 'pickup' ? 'Pick-up' :
-                                             transportType === 'van' ? 'Fourgonnette' :
-                                             transportType === 'truck' ? 'Camion' : 'Tous types'}
+                                            {transportType === 'bike' ? 'Vélo' :
+                                                transportType === 'motorcycle' ? 'Moto' :
+                                                    transportType === 'car' ? 'Voiture' :
+                                                        transportType === 'pickup' ? 'Pick-up' :
+                                                            transportType === 'van' ? 'Fourgonnette' :
+                                                                transportType === 'truck' ? 'Camion' : 'Tous types'}
                                         </Text>
                                         <View style={styles.configBadge}>
                                             <SafeIcon name="check-circle" size={12} color={modernColors.success} />
@@ -554,24 +555,25 @@ const FindCourierModal: React.FC<FindCourierModalProps> = ({
                                 });
 
                                 if (address) {
+                                    const addr2 = address as any;
                                     const addressParts: string[] = [];
-                                    
-                                    if (address.street) addressParts.push(address.street);
-                                    else if (address.name) addressParts.push(address.name);
-                                    else if (address.subThoroughfare) addressParts.push(address.subThoroughfare);
-                                    
-                                    if (address.city) addressParts.push(address.city);
-                                    else if (address.subAdministrativeArea) addressParts.push(address.subAdministrativeArea);
-                                    
-                                    if (address.region) addressParts.push(address.region);
-                                    if (address.country) addressParts.push(address.country);
-                                    
-                                    const fullAddress = addressParts.length > 0 
+
+                                    if (addr2.street) addressParts.push(addr2.street);
+                                    else if (addr2.name) addressParts.push(addr2.name);
+                                    else if (addr2.subThoroughfare) addressParts.push(addr2.subThoroughfare);
+
+                                    if (addr2.city) addressParts.push(addr2.city);
+                                    else if (addr2.subAdministrativeArea) addressParts.push(addr2.subAdministrativeArea);
+
+                                    if (addr2.region) addressParts.push(addr2.region);
+                                    if (addr2.country) addressParts.push(addr2.country);
+
+                                    const fullAddress = addressParts.length > 0
                                         ? addressParts.join(', ')
                                         : `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
-                                    
-                                    const placeName = address.street || address.name || address.subThoroughfare || 'Localisation';
-                                    
+
+                                    const placeName = addr2.street || addr2.name || addr2.subThoroughfare || 'Localisation';
+
                                     setDeliveryLocation({
                                         latitude: lat,
                                         longitude: lng,
@@ -584,7 +586,7 @@ const FindCourierModal: React.FC<FindCourierModalProps> = ({
                                 console.error('[FindCourierModal] Erreur reverse geocoding:', geocodeError);
                                 setDeliveryLocation({ latitude: lat, longitude: lng });
                             }
-                            
+
                             setShowDeliveryGPSModal(false);
                         }
                     } catch (error) {

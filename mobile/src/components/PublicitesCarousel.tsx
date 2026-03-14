@@ -415,8 +415,6 @@ const PublicitesCarousel: React.FC<PublicitesCarouselProps> = ({ userId, userBeh
                         scrollViewRef.current?.scrollTo({
                             x: nextIndex * (CARD_WIDTH + CARD_MARGIN),
                             animated: true,
-                        }).catch((e) => {
-                            console.warn('[PublicitesCarousel] Erreur scroll:', e);
                         });
                         return nextIndex;
                     } catch (e) {

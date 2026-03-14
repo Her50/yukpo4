@@ -216,17 +216,5 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         color: modernColors.primary,
     },
-    progressBar: {
-        height: 4,
-        backgroundColor: modernColors.border,
-        borderRadius: 2,
-        marginTop: 12,
-        overflow: 'hidden',
-    },
-    progressFill: {
-        height: '100%',
-        backgroundColor: modernColors.primary,
-        borderRadius: 2,
-    },
 });
 

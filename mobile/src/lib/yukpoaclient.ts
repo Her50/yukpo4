@@ -42,6 +42,11 @@ export async function login(email: string, password: string): Promise<{ token: s
   }
 }
 
+// ✅ Fonction pour récupérer le token d'authentification
+export async function getToken(): Promise<string | null> {
+  return await SafeStorage.getItem('auth_token');
+}
+
 // ✅ Fonction pour se déconnecter
 export async function logout(): Promise<void> {
   await SafeStorage.removeItem('auth_token');

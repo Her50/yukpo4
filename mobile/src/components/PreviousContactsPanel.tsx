@@ -1,4 +1,4 @@
-import { Clock, Mail, MapPin, Phone, User } from 'phosphor-react-native';
+import { Clock, Envelope, MapPin, Phone, User } from 'phosphor-react-native';
 import React from 'react';
 import ReactNative from 'react-native';
 import { Card } from 'react-native-paper';
@@ -65,7 +65,7 @@ const PreviousContactsPanel: React.FC<PreviousContactsPanelProps> = ({
             <View style={styles.contactDetails}>
                 {contact.email && (
                     <View style={styles.contactDetail}>
-                        <Mail size={14} color={theme.colors.textSecondary} />
+                        <Envelope size={14} color={theme.colors.textSecondary} />
                         <Text style={styles.contactDetailText}>{contact.email}</Text>
                     </View>
                 )}

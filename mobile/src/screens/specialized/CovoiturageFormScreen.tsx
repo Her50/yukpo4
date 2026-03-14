@@ -64,8 +64,10 @@ const CovoiturageFormScreen: React.FC = () => {
     const devise = getCurrencyIntelligently() || 'XAF';
 
     // Dashboard state
-    const [activeTab, setActiveTab] = useState<TabType>('create');
-    const [hasPreviousTrips, setHasPreviousTrips] = useState(false);
+    // ✅ FIX: Partenaires arrivent sur l'onglet "Mes trajets" par défaut, pas "Créer"
+    const [activeTab, setActiveTab] = useState<TabType>(user?.role === 'partenaire' && !mode ? 'trips' : 'create');
+    // ✅ FIX: Partenaires voient TOUJOURS les tabs dashboard (même sans trajets)
+    const [hasPreviousTrips, setHasPreviousTrips] = useState(user?.role === 'partenaire' && !mode);
     const [initialLoading, setInitialLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [myTrips, setMyTrips] = useState<Trip[]>([]);

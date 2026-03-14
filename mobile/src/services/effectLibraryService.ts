@@ -81,7 +81,7 @@ export const effectLibraryService = {
     async getEffectsByCategory(category: string): Promise<Effect[]> {
         try {
             const response = await apiCall<Effect[]>(`/api/effects/category/${encodeURIComponent(category)}`);
-            return response || [];
+            return (response as any) || [];
         } catch (error) {
             console.error(`[EffectLibrary] Erreur récupération effets catégorie ${category}:`, error);
             return [];

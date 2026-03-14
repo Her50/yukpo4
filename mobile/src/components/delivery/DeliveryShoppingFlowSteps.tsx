@@ -5,13 +5,12 @@
 
 import React from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { modernColors } from '../../theme/modernTheme';
-import { NativeButton, NativeCard } from '../SafeNativeDesign';
-import { SafeIcon } from '../SafeIcon';
-import { SavedAddressSelector } from './SavedAddressSelector';
-import { LocationObject } from '../LocationSelector';
 import { UserSavedAddress } from '../../hooks/useSavedAddresses';
+import { modernColors } from '../../theme/modernTheme';
+import { LocationObject } from '../LocationSelector';
+import { SafeIcon } from '../SafeIcon';
+import { NativeButton, NativeCard } from '../SafeNativeDesign';
+import { SavedAddressSelector } from './SavedAddressSelector';
 
 // Types
 interface Supermarket {
@@ -50,6 +49,7 @@ export const SupermarketSelectionStep: React.FC<{
     onSortChange: (sort: 'distance' | 'name') => void;
     loading: boolean;
     error?: string;
+    onViewProducts?: (supermarket: any) => void;
 }> = ({
     supermarkets,
     selectedSupermarket,

@@ -245,6 +245,36 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
+    actionsRow: {
+        flexDirection: 'row',
+        gap: 8,
+        marginTop: 8,
+    },
+    actionButton: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 10,
+        borderRadius: 8,
+        gap: 6,
+    },
+    actionButtonText: {
+        fontSize: 14,
+        fontWeight: '600',
+    },
+    courseButton: {
+        backgroundColor: '#F97316',
+    },
+    courseButtonText: {
+        color: '#fff',
+    },
+    chatButton: {
+        backgroundColor: '#10B981',
+    },
+    chatButtonText: {
+        color: '#fff',
+    },
 });
 
 export default TaxiResultCard;

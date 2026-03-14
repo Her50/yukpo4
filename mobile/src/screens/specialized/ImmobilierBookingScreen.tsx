@@ -1,5 +1,5 @@
 // ✅ Écran de réservation de visite
-import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import React, { useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
@@ -14,7 +14,7 @@ type RouteParams = {
 
 const ImmobilierBookingScreen: React.FC = () => {
     const navigation = useNavigation();
-    const route = useRoute<RouteProp<{ params: RouteParams }, 'params'>>();
+    const route = useRoute() as any;
     const propertyId = route.params?.propertyId;
     const propertyName = route.params?.propertyName || 'Bien immobilier';
 

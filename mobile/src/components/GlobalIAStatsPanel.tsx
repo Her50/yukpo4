@@ -1,4 +1,4 @@
-import { Brain, Clock, DollarSign, TrendingUp } from 'phosphor-react-native';
+import { Brain, Clock, CurrencyDollar, TrendUp } from 'phosphor-react-native';
 import React from 'react';
 import ReactNative from 'react-native';
 import { Card } from 'react-native-paper';
@@ -33,13 +33,13 @@ const GlobalIAStatsPanel: React.FC<GlobalIAStatsPanelProps> = ({
             color: theme.colors.primary
         },
         {
-            icon: <DollarSign size={20} color="#10B981" />,
+            icon: <CurrencyDollar size={20} color="#10B981" />,
             label: 'Tokens utilisés',
             value: stats.totalTokens.toString(),
             color: '#10B981'
         },
         {
-            icon: <TrendingUp size={20} color="#F59E0B" />,
+            icon: <TrendUp size={20} color="#F59E0B" />,
             label: 'Coût moyen',
             value: `${stats.averageCost} tokens`,
             color: '#F59E0B'

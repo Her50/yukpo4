@@ -2105,7 +2105,7 @@ const styles = StyleSheet.create({
         borderTopColor: '#E5E7EB',
         gap: 12,
     },
-    clearButton: {
+    clearFilterButton: {
         flex: 1,
         paddingVertical: 14,
         borderRadius: 8,

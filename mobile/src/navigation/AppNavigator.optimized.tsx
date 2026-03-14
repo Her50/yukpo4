@@ -14,6 +14,7 @@ import SafeIcon from '../components/SafeIcon';
 import { useAuth } from '../contexts/AuthContext';
 import { useDeepLinkRedirect } from '../hooks/useDeepLinkRedirect';
 import { apiGet } from '../services/api';
+import { PassiveActivityTracker } from '../services/PassiveActivityTracker';
 import { modernColors } from '../theme/modernTheme';
 
 // ============================================================================
@@ -212,6 +213,7 @@ reg('DashboardMonProfil', () => import('../screens/dashboard/MonProfilScreen'));
 // Delivery (18)
 // ---------------------------------------------------------------------------
 reg('CourierAdmin', () => import('../screens/delivery/CourierAdminScreen'));
+reg('FleetDashboard', () => import('../screens/delivery/FleetDashboardScreen'));
 reg('CourierDashboard', () => import('../screens/delivery/CourierDashboardScreen'));
 reg('CourierRegistration', () => import('../screens/delivery/CourierRegistrationScreen'));
 reg('CourierVerificationCode', () => import('../screens/delivery/CourierVerificationCodeScreen'));
@@ -517,8 +519,8 @@ const GESTION_SUPPORTED_TYPES = [
   'livrescolaire', 'livre_scolaire',
   'assureur', 'assurance',
   'etablissementscolaire', 'etablissement_scolaire',
-  'offre_emploi', 'offreemploi', 'recruteur',
-  'livraison_courses_marche', 'demenagement', 'transport', 'telecom',
+  'offre_emploi', 'offreemploi', 'recruteur', 'employeur',
+  'livraison', 'livraison_courses_marche', 'demenagement', 'transport', 'telecom',
   'ecommerce', 'prestataire', 'service',
 ];
 
@@ -537,7 +539,7 @@ const getPartnerDashboardScreen = (partnerType: string | undefined): string | nu
     'agence_de_voyage': 'AgenceVoyageForm', // ✅ AJOUT: normalisation depuis "agence de voyage"
     'covoiturage': 'CovoiturageForm',
     'taxi': 'TaxiForm',
-    'chauffeur': 'TaxiForm',
+    'chauffeur': 'FleetDashboard',
     'hotel': 'HotelDashboard',
     'meuble': 'HotelDashboard',
     'supermarche': 'SupermarketPartnerDashboard',
@@ -545,6 +547,7 @@ const getPartnerDashboardScreen = (partnerType: string | undefined): string | nu
     'offre_emploi': 'OffresEmploiHub',
     'offreemploi': 'OffresEmploiHub',
     'recruteur': 'OffresEmploiHub',
+    'employeur': 'OffresEmploiHub',
     'assureur': 'AssuranceDashboard',
     'assurance': 'AssuranceDashboard',
     'etablissementscolaire': 'OrientationPartnerDashboard',
@@ -552,9 +555,10 @@ const getPartnerDashboardScreen = (partnerType: string | undefined): string | nu
     'livrescolaire': 'OrientationPartnerDashboard',
     'livre_scolaire': 'OrientationPartnerDashboard',
     // Autres types avec espaces (normalisation)
-    'livraison_courses_marche': 'GestionServicesSpecialises',
-    'demenagement': 'GestionServicesSpecialises',
-    'transport': 'GestionServicesSpecialises',
+    'livraison': 'FleetDashboard',
+    'livraison_courses_marche': 'FleetDashboard',
+    'demenagement': 'FleetDashboard',
+    'transport': 'FleetDashboard',
     'telecom': 'GestionServicesSpecialises',
     'ecommerce': 'GestionServicesSpecialises',
     'prestataire': 'GestionServicesSpecialises',
@@ -765,6 +769,16 @@ function AuthStackNavigator() {
 function MainStackNavigator() {
   // ✅ Deep links uniquement (la redirection partenaire est gérée par initialRouteName + PartnerDashboardTab)
   useDeepLinkRedirect();
+
+  // ✅ Tracking passif automatique des déplacements (background)
+  useEffect(() => {
+    PassiveActivityTracker.resumeIfEnabled().then(() => {
+      // Démarrer le tracking passif automatiquement après connexion
+      PassiveActivityTracker.start().then(ok => {
+        if (ok) console.log('[AppNav] Tracking passif activé');
+      });
+    });
+  }, []);
 
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>

@@ -46,7 +46,7 @@ const VehicleModelSelector: React.FC<VehicleModelSelectorProps> = ({
         setLoading(true);
         try {
             // Appeler l'API pour récupérer les modèles de cette marque
-            const response = await apiCall(`/api/vehicle-models?brand=${encodeURIComponent(marque)}`, 'GET');
+            const response = await apiCall(`/api/vehicle-models?brand=${encodeURIComponent(marque)}`, { method: 'GET' });
 
             if (response && Array.isArray(response)) {
                 const modelNames = response.map((v: any) => v.model).sort();
@@ -79,9 +79,10 @@ const VehicleModelSelector: React.FC<VehicleModelSelectorProps> = ({
 
                                 try {
                                     // Sauvegarder le nouveau modèle en BD
-                                    await apiCall('/api/vehicle-models', 'POST', {
-                                        brand: marque,
-                                        model: newModel
+                                    await apiCall('/api/vehicle-models', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ brand: marque, model: newModel }),
                                     });
 
                                     // Recharger la liste
@@ -116,9 +117,10 @@ const VehicleModelSelector: React.FC<VehicleModelSelectorProps> = ({
             setModalVisible(false);
 
             // Incrémenter le compteur d'usage en arrière-plan
-            apiCall(`/api/vehicle-models/increment`, 'POST', {
-                brand: marque,
-                model: model
+            apiCall(`/api/vehicle-models/increment`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ brand: marque, model: model }),
             }).catch(err => console.log('Erreur increment usage:', err));
         }
     };

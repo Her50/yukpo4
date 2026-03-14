@@ -20,7 +20,7 @@ import { CVAnalysis, offreEmploiService } from '../../services/offreEmploiServic
 import { modernColors } from '../../theme/modernTheme';
 
 const AICVAnalysisScreen: React.FC = () => {
-    const navigation = useNavigation<any>();
+    const navigation = useNavigation() as any;
     const { user } = useAuth();
     const [loading, setLoading] = useState(false);
     const [loadingCV, setLoadingCV] = useState(true);

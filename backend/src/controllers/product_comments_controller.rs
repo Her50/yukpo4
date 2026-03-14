@@ -613,7 +613,7 @@ async fn load_comments(
             pc.updated_at,
             pc.edited_at,
             pc.is_deleted,
-            COALESCE(u.nom_complet, u.name, CONCAT(u.prenom, ' ', u.nom), u.email, 'Utilisateur') AS user_name,
+            COALESCE(u.nom_complet, CONCAT(u.prenom, ' ', u.nom), u.email, 'Utilisateur') AS user_name,
             u.avatar_url AS user_avatar
         FROM product_comments pc
         JOIN users u ON u.id = pc.user_id
@@ -733,7 +733,7 @@ async fn load_comments(
     } else {
         let mention_vec: Vec<i32> = mention_ids.into_iter().collect();
         let rows = sqlx::query(
-            "SELECT id, COALESCE(nom_complet, name, CONCAT(prenom, ' ', nom), email, 'Utilisateur') AS display_name, avatar_url FROM users WHERE id = ANY($1)",
+            "SELECT id, COALESCE(nom_complet, CONCAT(prenom, ' ', nom), email, 'Utilisateur') AS display_name, avatar_url FROM users WHERE id = ANY($1)",
         )
         .bind(&mention_vec)
         .fetch_all(&state.pg)
@@ -886,7 +886,7 @@ async fn load_replies_for_comment(
             pc.updated_at,
             pc.edited_at,
             pc.is_deleted,
-            COALESCE(u.nom_complet, u.name, CONCAT(u.prenom, ' ', u.nom), u.email, 'Utilisateur') AS user_name,
+            COALESCE(u.nom_complet, CONCAT(u.prenom, ' ', u.nom), u.email, 'Utilisateur') AS user_name,
             u.avatar_url AS user_avatar
         FROM product_comments pc
         JOIN users u ON u.id = pc.user_id
@@ -970,7 +970,7 @@ async fn load_mention_users(
     }
 
     let rows = sqlx::query(
-        "SELECT id, COALESCE(nom_complet, name, CONCAT(prenom, ' ', nom), email, 'Utilisateur') AS display_name, avatar_url FROM users WHERE id = ANY($1)",
+        "SELECT id, COALESCE(nom_complet, CONCAT(prenom, ' ', nom), email, 'Utilisateur') AS display_name, avatar_url FROM users WHERE id = ANY($1)",
     )
     .bind(mention_ids)
     .fetch_all(&state.pg)

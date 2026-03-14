@@ -14,7 +14,7 @@ export {
 
 import { EnrichedProduct } from '../enrichedProductDatabase';
 import { CAMEROON_LOCAL_PRODUCTS } from './cameroonProducts';
-import { getAllLocalProductsByCountryCode } from './productsByCountry';
+import { getAllLocalProductsByCountryCode, searchLocalProducts } from './productsByCountry';
 
 /**
  * Obtenir tous les produits locaux par pays

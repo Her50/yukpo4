@@ -17,7 +17,7 @@ import {
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { KeyboardAwareScreen } from '../components/KeyboardAwareScreen';
-import { apiGet, apiPost, apiPut } from '../services/api';
+import { apiGet, apiPost, apiPut, deliveryApi } from '../services/api';
 // Code corrigé (remplace @ts-ignore)
 // ✅ NOUVEAU 2025-11-02: Gestionnaire upload images/vidéos dédié
 import BrandingManagerMobile from '../components/BrandingManagerMobile';
@@ -92,7 +92,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     focusProductId,
     duplicateProduct,
     editProductData,
-    isAddingProductToExistingService: routeAddProductFlag = false
+    isAddingProductToExistingService: routeAddProductFlag = false,
+    category: categoryParam = '',
   } = params;
 
   // État des données reçues
@@ -5096,6 +5097,18 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 }
 
                 console.log('[FormulaireYukpoIntelligentScreen] ✅ Tous les champs obligatoires sont présents et normalisés');
+
+                // ✅ AMÉLIORÉ 2026-03-14: Injecter la catégorie depuis les params de navigation si non définie
+                // Quand SupermarketPartnerDashboard navigue avec { category: 'supermarche' },
+                // on s'assure que la catégorie est dans les données du service
+                if (categoryParam && !finalServiceData.category) {
+                  finalServiceData.category = {
+                    type_donnee: 'string',
+                    valeur: categoryParam,
+                    origine_champs: 'navigation_param'
+                  };
+                  console.log('[FormulaireYukpoIntelligentScreen] ✅ Catégorie injectée depuis navigation:', categoryParam);
+                }
 
                 // ✅ CORRECTION CRITIQUE : Ajouter tokens_ia_externe DANS data (pas à la racine)
                 // Le backend cherche tokens_ia_externe dans le champ data après déballage

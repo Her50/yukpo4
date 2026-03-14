@@ -16,11 +16,10 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { uploadFiles, UploadedFile } from '../../services/uploadApi';
 import { mediaService } from '../../services/mediaService';
+import { UploadedFile, uploadFiles } from '../../services/uploadApi';
 import { modernColors } from '../../theme/modernTheme';
 import SafeIcon from '../SafeIcon';
-import { NativeButton } from '../SafeNativeDesign';
 
 export interface MediaItem {
     uri: string;
@@ -53,7 +52,7 @@ const MediaUploader: React.FC<MediaUploaderProps> = ({
     const requestPermissions = async () => {
         const { status: cameraStatus } = await ImagePicker.requestCameraPermissionsAsync();
         const { status: libraryStatus } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        
+
         if (cameraStatus !== 'granted' || libraryStatus !== 'granted') {
             Alert.alert(
                 'Permissions requises',
@@ -69,12 +68,12 @@ const MediaUploader: React.FC<MediaUploaderProps> = ({
         if (!hasPermission) return;
 
         const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: allowVideos 
-                ? ImagePicker.MediaTypeOptions.All 
+            mediaTypes: allowVideos
+                ? ImagePicker.MediaTypeOptions.All
                 : ImagePicker.MediaTypeOptions.Images,
             allowsMultipleSelection: true,
             quality: 0.8,
-            videoQuality: ImagePicker.VideoQuality.Medium,
+            videoQuality: (ImagePicker as any).VideoQuality?.Medium,
         });
 
         if (!result.canceled && result.assets) {
@@ -101,7 +100,7 @@ const MediaUploader: React.FC<MediaUploaderProps> = ({
             }
 
             onMediaChange([...media, ...newMedia]);
-            
+
             // Upload automatique
             uploadMedia(newMedia);
         }
@@ -137,13 +136,13 @@ const MediaUploader: React.FC<MediaUploaderProps> = ({
 
     const recordVideo = async () => {
         if (!allowVideos) return;
-        
+
         const hasPermission = await requestPermissions();
         if (!hasPermission) return;
 
         const result = await ImagePicker.launchCameraAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Videos,
-            quality: ImagePicker.VideoQuality.Medium,
+            quality: (ImagePicker as any).VideoQuality?.Medium,
             allowsEditing: true,
         });
 

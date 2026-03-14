@@ -79,20 +79,21 @@ const PrestataireBoutiqueScreen: React.FC<PrestataireBoutiqueScreenProps> = () =
 
       // ✅ Gérer différents formats de réponse
       let servicesData: any[] = [];
-      if (servicesResponse.success && servicesResponse.data) {
-        servicesData = Array.isArray(servicesResponse.data)
-          ? servicesResponse.data
-          : (Array.isArray(servicesResponse.data.data) ? servicesResponse.data.data : []);
-      } else if (Array.isArray(servicesResponse.data)) {
-        servicesData = servicesResponse.data;
-      } else if (servicesResponse.data && typeof servicesResponse.data === 'object') {
+      const srd: any = servicesResponse.data;
+      if (servicesResponse.success && srd) {
+        servicesData = Array.isArray(srd)
+          ? srd
+          : (Array.isArray(srd.data) ? srd.data : []);
+      } else if (Array.isArray(srd)) {
+        servicesData = srd;
+      } else if (srd && typeof srd === 'object') {
         // ✅ CORRIGÉ 2026-01-21: Vérifier aussi servicesResponse.data.data directement
-        if (Array.isArray(servicesResponse.data.data)) {
-          servicesData = servicesResponse.data.data;
-        } else if (Array.isArray(servicesResponse.data.services)) {
-          servicesData = servicesResponse.data.services;
-        } else if (Array.isArray(servicesResponse.data.resultats)) {
-          servicesData = servicesResponse.data.resultats;
+        if (Array.isArray(srd.data)) {
+          servicesData = srd.data;
+        } else if (Array.isArray(srd.services)) {
+          servicesData = srd.services;
+        } else if (Array.isArray(srd.resultats)) {
+          servicesData = srd.resultats;
         }
       }
 
@@ -135,10 +136,11 @@ const PrestataireBoutiqueScreen: React.FC<PrestataireBoutiqueScreenProps> = () =
           }
           // ✅ CAS 3: La réponse est dans un wrapper imbriqué
           else if (productsResponse?.data && typeof productsResponse.data === 'object') {
-            if (Array.isArray(productsResponse.data.data)) {
-              productsArray = productsResponse.data.data;
-            } else if (Array.isArray(productsResponse.data.products)) {
-              productsArray = productsResponse.data.products;
+            const prd: any = productsResponse.data;
+            if (Array.isArray(prd.data)) {
+              productsArray = prd.data;
+            } else if (Array.isArray(prd.products)) {
+              productsArray = prd.products;
             }
           }
 

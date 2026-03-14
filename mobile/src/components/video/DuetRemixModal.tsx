@@ -96,7 +96,7 @@ const DuetRemixModal: React.FC<DuetRemixModalProps> = ({
                         {
                             text: 'OK',
                             onPress: () => {
-                                onSuccess?.(response.data?.duet_id || '');
+                                onSuccess?.((response.data as any)?.duet_id || '');
                                 onClose();
                             },
                         },

@@ -16,6 +16,7 @@ export interface QuickPreviewResponse {
     quality: string;
     processing_time_ms: number;
     thumbnail_url?: string;
+    error?: string;
 }
 
 export const quickPreviewService = {
@@ -29,7 +30,7 @@ export const quickPreviewService = {
                 quality: request.quality || 'low',
                 maxDuration: request.max_duration || 10.0,
             });
-            
+
             const response = await iaApi.generateQuickPreview(request);
 
             console.log('[quickPreviewService] 📥 Réponse:', {

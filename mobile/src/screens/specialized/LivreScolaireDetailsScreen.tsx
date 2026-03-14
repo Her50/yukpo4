@@ -18,7 +18,7 @@ import {
 } from 'react-native';
 import SafeIcon from '../../components/SafeIcon';
 import { useAuth } from '../../contexts/AuthContext';
-import { apiGet, apiPost } from '../../services/api';
+import { apiGet, apiPatch, apiPost } from '../../services/api';
 
 interface LivreScolaire {
     id: number;

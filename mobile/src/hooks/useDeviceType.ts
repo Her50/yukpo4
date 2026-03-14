@@ -42,7 +42,7 @@ export const useDeviceType = (): DeviceType => {
 
     // Détection tablette (iOS/Android)
     const isTablet = Platform.select({
-        ios: width >= TABLET_MIN_WIDTH || (Platform.isPad || false),
+        ios: width >= TABLET_MIN_WIDTH || ((Platform as any).isPad || false),
         android: width >= TABLET_MIN_WIDTH || (width / height) >= 1.6,
         default: width >= TABLET_MIN_WIDTH,
     }) || false;

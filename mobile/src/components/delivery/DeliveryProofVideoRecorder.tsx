@@ -4,7 +4,7 @@
  * Utilise expo-camera pour l'enregistrement professionnel
  */
 
-import { Camera, CameraType } from 'expo-camera';
+import { Camera, type CameraType } from 'expo-camera';
 import * as MediaLibrary from 'expo-media-library';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -35,7 +35,7 @@ const DeliveryProofVideoRecorder: React.FC<DeliveryProofVideoRecorderProps> = ({
     const [hasPermission, setHasPermission] = useState<boolean | null>(null);
     const [isRecording, setIsRecording] = useState(false);
     const [recordingTime, setRecordingTime] = useState(0);
-    const [cameraType, setCameraType] = useState<CameraType>(CameraType.back); // Caméra arrière par défaut pour livraison
+    const [cameraType, setCameraType] = useState<CameraType>('back' as CameraType); // Caméra arrière par défaut pour livraison
     const cameraRef = useRef<Camera>(null);
     const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
     const recordingPromiseRef = useRef<Promise<any> | null>(null);
@@ -117,7 +117,7 @@ const DeliveryProofVideoRecorder: React.FC<DeliveryProofVideoRecorderProps> = ({
 
     const toggleCamera = useCallback(() => {
         setCameraType((prev) =>
-            prev === CameraType.back ? CameraType.front : CameraType.back
+            prev === ('back' as CameraType) ? ('front' as CameraType) : ('back' as CameraType)
         );
     }, []);
 

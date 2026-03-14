@@ -1,9 +1,6 @@
-import * as React from "react";
-import { useState } from "react";
-import { Text } from 'react-native';
-import { View } from 'react-native';
-import { TouchableOpacity } from 'react-native';
 import axios from "axios";
+import { useState } from "react";
+import { Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 const ExportShareCard = ({ content }: { content: string }) => {
   const [medium, setMedium] = useState("whatsapp");

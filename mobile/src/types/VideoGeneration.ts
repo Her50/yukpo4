@@ -75,6 +75,7 @@ export interface ImmersiveTimeline {
     width: number;
     height: number;
     scenes: ImmersiveScene[];
+    total_duration?: number;
 }
 
 export interface ImmersiveScene {
@@ -135,6 +136,7 @@ export interface VideoGenerationPayload {
     voice_profile_id?: number | null;
     creation_source?: 'media' | 'ai_virtual' | null;
     ai_video_prompt?: string | null;
+    auto_generate_images?: boolean;
     media_scene_overrides?: Array<{
         media_id: number;
         scene_index: number;
@@ -294,5 +296,8 @@ export interface TemplateRecommendationResponse {
     ordered: TemplateRecommendationItem[];
     best_template?: string | null;
 }
+
+// Alias pour compatibilité avec les services qui importent VideoTimeline
+export type VideoTimeline = ImmersiveTimeline;
 
 

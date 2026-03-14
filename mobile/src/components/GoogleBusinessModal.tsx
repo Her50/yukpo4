@@ -1,18 +1,17 @@
-import React, { useState, useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
-  Modal,
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
   ActivityIndicator,
   Alert,
+  Modal,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { NativeCard, NativeButton } from './NativeDesign';
-import SafeIcon from './SafeIcon';
 import { apiGet } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import LocationSelector, { LocationObject } from './LocationSelector';
+import SafeIcon from './SafeIcon';
 
 interface GoogleBusinessModalProps {
   visible: boolean;
@@ -45,8 +44,8 @@ const GoogleBusinessModal: React.FC<GoogleBusinessModalProps> = ({
         params: { place_id: location.place_id },
       });
 
-      if (response.success && response.data?.data) {
-        const businessData = response.data.data;
+      if (response.success && (response.data as any)?.data) {
+        const businessData = (response.data as any).data;
         onSelectBusiness(businessData);
         onClose();
       } else {
@@ -140,7 +139,7 @@ const GoogleBusinessModal: React.FC<GoogleBusinessModalProps> = ({
                 onSelect={(location: LocationObject) => {
                   console.log('[GoogleBusinessModal] Lieu sélectionné:', location);
                   setSelectedLocation(location);
-                  
+
                   // Si le lieu a un place_id, récupérer automatiquement les détails
                   if (location.place_id) {
                     handleSelectBusiness(location);
@@ -151,7 +150,7 @@ const GoogleBusinessModal: React.FC<GoogleBusinessModalProps> = ({
                 style={styles.locationSelector}
                 enrichWithBackend={true}
               />
-              
+
               {loadingDetails && (
                 <View style={styles.loadingContainer}>
                   <ActivityIndicator size="small" color={modernColors.primary} />

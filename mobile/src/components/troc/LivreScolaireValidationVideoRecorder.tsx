@@ -4,7 +4,7 @@
  * Utilise expo-camera pour l'enregistrement professionnel
  */
 
-import { Camera, CameraType } from 'expo-camera';
+import { Camera, type CameraType } from 'expo-camera';
 import * as MediaLibrary from 'expo-media-library';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -37,7 +37,7 @@ const LivreScolaireValidationVideoRecorder: React.FC<LivreScolaireValidationVide
     const [hasPermission, setHasPermission] = useState<boolean | null>(null);
     const [isRecording, setIsRecording] = useState(false);
     const [recordingTime, setRecordingTime] = useState(0);
-    const [cameraType, setCameraType] = useState<CameraType>(CameraType.back);
+    const [cameraType, setCameraType] = useState<CameraType>('back' as CameraType);
     const cameraRef = useRef<Camera>(null);
     const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
     const recordingPromiseRef = useRef<Promise<any> | null>(null);
@@ -132,7 +132,7 @@ const LivreScolaireValidationVideoRecorder: React.FC<LivreScolaireValidationVide
 
     const toggleCameraType = () => {
         setCameraType((current) =>
-            current === CameraType.back ? CameraType.front : CameraType.back
+            current === ('back' as CameraType) ? ('front' as CameraType) : ('back' as CameraType)
         );
     };
 

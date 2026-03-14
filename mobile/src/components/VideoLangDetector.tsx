@@ -1,8 +1,8 @@
-import * as React from "react";
-import { useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
+import * as React from "react";
+import { useState } from 'react';
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { apiPost } from '../services/api';
 
 const VideoLangDetector: React.FC = () => {
@@ -17,7 +17,7 @@ const VideoLangDetector: React.FC = () => {
         type: 'video/*',
         copyToCacheDirectory: true,
       });
-      
+
       if (!result.canceled && result.assets[0]) {
         setVideoUri(result.assets[0].uri);
       }
@@ -38,17 +38,18 @@ const VideoLangDetector: React.FC = () => {
       });
 
       if (response.success && response.data) {
-        const language = response.data.language;
-        const transcription = response.data.transcription;
+        const rd: any = response.data;
+        const language = rd.language;
+        const transcription = rd.transcription;
         setResult({ language, transcription });
 
         // Classification pour déterminer le bon formulaire
-        const classifyRes = await apiPost('/api/classify-service-type', { 
-          texte: transcription 
+        const classifyRes = await apiPost('/api/classify-service-type', {
+          texte: transcription
         });
-        
+
         if (classifyRes.success) {
-          const type = classifyRes.data.type_service || 'general';
+          const type = (classifyRes.data as any).type_service || 'general';
           (navigation as any).navigate('FormulaireYukpoIntelligent', { type });
         }
       }
@@ -69,9 +70,9 @@ const VideoLangDetector: React.FC = () => {
         </Text>
       </TouchableOpacity>
 
-      <TouchableOpacity 
-        style={[styles.submitButton, (!videoUri || loading) && styles.buttonDisabled]} 
-        onPress={handleSubmit} 
+      <TouchableOpacity
+        style={[styles.submitButton, (!videoUri || loading) && styles.buttonDisabled]}
+        onPress={handleSubmit}
         disabled={loading || !videoUri}
       >
         {loading ? (

@@ -32,14 +32,15 @@ export const useWeather = (latitude?: number, longitude?: number) => {
             });
 
             if (response.data) {
+                const d: any = response.data;
                 const weatherData: WeatherData = {
-                    temperature: Math.round(response.data.main.temp),
-                    description: response.data.weather[0].description,
-                    humidity: response.data.main.humidity,
-                    windSpeed: response.data.wind.speed,
-                    icon: getWeatherIcon(response.data.weather[0].icon),
-                    city: response.data.name,
-                    country: response.data.sys.country
+                    temperature: Math.round(d.main.temp),
+                    description: d.weather[0].description,
+                    humidity: d.main.humidity,
+                    windSpeed: d.wind.speed,
+                    icon: getWeatherIcon(d.weather[0].icon),
+                    city: d.name,
+                    country: d.sys.country
                 };
                 setWeather(weatherData);
             }

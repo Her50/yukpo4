@@ -1,7 +1,7 @@
-// ✅ REFONTE UX 2026-03-11: Hub principal offres d'emploi - Design moderne et aéré
+// ✅ REFONTE UX 2026-03-14: Hub offres d'emploi adaptatif employeur/candidat
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     RefreshControl,
@@ -21,10 +21,24 @@ interface DashboardStats {
     total_candidatures?: number;
     candidatures_attente?: number;
     meilleurs_matchings?: number;
+    // ✅ Stats employeur additionnelles
+    offres_actives?: number;
+    candidatures_recues?: number;
+    profils_consultes?: number;
 }
 
-// Grille d'actions rapides
-const QUICK_ACTIONS = [
+// ✅ FIX 2026-03-14: Actions rapides EMPLOYEUR (partenaire recruteur)
+const EMPLOYER_QUICK_ACTIONS = [
+    { id: 'create', label: 'Nouvelle offre', icon: 'plus-circle', color: '#7C3AED', screen: 'OffresEmploiForm' },
+    { id: 'mesoffres', label: 'Mes offres', icon: 'briefcase', color: '#6366F1', screen: 'MesOffres' },
+    { id: 'candidatures', label: 'Candidatures', icon: 'users', color: '#10B981', screen: 'MesOffres' },
+    { id: 'matching', label: 'Matching IA', icon: 'target', color: '#8B5CF6', screen: 'MesOffres' },
+    { id: 'salary', label: 'Salaire IA', icon: 'trending-up', color: '#F59E0B', screen: 'AISalaryPrediction' },
+    { id: 'search', label: 'Explorer', icon: 'search', color: '#EC4899', screen: 'OffresEmploiHome' },
+];
+
+// Grille d'actions rapides CANDIDAT
+const CANDIDATE_QUICK_ACTIONS = [
     { id: 'search', label: 'Rechercher', icon: 'search', color: '#6366F1', screen: 'OffresEmploiHome' },
     { id: 'matching', label: 'Pour moi', icon: 'target', color: '#8B5CF6', screen: 'OffresEmploiHome' },
     { id: 'candidatures', label: 'Candidatures', icon: 'file-text', color: '#10B981', screen: 'OffreCandidatures' },
@@ -40,17 +54,33 @@ const AI_TOOLS = [
     { id: 'formations', label: 'Formations', icon: 'graduation-cap', color: '#10B981', bg: '#ECFDF5', screen: 'AISuggestFormations' },
 ];
 
+// ✅ Types partenaires employeur
+const EMPLOYER_PARTNER_TYPES = ['offre_emploi', 'offreemploi', 'recruteur', 'employeur'];
+
 const OffresEmploiHubScreen: React.FC = () => {
     const navigation = useNavigation();
     const { user } = useAuth();
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [stats, setStats] = useState<DashboardStats | null>(null);
+    // ✅ FIX 2026-03-14: Détection dynamique employeur (partenaire OU utilisateur ayant publié des offres)
+    const [hasPublishedOffers, setHasPublishedOffers] = useState(false);
+
+    // Détection partenaire recruteur (synchrone)
+    const isPartnerEmployer = useMemo(() => {
+        if (user?.role !== 'partenaire') return false;
+        const pt = ((user as any)?.partner_type || '').toLowerCase().trim().replace(/[\s_]+/g, '');
+        return EMPLOYER_PARTNER_TYPES.some(t => t.replace(/[\s_]+/g, '') === pt);
+    }, [user]);
+
+    // ✅ Un employeur = partenaire recruteur OU utilisateur ayant déjà publié des offres
+    const isEmployer = isPartnerEmployer || hasPublishedOffers;
+    const quickActions = isEmployer ? EMPLOYER_QUICK_ACTIONS : CANDIDATE_QUICK_ACTIONS;
 
     useFocusEffect(
         useCallback(() => {
             loadStats();
-        }, [])
+        }, [isPartnerEmployer])
     );
 
     const loadStats = async (isRefresh = false) => {
@@ -59,12 +89,35 @@ const OffresEmploiHubScreen: React.FC = () => {
             else setLoading(true);
 
             if (user) {
-                const response = await offreEmploiService.getDashboardCandidat();
+                // ✅ FIX 2026-03-14: Vérifier si l'utilisateur a des offres publiées (même non-partenaire)
+                if (!isPartnerEmployer) {
+                    try {
+                        const offresResp = await offreEmploiService.getMesOffres(1, 1);
+                        const offresData = (offresResp?.data as any);
+                        const total = offresData?.total || (Array.isArray(offresData?.data) ? offresData.data.length : 0);
+                        if (total > 0) {
+                            setHasPublishedOffers(true);
+                        }
+                    } catch { /* ignore - pas d'offres */ }
+                }
+
+                // Appeler le bon dashboard selon le rôle détecté
+                const useEmployerDashboard = isPartnerEmployer || hasPublishedOffers;
+                const response = useEmployerDashboard
+                    ? await offreEmploiService.getDashboardEmployeur()
+                    : await offreEmploiService.getDashboardCandidat();
                 const resData = (response?.data || response) as any;
                 if (resData?.success && resData?.data) {
                     setStats(resData.data);
-                } else if (resData?.total_candidatures !== undefined) {
+                    // ✅ Auto-détection: si les stats employeur montrent des offres, basculer en mode employeur
+                    if ((resData.data.total_offres > 0 || resData.data.offres_actives > 0) && !isPartnerEmployer) {
+                        setHasPublishedOffers(true);
+                    }
+                } else if (resData?.total_candidatures !== undefined || resData?.total_offres !== undefined) {
                     setStats(resData);
+                    if ((resData.total_offres > 0 || resData.offres_actives > 0) && !isPartnerEmployer) {
+                        setHasPublishedOffers(true);
+                    }
                 }
             }
         } catch (error) {
@@ -98,21 +151,21 @@ const OffresEmploiHubScreen: React.FC = () => {
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadStats(true)} />}
             >
                 {/* ── Header Gradient ── */}
-                <LinearGradient colors={['#6366F1', '#8B5CF6']} style={s.header}>
+                <LinearGradient colors={isEmployer ? ['#7C3AED', '#6366F1'] : ['#6366F1', '#8B5CF6']} style={s.header}>
                     <View style={s.headerTop}>
                         <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
                             <SafeIcon name="arrow-left" size={24} color="#FFFFFF" />
                         </TouchableOpacity>
                         <View style={s.headerTitleWrap}>
-                            <Text style={s.headerTitle}>Offres d'Emploi</Text>
-                            <Text style={s.headerSubtitle}>Trouvez ou publiez un emploi</Text>
+                            <Text style={s.headerTitle}>{isEmployer ? 'Espace Recruteur' : 'Offres d\'Emploi'}</Text>
+                            <Text style={s.headerSubtitle}>{isEmployer ? 'G\u00e9rez vos offres et candidatures' : 'Trouvez ou publiez un emploi'}</Text>
                         </View>
                     </View>
 
                     {/* Barre de recherche */}
                     <TouchableOpacity style={s.searchBar} onPress={() => nav('OffreSearch')} activeOpacity={0.8}>
                         <SafeIcon name="search" size={18} color="#9CA3AF" type="lucide" />
-                        <Text style={s.searchPlaceholder}>Rechercher un emploi...</Text>
+                        <Text style={s.searchPlaceholder}>{isEmployer ? 'Rechercher des candidats...' : 'Rechercher un emploi...'}</Text>
                         <SafeIcon name="chevron-right" size={18} color="#9CA3AF" type="lucide" />
                     </TouchableOpacity>
                 </LinearGradient>
@@ -122,13 +175,13 @@ const OffresEmploiHubScreen: React.FC = () => {
                     <View style={s.statsGrid}>
                         <View style={[s.statCard, { borderLeftColor: '#6366F1' }]}>
                             <SafeIcon name="briefcase" size={18} color="#6366F1" type="lucide" />
-                            <Text style={s.statValue}>{String(stats.total_offres || 0)}</Text>
-                            <Text style={s.statLabel}>Offres</Text>
+                            <Text style={s.statValue}>{String(stats.total_offres || stats.offres_actives || 0)}</Text>
+                            <Text style={s.statLabel}>{isEmployer ? 'Offres actives' : 'Offres'}</Text>
                         </View>
                         <View style={[s.statCard, { borderLeftColor: '#10B981' }]}>
-                            <SafeIcon name="send" size={18} color="#10B981" type="lucide" />
-                            <Text style={s.statValue}>{String(stats.total_candidatures || 0)}</Text>
-                            <Text style={s.statLabel}>Candidatures</Text>
+                            <SafeIcon name={isEmployer ? 'users' : 'send'} size={18} color="#10B981" type="lucide" />
+                            <Text style={s.statValue}>{String(stats.total_candidatures || stats.candidatures_recues || 0)}</Text>
+                            <Text style={s.statLabel}>{isEmployer ? 'Candidatures re\u00e7ues' : 'Candidatures'}</Text>
                         </View>
                         <View style={[s.statCard, { borderLeftColor: '#F59E0B' }]}>
                             <SafeIcon name="clock" size={18} color="#F59E0B" type="lucide" />
@@ -136,9 +189,9 @@ const OffresEmploiHubScreen: React.FC = () => {
                             <Text style={s.statLabel}>En attente</Text>
                         </View>
                         <View style={[s.statCard, { borderLeftColor: '#8B5CF6' }]}>
-                            <SafeIcon name="zap" size={18} color="#8B5CF6" type="lucide" />
-                            <Text style={s.statValue}>{String(stats.meilleurs_matchings || 0)}</Text>
-                            <Text style={s.statLabel}>Matchings</Text>
+                            <SafeIcon name={isEmployer ? 'eye' : 'zap'} size={18} color="#8B5CF6" type="lucide" />
+                            <Text style={s.statValue}>{String(stats.meilleurs_matchings || stats.profils_consultes || 0)}</Text>
+                            <Text style={s.statLabel}>{isEmployer ? 'Profils consult\u00e9s' : 'Matchings'}</Text>
                         </View>
                     </View>
                 )}
@@ -147,7 +200,7 @@ const OffresEmploiHubScreen: React.FC = () => {
                 <View style={s.section}>
                     <Text style={s.sectionTitle}>Actions rapides</Text>
                     <View style={s.actionsGrid}>
-                        {QUICK_ACTIONS.map(action => (
+                        {quickActions.map(action => (
                             <TouchableOpacity
                                 key={action.id}
                                 style={s.actionItem}
@@ -184,42 +237,44 @@ const OffresEmploiHubScreen: React.FC = () => {
                     </ScrollView>
                 </View>
 
-                {/* ── Accès Employeur ── */}
-                <View style={s.section}>
-                    <Text style={s.sectionTitle}>Espace Employeur</Text>
-                    <TouchableOpacity style={s.employerCard} onPress={() => nav('CreateOffre')} activeOpacity={0.7}>
-                        <LinearGradient colors={['#7C3AED', '#6366F1']} style={s.employerCardGradient}>
-                            <View style={s.employerCardIcon}>
-                                <SafeIcon name="plus-circle" size={28} color="#FFFFFF" type="lucide" />
-                            </View>
-                            <View style={s.employerCardContent}>
-                                <Text style={s.employerCardTitle}>Publier une offre</Text>
-                                <Text style={s.employerCardSub}>Trouvez le candidat idéal</Text>
-                            </View>
-                            <SafeIcon name="chevron-right" size={22} color="#FFFFFF" type="lucide" />
-                        </LinearGradient>
-                    </TouchableOpacity>
+                {/* ── Espace Employeur (visible pour tous, mis en avant pour partenaires) ── */}
+                {!isEmployer && (
+                    <View style={s.section}>
+                        <Text style={s.sectionTitle}>Espace Employeur</Text>
+                        <TouchableOpacity style={s.employerCard} onPress={() => nav('OffresEmploiForm')} activeOpacity={0.7}>
+                            <LinearGradient colors={['#7C3AED', '#6366F1']} style={s.employerCardGradient}>
+                                <View style={s.employerCardIcon}>
+                                    <SafeIcon name="plus-circle" size={28} color="#FFFFFF" type="lucide" />
+                                </View>
+                                <View style={s.employerCardContent}>
+                                    <Text style={s.employerCardTitle}>Publier une offre</Text>
+                                    <Text style={s.employerCardSub}>Trouvez le candidat id\u00e9al</Text>
+                                </View>
+                                <SafeIcon name="chevron-right" size={22} color="#FFFFFF" type="lucide" />
+                            </LinearGradient>
+                        </TouchableOpacity>
 
-                    <View style={s.employerActions}>
-                        <TouchableOpacity style={s.employerActionBtn} onPress={() => nav('MesOffres')} activeOpacity={0.7}>
-                            <SafeIcon name="list" size={18} color="#6366F1" type="lucide" />
-                            <Text style={s.employerActionText}>Mes offres</Text>
-                        </TouchableOpacity>
-                        <View style={s.employerActionDivider} />
-                        <TouchableOpacity style={s.employerActionBtn} onPress={() => nav('OffreCandidatures')} activeOpacity={0.7}>
-                            <SafeIcon name="users" size={18} color="#6366F1" type="lucide" />
-                            <Text style={s.employerActionText}>Candidatures</Text>
-                        </TouchableOpacity>
+                        <View style={s.employerActions}>
+                            <TouchableOpacity style={s.employerActionBtn} onPress={() => nav('MesOffres')} activeOpacity={0.7}>
+                                <SafeIcon name="list" size={18} color="#6366F1" type="lucide" />
+                                <Text style={s.employerActionText}>Mes offres</Text>
+                            </TouchableOpacity>
+                            <View style={s.employerActionDivider} />
+                            <TouchableOpacity style={s.employerActionBtn} onPress={() => nav('MesOffres')} activeOpacity={0.7}>
+                                <SafeIcon name="users" size={18} color="#6366F1" type="lucide" />
+                                <Text style={s.employerActionText}>Candidatures</Text>
+                            </TouchableOpacity>
+                        </View>
                     </View>
-                </View>
+                )}
 
                 <View style={{ height: 100 }} />
             </ScrollView>
 
-            {/* ── FAB: Créer une offre ── */}
+            {/* ── FAB: Créer une offre (utilise OffresEmploiForm pour partenaires) ── */}
             <TouchableOpacity
                 style={s.fab}
-                onPress={() => nav('CreateOffre')}
+                onPress={() => nav(isEmployer ? 'OffresEmploiForm' : 'OffresEmploiForm')}
                 activeOpacity={0.85}
             >
                 <LinearGradient colors={['#7C3AED', '#6366F1']} style={s.fabGradient}>

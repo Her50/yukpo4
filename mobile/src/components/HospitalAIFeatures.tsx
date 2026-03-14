@@ -8,8 +8,10 @@
  * - Gestion créneaux
  */
 
+import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState } from 'react';
 import {
+    ActivityIndicator,
     Alert,
     Modal,
     ScrollView,
@@ -17,15 +19,11 @@ import {
     Text,
     TextInput,
     TouchableOpacity,
-    View,
-    ActivityIndicator
+    View
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import SafeIcon from './SafeIcon';
-import { NativeButton } from './SafeNativeDesign';
-import { apiPost, apiGet } from '../services/api';
-import { modernColors } from '../theme/modernTheme';
+import { apiGet, apiPost } from '../services/api';
 import { hapticPress } from '../utils/hapticFeedback';
+import SafeIcon from './SafeIcon';
 
 interface TriageResult {
     severity: 'low' | 'moderate' | 'high' | 'critical';
@@ -71,19 +69,19 @@ const HospitalAIFeatures: React.FC<HospitalAIFeaturesProps> = ({
 }) => {
     const [activeTab, setActiveTab] = useState<'triage' | 'recommendations' | 'wait_time' | 'slots'>('triage');
     const [loading, setLoading] = useState(false);
-    
+
     // État pour triage
     const [symptoms, setSymptoms] = useState('');
     const [age, setAge] = useState('');
     const [triageResult, setTriageResult] = useState<TriageResult | null>(null);
-    
+
     // État pour recommandations
     const [recommendationQuery, setRecommendationQuery] = useState('');
     const [recommendationResult, setRecommendationResult] = useState<RecommendationResult | null>(null);
-    
+
     // État pour temps d'attente
     const [waitTimeResult, setWaitTimeResult] = useState<WaitTimeResult | null>(null);
-    
+
     // État pour créneaux
     const [selectedDate, setSelectedDate] = useState('');
     const [selectedService, setSelectedService] = useState('');
@@ -181,7 +179,7 @@ const HospitalAIFeatures: React.FC<HospitalAIFeaturesProps> = ({
             });
 
             if (response?.success && response?.data) {
-                setAvailableSlots(response.data.slots || []);
+                setAvailableSlots((response.data as any).slots || []);
             } else {
                 Alert.alert('Erreur', response?.message || 'Impossible d\'obtenir les créneaux');
             }

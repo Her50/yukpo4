@@ -23,6 +23,8 @@ interface SafeIconProps {
     size?: number;
     color?: string;
     type?: 'lucide' | 'ionicons' | 'emoji';
+    style?: any;
+    onPress?: () => void;
 }
 
 // Mapping des icônes vers des emojis comme fallback

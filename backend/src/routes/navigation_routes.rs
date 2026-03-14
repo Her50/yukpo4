@@ -406,7 +406,7 @@ async fn get_routes(
                         .collect();
 
                     if !modes_str.is_empty() {
-                        return Err(AppError::Internal(format!(
+                        return Err(AppError::BadRequest(format!(
                             "Mode {} non disponible pour cette région. Modes disponibles: {}",
                             match travel_mode {
                                 "bicycling" => "vélo",
@@ -419,7 +419,7 @@ async fn get_routes(
                     }
                 }
 
-                return Err(AppError::Internal(format!(
+                return Err(AppError::BadRequest(format!(
                     "Aucun itinéraire trouvé pour le mode {} - {}",
                     match travel_mode {
                         "bicycling" => "vélo",
@@ -431,6 +431,18 @@ async fn get_routes(
                 )));
             }
 
+            // REQUEST_DENIED / INVALID_REQUEST → erreur utilisateur (400), pas serveur (500)
+            if status == "REQUEST_DENIED"
+                || status == "INVALID_REQUEST"
+                || status == "NOT_FOUND"
+                || status == "MAX_WAYPOINTS_EXCEEDED"
+                || status == "MAX_ROUTE_LENGTH_EXCEEDED"
+            {
+                return Err(AppError::BadRequest(format!(
+                    "Google Directions: {} - {}",
+                    status, detail
+                )));
+            }
             return Err(AppError::Internal(format!(
                 "Google Directions: {} - {}",
                 status, detail
@@ -3981,12 +3993,24 @@ async fn report_checkpoint(
         )));
     }
 
-    // Expiration: temporaire = 2h, permanent = jamais
+    // Expiration différenciée par type d'alerte
     let is_permanent = request.is_permanent.unwrap_or(false);
     let expires_at = if is_permanent {
         None
     } else {
-        Some(chrono::Utc::now() + chrono::Duration::hours(2))
+        let hours = match request.checkpoint_type.as_str() {
+            "road_works" => 24, // Travaux: durent longtemps
+            "speed_bump" => 0,  // Ralentisseur: permanent par nature (traité ci-dessous)
+            "radar" | "police" | "transport_control" | "road_check" => 4, // Contrôles: quelques heures
+            "danger" => 3,   // Danger: modérément persistant
+            "accident" => 2, // Accident: transitoire
+            _ => 2,          // Par défaut: 2h
+        };
+        if hours == 0 {
+            None
+        } else {
+            Some(chrono::Utc::now() + chrono::Duration::hours(hours))
+        }
     };
 
     let row = sqlx::query_as::<_, CheckpointRow>(

@@ -50,7 +50,7 @@ const AgencyAnalyticsDashboard: React.FC = () => {
         try {
             setLoading(true);
             // TODO: Remplacer par le vrai endpoint backend
-            const response = await apiGet(`/api/agencies/${user?.service_id}/analytics?period=${period}`);
+            const response = await apiGet(`/api/agencies/${(user as any)?.service_id}/analytics?period=${period}`);
 
             if (response.success && response.data) {
                 setData(response.data);

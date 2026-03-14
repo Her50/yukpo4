@@ -20,6 +20,11 @@ export const theme = {
     error: '#EF4444',
     info: '#3B82F6',
 
+    // Couleurs supplémentaires
+    backgroundSecondary: '#F1F5F9',
+    textPrimary: '#1F2937',
+    danger: '#EF4444',
+
     // Couleurs de bordure
     border: '#E5E7EB',
     borderLight: '#F3F4F6',

@@ -12,7 +12,7 @@ import { useShoppingBasket } from '../../hooks/useShoppingBasket';
 import { modernColors } from '../../theme/modernTheme';
 
 const ShoppingBasketScreen: React.FC = () => {
-    const navigation = useNavigation<any>();
+    const navigation = useNavigation() as any;
     const { items, estimateBasket, loadingEstimate } = useShoppingBasket();
 
     // ✅ CORRIGÉ: Gestion du bouton retour Android

@@ -1,22 +1,22 @@
 // ✅ NOUVEAU: Sélecteur de filtres artistiques IA avec preview temps réel
 
+import { Slider } from '@react-native-community/slider';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
+    Alert,
     FlatList,
-    Image,
     ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
     View
 } from 'react-native';
-import { Slider } from '@react-native-community/slider';
-import { SafeIcon } from './SafeIcon';
-import { modernColors } from '../theme/modernTheme';
-import { NativeButton, NativeInput } from './SafeNativeDesign';
 import { apiGet, apiPost } from '../services/api';
+import { modernColors } from '../theme/modernTheme';
 import type { ArtisticFilterConfig, FilteredVideoResult } from '../types/ArtisticFilter';
+import { SafeIcon } from './SafeIcon';
+import { NativeButton, NativeInput } from './SafeNativeDesign';
 
 interface ArtisticFilterSelectorProps {
     videoUrl: string;
@@ -65,8 +65,9 @@ export const ArtisticFilterSelector: React.FC<ArtisticFilterSelectorProps> = ({
 
         try {
             const response = await apiGet('/video/artistic-filters');
-            if (response.success && response.data?.filters) {
-                setFilters(response.data.filters);
+            const rd: any = response.data;
+            if (response.success && rd?.filters) {
+                setFilters(rd.filters);
             } else {
                 throw new Error(response.error || 'Erreur chargement filtres');
             }
@@ -80,13 +81,13 @@ export const ArtisticFilterSelector: React.FC<ArtisticFilterSelectorProps> = ({
 
     // Filtrer les filtres
     const filteredFilters = filters.filter(filter => {
-        const matchesCategory = selectedCategory === 'all' || 
+        const matchesCategory = selectedCategory === 'all' ||
             (selectedCategory === 'classics' && ['van_gogh', 'monet', 'picasso'].some(name => filter.name.includes(name))) ||
             (selectedCategory === 'modern' && ['banksy', 'warhol', 'manga'].some(name => filter.name.includes(name))) ||
             (selectedCategory === 'abstract' && ['kandinsky', 'cyberpunk'].some(name => filter.name.includes(name))) ||
             (selectedCategory === 'vintage' && ['vintage', 'sepia'].some(name => filter.name.includes(name)));
 
-        const matchesSearch = !searchQuery.trim() || 
+        const matchesSearch = !searchQuery.trim() ||
             filter.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             filter.style_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             filter.artist.toLowerCase().includes(searchQuery.toLowerCase());
@@ -96,13 +97,13 @@ export const ArtisticFilterSelector: React.FC<ArtisticFilterSelectorProps> = ({
 
     const handleFilterSelect = useCallback((filter: ArtisticFilterConfig) => {
         const currentSelection = new Map(selectedFilters);
-        
+
         if (currentSelection.has(filter.name)) {
             // Désélectionner
             currentSelection.delete(filter.name);
         } else if (currentSelection.size < maxSelection) {
             // Sélectionner avec intensité par défaut
-            const defaultIntensity = STYLE_PRESETS[intensityPreset].range[0] + 
+            const defaultIntensity = STYLE_PRESETS[intensityPreset].range[0] +
                 (STYLE_PRESETS[intensityPreset].range[1] - STYLE_PRESETS[intensityPreset].range[0]) / 2;
             currentSelection.set(filter.name, { intensity: defaultIntensity });
         }
@@ -139,10 +140,11 @@ export const ArtisticFilterSelector: React.FC<ArtisticFilterSelectorProps> = ({
                 filter_chain: filterChain
             });
 
-            if (response.success && response.data?.results) {
-                const results = response.data.results;
+            const ard: any = response.data;
+            if (response.success && ard?.results) {
+                const results = ard.results;
                 onFilterApplied?.(results[results.length - 1]); // Dernier résultat
-                
+
                 // Feedback succès
                 Alert.alert(
                     '✅ Filtres appliqués!',
@@ -222,7 +224,7 @@ export const ArtisticFilterSelector: React.FC<ArtisticFilterSelectorProps> = ({
                                     ]}
                                     onPress={() => {
                                         setIntensityPreset(key as keyof typeof STYLE_PRESETS);
-                                        const newIntensity = preset.range[0] + 
+                                        const newIntensity = preset.range[0] +
                                             (preset.range[1] - preset.range[0]) / 2;
                                         handleIntensityChange(filter.name, newIntensity);
                                     }}

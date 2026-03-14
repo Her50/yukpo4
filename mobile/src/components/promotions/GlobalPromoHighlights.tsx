@@ -5,8 +5,8 @@ import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'rea
 import { useFeatureFlags } from '../../contexts/FeatureFlagContext';
 import useGlobalPromos from '../../hooks/useGlobalPromos';
 import { modernColors } from '../../theme/modernTheme';
-import { NativeButton, NativeCard } from '../SafeNativeDesign';
 import SafeIcon from '../SafeIcon';
+import { NativeButton, NativeCard } from '../SafeNativeDesign';
 
 const getSnapshotImage = (snapshot: any): string | undefined => {
     if (!snapshot) return undefined;
@@ -31,7 +31,7 @@ const formatPrice = (value?: number | null) => {
 };
 
 const GlobalPromoHighlightsComponent: React.FC = () => {
-    const navigation = useNavigation<any>();
+    const navigation = useNavigation() as any;
     const { entries, events, selectedEvent, loadingEvents, loadingEntries, loading, error, refresh } = useGlobalPromos();
     const { isEnabled } = useFeatureFlags();
     const [isInitialized, setIsInitialized] = React.useState(false);
@@ -84,7 +84,7 @@ const GlobalPromoHighlightsComponent: React.FC = () => {
         return (
             <NativeCard style={styles.card}>
                 <Text style={styles.title}>🔥 Black Friday collectif</Text>
-                <Text style={styles.errorText}>{typeof error === 'string' ? error : error?.message || 'Erreur inconnue'}</Text>
+                <Text style={styles.errorText}>{typeof error === 'string' ? error : (error as any)?.message || 'Erreur inconnue'}</Text>
                 <NativeButton title="Réessayer" onPress={refresh} variant="secondary" />
             </NativeCard>
         );

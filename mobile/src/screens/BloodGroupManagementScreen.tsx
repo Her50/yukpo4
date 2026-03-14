@@ -40,8 +40,9 @@ const BloodGroupManagementScreen: React.FC = () => {
             // Récupérer les groupes sanguins de l'utilisateur
             const response = await apiGet('/api/blood-donation/donor/blood-groups');
 
-            if (response.success && response.data && response.data.length > 0) {
-                const userBloodGroup = response.data[0]; // Prendre le premier groupe
+            const rdata: any = response.data;
+            if (response.success && rdata && rdata.length > 0) {
+                const userBloodGroup: any = rdata[0]; // Prendre le premier groupe
                 setBloodGroup(userBloodGroup.groupe_sanguin);
                 setIsAvailable(userBloodGroup.is_available_for_donation);
                 setLastDonationDate(userBloodGroup.last_donation_date);
@@ -112,7 +113,7 @@ const BloodGroupManagementScreen: React.FC = () => {
                             if (response.success) {
                                 Alert.alert(
                                     '✅ Succès',
-                                    `Votre dernier don a été enregistré. Prochain don possible le ${response.data?.next_donation_available_date || 'N/A'}`
+                                    `Votre dernier don a été enregistré. Prochain don possible le ${(response.data as any)?.next_donation_available_date || 'N/A'}`
                                 );
                                 await loadBloodGroupInfo();
                             } else {

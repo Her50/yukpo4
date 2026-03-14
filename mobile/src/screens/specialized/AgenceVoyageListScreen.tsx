@@ -11,8 +11,8 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import { NativeCard } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeCard } from '../../components/SafeNativeDesign';
 import { apiGet } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 
@@ -72,7 +72,7 @@ const AgenceVoyageListScreen: React.FC = () => {
             const response = await apiGet(`/api/agences-voyage/search?${queryParams.toString()}`);
 
             if (response.success && response.data) {
-                const newAgences = response.data.data || [];
+                const newAgences = (response.data as any).data || [];
                 if (isRefresh || currentPage === 1) {
                     setAgences(newAgences);
                 } else {

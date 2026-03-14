@@ -13,8 +13,8 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import { NativeCard } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeCard } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiGet, apiPost } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
@@ -83,7 +83,8 @@ const MesTaxisScreen: React.FC = () => {
             const response = await apiGet(url);
 
             if (response.success && response.data) {
-                const taxisData = Array.isArray(response.data) ? response.data : response.data.data || [];
+                const rd: any = response.data;
+                const taxisData = Array.isArray(rd) ? rd : rd.data || [];
                 setTaxis(taxisData);
             } else {
                 Alert.alert('Erreur', 'Impossible de charger vos taxis');

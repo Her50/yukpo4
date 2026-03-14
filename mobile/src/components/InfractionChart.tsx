@@ -1,7 +1,6 @@
 // @ts-check
 import * as React from "react";
-import { Text } from 'react-native';
-import { BarChart, Bar, XAxis, YAxis, Tooltip } from "recharts";
+import { Bar, BarChart, Tooltip, XAxis, YAxis } from "recharts";
 
 interface InfractionData {
   ip: string;
@@ -11,7 +10,7 @@ interface Props {
   data: InfractionData[];
 }
 
-const InfractionChart: React.FC<Textrops> = ({ data }) => {
+const InfractionChart: React.FC<Props> = ({ data }) => {
   const ipCounts: Record<string, number> = {};
 
   data.forEach((d) => {

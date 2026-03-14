@@ -13,8 +13,8 @@ import {
     View
 } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
-import { NativeButton, NativeInput } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
+import { NativeButton, NativeInput } from './SafeNativeDesign';
 
 export interface SearchFilters {
     minPrice: number | null;
@@ -23,6 +23,9 @@ export interface SearchFilters {
     company: string | null;
     sortBy: 'price' | 'time' | 'duration' | 'popularity';
     sortOrder: 'asc' | 'desc';
+    availability?: string;
+    services?: string[];
+    rating?: number;
 }
 
 interface SearchFiltersProps {

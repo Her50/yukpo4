@@ -133,7 +133,8 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                 const response = await menuPlanningService.generateRecipe(recipeRequest.trim());
                 let recipe: GeneratedRecipe | null = null;
                 if (response) {
-                    recipe = response.data?.recipe || (response.data?.recipe_name ? response.data as GeneratedRecipe : null) || response.recipe || response.data?.data?.recipe || null;
+                    const rd: any = response.data;
+                    recipe = rd?.recipe || (rd?.recipe_name ? rd as GeneratedRecipe : null) || (response as any).recipe || rd?.data?.recipe || null;
                 }
                 if (recipe && recipe.recipe_name) return recipe;
                 return null;

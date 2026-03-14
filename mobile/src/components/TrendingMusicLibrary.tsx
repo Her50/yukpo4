@@ -11,11 +11,11 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import { SafeIcon } from './SafeIcon';
-import { modernColors } from '../theme/modernTheme';
-import { NativeButton, NativeInput } from './SafeNativeDesign';
 import { apiGet } from '../services/api';
-import type { MusicTrack, CuratedPlaylist } from '../types/Music';
+import { modernColors } from '../theme/modernTheme';
+import type { CuratedPlaylist, MusicTrack } from '../types/Music';
+import { SafeIcon } from './SafeIcon';
+import { NativeButton, NativeInput } from './SafeNativeDesign';
 
 interface TrendingMusicLibraryProps {
     onTrackSelected?: (track: MusicTrack) => void;
@@ -45,7 +45,7 @@ const MOOD_FILTERS = [
 ];
 
 const GENRE_FILTERS = [
-    'Pop', 'Hip-Hop', 'Electronic', 'Rock', 'R&B', 'Country', 
+    'Pop', 'Hip-Hop', 'Electronic', 'Rock', 'R&B', 'Country',
     'Jazz', 'Classical', 'Latin', 'Indie', 'Metal', 'Folk'
 ];
 
@@ -97,8 +97,9 @@ export const TrendingMusicLibrary: React.FC<TrendingMusicLibraryProps> = ({
                 }
             });
 
-            if (tracksResponse.success && tracksResponse.data?.tracks) {
-                setTrendingTracks(tracksResponse.data.tracks);
+            const trd: any = tracksResponse.data;
+            if (tracksResponse.success && trd?.tracks) {
+                setTrendingTracks(trd.tracks);
             }
 
             // Charger les playlists curées
@@ -110,8 +111,9 @@ export const TrendingMusicLibrary: React.FC<TrendingMusicLibraryProps> = ({
                 }
             });
 
-            if (playlistsResponse.success && playlistsResponse.data?.playlists) {
-                setCuratedPlaylists(playlistsResponse.data.playlists);
+            const prd: any = playlistsResponse.data;
+            if (playlistsResponse.success && prd?.playlists) {
+                setCuratedPlaylists(prd.playlists);
             }
         } catch (err: any) {
             console.error('[TrendingMusicLibrary] Erreur chargement:', err);
@@ -130,8 +132,9 @@ export const TrendingMusicLibrary: React.FC<TrendingMusicLibraryProps> = ({
                 params: { video_url: videoUrl }
             });
 
-            if (response.success && response.data?.recommendations) {
-                setAnalyzedTracks(response.data.recommendations);
+            const ard: any = response.data;
+            if (response.success && ard?.recommendations) {
+                setAnalyzedTracks(ard.recommendations);
             }
         } catch (err: any) {
             console.warn('[TrendingMusicLibrary] Erreur analyse vidéo:', err);
@@ -142,7 +145,7 @@ export const TrendingMusicLibrary: React.FC<TrendingMusicLibraryProps> = ({
 
     const handleTrackSelect = useCallback((track: MusicTrack) => {
         const newSelection = new Set(selectedTracks);
-        
+
         if (newSelection.has(track.id)) {
             newSelection.delete(track.id);
         } else if (newSelection.size < maxSelection) {
@@ -174,8 +177,9 @@ export const TrendingMusicLibrary: React.FC<TrendingMusicLibraryProps> = ({
                 }
             });
 
-            if (response.success && response.data?.tracks) {
-                setTrendingTracks(response.data.tracks);
+            const srd: any = response.data;
+            if (response.success && srd?.tracks) {
+                setTrendingTracks(srd.tracks);
             }
         } catch (err: any) {
             console.error('[TrendingMusicLibrary] Erreur recherche:', err);
@@ -240,7 +244,7 @@ export const TrendingMusicLibrary: React.FC<TrendingMusicLibraryProps> = ({
                             </Text>
                         )}
                     </View>
-                    
+
                     <View style={styles.trackMetrics}>
                         <View style={styles.popularityBar}>
                             <View style={[
@@ -264,8 +268,8 @@ export const TrendingMusicLibrary: React.FC<TrendingMusicLibraryProps> = ({
                                     styles.waveformBar,
                                     {
                                         height: amplitude * 30,
-                                        backgroundColor: isSelected 
-                                            ? modernColors.primary 
+                                        backgroundColor: isSelected
+                                            ? modernColors.primary
                                             : modernColors.textSecondary
                                     }
                                 ]}

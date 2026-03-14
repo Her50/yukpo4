@@ -1,7 +1,6 @@
-import * as React from "react";
+import { Picker } from '@react-native-picker/picker';
 import { useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
 import { apiPost } from '../services/api';
 
 const TranslateBox = () => {
@@ -19,9 +18,9 @@ const TranslateBox = () => {
         text,
         target_lang: targetLang
       });
-      
+
       if (response.success && response.data) {
-        setTranslated(response.data.translated_text);
+        setTranslated((response.data as any).translated_text);
       } else {
         setTranslated('Erreur de traduction');
       }
@@ -60,9 +59,9 @@ const TranslateBox = () => {
           </Picker>
         </View>
 
-        <TouchableOpacity 
-          style={[styles.button, loading && styles.buttonDisabled]} 
-          onPress={handleTranslate} 
+        <TouchableOpacity
+          style={[styles.button, loading && styles.buttonDisabled]}
+          onPress={handleTranslate}
           disabled={loading}
         >
           {loading ? (

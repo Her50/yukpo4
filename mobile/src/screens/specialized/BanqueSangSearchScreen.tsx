@@ -260,9 +260,10 @@ const BanqueSangSearchScreen: React.FC = () => {
         if (!user) return;
         try {
             const response = await apiGet('/api/blood-donation/donor/blood-groups');
-            if (response?.success && response?.data && response.data.length > 0) {
+            const rdata: any = response?.data;
+            if (response?.success && rdata && rdata.length > 0) {
                 // ✅ CORRIGÉ: Le backend renvoie "groupe_sanguin", pas "blood_group"
-                const firstGroup = response.data[0].groupe_sanguin;
+                const firstGroup = rdata[0].groupe_sanguin;
                 setUserBloodGroup(firstGroup);
                 loadCompatibility(firstGroup);
             }
@@ -275,7 +276,7 @@ const BanqueSangSearchScreen: React.FC = () => {
         try {
             const response = await apiGet(`/api/blood-donation/compatibility/${group}`);
             if (response?.success && response?.data) {
-                setCompatibleGroups(response.data.compatible_groups || []);
+                setCompatibleGroups((response.data as any).compatible_groups || []);
             }
         } catch (error) {
             console.error('[BanqueSangSearchScreen] Erreur chargement compatibilité:', error);

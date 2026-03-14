@@ -17,7 +17,7 @@ import {
     VideoEffectConfig,
     videoEffectsService,
 } from '../../services/videoEffectsService';
-import { OptimizedVideo } from './OptimizedVideo';
+import OptimizedVideo from './OptimizedVideo';
 
 interface VideoWithEffectsProps extends VideoProps {
     originalUri: string;

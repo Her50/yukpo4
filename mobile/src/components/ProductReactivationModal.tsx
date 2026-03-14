@@ -12,8 +12,8 @@ import {
 } from 'react-native';
 import { apiGet, apiPost } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
-import { NativeButton } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
+import { NativeButton } from './SafeNativeDesign';
 
 interface ProductReactivationModalProps {
     visible: boolean;
@@ -47,7 +47,7 @@ const ProductReactivationModal: React.FC<ProductReactivationModalProps> = ({
             const response = await apiGet('/api/products/inactive');
 
             if (response.success && response.data) {
-                setInactiveProducts(response.data.products || []);
+                setInactiveProducts((response.data as any).products || []);
             }
         } catch (error) {
             console.error('Erreur chargement produits inactifs:', error);
@@ -61,7 +61,7 @@ const ProductReactivationModal: React.FC<ProductReactivationModalProps> = ({
         try {
             const response = await apiGet('/api/users/balance');
             if (response.success && response.data) {
-                setUserBalance(response.data.tokens_balance || 0);
+                setUserBalance((response.data as any).tokens_balance || 0);
             }
         } catch (error) {
             console.error('Erreur chargement solde:', error);
@@ -163,7 +163,7 @@ const ProductReactivationModal: React.FC<ProductReactivationModalProps> = ({
             console.log('[ProductReactivation] Résultats:', results);
 
             // Vérifier les résultats
-            const allSuccess = results.every(r => r.success || r.data?.success);
+            const allSuccess = results.every((r: any) => r.success || r.data?.success);
 
             if (allSuccess) {
                 Alert.alert(
@@ -181,8 +181,8 @@ const ProductReactivationModal: React.FC<ProductReactivationModalProps> = ({
             } else {
                 console.error('[ProductReactivation] Erreurs détaillées:', results);
                 const errorMessages = results
-                    .filter(r => !r.success && !r.data?.success)
-                    .map(r => r.error || r.data?.error || 'Erreur inconnue')
+                    .filter((r: any) => !r.success && !r.data?.success)
+                    .map((r: any) => r.error || r.data?.error || 'Erreur inconnue')
                     .join('\n');
 
                 Alert.alert(

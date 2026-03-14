@@ -185,7 +185,7 @@ class MediaService {
      */
     isWasabiUrl(url: string): boolean {
         if (!url) return false;
-        return url.includes(ENVIRONMENT.WASABI_DIRECT_URL || 'wasabisys.com') || url.includes('yukpo-backend-media.s3.eu-west-1.amazonaws.com');
+        return url.includes((ENVIRONMENT as any).WASABI_DIRECT_URL || 'wasabisys.com') || url.includes('yukpo-backend-media.s3.eu-west-1.amazonaws.com');
     }
 
     /**
@@ -210,7 +210,7 @@ class MediaService {
      * Obtient l'URL de base de Wasabi
      */
     getWasabiBaseUrl(): string {
-        return ENVIRONMENT.WASABI_DIRECT_URL || 'https://yukpo-video-prod.s3.eu-central-1.wasabisys.com';
+        return (ENVIRONMENT as any).WASABI_DIRECT_URL || 'https://yukpo-video-prod.s3.eu-central-1.wasabisys.com';
     }
 }
 

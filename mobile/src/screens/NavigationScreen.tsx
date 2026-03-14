@@ -17,6 +17,7 @@ import { SafeNativeView } from '../components/SafeNativeView';
 import { useAuth } from '../contexts/AuthContext';
 import { useLocationSafe } from '../contexts/LocationContext';
 import { apiGet, apiPost } from '../services/api';
+import { PassiveActivityTracker } from '../services/PassiveActivityTracker';
 import { socialSharing } from '../services/socialSharing';
 import { modernColors } from '../theme/modernTheme';
 
@@ -105,6 +106,17 @@ const CHECKPOINT_ALERT_DISTANCE: Record<string, number> = {
     road_works: 2000,
     speed_bump: 500,
 };
+// Seuils d'alerte progressifs (en mètres) — re-alerte quand on franchit un seuil plus proche
+const CHECKPOINT_ALERT_THRESHOLDS: Record<string, number[]> = {
+    radar: [10000, 5000, 2000, 500],
+    police: [10000, 5000, 2000, 500],
+    transport_control: [10000, 5000, 2000, 500],
+    road_check: [10000, 5000, 2000, 500],
+    accident: [3000, 1000, 300],
+    danger: [2000, 800, 200],
+    road_works: [2000, 800, 200],
+    speed_bump: [500, 200],
+};
 const REPORT_TYPES = [
     { type: 'radar', icon: '📸', short: 'Radar', label: 'Radar', bg: '#FEE2E2', color: '#DC2626' },
     { type: 'road_check', icon: '🚧', short: 'Contrôle', label: 'Contrôle routier', bg: '#FEF9C3', color: '#D97706' },
@@ -168,7 +180,7 @@ const playContextualAlert = async (checkpointType: string, distanceMeters: numbe
     try { const h = await import('expo-haptics'); await h.notificationAsync(h.NotificationFeedbackType.Warning); } catch { }
     // 2. Son d'alerte (bref, avant la voix)
     try {
-        await Audio.setAudioModeAsync({ playsInSilentModeIOS: true, staysActiveInBackground: false });
+        await Audio.setAudioModeAsync({ playsInSilentModeIOS: true, staysActiveInBackground: true });
         const soundUrl = CHECKPOINT_SOUND_URLS[checkpointType] || CHECKPOINT_SOUND_URLS.danger;
         const { sound } = await Audio.Sound.createAsync(
             { uri: soundUrl },
@@ -199,7 +211,7 @@ const SHARE_BASE_URL = 'https://yukpo-backend-376093909298.europe-west1.run.app'
 
 const NavigationScreen: React.FC = () => {
     const navigation = useNavigation();
-    const route = useRoute<any>();
+    const route = useRoute() as any;
     const { user } = useAuth();
     const { location: currentLocation } = useLocationSafe();
     const [destination, setDestination] = useState('');
@@ -246,7 +258,10 @@ const NavigationScreen: React.FC = () => {
     const checkpointsReportedRef = useRef<number>(0);
     const checkpointsEncounteredRef = useRef<number>(0);
     const wasOffRouteRef = useRef<boolean>(false);
-    const encounteredCheckpointIdsRef = useRef<Set<string>>(new Set());
+    const encounteredCheckpointIdsRef = useRef<Map<string, number>>(new Map());
+    const [isFreeWalking, setIsFreeWalking] = useState(false);
+    const [freeWalkTick, setFreeWalkTick] = useState(0);
+    const [passiveTrackingActive, setPassiveTrackingActive] = useState(false);
     const [showActivityStats, setShowActivityStats] = useState(false);
     const [activityPeriod, setActivityPeriod] = useState<'week' | 'month' | 'year'>('week');
     const [activitySummary, setActivitySummary] = useState<any>(null);
@@ -255,7 +270,8 @@ const NavigationScreen: React.FC = () => {
     const [aiInsights, setAiInsights] = useState<any>(null);
     const [checkpointAiAnalysis, setCheckpointAiAnalysis] = useState<any>(null);
     const [savedDestinations, setSavedDestinations] = useState<Array<{ id: string; label: string; custom_label?: string; address: string; latitude: number; longitude: number }>>([]);
-    const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({ health: true, food: false, fuel: false, finance: false, auto: false, religion: false, accommodation: false, security: false });
+    const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({ health: false, food: false, fuel: false, finance: false, auto: false, religion: false, accommodation: false, security: false });
+    const [poiShowAll, setPoiShowAll] = useState<Record<string, boolean>>({});
     const [keyboardHeight, setKeyboardHeight] = useState(0);
     const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
     const [isLocationSelectorFocused, setIsLocationSelectorFocused] = useState(false);
@@ -355,6 +371,10 @@ const NavigationScreen: React.FC = () => {
         const s2 = Keyboard.addListener('keyboardDidHide', () => { setKeyboardHeight(0); setIsKeyboardVisible(false); });
         return () => { s1.remove(); s2.remove(); };
     }, []);
+    // Vérifier l'état du tracking passif au montage
+    useEffect(() => {
+        PassiveActivityTracker.isRunning().then(setPassiveTrackingActive);
+    }, []);
     const resolveDestination = useCallback(async (dest: string) => {
         const dl = dest.toLowerCase().trim();
         if (dl === 'domicile' || dl === 'bureau') { try { const r = await apiGet(`/api/navigation/destinations/by-label/${dl}`) as any; if (r?.data) return { lat: r.data.latitude, lng: r.data.longitude, address: r.data.address }; } catch { } }
@@ -392,10 +412,12 @@ const NavigationScreen: React.FC = () => {
                 try { await loadPointsOfInterestSafely(valid[0]); setTimeout(() => loadCheckpointsSafely(), 800); } catch { }
             } else { Alert.alert('Aucun itinéraire', `Aucune route trouvée pour le mode ${modeLabel}.`); }
         } catch (e: any) {
-            const errMsg = e?.message || e?.error || '';
-            if (errMsg.toLowerCase().includes('mode') || errMsg.toLowerCase().includes('non disponible')) {
-                Alert.alert(`Mode ${modeLabel} indisponible`, `Le mode ${modeLabel} n'est pas disponible pour ce trajet.\n\nEssayez un autre mode de transport.`, [
+            const errMsg = e?.data?.message || e?.data?.error || e?.message || e?.error || '';
+            const errLower = errMsg.toLowerCase();
+            if (errLower.includes('mode') || errLower.includes('non disponible') || errLower.includes('zero_results') || errLower.includes('aucun itin')) {
+                Alert.alert(`Mode ${modeLabel} indisponible`, `Le mode ${modeLabel} n'est pas disponible pour ce trajet dans cette région.\n\nEssayez un autre mode de transport.`, [
                     { text: '🚗 Voiture', onPress: () => { setTravelMode('driving'); setTimeout(() => searchRoutesRef.current(), 200); } },
+                    { text: '🚶 À pied', onPress: () => { setTravelMode('walking'); setTimeout(() => searchRoutesRef.current(), 200); } },
                     { text: 'OK' }
                 ]);
             } else { Alert.alert('Erreur', errMsg || 'Erreur réseau'); }
@@ -431,8 +453,11 @@ const NavigationScreen: React.FC = () => {
                 });
                 console.log('[Navigation] Validated POIs:', vp);
                 setPointsOfInterest(vp);
-                const fc = Object.entries(POI_CATEGORIES).find(([k]) => vp.some((p: PointOfInterest) => POI_CATEGORIES[k].types.includes(p.type)));
-                if (fc) { const reset: Record<string, boolean> = {}; Object.keys(POI_CATEGORIES).forEach(k => reset[k] = false); reset[fc[0]] = true; setExpandedCategories(reset); }
+                // Toutes les catégories restent fermées — l'utilisateur clique pour ouvrir
+                const reset: Record<string, boolean> = {};
+                Object.keys(POI_CATEGORIES).forEach(k => reset[k] = false);
+                setExpandedCategories(reset);
+                setPoiShowAll({});
             }
         } catch { setPointsOfInterest([]); } finally { setLoadingPOI(false); }
     }, [destinationCoords, getCurrentPosition]);
@@ -748,12 +773,25 @@ const NavigationScreen: React.FC = () => {
         finally { setLoadingAlertHistory(false); }
     }, [getCurrentPosition, haversineDistance]);
 
+    // ── Vote/confirm a checkpoint (upvote = confirmer, downvote = infirmer) ──
+    const voteCheckpoint = useCallback(async (checkpointId: string, vote: 'up' | 'down') => {
+        try {
+            await apiPost(`/api/navigation/checkpoints/${checkpointId}/vote`, { vote });
+            const isUp = vote === 'up';
+            showConfirmationToast(isUp ? '✅ Alerte confirmée !' : '❌ Alerte infirmée', isUp ? '👍' : '👎');
+            // Recharger l'historique pour refléter les nouveaux votes
+            setTimeout(() => loadAlertHistory(), 500);
+        } catch {
+            Alert.alert('Erreur', 'Échec du vote');
+        }
+    }, [showConfirmationToast, loadAlertHistory]);
+
     const startTracking = useCallback(async () => {
         if (!selectedRoute || isTracking) return;
         if (!selectedRoute.distance_meters || !selectedRoute.duration_seconds) { Alert.alert('Erreur', 'Itinéraire invalide'); return; }
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== 'granted') { Alert.alert('Permission requise'); return; }
-        trackingStartTimeRef.current = new Date().toISOString(); speedSamplesRef.current = []; maxSpeedRef.current = 0; distanceTraveledRef.current = 0; lastPositionRef.current = null; checkpointsReportedRef.current = 0; checkpointsEncounteredRef.current = 0; wasOffRouteRef.current = false; encounteredCheckpointIdsRef.current = new Set();
+        trackingStartTimeRef.current = new Date().toISOString(); speedSamplesRef.current = []; maxSpeedRef.current = 0; distanceTraveledRef.current = 0; lastPositionRef.current = null; checkpointsReportedRef.current = 0; checkpointsEncounteredRef.current = 0; wasOffRouteRef.current = false; encounteredCheckpointIdsRef.current = new Map();
         setIsTracking(true); setNextStepIndex(0); setDistanceRemaining(selectedRoute.distance_meters || 1000); setDurationRemaining(selectedRoute.duration_in_traffic_seconds || selectedRoute.duration_seconds || 300);
         loadCheckpointsSafely();
         (async () => { try { const p = await getCurrentPosition(); if (p && destinationCoords) { const r = await apiGet(`/api/navigation/checkpoints/ai-analysis?origin_lat=${p.lat}&origin_lng=${p.lng}&dest_lat=${destinationCoords.lat}&dest_lng=${destinationCoords.lng}`) as any; if (r?.data?.success) setCheckpointAiAnalysis(r.data.analysis); } } catch { } })();
@@ -773,13 +811,166 @@ const NavigationScreen: React.FC = () => {
             setDistanceRemaining(rd); setDurationRemaining(rt);
             const eta = new Date(Date.now() + rt * 1000); setLiveETA(`${eta.getHours().toString().padStart(2, '0')}:${eta.getMinutes().toString().padStart(2, '0')}`);
             setIsOffRoute(minD > 200); if (minD > 200) wasOffRouteRef.current = true;
-            const cps = checkpointsRef.current; let near: typeof nearbyCheckpoint = null;
-            for (const cp of cps) { const cd = haversineDistance(latitude, longitude, cp.latitude, cp.longitude); const alertDist = CHECKPOINT_ALERT_DISTANCE[cp.checkpoint_type] || 2000; if (cd < alertDist && (!near || cd < near.distance)) near = { id: cp.id, checkpoint_type: cp.checkpoint_type, distance: Math.round(cd), speed_limit: cp.speed_limit }; }
-            if (near && !encounteredCheckpointIdsRef.current.has(near.id)) { encounteredCheckpointIdsRef.current.add(near.id); checkpointsEncounteredRef.current += 1; playContextualAlert(near.checkpoint_type, near.distance, near.speed_limit); }
+            // ✅ Clustering temps réel + alertes progressives par seuils de distance
+            const cps = checkpointsRef.current;
+            // 1. Clustering: regrouper les checkpoints du même type à <200m
+            const rtClusters: Array<{ id: string; checkpoint_type: string; lat: number; lng: number; speed_limit?: number; items: string[] }> = [];
+            for (const cp of cps) {
+                let added = false;
+                for (const cl of rtClusters) {
+                    if (cl.checkpoint_type === cp.checkpoint_type && haversineDistance(cl.lat, cl.lng, cp.latitude, cp.longitude) < 200) {
+                        cl.items.push(cp.id);
+                        cl.lat = (cl.lat * (cl.items.length - 1) + cp.latitude) / cl.items.length;
+                        cl.lng = (cl.lng * (cl.items.length - 1) + cp.longitude) / cl.items.length;
+                        if (cp.speed_limit && !cl.speed_limit) cl.speed_limit = cp.speed_limit;
+                        added = true; break;
+                    }
+                }
+                if (!added) rtClusters.push({ id: cp.id, checkpoint_type: cp.checkpoint_type, lat: cp.latitude, lng: cp.longitude, speed_limit: cp.speed_limit, items: [cp.id] });
+            }
+            // 2. Trouver le cluster le plus proche dans le rayon d'alerte
+            let near: typeof nearbyCheckpoint = null;
+            for (const cl of rtClusters) {
+                const cd = haversineDistance(latitude, longitude, cl.lat, cl.lng);
+                const alertDist = CHECKPOINT_ALERT_DISTANCE[cl.checkpoint_type] || 2000;
+                if (cd < alertDist && (!near || cd < near.distance)) near = { id: cl.id, checkpoint_type: cl.checkpoint_type, distance: Math.round(cd), speed_limit: cl.speed_limit };
+            }
+            // 3. Alertes progressives par seuils — re-alerte quand on franchit un seuil plus proche
+            if (near) {
+                const thresholds = CHECKPOINT_ALERT_THRESHOLDS[near.checkpoint_type] || [2000, 500];
+                const lastIdx = encounteredCheckpointIdsRef.current.get(near.id) ?? -1;
+                let newIdx = -1;
+                for (let t = 0; t < thresholds.length; t++) { if (near.distance < thresholds[t]) newIdx = t; }
+                if (newIdx > lastIdx) {
+                    encounteredCheckpointIdsRef.current.set(near.id, newIdx);
+                    if (lastIdx === -1) checkpointsEncounteredRef.current += 1;
+                    playContextualAlert(near.checkpoint_type, near.distance, near.speed_limit);
+                }
+            }
             setNearbyCheckpoint(near);
         });
         locationSubscriptionRef.current = sub;
     }, [selectedRoute, isTracking, haversineDistance, loadCheckpointsSafely, getCurrentPosition, destinationCoords]);
+
+    // ── MARCHE LIBRE : tracker l'activité SANS itinéraire prédéfini ──
+    const startFreeWalking = useCallback(async () => {
+        if (isTracking || isFreeWalking) return;
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') { Alert.alert('Permission requise', 'Veuillez autoriser la localisation pour le suivi de marche'); return; }
+        trackingStartTimeRef.current = new Date().toISOString();
+        speedSamplesRef.current = []; maxSpeedRef.current = 0; distanceTraveledRef.current = 0;
+        lastPositionRef.current = null; checkpointsReportedRef.current = 0;
+        checkpointsEncounteredRef.current = 0; wasOffRouteRef.current = false;
+        encounteredCheckpointIdsRef.current = new Map();
+        setIsFreeWalking(true); setIsTracking(true); setTravelMode('walking');
+        showToast('🚶 Marche libre démarrée !');
+        // Charger les alertes communautaires autour de la position
+        loadCheckpointsSafely();
+        checkpointRefreshRef.current = setInterval(() => { loadCheckpointsSafely(); }, 60000);
+        const sub = await Location.watchPositionAsync(
+            { accuracy: Location.Accuracy.High, timeInterval: 3000, distanceInterval: 5 },
+            (loc) => {
+                const { latitude, longitude, speed, heading } = loc.coords;
+                const pos = { lat: latitude, lng: longitude };
+                const spd = Math.max(0, (speed || 0) * 3.6);
+                setLivePosition(pos); setCurrentSpeed(spd);
+                if (heading != null) setCurrentHeading(heading);
+                speedSamplesRef.current.push(spd);
+                if (spd > maxSpeedRef.current) maxSpeedRef.current = spd;
+                if (lastPositionRef.current) {
+                    const d = haversineDistance(lastPositionRef.current.lat, lastPositionRef.current.lng, latitude, longitude);
+                    if (d < 500) distanceTraveledRef.current += d;
+                }
+                lastPositionRef.current = pos;
+                // Détection des alertes communautaires (même logique que tracking guidé)
+                const cps = checkpointsRef.current;
+                const rtClusters: Array<{ id: string; checkpoint_type: string; lat: number; lng: number; speed_limit?: number; items: string[] }> = [];
+                for (const cp of cps) {
+                    let added = false;
+                    for (const cl of rtClusters) {
+                        if (cl.checkpoint_type === cp.checkpoint_type && haversineDistance(cl.lat, cl.lng, cp.latitude, cp.longitude) < 200) {
+                            cl.items.push(cp.id);
+                            cl.lat = (cl.lat * (cl.items.length - 1) + cp.latitude) / cl.items.length;
+                            cl.lng = (cl.lng * (cl.items.length - 1) + cp.longitude) / cl.items.length;
+                            if (cp.speed_limit && !cl.speed_limit) cl.speed_limit = cp.speed_limit;
+                            added = true; break;
+                        }
+                    }
+                    if (!added) rtClusters.push({ id: cp.id, checkpoint_type: cp.checkpoint_type, lat: cp.latitude, lng: cp.longitude, speed_limit: cp.speed_limit, items: [cp.id] });
+                }
+                let near: typeof nearbyCheckpoint = null;
+                for (const cl of rtClusters) {
+                    const cd = haversineDistance(latitude, longitude, cl.lat, cl.lng);
+                    const alertDist = CHECKPOINT_ALERT_DISTANCE[cl.checkpoint_type] || 2000;
+                    if (cd < alertDist && (!near || cd < near.distance)) near = { id: cl.id, checkpoint_type: cl.checkpoint_type, distance: Math.round(cd), speed_limit: cl.speed_limit };
+                }
+                if (near) {
+                    const thresholds = CHECKPOINT_ALERT_THRESHOLDS[near.checkpoint_type] || [2000, 500];
+                    const lastIdx = encounteredCheckpointIdsRef.current.get(near.id) ?? -1;
+                    let newIdx = -1;
+                    for (let t = 0; t < thresholds.length; t++) { if (near.distance < thresholds[t]) newIdx = t; }
+                    if (newIdx > lastIdx) {
+                        encounteredCheckpointIdsRef.current.set(near.id, newIdx);
+                        if (lastIdx === -1) checkpointsEncounteredRef.current += 1;
+                        playContextualAlert(near.checkpoint_type, near.distance, near.speed_limit);
+                    }
+                }
+                setNearbyCheckpoint(near);
+            }
+        );
+        locationSubscriptionRef.current = sub;
+    }, [isTracking, isFreeWalking, haversineDistance, loadCheckpointsSafely]);
+
+    const stopFreeWalking = useCallback(async () => {
+        if (locationSubscriptionRef.current) { locationSubscriptionRef.current.remove(); locationSubscriptionRef.current = null; }
+        if (checkpointRefreshRef.current) { clearInterval(checkpointRefreshRef.current); checkpointRefreshRef.current = null; }
+        try { Speech.stop(); } catch { }
+        const st = trackingStartTimeRef.current, sp = speedSamplesRef.current;
+        const dM = distanceTraveledRef.current, dKm = dM / 1000;
+        const dSec = st ? Math.round((Date.now() - new Date(st).getTime()) / 1000) : 0, dMin = dSec / 60;
+        const avg = sp.length > 0 ? sp.reduce((a, b) => a + b, 0) / sp.length : 0;
+        const cal = estimateCalories(dKm, dMin, 'walking', avg);
+        const qual = computeQualityScore(sp, dKm, dMin, 'walking', false);
+        const variance = sp.length > 0 ? sp.reduce((s, v) => s + (v - avg) ** 2, 0) / sp.length : 0;
+        const consistency = Math.max(0, 100 - Math.sqrt(variance) * 5);
+        const pacePerKm = dKm > 0.01 ? dSec / dKm : 0;
+        if (dSec > 30 && dM > 10) {
+            try {
+                await apiPost('/api/navigation/activity/log', {
+                    travel_mode: 'walking',
+                    origin_address: 'Marche libre',
+                    destination_address: 'Marche libre',
+                    origin_lat: lastPositionRef.current?.lat,
+                    origin_lng: lastPositionRef.current?.lng,
+                    dest_lat: livePosition?.lat,
+                    dest_lng: livePosition?.lng,
+                    distance_meters: dM,
+                    duration_seconds: dSec,
+                    avg_speed_kmh: Math.round(avg * 10) / 10,
+                    max_speed_kmh: Math.round(maxSpeedRef.current * 10) / 10,
+                    calories_burned: Math.round(cal),
+                    quality_score: qual,
+                    speed_consistency: Math.round(consistency * 10) / 10,
+                    pace_per_km_seconds: Math.round(pacePerKm),
+                    checkpoints_reported: checkpointsReportedRef.current,
+                    checkpoints_encountered: checkpointsEncounteredRef.current,
+                    was_off_route: false,
+                    started_at: st || new Date().toISOString(),
+                });
+                Alert.alert(
+                    '🚶 Marche terminée',
+                    `📏 ${dKm.toFixed(1)} km · ⏱ ${Math.floor(dMin)} min · 🔥 ${Math.round(cal)} cal · ⭐ ${qual}/100`,
+                    [
+                        { text: '📊 Voir Stats', onPress: () => { setShowActivityStats(true); loadActivityStats(activityPeriod); } },
+                        { text: 'OK' }
+                    ]
+                );
+            } catch (e) { console.warn('[Navigation] Erreur log marche libre:', e); }
+        } else {
+            showToast('🚶 Marche trop courte pour être enregistrée (min 30s / 10m)');
+        }
+        setIsFreeWalking(false); setIsTracking(false); setNearbyCheckpoint(null); setLivePosition(null);
+    }, [livePosition, estimateCalories, computeQualityScore, activityPeriod, loadActivityStats]);
 
     const stopTracking = useCallback(async () => {
         if (locationSubscriptionRef.current) { locationSubscriptionRef.current.remove(); locationSubscriptionRef.current = null; }
@@ -803,6 +994,13 @@ const NavigationScreen: React.FC = () => {
         };
     }, []);
 
+    // Timer pour rafraîchir le dashboard marche libre toutes les 5s
+    useEffect(() => {
+        if (!isFreeWalking) return;
+        const timer = setInterval(() => setFreeWalkTick(t => t + 1), 5000);
+        return () => clearInterval(timer);
+    }, [isFreeWalking]);
+
     const dynamicStyles = useMemo(() => ({
         scrollContent: { padding: 16, paddingBottom: isKeyboardVisible && isLocationSelectorFocused ? Math.max(100, keyboardHeight + 100) : 100 },
         locationSelectorDynamic: { maxHeight: isKeyboardVisible && isLocationSelectorFocused ? Math.min(300, height - keyboardHeight - 200) : undefined, zIndex: isKeyboardVisible && isLocationSelectorFocused ? 1000 : 1 }
@@ -811,11 +1009,19 @@ const NavigationScreen: React.FC = () => {
     // ── Gestion du bouton retour matériel ──
     useEffect(() => {
         const backAction = () => {
+            // Si en marche libre, demander confirmation avant d'arrêter
+            if (isFreeWalking) {
+                Alert.alert('Arrêter la marche ?', 'Votre activité sera enregistrée.', [
+                    { text: 'Continuer', style: 'cancel' },
+                    { text: 'Arrêter', style: 'destructive', onPress: () => stopFreeWalking() }
+                ]);
+                return true;
+            }
             // Si on est dans un sous-écran (stats/alertes), revenir à l'écran principal
             if (showActivityStats || showAlertHistory) {
                 setShowActivityStats(false);
                 setShowAlertHistory(false);
-                return true; // Empêcher le retour par défaut
+                return true;
             }
             // Sinon, laisser le comportement par défaut (navigation.goBack())
             return false;
@@ -824,7 +1030,7 @@ const NavigationScreen: React.FC = () => {
         const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
 
         return () => backHandler.remove();
-    }, [showActivityStats, showAlertHistory]);
+    }, [showActivityStats, showAlertHistory, isFreeWalking, stopFreeWalking]);
 
     // ══════════════════════════════════════════════════════════════════════
     // ── RENDU ────────────────────────────────────────────────────────────
@@ -839,25 +1045,29 @@ const NavigationScreen: React.FC = () => {
                     <View style={st.header}>
                         <View style={st.headerLeft}>
                             <TouchableOpacity onPress={() => {
-                                // Si on est dans un sous-écran (stats/alertes), revenir à l'écran principal
-                                if (showActivityStats || showAlertHistory) {
+                                if (isFreeWalking) {
+                                    Alert.alert('Arrêter la marche ?', 'Votre activité sera enregistrée.', [
+                                        { text: 'Continuer', style: 'cancel' },
+                                        { text: 'Arrêter', style: 'destructive', onPress: () => stopFreeWalking() }
+                                    ]);
+                                } else if (showActivityStats || showAlertHistory) {
                                     setShowActivityStats(false);
                                     setShowAlertHistory(false);
                                 } else {
-                                    // Sinon, revenir à l'écran précédent
                                     navigation.goBack();
                                 }
                             }} style={st.backBtn}>
-                                <SafeIcon name={showActivityStats || showAlertHistory ? "X" : "Home"} size={18} color={modernColors.text} />
+                                <SafeIcon name={isFreeWalking || showActivityStats || showAlertHistory ? "X" : "Home"} size={18} color={modernColors.text} />
                             </TouchableOpacity>
                             <View style={st.headerIcon}><Text style={{ fontSize: 22 }}>🧭</Text></View>
                             <View>
                                 <Text style={st.headerTitle}>Navigation</Text>
                                 <Text style={st.headerSub}>
-                                    {isTracking ? '📡 Suivi en cours' :
-                                        showActivityStats ? '📊 Statistiques' :
-                                            showAlertHistory ? '🚨 Alertes' :
-                                                'Itinéraires intelligents'}
+                                    {isFreeWalking ? '🚶 Marche libre en cours' :
+                                        isTracking ? '📡 Suivi en cours' :
+                                            showActivityStats ? '📊 Stats & Coach IA' :
+                                                showAlertHistory ? '🚨 Alertes' :
+                                                    'Itinéraires intelligents'}
                                 </Text>
                             </View>
                         </View>
@@ -944,6 +1154,17 @@ const NavigationScreen: React.FC = () => {
                                                         {timeAgo ? <Text style={st.alertHistTime}>🕒 {timeAgo}</Text> : null}
                                                         {alert.speed_limit ? <Text style={st.alertHistSpd}>🚦 {alert.speed_limit} km/h</Text> : null}
                                                     </View>
+                                                    {/* ✅ Boutons confirmer / infirmer l'alerte */}
+                                                    <View style={st.voteRow}>
+                                                        <TouchableOpacity style={st.voteBtn} onPress={() => voteCheckpoint(alert.id, 'up')} activeOpacity={0.7}>
+                                                            <Text style={{ fontSize: 14 }}>👍</Text>
+                                                            <Text style={st.voteBtnTxt}>Confirmer</Text>
+                                                        </TouchableOpacity>
+                                                        <TouchableOpacity style={[st.voteBtn, st.voteBtnDown]} onPress={() => voteCheckpoint(alert.id, 'down')} activeOpacity={0.7}>
+                                                            <Text style={{ fontSize: 14 }}>👎</Text>
+                                                            <Text style={[st.voteBtnTxt, { color: '#EF4444' }]}>Infirmer</Text>
+                                                        </TouchableOpacity>
+                                                    </View>
                                                 </View>
                                             </View>
                                         );
@@ -976,8 +1197,59 @@ const NavigationScreen: React.FC = () => {
                         </ScrollView>
                     )}
 
-                    {/* ━━━━━━ MODE: TRACKING ━━━━━━ */}
-                    {isTracking && selectedRoute ? (
+                    {/* ━━━━━━ MODE: MARCHE LIBRE ━━━━━━ */}
+                    {isFreeWalking ? (
+                        <>
+                            {/* freeWalkTick force le re-render du dashboard */}
+                            <NativeCard key={`fw-${freeWalkTick}`} style={[st.secCard, { borderLeftWidth: 4, borderLeftColor: '#10B981' }]}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+                                    <View style={{ width: 50, height: 50, borderRadius: 25, backgroundColor: '#10B98120', alignItems: 'center', justifyContent: 'center' }}>
+                                        <Text style={{ fontSize: 28 }}>🚶</Text>
+                                    </View>
+                                    <View style={st.flex1}>
+                                        <Text style={{ fontSize: 18, fontWeight: '800', color: modernColors.text }}>Marche libre en cours</Text>
+                                        <Text style={{ fontSize: 12, color: '#10B981', fontWeight: '600' }}>📡 Suivi GPS actif</Text>
+                                    </View>
+                                </View>
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginBottom: 12 }}>
+                                    <View style={{ alignItems: 'center' }}>
+                                        <Text style={{ fontSize: 14 }}>📏</Text>
+                                        <Text style={{ fontSize: 22, fontWeight: '900', color: modernColors.text }}>{(distanceTraveledRef.current / 1000).toFixed(2)}</Text>
+                                        <Text style={{ fontSize: 10, color: modernColors.textSecondary }}>km</Text>
+                                    </View>
+                                    <View style={{ alignItems: 'center' }}>
+                                        <Text style={{ fontSize: 14 }}>⏱</Text>
+                                        <Text style={{ fontSize: 22, fontWeight: '900', color: modernColors.text }}>{trackingStartTimeRef.current ? Math.floor((Date.now() - new Date(trackingStartTimeRef.current).getTime()) / 60000) : 0}</Text>
+                                        <Text style={{ fontSize: 10, color: modernColors.textSecondary }}>min</Text>
+                                    </View>
+                                    <View style={{ alignItems: 'center' }}>
+                                        <Text style={{ fontSize: 14 }}>🏃</Text>
+                                        <Text style={{ fontSize: 22, fontWeight: '900', color: modernColors.text }}>{Math.round(currentSpeed)}</Text>
+                                        <Text style={{ fontSize: 10, color: modernColors.textSecondary }}>km/h</Text>
+                                    </View>
+                                    <View style={{ alignItems: 'center' }}>
+                                        <Text style={{ fontSize: 14 }}>🔥</Text>
+                                        <Text style={{ fontSize: 22, fontWeight: '900', color: '#EF4444' }}>{Math.round(estimateCalories(distanceTraveledRef.current / 1000, trackingStartTimeRef.current ? (Date.now() - new Date(trackingStartTimeRef.current).getTime()) / 60000 : 0, 'walking', currentSpeed))}</Text>
+                                        <Text style={{ fontSize: 10, color: modernColors.textSecondary }}>cal</Text>
+                                    </View>
+                                </View>
+                            </NativeCard>
+                            {/* Nearby checkpoint en marche libre */}
+                            {nearbyCheckpoint && (
+                                <View style={[st.cpAlert, { backgroundColor: (CHECKPOINT_LABELS[nearbyCheckpoint.checkpoint_type]?.color || '#EF4444') + '15' }]}>
+                                    <Text style={{ fontSize: 28 }}>{CHECKPOINT_LABELS[nearbyCheckpoint.checkpoint_type]?.icon || '⚠️'}</Text>
+                                    <View style={st.flex1}>
+                                        <Text style={[st.cpTitle, { color: CHECKPOINT_LABELS[nearbyCheckpoint.checkpoint_type]?.color }]}>{CHECKPOINT_LABELS[nearbyCheckpoint.checkpoint_type]?.label} dans {nearbyCheckpoint.distance >= 1000 ? `${(nearbyCheckpoint.distance / 1000).toFixed(1)} km` : `${nearbyCheckpoint.distance} m`}</Text>
+                                    </View>
+                                </View>
+                            )}
+                            <TouchableOpacity style={st.stopBtn} onPress={stopFreeWalking}>
+                                <Text style={{ fontSize: 16 }}>⏹</Text>
+                                <Text style={st.stopText}>Arrêter la marche</Text>
+                            </TouchableOpacity>
+                        </>
+
+                    ) : isTracking && selectedRoute ? (
                         <>
                             {/* AI Risk */}
                             {checkpointAiAnalysis && (
@@ -1133,6 +1405,55 @@ const NavigationScreen: React.FC = () => {
                                             })}
                                         </NativeCard>
                                     )}
+                                    {/* ━━ LIEUX VISITÉS ━━ */}
+                                    {activitySummary.most_visited_places?.length > 0 && (
+                                        <NativeCard style={[st.secCard, { borderLeftWidth: 4, borderLeftColor: '#8B5CF6' }]}>
+                                            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                                                <Text style={st.secTitle}>📍 Lieux visités</Text>
+                                                <Text style={{ fontSize: 11, color: modernColors.textSecondary }}>{activityPeriod === 'week' ? 'Cette semaine' : activityPeriod === 'month' ? 'Ce mois' : 'Cette année'}</Text>
+                                            </View>
+                                            {activitySummary.most_visited_places.map((place: any, i: number) => {
+                                                const name = typeof place?.name === 'string' ? place.name : 'Lieu inconnu';
+                                                const count = typeof place?.visit_count === 'number' ? place.visit_count : 0;
+                                                const isTop = i === 0;
+                                                return (
+                                                    <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, borderTopWidth: i > 0 ? 1 : 0, borderTopColor: modernColors.border }}>
+                                                        <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: isTop ? '#8B5CF620' : modernColors.surfaceVariant, alignItems: 'center', justifyContent: 'center' }}>
+                                                            <Text style={{ fontSize: isTop ? 16 : 14 }}>{isTop ? '🏆' : i === 1 ? '🥈' : i === 2 ? '🥉' : '📌'}</Text>
+                                                        </View>
+                                                        <View style={st.flex1}>
+                                                            <Text style={{ fontSize: 13, fontWeight: '600', color: modernColors.text }} numberOfLines={1}>{name}</Text>
+                                                        </View>
+                                                        <View style={{ backgroundColor: '#8B5CF615', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 8 }}>
+                                                            <Text style={{ fontSize: 12, fontWeight: '700', color: '#8B5CF6' }}>{count} visite{count > 1 ? 's' : ''}</Text>
+                                                        </View>
+                                                    </View>
+                                                );
+                                            })}
+                                        </NativeCard>
+                                    )}
+
+                                    {/* ━━ TYPES DE LIEUX FAVORIS ━━ */}
+                                    {activitySummary.favorite_poi_types?.length > 0 && (
+                                        <NativeCard style={st.secCard}>
+                                            <Text style={st.secTitle}>⭐ Types de lieux favoris</Text>
+                                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
+                                                {activitySummary.favorite_poi_types.map((poi: any, i: number) => {
+                                                    const poiType = typeof poi?.poi_type === 'string' ? poi.poi_type : 'autre';
+                                                    const count = typeof poi?.count === 'number' ? poi.count : 0;
+                                                    const poiIcons: Record<string, string> = { restaurant: '🍽️', pharmacy: '💊', hospital: '🏥', bank: '🏦', gas_station: '⛽', supermarket: '🛒', school: '🎓', mosque: '🕌', church: '⛪', hotel: '🏨', bar: '🍺', cafe: '☕', police: '👮', post_office: '📮', parking: '🅿️' };
+                                                    return (
+                                                        <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: modernColors.surfaceVariant, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, borderWidth: 1, borderColor: modernColors.border }}>
+                                                            <Text style={{ fontSize: 14 }}>{poiIcons[poiType] || '📍'}</Text>
+                                                            <Text style={{ fontSize: 12, fontWeight: '600', color: modernColors.text }}>{poiType}</Text>
+                                                            <Text style={{ fontSize: 11, fontWeight: '700', color: modernColors.primary, marginLeft: 2 }}>×{count}</Text>
+                                                        </View>
+                                                    );
+                                                })}
+                                            </View>
+                                        </NativeCard>
+                                    )}
+
                                     {/* Recent history */}
                                     {activityHistory.length > 0 && (
                                         <NativeCard style={st.secCard}>
@@ -1668,6 +1989,53 @@ const NavigationScreen: React.FC = () => {
                                 )}
                             </NativeCard>
 
+                            {/* ━━ INDICATEUR TRACKING PASSIF ━━ */}
+                            {passiveTrackingActive && (
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8, paddingHorizontal: 14, marginBottom: 10, borderRadius: 10, backgroundColor: '#10B98112', borderWidth: 1, borderColor: '#10B98130' }}>
+                                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#10B981' }} />
+                                    <Text style={{ flex: 1, fontSize: 12, color: '#059669', fontWeight: '600' }}>Suivi automatique actif — vos déplacements sont enregistrés</Text>
+                                    <TouchableOpacity onPress={async () => { await PassiveActivityTracker.stop(); setPassiveTrackingActive(false); showToast('Suivi automatique désactivé'); }}>
+                                        <Text style={{ fontSize: 11, color: modernColors.textSecondary, textDecorationLine: 'underline' }}>Désactiver</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            )}
+                            {!passiveTrackingActive && (
+                                <TouchableOpacity
+                                    style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8, paddingHorizontal: 14, marginBottom: 10, borderRadius: 10, backgroundColor: '#FEF3C7', borderWidth: 1, borderColor: '#FDE68A' }}
+                                    onPress={async () => { const ok = await PassiveActivityTracker.start(); setPassiveTrackingActive(ok); if (ok) showToast('✅ Suivi automatique activé !'); else Alert.alert('Permission requise', 'Veuillez autoriser la localisation en arrière-plan pour le suivi automatique de vos activités.'); }}
+                                >
+                                    <Text style={{ fontSize: 14 }}>⚠️</Text>
+                                    <Text style={{ flex: 1, fontSize: 12, color: '#92400E', fontWeight: '600' }}>Suivi automatique inactif — Appuyez pour activer</Text>
+                                    <SafeIcon name="ChevronRight" size={14} color="#92400E" />
+                                </TouchableOpacity>
+                            )}
+
+                            {/* ━━ BOUTONS RAPIDES : Dashboard en direct + Stats ━━ */}
+                            <View style={{ flexDirection: 'row', gap: 10, marginBottom: 12 }}>
+                                <TouchableOpacity
+                                    style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, borderRadius: 14, backgroundColor: '#10B981', shadowColor: '#10B981', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.25, shadowRadius: 6, elevation: 3 }}
+                                    onPress={startFreeWalking}
+                                    activeOpacity={0.8}
+                                >
+                                    <Text style={{ fontSize: 20 }}>📡</Text>
+                                    <View>
+                                        <Text style={{ fontSize: 14, fontWeight: '800', color: '#fff' }}>Stats en direct</Text>
+                                        <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.8)' }}>Voir ma marche live</Text>
+                                    </View>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, borderRadius: 14, backgroundColor: '#7C3AED', shadowColor: '#7C3AED', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.25, shadowRadius: 6, elevation: 3 }}
+                                    onPress={() => { setShowActivityStats(true); loadActivityStats(activityPeriod); }}
+                                    activeOpacity={0.8}
+                                >
+                                    <Text style={{ fontSize: 20 }}>📊</Text>
+                                    <View>
+                                        <Text style={{ fontSize: 14, fontWeight: '800', color: '#fff' }}>Stats & Coach IA</Text>
+                                        <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.8)' }}>CO2, santé, défis</Text>
+                                    </View>
+                                </TouchableOpacity>
+                            </View>
+
                             {/* Travel modes */}
                             <View style={st.modeSelector}>
                                 {TRAVEL_MODES.map(m => (
@@ -1824,24 +2192,31 @@ const NavigationScreen: React.FC = () => {
                                             const pois = groupedPOIs[catKey] || [];
                                             if (pois.length === 0) return null;
                                             const expanded = expandedCategories[catKey];
+                                            const showAll = poiShowAll[catKey] || false;
+                                            const visiblePois = showAll ? pois : pois.slice(0, 5);
                                             return (
                                                 <NativeCard key={catKey} style={[st.poiCatCard, { borderLeftWidth: 3, borderLeftColor: cat.color }]}>
                                                     <TouchableOpacity style={st.poiCatHdr} onPress={() => toggleCategory(catKey)} activeOpacity={0.7}>
                                                         <View style={[st.poiCatIcon, { backgroundColor: cat.color + '15' }]}><Text style={{ fontSize: 20 }}>{cat.icon}</Text></View>
-                                                        <View style={st.flex1}><Text style={st.poiCatLabel}>{cat.label}</Text><Text style={st.poiCatCount}>{pois.length} lieu{pois.length > 1 ? 'x' : ''}</Text></View>
-                                                        <SafeIcon name={expanded ? 'ChevronUp' : 'ChevronDown'} size={16} color={modernColors.textSecondary} />
+                                                        <View style={st.flex1}>
+                                                            <Text style={st.poiCatLabel}>{cat.label}</Text>
+                                                            <Text style={st.poiCatCount}>{pois.length} lieu{pois.length > 1 ? 'x' : ''} trouvé{pois.length > 1 ? 's' : ''} sur le trajet</Text>
+                                                        </View>
+                                                        <View style={[st.poiExpandBadge, { backgroundColor: expanded ? cat.color + '20' : modernColors.surfaceVariant }]}>
+                                                            <SafeIcon name={expanded ? 'ChevronUp' : 'ChevronDown'} size={16} color={expanded ? cat.color : modernColors.textSecondary} />
+                                                        </View>
                                                     </TouchableOpacity>
-                                                    {expanded && pois.slice(0, 5).map(poi => {
+                                                    {expanded && visiblePois.map((poi, idx) => {
                                                         const displayName = typeof poi.name === 'string' ? poi.name : (typeof poi.name === 'object' && poi.name !== null ? (poi.name as any).name || (poi.name as any).text || JSON.stringify(poi.name) : 'Nom inconnu');
                                                         return (
-                                                            <View key={poi.id} style={st.poiItem}>
+                                                            <View key={poi.id || `poi-${catKey}-${idx}`} style={st.poiItem}>
                                                                 <View style={st.flex1}>
                                                                     <Text style={st.poiName}>{displayName}</Text>
                                                                     {poi.address && <Text style={st.poiAddr} numberOfLines={1}>{poi.address}</Text>}
                                                                     <View style={st.poiMeta}>
                                                                         <Text style={st.poiDist}>{formatDistance(poi.distance_from_route_meters)}</Text>
-                                                                        {poi.rating && <Text style={st.poiRating}>⭐ {poi.rating}</Text>}
-                                                                        {poi.price_level && <Text style={st.poiPrice}>{'💰'.repeat(poi.price_level)}</Text>}
+                                                                        {poi.rating != null && poi.rating > 0 && <Text style={st.poiRating}>⭐ {poi.rating}{poi.total_ratings ? ` (${poi.total_ratings})` : ''}</Text>}
+                                                                        {poi.price_level != null && poi.price_level > 0 && <Text style={st.poiPrice}>{'💰'.repeat(poi.price_level)}</Text>}
                                                                         {poi.is_open != null && <View style={[st.openBadge, { backgroundColor: poi.is_open ? '#DCFCE7' : '#FEE2E2' }]}><Text style={[st.openText, { color: poi.is_open ? '#16A34A' : '#EF4444' }]}>{poi.is_open ? 'Ouvert' : 'Fermé'}</Text></View>}
                                                                     </View>
                                                                 </View>
@@ -1853,6 +2228,18 @@ const NavigationScreen: React.FC = () => {
                                                             </View>
                                                         );
                                                     })}
+                                                    {expanded && !showAll && pois.length > 5 && (
+                                                        <TouchableOpacity style={st.poiShowMoreBtn} onPress={() => setPoiShowAll(prev => ({ ...prev, [catKey]: true }))} activeOpacity={0.7}>
+                                                            <Text style={[st.poiShowMoreTxt, { color: cat.color }]}>Voir les {pois.length - 5} autres lieux</Text>
+                                                            <SafeIcon name="ChevronDown" size={14} color={cat.color} />
+                                                        </TouchableOpacity>
+                                                    )}
+                                                    {expanded && showAll && pois.length > 5 && (
+                                                        <TouchableOpacity style={st.poiShowMoreBtn} onPress={() => setPoiShowAll(prev => ({ ...prev, [catKey]: false }))} activeOpacity={0.7}>
+                                                            <Text style={[st.poiShowMoreTxt, { color: cat.color }]}>Réduire</Text>
+                                                            <SafeIcon name="ChevronUp" size={14} color={cat.color} />
+                                                        </TouchableOpacity>
+                                                    )}
                                                 </NativeCard>
                                             );
                                         })
@@ -2073,7 +2460,10 @@ const st = StyleSheet.create({
     poiCatHdr: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 },
     poiCatIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
     poiCatLabel: { fontSize: 15, fontWeight: '700', color: modernColors.text },
-    poiCatCount: { fontSize: 12, color: modernColors.textSecondary },
+    poiCatCount: { fontSize: 12, color: modernColors.textSecondary, marginTop: 2 },
+    poiExpandBadge: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+    poiShowMoreBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderTopWidth: 1, borderTopColor: modernColors.border },
+    poiShowMoreTxt: { fontSize: 13, fontWeight: '600' },
     poiItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 14, borderTopWidth: 1, borderTopColor: modernColors.border },
     poiName: { fontSize: 14, fontWeight: '600', color: modernColors.text },
     poiAddr: { fontSize: 11, color: modernColors.textSecondary, marginTop: 2 },
@@ -2215,6 +2605,12 @@ const st = StyleSheet.create({
     peakRow: { flexDirection: 'row', gap: 10 },
     peakBdg: { alignItems: 'center', backgroundColor: '#EEF2FF', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 6 },
     peakHr: { fontSize: 15, fontWeight: '800', color: '#6366F1' },
+
+    // Vote buttons (alert history)
+    voteRow: { flexDirection: 'row', gap: 8, marginTop: 8 },
+    voteBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, backgroundColor: '#DCFCE7', borderWidth: 1, borderColor: '#BBF7D0' },
+    voteBtnDown: { backgroundColor: '#FEE2E2', borderColor: '#FECACA' },
+    voteBtnTxt: { fontSize: 11, fontWeight: '700', color: '#16A34A' },
 
     // LocationSelector override
     locationSelector: { marginTop: 4 },

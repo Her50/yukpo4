@@ -27,8 +27,8 @@ export const useUserServices = () => {
         try {
             setLoading(true);
             const response = await apiGet(`/services/user/${user.id}`);
-            setServices(response.data || []);
-            setHasServices((response.data || []).length > 0);
+            setServices((response.data as any[]) || []);
+            setHasServices(((response.data as any[]) || []).length > 0);
         } catch (error) {
             console.error('Erreur chargement services utilisateur:', error);
             setServices([]);

@@ -710,6 +710,19 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         color: '#111827',
     },
+    moreButton: {
+        backgroundColor: '#F3F4F6',
+        borderRadius: 8,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    moreText: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: '#6B7280',
+    },
 });
 
 export default BloodBankResultCard;

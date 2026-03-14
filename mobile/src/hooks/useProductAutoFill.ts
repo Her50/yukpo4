@@ -17,20 +17,20 @@
  * ```
  */
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { productAutoFillService } from '../services/productAutoFillService';
 import { categoryAnalyzer } from '../utils/categoryAnalyzer';
 
 export interface AutoFillResult {
     // Champs pré-remplis
     fields: Record<string, any>;
-    
+
     // Niveau de confiance (0-100)
     confidence: number;
-    
+
     // Source du pré-remplissage
     source: 'enriched_db' | 'name_extraction' | 'category_defaults' | 'none';
-    
+
     // Suggestions pour champs non remplis
     suggestions?: Record<string, string[]>;
 }
@@ -49,23 +49,23 @@ export function useProductAutoFill(
 ): AutoFillResult | null {
     const [result, setResult] = useState<AutoFillResult | null>(null);
     const [isLoading, setIsLoading] = useState(false);
-    
+
     const enabled = options?.enabled !== false;
     const minConfidence = options?.minConfidence || 50;
-    
+
     useEffect(() => {
         if (!enabled || !productName || productName.trim().length < 3) {
             setResult(null);
             return;
         }
-        
+
         const fillProduct = async () => {
             setIsLoading(true);
-            
+
             try {
                 // Étape 1 : Essayer base enrichie
-                const enrichedResult = await productAutoFillService.getProductInfo(productName, category);
-                
+                const enrichedResult = await (productAutoFillService as any).getProductInfo?.(productName, category) || await productAutoFillService.autoFillProduct(productName, category);
+
                 if (enrichedResult) {
                     setResult({
                         fields: enrichedResult.characteristics,
@@ -75,10 +75,10 @@ export function useProductAutoFill(
                     });
                     return;
                 }
-                
+
                 // Étape 2 : Extraction depuis le nom
                 const extracted = extractFromProductName(productName, category);
-                
+
                 if (Object.keys(extracted).length > 0) {
                     setResult({
                         fields: extracted,
@@ -87,10 +87,10 @@ export function useProductAutoFill(
                     });
                     return;
                 }
-                
+
                 // Étape 3 : Valeurs par défaut de la catégorie
                 const analysis = categoryAnalyzer.analyzeCategory(category);
-                
+
                 if (Object.keys(analysis.fixed_fields).length > 0) {
                     setResult({
                         fields: analysis.fixed_fields,
@@ -99,10 +99,10 @@ export function useProductAutoFill(
                     });
                     return;
                 }
-                
+
                 // Aucun résultat
                 setResult(null);
-                
+
             } catch (error) {
                 console.error('[useProductAutoFill] Erreur:', error);
                 setResult(null);
@@ -110,18 +110,18 @@ export function useProductAutoFill(
                 setIsLoading(false);
             }
         };
-        
+
         // Debounce pour éviter trop d'appels
         const timeoutId = setTimeout(fillProduct, 300);
-        
+
         return () => clearTimeout(timeoutId);
     }, [productName, category, enabled]);
-    
+
     // Filtrer par confiance minimale
     if (result && result.confidence < minConfidence) {
         return null;
     }
-    
+
     return result;
 }
 
@@ -131,7 +131,7 @@ export function useProductAutoFill(
 function extractFromProductName(name: string, category: string): Record<string, any> {
     const extracted: Record<string, any> = {};
     const nameLower = name.toLowerCase();
-    
+
     // ═══ TÉLÉPHONE ═══
     if (category === 'telephone') {
         // Marques courantes
@@ -142,7 +142,7 @@ function extractFromProductName(name: string, category: string): Record<string, 
                 break;
             }
         }
-        
+
         // Modèle (texte après marque)
         if (extracted.marqueTelephone) {
             const parts = name.split(new RegExp(extracted.marqueTelephone, 'i'));
@@ -150,19 +150,19 @@ function extractFromProductName(name: string, category: string): Record<string, 
                 extracted.modeleTelephone = parts[1].trim().split(/[,\-\(]/)[0].trim();
             }
         }
-        
+
         // Stockage
         const storageMatch = name.match(/(\d+)\s*GB/i);
         if (storageMatch) {
             extracted.stockage = `${storageMatch[1]}GB`;
         }
-        
+
         // RAM
         const ramMatch = name.match(/(\d+)\s*GB.*RAM/i);
         if (ramMatch) {
             extracted.ram = `${ramMatch[1]}GB`;
         }
-        
+
         // État
         if (nameLower.includes('neuf') || nameLower.includes('new')) {
             extracted.etatTelephone = 'Neuf';
@@ -170,7 +170,7 @@ function extractFromProductName(name: string, category: string): Record<string, 
             extracted.etatTelephone = 'Occasion';
         }
     }
-    
+
     // ═══ AUTOMOBILE ═══
     else if (category === 'automobile') {
         // Marques courantes
@@ -181,25 +181,25 @@ function extractFromProductName(name: string, category: string): Record<string, 
                 break;
             }
         }
-        
+
         // Année
         const yearMatch = name.match(/\b(19|20)\d{2}\b/);
         if (yearMatch) {
             extracted.annee = yearMatch[0];
         }
-        
+
         // Kilométrage
         const kmMatch = name.match(/(\d+)\s*(km|kilometre)/i);
         if (kmMatch) {
             extracted.kilometrage = kmMatch[1];
         }
-        
+
         // Carburant
         if (nameLower.includes('diesel')) extracted.typeCarburant = 'Diesel';
         else if (nameLower.includes('essence')) extracted.typeCarburant = 'Essence';
         else if (nameLower.includes('hybrid')) extracted.typeCarburant = 'Hybride';
     }
-    
+
     // ═══ VÊTEMENT ═══
     else if (category === 'vetement') {
         // Taille
@@ -207,7 +207,7 @@ function extractFromProductName(name: string, category: string): Record<string, 
         if (sizeMatch) {
             extracted.taille = sizeMatch[0].toUpperCase();
         }
-        
+
         // Couleur
         const colors = ['noir', 'blanc', 'rouge', 'bleu', 'vert', 'jaune', 'rose', 'violet', 'gris'];
         for (const color of colors) {
@@ -216,13 +216,13 @@ function extractFromProductName(name: string, category: string): Record<string, 
                 break;
             }
         }
-        
+
         // Matière
         if (nameLower.includes('coton')) extracted.matiere = 'Coton';
         else if (nameLower.includes('polyester')) extracted.matiere = 'Polyester';
         else if (nameLower.includes('soie')) extracted.matiere = 'Soie';
     }
-    
+
     // ═══ AGRICULTURE ═══
     else if (category === 'agriculture') {
         // Origine
@@ -233,18 +233,18 @@ function extractFromProductName(name: string, category: string): Record<string, 
                 break;
             }
         }
-        
+
         // Qualité
         if (nameLower.includes('premium') || nameLower.includes('qualité supérieure')) {
             extracted.qualite = 'Premium';
         } else if (nameLower.includes('standard')) {
             extracted.qualite = 'Standard';
         }
-        
+
         // Unité par défaut
         extracted.unite = 'sac (50kg)';
     }
-    
+
     return extracted;
 }
 
@@ -263,7 +263,7 @@ export function useProductSuggestions(
     currentFields: Record<string, any>
 ): Record<string, string[]> {
     const [suggestions, setSuggestions] = useState<Record<string, string[]>>({});
-    
+
     useEffect(() => {
         // Générer suggestions basées sur les champs actuels
         const generateSuggestions = async () => {
@@ -274,7 +274,7 @@ export function useProductSuggestions(
                     const modeles = getModelesByMarque(currentFields.marqueTelephone, 'telephone');
                     setSuggestions({ modeleTelephone: modeles });
                 }
-                
+
                 if (category === 'automobile' && currentFields.marqueAutomobile) {
                     const { getModelesByMarque } = await import('../utils/parseExistingModalities');
                     const modeles = getModelesByMarque(currentFields.marqueAutomobile, 'automobile');
@@ -284,10 +284,10 @@ export function useProductSuggestions(
                 console.error('[useProductSuggestions] Erreur:', error);
             }
         };
-        
+
         generateSuggestions();
     }, [category, JSON.stringify(currentFields)]);
-    
+
     return suggestions;
 }
 

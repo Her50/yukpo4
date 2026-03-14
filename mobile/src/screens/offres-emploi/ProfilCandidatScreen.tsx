@@ -175,10 +175,10 @@ const ProfilCandidatScreen: React.FC = () => {
     };
 
     const handleUseCurrentLocation = () => {
-        if (location?.latitude && location?.longitude) {
+        if (location?.coords?.latitude && location?.coords?.longitude) {
             setFormData({
                 ...formData,
-                gps: `${location.latitude},${location.longitude}`,
+                gps: `${location.coords.latitude},${location.coords.longitude}`,
             });
         } else {
             Alert.alert('Erreur', 'Position GPS non disponible');

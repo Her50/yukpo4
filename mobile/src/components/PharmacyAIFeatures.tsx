@@ -8,8 +8,10 @@
  * - Recherche produits
  */
 
+import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState } from 'react';
 import {
+    ActivityIndicator,
     Alert,
     Modal,
     ScrollView,
@@ -17,15 +19,11 @@ import {
     Text,
     TextInput,
     TouchableOpacity,
-    View,
-    ActivityIndicator
+    View
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import SafeIcon from './SafeIcon';
-import { NativeButton } from './SafeNativeDesign';
-import { apiPost, apiGet } from '../services/api';
-import { modernColors } from '../theme/modernTheme';
+import { apiGet, apiPost } from '../services/api';
 import { hapticPress } from '../utils/hapticFeedback';
+import SafeIcon from './SafeIcon';
 
 interface Medication {
     name: string;
@@ -82,22 +80,22 @@ const PharmacyAIFeatures: React.FC<PharmacyAIFeaturesProps> = ({
 }) => {
     const [activeTab, setActiveTab] = useState<'interactions' | 'dosage' | 'budget' | 'search'>('interactions');
     const [loading, setLoading] = useState(false);
-    
+
     // État pour interactions
     const [medications, setMedications] = useState<Medication[]>(initialMedications);
     const [interactionResult, setInteractionResult] = useState<InteractionResult | null>(null);
-    
+
     // État pour dosage
     const [dosageMedication, setDosageMedication] = useState('');
     const [dosageAge, setDosageAge] = useState('');
     const [dosageWeight, setDosageWeight] = useState('');
     const [dosageCondition, setDosageCondition] = useState('');
     const [dosageResult, setDosageResult] = useState<DosageSuggestion | null>(null);
-    
+
     // État pour budget
     const [budgetItems, setBudgetItems] = useState<Array<{ name: string; quantity: number }>>([]);
     const [budgetResult, setBudgetResult] = useState<BudgetResult | null>(null);
-    
+
     // État pour recherche produits
     const [productSearch, setProductSearch] = useState('');
     const [productResults, setProductResults] = useState<any[]>([]);
@@ -224,7 +222,7 @@ const PharmacyAIFeatures: React.FC<PharmacyAIFeaturesProps> = ({
             const response = await apiGet(`/api/pharmacies/products/search?query=${encodeURIComponent(productSearch.trim())}`);
 
             if (response?.success && response?.data) {
-                setProductResults(Array.isArray(response.data) ? response.data : response.data.products || []);
+                setProductResults(Array.isArray(response.data) ? response.data : (response.data as any).products || []);
             } else {
                 Alert.alert('Erreur', response?.message || 'Aucun produit trouvé');
                 setProductResults([]);

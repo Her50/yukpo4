@@ -11,7 +11,7 @@ import { useShoppingBasket } from '../../hooks/useShoppingBasket';
 import { modernColors } from '../../theme/modernTheme';
 
 const ShoppingBudgetScreen: React.FC = () => {
-    const navigation = useNavigation<any>();
+    const navigation = useNavigation() as any;
     const { budget, setBudget, currency, comment, setComment, estimate } = useShoppingBasket();
     const [budgetInput, setBudgetInput] = useState(
         budget ? budget.toString() : estimate?.total?.toString() ?? ''

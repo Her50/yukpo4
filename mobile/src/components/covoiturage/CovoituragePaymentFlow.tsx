@@ -13,8 +13,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useWalletBalance } from '../../hooks/useWalletBalance';
 import { apiPost } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
-import { NativeButton, NativeCard } from '../SafeNativeDesign';
 import SafeIcon from '../SafeIcon';
+import { NativeButton, NativeCard } from '../SafeNativeDesign';
 
 interface CovoituragePaymentFlowProps {
     total: number;
@@ -37,7 +37,8 @@ const CovoituragePaymentFlow: React.FC<CovoituragePaymentFlowProps> = ({
 }) => {
     const navigation = useNavigation();
     const { user } = useAuth();
-    const { balance, refreshBalance } = useWalletBalance();
+    const { walletBalance, refresh: refreshBalance } = useWalletBalance();
+    const balance = walletBalance?.balance || 0;
     const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>('wallet');
     const [processing, setProcessing] = useState(false);
 
@@ -83,7 +84,8 @@ const CovoituragePaymentFlow: React.FC<CovoituragePaymentFlowProps> = ({
                     return;
                 }
 
-                const reservationId = reservationResponse.data.reservation_id || reservationResponse.data.reservation?.id;
+                const rrd: any = reservationResponse.data;
+                const reservationId = rrd.reservation_id || rrd.reservation?.id;
 
                 if (!reservationId) {
                     Alert.alert('Erreur', 'Réservation créée mais ID manquant');
@@ -103,10 +105,11 @@ const CovoituragePaymentFlow: React.FC<CovoituragePaymentFlowProps> = ({
                     description: `Paiement covoiturage - ${numberOfPlaces} place(s)`
                 });
 
-                if (response.success && response.data) {
+                const prd: any = response.data;
+                if (response.success && prd) {
                     await refreshBalance();
                     onPaymentSuccess({
-                        paymentId: response.data.transaction_id || reservationId.toString(),
+                        paymentId: prd.transaction_id || reservationId.toString(),
                         method: 'wallet',
                         reservationId: reservationId
                     });

@@ -7,9 +7,9 @@
  * 3. Aucune détection (sélecteur manuel)
  */
 
-import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Modal, StyleSheet } from 'react-native';
-import { detectCategoryFromQuery, CategoryDetectionResult } from '../utils/categoryDetector';
+import React, { useEffect, useState } from 'react';
+import { Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { CategoryDetectionResult, detectCategoryFromQuery } from '../utils/categoryDetector';
 
 // Import dynamique des formulaires spécialisés
 const FORM_COMPONENTS = {
@@ -30,24 +30,24 @@ export function CreateNewKeyFlow({ query, onKeyCreated, onCancel }: CreateNewKey
   const [detection, setDetection] = useState<CategoryDetectionResult | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [FormComponent, setFormComponent] = useState<React.ComponentType<any> | null>(null);
-  
+
   // Détection automatique au montage
   useEffect(() => {
     const detected = detectCategoryFromQuery(query);
     setDetection(detected);
-    
+
     console.log(`🔍 [CreateNewKey] Détection pour "${query}":`, detected);
-    
+
     // Si haute confiance, sélectionner automatiquement
     if (detected.confidence >= 80 && detected.category_code !== 'UNKNOWN') {
       handleCategorySelect(detected.category_code, detected.form_component);
     }
   }, [query]);
-  
+
   // Charger le composant formulaire
   const handleCategorySelect = async (categoryCode: string, formComponent: string) => {
     setSelectedCategory(categoryCode);
-    
+
     try {
       const module = await FORM_COMPONENTS[formComponent as keyof typeof FORM_COMPONENTS]();
       setFormComponent(() => module.default);
@@ -55,7 +55,7 @@ export function CreateNewKeyFlow({ query, onKeyCreated, onCancel }: CreateNewKey
       console.error(`[CreateNewKey] Erreur chargement ${formComponent}:`, error);
     }
   };
-  
+
   // CAS 1 : Détection automatique claire (confidence >= 80%)
   if (detection && detection.confidence >= 80 && !detection.alternatives && selectedCategory) {
     return (
@@ -68,7 +68,7 @@ export function CreateNewKeyFlow({ query, onKeyCreated, onCancel }: CreateNewKey
               Catégorie : {detection.category_name}
             </Text>
           </View>
-          
+
           {/* Info détection */}
           <View style={styles.detectionInfo}>
             <Text style={styles.detectionText}>
@@ -76,7 +76,7 @@ export function CreateNewKeyFlow({ query, onKeyCreated, onCancel }: CreateNewKey
             </Text>
             <Text style={styles.queryText}>"{query}"</Text>
           </View>
-          
+
           {/* Formulaire spécialisé */}
           {FormComponent && (
             <FormComponent
@@ -91,7 +91,7 @@ export function CreateNewKeyFlow({ query, onKeyCreated, onCancel }: CreateNewKey
       </Modal>
     );
   }
-  
+
   // CAS 2 : Ambiguïté (proposer choix entre alternatives)
   if (detection && detection.alternatives && detection.alternatives.length > 0 && !selectedCategory) {
     return (
@@ -102,12 +102,12 @@ export function CreateNewKeyFlow({ query, onKeyCreated, onCancel }: CreateNewKey
             <Text style={styles.headerTitle}>🤔 Plusieurs catégories possibles</Text>
             <Text style={styles.headerSubtitle}>Choisissez la catégorie appropriée</Text>
           </View>
-          
+
           <View style={styles.queryContainer}>
             <Text style={styles.queryLabel}>Vous cherchez :</Text>
             <Text style={styles.queryText}>"{query}"</Text>
           </View>
-          
+
           {/* Liste des catégories suggérées */}
           <View style={styles.categoriesList}>
             {/* Catégorie principale */}
@@ -122,7 +122,7 @@ export function CreateNewKeyFlow({ query, onKeyCreated, onCancel }: CreateNewKey
                 Ex: {getCategoryExample(detection.category_code)}
               </Text>
             </TouchableOpacity>
-            
+
             {/* Alternatives */}
             {detection.alternatives.map((alt, index) => (
               <TouchableOpacity
@@ -137,7 +137,7 @@ export function CreateNewKeyFlow({ query, onKeyCreated, onCancel }: CreateNewKey
                 </Text>
               </TouchableOpacity>
             ))}
-            
+
             {/* Option "Autre catégorie" */}
             <TouchableOpacity
               style={[styles.categoryCard, styles.categoryCardOther]}
@@ -147,7 +147,7 @@ export function CreateNewKeyFlow({ query, onKeyCreated, onCancel }: CreateNewKey
               <Text style={styles.categoryDescription}>Choisir manuellement</Text>
             </TouchableOpacity>
           </View>
-          
+
           {/* Bouton annuler */}
           <TouchableOpacity style={styles.cancelButton} onPress={onCancel}>
             <Text style={styles.cancelButtonText}>Annuler</Text>
@@ -156,12 +156,12 @@ export function CreateNewKeyFlow({ query, onKeyCreated, onCancel }: CreateNewKey
       </Modal>
     );
   }
-  
+
   // CAS 3 : Aucune détection (sélecteur manuel complet)
   if ((detection && detection.confidence < 80) || selectedCategory === 'MANUAL') {
     return <CategorySelectorManual query={query} onSelect={handleCategorySelect} onCancel={onCancel} />;
   }
-  
+
   // Loading
   return (
     <View style={styles.loading}>
@@ -173,17 +173,17 @@ export function CreateNewKeyFlow({ query, onKeyCreated, onCancel }: CreateNewKey
 /**
  * Sélecteur manuel de catégorie (CAS 3)
  */
-function CategorySelectorManual({ 
-  query, 
-  onSelect, 
-  onCancel 
-}: { 
-  query: string; 
-  onSelect: (code: string, form: string) => void; 
-  onCancel: () => void; 
+function CategorySelectorManual({
+  query,
+  onSelect,
+  onCancel
+}: {
+  query: string;
+  onSelect: (code: string, form: string) => void;
+  onCancel: () => void;
 }) {
   const [searchCategory, setSearchCategory] = useState('');
-  
+
   // Liste de toutes les catégories disponibles
   const CATEGORIES_LIST = [
     { code: 'AUTO', name: 'Automobile', icon: '🚗', form: 'FormAutoAutomobile' },
@@ -200,11 +200,11 @@ function CategorySelectorManual({
     { code: 'FORM', name: 'Formation', icon: '📚', form: 'FormAutoFormation' },
     // ... 50+ autres catégories
   ];
-  
+
   const filteredCategories = CATEGORIES_LIST.filter(cat =>
     cat.name.toLowerCase().includes(searchCategory.toLowerCase())
   );
-  
+
   return (
     <Modal visible animationType="slide">
       <View style={styles.container}>
@@ -212,7 +212,7 @@ function CategorySelectorManual({
           <Text style={styles.headerTitle}>📋 Choisir une catégorie</Text>
           <Text style={styles.headerSubtitle}>Pour : "{query}"</Text>
         </View>
-        
+
         {/* Recherche catégorie */}
         <TextInput
           style={styles.searchInput}
@@ -220,7 +220,7 @@ function CategorySelectorManual({
           value={searchCategory}
           onChangeText={setSearchCategory}
         />
-        
+
         {/* Grille de catégories */}
         <ScrollView style={styles.categoriesGrid}>
           {filteredCategories.map((cat) => (
@@ -235,7 +235,7 @@ function CategorySelectorManual({
             </TouchableOpacity>
           ))}
         </ScrollView>
-        
+
         <TouchableOpacity style={styles.cancelButton} onPress={onCancel}>
           <Text style={styles.cancelButtonText}>Annuler</Text>
         </TouchableOpacity>

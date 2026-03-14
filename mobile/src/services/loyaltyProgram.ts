@@ -49,8 +49,8 @@ class LoyaltyProgramService {
             const response = await apiGet(`/api/loyalty/points?user_id=${userId}`);
 
             if (response.success && response.data) {
-                await this.cachePoints(response.data);
-                return response.data;
+                await this.cachePoints(response.data as any);
+                return response.data as any;
             }
 
             // Fallback: charger depuis cache

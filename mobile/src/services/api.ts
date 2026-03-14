@@ -33,6 +33,7 @@ interface ApiResponse<T = any> {
   error?: string;
   status?: number; // ✅ NOUVEAU 2025-12-11: Status HTTP pour gestion spécifique des erreurs
   code?: string; // ✅ NOUVEAU: Code d'erreur pour gestion spécifique
+  [key: string]: any; // Permettre l'accès dynamique aux propriétés de la réponse
 }
 
 export interface UploadedMediaItem {
@@ -2247,6 +2248,25 @@ export const networkDiagnostics = {
 
 // Export pour compatibilité avec les anciens imports
 export const serviceService = servicesApi;
+
+// Export nommé 'api' pour compatibilité avec les hooks qui importent { api }
+export const api = {
+  authApi,
+  servicesApi,
+  iaApi,
+  userApi,
+  locationApi,
+  notificationsApi,
+  commentsApi,
+  aiService,
+  serviceService: servicesApi,
+  networkDiagnostics,
+  get: apiGet,
+  post: apiPost,
+  patch: apiPatch,
+  put: apiPut,
+  delete: apiDelete,
+};
 
 export default {
   authApi,

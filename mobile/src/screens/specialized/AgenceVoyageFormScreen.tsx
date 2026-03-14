@@ -57,7 +57,8 @@ const AgenceVoyageFormScreen: React.FC = () => {
 
     // Dashboard state
     const [activeTab, setActiveTab] = useState<TabType>('overview');
-    const [isDashboardMode, setIsDashboardMode] = useState(false);
+    // ✅ FIX: Partenaires voient TOUJOURS le dashboard (même vide), pas le formulaire de création
+    const [isDashboardMode, setIsDashboardMode] = useState(user?.role === 'partenaire' && !mode);
     const [initialLoading, setInitialLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [agencyData, setAgencyData] = useState<any>(null);
@@ -448,7 +449,7 @@ const AgenceVoyageFormScreen: React.FC = () => {
                 return <TouchableOpacity key={svc} style={[s.chip, on && s.chipOn]} onPress={() => setSelectedServices(on ? selectedServices.filter(x => x !== svc) : [...selectedServices, svc])}><Text style={[s.chipText, on && s.chipTextOn]}>{svc}</Text></TouchableOpacity>;
             })}</View>
 
-            <View style={s.field}><CompanySelector label="Compagnies de bus" companies={selectedCompagnies} onCompaniesChange={setSelectedCompagnies} companyType="bus" /></View>
+            <View style={s.field}><CompanySelector label="Compagnies de bus" selected={selectedCompagnies} onSelectionChange={setSelectedCompagnies} /></View>
             <View style={s.field}>
                 <Text style={s.label}>Destinations</Text>
                 {selectedDestinations.map((d, i) => (
@@ -473,7 +474,7 @@ const AgenceVoyageFormScreen: React.FC = () => {
 
             <View style={[s.switchRow, { marginTop: 16 }]}><View><Text style={s.switchLbl}>Émission tickets bus</Text><Text style={s.hint}>Peut émettre des tickets pour les compagnies</Text></View><Switch value={formData.peut_emettre_tickets_bus} onValueChange={v => setFormData({ ...formData, peut_emettre_tickets_bus: v })} trackColor={{ false: '#D1D5DB', true: '#2563EB' }} /></View>
 
-            {formData.peut_emettre_tickets_bus && <View style={s.field}><CompanySelector label="Compagnies affiliées" companies={selectedAffiliees} onCompaniesChange={setSelectedAffiliees} companyType="bus" /></View>}
+            {formData.peut_emettre_tickets_bus && <View style={s.field}><CompanySelector label="Compagnies affiliées" selected={selectedAffiliees} onSelectionChange={setSelectedAffiliees} /></View>}
 
             {user?.role !== 'partenaire' && (
                 <>
@@ -720,8 +721,8 @@ const AgenceVoyageFormScreen: React.FC = () => {
                 </View>
                 <ModernGPSModal visible={showGPSModal} onClose={() => setShowGPSModal(false)} onSelect={(c: string) => { setSelectedGPS(c); setShowGPSModal(false); }} currentLocation={location ? { lat: location.coords.latitude, lng: location.coords.longitude } : null} title="Localisation" />
                 {renderScheduleModal()}
-                {showWeekDaysModal && <WeekDaysSelector visible={showWeekDaysModal} selectedDays={formData.jours_ouverture} onSave={(days: number[]) => { setFormData({ ...formData, jours_ouverture: days }); setShowWeekDaysModal(false); }} onClose={() => setShowWeekDaysModal(false)} />}
-                {showBusModelForm && <BusModelForm visible={showBusModelForm} model={editingModelIndex !== null ? busModels[editingModelIndex] : undefined} onSave={(model: BusModel) => { if (editingModelIndex !== null) { const u = [...busModels]; u[editingModelIndex] = model; setBusModels(u); } else { setBusModels([...busModels, model]); handleCreateBusProduct(model); } setShowBusModelForm(false); }} onClose={() => setShowBusModelForm(false)} />}
+                {showWeekDaysModal && <WeekDaysSelector visible={showWeekDaysModal} initialDays={formData.jours_ouverture} onSave={(days: number[]) => { setFormData({ ...formData, jours_ouverture: days }); setShowWeekDaysModal(false); }} onClose={() => setShowWeekDaysModal(false)} />}
+                {showBusModelForm && <BusModelForm visible={showBusModelForm} initialModel={editingModelIndex !== null ? busModels[editingModelIndex] : undefined} onSave={(model: BusModel) => { if (editingModelIndex !== null) { const u = [...busModels]; u[editingModelIndex] = model; setBusModels(u); } else { setBusModels([...busModels, model]); handleCreateBusProduct(model); } setShowBusModelForm(false); }} onClose={() => setShowBusModelForm(false)} />}
             </View>
         );
     }
@@ -735,7 +736,7 @@ const AgenceVoyageFormScreen: React.FC = () => {
             </LinearGradient>
             {renderServiceForm()}
             <ModernGPSModal visible={showGPSModal} onClose={() => setShowGPSModal(false)} onSelect={(c: string) => { setSelectedGPS(c); setShowGPSModal(false); }} currentLocation={location ? { lat: location.coords.latitude, lng: location.coords.longitude } : null} title="Localisation" />
-            {showWeekDaysModal && <WeekDaysSelector visible={showWeekDaysModal} selectedDays={formData.jours_ouverture} onSave={(days: number[]) => { setFormData({ ...formData, jours_ouverture: days }); setShowWeekDaysModal(false); }} onClose={() => setShowWeekDaysModal(false)} />}
+            {showWeekDaysModal && <WeekDaysSelector visible={showWeekDaysModal} initialDays={formData.jours_ouverture} onSave={(days: number[]) => { setFormData({ ...formData, jours_ouverture: days }); setShowWeekDaysModal(false); }} onClose={() => setShowWeekDaysModal(false)} />}
         </View>
     );
 };

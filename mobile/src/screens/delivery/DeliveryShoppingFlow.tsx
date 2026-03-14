@@ -461,7 +461,7 @@ const DeliveryShoppingFlow: React.FC<DeliveryShoppingFlowProps> = ({
                     ]
                 );
             } else {
-                Alert.alert('Erreur', result.error || 'Impossible de créer la commande');
+                Alert.alert('Erreur', (result as any).error || 'Impossible de créer la commande');
             }
         } catch (error: any) {
             console.error('Erreur création commande:', error);
@@ -1410,7 +1410,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#EFF6FF',
         borderRadius: 8,
     },
-    distanceText: {
+    distanceTextLarge: {
         fontSize: 14,
         color: modernColors.text,
         fontWeight: '500',

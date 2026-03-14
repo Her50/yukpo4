@@ -239,6 +239,36 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         marginLeft: 4,
     },
+    actionsRow: {
+        flexDirection: 'row',
+        gap: 8,
+        marginTop: 8,
+    },
+    actionButton: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 10,
+        borderRadius: 8,
+        gap: 6,
+    },
+    actionButtonText: {
+        fontSize: 14,
+        fontWeight: '600',
+    },
+    reserveButton: {
+        backgroundColor: modernColors.primary,
+    },
+    reserveButtonText: {
+        color: '#fff',
+    },
+    chatButton: {
+        backgroundColor: '#10B981',
+    },
+    chatButtonText: {
+        color: '#fff',
+    },
 });
 
 export default CovoiturageResultCard;

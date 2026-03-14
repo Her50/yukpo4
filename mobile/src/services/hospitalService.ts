@@ -64,6 +64,23 @@ export interface HospitalRecommendation {
     preliminary_analysis?: string;
     advice?: string[];
     warning?: string;
+    recommendations?: any[];
+    specialties?: string[];
+    hospital_ids?: number[];
+}
+
+// Alias pour compatibilité avec MyConsultationsScreen
+export interface HospitalConsultation {
+    id: number;
+    hospital_id: number;
+    hospital_name?: string;
+    specialty?: string;
+    doctor_name?: string;
+    consultation_date?: string;
+    status?: string;
+    notes?: string;
+    created_at?: string;
+    type_etablissement?: string;
 }
 
 export interface EmergencyStatus {

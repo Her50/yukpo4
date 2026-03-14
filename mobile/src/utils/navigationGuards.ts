@@ -2,7 +2,6 @@
  * Guards de navigation pour protéger les écrans prestataires
  */
 
-import { NavigationProp } from '@react-navigation/native';
 import { Alert } from 'react-native';
 
 export interface User {
@@ -33,7 +32,7 @@ export const isAgency = (user: User | null | undefined): boolean => {
  */
 export const requireProvider = (
     user: User | null | undefined,
-    navigation: NavigationProp<any>,
+    navigation: { navigate: (screen: string) => void },
     screenName: string = 'Home'
 ): boolean => {
     if (!isProvider(user)) {
@@ -54,7 +53,7 @@ export const requireProvider = (
  */
 export const requireAgency = (
     user: User | null | undefined,
-    navigation: NavigationProp<any>,
+    navigation: { navigate: (screen: string) => void },
     screenName: string = 'Home'
 ): boolean => {
     if (!isAgency(user)) {

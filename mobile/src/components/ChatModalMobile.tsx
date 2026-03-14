@@ -755,7 +755,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                         `/api/delivery/product-config/${service.id}/${productIndex}`
                     );
 
-                    if (configResponse.success && configResponse.data?.is_configured === true) {
+                    if (configResponse.success && (configResponse.data as any)?.is_configured === true) {
                         setHasDeliveryConfig(true);
                         setDeliveryEnabled(true);
                     } else {
@@ -1390,7 +1390,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                             rawData?.produits?.valeur ||
                                             rawData?.data?.produits ||
                                             rawData?.produits ||
-                                            serviceData?.produits ||
+                                            (serviceData as any)?.produits ||
                                             [];
 
                                         console.log('[ChatModalMobile] Produits trouvés:', products.length, 'serviceData keys:', Object.keys(serviceData || {}));

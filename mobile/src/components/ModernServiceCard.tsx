@@ -37,6 +37,7 @@ interface Service {
     statut?: 'actif' | 'inactif';
     status?: 'active' | 'inactive';
     date_creation?: string;
+    gps?: string;
     created_at?: string;
     tags?: string[];
     score_relevance?: number;

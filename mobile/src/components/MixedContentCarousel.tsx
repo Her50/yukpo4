@@ -103,7 +103,7 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
 
             console.log('[MixedContentCarousel] 🔗 Appel API:', `/api/content/mixed?${params.toString()}`);
             const response = await apiGet(`/api/content/mixed?${params.toString()}`);
-            console.log('[MixedContentCarousel] 📦 Réponse API:', { success: response.success, hasData: !!response.data, dataLength: response.data?.length });
+            console.log('[MixedContentCarousel] 📦 Réponse API:', { success: response.success, hasData: !!response.data, dataLength: (response.data as any)?.length });
 
             if (response.success && response.data && Array.isArray(response.data) && response.data.length > 0) {
                 console.log(`[MixedContentCarousel] ✅ ${response.data.length} éléments de contenu mixte chargés`);

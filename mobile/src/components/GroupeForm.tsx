@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useEffect, useState } from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 // ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
 import SafeStorage from '../utils/safeStorage';
 
@@ -10,6 +10,11 @@ interface ComposantFrontend {
   type: string;
   label: string;
   required: boolean;
+  nomChamp: string;
+  obligatoire?: boolean;
+  min?: number;
+  max?: number;
+  typeDonnee?: string;
 }
 
 interface GroupeFormProps {
@@ -53,6 +58,7 @@ const GroupeForm: React.FC<GroupeFormProps> = ({ groupe, onNext }) => {
       ...groupe.contenu,
     };
 
+    const dispatchChampsFormulaireIA = (input: any) => input; // stub
     const dynamic = dispatchChampsFormulaireIA({
       services_detectes: [
         {
@@ -117,7 +123,7 @@ const GroupeForm: React.FC<GroupeFormProps> = ({ groupe, onNext }) => {
 
     if (!valid) {
       setErreurs(nouvellesErreurs);
-      toast.error("🚫 Veuillez corriger les champs.");
+      Alert.alert('Erreur', '🚫 Veuillez corriger les champs.');
       return;
     }
 

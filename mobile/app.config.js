@@ -59,7 +59,8 @@ module.exports = {
                 ],
                 NSCameraUsageDescription: "Cette app utilise la caméra pour l'édition vidéo en réalité augmentée",
                 NSMicrophoneUsageDescription: "Cette app utilise le microphone pour enregistrer l'audio des vidéos AR immersives",
-                NSLocationWhenInUseUsageDescription: "Cette app utilise la localisation pour améliorer l'expérience AR"
+                NSLocationWhenInUseUsageDescription: "Yukpo utilise votre position pour la navigation, les alertes communautaires et le suivi de vos activités",
+                NSLocationAlwaysAndWhenInUseUsageDescription: "Yukpo suit vos déplacements en arrière-plan pour enregistrer automatiquement vos activités physiques (marche, vélo) et calculer vos statistiques santé"
             }
         },
         android: {
@@ -74,6 +75,9 @@ module.exports = {
             permissions: [
                 "android.permission.ACCESS_FINE_LOCATION",
                 "android.permission.ACCESS_COARSE_LOCATION",
+                "android.permission.ACCESS_BACKGROUND_LOCATION",
+                "android.permission.FOREGROUND_SERVICE",
+                "android.permission.FOREGROUND_SERVICE_LOCATION",
                 "android.permission.CAMERA",
                 "android.permission.RECORD_AUDIO",
                 "android.permission.MODIFY_AUDIO_SETTINGS",

@@ -34,7 +34,7 @@ export const useServiceStats = (
     const isBatch = Array.isArray(serviceId);
     const serviceIds = isBatch ? serviceId : [serviceId];
     const singleServiceId = isBatch ? serviceIds[0] : serviceId;
-    const singleCreatedAt = isBatch 
+    const singleCreatedAt = isBatch
         ? (createdAt instanceof Map ? createdAt.get(singleServiceId) : undefined) || ''
         : (typeof createdAt === 'string' ? createdAt : '');
     const [stats, setStats] = useState<ServiceStats | null>(null);
@@ -50,9 +50,9 @@ export const useServiceStats = (
         }
 
         // Vérifier si on a déjà chargé ces données exactes
-        if (lastLoadedRef.current?.serviceId === singleServiceId && 
-            lastLoadedRef.current?.createdAt === singleCreatedAt && 
-            stats !== null && 
+        if (lastLoadedRef.current?.serviceId === singleServiceId &&
+            lastLoadedRef.current?.createdAt === singleCreatedAt &&
+            stats !== null &&
             !isBatch) {
             return;
         }
@@ -66,14 +66,14 @@ export const useServiceStats = (
                 setLoading(true);
 
                 let response;
-                
+
                 // ✅ NOUVEAU 2025-01-01: Utiliser l'endpoint batch si plusieurs services
                 if (isBatch && serviceIds.length > 1) {
                     const serviceIdsStr = serviceIds.join(',');
                     const batchResponse = await apiGet(API_ENDPOINTS.SERVICES.BATCH_STATS, {
                         service_ids: serviceIdsStr,
                     });
-                    
+
                     // Extraire les stats du premier service (compatibilité avec l'API actuelle)
                     if (batchResponse.success && batchResponse.data) {
                         const batchData = batchResponse.data as Record<string, any>;
@@ -127,7 +127,7 @@ export const useServiceStats = (
                     let realViews = 0, realContacts = 0, realMessages = 0;
 
                     if (interactionsResponse.success && interactionsResponse.data) {
-                        const interactions = interactionsResponse.data;
+                        const interactions = interactionsResponse.data as any[];
                         realViews = interactions.filter((i: any) => i.type === 'view').length;
                         realContacts = interactions.filter((i: any) => i.type === 'contact').length;
                         realMessages = interactions.filter((i: any) => i.type === 'message').length;

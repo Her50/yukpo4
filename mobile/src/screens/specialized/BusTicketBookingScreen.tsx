@@ -27,6 +27,7 @@ interface TicketData {
     departure_time?: string;
     ticket_price?: number;
     available_seats: number;
+    distance_km?: number;
 }
 
 const BusTicketBookingScreen: React.FC = () => {

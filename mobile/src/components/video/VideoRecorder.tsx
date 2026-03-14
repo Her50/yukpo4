@@ -3,7 +3,7 @@
  * Utilise expo-camera pour l'enregistrement
  */
 
-import { Camera, CameraType } from 'expo-camera';
+import { Camera, type CameraType } from 'expo-camera';
 import * as MediaLibrary from 'expo-media-library';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -34,7 +34,7 @@ const VideoRecorder: React.FC<VideoRecorderProps> = ({
     const [hasPermission, setHasPermission] = useState<boolean | null>(null);
     const [isRecording, setIsRecording] = useState(false);
     const [recordingTime, setRecordingTime] = useState(0);
-    const [cameraType, setCameraType] = useState<CameraType>(CameraType.front);
+    const [cameraType, setCameraType] = useState<CameraType>('front' as CameraType);
     const cameraRef = useRef<Camera>(null);
     const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -111,7 +111,7 @@ const VideoRecorder: React.FC<VideoRecorderProps> = ({
 
     const toggleCamera = useCallback(() => {
         setCameraType((prev) =>
-            prev === CameraType.back ? CameraType.front : CameraType.back
+            prev === ('back' as CameraType) ? ('front' as CameraType) : ('back' as CameraType)
         );
     }, []);
 

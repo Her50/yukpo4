@@ -81,7 +81,7 @@ const ImmobilierResultCard: React.FC<ImmobilierResultCardProps> = ({ property, o
                             />
                         ))}
                     </ScrollView>
-                    
+
                     {/* Indicateur de pagination */}
                     {hasMultiplePhotos && (
                         <View style={styles.pagination}>
@@ -96,7 +96,7 @@ const ImmobilierResultCard: React.FC<ImmobilierResultCardProps> = ({ property, o
                             ))}
                         </View>
                     )}
-                    
+
                     {/* Badge nombre de photos */}
                     {hasMultiplePhotos && (
                         <View style={styles.photoCountBadge}>
@@ -481,7 +481,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         gap: 8,
     },
-    contactButton: {
+    contactButtonSmall: {
         width: 36,
         height: 36,
         borderRadius: 18,

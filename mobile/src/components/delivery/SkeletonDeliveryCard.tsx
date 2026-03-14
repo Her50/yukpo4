@@ -72,7 +72,7 @@ const styles = StyleSheet.create({
         padding: 16,
         marginVertical: 8,
         marginHorizontal: 2,
-        ...modernColors.shadowMedium,
+        ...modernStyles.shadowMedium,
     },
     header: {
         flexDirection: 'row',

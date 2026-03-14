@@ -26,8 +26,8 @@ export const useGeocoding = () => {
                     address: address,
                     latitude: location.latitude,
                     longitude: location.longitude,
-                    city: location.city || '',
-                    country: location.country || ''
+                    city: (location as any).city || '',
+                    country: (location as any).country || ''
                 };
             }
 
@@ -49,7 +49,7 @@ export const useGeocoding = () => {
             // ✅ CORRIGÉ 2026-01-12: Utiliser reverseGeocodeWithRetry avec retry et fallback
             const { reverseGeocodeAddress } = await import('../utils/reverseGeocoding');
             const address = await reverseGeocodeAddress(latitude, longitude);
-            
+
             return address;
         } catch (err) {
             setError('Erreur lors du géocodage inverse');

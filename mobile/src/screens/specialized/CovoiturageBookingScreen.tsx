@@ -13,8 +13,8 @@ import {
 import CovoituragePaymentFlow from '../../components/covoiturage/CovoituragePaymentFlow';
 import { InsuranceSelector } from '../../components/covoiturage/InsuranceSelector';
 import { QRCodeDisplay } from '../../components/covoiturage/QRCodeDisplay';
-import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
 import { useWalletBalance } from '../../hooks/useWalletBalance';
 import { apiGet, apiPost } from '../../services/api';
@@ -54,7 +54,8 @@ const CovoiturageBookingScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
     const { user } = useAuth();
-    const { balance, refreshBalance } = useWalletBalance();
+    const { walletBalance, refresh: refreshBalance } = useWalletBalance();
+    const balance = walletBalance?.balance || 0;
     const params = route.params as CovoiturageBookingScreenParams;
 
     const [covoiturage, setCovoiturage] = useState<CovoiturageBookingDetails | null>(null);

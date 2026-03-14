@@ -12,8 +12,8 @@ import {
 } from 'react-native';
 import { apiPost } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
-import { NativeInput } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
+import { NativeInput } from './SafeNativeDesign';
 
 interface SignalementModalProps {
     visible: boolean;
@@ -85,7 +85,7 @@ const SignalementModal: React.FC<SignalementModalProps> = ({
             if (response.success) {
                 Alert.alert(
                     '✅ Signalement enregistré',
-                    `Référence: ${response.data.reference}\n\n${response.data.message}`,
+                    `Référence: ${(response.data as any).reference}\n\n${(response.data as any).message}`,
                     [
                         {
                             text: 'OK',

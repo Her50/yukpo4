@@ -17,7 +17,7 @@ import { apiGet, apiPost } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 
 const OrientationScolaireHubScreen: React.FC = () => {
-    const navigation = useNavigation<any>();
+    const navigation = useNavigation() as any;
     const { user } = useAuth();
     const [loading, setLoading] = useState(false);
     const [refreshing, setRefreshing] = useState(false);

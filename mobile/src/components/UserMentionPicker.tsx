@@ -172,7 +172,7 @@ const UserMentionPicker: React.FC<UserMentionPickerProps> = ({
     const renderUserItem = (user: User | TagHistoryItem, fromHistory: boolean = false) => {
         const userId = 'user_id' in user ? user.user_id : user.id;
         const userName = 'user_name' in user ? user.user_name : user.nom_complet;
-        const userAvatar = 'user_avatar' in user ? user.user_avatar : user.avatar_url;
+        const userAvatar = 'user_avatar' in user ? user.user_avatar : (user as User).avatar_url;
         const isProvider = 'is_provider' in user ? user.is_provider : false;
 
         return (

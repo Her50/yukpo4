@@ -11,8 +11,8 @@ import {
     View
 } from 'react-native';
 import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
-import { NativeButton, NativeCard, NativeInput } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeButton, NativeCard, NativeInput } from '../../components/SafeNativeDesign';
 import { deliveryApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 
@@ -99,8 +99,9 @@ const StorageLocationsScreen: React.FC = () => {
         setLoading(true);
         try {
             const response = await deliveryApi.listStorageLocations();
-            if (response.success && response.data?.locations) {
-                setLocations(response.data.locations);
+            const rd: any = response.data;
+            if (response.success && rd?.locations) {
+                setLocations(rd.locations);
             }
         } catch (error: any) {
             Alert.alert('Erreur', error.message || 'Impossible de charger les lieux de stock');

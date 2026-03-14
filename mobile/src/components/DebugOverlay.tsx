@@ -55,8 +55,8 @@ const DebugOverlay: React.FC<DebugOverlayProps> = ({
         onMoveShouldSetPanResponder: () => true,
         onPanResponderGrant: () => {
             position.setOffset({
-                x: position.x._value,
-                y: position.y._value,
+                x: (position.x as any)._value,
+                y: (position.y as any)._value,
             });
         },
         onPanResponderMove: Animated.event([
@@ -70,8 +70,8 @@ const DebugOverlay: React.FC<DebugOverlayProps> = ({
             position.flattenOffset();
 
             // Garder le bouton dans l'écran
-            const newX = Math.max(0, Math.min(width - 60, position.x._value));
-            const newY = Math.max(0, Math.min(height - 60, position.y._value));
+            const newX = Math.max(0, Math.min(width - 60, (position.x as any)._value));
+            const newY = Math.max(0, Math.min(height - 60, (position.y as any)._value));
 
             Animated.spring(position, {
                 toValue: { x: newX, y: newY },

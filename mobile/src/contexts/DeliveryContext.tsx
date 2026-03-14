@@ -25,6 +25,7 @@ import { useAuth } from './AuthContext';
 
 interface DeliveryContextValue {
     deliveries: Record<string, DeliverySummary>;
+    delivery?: DeliverySummary | null;
     events: Record<string, DeliveryRealtimeEvent[]>;
     activeDeliveryId: string | null;
     setActiveDeliveryId: (deliveryId: string | null) => void;
@@ -347,7 +348,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                 if (response.success && response.data) {
                     setDeliveries(prev => ({
                         ...prev,
-                        [deliveryId]: response.data.delivery ?? response.data,
+                        [deliveryId]: (response.data as any).delivery ?? response.data,
                     }));
                     setError(null);
                 } else if (response.error) {

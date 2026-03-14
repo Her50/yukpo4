@@ -1283,7 +1283,7 @@ export const useCreatorStudio = (): [CreatorStudioState, CreatorStudioActions] =
                 };
                 const response = await deliveryApi.createDeliveryRequest(enrichedPayload);
                 if (!response.success) {
-                    throw new Error(response.error ?? 'Création livraison impossible.');
+                    throw new Error((response as any).error ?? 'Création livraison impossible.');
                 }
                 const summary = unwrapDeliverySummary(response.data);
                 if (!summary?.id) {

@@ -19,5 +19,6 @@ export const modernColors = {
   gradientStart: theme.colors.gradientStart,
   gradientMiddle: theme.colors.gradientMiddle,
   gradientEnd: theme.colors.gradientEnd,
+  backgroundSecondary: theme.colors.background,
 };
 

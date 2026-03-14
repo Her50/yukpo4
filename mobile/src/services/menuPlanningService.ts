@@ -89,6 +89,8 @@ export interface ShoppingList {
     status: string;
     items: ShoppingListItem[];
     total_estimated_cost?: number;
+    organized_by_store?: boolean;
+    organized_by_aisle?: boolean;
 }
 
 export interface GeneratedRecipe {
@@ -124,7 +126,7 @@ export const menuPlanningService = {
     // ✅ Générer menu hebdomadaire avec IA
     // ✅ NOUVEAU: currentGps optionnel pour envoyer la localisation actuelle dynamiquement
     generateWeeklyMenu: async (
-        weekStart?: string, 
+        weekStart?: string,
         profileOverride?: Partial<FamilyProfile>,
         currentGps?: string // Format: "lat,lng" ou "lng,lat"
     ) => {
@@ -244,7 +246,7 @@ export const menuPlanningService = {
             servings: number;
             day: string;
             mealType: string;
-        }>, 
+        }>,
         familyMembers: number,
         adultsCount?: number,
         childrenCount?: number

@@ -100,7 +100,7 @@ export const getUserZone = async (): Promise<string> => {
                     });
 
                     if (reverseGeocode && reverseGeocode.length > 0) {
-                        const country = reverseGeocode[0].countryCode;
+                        const country = reverseGeocode[0].isoCountryCode;
                         if (country && COUNTRY_CODE_MAP[country]) {
                             await SafeStorage.setItem('userCountryCode', country);
                             console.log('[UserZone] Zone depuis géocodage:', country);

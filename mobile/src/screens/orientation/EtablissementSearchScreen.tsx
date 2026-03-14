@@ -29,7 +29,7 @@ interface Etablissement {
 }
 
 const EtablissementSearchScreen: React.FC = () => {
-    const navigation = useNavigation<any>();
+    const navigation = useNavigation() as any;
     const route = useRoute();
     const typeParam = (route.params as any)?.type || '';
 

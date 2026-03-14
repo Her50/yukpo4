@@ -66,7 +66,8 @@ const HopitalFormScreen: React.FC = () => {
 
     // Dashboard state
     const [activeTab, setActiveTab] = useState<TabType>('overview');
-    const [isDashboardMode, setIsDashboardMode] = useState(false);
+    // ✅ FIX: Partenaires voient TOUJOURS le dashboard (même vide), pas le formulaire de création
+    const [isDashboardMode, setIsDashboardMode] = useState(user?.role === 'partenaire' && !mode);
     const [initialLoading, setInitialLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [hospitalData, setHospitalData] = useState<any>(null);

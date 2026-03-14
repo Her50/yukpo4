@@ -98,8 +98,9 @@ class VideoRecommendationService {
                 interactions: this.interactionHistory.slice(-20), // 20 dernières interactions
             });
 
-            if (response.success && Array.isArray(response.data?.recommendations)) {
-                return response.data.recommendations as VideoRecommendation[];
+            const rd: any = response.data;
+            if (response.success && Array.isArray(rd?.recommendations)) {
+                return rd.recommendations as VideoRecommendation[];
             }
 
             // Fallback : Recommandations basiques basées sur catégories préférées
@@ -121,7 +122,7 @@ class VideoRecommendationService {
             });
 
             if (response.success && response.data) {
-                this.userProfile = response.data.userProfile;
+                this.userProfile = (response.data as any).userProfile;
                 this.lastUpdate = Date.now();
             }
         } catch (error) {

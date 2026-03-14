@@ -7989,6 +7989,9 @@ const styles = StyleSheet.create({
         color: modernColors.textSecondary,
         fontWeight: '500',
     },
+    modalContent: {
+        padding: 16,
+    },
 });
 
 export default ProductVideoCreationModal;

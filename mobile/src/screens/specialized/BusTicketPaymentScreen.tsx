@@ -88,7 +88,7 @@ const BusTicketPaymentScreen: React.FC = () => {
                 return_time: returnTime || null,
             });
 
-            const resData = response.data || response;
+            const resData: any = response.data || response;
             if (resData.success || resData.payment_id) {
                 await refreshUser?.();
                 Alert.alert(

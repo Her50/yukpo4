@@ -807,17 +807,18 @@ const CourierRegistrationScreen: React.FC = () => {
                 'response.error': response.error,
                 'response.status': response.status,
                 'response.data': response.data,
-                'response.data?.success': response.data?.success,
-                'response.data?.application': !!response.data?.application,
-                'response.data?.application?.id': response.data?.application?.id,
-                'response.data?.application?.status': response.data?.application?.status,
+                'response.data?.success': (response.data as any)?.success,
+                'response.data?.application': !!(response.data as any)?.application,
+                'response.data?.application?.id': (response.data as any)?.application?.id,
+                'response.data?.application?.status': (response.data as any)?.application?.status,
             });
 
             // ✅ CORRIGÉ: Vérifier la réponse avec plus de flexibilité
             // Le backend retourne {success: true, application: {...}}
             // apiCall retourne {success: true, data: {success: true, application: {...}}}
+            const rd: any = response.data;
             const isSuccess = response.success === true ||
-                (response.data && (response.data.application || response.data.success === true)) ||
+                (rd && (rd.application || rd.success === true)) ||
                 (!response.error && !response.status);
 
             if (isSuccess) {

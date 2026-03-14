@@ -3,13 +3,14 @@
  * Design moderne niveau Instacart / Uber Eats
  */
 
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
     Alert,
     Animated,
-    Modal,
+    BackHandler,
     StyleSheet,
     Text,
     TouchableOpacity,
@@ -21,19 +22,17 @@ import {
     SupermarketSelectionStep,
 } from '../../components/delivery/DeliveryShoppingFlowSteps';
 import StepWizardForm from '../../components/delivery/StepWizardForm';
+import { LocationObject } from '../../components/LocationSelector';
 import ModernGPSModal from '../../components/ModernGPSModal';
 import SafeIcon from '../../components/SafeIcon';
 import { useLocation } from '../../contexts/LocationContext';
+import { useCurrencyDetection } from '../../hooks/useCurrencyDetection';
+import { UserSavedAddress } from '../../hooks/useSavedAddresses';
 import { CreateDeliveryRequestPayload, deliveryApi } from '../../services/api';
 import { useScreenEnter } from '../../utils/animations';
-import { LocationObject } from '../../components/LocationSelector';
-import { UserSavedAddress } from '../../hooks/useSavedAddresses';
-import { useCurrencyDetection } from '../../hooks/useCurrencyDetection';
 
 interface DeliveryShoppingFlowNewProps {
-    visible: boolean;
-    onClose: () => void;
-    onSuccess?: (deliveryId: string) => void;
+    // Props vides - maintenant un Screen au lieu d'un Modal
 }
 
 interface LocationData {
@@ -61,17 +60,14 @@ interface BasketItem {
     estimatedPrice?: number;
 }
 
-const DeliveryShoppingFlowNew: React.FC<DeliveryShoppingFlowNewProps> = ({
-    visible,
-    onClose,
-    onSuccess,
-}) => {
+const DeliveryShoppingFlowNew: React.FC<DeliveryShoppingFlowNewProps> = () => {
+    const navigation = useNavigation();
     const { location: userLocation } = useLocation();
     // ✅ NOUVEAU: Détection automatique de devise depuis GPS/localisation
     const detectedCurrency = useCurrencyDetection(
-        dropoffLocation ? { 
-            latitude: dropoffLocation.latitude, 
-            longitude: dropoffLocation.longitude 
+        dropoffLocation ? {
+            latitude: dropoffLocation.latitude,
+            longitude: dropoffLocation.longitude
         } : undefined
     );
     const [loading, setLoading] = useState(false);
@@ -103,6 +99,26 @@ const DeliveryShoppingFlowNew: React.FC<DeliveryShoppingFlowNewProps> = ({
     // Animation d'entrée
     const screenEnterStyle = useScreenEnter();
 
+    // Gestion du bouton retour Android
+    useFocusEffect(
+        useCallback(() => {
+            const onBackPress = () => {
+                handleClose();
+                return true;
+            };
+
+            BackHandler.addEventListener('hardwareBackPress', onBackPress);
+
+            return () => BackHandler.removeEventListener('hardwareBackPress', onBackPress);
+        }, [])
+    );
+
+    const handleClose = useCallback(() => {
+        if (navigation.canGoBack()) {
+            navigation.goBack();
+        }
+    }, [navigation]);
+
     // Calculer distance
     const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
         const R = 6371;
@@ -130,9 +146,9 @@ const DeliveryShoppingFlowNew: React.FC<DeliveryShoppingFlowNewProps> = ({
         }
     }, [pickupLocation, dropoffLocation]);
 
-    // Charger supermarchés
-    useEffect(() => {
-        if (visible) {
+    // Charger supermarchés au montage
+    useFocusEffect(
+        useCallback(() => {
             loadSupermarkets();
             if (userLocation) {
                 setDropoffLocation({
@@ -141,8 +157,8 @@ const DeliveryShoppingFlowNew: React.FC<DeliveryShoppingFlowNewProps> = ({
                     address: '',
                 });
             }
-        }
-    }, [visible, userLocation]);
+        }, [userLocation])
+    );
 
     // Mettre à jour pickupLocation quand supermarché sélectionné
     useEffect(() => {
@@ -373,16 +389,14 @@ const DeliveryShoppingFlowNew: React.FC<DeliveryShoppingFlowNewProps> = ({
                         {
                             text: 'OK',
                             onPress: () => {
-                                if (onSuccess) {
-                                    onSuccess(result.data.id);
-                                }
-                                onClose();
+                                // Navigation vers le suivi de la livraison
+                                navigation.navigate('DeliveryShoppingTracking' as never, { deliveryId: result.data.id } as never);
                             },
                         },
                     ]
                 );
             } else {
-                Alert.alert('Erreur', result.error || 'Impossible de créer la commande');
+                Alert.alert('Erreur', (result as any).error || 'Impossible de créer la commande');
             }
         } catch (error: any) {
             console.error('Erreur création commande:', error);
@@ -462,46 +476,39 @@ const DeliveryShoppingFlowNew: React.FC<DeliveryShoppingFlowNewProps> = ({
 
     return (
         <>
-            <Modal
-                visible={visible}
-                animationType="slide"
-                presentationStyle="pageSheet"
-                onRequestClose={onClose}
-            >
-                <View style={styles.container}>
-                    {/* Header amélioré */}
-                    <LinearGradient
-                        colors={['#10B981', '#059669']}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0 }}
-                        style={styles.header}
-                    >
-                        <View style={styles.headerContent}>
-                            <SafeIcon name="shopping-cart" size={24} color="#FFFFFF" />
-                            <View style={styles.headerText}>
-                                <Text style={styles.headerTitle}>Courses supermarché</Text>
-                                <Text style={styles.headerSubtitle}>Composez votre panier et suivez votre coursier</Text>
-                            </View>
+            <View style={styles.container}>
+                {/* Header amélioré */}
+                <LinearGradient
+                    colors={['#10B981', '#059669']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.header}
+                >
+                    <View style={styles.headerContent}>
+                        <SafeIcon name="shopping-cart" size={24} color="#FFFFFF" />
+                        <View style={styles.headerText}>
+                            <Text style={styles.headerTitle}>Courses supermarché</Text>
+                            <Text style={styles.headerSubtitle}>Composez votre panier et suivez votre coursier</Text>
                         </View>
-                        <TouchableOpacity
-                            onPress={onClose}
-                            style={styles.closeButton}
-                            disabled={loading}
-                        >
-                            <SafeIcon name="x" size={24} color="#FFFFFF" />
-                        </TouchableOpacity>
-                    </LinearGradient>
+                    </View>
+                    <TouchableOpacity
+                        onPress={handleClose}
+                        style={styles.closeButton}
+                        disabled={loading}
+                    >
+                        <SafeIcon name="x" size={24} color="#FFFFFF" />
+                    </TouchableOpacity>
+                </LinearGradient>
 
-                    {/* Content avec animation */}
-                    <Animated.View style={[styles.content, screenEnterStyle.style as any]}>
-                        <StepWizardForm
-                            steps={steps}
-                            onComplete={handleComplete}
-                            onCancel={onClose}
-                        />
-                    </Animated.View>
-                </View>
-            </Modal>
+                {/* Content avec animation */}
+                <Animated.View style={[styles.content, screenEnterStyle.style as any]}>
+                    <StepWizardForm
+                        steps={steps}
+                        onComplete={handleComplete}
+                        onCancel={handleClose}
+                    />
+                </Animated.View>
+            </View>
 
             {/* Modal GPS */}
             <ModernGPSModal

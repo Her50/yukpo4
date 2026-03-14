@@ -1,5 +1,5 @@
 import * as Clipboard from 'expo-clipboard';
-import { ChatCircle, Copy, Facebook, Link as LinkIcon, Mail, Share2, Twitter, X } from 'lucide-react-native';
+import { Copy, Facebook, Link as LinkIcon, Mail, MessageCircle, Share2, Twitter, X } from 'lucide-react-native';
 import React from 'react';
 import { Alert, Linking, Modal, Share, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
@@ -151,7 +151,7 @@ const ShareServiceModal: React.FC<ShareServiceModalProps> = ({ open, onClose, se
                   style={[styles.shareButton, styles.whatsappButton]}
                   onPress={() => handleShare('whatsapp')}
                 >
-                  <ChatCircle size={16} color="white" />
+                  <MessageCircle size={16} color="white" />
                   <Text style={styles.shareButtonText}>WhatsApp</Text>
                 </TouchableOpacity>
 

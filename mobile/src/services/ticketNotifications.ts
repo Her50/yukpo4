@@ -144,7 +144,7 @@ class TicketNotificationService {
                     sound: true,
                     priority: Notifications.AndroidNotificationPriority.HIGH,
                 },
-                trigger: reminderDate,
+                trigger: { type: 'date', date: reminderDate } as any,
             });
 
             // Sauvegarder l'identifiant pour pouvoir l'annuler
@@ -179,7 +179,7 @@ class TicketNotificationService {
                     sound: true,
                     priority: Notifications.AndroidNotificationPriority.HIGH,
                 },
-                trigger: reminderDate,
+                trigger: { type: 'date', date: reminderDate } as any,
             });
 
             await this.saveNotificationId(data.paymentId, 'reminder_2h', identifier);

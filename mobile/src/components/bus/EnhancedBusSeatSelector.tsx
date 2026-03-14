@@ -200,7 +200,7 @@ const EnhancedBusSeatSelector: React.FC<EnhancedBusSeatSelectorProps> = ({
         onStart: (_, ctx: any) => {
             ctx.startScale = scale.value;
         },
-        onActive: (event, ctx) => {
+        onActive: (event: any, ctx: any) => {
             const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, ctx.startScale * event.scale));
             scale.value = newScale;
             setZoomLevel(newScale);

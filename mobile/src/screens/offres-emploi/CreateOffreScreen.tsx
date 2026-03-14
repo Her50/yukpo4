@@ -113,10 +113,10 @@ const CreateOffreScreen: React.FC = () => {
     };
 
     const handleUseCurrentLocation = () => {
-        if (location?.latitude && location?.longitude) {
+        if (location?.coords?.latitude && location?.coords?.longitude) {
             setFormData({
                 ...formData,
-                gps: `${location.latitude},${location.longitude}`,
+                gps: `${location.coords.latitude},${location.coords.longitude}`,
             });
         } else {
             Alert.alert('Erreur', 'Position GPS non disponible');
@@ -139,7 +139,8 @@ const CreateOffreScreen: React.FC = () => {
             });
 
             if (response.success && response.data) {
-                const data = response.data.data || response.data;
+                const rd: any = response.data;
+                const data = rd.data || rd;
 
                 // Remplir le formulaire avec les données extraites par l'IA
                 setFormData({
@@ -223,7 +224,7 @@ const CreateOffreScreen: React.FC = () => {
             const response = await offreEmploiService.createOffre(payload);
 
             if (response.success) {
-                const offreId = response.data?.id || response.data?.offre_id;
+                const offreId = (response.data as any)?.id || (response.data as any)?.offre_id;
                 Alert.alert('Succès', 'Offre créée avec succès !', [
                     {
                         text: 'Voir les candidatures',

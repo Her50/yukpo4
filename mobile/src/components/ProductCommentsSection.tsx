@@ -907,6 +907,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                     >
                         <Text style={styles.emojiButtonText}>😀</Text>
                     </TouchableOpacity>
+                    <View style={{ flex: 1 }} />
                     <TouchableOpacity
                         style={[
                             styles.composerSendButton,
@@ -1632,6 +1633,7 @@ const styles = StyleSheet.create({
     },
     composerInputActions: {
         flexDirection: 'row',
+        alignItems: 'center',
         gap: 8,
         paddingHorizontal: 8,
         paddingBottom: 8,

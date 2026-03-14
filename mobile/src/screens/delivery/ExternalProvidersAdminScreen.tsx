@@ -70,7 +70,7 @@ const ExternalProvidersAdminScreen: React.FC = () => {
         try {
             setLoading(true);
             const response = await apiGet('/api/admin/external-providers');
-            const data = response?.data || response;
+            const data: any = response?.data || response;
             const list = data?.providers || [];
             setProviders(list);
         } catch (error: any) {
@@ -95,7 +95,7 @@ const ExternalProvidersAdminScreen: React.FC = () => {
                 contact_email: createForm.contact_email.trim() || null,
             });
 
-            const data = response?.data || response;
+            const data: any = response?.data || response;
             if (data?.success !== false) {
                 const provider = data?.provider;
                 setShowCreateModal(false);

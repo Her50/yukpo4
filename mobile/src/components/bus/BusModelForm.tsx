@@ -20,6 +20,7 @@ import SafeIcon from '../SafeIcon';
 export interface BusModel {
     id?: string;
     nom_modele: string;
+    name?: string;
     total_seats: number;
     classe: string;
     prix_base: number;

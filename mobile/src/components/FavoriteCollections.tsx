@@ -63,7 +63,7 @@ export const FavoriteCollections: React.FC<FavoriteCollectionsProps> = ({
         try {
             const response = await apiGet(`/api/products/${serviceId}/${productId}/collections`);
             if (response.success && response.data) {
-                setSelectedCollections(response.data.map((c: any) => c.id));
+                setSelectedCollections((response.data as any[]).map((c: any) => c.id));
             }
         } catch (error) {
             console.error('[FavoriteCollections] Erreur chargement collections produit:', error);

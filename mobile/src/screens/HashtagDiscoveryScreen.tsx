@@ -69,8 +69,9 @@ const HashtagDiscoveryScreen: React.FC = () => {
             );
 
             if (response.success && response.data) {
-                const newVideos = response.data.data || [];
-                const total = response.data.total || 0;
+                const rd: any = response.data;
+                const newVideos = rd.data || [];
+                const total = rd.total || 0;
 
                 if (reset) {
                     setVideos(newVideos);
@@ -93,7 +94,7 @@ const HashtagDiscoveryScreen: React.FC = () => {
     const loadHashtagInfo = useCallback(async () => {
         try {
             const response = await apiGet(`/api/hashtags/search?q=${encodeURIComponent(hashtag)}&limit=1`);
-            if (response.success && response.data && response.data.length > 0) {
+            if (response.success && response.data && (response.data as any[]).length > 0) {
                 setHashtagInfo(response.data[0]);
             }
         } catch (error) {

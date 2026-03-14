@@ -35,6 +35,7 @@ interface AgenceVoyageSearchFilters {
     heure_depart?: string; // Heure de départ
     ville_depart?: string; // Ville de départ
     ville_arrivee?: string; // Ville d'arrivée
+    compagnie_bus_filter?: string; // Filtre par compagnie de bus
 }
 
 const AgenceVoyageSearchScreen: React.FC = () => {

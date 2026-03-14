@@ -446,6 +446,9 @@ export interface LocationObject {
     location_vector?: string[];     // Enrichi par backend
     google_types?: string[];        // ✅ NOUVEAU: Types Google Places API (évite le hardcodage)
     place_id?: string;              // ✅ NOUVEAU: Place ID Google Places
+    geometry?: {
+        coordinates?: number[];
+    };
 }
 
 interface LocationSelectorProps {

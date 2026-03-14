@@ -11,8 +11,8 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { apiGet, apiPost } from '../../services/api';
@@ -80,8 +80,8 @@ const BloodDonationRequestScreen: React.FC = () => {
             if (response.success && response.data) {
                 setBloodBanks(response.data as BloodBank[]);
                 // Si une seule banque et banqueId non fourni, la sélectionner
-                if (response.data.length === 1 && !banqueId) {
-                    setFormData({ ...formData, banque_sang_id: (response.data[0] as BloodBank).id });
+                if ((response.data as any[]).length === 1 && !banqueId) {
+                    setFormData({ ...formData, banque_sang_id: (response.data as any[])[0].id });
                 }
             }
         } catch (error: any) {
@@ -96,7 +96,7 @@ const BloodDonationRequestScreen: React.FC = () => {
         try {
             const response = await apiGet(`/api/blood-donation/compatibility-info/${group}`);
             if (response.success && response.data) {
-                const compatibleGroups = response.data.can_receive_from as string[];
+                const compatibleGroups = (response.data as any).can_receive_from as string[];
                 setMatchingInfo({
                     matchesCount: 0, // Sera calculé lors de la création
                     compatibleGroups: compatibleGroups || [],

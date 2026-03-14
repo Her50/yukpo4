@@ -1,4 +1,4 @@
-import { Camera, FileText, Image, Music, Plus, Video } from 'phosphor-react-native';
+import { Camera, FileText, Image, MusicNote, Plus, Video } from 'phosphor-react-native';
 import React, { useState } from 'react';
 import ReactNative from 'react-native';
 import { Button, Card, IconButton } from 'react-native-paper';
@@ -39,7 +39,7 @@ const MediaManager: React.FC<MediaManagerProps> = ({ mediaFiles, onMediaChange, 
             switch (type) {
                 case 'images': return <Image size={24} color={theme.colors.primary} />;
                 case 'videos': return <Video size={24} color={theme.colors.primary} />;
-                case 'audios': return <Music size={24} color={theme.colors.primary} />;
+                case 'audios': return <MusicNote size={24} color={theme.colors.primary} />;
                 case 'documents': return <FileText size={24} color={theme.colors.primary} />;
                 default: return <FileText size={24} color={theme.colors.primary} />;
             }
@@ -67,7 +67,7 @@ const MediaManager: React.FC<MediaManagerProps> = ({ mediaFiles, onMediaChange, 
     const tabs = [
         { key: 'images', label: 'Images', icon: <Image size={16} /> },
         { key: 'videos', label: 'Vidéos', icon: <Video size={16} /> },
-        { key: 'audios', label: 'Audios', icon: <Music size={16} /> },
+        { key: 'audios', label: 'Audios', icon: <MusicNote size={16} /> },
         { key: 'documents', label: 'Documents', icon: <FileText size={16} /> },
     ];
 

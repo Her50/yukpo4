@@ -1,4 +1,4 @@
-import { Calendar, Clock, DollarSign, Mail, MapPin, Phone, User } from 'phosphor-react-native';
+import { Calendar, Clock, CurrencyDollar, Envelope, MapPin, Phone, User } from 'phosphor-react-native';
 import React, { useEffect, useState } from 'react';
 import ReactNative from 'react-native';
 import { theme } from '../theme/theme';
@@ -95,9 +95,9 @@ const DynamicField: React.FC<DynamicFieldProps> = ({
             case 'time':
                 return <Clock size={20} color={theme.colors.primary} />;
             case 'price':
-                return <DollarSign size={20} color={theme.colors.primary} />;
+                return <CurrencyDollar size={20} color={theme.colors.primary} />;
             case 'email':
-                return <Mail size={20} color={theme.colors.primary} />;
+                return <Envelope size={20} color={theme.colors.primary} />;
             case 'phone':
                 return <Phone size={20} color={theme.colors.primary} />;
             case 'name':

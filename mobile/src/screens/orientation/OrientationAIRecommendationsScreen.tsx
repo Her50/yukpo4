@@ -18,7 +18,7 @@ import { orientationScolaireApi } from '../../services/orientationScolaireApi';
 import { modernColors } from '../../theme/modernTheme';
 
 const OrientationAIRecommendationsScreen: React.FC = () => {
-    const navigation = useNavigation<any>();
+    const navigation = useNavigation() as any;
     const { user } = useAuth();
     const [loading, setLoading] = useState(false);
     const [recommendations, setRecommendations] = useState<any[]>([]);

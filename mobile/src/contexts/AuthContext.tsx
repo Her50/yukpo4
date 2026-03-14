@@ -13,8 +13,10 @@ interface User {
   role: string;
   credits: number;
   photo?: string;
+  avatar?: string;
   token?: string;
   partner_type?: string; // ✅ NOUVEAU: Type de partenaire
+  nom_complet?: string;
 }
 
 interface DecodedToken {

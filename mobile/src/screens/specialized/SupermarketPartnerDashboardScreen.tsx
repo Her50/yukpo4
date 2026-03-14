@@ -1,5 +1,5 @@
 // Dashboard professionnel pour prestataires Supermarché
-// Gestion du catalogue, stocks, promotions et analytics
+// Gestion du catalogue, stocks, promotions, commandes et vérification coursier
 
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -7,20 +7,23 @@ import React, { useCallback, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
+    Modal,
     RefreshControl,
     ScrollView,
     StyleSheet,
+    Switch,
     Text,
+    TextInput,
     TouchableOpacity,
     View,
 } from 'react-native';
 import SafeIcon from '../../components/SafeIcon';
 import { NativeButton } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
-import { apiGet } from '../../services/api';
+import { apiGet, apiPost } from '../../services/api';
 import { getCurrencyIntelligently } from '../../utils/currencyUtils';
 
-type TabType = 'overview' | 'catalog' | 'promos' | 'analytics';
+type TabType = 'overview' | 'catalog' | 'orders' | 'promos' | 'analytics';
 
 interface CatalogProduct {
     id: number;
@@ -42,6 +45,17 @@ const CATEGORIES = [
     { key: 'autres', label: 'Autres', icon: 'package', color: '#6B7280' },
 ];
 
+interface PendingOrder {
+    delivery_id: string;
+    status: string;
+    client_name: string;
+    items_count: number;
+    total_amount: number;
+    created_at: string;
+    courier_name?: string;
+    courier_assigned: boolean;
+}
+
 const SupermarketPartnerDashboardScreen: React.FC = () => {
     const navigation = useNavigation();
     const { user } = useAuth();
@@ -51,22 +65,34 @@ const SupermarketPartnerDashboardScreen: React.FC = () => {
     const [refreshing, setRefreshing] = useState(false);
     const [products, setProducts] = useState<CatalogProduct[]>([]);
     const [stats, setStats] = useState({ total: 0, enStock: 0, enPromo: 0, valeurStock: 0 });
+    const [orders, setOrders] = useState<PendingOrder[]>([]);
+    const [loadingOrders, setLoadingOrders] = useState(false);
+    const [showBulkModal, setShowBulkModal] = useState(false);
+    const [bulkText, setBulkText] = useState('');
+    const [bulkOverwrite, setBulkOverwrite] = useState(false);
+    const [bulkLoading, setBulkLoading] = useState(false);
+    const [showGuide, setShowGuide] = useState(false);
+    const [serviceId, setServiceId] = useState<number | null>(null);
 
     const devise = getCurrencyIntelligently() || 'FCFA';
 
-    const loadData = useCallback(async () => {
+    const loadProducts = useCallback(async () => {
         try {
             // 1. Récupérer les services supermarché du partenaire
-            const resp = await apiGet('/api/specialized-services/user?type=supermarche');
-            const services = (resp as any)?.data?.services || [];
+            const resp: any = await apiGet('/api/specialized-services/user?type=supermarche');
+            const services = resp?.data?.services || [];
+            // Sauvegarder le serviceId pour l'import en masse
+            if (services.length > 0) {
+                setServiceId(services[0].service_id || services[0].id);
+            }
 
             // 2. Pour chaque service, charger les produits réels (service_products)
             const allProducts: CatalogProduct[] = [];
             for (const svc of services) {
                 const serviceId = svc.service_id || svc.id;
                 try {
-                    const prodResp = await apiGet(`/api/supermarkets/${serviceId}/products?limit=100`);
-                    const backendData = (prodResp as any)?.data;
+                    const prodResp: any = await apiGet(`/api/supermarkets/${serviceId}/products?limit=100`);
+                    const backendData = prodResp?.data;
                     const svcProducts = backendData?.products || [];
                     for (const p of svcProducts) {
                         allProducts.push({
@@ -93,19 +119,82 @@ const SupermarketPartnerDashboardScreen: React.FC = () => {
                 valeurStock: allProducts.reduce((sum, p) => sum + ((p.prix || 0) * (p.stock || 0)), 0),
             });
         } catch (e) {
-            console.error('[SupermarketPartnerDashboard] Error:', e);
-        } finally {
-            setLoading(false);
-            setRefreshing(false);
+            console.error('[SupermarketPartnerDashboard] Error produits:', e);
         }
     }, []);
+
+    const loadOrders = useCallback(async () => {
+        setLoadingOrders(true);
+        try {
+            // Charger les commandes en attente de pickup (livraisons assignées au supermarché)
+            const resp: any = await apiGet('/api/delivery/provider/pending-pickups');
+            const data = resp?.data;
+            const deliveries = data?.deliveries || data?.data || [];
+            const mapped: PendingOrder[] = deliveries.map((d: any) => ({
+                delivery_id: d.id || d.delivery_id,
+                status: d.status || 'pending',
+                client_name: d.client_name || d.recipient?.contact_name || 'Client',
+                items_count: d.items_count || d.products?.length || 0,
+                total_amount: d.total_amount || 0,
+                created_at: d.created_at || d.requested_at || '',
+                courier_name: d.courier_name || null,
+                courier_assigned: !!(d.courier_id || d.courier_name),
+            }));
+            setOrders(mapped);
+        } catch (err: any) {
+            console.warn('[SupermarketPartnerDashboard] Erreur chargement commandes:', err);
+            setOrders([]);
+        } finally {
+            setLoadingOrders(false);
+        }
+    }, []);
+
+    const loadData = useCallback(async () => {
+        await Promise.all([loadProducts(), loadOrders()]);
+        setLoading(false);
+        setRefreshing(false);
+    }, [loadProducts, loadOrders]);
 
     useFocusEffect(useCallback(() => { loadData(); }, [loadData]));
     const handleRefresh = () => { setRefreshing(true); loadData(); };
 
-    const TABS: { key: TabType; label: string; icon: string }[] = [
+    const handleBulkImport = async () => {
+        if (!bulkText.trim()) { Alert.alert('Erreur', 'Collez vos données (CSV ou JSON)'); return; }
+        if (!serviceId) { Alert.alert('Erreur', 'Aucun service supermarché trouvé. Créez d\'abord votre service.'); return; }
+        setBulkLoading(true);
+        try {
+            let payload: any = { service_id: serviceId, overwrite_existing: bulkOverwrite };
+            const trimmed = bulkText.trim();
+            if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
+                // JSON
+                const parsed = JSON.parse(trimmed);
+                payload.products = Array.isArray(parsed) ? parsed : [parsed];
+            } else {
+                // CSV
+                payload.csv_data = trimmed;
+            }
+            const resp: any = await apiPost('/api/supermarkets/products/bulk-import', payload);
+            const data = resp?.data as any;
+            setShowBulkModal(false);
+            setBulkText('');
+            Alert.alert(
+                'Import terminé',
+                `${data?.created || 0} produits créés\n${data?.updated || 0} mis à jour${data?.errors?.length > 0 ? `\n\n⚠️ ${data.errors.length} erreur(s):\n${data.errors.slice(0, 3).join('\n')}` : ''}`,
+            );
+            loadProducts();
+        } catch (e: any) {
+            const msg = e?.message || 'Erreur import';
+            if (msg.includes('JSON')) { Alert.alert('Erreur format', 'Le format JSON est invalide. Vérifiez la syntaxe.'); }
+            else { Alert.alert('Erreur', msg); }
+        } finally { setBulkLoading(false); }
+    };
+
+    const pendingOrdersCount = orders.filter(o => o.courier_assigned && ['assigned', 'en_route_pickup', 'arrival_pickup'].includes(o.status)).length;
+
+    const TABS: { key: TabType; label: string; icon: string; badge?: number }[] = [
         { key: 'overview', label: 'Accueil', icon: 'layout-dashboard' },
         { key: 'catalog', label: 'Catalogue', icon: 'package' },
+        { key: 'orders', label: 'Commandes', icon: 'shopping-cart', badge: pendingOrdersCount },
         { key: 'promos', label: 'Promos', icon: 'tag' },
         { key: 'analytics', label: 'Stats', icon: 'bar-chart-2' },
     ];
@@ -132,13 +221,23 @@ const SupermarketPartnerDashboardScreen: React.FC = () => {
                 ))}
             </View>
 
+            {pendingOrdersCount > 0 && (
+                <TouchableOpacity style={s.alertBanner} onPress={() => setActiveTab('orders')}>
+                    <SafeIcon name="alert-circle" size={20} color="#D97706" />
+                    <Text style={s.alertText}>
+                        {pendingOrdersCount} commande{pendingOrdersCount > 1 ? 's' : ''} en attente de pickup
+                    </Text>
+                    <SafeIcon name="chevron-right" size={18} color="#D97706" />
+                </TouchableOpacity>
+            )}
+
             <Text style={s.sectionTitle}>Actions rapides</Text>
             <View style={s.quickRow}>
                 {[
-                    { label: 'Ajouter produit', icon: 'plus-circle', color: '#10B981', onPress: () => setActiveTab('catalog') },
-                    { label: 'Créer promo', icon: 'tag', color: '#F59E0B', onPress: () => setActiveTab('promos') },
-                    { label: 'Vitrine', icon: 'store', color: '#3B82F6', onPress: () => (navigation as any).navigate('SupermarketHome') },
-                    { label: 'BayamSelam', icon: 'search', color: '#8B5CF6', onPress: () => (navigation as any).navigate('BayamSelamSearch') },
+                    { label: 'Ajouter produit', icon: 'plus-circle', color: '#10B981', onPress: () => (navigation as any).navigate('FormulaireYukpoIntelligent', { category: 'supermarche' }) },
+                    { label: 'Import masse', icon: 'upload', color: '#3B82F6', onPress: () => setShowBulkModal(true) },
+                    { label: 'Mes produits', icon: 'package', color: '#F59E0B', onPress: () => (navigation as any).navigate('MesProduits') },
+                    { label: 'Commandes', icon: 'shopping-cart', color: '#EF4444', onPress: () => setActiveTab('orders') },
                 ].map((a, i) => (
                     <TouchableOpacity key={i} style={s.quickAction} onPress={a.onPress}>
                         <View style={[s.quickIcon, { backgroundColor: a.color + '15' }]}>
@@ -197,7 +296,19 @@ const SupermarketPartnerDashboardScreen: React.FC = () => {
     const renderCatalog = () => (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100, padding: 16 }}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}>
-            <NativeButton title="+ Ajouter un produit" onPress={() => Alert.alert('Info', 'Utilisez le formulaire intelligent pour ajouter un produit.')} variant="primary" style={{ marginBottom: 16 }} />
+            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
+                <View style={{ flex: 1 }}>
+                    <NativeButton title="+ Ajouter un produit" onPress={() => (navigation as any).navigate('FormulaireYukpoIntelligent', { category: 'supermarche' })} variant="primary" />
+                </View>
+                <View style={{ flex: 1 }}>
+                    <NativeButton title="Gerer mes produits" onPress={() => (navigation as any).navigate('MesProduits')} />
+                </View>
+            </View>
+            <TouchableOpacity style={s.bulkImportBtn} onPress={() => setShowBulkModal(true)}>
+                <SafeIcon name="upload" size={16} color="#10B981" />
+                <Text style={s.bulkImportBtnText}>Import en masse (CSV / JSON)</Text>
+                <SafeIcon name="chevron-right" size={16} color="#10B981" />
+            </TouchableOpacity>
             {products.length === 0 ? (
                 <View style={s.emptyState}>
                     <SafeIcon name="package" size={48} color="#9CA3AF" />
@@ -244,6 +355,67 @@ const SupermarketPartnerDashboardScreen: React.FC = () => {
         </ScrollView>
     );
 
+    const renderOrders = () => (
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100, padding: 16 }}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}>
+            <Text style={s.sectionTitle}>Commandes en attente de pickup</Text>
+            {loadingOrders ? (
+                <ActivityIndicator size="large" color="#10B981" style={{ marginTop: 40 }} />
+            ) : orders.length === 0 ? (
+                <View style={s.emptyState}>
+                    <SafeIcon name="inbox" size={48} color="#9CA3AF" />
+                    <Text style={s.emptyTitle}>Aucune commande en attente</Text>
+                    <Text style={s.emptyText}>Les commandes des clients apparaitront ici quand un coursier sera assigne.</Text>
+                </View>
+            ) : (
+                orders.map((order, i) => {
+                    const canVerify = order.courier_assigned && ['assigned', 'en_route_pickup', 'arrival_pickup'].includes(order.status);
+                    const statusLabel = order.status === 'arrival_pickup' ? 'Coursier arrive' :
+                        order.status === 'en_route_pickup' ? 'Coursier en route' :
+                            order.status === 'assigned' ? 'Coursier assigne' :
+                                order.status === 'shopping_pending' ? 'En preparation' : order.status;
+                    const statusColor = order.status === 'arrival_pickup' ? '#10B981' :
+                        order.status === 'en_route_pickup' ? '#3B82F6' : '#F59E0B';
+
+                    return (
+                        <View key={order.delivery_id || i} style={s.orderCard}>
+                            <View style={s.orderHeader}>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={s.orderClient}>{order.client_name}</Text>
+                                    <Text style={s.orderMeta}>
+                                        {order.items_count} article{order.items_count > 1 ? 's' : ''}
+                                        {order.total_amount > 0 ? ` · ${order.total_amount.toLocaleString()} ${devise}` : ''}
+                                    </Text>
+                                    {order.courier_name && (
+                                        <Text style={s.orderCourier}>Coursier: {order.courier_name}</Text>
+                                    )}
+                                    {order.created_at && (
+                                        <Text style={s.orderDate}>
+                                            {new Date(order.created_at).toLocaleDateString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                                        </Text>
+                                    )}
+                                </View>
+                                <View style={[s.orderStatusBadge, { backgroundColor: statusColor + '20' }]}>
+                                    <Text style={[s.orderStatusText, { color: statusColor }]}>{statusLabel}</Text>
+                                </View>
+                            </View>
+
+                            {canVerify && (
+                                <TouchableOpacity
+                                    style={s.verifyButton}
+                                    onPress={() => (navigation as any).navigate('ProviderCourierVerification', { deliveryId: order.delivery_id })}
+                                >
+                                    <SafeIcon name="shield-check" size={18} color="#fff" />
+                                    <Text style={s.verifyButtonText}>Verifier le coursier et remettre les produits</Text>
+                                </TouchableOpacity>
+                            )}
+                        </View>
+                    );
+                })
+            )}
+        </ScrollView>
+    );
+
     const renderAnalytics = () => (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100, padding: 16 }}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}>
@@ -282,6 +454,9 @@ const SupermarketPartnerDashboardScreen: React.FC = () => {
                         <TouchableOpacity key={t.key} style={[s.tab, activeTab === t.key && s.tabActive]} onPress={() => setActiveTab(t.key)}>
                             <SafeIcon name={t.icon as any} size={16} color={activeTab === t.key ? '#fff' : 'rgba(255,255,255,0.6)'} />
                             <Text style={[s.tabLabel, activeTab === t.key && s.tabLabelActive]}>{t.label}</Text>
+                            {t.badge && t.badge > 0 ? (
+                                <View style={s.tabBadge}><Text style={s.tabBadgeText}>{t.badge}</Text></View>
+                            ) : null}
                         </TouchableOpacity>
                     ))}
                 </View>
@@ -289,9 +464,123 @@ const SupermarketPartnerDashboardScreen: React.FC = () => {
             <View style={s.content}>
                 {activeTab === 'overview' && renderOverview()}
                 {activeTab === 'catalog' && renderCatalog()}
+                {activeTab === 'orders' && renderOrders()}
                 {activeTab === 'promos' && renderPromos()}
                 {activeTab === 'analytics' && renderAnalytics()}
             </View>
+
+            {/* Modal Import en masse */}
+            <Modal visible={showBulkModal} animationType="slide" transparent onRequestClose={() => setShowBulkModal(false)}>
+                <View style={s.modalOverlay}>
+                    <View style={s.modalContent}>
+                        <View style={s.modalHeader}>
+                            <Text style={s.modalTitle}>Import en masse de produits</Text>
+                            <TouchableOpacity onPress={() => setShowBulkModal(false)}>
+                                <SafeIcon name="x" size={24} color="#6B7280" />
+                            </TouchableOpacity>
+                        </View>
+
+                        <ScrollView style={{ maxHeight: 500 }} contentContainerStyle={{ padding: 16 }}>
+                            {/* Guide / Aide */}
+                            <TouchableOpacity style={s.guideToggle} onPress={() => setShowGuide(!showGuide)}>
+                                <SafeIcon name="help-circle" size={18} color="#3B82F6" />
+                                <Text style={s.guideToggleText}>Comment preparer mes donnees ?</Text>
+                                <SafeIcon name={showGuide ? 'chevron-up' : 'chevron-down'} size={16} color="#3B82F6" />
+                            </TouchableOpacity>
+
+                            {showGuide && (
+                                <View style={s.guideBox}>
+                                    <Text style={s.guideTitle}>Format CSV (recommande)</Text>
+                                    <Text style={s.guideText}>
+                                        Chaque ligne = 1 produit. Colonnes separees par virgule, point-virgule ou tabulation.
+                                    </Text>
+                                    <View style={s.codeBlock}>
+                                        <Text style={s.codeText}>
+                                            {`nom;prix;stock;categorie;marque;unite\nRiz 5kg;3500;50;alimentaire;Uncle Ben's;sac\nLait Gloria;800;100;boissons;Gloria;boite\nSavon Palmolive;500;200;hygiene;Palmolive;piece`}
+                                        </Text>
+                                    </View>
+                                    <Text style={s.guideSubtitle}>Colonnes disponibles (dans l'ordre) :</Text>
+                                    <Text style={s.guideText}>
+                                        1. nom (obligatoire){"\n"}
+                                        2. prix{"\n"}
+                                        3. stock (quantite){"\n"}
+                                        4. categorie (alimentaire, boissons, hygiene, menager, bebe, autres){"\n"}
+                                        5. marque{"\n"}
+                                        6. unite (kg, L, piece, sac, boite...){"\n"}
+                                        7. description{"\n"}
+                                        8. code_barre{"\n"}
+                                        9. en_promotion (oui/non){"\n"}
+                                        10. prix_promo
+                                    </Text>
+
+                                    <Text style={[s.guideTitle, { marginTop: 12 }]}>Format JSON</Text>
+                                    <View style={s.codeBlock}>
+                                        <Text style={s.codeText}>
+                                            {`[\n  {"nom": "Riz 5kg", "prix": 3500, "stock": 50, "categorie": "alimentaire"},\n  {"nom": "Lait Gloria", "prix": 800, "stock": 100}\n]`}
+                                        </Text>
+                                    </View>
+
+                                    <Text style={[s.guideTitle, { marginTop: 12 }]}>Conseils</Text>
+                                    <Text style={s.guideText}>
+                                        - Vous pouvez copier-coller depuis Excel ou Google Sheets{"\n"}
+                                        - Maximum 500 produits par import{"\n"}
+                                        - Seul le nom est obligatoire{"\n"}
+                                        - Les images peuvent etre ajoutees apres via "Mes Produits"{"\n"}
+                                        - Activez "Remplacer existants" pour mettre a jour les prix/stocks
+                                    </Text>
+                                </View>
+                            )}
+
+                            <Text style={s.inputLabel}>Collez vos donnees ici (CSV ou JSON) :</Text>
+                            <TextInput
+                                style={s.bulkTextInput}
+                                value={bulkText}
+                                onChangeText={setBulkText}
+                                placeholder={`nom;prix;stock;categorie;marque\nRiz 5kg;3500;50;alimentaire;Uncle Ben's\nLait Gloria;800;100;boissons;Gloria`}
+                                placeholderTextColor="#9CA3AF"
+                                multiline
+                                textAlignVertical="top"
+                            />
+
+                            <View style={s.switchRow}>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={s.switchLabel}>Remplacer les produits existants</Text>
+                                    <Text style={s.switchHint}>Si un produit avec le meme nom existe, il sera mis a jour</Text>
+                                </View>
+                                <Switch
+                                    value={bulkOverwrite}
+                                    onValueChange={setBulkOverwrite}
+                                    trackColor={{ false: '#D1D5DB', true: '#10B981' }}
+                                />
+                            </View>
+
+                            {bulkText.trim().length > 0 && (
+                                <Text style={s.previewCount}>
+                                    Environ {bulkText.trim().split('\n').filter(l => l.trim()).length} ligne(s) detectee(s)
+                                </Text>
+                            )}
+                        </ScrollView>
+
+                        <View style={s.modalFooter}>
+                            <TouchableOpacity style={s.cancelBtn} onPress={() => { setShowBulkModal(false); setBulkText(''); }}>
+                                <Text style={s.cancelBtnText}>Annuler</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[s.importBtn, (!bulkText.trim() || bulkLoading) && { opacity: 0.5 }]}
+                                onPress={handleBulkImport}
+                                disabled={!bulkText.trim() || bulkLoading}
+                            >
+                                {bulkLoading ? (
+                                    <ActivityIndicator size="small" color="#fff" />
+                                ) : (
+                                    <SafeIcon name="upload" size={16} color="#fff" />
+                                )}
+                                <Text style={s.importBtnText}>{bulkLoading ? 'Import...' : 'Importer'}</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 };
@@ -342,6 +631,45 @@ const s = StyleSheet.create({
     analyticsDot: { width: 8, height: 8, borderRadius: 4, marginRight: 10 },
     analyticsLabel: { flex: 1, fontSize: 14, color: '#374151' },
     analyticsValue: { fontSize: 18, fontWeight: '700' },
+    alertBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FEF3C7', borderRadius: 10, padding: 12, gap: 8, marginTop: 16 },
+    alertText: { flex: 1, fontSize: 13, color: '#92400E', fontWeight: '500' },
+    tabBadge: { backgroundColor: '#EF4444', borderRadius: 10, minWidth: 16, height: 16, justifyContent: 'center', alignItems: 'center', marginLeft: 2 },
+    tabBadgeText: { color: '#fff', fontSize: 9, fontWeight: '700' },
+    orderCard: { backgroundColor: '#fff', borderRadius: 12, padding: 14, marginBottom: 10, elevation: 1 },
+    orderHeader: { flexDirection: 'row', alignItems: 'flex-start' },
+    orderClient: { fontSize: 15, fontWeight: '600', color: '#1F2937' },
+    orderMeta: { fontSize: 12, color: '#6B7280', marginTop: 2 },
+    orderCourier: { fontSize: 12, color: '#3B82F6', marginTop: 2 },
+    orderDate: { fontSize: 11, color: '#9CA3AF', marginTop: 2, fontStyle: 'italic' },
+    orderStatusBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+    orderStatusText: { fontSize: 11, fontWeight: '600' },
+    verifyButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#10B981', borderRadius: 10, paddingVertical: 12, marginTop: 12 },
+    verifyButtonText: { color: '#fff', fontWeight: '600', fontSize: 13 },
+    bulkImportBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, backgroundColor: '#ECFDF5', borderRadius: 10, borderWidth: 1, borderColor: '#A7F3D0', marginBottom: 16 },
+    bulkImportBtnText: { flex: 1, fontSize: 13, fontWeight: '600', color: '#10B981' },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+    modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '90%' },
+    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
+    modalTitle: { fontSize: 17, fontWeight: '700', color: '#1F2937' },
+    modalFooter: { flexDirection: 'row', gap: 10, padding: 16, borderTopWidth: 1, borderTopColor: '#F3F4F6' },
+    guideToggle: { flexDirection: 'row', alignItems: 'center', gap: 6, padding: 10, backgroundColor: '#EFF6FF', borderRadius: 8, marginBottom: 12 },
+    guideToggleText: { flex: 1, fontSize: 13, fontWeight: '600', color: '#3B82F6' },
+    guideBox: { backgroundColor: '#F9FAFB', borderRadius: 10, padding: 14, marginBottom: 16, borderWidth: 1, borderColor: '#E5E7EB' },
+    guideTitle: { fontSize: 14, fontWeight: '700', color: '#1F2937', marginBottom: 4 },
+    guideSubtitle: { fontSize: 13, fontWeight: '600', color: '#374151', marginTop: 10, marginBottom: 4 },
+    guideText: { fontSize: 12, color: '#4B5563', lineHeight: 18 },
+    codeBlock: { backgroundColor: '#1F2937', borderRadius: 8, padding: 10, marginVertical: 6 },
+    codeText: { fontSize: 11, color: '#A5F3FC', fontFamily: 'monospace' },
+    inputLabel: { fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 6 },
+    bulkTextInput: { borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 10, padding: 12, minHeight: 120, fontSize: 12, fontFamily: 'monospace', color: '#1F2937', backgroundColor: '#FAFAFA' },
+    switchRow: { flexDirection: 'row', alignItems: 'center', marginTop: 14, gap: 10 },
+    switchLabel: { fontSize: 13, fontWeight: '600', color: '#374151' },
+    switchHint: { fontSize: 11, color: '#9CA3AF', marginTop: 1 },
+    previewCount: { fontSize: 12, color: '#6B7280', marginTop: 8, fontStyle: 'italic' },
+    cancelBtn: { flex: 1, paddingVertical: 12, borderRadius: 10, backgroundColor: '#F3F4F6', alignItems: 'center' },
+    cancelBtnText: { fontSize: 14, fontWeight: '600', color: '#6B7280' },
+    importBtn: { flex: 1, flexDirection: 'row', gap: 6, paddingVertical: 12, borderRadius: 10, backgroundColor: '#10B981', alignItems: 'center', justifyContent: 'center' },
+    importBtnText: { fontSize: 14, fontWeight: '600', color: '#fff' },
 });
 
 export default SupermarketPartnerDashboardScreen;

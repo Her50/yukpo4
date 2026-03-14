@@ -1,4 +1,4 @@
-import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import React, { useCallback, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import QRCodeScanner from '../../components/QRCodeScanner';
@@ -7,17 +7,16 @@ import { NativeButton } from '../../components/SafeNativeDesign';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { apiPost } from '../../services/api';
 import { immobilierService } from '../../services/immobilierService';
-import { modernColors } from '../../theme/modernTheme';
+import { modernColors, modernStyles } from '../../theme/modernTheme';
 
 type HotelQRScannerRouteParams = {
   propertyId?: number;
   propertyName?: string;
 };
 
-type HotelQRScannerRouteProp = RouteProp<
-  { HotelQRScanner: HotelQRScannerRouteParams },
-  'HotelQRScanner'
->;
+type HotelQRScannerRouteProp = {
+  params?: HotelQRScannerRouteParams;
+};
 
 type ScanResponse = {
   reservation_id: number;
@@ -40,7 +39,7 @@ type ScanResponse = {
 
 const HotelQRScannerScreen: React.FC = () => {
   const navigation = useNavigation();
-  const route = useRoute<HotelQRScannerRouteProp>();
+  const route = useRoute() as any;
   const [scannerVisible, setScannerVisible] = useState(true);
   const [loading, setLoading] = useState(false);
   const [scanData, setScanData] = useState<ScanResponse | null>(null);
@@ -470,7 +469,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 16,
-    ...modernColors.shadowLight,
+    ...modernStyles.shadowLight,
   },
   resultHeader: {
     flexDirection: 'row',

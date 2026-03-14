@@ -3,14 +3,14 @@
  * Gain estimé: +35% de perception de fluidité
  */
 
-import { CardStyleInterpolator, TransitionSpec } from '@react-navigation/stack';
+import type { StackCardStyleInterpolator, TransitionSpec } from '@react-navigation/stack';
 import { Easing } from 'react-native'; // ✅ CORRIGÉ: Utiliser Easing de react-native au lieu de reanimated
 
 // Configuration des transitions
 export const transitionConfig: {
     [key: string]: {
         transitionSpec: TransitionSpec;
-        cardStyleInterpolator: CardStyleInterpolator;
+        cardStyleInterpolator: StackCardStyleInterpolator;
     };
 } = {
     // Transition fade (par défaut) - ✅ OPTIMISÉ: Ultra-fluide et rapide

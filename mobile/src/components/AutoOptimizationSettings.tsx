@@ -59,7 +59,7 @@ export const AutoOptimizationSettings: React.FC<AutoOptimizationSettingsProps> =
             const response = await apiGet(endpoint);
 
             if (response.success && response.data) {
-                setSettings({ ...defaultSettings, ...response.data.settings });
+                setSettings({ ...defaultSettings, ...(response.data as any).settings });
             }
         } catch (error) {
             console.error('[AutoOptimizationSettings] Erreur chargement:', error);

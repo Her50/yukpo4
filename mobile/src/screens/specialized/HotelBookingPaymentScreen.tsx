@@ -1,7 +1,7 @@
 // ✅ NOUVEAU: Écran de paiement pour réservation hôtel/meublé
 // Date: 2026-01-26
 
-import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import React, { useState } from 'react';
 import {
     Alert,
@@ -17,7 +17,7 @@ import { SafeNativeView } from '../../components/SafeNativeView';
 import { useAuth } from '../../contexts/AuthContext';
 import { userApi } from '../../services/api';
 import { immobilierService } from '../../services/immobilierService';
-import { modernColors } from '../../theme/modernTheme';
+import { modernColors, modernStyles } from '../../theme/modernTheme';
 
 type RouteParams = {
     reservationId: number;
@@ -27,7 +27,7 @@ type RouteParams = {
 
 const HotelBookingPaymentScreen: React.FC = () => {
     const navigation = useNavigation();
-    const route = useRoute<RouteProp<{ params: RouteParams }, 'params'>>();
+    const route = useRoute() as any;
     const { user } = useAuth();
     const reservationId = route.params?.reservationId;
     const montantTotal = route.params?.montantTotal;
@@ -354,7 +354,7 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         padding: 16,
         marginBottom: 16,
-        ...modernColors.shadowLight,
+        ...modernStyles.shadowLight,
     },
     sectionTitle: {
         fontSize: 18,
@@ -445,7 +445,7 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         padding: 16,
         marginBottom: 16,
-        ...modernColors.shadowLight,
+        ...modernStyles.shadowLight,
     },
     summaryRow: {
         flexDirection: 'row',

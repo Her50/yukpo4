@@ -1,6 +1,6 @@
 // Migration vers Lucide React Native pour un design moderne
 import { useNavigation } from '@react-navigation/native';
-import { BarChart3, Bell, Briefcase, Camera, ChatCircle, Clock, Document, Heart, Home, PlayCircle, Plus, Search, Settings, Share, Star, User, X } from 'phosphor-react-native';
+import { Bell, Briefcase, Camera, ChartBar, ChatCircle, Clock, FileText, Gear, Heart, House, MagnifyingGlass, PlayCircle, Plus, Share, Star, User, X } from 'phosphor-react-native';
 import * as React from 'react';
 import { Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { theme } from '../theme/theme';
@@ -14,21 +14,21 @@ interface QuickActionsMenuProps {
 const getActionIcon = (iconName: string, size: number, color: string) => {
     const iconMap: { [key: string]: any } = {
         'add': <Plus size={size} color={color} />,
-        'search': <Search size={size} color={color} />,
-        'settings': <Settings size={size} color={color} />,
+        'search': <MagnifyingGlass size={size} color={color} />,
+        'settings': <Gear size={size} color={color} />,
         'person': <User size={size} color={color} />,
         'chatbubbles': <ChatCircle size={size} color={color} />,
         'camera': <Camera size={size} color={color} />,
-        'document': <Document size={size} color={color} />,
+        'document': <FileText size={size} color={color} />,
         'share': <Share size={size} color={color} />,
         'heart': <Heart size={size} color={color} />,
         'star': <Star size={size} color={color} />,
         'notifications': <Bell size={size} color={color} />,
-        'home': <Home size={size} color={color} />,
+        'home': <House size={size} color={color} />,
         'briefcase': <Briefcase size={size} color={color} />,
         'time': <Clock size={size} color={color} />,
-        'analytics': <BarChart3 size={size} color={color} />,
-        'card': <Document size={size} color={color} />,
+        'analytics': <ChartBar size={size} color={color} />,
+        'card': <FileText size={size} color={color} />,
         'video': <PlayCircle size={size} color={color} />,
     };
 

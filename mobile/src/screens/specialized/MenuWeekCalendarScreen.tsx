@@ -73,7 +73,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
         estimatedCost: number;
         times: number; // Nombre de fois de consommation
     }>>([]);
-    const [familyProfile, setFamilyProfile] = useState<{ total_members: number } | null>(null);
+    const [familyProfile, setFamilyProfile] = useState<{ total_members: number; adults_count?: number; children_count?: number } | null>(null);
 
     // ✅ NOUVEAU: États pour commande coursier
     const [showOrderModal, setShowOrderModal] = useState(false);
@@ -3152,37 +3152,6 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         color: modernColors.primary,
     },
-    inputGroup: {
-        marginBottom: 20,
-    },
-    label: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#111827',
-        marginBottom: 8,
-    },
-    required: {
-        color: modernColors.error,
-    },
-    feesLabel: {
-        fontSize: 14,
-        color: '#6B7280',
-    },
-    feesValue: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#111827',
-    },
-    feesTotalLabel: {
-        fontSize: 16,
-        fontWeight: '700',
-        color: '#111827',
-    },
-    feesTotalValue: {
-        fontSize: 18,
-        fontWeight: '900',
-        color: modernColors.primary,
-    },
     insufficientBalanceText: {
         fontSize: 12,
         color: '#EF4444',
@@ -3238,6 +3207,40 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         padding: 20,
         fontStyle: 'italic',
+    },
+    editableCellInput: {
+        fontSize: 12,
+        color: '#111827',
+        borderWidth: 1,
+        borderColor: '#D1D5DB',
+        borderRadius: 6,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        backgroundColor: '#fff',
+    },
+    addIngredientButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 8,
+        borderRadius: 8,
+        backgroundColor: '#EFF6FF',
+        gap: 4,
+        marginTop: 8,
+    },
+    addIngredientButtonText: {
+        fontSize: 13,
+        color: modernColors.primary,
+        fontWeight: '600',
+    },
+    required: {
+        color: '#EF4444',
+        fontWeight: '700',
+    },
+    helpText: {
+        fontSize: 12,
+        color: '#9CA3AF',
+        marginTop: 4,
     },
 });
 

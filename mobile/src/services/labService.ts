@@ -9,6 +9,10 @@ export interface LabAnalysisResult {
     confidence: number; // 0.0-1.0
     recommendations: string[];
     follow_up_exams: string[];
+    examination_type_name?: string;
+    laboratory_name?: string;
+    completed_at?: string;
+    results?: any;
 }
 
 export interface Anomaly {
@@ -41,7 +45,12 @@ export interface LabExamination {
     notes: string | null;
     examination_date: string | null;
     created_at: string;
+    scheduled_date?: string | null;
+    completed_at?: string | null;
 }
+
+// Alias pour compatibilité
+export type ExaminationResults = LabAnalysisResult;
 
 export interface LabAnalytics {
     total_examinations: number;
@@ -49,6 +58,7 @@ export interface LabAnalytics {
     examinations_30d: number;
     avg_completion_time_hours: number | null;
     examination_types_count: number | null;
+    completed_count?: number;
 }
 
 export const labService = {

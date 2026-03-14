@@ -2,7 +2,7 @@
  * HistoriqueProduitsConsultesScreen - Affiche les produits récemment consultés par l'utilisateur
  */
 
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -53,11 +53,11 @@ const HistoriqueProduitsConsultesScreen: React.FC = () => {
       if (stored) {
         const history: ViewedProduct[] = JSON.parse(stored);
         // Trier par date de consultation (plus récent en premier)
-        const sorted = history.sort((a, b) => 
+        const sorted = history.sort((a, b) =>
           new Date(b.viewedAt).getTime() - new Date(a.viewedAt).getTime()
         );
         setViewedProducts(sorted);
-        
+
         // Charger les données des produits depuis l'API
         await loadProductsData(sorted);
       }
@@ -80,9 +80,9 @@ const HistoriqueProduitsConsultesScreen: React.FC = () => {
             console.warn(`[HistoriqueProduitsConsultesScreen] Service ${item.serviceId} non trouvé`);
             return null;
           }
-          
-          const service = serviceResponse.data;
-          
+
+          const service: any = serviceResponse.data;
+
           // ✅ CORRIGÉ 2026-02-10: Charger le prestataire depuis le service
           let prestataire = null;
           if (service.user_id) {
@@ -96,11 +96,11 @@ const HistoriqueProduitsConsultesScreen: React.FC = () => {
               // Continuer même si le prestataire n'est pas chargé
               prestataire = {
                 user_id: service.user_id,
-                nom: service.data?.nom_prestataire?.valeur || 'Prestataire',
+                nom: (service as any).data?.nom_prestataire?.valeur || 'Prestataire',
               };
             }
           }
-          
+
           // ✅ CORRIGÉ 2026-02-10: TOUJOURS charger les produits, ne jamais retourner le service comme produit
           const productsResponse = await apiGet(`/api/services/${item.serviceId}/products`);
           if (productsResponse.success && Array.isArray(productsResponse.data)) {
@@ -109,7 +109,7 @@ const HistoriqueProduitsConsultesScreen: React.FC = () => {
               const product = productsResponse.data.find(
                 (p: any) => p.product_index === item.productIndex
               );
-              
+
               if (product) {
                 const productData = product.product_data || product;
                 return {
@@ -130,7 +130,7 @@ const HistoriqueProduitsConsultesScreen: React.FC = () => {
                 };
               }
             }
-            
+
             // ✅ CORRIGÉ 2026-02-10: Si productIndex n'est pas défini ou produit non trouvé, prendre le premier produit
             // Ne jamais retourner le service comme produit
             if (productsResponse.data.length > 0) {
@@ -153,7 +153,7 @@ const HistoriqueProduitsConsultesScreen: React.FC = () => {
               };
             }
           }
-          
+
           // ✅ CORRIGÉ 2026-02-10: Si aucun produit n'est trouvé, retourner null au lieu du service
           console.warn(`[HistoriqueProduitsConsultesScreen] Aucun produit trouvé pour service ${item.serviceId}`);
           return null;
@@ -265,7 +265,7 @@ const HistoriqueProduitsConsultesScreen: React.FC = () => {
           <FlatList
             data={productsData}
             renderItem={({ item }) => renderProductCard(item)}
-            keyExtractor={(item, index) => 
+            keyExtractor={(item, index) =>
               `product-${item._serviceId}-${item.product_index || item.id || index}`
             }
             contentContainerStyle={styles.listContent}

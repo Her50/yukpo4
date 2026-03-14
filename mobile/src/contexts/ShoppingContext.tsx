@@ -238,7 +238,7 @@ export const ShoppingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         try {
             const response = await shoppingApi.estimateOrder(payload);
             if (response.success && response.data) {
-                setEstimate(response.data.estimate ?? response.data);
+                setEstimate((response.data as any).estimate ?? response.data);
             } else if (!response.success) {
                 console.warn('[ShoppingContext] estimateBasket error:', response.error);
             }

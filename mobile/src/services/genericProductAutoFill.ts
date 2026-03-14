@@ -15,7 +15,7 @@ import { CategoryFieldAnalysis, categoryAnalyzer } from '../utils/categoryAnalyz
 export interface GenericAutoFillResult {
     // Champs pré-remplis automatiquement
     auto_filled: Record<string, any>;
-    
+
     // Champs à demander (avec leurs options si disponibles)
     required_fields: Array<{
         field: string;
@@ -24,7 +24,7 @@ export interface GenericAutoFillResult {
         options?: string[];
         placeholder?: string;
     }>;
-    
+
     // Champs optionnels
     optional_fields: Array<{
         field: string;
@@ -32,7 +32,7 @@ export interface GenericAutoFillResult {
         type: string;
         options?: string[];
     }>;
-    
+
     // Métadonnées
     category: string;
     product_name: string;
@@ -43,10 +43,10 @@ export interface GenericAutoFillResult {
 }
 
 class GenericProductAutoFillService {
-    
+
     // Cache des analyses de catégories
     private categoryCache = new Map<string, CategoryFieldAnalysis>();
-    
+
     /**
      * 🎯 PRÉ-REMPLIR AUTOMATIQUEMENT pour N'IMPORTE QUELLE catégorie
      */
@@ -55,9 +55,9 @@ class GenericProductAutoFillService {
         category: string,
         userCountry: string = 'CM'
     ): Promise<GenericAutoFillResult> {
-        
+
         console.log(`🎯 [GenericAutoFill] Pré-remplissage pour: ${productName} (${category})`);
-        
+
         // 1. Analyser la catégorie si pas en cache
         let categoryAnalysis = this.categoryCache.get(category);
         if (!categoryAnalysis) {
@@ -65,36 +65,36 @@ class GenericProductAutoFillService {
             categoryAnalysis = await categoryAnalyzer.analyzeCategory(category);
             this.categoryCache.set(category, categoryAnalysis);
         }
-        
+
         // 2. Pré-remplir les champs FIXES (toujours identiques pour cette catégorie)
         const auto_filled: Record<string, any> = {
             nom_produit: productName,
             ...categoryAnalysis.fixed_fields
         };
-        
+
         // 3. Tenter d'extraire des informations du nom du produit
         const extracted = this.extractFromProductName(productName, category);
         Object.assign(auto_filled, extracted);
-        
+
         // 4. Construire la liste des champs requis avec leurs options
         const required_fields = this.buildRequiredFields(
             categoryAnalysis.required_fields,
             category
         );
-        
+
         // 5. Construire la liste des champs optionnels
         const optional_fields = this.buildOptionalFields(
             categoryAnalysis.optional_fields,
             category
         );
-        
+
         // 6. Calculer les statistiques
         const fields_saved = Object.keys(auto_filled).length;
         const total_fields = fields_saved + required_fields.length + optional_fields.length;
         const reduction_percentage = Math.round((fields_saved / total_fields) * 100);
-        
+
         console.log(`✨ [GenericAutoFill] ${fields_saved} champs pré-remplis (${reduction_percentage}%)`);
-        
+
         return {
             auto_filled,
             required_fields,
@@ -107,14 +107,14 @@ class GenericProductAutoFillService {
             auto_fill_applied: fields_saved > 2
         };
     }
-    
+
     /**
      * Extraire des informations du nom du produit
      */
     private extractFromProductName(productName: string, category: string): Record<string, any> {
         const extracted: Record<string, any> = {};
         const normalized = productName.toLowerCase();
-        
+
         // TÉLÉPHONES : Extraire marque + modèle
         if (category === 'telephone') {
             // iPhone
@@ -122,7 +122,7 @@ class GenericProductAutoFillService {
                 extracted.marque = 'Apple';
                 extracted.type = 'Smartphone';
                 extracted.systeme_exploitation = 'iOS';
-                
+
                 // Extraire modèle
                 if (normalized.match(/iphone\s*(\d+)/)) {
                     const version = normalized.match(/iphone\s*(\d+)/)?.[1];
@@ -148,7 +148,7 @@ class GenericProductAutoFillService {
                 extracted.systeme_exploitation = 'Android';
             }
         }
-        
+
         // AUTOMOBILES : Extraire marque
         else if (category === 'automobile') {
             if (normalized.startsWith('toyota')) {
@@ -159,14 +159,14 @@ class GenericProductAutoFillService {
                 extracted.marque = 'Peugeot';
             }
             // ... etc
-            
+
             // Extraire année si présente
             const yearMatch = productName.match(/\b(19|20)\d{2}\b/);
             if (yearMatch) {
                 extracted.annee = yearMatch[0];
             }
         }
-        
+
         // AGRICULTURE : Détecter type de produit
         else if (category === 'agriculture' || category === 'agriculture_elevage') {
             if (normalized.includes('riz')) {
@@ -180,7 +180,7 @@ class GenericProductAutoFillService {
                 extracted.type = 'Liquide alimentaire';
             }
         }
-        
+
         // IMMOBILIER : Extraire type de bien si dans le nom
         else if (category === 'immobilier' || category === 'immobilier_batiment') {
             if (normalized.includes('villa')) {
@@ -191,10 +191,10 @@ class GenericProductAutoFillService {
                 extracted.type_bien = 'Studio';
             }
         }
-        
+
         return extracted;
     }
-    
+
     /**
      * Construire la liste des champs requis avec options
      */
@@ -204,8 +204,8 @@ class GenericProductAutoFillService {
     ): GenericAutoFillResult['required_fields'] {
         return fieldNames.map(fieldName => {
             const options = getFieldOptions(category, fieldName);
-            const fieldType = this.detectFieldType(fieldName, options);
-            
+            const fieldType = this.detectFieldType(fieldName, options) as 'text' | 'number' | 'select' | 'date' | 'multiselect';
+
             return {
                 field: fieldName,
                 label: this.formatFieldLabel(fieldName),
@@ -215,7 +215,7 @@ class GenericProductAutoFillService {
             };
         });
     }
-    
+
     /**
      * Construire la liste des champs optionnels
      */
@@ -226,7 +226,7 @@ class GenericProductAutoFillService {
         return fieldNames.map(fieldName => {
             const options = getFieldOptions(category, fieldName);
             const fieldType = this.detectFieldType(fieldName, options);
-            
+
             return {
                 field: fieldName,
                 label: this.formatFieldLabel(fieldName),
@@ -235,7 +235,7 @@ class GenericProductAutoFillService {
             };
         });
     }
-    
+
     /**
      * Détecter le type de champ
      */
@@ -245,27 +245,27 @@ class GenericProductAutoFillService {
         if (multiSelectPatterns.test(fieldName)) {
             return 'multiselect';
         }
-        
+
         // Select si options disponibles
         if (options.length > 0) {
             return 'select';
         }
-        
+
         // Number si contient prix, quantite, annee, etc.
         const numberPatterns = /prix|quantite|annee|age|nombre|nb|superficie|surface|kilometrage|km|distance/i;
         if (numberPatterns.test(fieldName)) {
             return 'number';
         }
-        
+
         // Date si contient date
         if (fieldName.toLowerCase().includes('date')) {
             return 'date';
         }
-        
+
         // Text par défaut
         return 'text';
     }
-    
+
     /**
      * Formater le label d'un champ
      */

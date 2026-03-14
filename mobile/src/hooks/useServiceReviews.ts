@@ -67,14 +67,14 @@ export const useServiceReviews = (serviceId: number | number[]): UseServiceRevie
                 setLoading(true);
 
                 let reviewsResponse;
-                
+
                 // ✅ NOUVEAU 2025-01-01: Utiliser l'endpoint batch si plusieurs services
                 if (isBatch && serviceIds.length > 1) {
                     const serviceIdsStr = serviceIds.join(',');
                     const batchResponse = await apiGet(API_ENDPOINTS.SERVICES.BATCH_REVIEWS, {
                         service_ids: serviceIdsStr,
                     });
-                    
+
                     // Extraire les reviews du premier service (compatibilité avec l'API actuelle)
                     if (batchResponse.success && batchResponse.data) {
                         const batchData = batchResponse.data as Record<string, any>;
@@ -96,8 +96,8 @@ export const useServiceReviews = (serviceId: number | number[]): UseServiceRevie
                 if (cancelled) return;
 
                 if (reviewsResponse.success && reviewsResponse.data) {
-                    const reviewsData = reviewsResponse.data;
-                    
+                    const reviewsData = reviewsResponse.data as any;
+
                     if (!cancelled) {
                         setReviews(reviewsData.reviews || []);
 
@@ -178,7 +178,7 @@ export const useServiceReviews = (serviceId: number | number[]): UseServiceRevie
                 const reviewsResponse = await apiGet(API_ENDPOINTS.SERVICES.REVIEWS(singleServiceId));
 
                 if (reviewsResponse.success && reviewsResponse.data) {
-                    const reviewsData = reviewsResponse.data;
+                    const reviewsData = reviewsResponse.data as any;
                     setReviews(reviewsData.reviews || []);
 
                     // Mettre à jour les statistiques

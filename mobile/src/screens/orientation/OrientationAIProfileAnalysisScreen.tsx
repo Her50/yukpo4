@@ -17,7 +17,7 @@ import { orientationScolaireApi } from '../../services/orientationScolaireApi';
 import { modernColors } from '../../theme/modernTheme';
 
 const OrientationAIProfileAnalysisScreen: React.FC = () => {
-    const navigation = useNavigation<any>();
+    const navigation = useNavigation() as any;
     const { user } = useAuth();
     const [loading, setLoading] = useState(false);
     const [analysis, setAnalysis] = useState<any>(null);

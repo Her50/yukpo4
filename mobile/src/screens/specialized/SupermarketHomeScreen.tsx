@@ -1389,7 +1389,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 8,
     },
-    compareButton: {
+    compareButtonLarge: {
         flexDirection: 'row',
         alignItems: 'center',
         paddingVertical: 6,

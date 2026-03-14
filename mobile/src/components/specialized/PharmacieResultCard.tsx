@@ -328,6 +328,13 @@ const styles = StyleSheet.create({
     deliveryButtonText: {
         color: '#fff',
     },
+    chatButton: {
+        backgroundColor: '#10B981',
+        marginRight: 8,
+    },
+    chatButtonText: {
+        color: '#fff',
+    },
 });
 
 export default PharmacieResultCard;

@@ -16,7 +16,7 @@ import {
 import SafeIcon from '../../components/SafeIcon';
 import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
-import { apiGet, apiPatch, apiPost } from '../../services/api';
+import { apiDelete, apiGet, apiPatch } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 
 interface LivreScolaire {
@@ -58,7 +58,7 @@ const MesLivresScreen: React.FC = () => {
             const response = await apiGet('/api/bourse-livre/mes-livres');
 
             if (response.success && response.data) {
-                setLivres(response.data.livres || []);
+                setLivres((response.data as any).livres || []);
             } else {
                 Alert.alert('Erreur', 'Impossible de charger vos livres');
             }
@@ -99,7 +99,7 @@ const MesLivresScreen: React.FC = () => {
                     style: 'destructive',
                     onPress: async () => {
                         try {
-                            const response = await apiPost(`/api/bourse-livre/${livre.id}`, {}, 'DELETE');
+                            const response = await apiDelete(`/api/bourse-livre/${livre.id}`);
                             if (response.success) {
                                 loadLivres();
                                 Alert.alert('Succès', 'Livre supprimé');

@@ -37,10 +37,29 @@ export const modernColors = {
     glass: 'rgba(255, 255, 255, 0.25)',
     glassDark: 'rgba(0, 0, 0, 0.1)',
 
+    // Danger (alias pour error)
+    danger: '#ef4444',
+
     // Bordures modernes
     border: '#e2e8f0',
     borderLight: '#f1f5f9',
     borderDark: '#cbd5e1',
+
+    // Couleurs supplémentaires utilisées dans les composants
+    backgroundSecondary: '#f1f5f9',
+    textPrimary: '#1e293b',
+    textLight: '#94a3b8',
+    gradientStart: '#667eea',
+    gradientEnd: '#764ba2',
+    card: '#ffffff',
+    cardBorder: '#e2e8f0',
+    overlay: 'rgba(0, 0, 0, 0.5)',
+    inputBackground: '#f8fafc',
+    inputBorder: '#e2e8f0',
+    disabled: '#94a3b8',
+    divider: '#e2e8f0',
+    white: '#ffffff',
+    black: '#000000',
 };
 
 // Thème Paper moderne
@@ -75,6 +94,13 @@ export const modernStyles = {
     },
 
     // Ombres modernes
+    shadowSmall: {
+        shadowColor: modernColors.shadow,
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.08,
+        shadowRadius: 4,
+        elevation: 2,
+    },
     shadowLight: {
         shadowColor: modernColors.shadow,
         shadowOffset: { width: 0, height: 2 },
@@ -107,6 +133,11 @@ export const modernStyles = {
 
     // Bordures modernes
     borderRadius: {
+        xs: 4,
+        sm: 6,
+        md: 12,
+        lg: 16,
+        xl: 24,
         small: 8,
         medium: 12,
         large: 16,

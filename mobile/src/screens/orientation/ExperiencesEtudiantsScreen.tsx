@@ -27,7 +27,7 @@ interface Experience {
 }
 
 const ExperiencesEtudiantsScreen: React.FC = () => {
-    const navigation = useNavigation<any>();
+    const navigation = useNavigation() as any;
     const route = useRoute();
     const etablissementId = (route.params as any)?.etablissement_id;
 

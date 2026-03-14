@@ -15,13 +15,12 @@ import {
     View,
 } from 'react-native';
 import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
-import { NativeButton, NativeCard, NativeInput } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeButton, NativeCard, NativeInput } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { apiGet, apiPost, apiPut } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
-import { hapticPress } from '../../utils/hapticFeedback';
 
 interface EtablissementFormData {
     nom_etablissement: string;
@@ -101,7 +100,7 @@ const CreateEtablissementScreen: React.FC = () => {
             setLoadingData(true);
             const response = await apiGet(`/api/orientation-scolaire/etablissements/${etablissementId}`);
             if (response.success && response.data) {
-                const data = response.data;
+                const data = response.data as any;
                 setFormData({
                     nom_etablissement: data.nom_etablissement || '',
                     type_etablissement: data.type_etablissement || 'primaire',

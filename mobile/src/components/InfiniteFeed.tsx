@@ -19,7 +19,7 @@ import { imagePrefetchService } from '../services/imagePrefetchService';
 import { modernColors } from '../theme/modernTheme';
 import { AnimatedCard } from './AnimatedCard';
 import ProductCard from './ProductCard';
-import { SkeletonLoader } from './SkeletonLoader';
+import SkeletonLoader from './SkeletonLoader';
 import { EmptyState } from './ux/EmptyState';
 
 const { width } = Dimensions.get('window');
@@ -106,7 +106,8 @@ export const InfiniteFeed: React.FC<InfiniteFeedProps> = React.memo(({
 
             // ✅ Utiliser l'endpoint /api/services avec pagination
             const response = await apiGet('/api/services', params);
-            const newItems = response.data?.data || response.data?.services || response.data || [];
+            const rd: any = response.data;
+            const newItems = rd?.data || rd?.services || rd || [];
 
             if (newItems.length === 0) {
                 setHasMore(false);
@@ -180,7 +181,8 @@ export const InfiniteFeed: React.FC<InfiniteFeedProps> = React.memo(({
                         }
 
                         const response = await apiGet('/api/services', params);
-                        const prefetchedItems = response.data?.data || response.data?.services || response.data || [];
+                        const rd2: any = response.data;
+                        const prefetchedItems = rd2?.data || rd2?.services || rd2 || [];
 
                         // Précharger les images des items préchargés
                         if (prefetchedItems.length > 0) {

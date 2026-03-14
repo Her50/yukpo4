@@ -31,7 +31,7 @@ interface Etablissement {
 }
 
 const EtablissementDetailsScreen: React.FC = () => {
-    const navigation = useNavigation<any>();
+    const navigation = useNavigation() as any;
     const route = useRoute();
     const { user } = useAuth();
     const { id } = (route.params as any) || {};

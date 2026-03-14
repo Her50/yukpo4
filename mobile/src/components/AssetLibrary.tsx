@@ -52,7 +52,7 @@ export const AssetLibrary: React.FC<AssetLibraryProps> = ({
             const response = await apiGet(`/api/publicites/assets?user_id=${userId}&type=${filterType}`);
 
             if (response.success && response.data) {
-                setAssets(response.data.assets || []);
+                setAssets((response.data as any).assets || []);
             }
         } catch (error) {
             console.error('[AssetLibrary] Erreur chargement:', error);

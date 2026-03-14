@@ -33,7 +33,7 @@ class ABTestingService {
             const response = await apiGet('/api/ab-tests/active');
 
             if (response.success && response.data) {
-                const tests = Array.isArray(response.data) ? response.data : (response.data.tests || []);
+                const tests = Array.isArray(response.data) ? response.data : ((response.data as any).tests || []);
 
                 for (const test of tests) {
                     this.tests.set(test.id, test);

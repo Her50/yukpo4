@@ -26,7 +26,6 @@ import { clearSavedFormData, useFormAutoSave } from '../../hooks/useFormAutoSave
 import { useFormValidation } from '../../hooks/useFormValidation';
 import { usePartnerData } from '../../hooks/usePartnerData';
 import { apiGet, apiPost, servicesApi } from '../../services/api';
-import { modernColors } from '../../theme/modernTheme';
 
 const GROUPES_SANGUINS = ['O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'];
 const STORAGE_KEY = '@banque_sang_form';
@@ -43,7 +42,8 @@ const BanqueSangFormScreen: React.FC = () => {
 
     // Dashboard state
     const [activeTab, setActiveTab] = useState<TabType>('overview');
-    const [isDashboardMode, setIsDashboardMode] = useState(false);
+    // ✅ FIX: Partenaires voient TOUJOURS le dashboard (même vide), pas le formulaire de création
+    const [isDashboardMode, setIsDashboardMode] = useState(user?.role === 'partenaire' && !mode);
     const [initialLoading, setInitialLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [bankData, setBankData] = useState<any>(null);

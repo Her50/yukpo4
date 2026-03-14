@@ -72,7 +72,8 @@ const PharmacieFormScreen: React.FC = () => {
 
     // Dashboard state
     const [activeTab, setActiveTab] = useState<TabType>('overview');
-    const [isDashboardMode, setIsDashboardMode] = useState(false);
+    // ✅ FIX: Partenaires voient TOUJOURS le dashboard (même vide), pas le formulaire de création
+    const [isDashboardMode, setIsDashboardMode] = useState(user?.role === 'partenaire' && !mode);
     const [initialLoading, setInitialLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [pharmacyData, setPharmacyData] = useState<any>(null);
@@ -114,6 +115,7 @@ const PharmacieFormScreen: React.FC = () => {
     const [bulkImportText, setBulkImportText] = useState('');
     const [bulkImportOverwrite, setBulkImportOverwrite] = useState(false);
     const [loadingBulkImport, setLoadingBulkImport] = useState(false);
+    const [showBulkGuide, setShowBulkGuide] = useState(false);
 
     const { partnerData } = usePartnerData(user?.role, 'pharmacie');
     const { errors, validateField, validateForm, setError } = useFormValidation({
@@ -325,11 +327,50 @@ const PharmacieFormScreen: React.FC = () => {
         if (!pid) { Alert.alert('Erreur', 'Pharmacie non enregistrée'); return; }
         setLoadingBulkImport(true);
         try {
-            await apiPost('/api/pharmacies/products/bulk-import', { pharmacy_service_id: pid, data: bulkImportText, overwrite: bulkImportOverwrite });
+            let parsedProducts: any[] = [];
+            const trimmed = bulkImportText.trim();
+            if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
+                // JSON
+                const parsed = JSON.parse(trimmed);
+                parsedProducts = Array.isArray(parsed) ? parsed : [parsed];
+            } else {
+                // CSV: nom_produit,prix,stock,unite,code_barre,categorie,description
+                const lines = trimmed.split('\n').filter(l => l.trim());
+                const firstLower = lines[0]?.toLowerCase() || '';
+                const hasHeader = firstLower.includes('nom') || firstLower.includes('prix') || firstLower.includes('product');
+                const dataLines = hasHeader ? lines.slice(1) : lines;
+                for (const line of dataLines) {
+                    const parts = line.split(/[,;\t]/).map(s => s.trim().replace(/^"|"$/g, ''));
+                    if (!parts[0]) continue;
+                    parsedProducts.push({
+                        nom_produit: parts[0],
+                        prix: parseFloat(parts[1]?.replace(',', '.')) || 0,
+                        stock: parseInt(parts[2]) || 0,
+                        unite: parts[3] || 'unité',
+                        code_barre: parts[4] || undefined,
+                        categorie: parts[5] || undefined,
+                        description: parts[6] || undefined,
+                    });
+                }
+            }
+            if (parsedProducts.length === 0) { Alert.alert('Erreur', 'Aucun produit detecte dans les donnees'); setLoadingBulkImport(false); return; }
+            const resp: any = await apiPost('/api/pharmacies/products/bulk-import', {
+                pharmacy_service_id: pid,
+                products: parsedProducts,
+                overwrite_existing: bulkImportOverwrite,
+            });
+            const data = resp?.data as any;
             setShowBulkImportModal(false); setBulkImportText('');
             loadProducts(pid);
-            Alert.alert('Succès', 'Import terminé');
-        } catch (e: any) { Alert.alert('Erreur', e.message || 'Erreur import'); } finally { setLoadingBulkImport(false); }
+            Alert.alert(
+                'Import termine',
+                `${data?.created || 0} produits crees\n${data?.updated || 0} mis a jour${data?.errors?.length > 0 ? `\n\n${data.errors.length} erreur(s):\n${data.errors.slice(0, 3).join('\n')}` : ''}`,
+            );
+        } catch (e: any) {
+            const msg = e?.message || 'Erreur import';
+            if (msg.includes('JSON')) { Alert.alert('Erreur format', 'Le format JSON est invalide. Verifiez la syntaxe.'); }
+            else { Alert.alert('Erreur', msg); }
+        } finally { setLoadingBulkImport(false); }
     };
 
     const handleSubmit = async () => {
@@ -660,10 +701,67 @@ const PharmacieFormScreen: React.FC = () => {
                     <Text style={s.modalTitle}>Import en masse</Text>
                     <TouchableOpacity onPress={() => setShowBulkImportModal(false)}><SafeIcon name="x" size={24} color="#6B7280" /></TouchableOpacity>
                 </View>
-                <ScrollView style={{ padding: 16, maxHeight: 400 }}>
-                    <Text style={s.hint}>JSON: [{'{'}nom_produit, prix, stock...{'}'}] ou CSV: nom,prix,stock,unite</Text>
-                    <NativeInput value={bulkImportText} onChangeText={setBulkImportText} placeholder="Collez vos données..." multiline style={{ minHeight: 150, fontFamily: 'monospace', fontSize: 12 }} />
-                    <View style={[s.switchRow, { marginTop: 16 }]}><Text style={s.label}>Remplacer existants</Text><Switch value={bulkImportOverwrite} onValueChange={setBulkImportOverwrite} trackColor={{ false: '#D1D5DB', true: modernColors.primary }} /></View>
+                <ScrollView style={{ padding: 16, maxHeight: 500 }}>
+                    {/* Guide / Aide */}
+                    <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', gap: 6, padding: 10, backgroundColor: '#EFF6FF', borderRadius: 8, marginBottom: 12 }} onPress={() => setShowBulkGuide(!showBulkGuide)}>
+                        <SafeIcon name="help-circle" size={18} color="#3B82F6" />
+                        <Text style={{ flex: 1, fontSize: 13, fontWeight: '600', color: '#3B82F6' }}>Comment preparer mes donnees ?</Text>
+                        <SafeIcon name={showBulkGuide ? 'chevron-up' : 'chevron-down'} size={16} color="#3B82F6" />
+                    </TouchableOpacity>
+
+                    {showBulkGuide && (
+                        <View style={{ backgroundColor: '#F9FAFB', borderRadius: 10, padding: 14, marginBottom: 16, borderWidth: 1, borderColor: '#E5E7EB' }}>
+                            <Text style={{ fontSize: 14, fontWeight: '700', color: '#1F2937', marginBottom: 4 }}>Format CSV (recommande)</Text>
+                            <Text style={{ fontSize: 12, color: '#4B5563', lineHeight: 18 }}>
+                                Chaque ligne = 1 produit. Colonnes separees par virgule, point-virgule ou tabulation.
+                            </Text>
+                            <View style={{ backgroundColor: '#1F2937', borderRadius: 8, padding: 10, marginVertical: 6 }}>
+                                <Text style={{ fontSize: 11, color: '#A5F3FC', fontFamily: 'monospace' }}>
+                                    {`nom_produit;prix;stock;unite;code_barre;categorie\nParacetamol 500mg;1500;200;boite;3401560123;analgesique\nAmoxicilline 1g;3500;50;boite;;antibiotique\nVitamine C 1000mg;2000;100;tube;;;`}
+                                </Text>
+                            </View>
+                            <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151', marginTop: 10, marginBottom: 4 }}>Colonnes disponibles (dans l'ordre) :</Text>
+                            <Text style={{ fontSize: 12, color: '#4B5563', lineHeight: 18 }}>
+                                1. nom_produit (obligatoire){"\n"}
+                                2. prix{"\n"}
+                                3. stock (quantite){"\n"}
+                                4. unite (boite, tube, flacon, sachet...){"\n"}
+                                5. code_barre{"\n"}
+                                6. categorie (analgesique, antibiotique, vitamines...){"\n"}
+                                7. description
+                            </Text>
+
+                            <Text style={{ fontSize: 14, fontWeight: '700', color: '#1F2937', marginTop: 12, marginBottom: 4 }}>Format JSON</Text>
+                            <View style={{ backgroundColor: '#1F2937', borderRadius: 8, padding: 10, marginVertical: 6 }}>
+                                <Text style={{ fontSize: 11, color: '#A5F3FC', fontFamily: 'monospace' }}>
+                                    {`[\n  {"nom_produit": "Paracetamol 500mg", "prix": 1500, "stock": 200, "unite": "boite"},\n  {"nom_produit": "Amoxicilline 1g", "prix": 3500, "stock": 50}\n]`}
+                                </Text>
+                            </View>
+
+                            <Text style={{ fontSize: 14, fontWeight: '700', color: '#1F2937', marginTop: 12, marginBottom: 4 }}>Conseils</Text>
+                            <Text style={{ fontSize: 12, color: '#4B5563', lineHeight: 18 }}>
+                                - Vous pouvez copier-coller depuis Excel ou Google Sheets{"\n"}
+                                - Seul le nom_produit est obligatoire{"\n"}
+                                - L'en-tete est detecte automatiquement{"\n"}
+                                - Activez "Remplacer existants" pour mettre a jour prix/stocks
+                            </Text>
+                        </View>
+                    )}
+
+                    <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 6 }}>Collez vos donnees ici (CSV ou JSON) :</Text>
+                    <NativeInput value={bulkImportText} onChangeText={setBulkImportText} placeholder={`nom_produit;prix;stock;unite;categorie\nParacetamol 500mg;1500;200;boite;analgesique\nAmoxicilline 1g;3500;50;boite;antibiotique`} multiline style={{ minHeight: 150, fontFamily: 'monospace', fontSize: 12 }} />
+                    <View style={[s.switchRow, { marginTop: 16 }]}>
+                        <View style={{ flex: 1 }}>
+                            <Text style={s.label}>Remplacer existants</Text>
+                            <Text style={{ fontSize: 11, color: '#9CA3AF', marginTop: 1 }}>Si un produit avec le meme nom existe, il sera mis a jour</Text>
+                        </View>
+                        <Switch value={bulkImportOverwrite} onValueChange={setBulkImportOverwrite} trackColor={{ false: '#D1D5DB', true: modernColors.primary }} />
+                    </View>
+                    {bulkImportText.trim().length > 0 && (
+                        <Text style={{ fontSize: 12, color: '#6B7280', marginTop: 8, fontStyle: 'italic' }}>
+                            Environ {bulkImportText.trim().split('\n').filter(l => l.trim()).length} ligne(s) detectee(s)
+                        </Text>
+                    )}
                 </ScrollView>
                 <View style={s.modalFooter}>
                     <NativeButton title="Annuler" onPress={() => { setShowBulkImportModal(false); setBulkImportText(''); }} variant="secondary" style={{ flex: 1 }} />

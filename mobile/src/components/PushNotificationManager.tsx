@@ -9,6 +9,7 @@ import * as Notifications from 'expo-notifications';
 import React, { useEffect, useRef, useState } from 'react';
 import { Alert, DeviceEventEmitter } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
+import { notificationSoundService } from '../services/notificationSoundService';
 import { setupForegroundNotificationHandler, setupNotificationResponseHandler } from '../services/pushNotifications';
 import InAppCallModal from './InAppCallModal';
 
@@ -76,6 +77,12 @@ const PushNotificationManager: React.FC = () => {
             else if (data?.type === 'delivery_available') {
                 console.log('[PushNotificationManager] 📦 Notification de livraison disponible (foreground):', data.delivery_id);
 
+                // Son + TTS contextuel pour coursiers dans le rayon de recherche
+                notificationSoundService.notifyDeliveryEvent('new_delivery_available', {
+                    distance: data.distance,
+                    destination: data.destination,
+                }, { pushNotification: false }).catch(console.error);
+
                 // Afficher une alerte avec options d'accepter ou voir les détails
                 Alert.alert(
                     notification.request.content.title || '📦 Nouvelle livraison disponible',
@@ -93,6 +100,37 @@ const PushNotificationManager: React.FC = () => {
                                 }
                             }
                         }
+                    ]
+                );
+            }
+            // ✅ NOUVEAU: Notifications de statut livraison avec TTS contextuel
+            else if (data?.type === 'delivery_status_update' || data?.type === 'delivery_event') {
+                console.log('[PushNotificationManager] 📦 Mise à jour livraison (foreground):', data.eventType || data.status);
+
+                const eventType = data.eventType || data.status;
+                if (eventType) {
+                    notificationSoundService.notifyDeliveryEvent(eventType, {
+                        courierName: data.courier_name,
+                        etaMinutes: data.eta_minutes,
+                        destination: data.destination,
+                        itemCount: data.item_count,
+                    }, { pushNotification: false }).catch(console.error);
+                }
+
+                // Alerte visuelle aussi
+                Alert.alert(
+                    notification.request.content.title || '📦 Mise à jour livraison',
+                    notification.request.content.body || '',
+                    [
+                        { text: 'OK' },
+                        ...(data.delivery_id ? [{
+                            text: 'Voir',
+                            onPress: () => {
+                                (navigation as any).navigate('DeliveryShoppingTracking', {
+                                    deliveryId: data.delivery_id,
+                                });
+                            }
+                        }] : []),
                     ]
                 );
             }

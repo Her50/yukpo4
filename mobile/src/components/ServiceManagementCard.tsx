@@ -83,7 +83,7 @@ const ServiceManagementCard: React.FC<ServiceManagementCardProps> = ({
             // Si on réactive un service (passage de inactif à actif), facturer 1000 FCFA
             if (!isActive) {
                 // Vérifier le solde avant la réactivation
-                const balanceResponse = await servicesApi.getTokensBalance();
+                const balanceResponse = await (servicesApi as any).getTokensBalance();
 
                 if (balanceResponse.success) {
                     const currentBalance = balanceResponse.data.tokens_balance;
@@ -108,10 +108,10 @@ const ServiceManagementCard: React.FC<ServiceManagementCardProps> = ({
                                 onPress: async () => {
                                     try {
                                         // Déduire le coût de réactivation
-                                        await servicesApi.deductBalance(activationCost, 'Réactivation de service');
+                                        await (servicesApi as any).deductBalance(activationCost, 'Réactivation de service');
 
                                         // Activer le service
-                                        const response = await servicesApi.toggleServiceStatus(service.id, true);
+                                        const response = await (servicesApi as any).toggleServiceStatus(service.id, true);
 
                                         if (response.success) {
                                             Alert.alert(
@@ -135,7 +135,7 @@ const ServiceManagementCard: React.FC<ServiceManagementCardProps> = ({
                 }
             } else {
                 // Désactivation (gratuite)
-                const response = await servicesApi.toggleServiceStatus(service.id, false);
+                const response = await (servicesApi as any).toggleServiceStatus(service.id, false);
 
                 if (response.success) {
                     Alert.alert(
@@ -250,7 +250,7 @@ const ServiceManagementCard: React.FC<ServiceManagementCardProps> = ({
 
     const savePromotion = async () => {
         try {
-            const response = await servicesApi.updateServicePromotion(service.id, promotionData);
+            const response = await (servicesApi as any).updateServicePromotion(service.id, promotionData);
 
             if (response.success) {
                 Alert.alert('Succès', 'Promotion mise à jour avec succès');

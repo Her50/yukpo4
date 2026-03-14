@@ -19,10 +19,10 @@ export interface ProductKnowledge {
     keywords: string[];                     // Mots-clés pour recherche
 
     // Caractéristiques FIXES (toujours identiques)
-    fixed_characteristics: Record<string, any>;
+    fixed_characteristics?: Record<string, any>;
 
     // Caractéristiques VARIABLES (choisies par l'utilisateur)
-    variable_characteristics: {
+    variable_characteristics?: {
         field: string;                      // Nom du champ (ex: 'couleur', 'stockage')
         label: string;                      // Label affiché
         options: string[];                  // Options disponibles
@@ -33,6 +33,7 @@ export interface ProductKnowledge {
     variants?: ProductVariant[];
 
     confidence: number;                      // Niveau de confiance (0-100)
+    characteristics?: Record<string, any>;  // Caractéristiques simplifiées (alternative)
 }
 
 /**
@@ -326,6 +327,39 @@ class ProductKnowledgeBase {
             }
             this.knowledgeMap.get(keyword)!.push(product);
         }
+    }
+
+    /**
+     * Recherche locale dans la base de connaissances indexée
+     */
+    private searchLocal(query: string, category?: string): ProductKnowledge[] {
+        const queryLower = query.toLowerCase();
+        const results: ProductKnowledge[] = [];
+        for (const [key, products] of this.knowledgeMap.entries()) {
+            if (key.includes(queryLower) || queryLower.includes(key)) {
+                for (const p of products) {
+                    if (!category || p.category === category) {
+                        results.push(p);
+                    }
+                }
+            }
+        }
+        return results;
+    }
+
+    /**
+     * Transformer un produit externe en ProductKnowledge
+     */
+    private transformExternalToKnowledge(external: any): ProductKnowledge {
+        return {
+            name: external.name || external.nom || '',
+            category: external.category || external.categorie || 'general',
+            keywords: external.keywords || external.mots_cles || [external.name?.toLowerCase()].filter(Boolean),
+            fixed_characteristics: external.characteristics || external.fixed_characteristics || {},
+            variable_characteristics: external.variable_characteristics || [],
+            characteristics: external.characteristics || {},
+            confidence: external.confidence || 70,
+        };
     }
 
     /**

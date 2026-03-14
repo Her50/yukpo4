@@ -1,10 +1,11 @@
 // @ts-check
-import * as React from "react";
 import { Link, useLocation } from "@react-navigation/native";
-import { ROUTES } from "@/routes/AppRoutesRegistry";
+import * as React from "react";
+// @ts-ignore - web-only module
 import { useUser } from "@/hooks/useUser";
-import { isAdminUser } from "../utils/roleHelpers"; // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
+import { ROUTES } from "@/routes/AppRoutesRegistry";
 import classNames from "classnames";
+import { isAdminUser } from "../utils/roleHelpers"; // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
 
 const DesktopMenu: React.FC = () => {
   const { user } = useUser();
@@ -39,8 +40,8 @@ const DesktopMenu: React.FC = () => {
     uniqueLinks.length <= 5
       ? "text-base gap-6"
       : uniqueLinks.length <= 9
-      ? "text-sm gap-4"
-      : "text-xs gap-3";
+        ? "text-sm gap-4"
+        : "text-xs gap-3";
 
   return (
     <nav style="w-full overflow-x-auto">

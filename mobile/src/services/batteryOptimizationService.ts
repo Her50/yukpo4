@@ -112,7 +112,7 @@ class BatteryOptimizationService {
      * Nettoie les ressources
      */
     cleanup(): void {
-        AppState.removeEventListener('change', this.handleAppStateChange.bind(this));
+        // AppState.removeEventListener removed in newer RN; use subscription pattern instead
         this.listeners = [];
     }
 }

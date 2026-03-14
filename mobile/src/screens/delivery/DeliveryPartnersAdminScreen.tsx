@@ -103,7 +103,7 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
     const loadPartners = async () => {
         try {
             setLoading(true);
-            const response = await apiGet('/api/delivery/partners');
+            const response: any = await apiGet('/api/delivery/partners');
             const partnersList = response.partners || response.data?.partners || [];
             setPartners(partnersList);
         } catch (error: any) {
@@ -130,13 +130,13 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
             // Vérifier la structure de la réponse
             if (response && typeof response === 'object') {
                 // Cas 1: response.data.partners (structure normale)
-                if (response.data && typeof response.data === 'object' && Array.isArray(response.data.partners)) {
-                    partnersList = response.data.partners;
+                if (response.data && typeof response.data === 'object' && Array.isArray((response.data as any).partners)) {
+                    partnersList = (response.data as any).partners;
                     console.log('[DeliveryPartnersAdminScreen] ✅ Partenaires trouvés dans response.data.partners:', partnersList.length);
                 }
                 // Cas 2: response.partners (si data n'existe pas)
-                else if (Array.isArray(response.partners)) {
-                    partnersList = response.partners;
+                else if (Array.isArray((response as any).partners)) {
+                    partnersList = (response as any).partners;
                     console.log('[DeliveryPartnersAdminScreen] ✅ Partenaires trouvés dans response.partners:', partnersList.length);
                 }
                 // Cas 3: response.data est directement un tableau
@@ -1209,12 +1209,6 @@ const styles = StyleSheet.create({
     inputContainer: {
         marginBottom: 12,
     },
-    inputLabel: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: modernColors.text,
-        marginBottom: 6,
-    },
     pickerContainer: {
         gap: 8,
     },
@@ -1344,6 +1338,17 @@ const styles = StyleSheet.create({
     modalOptionTextSelected: {
         fontWeight: '600',
         color: modernColors.primary,
+    },
+    modalBody: {
+        padding: 16,
+    },
+    modalActions: {
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        gap: 12,
+        padding: 16,
+        borderTopWidth: 1,
+        borderTopColor: '#E5E7EB',
     },
 });
 

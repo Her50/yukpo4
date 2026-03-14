@@ -181,7 +181,7 @@ export const ExportButton: React.FC<ExportButtonProps> = ({
             case 'excel':
                 return 'Excel';
             default:
-                return format.toUpperCase();
+                return (format as string).toUpperCase();
         }
     };
 

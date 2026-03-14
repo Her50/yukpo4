@@ -850,7 +850,7 @@ export const detecterLocalisationUtilisateur = (
  */
 const detecterCodePaysDepuisNom = (nomPays: string): string | null => {
     const nomNormalized = nomPays.toLowerCase().trim();
-    
+
     const mapping: Record<string, string> = {
         'cameroun': 'CM',
         'cameroon': 'CM',
@@ -959,3 +959,21 @@ const detecterPaysVilleDepuisGPS = (lat: number, lng: number): { codePays: strin
     return null;
 };
 
+// Agrégat de tous les laboratoires par pays pour export centralisé
+export const LABORATOIRES_AFRICAINS_PAR_PAYS: LaboratoiresPays[] = [
+    LABORATOIRES_CAMEROUN,
+    LABORATOIRES_COTE_IVOIRE,
+    LABORATOIRES_SENEGAL,
+    LABORATOIRES_MALI,
+    LABORATOIRES_RD_CONGO,
+    LABORATOIRES_CONGO_BRAZZA,
+    LABORATOIRES_GABON,
+    LABORATOIRES_TOGO,
+    LABORATOIRES_BENIN,
+    LABORATOIRES_BURKINA_FASO,
+    LABORATOIRES_NIGER,
+    LABORATOIRES_MADAGASCAR,
+    LABORATOIRES_TCHAD,
+    LABORATOIRES_RCA,
+    LABORATOIRES_GUINEE,
+];

@@ -640,7 +640,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
                     ]
                 );
             } else {
-                Alert.alert('Erreur', result.error || 'Impossible de créer la livraison');
+                Alert.alert('Erreur', (result as any).error || 'Impossible de créer la livraison');
             }
         } catch (error: any) {
             console.error('Erreur création livraison:', error);

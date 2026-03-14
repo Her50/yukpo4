@@ -24,6 +24,8 @@ export interface RealEstateProperty {
     distance_km?: number;
     average_rating?: number;
     total_ratings?: number;
+    telephone?: string;
+    whatsapp?: string;
 }
 
 export interface PropertySearchFilters {

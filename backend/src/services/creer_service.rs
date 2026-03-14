@@ -2418,12 +2418,27 @@ pub async fn creer_service(
             }
         };
 
+        // ✅ AMÉLIORÉ 2026-03-14: Extraire la catégorie depuis data JSONB pour peupler services.category
+        let category_value: Option<String> = data_obj.get("category").and_then(|v| {
+            // Format string directe: {"category": "supermarche"}
+            v.as_str()
+                .map(|s| s.to_string())
+                // Format structuré IA: {"category": {"valeur": "supermarche", ...}}
+                .or_else(|| v.get("valeur").and_then(|val| val.as_str()).map(|s| s.to_string()))
+        });
+        if category_value.is_some() {
+            log::info!(
+                "[creer_service] ✅ Catégorie extraite de data JSONB: {:?}",
+                category_value
+            );
+        }
+
         // Ajout des champs dans la transaction SQL
         // Étape 1 : INSERT dans services et récupérer l'id
         let row_result = sqlx::query(
             r#"
-            INSERT INTO services (user_id, data, is_tarissable, gps, auto_deactivate_at)
-            VALUES ($1, $2, $3, $4, $5)
+            INSERT INTO services (user_id, data, is_tarissable, gps, auto_deactivate_at, category)
+            VALUES ($1, $2, $3, $4, $5, $6)
             RETURNING id
             "#,
         )
@@ -2432,6 +2447,7 @@ pub async fn creer_service(
         .bind(is_tarissable)
         .bind(gps_str)
         .bind(auto_deactivate_at)
+        .bind(&category_value)
         .fetch_one(&mut *tx)
         .await;
 

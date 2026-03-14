@@ -62,24 +62,49 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
     const { toast, showSuccess, showError, showWarning, hideToast } = useToast();
     const prevStatusRef = useRef<string | null>(null);
 
-    // ✅ FIX 2026-03-03: Notification sonore quand un coursier est trouvé/assigné
+    // ✅ Notifications contextuelles vocales (son + TTS + push locale) pour TOUS les changements de statut
     useEffect(() => {
         const currentStatus = delivery?.status;
         const prevStatus = prevStatusRef.current;
 
         if (currentStatus && prevStatus && currentStatus !== prevStatus) {
-            // Coursier trouvé ! (statut passe à assigned/accepted ou en_route_pickup)
-            if (
-                (currentStatus === 'assigned' || currentStatus === 'accepted' || currentStatus === 'en_route_pickup') &&
-                (prevStatus === 'pending' || prevStatus === 'requested' || prevStatus === 'awaiting_courier' || prevStatus === 'awaiting_courier_confirmation')
-            ) {
-                notificationSoundService.playSoundWithVibration('courier').catch(console.error);
-                showSuccess('Coursier trouvé ! Votre livraison est en cours de prise en charge.');
+            const courierName = delivery?.courier?.name;
+            const etaMinutes = delivery?.courier?.etaMinutes ?? undefined;
+            const destination = delivery?.dropoff?.address;
+            const itemCount = delivery?.shopping?.items?.length;
+            const details = { courierName, etaMinutes, destination, itemCount };
+
+            // Mapper les statuts de livraison vers les types d'événements contextuels
+            const statusToEvent: Record<string, string> = {
+                assigned: 'courier_found',
+                accepted: 'courier_found',
+                en_route_pickup: 'courier_en_route_pickup',
+                arrival_pickup: 'courier_arrived_pickup',
+                picked_up: 'courier_picked_up',
+                shopping_pending: 'courier_arrived_pickup',
+                shopping_in_progress: 'shopping_in_progress',
+                shopping_completed: 'shopping_completed',
+                en_route_delivery: 'courier_en_route_delivery',
+                arrival_destination: 'courier_arrived_destination',
+                delivered: 'delivery_completed',
+                completed: 'delivery_completed',
+                cancelled: 'delivery_cancelled',
+            };
+
+            const eventType = statusToEvent[currentStatus];
+            if (eventType) {
+                notificationSoundService.notifyDeliveryEvent(eventType, details).catch(console.error);
             }
-            // Livraison terminée
-            if ((currentStatus === 'delivered' || currentStatus === 'completed') && prevStatus !== 'delivered' && prevStatus !== 'completed') {
-                notificationSoundService.playSoundWithVibration('ready').catch(console.error);
-                showSuccess('Livraison terminée ! Votre colis a été livré.');
+
+            // Toast visuel aussi
+            if (currentStatus === 'assigned' || currentStatus === 'accepted') {
+                showSuccess(`Coursier trouvé${courierName ? ` : ${courierName}` : ''} !`);
+            } else if (currentStatus === 'delivered' || currentStatus === 'completed') {
+                showSuccess('Livraison terminée !');
+            } else if (currentStatus === 'en_route_delivery') {
+                showSuccess('Coursier en route vers vous !');
+            } else if (currentStatus === 'arrival_destination') {
+                showSuccess('Coursier arrivé à destination !');
             }
         }
 
@@ -122,7 +147,7 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
 
         // Vérifier si le coursier actuel a été notifié
         const notifiedUserIds = delivery.metadata?.notified_user_ids as number[] | undefined;
-        return notifiedUserIds?.includes(user.id) ?? false;
+        return notifiedUserIds?.includes(Number(user.id)) ?? false;
     }, [user?.id, delivery?.status, delivery?.metadata]);
 
     const shoppingItems = useMemo(() => delivery?.shopping?.items || [], [delivery?.shopping?.items]);

@@ -41,7 +41,7 @@ export const exportService = {
      */
     async getExportStatus(jobId: string): Promise<ExportJob> {
         const response = await apiCall<ExportJob>(`/api/export/status/${jobId}`);
-        return response;
+        return response as any;
     },
 
     /**

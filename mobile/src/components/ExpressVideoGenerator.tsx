@@ -11,12 +11,12 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import { SafeIcon } from './SafeIcon';
+import { apiPost } from '../services/api';
+import { trackUxEvent } from '../services/uxMetrics';
 import { modernColors } from '../theme/modernTheme';
 import type { ManagedProduct } from '../types/ManagedProduct';
 import { VideoGenerationPayload } from '../types/VideoGeneration';
-import { apiPost } from '../services/api';
-import { trackUxEvent } from '../services/uxMetrics';
+import { SafeIcon } from './SafeIcon';
 
 interface ExpressVideoGeneratorProps {
     product: ManagedProduct;
@@ -33,6 +33,7 @@ const EXPRESS_STYLES = {
         duration_seconds: 15,
         auto_storyboard: true,
         generate_square_variant: true,
+        generate_landscape_variant: false,
         enable_watermark: false,
         description: 'Format vertical 9:16 avec transitions rapides et musique tendance'
     },
@@ -43,6 +44,7 @@ const EXPRESS_STYLES = {
         duration_seconds: 20,
         auto_storyboard: true,
         generate_square_variant: false,
+        generate_landscape_variant: false,
         enable_watermark: true,
         description: 'Narration élégante avec ambiance premium'
     },
@@ -52,6 +54,7 @@ const EXPRESS_STYLES = {
         music_mode: 'cinematic',
         duration_seconds: 30,
         auto_storyboard: true,
+        generate_square_variant: false,
         generate_landscape_variant: true,
         enable_watermark: true,
         description: 'Production cinématographique immersive'
@@ -77,7 +80,7 @@ export const ExpressVideoGenerator: React.FC<ExpressVideoGeneratorProps> = ({
 
     const generateExpressVideo = useCallback(async () => {
         setLoading(true);
-        
+
         try {
             trackUxEvent('express_video_generate_started', {
                 productId: product.id,
@@ -85,7 +88,7 @@ export const ExpressVideoGenerator: React.FC<ExpressVideoGeneratorProps> = ({
             });
 
             const config = EXPRESS_STYLES[selectedStyle];
-            
+
             // ✅ Payload optimisé pour génération rapide
             const payload: VideoGenerationPayload = {
                 style: config.style,
@@ -111,52 +114,55 @@ export const ExpressVideoGenerator: React.FC<ExpressVideoGeneratorProps> = ({
 
             // ✅ Appel API optimisé
             const response = await apiPost(`/video/generate-express/${product.serviceId}/${product.productIndex}`, payload);
-            
-            if (response.success && response.data?.video_url) {
+
+            const rd: any = response.data;
+            if (response.success && rd?.video_url) {
                 trackUxEvent('express_video_generate_success', {
                     productId: product.id,
                     style: selectedStyle,
-                    duration: response.data.duration_seconds
+                    duration: rd.duration_seconds
                 });
-                
-                onSuccess?.(response.data.video_url);
-                
+
+                onSuccess?.(rd.video_url);
+
                 // ✅ Feedback positif
                 Alert.alert(
                     '✅ Vidéo générée!',
                     `Votre vidéo "${config.name}" est prête.\nDurée: ${config.duration_seconds}s\nStyle: ${config.description}`,
-                    [{ text: 'OK', onPress: () => onSuccess?.(response.data.video_url) }]
+                    [{ text: 'OK', onPress: () => onSuccess?.(rd.video_url) }]
                 );
             } else {
                 throw new Error(response.error || 'Erreur génération vidéo');
             }
-            
+
         } catch (error: any) {
             console.error('[ExpressVideoGenerator] Erreur génération:', error);
-            
+
             trackUxEvent('express_video_generate_error', {
                 productId: product.id,
                 style: selectedStyle,
                 error: error.message
             });
-            
+
             const errorMsg = error.message || 'Erreur lors de la génération vidéo';
-            
+
             // ✅ Option de retry avec fallback
             Alert.alert(
                 '⚠️ Erreur de génération',
                 `${errorMsg}\n\nVoulez-vous essayer avec le mode avancé?`,
                 [
                     { text: 'Réessayer', onPress: () => generateExpressVideo() },
-                    { text: 'Mode Avancé', onPress: () => {
-                        // ✅ Rediriger vers l'interface complète existante
-                        // Navigation vers ProductVideoCreationModal avec les mêmes params
-                        onError?.('redirect_to_advanced');
-                    }},
+                    {
+                        text: 'Mode Avancé', onPress: () => {
+                            // ✅ Rediriger vers l'interface complète existante
+                            // Navigation vers ProductVideoCreationModal avec les mêmes params
+                            onError?.('redirect_to_advanced');
+                        }
+                    },
                     { text: 'Annuler', style: 'cancel' }
                 ]
             );
-            
+
             onError?.(errorMsg);
         } finally {
             setLoading(false);

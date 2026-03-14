@@ -73,7 +73,7 @@ export const AdvancedABTesting: React.FC<AdvancedABTestingProps> = ({
             );
 
             if (response.success && response.data) {
-                setStats(response.data.stats || []);
+                setStats((response.data as any).stats || []);
             }
         } catch (error) {
             console.error('[AdvancedABTesting] Erreur chargement stats:', error);

@@ -218,16 +218,31 @@ const CourierDashboardScreen: React.FC = () => {
                             title="📊 Voir mes statistiques"
                             variant="outline"
                             onPress={() => {
-                                // TODO: Naviguer vers page statistiques détaillées
-                                Alert.alert('Info', 'Page statistiques à venir');
+                                // ✅ FIX 2026-03-14: Afficher les statistiques détaillées avec les données déjà chargées
+                                Alert.alert(
+                                    'Statistiques détaillées',
+                                    `Livraisons complétées: ${safeStats.completedDeliveries}\n` +
+                                    `Taux de réussite: ${safeStats.successRate.toFixed(1)}%\n` +
+                                    `Temps moyen: ${safeStats.avgDeliveryTime.toFixed(0)} min\n` +
+                                    `Gains totaux: ${safeStats.totalEarnings.toFixed(0)} XAF\n` +
+                                    `Gains ce mois: ${safeStats.currentMonthEarnings.toFixed(0)} XAF`,
+                                    [{ text: 'OK' }]
+                                );
                             }}
                         />
                         <NativeButton
                             title="💰 Voir mes gains"
                             variant="outline"
                             onPress={() => {
-                                // TODO: Naviguer vers page gains
-                                Alert.alert('Info', 'Page gains à venir');
+                                // ✅ FIX 2026-03-14: Afficher le détail des gains
+                                Alert.alert(
+                                    'Détail des gains',
+                                    `Gains totaux: ${safeStats.totalEarnings.toFixed(0)} XAF\n` +
+                                    `Ce mois-ci: ${safeStats.currentMonthEarnings.toFixed(0)} XAF\n` +
+                                    `Livraisons: ${safeStats.completedDeliveries}\n` +
+                                    `Moyenne par livraison: ${safeStats.completedDeliveries > 0 ? (safeStats.totalEarnings / safeStats.completedDeliveries).toFixed(0) : 0} XAF`,
+                                    [{ text: 'OK' }]
+                                );
                             }}
                         />
                     </View>

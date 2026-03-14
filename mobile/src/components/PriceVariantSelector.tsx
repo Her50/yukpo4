@@ -305,8 +305,8 @@ export const PriceVariantSelector: React.FC<PriceVariantSelectorProps> = ({
                             </TouchableOpacity>
                         </View>
 
-                        <ScrollView 
-                            style={styles.modalBody} 
+                        <ScrollView
+                            style={styles.modalBody}
                             contentContainerStyle={styles.modalBodyContent}
                             showsVerticalScrollIndicator={true}
                             keyboardShouldPersistTaps="handled"
@@ -765,7 +765,7 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         color: '#FFFFFF',
     },
-    modalityImage: {
+    modalityImageSmall: {
         width: 60,
         height: 60,
         borderRadius: 8,

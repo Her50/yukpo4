@@ -260,7 +260,7 @@ const SafeNativeCardWrapper: React.FC<any> = (props) => {
 
         // ✅ CRITIQUE: Si c'est un Fragment React, traiter ses enfants
         if (React.isValidElement(child) && child.type === React.Fragment) {
-            const fragmentChildren = React.Children.toArray(child.props.children);
+            const fragmentChildren = React.Children.toArray((child.props as any).children);
             const processed = fragmentChildren
                 .map((item, itemIndex) => processChild(item, `${idx}-fragment-${itemIndex}`))
                 .filter(item => item != null);
@@ -270,8 +270,8 @@ const SafeNativeCardWrapper: React.FC<any> = (props) => {
         // ✅ CRITIQUE: Si c'est un élément React valide, vérifier qu'il n'a pas de chaînes comme enfants directs
         if (React.isValidElement(child)) {
             // Si l'élément a des enfants, les traiter récursivement
-            if (child.props && child.props.children != null) {
-                const processedChildren = processChild(child.props.children, `${idx}-children`);
+            if (child.props && (child.props as any).children != null) {
+                const processedChildren = processChild((child.props as any).children, `${idx}-children`);
                 // Cloner l'élément avec les enfants traités
                 return React.cloneElement(child, { key: idx }, processedChildren);
             }
@@ -410,12 +410,12 @@ const createSafeComponent = (name: string, fallback: React.ComponentType<any>): 
 
 // ✅ Export des composants sécurisés - GARANTIS comme composants React valides
 // ✅ CRITIQUE: NativeCard utilise directement SafeNativeCardWrapper pour éviter les problèmes d'enveloppement
-export const NativeCard: React.FC<any> = SafeNativeCardWrapper;
-export const NativeButton: React.FC<any> = createSafeComponent('NativeButton', FallbackButton);
-export const NativeBadge: React.FC<any> = createSafeComponent('NativeBadge', FallbackBadge);
-export const NativeInput: React.FC<any> = createSafeComponent('NativeInput', FallbackInput);
-export const NativeDivider: React.FC<any> = createSafeComponent('NativeDivider', FallbackDivider);
-export const NativeGradient: React.FC<any> = createSafeComponent('NativeGradient', FallbackGradient);
+export const NativeCard: React.ComponentType<any> = SafeNativeCardWrapper;
+export const NativeButton: React.ComponentType<any> = createSafeComponent('NativeButton', FallbackButton);
+export const NativeBadge: React.ComponentType<any> = createSafeComponent('NativeBadge', FallbackBadge);
+export const NativeInput: React.ComponentType<any> = createSafeComponent('NativeInput', FallbackInput);
+export const NativeDivider: React.ComponentType<any> = createSafeComponent('NativeDivider', FallbackDivider);
+export const NativeGradient: React.ComponentType<any> = createSafeComponent('NativeGradient', FallbackGradient);
 
 // ✅ Export par défaut pour compatibilité
 export default {

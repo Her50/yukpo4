@@ -191,7 +191,7 @@ const ImmobilierHomeScreen: React.FC = () => {
             const response = await immobilierService.searchProperties(searchFilters);
 
             if (response.success && response.data) {
-                let newProperties = response.data;
+                let newProperties = response.data as any;
 
                 // Tri côté client (le backend trie par date_desc par défaut)
                 if (sortBy !== 'relevance') {
@@ -1529,7 +1529,7 @@ const styles = StyleSheet.create({
         borderTopColor: '#E5E7EB',
         gap: 12,
     },
-    clearButton: {
+    clearFilterButton: {
         flex: 1,
         paddingVertical: 14,
         borderRadius: 8,

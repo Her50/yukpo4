@@ -1,5 +1,5 @@
 // Écran de comparaison de biens immobiliers
-import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
@@ -21,7 +21,7 @@ type RouteParams = {
 
 const ImmobilierCompareScreen: React.FC = () => {
     const navigation = useNavigation();
-    const route = useRoute<RouteProp<{ params: RouteParams }, 'params'>>();
+    const route = useRoute() as any;
     const propertyIds = route.params?.propertyIds || [];
     const comparisonName = route.params?.comparisonName || 'Comparaison';
 

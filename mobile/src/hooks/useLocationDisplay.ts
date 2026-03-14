@@ -61,7 +61,7 @@ export const useLocationDisplay = (service: any, serviceCreatorInfo?: any): UseL
                 console.log('🔗 [useLocationDisplay] Statut API interne:', response.success);
 
                 if (response.success && response.data) {
-                    const data = response.data;
+                    const data = response.data as any;
                     console.log('📍 [useLocationDisplay] Réponse API interne:', data);
 
                     // CORRECTION: Filtrer les Plus Codes (format: 2RH9+W2, XXXX+XX, etc.) de manière plus robuste

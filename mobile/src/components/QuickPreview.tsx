@@ -10,13 +10,13 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { config } from '../config/environment';
+import { apiGet } from '../services/api';
 import { QuickPreviewResponse, quickPreviewService } from '../services/quickPreviewService';
 import { modernColors } from '../theme/modernTheme';
 import { VideoTimeline } from '../types/VideoGeneration';
-import { NativeCard } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
-import { apiGet } from '../services/api';
-import { config } from '../config/environment';
+import { NativeCard } from './SafeNativeDesign';
 
 interface QuickPreviewProps {
     timeline: VideoTimeline;
@@ -45,7 +45,7 @@ export const QuickPreview: React.FC<QuickPreviewProps> = ({
                     return true;
                 }
             }
-            
+
             // Vérifier media_id (pas un placeholder)
             if (scene.media_id !== null && scene.media_id !== undefined) {
                 const mediaId = typeof scene.media_id === 'string' ? parseInt(scene.media_id, 10) : scene.media_id;
@@ -54,7 +54,7 @@ export const QuickPreview: React.FC<QuickPreviewProps> = ({
                     return true;
                 }
             }
-            
+
             return false;
         });
 
@@ -79,14 +79,15 @@ export const QuickPreview: React.FC<QuickPreviewProps> = ({
                         // ✅ CORRIGÉ: Ignorer les media_id invalides ou placeholder (comme "10000")
                         if (!isNaN(mediaId) && mediaId > 0 && mediaId < 10000) {
                             const response = await apiGet(`/api/media/${mediaId}`);
-                            if (response.success && response.data?.path) {
-                                const mediaPath = response.data.path;
+                            const rd: any = response.data;
+                            if (response.success && rd?.path) {
+                                const mediaPath = rd.path;
                                 const base = (config.API_BASE_URL || config.UPLOAD_BASE_URL || '').replace(/\/$/, '');
                                 const mediaUrl = mediaPath.startsWith('http')
                                     ? mediaPath
                                     : base
-                                    ? `${base}/api/media/files/${mediaPath.replace(/^\//, '')}`
-                                    : mediaPath;
+                                        ? `${base}/api/media/files/${mediaPath.replace(/^\//, '')}`
+                                        : mediaPath;
 
                                 return {
                                     ...scene,
@@ -162,7 +163,7 @@ export const QuickPreview: React.FC<QuickPreviewProps> = ({
                     return true;
                 }
             }
-            
+
             // Vérifier media_id (non null, non undefined, nombre valide, pas un placeholder)
             if (scene.media_id !== null && scene.media_id !== undefined) {
                 const mediaId = typeof scene.media_id === 'string' ? parseInt(scene.media_id, 10) : scene.media_id;
@@ -171,7 +172,7 @@ export const QuickPreview: React.FC<QuickPreviewProps> = ({
                     return true;
                 }
             }
-            
+
             // Vérifier assets.video_url ou assets.image_url
             if (scene.assets) {
                 if (scene.assets.video_url && typeof scene.assets.video_url === 'string' && scene.assets.video_url.trim().length > 0) {
@@ -181,7 +182,7 @@ export const QuickPreview: React.FC<QuickPreviewProps> = ({
                     return true;
                 }
             }
-            
+
             return false;
         });
 
@@ -196,7 +197,7 @@ export const QuickPreview: React.FC<QuickPreviewProps> = ({
                     assets: s.assets,
                 })),
             });
-            
+
             Alert.alert(
                 'Aucun média valide',
                 'Aucun média valide trouvé dans la timeline.\n\n' +
@@ -224,7 +225,7 @@ export const QuickPreview: React.FC<QuickPreviewProps> = ({
         try {
             // ✅ NOUVEAU: Enrichir la timeline en convertissant media_id en media_url
             enrichedTimeline = await enrichTimelineWithMediaUrls(timeline);
-            
+
             const response = await quickPreviewService.generatePreview({
                 timeline: enrichedTimeline,
                 quality: 'low',
@@ -258,10 +259,10 @@ export const QuickPreview: React.FC<QuickPreviewProps> = ({
                     })),
                 },
             });
-            
+
             // ✅ CORRIGÉ: Messages d'erreur plus clairs selon le type d'erreur
             let errorMessage = 'Erreur lors de la génération du preview';
-            
+
             if (err?.response?.status === 500 || err?.message?.includes('500') || err?.message?.includes('Erreur 500')) {
                 const serverError = err?.response?.data?.error || err?.response?.data?.message || '';
                 if (serverError.includes('média') || serverError.includes('media') || serverError.includes('timeline')) {
@@ -279,7 +280,7 @@ export const QuickPreview: React.FC<QuickPreviewProps> = ({
             } else if (err?.message) {
                 errorMessage = err.message;
             }
-            
+
             setError(errorMessage);
         } finally {
             setLoading(false);

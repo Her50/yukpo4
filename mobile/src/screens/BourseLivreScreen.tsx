@@ -64,7 +64,7 @@ interface FilterState {
 }
 
 const BourseLivreScreen: React.FC = () => {
-    const navigation = useNavigation<any>();
+    const navigation = useNavigation() as any;
     const { callWithFallback } = useAIWithFallback();
     const toaster = useToaster();
     const [searchQuery, setSearchQuery] = useState('');
@@ -837,7 +837,7 @@ const styles = StyleSheet.create({
     filterChip: {
         paddingHorizontal: 12,
         paddingVertical: 6,
-        borderRadius: modernStyles.borderRadius.full,
+        borderRadius: (modernStyles.borderRadius as any).full || 999,
         backgroundColor: modernColors.background,
         borderWidth: 1,
         borderColor: modernColors.border,

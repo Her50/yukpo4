@@ -63,13 +63,13 @@ class ChatSupportService {
                 attachments,
             });
 
-            if (response.success && response.message) {
-                this.messages.push(response.message);
+            if (response.success && (response as any).message) {
+                this.messages.push((response as any).message);
                 analytics.track('chat_message_sent', {
                     session_id: sessionId,
                     has_attachments: !!attachments?.length,
                 });
-                return response.message;
+                return (response as any).message;
             }
             return null;
         } catch (error) {
