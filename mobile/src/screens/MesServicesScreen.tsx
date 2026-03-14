@@ -1519,14 +1519,14 @@ const MesServicesScreen: React.FC = () => {
                 <StatsCard
                   icon="package"
                   value={stats.totalProducts}
-                  label="Produits totaux"
+                  label={t('mesServices.totalProducts')}
                   gradient={modernColors.primaryGradient}
                   onPress={() => setFilter('tous')}
                 />
                 <StatsCard
                   icon="check-circle"
                   value={stats.activeProducts}
-                  label="Actifs"
+                  label={t('mesServices.active')}
                   color={modernColors.success}
                   onPress={() => setFilter('actif')}
                 />
@@ -1535,7 +1535,7 @@ const MesServicesScreen: React.FC = () => {
                 <StatsCard
                   icon="pause-circle"
                   value={stats.inactiveProducts}
-                  label="Inactifs"
+                  label={t('mesServices.inactive')}
                   color={modernColors.warning}
                   onPress={() => setFilter('inactif')}
                 />
@@ -1543,7 +1543,7 @@ const MesServicesScreen: React.FC = () => {
                   <StatsCard
                     icon="eye"
                     value={stats.totalViews.toLocaleString()}
-                    label="Vues totales"
+                    label={t('mesServices.totalViews')}
                     color={modernColors.secondary}
                   />
                 )}
@@ -1559,21 +1559,21 @@ const MesServicesScreen: React.FC = () => {
               <StatsCard
                 icon="package"
                 value={stats.totalProducts}
-                label="Produits totaux"
+                label={t('mesServices.totalProducts')}
                 gradient={modernColors.primaryGradient}
                 onPress={() => setFilter('tous')}
               />
               <StatsCard
                 icon="check-circle"
                 value={stats.activeProducts}
-                label="Actifs"
+                label={t('mesServices.active')}
                 color={modernColors.success}
                 onPress={() => setFilter('actif')}
               />
               <StatsCard
                 icon="pause-circle"
                 value={stats.inactiveProducts}
-                label="Inactifs"
+                label={t('mesServices.inactive')}
                 color={modernColors.warning}
                 onPress={() => setFilter('inactif')}
               />
@@ -1581,7 +1581,7 @@ const MesServicesScreen: React.FC = () => {
                 <StatsCard
                   icon="eye"
                   value={stats.totalViews.toLocaleString()}
-                  label="Vues totales"
+                  label={t('mesServices.totalViews')}
                   color={modernColors.secondary}
                 />
               )}
@@ -1613,7 +1613,7 @@ const MesServicesScreen: React.FC = () => {
                 dynamicStyles.filterChipText,
                 filter === 'tous' && dynamicStyles.filterChipTextActive
               ]}>
-                Tous ({services.length})
+                {t('mesServices.all')} ({services.length})
               </Text>
             </TouchableOpacity>
 
@@ -1633,7 +1633,7 @@ const MesServicesScreen: React.FC = () => {
                 dynamicStyles.filterChipText,
                 filter === 'actif' && dynamicStyles.filterChipTextActive
               ]}>
-                Actifs ({Array.isArray(services) ? services.filter(s => s && s.status === 'active').length : 0})
+                {t('mesServices.active')} ({Array.isArray(services) ? services.filter(s => s && s.status === 'active').length : 0})
               </Text>
             </TouchableOpacity>
 
@@ -1653,7 +1653,7 @@ const MesServicesScreen: React.FC = () => {
                 dynamicStyles.filterChipText,
                 filter === 'inactif' && dynamicStyles.filterChipTextActive
               ]}>
-                Inactifs ({Array.isArray(services) ? services.filter(s => s && s.status === 'inactive').length : 0})
+                {t('mesServices.inactive')} ({Array.isArray(services) ? services.filter(s => s && s.status === 'inactive').length : 0})
               </Text>
             </TouchableOpacity>
 
@@ -1664,16 +1664,16 @@ const MesServicesScreen: React.FC = () => {
             <View style={dynamicStyles.emptyContainer}>
               <SafeIcon name="briefcase" size={64} color={colors.textSecondary} />
               <Text style={dynamicStyles.emptyTitle}>
-                {filter === 'tous' ? 'Aucun produit créé' : `Aucun produit ${filter}`}
+                {filter === 'tous' ? t('mesServices.noProductCreated') : t('mesServices.noProductFilter', { filter })}
               </Text>
               <Text style={dynamicStyles.emptyText}>
                 {filter === 'tous'
-                  ? 'Créez votre premier produit pour commencer à proposer vos produits.'
-                  : `Aucun produit ${filter} pour le moment.`
+                  ? t('mesServices.createFirstProduct')
+                  : t('mesServices.noProductForNow', { filter })
                 }
               </Text>
               <NativeButton
-                title="➕ Créer un nouveau produit"
+                title={`➕ ${t('mesServices.createNewProduct')}`}
                 onPress={() => handleAddProduct()}
                 variant="primary"
                 size="medium"
@@ -1730,21 +1730,21 @@ const MesServicesScreen: React.FC = () => {
               ListFooterComponent={
                 <View style={dynamicStyles.footerContainer}>
                   <NativeButton
-                    title="📊 Analytics Dashboard"
+                    title={`📊 ${t('mesServices.statistics')}`}
                     onPress={() => (navigation as any).navigate('AnalyticsDashboard')}
                     variant="primary"
                     size="large"
                     style={dynamicStyles.analyticsFooterButton}
                   />
                   <NativeButton
-                    title="📦 Gérer mes produits"
+                    title={`📦 ${t('mesServices.manageProducts')}`}
                     onPress={() => navigation.navigate('MesProduits' as never)}
                     variant="outline"
                     size="large"
                     style={dynamicStyles.productsButton}
                   />
                   <NativeButton
-                    title="🏠 Retour à l'accueil"
+                    title={`🏠 ${t('mesServices.backToHome')}`}
                     onPress={() => navigation.navigate('Home' as never)}
                     variant="outline"
                     size="large"
@@ -1756,10 +1756,10 @@ const MesServicesScreen: React.FC = () => {
                 <View style={dynamicStyles.emptyContainer}>
                   <SafeIcon name="briefcase" size={64} color={colors.textSecondary} />
                   <Text style={dynamicStyles.emptyTitle}>
-                    {filter === 'tous' ? 'Aucun produit créé' : `Aucun produit ${filter}`}
+                    {filter === 'tous' ? t('mesServices.noProductCreated') : t('mesServices.noProductFilter', { filter })}
                   </Text>
                   <NativeButton
-                    title="➕ Créer un nouveau produit"
+                    title={`➕ ${t('mesServices.createNewProduct')}`}
                     onPress={() => handleAddProduct()}
                     variant="primary"
                     size="medium"
