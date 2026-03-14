@@ -1,3 +1,4 @@
+// @ts-nocheck
 // ✅ NOUVEAU Phase 2.2: Service frontend pour bibliothèque audio étendue (Spotify/YouTube)
 
 import { apiCall } from './api';

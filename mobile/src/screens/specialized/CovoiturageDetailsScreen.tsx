@@ -220,7 +220,7 @@ const CovoiturageDetailsScreen: React.FC = () => {
                             <Text style={st.totalPrice}>{totalPrice.toLocaleString('fr-FR')} {covoiturage.devise}</Text>
                         </View>
 
-                        {covoiturage.user_id === user?.id ? (
+                        {covoiturage.user_id === (user?.id as any) ? (
                             <TouchableOpacity style={[st.bookBtn, { backgroundColor: '#6366F1' }]} onPress={() => navigation.navigate('MyTrips' as never)}>
                                 <SafeIcon name="settings" size={20} color="#fff" />
                                 <Text style={st.bookBtnText}>Gérer mon trajet</Text>

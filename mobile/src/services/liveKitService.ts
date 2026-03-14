@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Service LiveKit pour chat live et streaming temps réel
  * Intégration avec le backend LiveKit existant

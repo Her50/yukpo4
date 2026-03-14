@@ -126,7 +126,7 @@ const TaxiDetailsScreen: React.FC = () => {
                 if (selectedInsurance) {
                     try { await apiPost(`/api/reservations/${resId}/insurance`, { reservation_id: resId, coverage_type: selectedInsurance }); } catch { }
                 }
-                try { await apiPost(`/api/reservations/${resId}/qr-code`); } catch { }
+                try { await apiPost(`/api/reservations/${resId}/qr-code`, {}); } catch { }
                 try { await PushNotificationService.registerForPushNotifications(); } catch { }
             } else {
                 Alert.alert('Erreur', (response as any).error || 'Impossible de créer la réservation');
@@ -287,7 +287,7 @@ const TaxiDetailsScreen: React.FC = () => {
                         </View>
 
                         {/* Owner manage button */}
-                        {user && taxi.user_id === user.id && (
+                        {user && taxi.user_id === (user.id as any) && (
                             <TouchableOpacity style={[st.fullBtn, { borderLeftColor: '#6366F1', borderLeftWidth: 3 }]}
                                 onPress={() => navigation.navigate('TaxiAvailability' as never, { taxiId: taxi.id } as never)}>
                                 <SafeIcon name="settings" size={18} color="#6366F1" />

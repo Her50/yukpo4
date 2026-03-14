@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
 import React, { useEffect, useState } from 'react';

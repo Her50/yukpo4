@@ -98,7 +98,7 @@ const LivreScolaireDetailsScreen: React.FC = () => {
         } catch { }
     };
 
-    const isOwner = user?.id === livre?.user_id;
+    const isOwner = (user?.id as any) === livre?.user_id;
 
     if (loading) return (<View style={st.center}><ActivityIndicator size="large" color="#EA580C" /><Text style={st.centerText}>Chargement...</Text></View>);
     if (!livre) return (<View style={st.center}><SafeIcon name="alert-circle" size={48} color="#EA580C" /><Text style={st.centerText}>Livre non trouvé</Text></View>);

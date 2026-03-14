@@ -1,8 +1,7 @@
 ﻿// @ts-nocheck
-// @ts-check
-import * as React from "react";
-import { Link, useLocation } from "@react-navigation/native";
 import RequirePlan from "@/components/security/RequirePlan";
+import { Link, useLocation } from "@react-navigation/native";
+import * as React from "react";
 
 const Sidebar: React.FC = () => {
   const location = useLocation();

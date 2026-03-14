@@ -84,7 +84,7 @@ export const ExpressVideoGenerator: React.FC<ExpressVideoGeneratorProps> = ({
             trackUxEvent('express_video_generate_started' as any, {
                 productId: product.id,
                 style: selectedStyle
-            });
+            } as any);
 
             const config = EXPRESS_STYLES[selectedStyle];
 
@@ -120,7 +120,7 @@ export const ExpressVideoGenerator: React.FC<ExpressVideoGeneratorProps> = ({
                     productId: product.id,
                     style: selectedStyle,
                     duration: rd.duration_seconds
-                });
+                } as any);
 
                 onSuccess?.(rd.video_url);
 
@@ -141,7 +141,7 @@ export const ExpressVideoGenerator: React.FC<ExpressVideoGeneratorProps> = ({
                 productId: product.id,
                 style: selectedStyle,
                 error: error.message
-            });
+            } as any);
 
             const errorMsg = error.message || 'Erreur lors de la génération vidéo';
 

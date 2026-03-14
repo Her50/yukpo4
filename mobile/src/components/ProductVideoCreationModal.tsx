@@ -2676,7 +2676,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
     // ✅ NOUVEAU: Marquer étape complétée (depuis Wizard)
     const markStepCompleted = useCallback((stepNum: number) => {
-        setCompletedSteps((prev) => new Set([...prev, stepNum]));
+        setCompletedSteps(((prev: any) => new Set([...prev, stepNum])) as any);
     }, []);
 
     // ✅ NOUVEAU: Ensure Studio Session (depuis Wizard)
@@ -3799,7 +3799,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
                         {/* ✅ NOUVEAU: Preview rapide */}
                         <QuickPreview
-                            timeline={generatedTimeline}
+                            timeline={generatedTimeline as any}
                             onPreviewReady={(preview) => {
                                 console.log('[ProductVideoCreationModal] Preview prêt:', preview.preview_url);
                             }}

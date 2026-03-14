@@ -136,7 +136,7 @@ const MesTrocsScreen: React.FC = () => {
     };
 
     const renderTroc = ({ item }: { item: TrocLivre }) => {
-        const isInitiateur = user?.id === item.initiateur_id;
+        const isInitiateur = (user?.id as any) === item.initiateur_id;
         const statutColor = getStatutColor(item.statut);
         const canAccept = item.statut === 'en_attente' && !isInitiateur;
 

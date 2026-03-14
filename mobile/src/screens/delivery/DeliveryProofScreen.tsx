@@ -70,7 +70,7 @@ const DeliveryProofScreen: React.FC<{ route: any }> = ({ route }) => {
     };
 
     const handleAddVideo = () => {
-        setCurrentProofType(delivery?.status === 'EnRoutePickup' || delivery?.status === 'ShoppingCompleted' ? 'pickup' : 'delivery');
+        setCurrentProofType((delivery?.status as any) === 'EnRoutePickup' || (delivery?.status as any) === 'ShoppingCompleted' ? 'pickup' : 'delivery');
         setShowVideoRecorder(true);
     };
 
@@ -135,8 +135,8 @@ const DeliveryProofScreen: React.FC<{ route: any }> = ({ route }) => {
         setShowMediaModal(true);
     };
 
-    const canAddPickupProof = delivery?.status === 'EnRoutePickup' || delivery?.status === 'ShoppingCompleted';
-    const canAddDeliveryProof = delivery?.status === 'EnRouteDelivery' || delivery?.status === 'Delivered';
+    const canAddPickupProof = (delivery?.status as any) === 'EnRoutePickup' || (delivery?.status as any) === 'ShoppingCompleted';
+    const canAddDeliveryProof = (delivery?.status as any) === 'EnRouteDelivery' || (delivery?.status as any) === 'Delivered';
 
     const pickupMedias = proofMedias.filter(m => m.proof_type === 'pickup');
     const deliveryMedias = proofMedias.filter(m => m.proof_type === 'delivery');

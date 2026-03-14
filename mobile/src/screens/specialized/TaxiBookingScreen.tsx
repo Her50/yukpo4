@@ -265,7 +265,7 @@ const TaxiBookingScreen: React.FC = () => {
 
                 // Générer QR code
                 try {
-                    await apiPost(`/api/reservations/${resId}/qr-code`);
+                    await apiPost(`/api/reservations/${resId}/qr-code`, {});
                 } catch (err) {
                     console.error('Erreur génération QR code:', err);
                 }

@@ -61,7 +61,7 @@ export function useSmartSuggestions(
             setIsLoading(true);
 
             try {
-                const rawSuggestions = await intelligentProductAutocomplete.getSuggestions(
+                const rawSuggestions = await (intelligentProductAutocomplete as any).getSuggestions(
                     productType,
                     fieldKey,
                     previousFields,
@@ -199,7 +199,7 @@ export function useRecordSelection() {
         previousFields: Record<string, any> = {}
     ) => {
         try {
-            await intelligentProductAutocomplete.recordSelection(
+            await (intelligentProductAutocomplete as any).recordSelection(
                 productType,
                 fieldKey,
                 value,

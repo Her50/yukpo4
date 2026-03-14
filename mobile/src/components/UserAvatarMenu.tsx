@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Dimensions, Image, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguageSafe } from '../contexts/LanguageContext';
+import { apiGet } from '../services/api';
 import { theme } from '../theme/theme';
 import { isAdminUser } from '../utils/roleHelpers'; // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
 import WeatherWidget from './WeatherWidget';
@@ -16,6 +17,26 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0
     const { user, logout } = useAuth();
     const { language, setLanguage } = useLanguageSafe();
     const [showMenu, setShowMenu] = useState(false);
+    const [teamMembershipCount, setTeamMembershipCount] = useState(0);
+
+    // ✅ NOUVEAU: Charger le nombre d'équipes dont l'utilisateur est membre
+    useEffect(() => {
+        const loadTeamCount = async () => {
+            if (!user?.id) return;
+            try {
+                const response = await apiGet('/api/user/my-team-memberships');
+                if (response.success) {
+                    const data = (response.data as any) || {};
+                    const total = (data.total || 0) + (Array.isArray(data.pending_invitations) ? data.pending_invitations.length : 0);
+                    setTeamMembershipCount(typeof total === 'number' ? total : 0);
+                }
+            } catch (e) {
+                // Silencieux - pas de lien si erreur
+                setTeamMembershipCount(0);
+            }
+        };
+        loadTeamCount();
+    }, [user?.id]);
 
     // ✅ AMÉLIORATION UX ADMIN: Menu simplifié pour les administrateurs
     // Prioriser les liens d'administration et retirer les éléments inutiles
@@ -128,6 +149,19 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0
             description: 'Se déconnecter de l\'application'
         }
     ];
+
+    // ✅ NOUVEAU: Insérer "Mes Équipes" conditionnellement si l'utilisateur est membre d'au moins 1 équipe
+    if (teamMembershipCount > 0 && !isAdmin) {
+        // Insérer après "Navigation intelligente" (index 1 dans le menu utilisateur)
+        const teamItem = {
+            title: `Mes Équipes (${teamMembershipCount})`,
+            icon: '👥',
+            route: 'MesEquipes',
+            description: 'Services que vous co-gérez',
+            highlighted: true
+        };
+        menuItems.splice(2, 0, teamItem); // Après langue + navigation
+    }
 
     const handleMenuItemPress = (item: any) => {
         setShowMenu(false);

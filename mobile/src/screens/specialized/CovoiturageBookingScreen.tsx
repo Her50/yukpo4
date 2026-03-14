@@ -163,7 +163,7 @@ const CovoiturageBookingScreen: React.FC = () => {
 
                 // Générer QR code
                 try {
-                    await apiPost(`/api/reservations/${resId}/qr-code`);
+                    await apiPost(`/api/reservations/${resId}/qr-code`, {});
                 } catch (err) {
                     console.error('Erreur génération QR code:', err);
                 }
@@ -193,7 +193,7 @@ const CovoiturageBookingScreen: React.FC = () => {
 
                 // Notifier le backend (pour backup)
                 try {
-                    await apiPost(`/api/reservations/${resId}/schedule-notifications`);
+                    await apiPost(`/api/reservations/${resId}/schedule-notifications`, {});
                 } catch (err) {
                     console.error('Erreur planification notifications backend:', err);
                 }

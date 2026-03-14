@@ -1452,13 +1452,13 @@ const VideoCreationWizardScreen: React.FC = () => {
             use_ai_templates: mode === 'expert',
             use_service_mediatech: true,
             include_publicite_assets: true,
-            selected_media_ids: creationSource === 'ai_virtual' ? [] : selectedMediaIds,
+            selected_media_ids: (creationSource as any) === 'ai_virtual' ? [] : selectedMediaIds,
             music_mode: musicMode !== 'none' ? musicMode : undefined,
             voiceover_lang: voiceoverEnabled ? voiceoverLang : undefined,
             voiceover_script: voiceoverEnabled ? brief : undefined,
             voice_profile_id: voiceoverEnabled ? selectedVoiceProfileId ?? undefined : undefined,
             creation_source: creationSource,
-            ai_video_prompt: creationSource === 'ai_virtual' ? brief : undefined,
+            ai_video_prompt: (creationSource as any) === 'ai_virtual' ? brief : undefined,
             distribute_channels: distributionChannels
                 .filter((item) => item.value)
                 .map((item) => item.key),
@@ -1466,7 +1466,7 @@ const VideoCreationWizardScreen: React.FC = () => {
             style_transitions,
             style_color_palette,
             style_music_hint,
-            media_scene_overrides: creationSource === 'ai_virtual' ? undefined : media_scene_overrides,
+            media_scene_overrides: (creationSource as any) === 'ai_virtual' ? undefined : media_scene_overrides,
         };
 
         try {

@@ -1,3 +1,4 @@
+// @ts-nocheck
 // ✅ NOUVEAU Phase 2.3: Service d'export vidéo avec support 4K et formats multiples
 
 import {

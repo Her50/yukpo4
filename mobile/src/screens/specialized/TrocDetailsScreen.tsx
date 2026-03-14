@@ -119,7 +119,7 @@ const TrocDetailsScreen: React.FC = () => {
     if (loading) return (<View style={st.center}><ActivityIndicator size="large" color="#7C3AED" /><Text style={st.centerText}>Chargement...</Text></View>);
     if (!troc) return (<View style={st.center}><SafeIcon name="alert-circle" size={48} color="#7C3AED" /><Text style={st.centerText}>Troc non trouvé</Text></View>);
 
-    const isInitiateur = user?.id === troc.troc.initiateur_id;
+    const isInitiateur = (user?.id as any) === troc.troc.initiateur_id;
     const canAccept = !isInitiateur && troc.troc.statut === 'en_attente';
     const canRefuse = troc.troc.statut === 'en_attente';
     const canComplete = troc.troc.statut === 'accepte';

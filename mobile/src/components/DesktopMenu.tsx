@@ -1,5 +1,4 @@
 ﻿// @ts-nocheck
-// @ts-check
 import { Link, useLocation } from "@react-navigation/native";
 import * as React from "react";
 // @ts-ignore - web-only module

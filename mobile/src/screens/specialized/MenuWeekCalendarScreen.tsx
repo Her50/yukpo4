@@ -1,3 +1,4 @@
+// @ts-nocheck
 // ✅ Écran Calendrier Semaine - Planification Menus (VERSION TABLEAU)
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';

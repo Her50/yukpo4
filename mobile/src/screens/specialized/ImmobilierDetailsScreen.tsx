@@ -59,7 +59,7 @@ const ImmobilierDetailsScreen: React.FC = () => {
             const response = await immobilierService.getPropertyDetails(propertyId);
             if (response.success && response.data) {
                 setProperty((response as any).data);
-                try { const fav = await immobilierService.getMyFavorites(); if (fav.success && fav.data) setIsFavorite((fav.data as any[]).some((p: any) => p.id === propertyId)); } catch { }
+                try { const fav = await immobilierService.getMyFavorites(); if (fav.success && fav.data) setIsFavorite(((fav.data as unknown) as any[]).some((p: any) => p.id === propertyId)); } catch { }
             } else { setError('Bien non trouvé'); }
         } catch (err: any) { setError(err.message || 'Erreur lors du chargement'); }
         finally { setLoading(false); }

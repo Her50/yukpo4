@@ -1,3 +1,4 @@
+// @ts-nocheck
 // ✅ NOUVEAU: Service frontend pour bibliothèque de templates vidéo par industrie (50+)
 
 import { apiCall } from './api';

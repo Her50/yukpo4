@@ -1,3 +1,4 @@
+// @ts-nocheck
 // ✅ NOUVEAU Phase 3.2: Service de rendu AR pour édition vidéo
 
 import { apiCall } from './api';

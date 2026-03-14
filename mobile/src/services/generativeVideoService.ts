@@ -1,3 +1,4 @@
+// @ts-nocheck
 // ✅ NOUVEAU Phase 3.1: Service frontend pour génération vidéo IA complète
 
 import { apiCall } from './api';

@@ -24,6 +24,7 @@ import { apiGet, servicesApi } from '../services/api';
 import { modernStyles } from '../theme/modernTheme';
 import SafeStorage from '../utils/safeStorage';
 
+
 const HomeScreenNew: React.FC = () => {
     const { user } = useAuth();
     const navigation = useNavigation();
@@ -34,6 +35,7 @@ const HomeScreenNew: React.FC = () => {
     const [showGPSModal, setShowGPSModal] = useState(false);
     const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null);
     const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
+    const [teamMembershipCount, setTeamMembershipCount] = useState(0);
 
     const loadUnreadNotificationsCount = React.useCallback(async () => {
         if (!user?.id) {
@@ -61,6 +63,21 @@ const HomeScreenNew: React.FC = () => {
         // ✅ CRITIQUE: Retourner explicitement undefined (pas de cleanup nécessaire ici)
         return undefined;
     }, [loadUnreadNotificationsCount]);
+
+    // ✅ NOUVEAU: Charger le nombre d'équipes dont l'utilisateur est membre
+    useEffect(() => {
+        const loadTeamCount = async () => {
+            if (!user?.id) return;
+            try {
+                const response = await apiGet('/api/user/my-team-memberships');
+                if (response.success) {
+                    const data = (response.data as any) || {};
+                    setTeamMembershipCount(data.total || 0);
+                }
+            } catch (e) { setTeamMembershipCount(0); }
+        };
+        loadTeamCount();
+    }, [user?.id]);
 
     // Détection GPS automatique au chargement (si activé dans les paramètres)
     useEffect(() => {
@@ -266,6 +283,20 @@ const HomeScreenNew: React.FC = () => {
                                         </View>
                                     )}
                                 </TouchableOpacity>
+                                {/* ✅ NOUVEAU: Bouton Mes Équipes conditionnel */}
+                                {teamMembershipCount > 0 && (
+                                    <TouchableOpacity
+                                        style={[styles.headerButton, { backgroundColor: 'rgba(99, 102, 241, 0.3)', borderColor: 'rgba(99, 102, 241, 0.5)' }]}
+                                        onPress={() => (navigation as any).navigate('MesEquipes')}
+                                    >
+                                        <SafeIcon name="users" size={20} color="white" />
+                                        <View style={styles.notificationBadge}>
+                                            <Text style={styles.notificationBadgeText}>
+                                                {teamMembershipCount > 9 ? '9+' : String(teamMembershipCount)}
+                                            </Text>
+                                        </View>
+                                    </TouchableOpacity>
+                                )}
                             </View>
                         </View>
                     </View>

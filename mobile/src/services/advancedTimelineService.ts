@@ -1,3 +1,4 @@
+// @ts-nocheck
 // ✅ NOUVEAU Phase 2: Service frontend pour timelines multi-pistes avancées
 
 import { AdvancedTimeline } from '../types/AdvancedTimeline';

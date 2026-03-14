@@ -5,7 +5,7 @@
  * la structure des formulaires existants pour générer les configurations.
  */
 
-import { CompleteFormConfig, FormSection, FieldConfig } from '../config/completeFormsConfig';
+import { CompleteFormConfig, FieldConfig, FormSection } from '../config/completeFormsConfig';
 import { getModalitiesByProductType } from '../data/productModalities';
 import { categoryAnalyzer } from './categoryAnalyzer';
 
@@ -17,26 +17,26 @@ export function generateBasicFormConfig(category: string): CompleteFormConfig {
     // Analyser la catégorie
     const analysis = categoryAnalyzer.analyzeCategory(category);
     const modalities = getModalitiesByProductType(category);
-    
+
     const sections: FormSection[] = [];
-    
+
     // ═══ SECTION 1 : Informations générales (toujours) ═══
     const generalFields: FieldConfig[] = [];
-    
+
     // Champs fixes déjà remplis automatiquement
     const auto_filled_fields = analysis.fixed_fields;
-    
+
     // ═══ SECTION 2 : Caractéristiques principales ═══
     const mainFields: Array<FieldConfig | FieldConfig[]> = [];
-    
+
     // Grouper les champs par paires pour layout 2 colonnes
     const allFields = Object.keys(modalities);
     const requiredFields = analysis.required_fields;
     const conditionalFields = analysis.conditional_fields;
-    
+
     // Détecter les paires logiques (marque/modèle, etc.)
     const fieldPairs: Array<[string, string]> = [];
-    
+
     if (allFields.includes('marque') && allFields.includes('modele')) {
         fieldPairs.push(['marque', 'modele']);
     }
@@ -46,37 +46,37 @@ export function generateBasicFormConfig(category: string): CompleteFormConfig {
     if (allFields.includes('couleur') && allFields.includes('taille')) {
         fieldPairs.push(['couleur', 'taille']);
     }
-    
+
     // Construire les champs par paires
     const usedFields = new Set<string>();
-    
+
     for (const [field1, field2] of fieldPairs) {
         const pair: FieldConfig[] = [];
-        
+
         if (allFields.includes(field1)) {
-            pair.push(createFieldConfig(category, field1, modalities, requiredFields, conditionalFields));
+            pair.push(createFieldConfig(category, field1, modalities, undefined, requiredFields, conditionalFields));
             usedFields.add(field1);
         }
-        
+
         if (allFields.includes(field2)) {
             pair.push(createFieldConfig(category, field2, modalities, conditionalFields.includes(field2) ? field1 : undefined, requiredFields, conditionalFields));
             usedFields.add(field2);
         }
-        
+
         if (pair.length > 0) {
             mainFields.push(pair);
         }
     }
-    
+
     // Ajouter les champs restants (non appariés)
     for (const field of allFields) {
         if (usedFields.has(field)) continue;
         if (Object.keys(auto_filled_fields).includes(field)) continue;  // Déjà auto-rempli
-        
+
         const fieldConfig = createFieldConfig(category, field, modalities, undefined, requiredFields, conditionalFields);
         mainFields.push(fieldConfig);
     }
-    
+
     // Créer la section principale
     if (mainFields.length > 0) {
         sections.push({
@@ -86,7 +86,7 @@ export function generateBasicFormConfig(category: string): CompleteFormConfig {
             hints: getCategoryHints(category)
         });
     }
-    
+
     // ═══ SECTION PRIX (toujours à la fin) ═══
     if (allFields.includes('prix') || allFields.includes('prixUnitaire')) {
         sections.push({
@@ -113,7 +113,7 @@ export function generateBasicFormConfig(category: string): CompleteFormConfig {
             ]
         });
     }
-    
+
     return {
         category,
         title: formatCategoryTitle(category),
@@ -137,10 +137,10 @@ function createFieldConfig(
 ): FieldConfig {
     const fieldData = modalities[fieldName];
     const isRequired = requiredFields.includes(fieldName);
-    
+
     // Déterminer le type de champ
     let type: FieldConfig['type'] = 'text';
-    
+
     // Champs spéciaux
     if (fieldName.includes('modele') && dependsOn) {
         if (category === 'telephone') type = 'smart_phone_model';
@@ -163,11 +163,11 @@ function createFieldConfig(
         type = 'date';
     } else if (fieldName.includes('heure') || fieldName.includes('time')) {
         type = 'time';
-    } else if (fieldName.includes('prix') || fieldName.includes('quantite') || fieldName.includes('annee') || 
-               fieldName.includes('nombre') || fieldName.includes('superficie') || fieldName.includes('kilometrage')) {
+    } else if (fieldName.includes('prix') || fieldName.includes('quantite') || fieldName.includes('annee') ||
+        fieldName.includes('nombre') || fieldName.includes('superficie') || fieldName.includes('kilometrage')) {
         type = 'number';
     }
-    
+
     return {
         field: fieldName,
         label: formatFieldLabel(fieldName),
@@ -203,11 +203,11 @@ function formatFieldLabel(fieldName: string): string {
         'nbChambres': 'Nombre de chambres',
         'gpsImmobilier': 'Localisation GPS'
     };
-    
+
     if (knownLabels[fieldName]) {
         return knownLabels[fieldName];
     }
-    
+
     // Formater automatiquement (snake_case → Title Case)
     return fieldName
         .replace(/([A-Z])/g, ' $1')  // camelCase → spaces
@@ -229,11 +229,11 @@ function generatePlaceholder(fieldName: string, type: string): string {
         if (fieldName.includes('kilometrage')) return 'Ex: 65000';
         return 'Entrez un nombre';
     }
-    
+
     if (type === 'gps') return 'Ajouter la localisation GPS';
     if (type === 'date') return 'Sélectionner une date';
     if (type === 'time') return 'Sélectionner l\'heure';
-    
+
     return `Sélectionnez ${formatFieldLabel(fieldName).toLowerCase()}`;
 }
 
@@ -250,7 +250,7 @@ function getCategorySectionTitle(category: string): string {
         'electromenager': 'Caractéristiques de l\'appareil',
         'ordinateur': 'Spécifications techniques'
     };
-    
+
     return titles[category] || 'Informations du produit';
 }
 
@@ -270,7 +270,7 @@ function getCategoryIcon(category: string): string {
         'emploi': 'briefcase',
         'formation': 'book'
     };
-    
+
     return icons[category] || 'box';
 }
 
@@ -292,7 +292,7 @@ function getCategoryHints(category: string): Array<{ text: string; icon: string 
             { text: '📍 GPS = +60% de visibilité', icon: 'map-pin' }
         ]
     };
-    
+
     return hints[category] || [];
 }
 
@@ -306,7 +306,7 @@ function getPriceLabel(category: string): string {
         'emploi': 'Salaire (FCFA)',
         'formation': 'Tarif (FCFA)'
     };
-    
+
     return labels[category] || 'Prix (FCFA)';
 }
 
@@ -321,7 +321,7 @@ function getPricePlaceholder(category: string): string {
         'immobilier': 'Ex: 25000000',
         'vetement': 'Ex: 15000'
     };
-    
+
     return placeholders[category] || 'Ex: 50000';
 }
 
@@ -338,7 +338,7 @@ function formatCategoryTitle(category: string): string {
         'emploi': 'Offre d\'emploi',
         'formation': 'Formation'
     };
-    
+
     return titles[category] || `Vente de ${category}`;
 }
 
@@ -355,7 +355,7 @@ function shouldEnableVariants(category: string): boolean {
         'cosmetic_parfum',
         'bijoux'
     ];
-    
+
     return variantsCategories.includes(category);
 }
 
@@ -366,7 +366,7 @@ function detectFeatures(category: string): CompleteFormConfig['features'] {
     const features: CompleteFormConfig['features'] = {
         images: true  // Toujours activé
     };
-    
+
     // GPS pour immobilier, terrain, agriculture, etc.
     const gpsCategories = [
         'immobilier',
@@ -378,15 +378,15 @@ function detectFeatures(category: string): CompleteFormConfig['features'] {
         'restaurant'
     ];
     features.gps = gpsCategories.includes(category);
-    
+
     // Documents pour automobile, immobilier
     const docCategories = ['automobile', 'immobilier', 'immobilier_batiment'];
     features.documents = docCategories.includes(category);
-    
+
     // Vidéo pour automobile, immobilier
     const videoCategories = ['automobile', 'immobilier', 'hotel'];
     features.video = videoCategories.includes(category);
-    
+
     return features;
 }
 

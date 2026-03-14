@@ -156,6 +156,7 @@ reg('LiveViewer', () => import('../screens/LiveViewerScreen'));
 reg('ManageAgencySchedules', () => import('../screens/ManageAgencySchedulesScreen'));
 reg('ManageBusSeats', () => import('../screens/ManageBusSeatsScreen'));
 reg('Match', () => import('../screens/MatchScreen'));
+reg('MesEquipes', () => import('../screens/MesEquipesScreen'));
 reg('MesProduits', () => import('../screens/MesProduitsScreen'));
 reg('MesServices', () => import('../screens/MesServices'));
 reg('MesServicesSpecialises', () => import('../screens/MesServicesSpecialisesScreen'));
