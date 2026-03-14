@@ -1,57 +1,57 @@
 // @ts-nocheck
-import * as React from 'react';
-import { useState } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { Text, Card, Button, Chip } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
+import * as React from 'react';
+import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Card, Text } from 'react-native-paper';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 const AIHubScreen: React.FC = () => {
   const navigation = useNavigation();
+  const { t } = useLanguageSafe();
 
   const aiFeatures = [
     {
-      title: 'Chat IA',
-      description: 'Discutez avec notre assistant intelligent',
+      title: t('ai.featureChatTitle'),
+      description: t('ai.featureChatDesc'),
       icon: '??',
       onPress: () => navigation.navigate('AIChat' as never),
     },
     {
-      title: 'Recherche Intelligente',
-      description: 'Trouvez des services avec l\'IA',
+      title: t('ai.featureSearchTitle'),
+      description: t('ai.featureSearchDesc'),
       icon: '??',
       onPress: () => navigation.navigate('Search' as never),
     },
     {
-      title: 'Cr�ation Assist�e',
-      description: 'Cr�ez des services avec l\'aide de l\'IA',
+      title: t('ai.featureCreateTitle'),
+      description: t('ai.featureCreateDesc'),
       icon: '??',
       onPress: () => navigation.navigate('CreateService' as never),
     },
     {
-      title: 'Suggestions Personnalis�es',
-      description: 'Recevez des recommandations adapt�es',
+      title: t('ai.featureSuggestTitle'),
+      description: t('ai.featureSuggestDesc'),
       icon: '?',
-      onPress: () => {},
+      onPress: () => { },
     },
   ];
 
   const quickActions = [
     {
-      title: 'Rechercher un coiffeur',
-      description: 'Trouvez un coiffeur pr�s de chez vous',
+      title: t('ai.quickSearchHairdresser'),
+      description: t('ai.quickSearchHairdresserDesc'),
       onPress: () => {
-        // Navigation avec param�tres de recherche
         navigation.navigate('Search' as never);
       },
     },
     {
-      title: 'Cr�er un service de nettoyage',
-      description: 'Proposez vos services de m�nage',
+      title: t('ai.quickCreateCleaning'),
+      description: t('ai.quickCreateCleaningDesc'),
       onPress: () => navigation.navigate('CreateService' as never),
     },
     {
-      title: 'Demander de l\'aide',
-      description: 'Posez une question � l\'IA',
+      title: t('ai.quickAskHelp'),
+      description: t('ai.quickAskHelpDesc'),
       onPress: () => navigation.navigate('AIChat' as never),
     },
   ];
@@ -61,15 +61,15 @@ const AIHubScreen: React.FC = () => {
       <View style={styles.content}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>IA Hub</Text>
+          <Text style={styles.title}>{t('ai.hubTitle')}</Text>
           <Text style={styles.subtitle}>
-            D�couvrez la puissance de l'intelligence artificielle
+            {t('ai.hubSubtitle')}
           </Text>
         </View>
 
         {/* AI Features */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Fonctionnalit�s IA</Text>
+          <Text style={styles.sectionTitle}>{t('ai.featuresTitle')}</Text>
           <View style={styles.featuresGrid}>
             {aiFeatures.map((feature, index) => (
               <TouchableOpacity
@@ -87,7 +87,7 @@ const AIHubScreen: React.FC = () => {
 
         {/* Quick Actions */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Actions rapides</Text>
+          <Text style={styles.sectionTitle}>{t('ai.quickActionsTitle')}</Text>
           {quickActions.map((action, index) => (
             <Card key={index} style={styles.actionCard}>
               <Card.Content>
@@ -103,19 +103,19 @@ const AIHubScreen: React.FC = () => {
         {/* AI Stats */}
         <Card style={styles.statsCard}>
           <Card.Content>
-            <Text style={styles.sectionTitle}>Statistiques IA</Text>
+            <Text style={styles.sectionTitle}>{t('ai.statsTitle')}</Text>
             <View style={styles.statsGrid}>
               <View style={styles.statItem}>
                 <Text style={styles.statNumber}>1,234</Text>
-                <Text style={styles.statLabel}>Requ�tes trait�es</Text>
+                <Text style={styles.statLabel}>{t('ai.requestsProcessed')}</Text>
               </View>
               <View style={styles.statItem}>
                 <Text style={styles.statNumber}>98%</Text>
-                <Text style={styles.statLabel}>Pr�cision</Text>
+                <Text style={styles.statLabel}>{t('ai.precision')}</Text>
               </View>
               <View style={styles.statItem}>
                 <Text style={styles.statNumber}>2.3s</Text>
-                <Text style={styles.statLabel}>Temps moyen</Text>
+                <Text style={styles.statLabel}>{t('ai.avgTime')}</Text>
               </View>
             </View>
           </Card.Content>
@@ -124,12 +124,12 @@ const AIHubScreen: React.FC = () => {
         {/* Tips */}
         <Card style={styles.tipsCard}>
           <Card.Content>
-            <Text style={styles.sectionTitle}>?? Conseils d'utilisation</Text>
+            <Text style={styles.sectionTitle}>{t('ai.tipsTitle')}</Text>
             <View style={styles.tipsList}>
-              <Text style={styles.tipItem}>� Soyez pr�cis dans vos demandes</Text>
-              <Text style={styles.tipItem}>� Utilisez des mots-cl�s pertinents</Text>
-              <Text style={styles.tipItem}>� L'IA apprend de vos interactions</Text>
-              <Text style={styles.tipItem}>� N'h�sitez pas � reformuler si n�cessaire</Text>
+              <Text style={styles.tipItem}>• {t('ai.tipPrecise')}</Text>
+              <Text style={styles.tipItem}>• {t('ai.tipKeywords')}</Text>
+              <Text style={styles.tipItem}>• {t('ai.tipLearns')}</Text>
+              <Text style={styles.tipItem}>• {t('ai.tipRephrase')}</Text>
             </View>
           </Card.Content>
         </Card>

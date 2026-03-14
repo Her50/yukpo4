@@ -40,6 +40,7 @@ import NavigationScreen from '../screens/NavigationScreen';
 
 // Services spécialisés (core)
 import GestionServicesSpecialisesScreen from '../screens/specialized/GestionServicesSpecialisesScreen';
+import ServicesDashboard from '../screens/specialized/ServicesDashboard';
 
 // ============================================================================
 // NAVIGATEURS

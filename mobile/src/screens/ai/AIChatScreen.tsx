@@ -1,11 +1,11 @@
 // @ts-nocheck
-import * as React from 'react';
-import { TouchableOpacity } from 'react-native';
-import { useState, useRef, useEffect } from 'react';
-import { View, StyleSheet, FlatList } from 'react-native';
-import { Text, TextInput, Button, Card, Avatar } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
+import * as React from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { FlatList, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Avatar, Card, Text, TextInput } from 'react-native-paper';
 import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { aiService } from '../../services/api';
 
 interface Message {
@@ -16,24 +16,28 @@ interface Message {
 }
 
 const AIChatScreen: React.FC = () => {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      text: 'Bonjour ! Je suis votre assistant IA Yukpo. Comment puis-je vous aider aujourd\'hui ?',
-      isUser: false,
-      timestamp: new Date(),
-    },
-  ]);
+  const { t } = useLanguageSafe();
+  const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(false);
   const navigation = useNavigation();
   const flatListRef = useRef<FlatList>(null);
 
   useEffect(() => {
+    // Set welcome message with translation
+    setMessages([{
+      id: '1',
+      text: t('ai.welcomeMessage'),
+      isUser: false,
+      timestamp: new Date(),
+    }]);
+  }, [t]);
+
+  useEffect(() => {
     navigation.setOptions({
-      title: 'Chat IA',
+      title: t('ai.chatTitle'),
     });
-  }, [navigation]);
+  }, [navigation, t]);
 
   const sendMessage = async () => {
     if (!inputText.trim() || loading) return;
@@ -53,7 +57,7 @@ const AIChatScreen: React.FC = () => {
       const response = await aiService.chat(inputText);
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: (response.data as any)?.message || 'D�sol�, je n\'ai pas pu traiter votre demande.',
+        text: (response.data as any)?.message || t('ai.errorProcessing'),
         isUser: false,
         timestamp: new Date(),
       };
@@ -62,7 +66,7 @@ const AIChatScreen: React.FC = () => {
     } catch (error) {
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: 'D�sol�, une erreur est survenue. Veuillez r�essayer.',
+        text: t('ai.errorGeneric'),
         isUser: false,
         timestamp: new Date(),
       };
@@ -124,7 +128,7 @@ const AIChatScreen: React.FC = () => {
           <TextInput
             value={inputText}
             onChangeText={setInputText}
-            placeholder="Tapez votre message..."
+            placeholder={t('ai.inputPlaceholder')}
             mode="outlined"
             multiline
             style={styles.textInput}
@@ -135,7 +139,7 @@ const AIChatScreen: React.FC = () => {
             disabled={!inputText.trim() || loading}
             style={styles.sendButton}
           >
-            <Text style={{ color: "#000" }}>Envoyer</Text>
+            <Text style={{ color: "#000" }}>{t('ai.send')}</Text>
           </TouchableOpacity>
         </View>
       </View>
