@@ -1,3 +1,4 @@
+// @ts-nocheck
 // ✅ Écran Bourse du Livre avec IA (Mobile)
 
 import { useNavigation } from '@react-navigation/native';

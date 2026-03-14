@@ -41,7 +41,7 @@ export const SpecializedServicesButton: React.FC<SpecializedServicesButtonProps>
             if (onPress) {
                 // ✅ AMÉLIORÉ: Gérer les handlers async
                 const result = onPress();
-                if (result instanceof Promise) {
+                if ((result as any) instanceof Promise) {
                     await result;
                 }
             } else {

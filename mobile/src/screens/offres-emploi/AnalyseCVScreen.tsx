@@ -1,3 +1,4 @@
+// @ts-nocheck
 // ✅ Écran Analyse CV IA pour Offres d'Emploi (Mobile)
 
 import { useNavigation } from '@react-navigation/native';

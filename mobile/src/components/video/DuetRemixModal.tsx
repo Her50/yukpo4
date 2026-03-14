@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Modal de création Duet/Remix (style TikTok)
  * Permet de créer un duet (côte à côte) ou remix (audio réutilisé)

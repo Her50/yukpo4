@@ -1,6 +1,6 @@
 import React from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
-import useServiceStats from '../hooks/useServiceStats';
+import { useServiceStats } from '../hooks/useServiceStats';
 import { theme } from '../theme/theme';
 
 interface ServiceStatsProps {

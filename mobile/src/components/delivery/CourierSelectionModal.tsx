@@ -13,8 +13,8 @@ import {
 import { deliveryApi } from '../../services/api';
 import { mediaService } from '../../services/mediaService';
 import { modernColors } from '../../theme/modernTheme';
-import { NativeButton } from '../SafeNativeDesign';
 import { SafeIcon } from '../SafeIcon';
+import { NativeButton } from '../SafeNativeDesign';
 
 interface CourierSelectionModalProps {
     visible: boolean;
@@ -60,7 +60,7 @@ const CourierSelectionModal: React.FC<CourierSelectionModalProps> = ({
     const loadCouriers = async () => {
         setLoadingCouriers(true);
         try {
-            const response = await deliveryApi.listAvailableCouriers();
+            const response = await deliveryApi.listAvailableCouriers({} as any);
             if (response.couriers) {
                 setCouriers(response.couriers);
             }

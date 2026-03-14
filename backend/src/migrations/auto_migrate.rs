@@ -11524,22 +11524,202 @@ pub async fn ensure_visibility_tracking_table(pool: &PgPool) -> Result<(), sqlx:
     Ok(())
 }
 
-/// Vérifie que les tables service_team_management existent (créées via les migrations individuelles)
+/// ✅ Crée les tables service_team_management si elles n'existent pas (sécurisé)
 pub async fn ensure_service_team_management_table(pool: &PgPool) -> Result<(), sqlx::Error> {
-    info!("🔍 Vérification des tables service_team_management...");
+    info!("🔍 Vérification/création des tables service_team_management...");
 
-    let service_team_exists = sqlx::query_scalar::<_, bool>(
-        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'service_team_members')"
+    // 1. Table des rôles d'équipe
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS service_team_roles (
+            id VARCHAR(50) PRIMARY KEY,
+            name VARCHAR(100) NOT NULL,
+            description TEXT,
+            level INTEGER NOT NULL DEFAULT 1,
+            color VARCHAR(7) DEFAULT '#6B7280',
+            icon VARCHAR(50) DEFAULT 'users',
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            updated_at TIMESTAMPTZ DEFAULT NOW()
+        )
+        "#,
     )
-    .fetch_one(pool)
+    .execute(pool)
     .await?;
 
-    if !service_team_exists {
-        warn!("⚠️ Tables service_team_management manquantes (seront créées par les migrations individuelles)");
-    } else {
-        info!("✅ Tables service_team_management présentes");
-    }
+    // 2. Table des permissions
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS service_permissions (
+            id VARCHAR(100) PRIMARY KEY,
+            name VARCHAR(200) NOT NULL,
+            description TEXT,
+            category VARCHAR(50) NOT NULL DEFAULT 'general',
+            created_at TIMESTAMPTZ DEFAULT NOW()
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
 
+    // 3. Table des permissions par rôle
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS role_permissions (
+            role_id VARCHAR(50) REFERENCES service_team_roles(id) ON DELETE CASCADE,
+            permission_id VARCHAR(100) REFERENCES service_permissions(id) ON DELETE CASCADE,
+            PRIMARY KEY (role_id, permission_id)
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    // 4. Table des membres d'équipe
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS service_team_members (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            service_id INTEGER REFERENCES services(id) ON DELETE CASCADE,
+            user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            role_id VARCHAR(50) REFERENCES service_team_roles(id) ON DELETE RESTRICT,
+            added_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            added_at TIMESTAMPTZ DEFAULT NOW(),
+            is_active BOOLEAN DEFAULT TRUE,
+            UNIQUE(service_id, user_id)
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    // 5. Table des invitations d'équipe
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS service_team_invitations (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            service_id INTEGER REFERENCES services(id) ON DELETE CASCADE,
+            email VARCHAR(255) NOT NULL,
+            role_id VARCHAR(50) REFERENCES service_team_roles(id) ON DELETE RESTRICT,
+            invited_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            invited_at TIMESTAMPTZ DEFAULT NOW(),
+            expires_at TIMESTAMPTZ DEFAULT (NOW() + INTERVAL '7 days'),
+            status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'declined', 'rejected', 'expired')),
+            token VARCHAR(255) UNIQUE NOT NULL,
+            accepted_at TIMESTAMPTZ,
+            UNIQUE(service_id, email)
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    // 6. Table des activités d'équipe
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS service_team_activities (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            service_id INTEGER REFERENCES services(id) ON DELETE CASCADE,
+            user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            action VARCHAR(100) NOT NULL,
+            description TEXT,
+            metadata JSONB,
+            created_at TIMESTAMPTZ DEFAULT NOW()
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    // 7. Insérer les rôles prédéfinis
+    sqlx::query(
+        r#"
+        INSERT INTO service_team_roles (id, name, description, level, color, icon) VALUES
+        ('admin', 'Administrateur', 'Accès complet à tous les services et paramètres', 1, '#DC2626', 'crown'),
+        ('manager', 'Gestionnaire', 'Gestion des services et équipe, pas d''accès financier', 2, '#7C3AED', 'users'),
+        ('editor', 'Éditeur', 'Modification du contenu et médias des services', 3, '#059669', 'edit'),
+        ('viewer', 'Observateur', 'Consultation des services et statistiques', 4, '#6B7280', 'eye')
+        ON CONFLICT (id) DO NOTHING
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    // 8. Insérer les permissions prédéfinies
+    sqlx::query(
+        r#"
+        INSERT INTO service_permissions (id, name, description, category) VALUES
+        ('view_services', 'Voir les services', 'Consulter la liste des services', 'general'),
+        ('create_service', 'Créer un service', 'Créer de nouveaux services', 'general'),
+        ('delete_service', 'Supprimer un service', 'Supprimer des services', 'general'),
+        ('edit_content', 'Modifier le contenu', 'Modifier le titre, description et détails', 'content'),
+        ('edit_products', 'Gérer les produits', 'Ajouter, modifier et supprimer des produits', 'content'),
+        ('edit_pricing', 'Modifier les prix', 'Changer les prix des services et produits', 'content'),
+        ('upload_media', 'Télécharger des médias', 'Ajouter des images, vidéos et documents', 'media'),
+        ('delete_media', 'Supprimer des médias', 'Supprimer des images, vidéos et documents', 'media'),
+        ('view_analytics', 'Voir les statistiques', 'Consulter les vues, interactions et performances', 'analytics'),
+        ('export_data', 'Exporter les données', 'Exporter les statistiques et rapports', 'analytics'),
+        ('manage_team', 'Gérer l''équipe', 'Inviter et gérer les membres de l''équipe', 'team'),
+        ('assign_roles', 'Assigner des rôles', 'Changer les rôles et permissions des membres', 'team'),
+        ('view_financials', 'Voir les finances', 'Consulter les revenus et dépenses', 'financial'),
+        ('manage_payments', 'Gérer les paiements', 'Configurer et gérer les méthodes de paiement', 'financial')
+        ON CONFLICT (id) DO NOTHING
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    // 9. Assigner les permissions aux rôles
+    sqlx::query(
+        r#"
+        INSERT INTO role_permissions (role_id, permission_id) VALUES
+        ('admin', 'view_services'), ('admin', 'create_service'), ('admin', 'delete_service'),
+        ('admin', 'edit_content'), ('admin', 'edit_products'), ('admin', 'edit_pricing'),
+        ('admin', 'upload_media'), ('admin', 'delete_media'),
+        ('admin', 'view_analytics'), ('admin', 'export_data'),
+        ('admin', 'manage_team'), ('admin', 'assign_roles'),
+        ('admin', 'view_financials'), ('admin', 'manage_payments'),
+        ('manager', 'view_services'), ('manager', 'create_service'),
+        ('manager', 'edit_content'), ('manager', 'edit_products'), ('manager', 'edit_pricing'),
+        ('manager', 'upload_media'), ('manager', 'delete_media'),
+        ('manager', 'view_analytics'), ('manager', 'export_data'),
+        ('manager', 'manage_team'), ('manager', 'assign_roles'), ('manager', 'view_financials'),
+        ('editor', 'view_services'), ('editor', 'edit_content'), ('editor', 'edit_products'),
+        ('editor', 'edit_pricing'), ('editor', 'upload_media'), ('editor', 'delete_media'),
+        ('editor', 'view_analytics'),
+        ('viewer', 'view_services'), ('viewer', 'view_analytics')
+        ON CONFLICT (role_id, permission_id) DO NOTHING
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    // 10. Index pour les performances
+    let _ = sqlx::query("CREATE INDEX IF NOT EXISTS idx_service_team_members_service_id ON service_team_members(service_id)").execute(pool).await;
+    let _ = sqlx::query("CREATE INDEX IF NOT EXISTS idx_service_team_members_user_id ON service_team_members(user_id)").execute(pool).await;
+    let _ = sqlx::query("CREATE INDEX IF NOT EXISTS idx_service_team_members_role_id ON service_team_members(role_id)").execute(pool).await;
+    let _ = sqlx::query("CREATE INDEX IF NOT EXISTS idx_service_team_members_active ON service_team_members(is_active)").execute(pool).await;
+    let _ = sqlx::query("CREATE INDEX IF NOT EXISTS idx_service_team_invitations_service_id ON service_team_invitations(service_id)").execute(pool).await;
+    let _ = sqlx::query("CREATE INDEX IF NOT EXISTS idx_service_team_invitations_email ON service_team_invitations(email)").execute(pool).await;
+    let _ = sqlx::query("CREATE INDEX IF NOT EXISTS idx_service_team_invitations_token ON service_team_invitations(token)").execute(pool).await;
+    let _ = sqlx::query("CREATE INDEX IF NOT EXISTS idx_service_team_invitations_status ON service_team_invitations(status)").execute(pool).await;
+    let _ = sqlx::query("CREATE INDEX IF NOT EXISTS idx_service_team_activities_service_id ON service_team_activities(service_id)").execute(pool).await;
+    let _ = sqlx::query("CREATE INDEX IF NOT EXISTS idx_service_team_activities_user_id ON service_team_activities(user_id)").execute(pool).await;
+
+    // 11. Ajouter 'rejected' au CHECK constraint si absent (migration sur table existante)
+    let _ = sqlx::query(
+        r#"
+        DO $$ BEGIN
+            ALTER TABLE service_team_invitations DROP CONSTRAINT IF EXISTS service_team_invitations_status_check;
+            ALTER TABLE service_team_invitations ADD CONSTRAINT service_team_invitations_status_check
+                CHECK (status IN ('pending', 'accepted', 'declined', 'rejected', 'expired'));
+        EXCEPTION WHEN OTHERS THEN NULL;
+        END $$
+        "#,
+    )
+    .execute(pool)
+    .await;
+
+    info!("✅ Tables service_team_management créées/vérifiées avec succès");
     Ok(())
 }
 

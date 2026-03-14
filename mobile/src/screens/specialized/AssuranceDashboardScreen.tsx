@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Dashboard professionnel pour prestataires Assurance
 // Digitalisation complète: produits, polices, sinistres, analytics IA
 

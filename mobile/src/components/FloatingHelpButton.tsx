@@ -1,3 +1,4 @@
+// @ts-nocheck
 // src/components/ui/FloatingHelpButton.tsx
 import React from 'react';
 

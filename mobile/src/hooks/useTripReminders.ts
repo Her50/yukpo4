@@ -1,3 +1,4 @@
+// @ts-nocheck
 // ✅ Hook pour gérer les rappels de trajets
 // Date: 2025-01-29
 

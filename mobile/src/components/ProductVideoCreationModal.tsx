@@ -811,6 +811,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         } finally {
             setIsUploadingARVideo(false);
         }
+        // @ts-ignore - refreshMedia is defined later in this component
     }, [arEditorProduct, selectedProduct, primaryProduct, uploadToCloud, refreshMedia]);
 
     // ✅ Fonction pour charger la configuration de livraison

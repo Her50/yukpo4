@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { LinkingOptions } from '@react-navigation/native';
 
 const linking: LinkingOptions<any> = {

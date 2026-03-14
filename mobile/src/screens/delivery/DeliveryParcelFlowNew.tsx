@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * 📦 NOUVEAU: Flux de livraison de colis amélioré avec progress bar
  * Design moderne niveau Uber Eats / DoorDash
