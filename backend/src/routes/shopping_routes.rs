@@ -38,6 +38,14 @@ pub fn shopping_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             post(submit_shopping_checkout),
         )
         .route("/shopping/wallet/balance", get(get_wallet_balance))
+        .route(
+            "/shopping/wallet/transactions",
+            get(get_wallet_transactions),
+        )
+        .route(
+            "/shopping/wallet/financial-summary",
+            get(get_wallet_financial_summary),
+        )
         .layer(axum::middleware::from_fn(jwt_auth))
         .with_state(state)
 }

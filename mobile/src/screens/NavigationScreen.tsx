@@ -303,18 +303,27 @@ const NavigationScreen: React.FC = () => {
         return groups;
     }, [pointsOfInterest]);
     const routePolylineCoords = useMemo(() => {
-        if (!selectedRoute?.overview_polyline) return [];
-        try { return decodePolyline(selectedRoute.overview_polyline); } catch { return []; }
+        if (!selectedRoute?.overview_polyline) { console.log('[Navigation] 🗺️ routePolylineCoords: no polyline'); return []; }
+        try {
+            const coords = decodePolyline(selectedRoute.overview_polyline);
+            console.log('[Navigation] 🗺️ routePolylineCoords: decoded', coords.length, 'points from polyline of', selectedRoute.overview_polyline.length, 'chars');
+            return coords;
+        } catch (e) { console.error('[Navigation] 🗺️ routePolylineCoords: decode error', e); return []; }
     }, [selectedRoute?.overview_polyline]);
     const mapRegion = useMemo((): Region | undefined => {
         if (routePolylineCoords.length > 0) {
             const lats = routePolylineCoords.map(p => p.latitude), lngs = routePolylineCoords.map(p => p.longitude);
-            return { latitude: (Math.min(...lats) + Math.max(...lats)) / 2, longitude: (Math.min(...lngs) + Math.max(...lngs)) / 2, latitudeDelta: Math.max((Math.max(...lats) - Math.min(...lats)) * 1.4, 0.01), longitudeDelta: Math.max((Math.max(...lngs) - Math.min(...lngs)) * 1.4, 0.01) };
+            const region = { latitude: (Math.min(...lats) + Math.max(...lats)) / 2, longitude: (Math.min(...lngs) + Math.max(...lngs)) / 2, latitudeDelta: Math.max((Math.max(...lats) - Math.min(...lats)) * 1.4, 0.01), longitudeDelta: Math.max((Math.max(...lngs) - Math.min(...lngs)) * 1.4, 0.01) };
+            console.log('[Navigation] 🗺️ mapRegion: from polyline', region);
+            return region;
         }
         if (destinationCoords) return { latitude: destinationCoords.lat, longitude: destinationCoords.lng, latitudeDelta: 0.05, longitudeDelta: 0.05 };
         if (currentLocation?.coords) return { latitude: currentLocation.coords.latitude, longitude: currentLocation.coords.longitude, latitudeDelta: 0.05, longitudeDelta: 0.05 };
         return { latitude: 4.05, longitude: 9.7, latitudeDelta: 0.1, longitudeDelta: 0.1 };
     }, [routePolylineCoords, destinationCoords, currentLocation]);
+
+    // ✅ Debug: log quand routes changent
+    useEffect(() => { console.log('[Navigation] 📊 routes state changed:', routes.length, 'routes, selectedRoute:', selectedRoute?.id, 'showMap:', showMap); }, [routes, selectedRoute, showMap]);
 
     useEffect(() => { if (routePolylineCoords.length > 1 && mapRef.current) mapRef.current.fitToCoordinates(routePolylineCoords, { edgePadding: { top: 50, right: 50, bottom: 50, left: 50 }, animated: true }); }, [routePolylineCoords]);
 
