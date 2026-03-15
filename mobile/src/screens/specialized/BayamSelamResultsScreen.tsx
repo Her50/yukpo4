@@ -320,8 +320,8 @@ const BayamSelamResultsScreen: React.FC = () => {
 
         if (!user) {
             Alert.alert(t('bayamSelam.loginRequired'), t('bayamSelam.loginToOrder'), [
-                { text: 'Annuler' },
-                { text: 'Se connecter', onPress: () => navigation.navigate('Login' as never) },
+                { text: t('common.cancel') },
+                { text: t('common.login'), onPress: () => navigation.navigate('Login' as never) },
             ]);
             return;
         }

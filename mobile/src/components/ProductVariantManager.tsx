@@ -5,6 +5,7 @@ import { modernColors } from '../theme/modernTheme';
 import { NativeInput } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
 import SelectModalitySelector from './SelectModalitySelector';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 // ✅ Interface pour une variante de produit
 export interface ProductVariant {
@@ -36,6 +37,7 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
 }) => {
     const [editingVariantId, setEditingVariantId] = useState<string | null>(null);
 
+    const { t } = useLanguageSafe();
     // Ajouter une nouvelle variante
     const handleAddVariant = () => {
         const newVariant: ProductVariant = {
@@ -82,9 +84,9 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
             'Supprimer la variante',
             'Êtes-vous sûr de vouloir supprimer cette variante ?',
             [
-                { text: 'Annuler', style: 'cancel' },
+                { text: t('common.cancel'), style: 'cancel' },
                 {
-                    text: 'Supprimer',
+                    text: t('common.delete'),
                     style: 'destructive',
                     onPress: () => {
                         onChange(variants.filter(v => v.id !== variantId));
@@ -132,9 +134,9 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
             'Supprimer l\'image',
             'Êtes-vous sûr de vouloir supprimer cette image ?',
             [
-                { text: 'Annuler', style: 'cancel' },
+                { text: t('common.cancel'), style: 'cancel' },
                 {
-                    text: 'Supprimer',
+                    text: t('common.delete'),
                     style: 'destructive',
                     onPress: () => handleUpdateVariant(variantId, 'image', undefined)
                 }

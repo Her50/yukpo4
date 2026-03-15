@@ -5,6 +5,7 @@ import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { userApi } from '../services/api';
 import SafeStorage from '../utils/safeStorage';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const HeaderController: React.FC = () => {
   const { user, logout } = useAuth();
@@ -82,7 +83,7 @@ const HeaderController: React.FC = () => {
       'Déconnexion',
       'Êtes-vous sûr de vouloir vous déconnecter ?',
       [
-        { text: 'Annuler', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
           text: 'Déconnexion',
           style: 'destructive',

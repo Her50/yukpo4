@@ -25,6 +25,7 @@ import { useAIWithFallback } from '../../hooks/useAIWithFallback';
 import { CVAnalysis, FormationSuggestion, OffreEmploi, offreEmploiService, SalaryPrediction, SearchOffresFilters } from '../../services/offreEmploiService';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 // Filtres rapides par type de contrat
 const CONTRACT_FILTERS = [
@@ -38,6 +39,7 @@ const CONTRACT_FILTERS = [
 const OffresEmploiHomeScreen: React.FC = () => {
     const navigation = useNavigation();
     const { location } = useLocation();
+    const { t } = useLanguageSafe();
     const { predictSalary } = useAIWithFallback();
 
     // États de recherche
@@ -321,7 +323,7 @@ const OffresEmploiHomeScreen: React.FC = () => {
                                         'Aucune suggestion',
                                         'Créez votre profil candidat pour recevoir des suggestions personnalisées d\'offres.',
                                         [
-                                            { text: 'Annuler' },
+                                            { text: t('common.cancel') },
                                             { text: 'Créer mon profil', onPress: () => (navigation as any).navigate('ProfilCandidat') },
                                         ]
                                     );
@@ -332,7 +334,7 @@ const OffresEmploiHomeScreen: React.FC = () => {
                                     'Suggestions',
                                     'Créez votre profil candidat pour recevoir des suggestions personnalisées.',
                                     [
-                                        { text: 'Annuler' },
+                                        { text: t('common.cancel') },
                                         { text: 'Créer mon profil', onPress: () => (navigation as any).navigate('ProfilCandidat') },
                                     ]
                                 );

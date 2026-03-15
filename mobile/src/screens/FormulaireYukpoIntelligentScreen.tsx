@@ -3181,7 +3181,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 'Format: YYYY-MM-DD',
                 [
                   {
-                    text: 'Annuler',
+                    text: t('common.cancel'),
                     style: 'cancel'
                   },
                   {

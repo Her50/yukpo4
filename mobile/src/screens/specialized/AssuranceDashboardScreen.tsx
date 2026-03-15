@@ -203,9 +203,9 @@ const AssuranceDashboardScreen: React.FC = () => {
                 await assuranceService.updateClaimStatus(claim.id, newStatus, { motif_refus: motif });
                 loadData();
             }) || Alert.alert(t('assuranceDashboard.refuse'), t('assuranceDashboard.confirmRefusal'), [
-                { text: 'Annuler' },
+                { text: t('common.cancel') },
                 {
-                    text: 'Confirmer', onPress: async () => {
+                    text: t('common.confirm'), onPress: async () => {
                         await assuranceService.updateClaimStatus(claim.id, newStatus, { motif_refus: 'Refusé par l\'assureur' });
                         loadData();
                     }
@@ -216,9 +216,9 @@ const AssuranceDashboardScreen: React.FC = () => {
 
         if (action === 'indemniser') {
             Alert.alert(t('assuranceDashboard.compensate'), t('assuranceDashboard.confirmCompensation'), [
-                { text: 'Annuler' },
+                { text: t('common.cancel') },
                 {
-                    text: 'Confirmer', onPress: async () => {
+                    text: t('common.confirm'), onPress: async () => {
                         const montant = claim.montant_reclame ? parseFloat(claim.montant_reclame) : 0;
                         await assuranceService.updateClaimStatus(claim.id, newStatus, { montant_indemnise: montant });
                         loadData();
@@ -437,16 +437,16 @@ const AssuranceDashboardScreen: React.FC = () => {
                             <View style={s.policyActions}>
                                 <TouchableOpacity style={s.policyActionBtn} onPress={() => {
                                     Alert.alert(t('assuranceDashboard.suspend'), t('assuranceDashboard.confirmSuspend'), [
-                                        { text: 'Non' },
-                                        { text: 'Oui', onPress: async () => { await assuranceService.updatePolicyStatus(p.id, 'suspendue'); loadData(); } },
+                                        { text: t('common.no') },
+                                        { text: t('common.yes'), onPress: async () => { await assuranceService.updatePolicyStatus(p.id, 'suspendue'); loadData(); } },
                                     ]);
                                 }}>
                                     <Text style={[s.policyActionText, { color: '#D97706' }]}>Suspendre</Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity style={s.policyActionBtn} onPress={() => {
                                     Alert.alert(t('assuranceDashboard.terminate'), t('assuranceDashboard.confirmTerminate'), [
-                                        { text: 'Non' },
-                                        { text: 'Oui', style: 'destructive', onPress: async () => { await assuranceService.updatePolicyStatus(p.id, 'resiliee', 'Résiliation par l\'assureur'); loadData(); } },
+                                        { text: t('common.no') },
+                                        { text: t('common.yes'), style: 'destructive', onPress: async () => { await assuranceService.updatePolicyStatus(p.id, 'resiliee', 'Résiliation par l\'assureur'); loadData(); } },
                                     ]);
                                 }}>
                                     <Text style={[s.policyActionText, { color: '#DC2626' }]}>Résilier</Text>

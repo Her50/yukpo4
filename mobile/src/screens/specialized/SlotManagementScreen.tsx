@@ -159,7 +159,7 @@ const SlotManagementScreen: React.FC<SlotManagementScreenProps> = ({ route, navi
             t('slotManagement.generateSlots'),
             t('slotManagement.generateSlotsMsg', { date: selectedDate }),
             [
-                { text: 'Annuler', style: 'cancel' },
+                { text: t('common.cancel'), style: 'cancel' },
                 {
                     text: 'Générer',
                     onPress: async () => {

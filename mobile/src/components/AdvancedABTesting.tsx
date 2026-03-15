@@ -4,6 +4,7 @@ import { apiGet } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
 import { NativeCard } from './SafeNativeDesign';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface Variant {
     id: string;
@@ -312,9 +313,9 @@ export const AdvancedABTesting: React.FC<AdvancedABTestingProps> = ({
                                                 'Appliquer la variante gagnante',
                                                 `Voulez-vous désactiver les autres variantes et ne garder que "${stat.variant_name}" ?`,
                                                 [
-                                                    { text: 'Annuler', style: 'cancel' },
+                                                    { text: t('common.cancel'), style: 'cancel' },
                                                     {
-                                                        text: 'Appliquer',
+                                                        text: t('common.apply'),
                                                         onPress: () => {
                                                             // Désactiver toutes les autres variantes
                                                             const updated = variants.map(v =>

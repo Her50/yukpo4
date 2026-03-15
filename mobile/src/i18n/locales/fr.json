@@ -905,7 +905,13 @@
         "reserved": "Réservé !",
         "reservationConfirmed": "Votre réservation est confirmée. Expire: {{expiry}}. Présentez-vous à la pharmacie.",
         "cannotReserve": "Impossible de réserver ce médicament.",
-        "reserveRetry": "Impossible de réserver. Réessayez ou contactez la pharmacie."
+        "reserveRetry": "Impossible de réserver. Réessayez ou contactez la pharmacie.",
+        "responseLocalData": "Réponse basée sur des données locales",
+        "aiResponseGenerated": "Réponse IA générée",
+        "aiTemporarilyUnavailable": "IA temporairement indisponible",
+        "infoLocalData": "Information basée sur des données locales",
+        "consultPharmacistFull": "Consultez votre pharmacien pour une vérification complète",
+        "cannotCheckStock": "Impossible de vérifier le stock"
     },
     "hopitalDetails": {
         "cannotLoadDetails": "Impossible de charger les détails",
@@ -949,6 +955,9 @@
         "waitTime": "Temps d'attente",
         "avgWaitTime": "Temps moyen estimé : {{minutes}} min",
         "waitTimeUnavailable": "Données de temps d'attente non disponibles actuellement.",
+        "resultsLocalData": "Résultats basés sur des données locales — consultez un médecin",
+        "pathologiesFound": "{{count}} pathologie(s) trouvée(s)",
+        "noResultConsultDoctor": "Aucun résultat. Consultez un médecin généraliste.",
         "waitTimeServiceDown": "Service de temps d'attente indisponible."
     },
     "covoiturage": {
@@ -2326,7 +2335,8 @@
         "monthly": "mensuel",
         "menuGenerationError": "Erreur lors de la génération du menu",
         "recipeShared": "Recette partagée avec succès !",
-        "cannotShareRecipe": "Impossible de partager la recette en PDF"
+        "cannotShareRecipe": "Impossible de partager la recette en PDF",
+        "recipeLocalApprox": "Recette générée localement — résultats approximatifs"
     },
     "offresEmploiForm": {
         "dataRestored": "Données restaurées",
@@ -2358,5 +2368,55 @@
         "generateSlotsMsg": "Générer des créneaux de 30 min de 08:00 à 17:00 pour le {{date}} ?",
         "slotsGenerated": "{{count}} créneaux générés",
         "generationError": "Erreur génération"
+    },
+    "common": {
+        "cancel": "Annuler",
+        "close": "Fermer",
+        "reserve": "Réserver",
+        "confirm": "Confirmer",
+        "delete": "Supprimer",
+        "edit": "Modifier",
+        "save": "Enregistrer",
+        "validate": "Valider",
+        "yes": "Oui",
+        "no": "Non",
+        "back": "Retour",
+        "next": "Suivant",
+        "create": "Créer",
+        "retry": "Réessayer",
+        "view": "Voir",
+        "send": "Envoyer",
+        "add": "Ajouter",
+        "apply": "Appliquer",
+        "continue": "Continuer",
+        "reject": "Rejeter",
+        "accept": "Accepter",
+        "takePhoto": "Prendre une photo",
+        "chooseFromGallery": "Choisir depuis la galerie",
+        "chooseImage": "Choisir une image",
+        "createService": "Créer un service",
+        "viewMatches": "Voir les correspondances",
+        "login": "Se connecter",
+        "later": "Plus tard",
+        "configure": "Configurer",
+        "share": "Partager",
+        "copy": "Copier",
+        "download": "Télécharger",
+        "loading": "Chargement...",
+        "error": "Erreur",
+        "success": "Succès",
+        "search": "Rechercher",
+        "ok": "OK"
+    },
+    "bourseLivre": {
+        "unavailable": "Indisponible",
+        "aiRecommendationsUnavailable": "Recommandations IA temporairement indisponibles.",
+        "recommendationsLocalData": "Recommandations basées sur des données locales",
+        "estimateLocalData": "Estimation basée sur des données locales",
+        "aiPriceEstimateUnavailable": "Estimation de prix IA temporairement indisponible."
+    },
+    "orientationScolaire": {
+        "responseLocalData": "Réponse basée sur des données locales",
+        "aiTemporarilyUnavailable": "IA temporairement indisponible"
     }
 }

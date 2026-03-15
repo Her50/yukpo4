@@ -5,6 +5,7 @@ import { modalityService } from '../services/modalityService';
 import { modernColors } from '../theme/modernTheme';
 import { getUserZone, sortOptionsByZone } from '../utils/userZone';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface SelectModalitySelectorProps {
     label: string;
@@ -26,7 +27,8 @@ const SelectModalitySelector: React.FC<SelectModalitySelectorProps> = ({
     placeholder = 'Sélectionner...'
 }) => {
     const [allOptions, setAllOptions] = useState<string[]>([]);
-    const [loading, setLoading] = useState(false);
+
+    const { t } = useLanguageSafe();    const [loading, setLoading] = useState(false);
     const [showModal, setShowModal] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [userZone, setUserZone] = useState<string>('CM'); // Zone par défaut: Cameroun
@@ -104,7 +106,7 @@ const SelectModalitySelector: React.FC<SelectModalitySelectorProps> = ({
             'Effacer la sélection',
             `Voulez-vous effacer le ${label.toLowerCase()} sélectionné ?`,
             [
-                { text: 'Annuler', style: 'cancel' },
+                { text: t('common.cancel'), style: 'cancel' },
                 {
                     text: 'Effacer',
                     style: 'destructive',

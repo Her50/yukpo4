@@ -9,6 +9,7 @@ import {
 import { Avatar } from 'react-native-paper';
 import { useAuth } from '../contexts/AuthContext';
 import { theme } from '../theme/theme';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface AvatarMenuModalProps {
   isOpen: boolean;
@@ -29,7 +30,7 @@ const AvatarMenuModal: React.FC<AvatarMenuModalProps> = ({
       'Êtes-vous sûr de vouloir vous déconnecter ?',
       [
         {
-          text: 'Annuler',
+          text: t('common.cancel'),
           style: 'cancel',
         },
         {

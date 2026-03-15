@@ -143,9 +143,9 @@ const StorageLocationsScreen: React.FC = () => {
             t('message.confirm'),
             t('storageLocations.confirmDelete'),
             [
-                { text: 'Annuler', style: 'cancel' },
+                { text: t('common.cancel'), style: 'cancel' },
                 {
-                    text: 'Supprimer',
+                    text: t('common.delete'),
                     style: 'destructive',
                     onPress: async () => {
                         try {
@@ -360,7 +360,7 @@ const StorageLocationsScreen: React.FC = () => {
                                                 text: `${zone.name}${zone.description ? ` - ${zone.description}` : ''}`,
                                                 onPress: () => setFormData(prev => ({ ...prev, zone_id: zone.id }))
                                             })),
-                                            { text: 'Annuler', style: 'cancel' as const }
+                                            { text: t('common.cancel'), style: 'cancel' as const }
                                         ];
                                         Alert.alert(t('storageLocations.selectZone'), '', options);
                                     }}

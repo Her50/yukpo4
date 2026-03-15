@@ -126,7 +126,7 @@ const CovoiturageBookingScreen: React.FC = () => {
                 t('covoiturageBooking.insufficientBalance'),
                 t('covoiturageBooking.insufficientBalanceMsg', { balance: balance.toLocaleString('fr-FR'), currency: covoiturage.devise, total: total.toLocaleString('fr-FR') }),
                 [
-                    { text: 'Annuler', style: 'cancel' },
+                    { text: t('common.cancel'), style: 'cancel' },
                     {
                         text: 'Recharger',
                         onPress: () => navigation.navigate('RechargeTokens' as never)

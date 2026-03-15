@@ -27,6 +27,7 @@ import {
 import { NativeButton, NativeCard } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
 import UserMentionPicker from './UserMentionPicker';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface ServiceTeamManagerProps {
     serviceId?: string; // Si null, gestion globale
@@ -215,9 +216,9 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
             'Confirmer la suppression',
             'Êtes-vous sûr de vouloir retirer ce membre de l\'équipe ?',
             [
-                { text: 'Annuler', style: 'cancel' },
+                { text: t('common.cancel'), style: 'cancel' },
                 {
-                    text: 'Supprimer',
+                    text: t('common.delete'),
                     style: 'destructive',
                     onPress: async () => {
                         try {

@@ -1791,7 +1791,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                         '💸 Solde insuffisant',
                         `Coût estimé : ${costStr}\nVotre solde : ${balanceStr}\n\nVeuillez recharger votre compte pour générer cette vidéo.`,
                         [
-                            { text: 'Annuler', style: 'cancel' },
+                            { text: t('common.cancel'), style: 'cancel' },
                             { text: 'Recharger', onPress: () => navigation?.navigate('RechargeTokens' as never) },
                         ]
                     );
@@ -1812,7 +1812,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     '💸 Solde insuffisant',
                     'Votre solde est insuffisant pour générer cette vidéo. Veuillez recharger votre compte.',
                     [
-                        { text: 'Annuler', style: 'cancel' },
+                        { text: t('common.cancel'), style: 'cancel' },
                         { text: 'Recharger', onPress: () => navigation?.navigate('RechargeTokens' as never) },
                     ]
                 );
@@ -2157,7 +2157,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                             }
                         },
                         {
-                            text: 'Annuler',
+                            text: t('common.cancel'),
                             style: 'cancel'
                         }
                     ]
@@ -5230,7 +5230,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     'Estimation impossible',
                     errorMsg + '\n\nSouhaitez-vous continuer avec la génération de la vidéo ?',
                     [
-                        { text: 'Annuler', style: 'cancel' },
+                        { text: t('common.cancel'), style: 'cancel' },
                         {
                             text: 'Continuer quand même',
                             onPress: async () => {
@@ -5259,7 +5259,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     'Impossible d\'estimer le coût pour le moment.\n\n' +
                     'Souhaitez-vous continuer avec la génération de la vidéo ?',
                     [
-                        { text: 'Annuler', style: 'cancel' },
+                        { text: t('common.cancel'), style: 'cancel' },
                         {
                             text: 'Continuer quand même',
                             onPress: async () => {
@@ -5300,7 +5300,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 costMessage,
                 [
                     {
-                        text: 'Annuler',
+                        text: t('common.cancel'),
                         style: 'cancel',
                     },
                     {
@@ -5332,7 +5332,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     '💸 Solde insuffisant',
                     'Votre solde est insuffisant pour générer cette vidéo. Veuillez recharger votre compte.',
                     [
-                        { text: 'Annuler', style: 'cancel' },
+                        { text: t('common.cancel'), style: 'cancel' },
                         { text: 'Recharger', onPress: () => { onClose(); navigation?.navigate('RechargeTokens' as never); } },
                     ]
                 );
@@ -5581,7 +5581,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                         errorMessage,
                         [
                             {
-                                text: 'Annuler',
+                                text: t('common.cancel'),
                                 style: 'cancel'
                             },
                             {

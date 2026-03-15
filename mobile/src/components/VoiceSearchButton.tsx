@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface Props {
     onTranscript: (text: string) => void;
@@ -35,7 +36,7 @@ const VoiceSearchButton: React.FC<Props> = ({ onTranscript, disabled }) => {
                 'La transcription vocale sera bientôt disponible. Veuillez saisir votre recherche:',
                 [
                     {
-                        text: 'Annuler',
+                        text: t('common.cancel'),
                         style: 'cancel',
                         onPress: () => setIsProcessing(false),
                     },

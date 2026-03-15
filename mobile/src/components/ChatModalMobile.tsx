@@ -30,6 +30,7 @@ import ProductCommentsSection from './ProductCommentsSection';
 import ProductGalleryPickerModal from './ProductGalleryPickerModal';
 import SafeIcon from './SafeIcon';
 import UserMentionPicker from './UserMentionPicker';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface ChatModalMobileProps {
     visible: boolean;
@@ -64,6 +65,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
     initialMessages
 }) => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const [newMessage, setNewMessage] = useState('');
     const [isTyping, setIsTyping] = useState(false);
     const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
@@ -255,7 +257,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
             'Retirer le participant',
             'Êtes-vous sûr de vouloir retirer cette personne de la conversation ?',
             [
-                { text: 'Annuler', style: 'cancel' },
+                { text: t('common.cancel'), style: 'cancel' },
                 {
                     text: 'Retirer',
                     style: 'destructive',
@@ -320,9 +322,9 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
             'Supprimer le message',
             'Êtes-vous sûr de vouloir supprimer ce message ?',
             [
-                { text: 'Annuler', style: 'cancel' },
+                { text: t('common.cancel'), style: 'cancel' },
                 {
-                    text: 'Supprimer',
+                    text: t('common.delete'),
                     style: 'destructive',
                     onPress: () => deleteMessage(messageId)
                 }
@@ -350,7 +352,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                 'Appeler le prestataire',
                 `Voulez-vous appeler ${nomPrestataire} au ${phoneNumber} ?`,
                 [
-                    { text: 'Annuler', style: 'cancel' },
+                    { text: t('common.cancel'), style: 'cancel' },
                     {
                         text: 'Appeler',
                         onPress: () => {
@@ -1300,7 +1302,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                                         setShowOrderModal(true);
                                                     }
                                                 }));
-                                                buttons.push({ text: 'Annuler', style: 'cancel' });
+                                                buttons.push({ text: t('common.cancel'), style: 'cancel' });
                                                 Alert.alert('Sélectionner un produit', 'Choisissez le produit à livrer', buttons);
                                             }
                                         } else {
@@ -1464,7 +1466,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                                             setShowNegotiatePriceModal(true);
                                                         }
                                                     };
-                                                }).concat([{ text: 'Annuler', style: 'cancel' } as any])
+                                                }).concat([{ text: t('common.cancel'), style: 'cancel' } as any])
                                             );
                                         }
                                     } else {

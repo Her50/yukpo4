@@ -136,7 +136,7 @@ const OffreDetailsScreen: React.FC = () => {
                     t('offreDetails.profileRequired'),
                     t('offreDetails.createProfileAndCV'),
                     [
-                        { text: 'Annuler' },
+                        { text: t('common.cancel') },
                         {
                             text: 'Créer mon profil',
                             onPress: () => (navigation as any).navigate('ProfilCandidat'),

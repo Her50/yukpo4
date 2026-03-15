@@ -6,6 +6,7 @@ import { Alert, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { ActivityIndicator, Button, Card, Paragraph, Title } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '../theme/theme';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface ServiceData {
   id: string;
@@ -21,6 +22,7 @@ interface ServiceData {
 
 const ExternalServiceShare: React.FC = () => {
   const navigation = useNavigation();
+    const { t } = useLanguageSafe();
   const [service, setService] = useState<ServiceData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -71,7 +73,7 @@ const ExternalServiceShare: React.FC = () => {
       'Contacter le prestataire',
       'Voulez-vous contacter ce prestataire ?',
       [
-        { text: 'Annuler', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
           text: 'Contacter',
           onPress: () => {

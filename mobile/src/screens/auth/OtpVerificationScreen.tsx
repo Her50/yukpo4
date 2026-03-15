@@ -16,6 +16,7 @@ import { useToaster } from '../../components/ToasterProvider';
 import { API_BASE_URL } from '../../config/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { theme } from '../../theme/theme';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface OtpRouteParams {
   userId: number;
@@ -34,6 +35,7 @@ const OtpVerificationScreen: React.FC = () => {
   const params = route.params as OtpRouteParams;
   const { updateUser } = useAuth();
   const toaster = useToaster();
+    const { t } = useLanguageSafe();
 
   const [code, setCode] = useState<string[]>(Array(OTP_LENGTH).fill(''));
   const [loading, setLoading] = useState(false);
@@ -196,7 +198,7 @@ const OtpVerificationScreen: React.FC = () => {
       'Passer la vérification ?',
       'Vous pourrez vérifier votre numéro plus tard depuis votre profil. Certaines fonctionnalités seront limitées.',
       [
-        { text: 'Annuler', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
           text: 'Passer',
           onPress: () => {

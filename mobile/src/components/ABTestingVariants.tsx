@@ -3,6 +3,7 @@ import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
 import { NativeCard, NativeInput } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface Variant {
     id: string;
@@ -106,9 +107,9 @@ export const ABTestingVariants: React.FC<ABTestingVariantsProps> = ({
                                             'Supprimer la variante',
                                             'Êtes-vous sûr de vouloir supprimer cette variante ?',
                                             [
-                                                { text: 'Annuler', style: 'cancel' },
+                                                { text: t('common.cancel'), style: 'cancel' },
                                                 {
-                                                    text: 'Supprimer',
+                                                    text: t('common.delete'),
                                                     style: 'destructive',
                                                     onPress: () => onRemoveVariant(variant.id),
                                                 },

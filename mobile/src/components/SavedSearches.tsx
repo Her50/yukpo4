@@ -13,6 +13,7 @@ import { NativeCard } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
 import { apiDelete, apiGet } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface SavedSearch {
     id: number;
@@ -63,9 +64,9 @@ const SavedSearches: React.FC<Props> = ({ onSelect, specializedType }) => {
             'Supprimer la recherche',
             `Êtes-vous sûr de vouloir supprimer "${name}" ?`,
             [
-                { text: 'Annuler', style: 'cancel' },
+                { text: t('common.cancel'), style: 'cancel' },
                 {
-                    text: 'Supprimer',
+                    text: t('common.delete'),
                     style: 'destructive',
                     onPress: async () => {
                         try {

@@ -26,6 +26,7 @@ import QRCodeScanner from '../../components/QRCodeScanner';
 import SafeIcon from '../../components/SafeIcon';
 import { deliveryApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface ProductToPickup {
   product_index: number;
@@ -68,7 +69,8 @@ const ProviderCourierVerificationScreen: React.FC<ProviderCourierVerificationScr
 }) => {
   const { deliveryId } = route.params;
   const [mode, setMode] = useState<'choose' | 'pin' | 'scan'>('choose');
-  const [pinCode, setPinCode] = useState(['', '', '', '', '', '']);
+
+    const { t } = useLanguageSafe();  const [pinCode, setPinCode] = useState(['', '', '', '', '', '']);
   const [verifying, setVerifying] = useState(false);
   const [verificationResult, setVerificationResult] = useState<VerificationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -350,9 +352,9 @@ const ProviderCourierVerificationScreen: React.FC<ProviderCourierVerificationScr
                 'Confirmer la remise',
                 'Confirmez-vous avoir remis tous les produits au coursier ?',
                 [
-                  { text: 'Annuler', style: 'cancel' },
+                  { text: t('common.cancel'), style: 'cancel' },
                   {
-                    text: 'Confirmer',
+                    text: t('common.confirm'),
                     onPress: () => navigation.goBack(),
                   },
                 ],

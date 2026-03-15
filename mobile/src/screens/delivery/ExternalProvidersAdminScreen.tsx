@@ -125,7 +125,7 @@ const ExternalProvidersAdminScreen: React.FC = () => {
             t('extProviders.deactivateProvider'),
             t('extProviders.confirmDeactivate', { name: provider.provider_name }),
             [
-                { text: 'Annuler', style: 'cancel' },
+                { text: t('common.cancel'), style: 'cancel' },
                 {
                     text: 'Désactiver',
                     style: 'destructive',

@@ -101,9 +101,9 @@ const BloodGroupManagementScreen: React.FC = () => {
             t('bloodGroup.updateLastDonation'),
             t('bloodGroup.confirmUpdateDonation'),
             [
-                { text: 'Annuler', style: 'cancel' },
+                { text: t('common.cancel'), style: 'cancel' },
                 {
-                    text: 'Confirmer',
+                    text: t('common.confirm'),
                     onPress: async () => {
                         try {
                             setSaving(true);

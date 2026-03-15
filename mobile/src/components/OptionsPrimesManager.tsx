@@ -4,6 +4,7 @@ import { modernColors } from '../theme/modernTheme';
 import { NativeInput } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
 import SelectModalitySelector from './SelectModalitySelector';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 // ✅ Interface pour une option de contrat avec prime et franchise
 export interface OptionPrime {
@@ -48,9 +49,9 @@ const OptionsPrimesManager: React.FC<OptionsPrimesManagerProps> = ({
             'Supprimer l\'option',
             'Êtes-vous sûr de vouloir supprimer cette option de contrat ?',
             [
-                { text: 'Annuler', style: 'cancel' },
+                { text: t('common.cancel'), style: 'cancel' },
                 {
-                    text: 'Supprimer',
+                    text: t('common.delete'),
                     style: 'destructive',
                     onPress: () => onChange(options.filter(opt => opt.id !== optionId))
                 }

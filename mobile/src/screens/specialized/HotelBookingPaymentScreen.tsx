@@ -18,6 +18,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { userApi } from '../../services/api';
 import { immobilierService } from '../../services/immobilierService';
 import { modernColors, modernStyles } from '../../theme/modernTheme';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 type RouteParams = {
     reservationId: number;
@@ -27,6 +28,7 @@ type RouteParams = {
 
 const HotelBookingPaymentScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const route = useRoute() as any;
     const { user } = useAuth();
     const reservationId = route.params?.reservationId;
@@ -73,7 +75,7 @@ const HotelBookingPaymentScreen: React.FC = () => {
                 'Solde insuffisant',
                 `Votre solde (${userBalance.toLocaleString()} ${devise}) est insuffisant pour ce paiement (${montantAPayer.toLocaleString()} ${devise}). Veuillez recharger votre compte.`,
                 [
-                    { text: 'Annuler', style: 'cancel' },
+                    { text: t('common.cancel'), style: 'cancel' },
                     {
                         text: 'Recharger',
                         onPress: () => (navigation as any).navigate('RechargeTokens'),

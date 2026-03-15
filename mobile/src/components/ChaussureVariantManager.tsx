@@ -5,6 +5,7 @@ import { modernColors } from '../theme/modernTheme';
 import { NativeInput } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
 import SelectModalitySelector from './SelectModalitySelector';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 // ✅ Interface pour une variante de chaussure (Pointure + Couleur + Prix + Images)
 export interface ChaussureVariant {
@@ -56,9 +57,9 @@ const ChaussureVariantManager: React.FC<ChaussureVariantManagerProps> = ({
             'Supprimer la variante',
             'Êtes-vous sûr de vouloir supprimer cette variante ?',
             [
-                { text: 'Annuler', style: 'cancel' },
+                { text: t('common.cancel'), style: 'cancel' },
                 {
-                    text: 'Supprimer',
+                    text: t('common.delete'),
                     style: 'destructive',
                     onPress: () => onChange(variants.filter(v => v.id !== variantId))
                 }

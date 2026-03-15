@@ -404,15 +404,15 @@ const PharmacieHomeScreen: React.FC = () => {
             t('pharmacieHome.howToAddImage'),
             [
                 {
-                    text: 'Prendre une photo',
+                    text: t('common.takePhoto'),
                     onPress: () => handleAnalyzeMedicationImage('camera'),
                 },
                 {
-                    text: 'Choisir depuis la galerie',
+                    text: t('common.chooseFromGallery'),
                     onPress: () => handleAnalyzeMedicationImage('gallery'),
                 },
                 {
-                    text: 'Annuler',
+                    text: t('common.cancel'),
                     style: 'cancel',
                 },
             ]
@@ -486,7 +486,7 @@ const PharmacieHomeScreen: React.FC = () => {
                     t('pharmacieHome.available'),
                     t('pharmacieHome.inStockMsg', { name: medication.nom_produit, qty: response.medication?.stock_quantity || '?', price: response.medication?.price ? response.medication.price.toLocaleString() + ' FCFA' : t('pharmacieHome.onRequest') }),
                     [
-                        { text: 'Réserver', onPress: () => handleReserveMedication(medication) },
+                        { text: t('common.reserve'), onPress: () => handleReserveMedication(medication) },
                         { text: 'OK' },
                     ]
                 );

@@ -36,6 +36,7 @@ import { useToast } from '../../hooks/useToast';
 import { deliveryApi, shoppingApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 import { DeliverySummary, ParcelRejectionReason, ShoppingBasketItem } from '../../types/delivery';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 type TabType = 'timeline' | 'basket' | 'courier';
 
@@ -370,9 +371,9 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
             'Accepter la course',
             'Êtes-vous sûr de vouloir accepter cette course ?',
             [
-                { text: 'Annuler', style: 'cancel' },
+                { text: t('common.cancel'), style: 'cancel' },
                 {
-                    text: 'Accepter',
+                    text: t('common.accept'),
                     style: 'default',
                     onPress: async () => {
                         setAcceptingDelivery(true);

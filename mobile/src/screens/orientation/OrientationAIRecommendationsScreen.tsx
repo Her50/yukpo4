@@ -16,9 +16,11 @@ import SafeIcon from '../../components/SafeIcon';
 import { useAuth } from '../../contexts/AuthContext';
 import { orientationScolaireApi } from '../../services/orientationScolaireApi';
 import { modernColors } from '../../theme/modernTheme';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 const OrientationAIRecommendationsScreen: React.FC = () => {
     const navigation = useNavigation() as any;
+    const { t } = useLanguageSafe();
     const { user } = useAuth();
     const [loading, setLoading] = useState(false);
     const [recommendations, setRecommendations] = useState<any[]>([]);
@@ -37,7 +39,7 @@ const OrientationAIRecommendationsScreen: React.FC = () => {
                     'Profil requis',
                     'Veuillez d\'abord compléter votre profil étudiant',
                     [
-                        { text: 'Annuler', style: 'cancel' },
+                        { text: t('common.cancel'), style: 'cancel' },
                         {
                             text: 'Créer profil',
                             onPress: () => navigation.navigate('ProfilEtudiant')

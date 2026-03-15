@@ -307,7 +307,7 @@ const PharmacieFormScreen: React.FC = () => {
         Alert.alert(t('message.delete'), t('pharmacie.deleteProduct', { name: product.nom_produit }), [
             { text: t('message.cancel'), style: 'cancel' },
             {
-                text: 'Supprimer', style: 'destructive', onPress: async () => {
+                text: t('common.delete'), style: 'destructive', onPress: async () => {
                     try {
                         await apiDelete(`/api/pharmacies/products/${product.id}`);
                         const pid = pharmacyData?.service_id || serviceId;

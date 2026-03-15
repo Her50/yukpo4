@@ -15,6 +15,7 @@ import { LiveChatModal } from '../components/video/LiveChatModal';
 import { useAuth } from '../contexts/AuthContext';
 import { liveKitService } from '../services/liveKitService';
 import { liveStreamingService } from '../services/liveStreamingService';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 type RouteParams = {
   sessionId: string;
@@ -57,7 +58,7 @@ export default function LiveHostScreen() {
           'Live en cours',
           'Êtes-vous sûr de vouloir terminer votre live?',
           [
-            { text: 'Non', style: 'cancel' },
+            { text: t('common.no'), style: 'cancel' },
             { text: 'Terminer', style: 'destructive', onPress: () => endLive() },
           ]
         );
@@ -169,7 +170,7 @@ export default function LiveHostScreen() {
             'Terminer le Live',
             'Êtes-vous sûr de vouloir terminer votre live?',
             [
-              { text: 'Non', style: 'cancel' },
+              { text: t('common.no'), style: 'cancel' },
               { text: 'Terminer', style: 'destructive', onPress: endLive },
             ]
           );
@@ -219,7 +220,7 @@ export default function LiveHostScreen() {
                 'Live en cours',
                 'Êtes-vous sûr de vouloir terminer votre live?',
                 [
-                  { text: 'Non', style: 'cancel' },
+                  { text: t('common.no'), style: 'cancel' },
                   { text: 'Terminer', style: 'destructive', onPress: endLive },
                 ]
               );

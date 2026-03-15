@@ -297,7 +297,7 @@ const LaboratoireHomeScreen: React.FC = () => {
                     onPress: () => handlePickImage('gallery'),
                 },
                 {
-                    text: 'Annuler',
+                    text: t('common.cancel'),
                     style: 'cancel',
                 },
             ]
@@ -562,9 +562,9 @@ const LaboratoireHomeScreen: React.FC = () => {
                                                 t('labHome.bookExam'),
                                                 t('labHome.bookExamConfirm', { lab: labName }),
                                                 [
-                                                    { text: 'Annuler', style: 'cancel' },
+                                                    { text: t('common.cancel'), style: 'cancel' },
                                                     {
-                                                        text: 'Réserver',
+                                                        text: t('common.reserve'),
                                                         onPress: async () => {
                                                             try {
                                                                 const resp = await laboratoryService.searchExaminationTypes(searchQuery || 'analyse', 1);

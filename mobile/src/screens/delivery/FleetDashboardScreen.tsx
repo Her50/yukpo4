@@ -176,7 +176,7 @@ const FleetDashboardScreen: React.FC = () => {
             t('fleet.approveApplication'),
             t('fleet.approveConfirm'),
             [
-                { text: 'Annuler', style: 'cancel' },
+                { text: t('common.cancel'), style: 'cancel' },
                 {
                     text: 'Approuver',
                     onPress: async () => {
@@ -224,7 +224,7 @@ const FleetDashboardScreen: React.FC = () => {
                 ? t('fleet.suspendWarning')
                 : 'Ce coursier pourra a nouveau recevoir des courses.',
             [
-                { text: 'Annuler', style: 'cancel' },
+                { text: t('common.cancel'), style: 'cancel' },
                 {
                     text: label,
                     style: action === 'suspend' ? 'destructive' : 'default',

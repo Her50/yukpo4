@@ -6,6 +6,7 @@ import { modernColors } from '../theme/modernTheme';
 import { NativeInput } from './SafeNativeDesign';
 import { SafeIcon } from './SafeIcon';
 import { TimelineScene, VideoTimeline } from './TimelinePreview';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface TimelineEditorProps {
     timeline: VideoTimeline;
@@ -49,9 +50,9 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
             'Supprimer la scène',
             'Êtes-vous sûr de vouloir supprimer cette scène ?',
             [
-                { text: 'Annuler', style: 'cancel' },
+                { text: t('common.cancel'), style: 'cancel' },
                 {
-                    text: 'Supprimer',
+                    text: t('common.delete'),
                     style: 'destructive',
                     onPress: () => {
                         const newScenes = editedTimeline.scenes.filter((_, i) => i !== index);

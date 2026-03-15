@@ -503,7 +503,7 @@ const VideoCreationIntroScreen: React.FC = () => {
                     t('videoIntro.productRequired'),
                     t('videoIntro.productRequiredMsg'),
                     [
-                        { text: 'Annuler', style: 'cancel' },
+                        { text: t('common.cancel'), style: 'cancel' },
                         {
                             text: 'Aller à Mes Services',
                             onPress: () => {
@@ -532,7 +532,7 @@ const VideoCreationIntroScreen: React.FC = () => {
             t('videoIntro.serviceRequired'),
             t('videoIntro.serviceRequiredMsg'),
             [
-                { text: 'Annuler', style: 'cancel' },
+                { text: t('common.cancel'), style: 'cancel' },
                 {
                     text: 'Aller à Mes Services',
                     onPress: () => {

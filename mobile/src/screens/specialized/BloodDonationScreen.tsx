@@ -404,9 +404,9 @@ const BloodDonationScreen: React.FC = () => {
                                         t('bloodDonation.registerDonation'),
                                         t('bloodDonation.confirmDonationToday'),
                                         [
-                                            { text: 'Annuler', style: 'cancel' },
+                                            { text: t('common.cancel'), style: 'cancel' },
                                             {
-                                                text: 'Confirmer',
+                                                text: t('common.confirm'),
                                                 onPress: async () => {
                                                     try {
                                                         await bloodDonationService.updateLastDonation(

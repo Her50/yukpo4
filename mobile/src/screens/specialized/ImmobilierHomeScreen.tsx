@@ -25,6 +25,7 @@ import { useCurrencyDetection } from '../../hooks/useCurrencyDetection';
 import { immobilierService, PropertySearchFilters, RealEstateProperty } from '../../services/immobilierService';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 const FAVORITES_KEY = '@immobilier_favorites';
 
@@ -35,6 +36,7 @@ const ImmobilierHomeScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
     const { location } = useLocation();
+    const { t } = useLanguageSafe();
 
     // ✅ NOUVEAU: Détection automatique de devise depuis GPS
     const detectedCurrency = useCurrencyDetection();
@@ -317,9 +319,9 @@ const ImmobilierHomeScreen: React.FC = () => {
             'Réserver une visite',
             `Voulez-vous réserver une visite pour "${property.titre}" ?`,
             [
-                { text: 'Annuler', style: 'cancel' },
+                { text: t('common.cancel'), style: 'cancel' },
                 {
-                    text: 'Réserver',
+                    text: t('common.reserve'),
                     onPress: async () => {
                         try {
                             const tomorrow = new Date();

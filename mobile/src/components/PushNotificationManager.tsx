@@ -12,10 +12,12 @@ import { useAuth } from '../contexts/AuthContext';
 import { notificationSoundService } from '../services/notificationSoundService';
 import { setupForegroundNotificationHandler, setupNotificationResponseHandler } from '../services/pushNotifications';
 import InAppCallModal from './InAppCallModal';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const PushNotificationManager: React.FC = () => {
     const { user } = useAuth();
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const [incomingCall, setIncomingCall] = useState<any>(null);
     const notificationListener = useRef<any>();
     const responseListener = useRef<any>();
@@ -58,9 +60,9 @@ const PushNotificationManager: React.FC = () => {
                     notification.request.content.title || '💬 Nouveau message',
                     notification.request.content.body || '',
                     [
-                        { text: 'Fermer', style: 'cancel' },
+                        { text: t('common.close'), style: 'cancel' },
                         {
-                            text: 'Voir',
+                            text: t('common.view'),
                             onPress: () => {
                                 // Ouvrir l'historique des conversations ou le service
                                 if (data.service_id) {
@@ -88,9 +90,9 @@ const PushNotificationManager: React.FC = () => {
                     notification.request.content.title || '📦 Nouvelle livraison disponible',
                     notification.request.content.body || '',
                     [
-                        { text: 'Fermer', style: 'cancel' },
+                        { text: t('common.close'), style: 'cancel' },
                         {
-                            text: 'Voir',
+                            text: t('common.view'),
                             onPress: () => {
                                 if (data.delivery_id) {
                                     (navigation as any).navigate('DeliveryShoppingTracking', {
@@ -124,7 +126,7 @@ const PushNotificationManager: React.FC = () => {
                     [
                         { text: 'OK' },
                         ...(data.delivery_id ? [{
-                            text: 'Voir',
+                            text: t('common.view'),
                             onPress: () => {
                                 (navigation as any).navigate('DeliveryShoppingTracking', {
                                     deliveryId: data.delivery_id,
@@ -145,7 +147,7 @@ const PushNotificationManager: React.FC = () => {
                     notification.request.content.title || '🎥 Live',
                     notification.request.content.body || '',
                     [
-                        { text: 'Fermer', style: 'cancel' },
+                        { text: t('common.close'), style: 'cancel' },
                         {
                             text: buttonText,
                             onPress: () => {
@@ -175,7 +177,7 @@ const PushNotificationManager: React.FC = () => {
                     notification.request.content.title || '⚡ Flash Promo',
                     notification.request.content.body || '',
                     [
-                        { text: 'Fermer', style: 'cancel' },
+                        { text: t('common.close'), style: 'cancel' },
                         {
                             text: buttonText,
                             onPress: () => {
@@ -203,7 +205,7 @@ const PushNotificationManager: React.FC = () => {
                     notification.request.content.title || '📊 Alerte Publicité',
                     notification.request.content.body || '',
                     [
-                        { text: 'Fermer', style: 'cancel' },
+                        { text: t('common.close'), style: 'cancel' },
                         {
                             text: 'Voir le dashboard',
                             onPress: () => {

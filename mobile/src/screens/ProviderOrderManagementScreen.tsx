@@ -109,9 +109,9 @@ const ProviderOrderManagementScreen: React.FC = () => {
             t('providerOrders.validateOrder'),
             t('providerOrders.confirmValidate'),
             [
-                { text: 'Annuler', style: 'cancel' },
+                { text: t('common.cancel'), style: 'cancel' },
                 {
-                    text: 'Valider',
+                    text: t('common.validate'),
                     onPress: async () => {
                         try {
                             setValidatingOrderId(order.id);

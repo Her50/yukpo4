@@ -2,6 +2,7 @@ import { MapPin } from 'phosphor-react-native';
 import React, { useEffect, useState } from 'react';
 import ReactNative from 'react-native';
 import { theme } from '../theme/theme';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const { Alert, StyleSheet, Text, TouchableOpacity, View } = ReactNative;
 
@@ -97,7 +98,7 @@ export const LocationDisplayModern: React.FC<LocationDisplayModernProps> = ({
         'Localisation GPS',
         `Coordonnées: ${locationText}\n\nVoulez-vous ouvrir dans l'application de cartes ?`,
         [
-          { text: 'Annuler', style: 'cancel' },
+          { text: t('common.cancel'), style: 'cancel' },
           {
             text: 'Ouvrir', onPress: () => {
               // Ici on pourrait ouvrir l'app de cartes native

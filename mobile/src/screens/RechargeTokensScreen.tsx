@@ -7,9 +7,11 @@ import { Alert, Linking, ScrollView, StyleSheet, Text, TextInput, TouchableOpaci
 import { Card, RadioButton, Title } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import NavigatorToolbar from '../components/NavigatorToolbar';
+import PaymentMethodPrompt from '../components/PaymentMethodPrompt';
 import ReceiptModal from '../components/ReceiptModal';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguageSafe } from '../contexts/LanguageContext';
+import { usePaymentMethodCheck } from '../hooks/usePaymentMethodCheck';
 import { apiPost } from '../services/api';
 import { theme } from '../theme/theme';
 
@@ -117,6 +119,19 @@ const RechargeTokensScreen: React.FC = () => {
   ];
 
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [showPaymentPrompt, setShowPaymentPrompt] = useState(false);
+  const paymentCheck = usePaymentMethodCheck();
+
+  // Charger les moyens de paiement sauvegardés au montage et pré-remplir le numéro
+  React.useEffect(() => {
+    paymentCheck.fetchPaymentMethods().then((info) => {
+      if (info.mtn_phone && !phoneNumber) {
+        setPhoneNumber(info.mtn_phone.replace(/[^\d]/g, ''));
+      } else if (info.orange_phone && !phoneNumber) {
+        setPhoneNumber(info.orange_phone.replace(/[^\d]/g, ''));
+      }
+    });
+  }, []);
 
   const handleRecharge = async () => {
     if (!selectedOption && !customAmount) {
@@ -439,11 +454,21 @@ const RechargeTokensScreen: React.FC = () => {
               value={phoneNumber}
               onChangeText={setPhoneNumber}
               keyboardType="phone-pad"
-              maxLength={9}
+              maxLength={15}
             />
             <Text style={styles.phoneHint}>
               {selectedPaymentMethod === 'mtn_momo' ? '💡 MTN : 67X XXX XXX ou 65X XXX XXX' : '💡 Orange : 69X XXX XXX'}
             </Text>
+            {!paymentCheck.has_payment_method && (
+              <TouchableOpacity
+                style={{ marginTop: 8, padding: 8, backgroundColor: '#FEF3C7', borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 6 }}
+                onPress={() => setShowPaymentPrompt(true)}
+              >
+                <Text style={{ fontSize: 13, color: '#92400E' }}>
+                  ⚠️ {t('paymentPrompt.saveForFuture') || 'Enregistrer ce numéro pour les prochains paiements'}
+                </Text>
+              </TouchableOpacity>
+            )}
           </Card.Content>
         </Card>
       )}
@@ -579,6 +604,22 @@ const RechargeTokensScreen: React.FC = () => {
         visible={showReceiptModal}
         onClose={() => setShowReceiptModal(false)}
         receiptData={receiptData}
+      />
+
+      {/* Modal pour configurer les moyens de paiement */}
+      <PaymentMethodPrompt
+        visible={showPaymentPrompt}
+        onClose={() => setShowPaymentPrompt(false)}
+        onSaved={(methods) => {
+          // Pré-remplir le numéro depuis les méthodes sauvegardées
+          if (methods.mtn_money?.phone) {
+            setPhoneNumber(methods.mtn_money.phone.replace(/[^\d]/g, ''));
+          } else if (methods.orange_money?.phone) {
+            setPhoneNumber(methods.orange_money.phone.replace(/[^\d]/g, ''));
+          }
+          paymentCheck.refresh();
+        }}
+        context="recharge"
       />
     </SafeAreaView>
   );

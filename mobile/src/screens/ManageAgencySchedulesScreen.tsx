@@ -157,9 +157,9 @@ const ManageAgencySchedulesScreen: React.FC = () => {
             t('agencySchedules.deleteSchedule'),
             t('agencySchedules.deleteConfirm', { from: schedule.departure_city, to: schedule.arrival_city, time: schedule.departure_time }),
             [
-                { text: 'Annuler', style: 'cancel' },
+                { text: t('common.cancel'), style: 'cancel' },
                 {
-                    text: 'Supprimer',
+                    text: t('common.delete'),
                     style: 'destructive',
                     onPress: async () => {
                         try {

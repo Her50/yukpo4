@@ -15,6 +15,7 @@ import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiGet, apiPatch } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface Reservation {
     id: number;
@@ -64,9 +65,9 @@ const MesReservationsScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
             'Annuler la réservation',
             'Êtes-vous sûr de vouloir annuler cette réservation ?',
             [
-                { text: 'Non', style: 'cancel' },
+                { text: t('common.no'), style: 'cancel' },
                 {
-                    text: 'Oui',
+                    text: t('common.yes'),
                     style: 'destructive',
                     onPress: async () => {
                         try {

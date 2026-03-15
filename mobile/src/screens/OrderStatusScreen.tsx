@@ -19,6 +19,7 @@ import SafeIcon from '../components/SafeIcon';
 import { useAuth } from '../contexts/AuthContext';
 import { Order, orderService } from '../services/orderService';
 import { modernColors } from '../theme/modernTheme';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const STATUS_LABELS: Record<string, string> = {
     pending: 'En attente de validation',
@@ -38,6 +39,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 const OrderStatusScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const route = useRoute();
     const { user } = useAuth();
     const orderId = (route.params as any)?.orderId as string;
@@ -270,9 +272,9 @@ const OrderStatusScreen: React.FC = () => {
                                     'Valider la commande',
                                     'Voulez-vous valider cette commande ?',
                                     [
-                                        { text: 'Annuler', style: 'cancel' },
+                                        { text: t('common.cancel'), style: 'cancel' },
                                         {
-                                            text: 'Valider',
+                                            text: t('common.validate'),
                                             onPress: async () => {
                                                 try {
                                                     await orderService.validateOrder(order.id, {});

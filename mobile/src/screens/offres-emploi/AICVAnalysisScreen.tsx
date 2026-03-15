@@ -18,9 +18,11 @@ import { useAuth } from '../../contexts/AuthContext';
 // apiGet/apiPost remplacés par offreEmploiService
 import { CVAnalysis, offreEmploiService } from '../../services/offreEmploiService';
 import { modernColors } from '../../theme/modernTheme';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 const AICVAnalysisScreen: React.FC = () => {
     const navigation = useNavigation() as any;
+    const { t } = useLanguageSafe();
     const { user } = useAuth();
     const [loading, setLoading] = useState(false);
     const [loadingCV, setLoadingCV] = useState(true);
@@ -64,7 +66,7 @@ const AICVAnalysisScreen: React.FC = () => {
                 'CV requis',
                 'Vous devez d\'abord télécharger votre CV dans votre profil candidat.',
                 [
-                    { text: 'Annuler' },
+                    { text: t('common.cancel') },
                     {
                         text: 'Aller au profil',
                         onPress: () => {

@@ -25,6 +25,7 @@ import { config } from '../config/environment';
 import { useAuth } from '../contexts/AuthContext';
 import { apiGet } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const IMAGE_HEIGHT = 220;
@@ -53,6 +54,7 @@ const extractMediaArray = (field: any): string[] => {
 const ServiceDetailSharedScreen: React.FC = () => {
   const route = useRoute();
   const navigation = useNavigation();
+    const { t } = useLanguageSafe();
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [service, setService] = useState<any>(null);
@@ -184,9 +186,9 @@ const ServiceDetailSharedScreen: React.FC = () => {
         'Connexion requise',
         'Connectez-vous pour contacter ce prestataire',
         [
-          { text: 'Annuler', style: 'cancel' },
+          { text: t('common.cancel'), style: 'cancel' },
           {
-            text: 'Se connecter',
+            text: t('common.login'),
             onPress: () => (navigation as any).navigate('Login', {
               returnTo: 'ServiceDetailShared',
               returnParams: { serviceId }

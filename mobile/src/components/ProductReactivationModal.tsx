@@ -14,6 +14,7 @@ import { apiGet, apiPost } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
 import { NativeButton } from './SafeNativeDesign';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface ProductReactivationModalProps {
     visible: boolean;
@@ -117,8 +118,8 @@ const ProductReactivationModal: React.FC<ProductReactivationModalProps> = ({
             'Confirmer la réactivation',
             `Réactiver ${selectedProducts.size} produit(s) pour ${totalCost.toLocaleString()} FCFA ?\n\nNouveau solde : ${(userBalance - totalCost).toLocaleString()} FCFA`,
             [
-                { text: 'Annuler', style: 'cancel' },
-                { text: 'Confirmer', onPress: performReactivation }
+                { text: t('common.cancel'), style: 'cancel' },
+                { text: t('common.confirm'), onPress: performReactivation }
             ]
         );
     };

@@ -264,9 +264,9 @@ const CovoiturageHomeScreen: React.FC = () => {
                 t('covoiturage.serviceRequired'),
                 t('covoiturage.createServiceFirst'),
                 [
-                    { text: 'Annuler' },
+                    { text: t('common.cancel') },
                     {
-                        text: 'Créer un service',
+                        text: t('common.createService'),
                         onPress: () => navigation.navigate('GestionServicesSpecialises' as never),
                     },
                 ]

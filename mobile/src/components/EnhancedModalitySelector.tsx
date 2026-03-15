@@ -5,6 +5,7 @@ import useUserCountry from '../hooks/useUserCountry';
 import { modalityService } from '../services/modalityService';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface EnhancedModalitySelectorProps {
     label: string;
@@ -28,7 +29,8 @@ const EnhancedModalitySelector: React.FC<EnhancedModalitySelectorProps> = ({
     customOptions // ✅ NOUVEAU
 }) => {
     const [isOpen, setIsOpen] = useState(false);
-    const [allOptions, setAllOptions] = useState<string[]>([]);
+
+    const { t } = useLanguageSafe();    const [allOptions, setAllOptions] = useState<string[]>([]);
     const [loading, setLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
 
@@ -105,11 +107,11 @@ const EnhancedModalitySelector: React.FC<EnhancedModalitySelectorProps> = ({
                 `Entrez le ${label.toLowerCase()} :`,
                 [
                     {
-                        text: 'Annuler',
+                        text: t('common.cancel'),
                         style: 'cancel'
                     },
                     {
-                        text: 'Ajouter',
+                        text: t('common.add'),
                         onPress: async (text) => {
                             if (text && text.trim()) {
                                 const newModality = text.trim();
@@ -327,7 +329,7 @@ const EnhancedModalitySelector: React.FC<EnhancedModalitySelectorProps> = ({
                                                 `Voulez-vous ajouter "${searchQuery.trim()}" comme nouvelle option pour ${label.toLowerCase()} ?\n\nCette modalité sera visible pour tous les utilisateurs.`,
                                                 [
                                                     {
-                                                        text: 'Annuler',
+                                                        text: t('common.cancel'),
                                                         style: 'cancel'
                                                     },
                                                     {
@@ -390,7 +392,7 @@ const EnhancedModalitySelector: React.FC<EnhancedModalitySelectorProps> = ({
                                                 `Voulez-vous ajouter "${searchQuery.trim()}" comme nouvelle option pour ${label.toLowerCase()} ?`,
                                                 [
                                                     {
-                                                        text: 'Annuler',
+                                                        text: t('common.cancel'),
                                                         style: 'cancel',
                                                         onPress: () => {
                                                             setIsOpen(false);

@@ -3,6 +3,7 @@ import { Alert, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity
 import { apiCall } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface VehicleModelSelectorProps {
     label: string;
@@ -70,9 +71,9 @@ const VehicleModelSelector: React.FC<VehicleModelSelectorProps> = ({
                 `Nouveau modèle ${marque}`,
                 `Entrez le modèle de ${marque} :`,
                 [
-                    { text: 'Annuler', style: 'cancel' },
+                    { text: t('common.cancel'), style: 'cancel' },
                     {
-                        text: 'Ajouter',
+                        text: t('common.add'),
                         onPress: async (text) => {
                             if (text && text.trim()) {
                                 const newModel = text.trim();

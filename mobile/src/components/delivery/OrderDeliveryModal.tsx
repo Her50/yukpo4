@@ -25,6 +25,7 @@ import NativeDatePicker from '../NativeDatePicker';
 import NativeTimePicker from '../NativeTimePicker';
 import SafeIcon from '../SafeIcon';
 import { SavedAddressSelector } from './SavedAddressSelector';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface ProductVariant {
     valeur?: string;
@@ -121,6 +122,7 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
     initialProductPrice, // ✅ FIX 2026-03-03: Prix initial du produit
 }) => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const [loading, setLoading] = useState(false);
     const [pickupLocation, setPickupLocation] = useState<Location | null>(null);
     const [dropoffLocation, setDropoffLocation] = useState<Location | null>(null);
@@ -809,7 +811,7 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                     'Solde insuffisant',
                     `Votre solde (${currentBalance.toLocaleString('fr-FR')} FCFA) est insuffisant pour couvrir le total de ${totalCost.toLocaleString('fr-FR')} FCFA.\n\nVeuillez recharger votre compte.`,
                     [
-                        { text: 'Annuler', style: 'cancel' },
+                        { text: t('common.cancel'), style: 'cancel' },
                         {
                             text: 'Recharger',
                             onPress: () => {
@@ -1608,7 +1610,7 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                                     'Votre solde est insuffisant pour cette commande. Voulez-vous recharger votre compte maintenant ?',
                                     [
                                         {
-                                            text: 'Annuler',
+                                            text: t('common.cancel'),
                                             style: 'cancel',
                                             onPress: () => { }
                                         },

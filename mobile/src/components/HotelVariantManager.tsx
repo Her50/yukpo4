@@ -6,6 +6,7 @@ import MultiSelectModalitySelector from './MultiSelectModalitySelector';
 import { NativeInput } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
 import SelectModalitySelector from './SelectModalitySelector';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 // ✅ Interface pour une variante de chambre d'hôtel
 export interface HotelVariant {
@@ -81,9 +82,9 @@ const HotelVariantManager: React.FC<HotelVariantManagerProps> = ({
             'Supprimer cette chambre',
             'Voulez-vous vraiment supprimer ce type de chambre ?',
             [
-                { text: 'Annuler', style: 'cancel' },
+                { text: t('common.cancel'), style: 'cancel' },
                 {
-                    text: 'Supprimer',
+                    text: t('common.delete'),
                     style: 'destructive',
                     onPress: () => onChange(variants.filter(v => v.id !== variantId))
                 }

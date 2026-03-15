@@ -15,6 +15,7 @@ import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiGet, apiPatch } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface Reservation {
     id: number;
@@ -86,9 +87,9 @@ const PrestataireReservationsScreen: React.FC<{ navigation: any }> = ({ navigati
             'Marquer comme terminée',
             'Êtes-vous sûr que cette réservation est terminée ?',
             [
-                { text: 'Non', style: 'cancel' },
+                { text: t('common.no'), style: 'cancel' },
                 {
-                    text: 'Oui',
+                    text: t('common.yes'),
                     onPress: async () => {
                         // TODO: Implémenter endpoint pour compléter
                         Alert.alert('Info', 'Fonctionnalité à venir');

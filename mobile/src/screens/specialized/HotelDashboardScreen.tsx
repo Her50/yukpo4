@@ -186,7 +186,7 @@ const HotelDashboardScreen: React.FC = () => {
         Alert.alert(t('hotelDashboard.confirmCheckOut'), t('hotelDashboard.checkOutQuestion', { name: reservation.nom_client }), [
             { text: t('message.cancel'), style: 'cancel' },
             {
-                text: 'Confirmer', onPress: async () => {
+                text: t('common.confirm'), onPress: async () => {
                     try {
                         const res = await immobilierService.checkOutReservation(reservation.id);
                         const resData = (res?.data || res) as any;

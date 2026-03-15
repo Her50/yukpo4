@@ -310,7 +310,7 @@ const TaxiBookingScreen: React.FC = () => {
                 t('taxiBooking.call'),
                 t('taxiBooking.confirmCall', { phone: taxi.telephone }),
                 [
-                    { text: 'Annuler', style: 'cancel' },
+                    { text: t('common.cancel'), style: 'cancel' },
                     {
                         text: 'Appeler',
                         onPress: () => {

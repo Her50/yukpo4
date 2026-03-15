@@ -5,6 +5,7 @@ import { View, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-nat
 import { Text, Card, Button, Chip, Avatar, Divider } from 'react-native-paper';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { serviceService } from '../../services/api';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface Service {
   id: string;
@@ -28,6 +29,7 @@ const ServiceDetailScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const route = useRoute();
   const navigation = useNavigation();
+    const { t } = useLanguageSafe();
   const { serviceId } = route.params as { serviceId: string };
 
   useEffect(() => {
@@ -52,7 +54,7 @@ const ServiceDetailScreen: React.FC = () => {
         'Contacter le prestataire',
         `Voulez-vous contacter ${service.provider.name} ?`,
         [
-          { text: 'Annuler', style: 'cancel' },
+          { text: t('common.cancel'), style: 'cancel' },
           { text: 'Contacter', onPress: () => {
             // Ici on pourrait ouvrir l'email ou le t�l�phone
             Alert.alert('Contact', `Contact: ${service.contact}`);
@@ -67,7 +69,7 @@ const ServiceDetailScreen: React.FC = () => {
       'R�server le service',
       'Voulez-vous r�server ce service ?',
       [
-        { text: 'Annuler', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         { text: 'R�server', onPress: () => {
           Alert.alert('Succ�s', 'Service r�serv� avec succ�s !');
         }},

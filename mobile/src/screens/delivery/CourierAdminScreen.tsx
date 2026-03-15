@@ -566,7 +566,7 @@ const CourierAdminScreen: React.FC = () => {
                                                     t('message.confirm'),
                                                     t('courierAdmin.confirmApprove'),
                                                     [
-                                                        { text: 'Annuler', style: 'cancel' },
+                                                        { text: t('common.cancel'), style: 'cancel' },
                                                         {
                                                             text: 'Approuver',
                                                             onPress: () =>

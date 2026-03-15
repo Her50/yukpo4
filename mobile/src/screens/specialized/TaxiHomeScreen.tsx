@@ -27,6 +27,7 @@ import { useCurrencyDetection } from '../../hooks/useCurrencyDetection';
 import { CreateTaxiRequest, SearchTaxisFilters, Taxi, taxiService } from '../../services/taxiService';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 type ViewMode = 'search' | 'create';
 
@@ -387,9 +388,9 @@ const TaxiHomeScreen: React.FC = () => {
                 'Service requis',
                 'Vous devez d\'abord créer un service. Voulez-vous le faire maintenant ?',
                 [
-                    { text: 'Annuler' },
+                    { text: t('common.cancel') },
                     {
-                        text: 'Créer un service',
+                        text: t('common.createService'),
                         onPress: () => navigation.navigate('GestionServicesSpecialises' as never),
                     },
                 ]

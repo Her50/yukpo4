@@ -18,9 +18,11 @@ import { useAuth } from '../../contexts/AuthContext';
 // apiGet remplacé par offreEmploiService
 import { FormationSuggestion, offreEmploiService } from '../../services/offreEmploiService';
 import { modernColors } from '../../theme/modernTheme';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 const AISuggestFormationsScreen: React.FC = () => {
     const navigation = useNavigation() as any;
+    const { t } = useLanguageSafe();
     const { user } = useAuth();
     const [loading, setLoading] = useState(false);
     const [loadingProfile, setLoadingProfile] = useState(true);
@@ -106,9 +108,9 @@ const AISuggestFormationsScreen: React.FC = () => {
             'Compétence manquante',
             'Entrez une compétence que vous souhaitez acquérir:',
             [
-                { text: 'Annuler', style: 'cancel' },
+                { text: t('common.cancel'), style: 'cancel' },
                 {
-                    text: 'Ajouter',
+                    text: t('common.add'),
                     onPress: (text) => {
                         if (text && text.trim() && !competencesManquantes.includes(text.trim())) {
                             setCompetencesManquantes([...competencesManquantes, text.trim()]);

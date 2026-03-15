@@ -18,6 +18,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { apiGet } from '../services/api';
 import { theme } from '../theme/theme';
 import ChatModalMobile from './ChatModalMobile';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface ChatMessage {
   id: string;
@@ -60,7 +61,8 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
 }) => {
   const { user } = useAuth();
   const [chatHistories, setChatHistories] = useState<ChatHistory[]>([]);
-  const [loading, setLoading] = useState(false);
+
+    const { t } = useLanguageSafe();  const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [selectedChat, setSelectedChat] = useState<ChatHistory | null>(null);
@@ -415,7 +417,7 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
                   [
                     { text: 'Voir le profil', onPress: () => { } },
                     { text: 'Marquer comme terminé', onPress: () => { } },
-                    { text: 'Annuler', style: 'cancel' }
+                    { text: t('common.cancel'), style: 'cancel' }
                   ]
                 );
               }}

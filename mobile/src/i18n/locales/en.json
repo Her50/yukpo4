@@ -905,7 +905,13 @@
         "reserved": "Reserved!",
         "reservationConfirmed": "Your reservation is confirmed. Expires: {{expiry}}. Go to the pharmacy to pick up.",
         "cannotReserve": "Unable to reserve this medication.",
-        "reserveRetry": "Unable to reserve. Try again or contact the pharmacy."
+        "reserveRetry": "Unable to reserve. Try again or contact the pharmacy.",
+        "responseLocalData": "Response based on local data",
+        "aiResponseGenerated": "AI response generated",
+        "aiTemporarilyUnavailable": "AI temporarily unavailable",
+        "infoLocalData": "Information based on local data",
+        "consultPharmacistFull": "Consult your pharmacist for a complete check",
+        "cannotCheckStock": "Unable to check stock"
     },
     "hopitalDetails": {
         "cannotLoadDetails": "Unable to load details",
@@ -949,7 +955,10 @@
         "waitTime": "Wait time",
         "avgWaitTime": "Estimated average wait: {{minutes}} min",
         "waitTimeUnavailable": "Wait time data is not currently available.",
-        "waitTimeServiceDown": "Wait time service unavailable."
+        "waitTimeServiceDown": "Wait time service unavailable.",
+        "resultsLocalData": "Results based on local data — consult a doctor",
+        "pathologiesFound": "{{count}} pathology(ies) found",
+        "noResultConsultDoctor": "No results. Consult a general practitioner."
     },
     "covoiturage": {
         "permissionDenied": "Permission denied",
@@ -2336,5 +2345,55 @@
         "generateSlotsMsg": "Generate 30-min slots from 08:00 to 17:00 for {{date}}?",
         "slotsGenerated": "{{count}} slots generated",
         "generationError": "Generation error"
+    },
+    "common": {
+        "cancel": "Cancel",
+        "close": "Close",
+        "reserve": "Reserve",
+        "confirm": "Confirm",
+        "delete": "Delete",
+        "edit": "Edit",
+        "save": "Save",
+        "validate": "Validate",
+        "yes": "Yes",
+        "no": "No",
+        "back": "Back",
+        "next": "Next",
+        "create": "Create",
+        "retry": "Retry",
+        "view": "View",
+        "send": "Send",
+        "add": "Add",
+        "apply": "Apply",
+        "continue": "Continue",
+        "reject": "Reject",
+        "accept": "Accept",
+        "takePhoto": "Take a photo",
+        "chooseFromGallery": "Choose from gallery",
+        "chooseImage": "Choose an image",
+        "createService": "Create a service",
+        "viewMatches": "View matches",
+        "login": "Log in",
+        "later": "Later",
+        "configure": "Configure",
+        "share": "Share",
+        "copy": "Copy",
+        "download": "Download",
+        "loading": "Loading...",
+        "error": "Error",
+        "success": "Success",
+        "search": "Search",
+        "ok": "OK"
+    },
+    "bourseLivre": {
+        "unavailable": "Unavailable",
+        "aiRecommendationsUnavailable": "AI recommendations temporarily unavailable.",
+        "recommendationsLocalData": "Recommendations based on local data",
+        "estimateLocalData": "Estimate based on local data",
+        "aiPriceEstimateUnavailable": "AI price estimate temporarily unavailable."
+    },
+    "orientationScolaire": {
+        "responseLocalData": "Response based on local data",
+        "aiTemporarilyUnavailable": "AI temporarily unavailable"
     }
 }

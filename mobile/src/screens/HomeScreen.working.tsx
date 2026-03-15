@@ -562,7 +562,7 @@ const HomeScreen: React.FC = () => {
                     'Voulez-vous vraiment cr├®er un nouveau service ou produit ?',
                     [
                         {
-                            text: 'Annuler',
+                            text: t('common.cancel'),
                             style: 'cancel',
                             onPress: () => {
                                 console.log('[HomeScreen] Cr├®ation de service annul├®e par l\'utilisateur');

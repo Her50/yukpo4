@@ -122,11 +122,11 @@ const BusBoardingManagementScreen: React.FC = () => {
                     t('busBoarding.invalidQRCode'),
                     [
                         {
-                            text: 'Réessayer',
+                            text: t('common.retry'),
                             onPress: () => setScanning(false),
                         },
                         {
-                            text: 'Fermer',
+                            text: t('common.close'),
                             onPress: () => {
                                 setShowScanner(false);
                                 setScanning(false);
@@ -186,11 +186,11 @@ const BusBoardingManagementScreen: React.FC = () => {
                         responseData.error || t('busBoarding.validationFailed'),
                         [
                             {
-                                text: 'Réessayer',
+                                text: t('common.retry'),
                                 onPress: () => setScanning(false),
                             },
                             {
-                                text: 'Fermer',
+                                text: t('common.close'),
                                 onPress: () => {
                                     setShowScanner(false);
                                     setScanning(false);
@@ -207,11 +207,11 @@ const BusBoardingManagementScreen: React.FC = () => {
                 t('busBoarding.corruptQRCode'),
                 [
                     {
-                        text: 'Réessayer',
+                        text: t('common.retry'),
                         onPress: () => setScanning(false),
                     },
                     {
-                        text: 'Fermer',
+                        text: t('common.close'),
                         onPress: () => {
                             setShowScanner(false);
                             setScanning(false);
@@ -227,9 +227,9 @@ const BusBoardingManagementScreen: React.FC = () => {
             t('busBoarding.manualValidation'),
             t('busBoarding.confirmManualValidation', { name: passenger.passenger_name || t('busBoarding.thisPassenger') }),
             [
-                { text: 'Annuler', style: 'cancel' },
+                { text: t('common.cancel'), style: 'cancel' },
                 {
-                    text: 'Valider',
+                    text: t('common.validate'),
                     onPress: async () => {
                         try {
                             const response = await apiPost('/api/bus-tickets/validate/manual', {
@@ -449,9 +449,9 @@ const BusBoardingManagementScreen: React.FC = () => {
                                     'Saisie manuelle',
                                     'Entrez le code de réservation',
                                     [
-                                        { text: 'Annuler', style: 'cancel' },
+                                        { text: t('common.cancel'), style: 'cancel' },
                                         {
-                                            text: 'Valider',
+                                            text: t('common.validate'),
                                             onPress: async (code) => {
                                                 if (code) {
                                                     try {

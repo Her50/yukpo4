@@ -18,6 +18,7 @@ import {
 } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface PriceModality {
     valeur: string; // Ex: "38", "39", "40"
@@ -53,7 +54,8 @@ export const PriceVariantSelector: React.FC<PriceVariantSelectorProps> = ({
     // ✅ Protection contre undefined - toujours utiliser un tableau
     const modalites = modalitesProp || [];
     const [showModal, setShowModal] = useState(false);
-    const [editingModality, setEditingModality] = useState<PriceModality | null>(null);
+
+    const { t } = useLanguageSafe();    const [editingModality, setEditingModality] = useState<PriceModality | null>(null);
     const [editIndex, setEditIndex] = useState<number | null>(null);
     const [tempModality, setTempModality] = useState<Partial<PriceModality>>({
         valeur: '',
@@ -165,9 +167,9 @@ export const PriceVariantSelector: React.FC<PriceVariantSelectorProps> = ({
                 'Confirmer',
                 `Voulez-vous supprimer la modalité "${modalites[index].valeur}" ?`,
                 [
-                    { text: 'Annuler', style: 'cancel' },
+                    { text: t('common.cancel'), style: 'cancel' },
                     {
-                        text: 'Supprimer',
+                        text: t('common.delete'),
                         style: 'destructive',
                         onPress: () => {
                             const updated = modalites.filter((_, i) => i !== index);

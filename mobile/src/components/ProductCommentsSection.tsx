@@ -26,6 +26,7 @@ import { modernColors } from '../theme/modernTheme';
 import { NativeCard } from './NativeDesign';
 import SafeIcon from './SafeIcon';
 import UserMentionPicker from './UserMentionPicker';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface MentionCandidate {
     id: number;
@@ -209,7 +210,8 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
     }, [user]);
 
     const [comments, setComments] = useState<ProductComment[]>([]);
-    const [stats, setStats] = useState<CommentStats>({
+
+    const { t } = useLanguageSafe();    const [stats, setStats] = useState<CommentStats>({
         total_comments: 0,
         rating_count: 0,
         average_rating: 0,
@@ -532,9 +534,9 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                 'Supprimer le commentaire',
                 'Êtes-vous sûr de vouloir supprimer ce commentaire ?',
                 [
-                    { text: 'Annuler', style: 'cancel' },
+                    { text: t('common.cancel'), style: 'cancel' },
                     {
-                        text: 'Supprimer',
+                        text: t('common.delete'),
                         style: 'destructive',
                         onPress: async () => {
                             try {

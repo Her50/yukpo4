@@ -128,9 +128,9 @@ const PubliciteDashboardScreen: React.FC = () => {
 
     const handlePause = useCallback(async (pubId: number | string) => {
         Alert.alert(t('pubDashboard.pauseAd'), t('pubDashboard.confirmPause'), [
-            { text: 'Annuler', style: 'cancel' },
+            { text: t('common.cancel'), style: 'cancel' },
             {
-                text: 'Confirmer', onPress: async () => {
+                text: t('common.confirm'), onPress: async () => {
                     try {
                         const res = await apiPost(`/api/publicites/${pubId}/pause`, {});
                         if (res?.success || res?.data?.success) {
@@ -160,9 +160,9 @@ const PubliciteDashboardScreen: React.FC = () => {
             t('pubDashboard.deleteAd'),
             t('pubDashboard.confirmDelete'),
             [
-                { text: 'Annuler', style: 'cancel' },
+                { text: t('common.cancel'), style: 'cancel' },
                 {
-                    text: 'Supprimer', style: 'destructive', onPress: async () => {
+                    text: t('common.delete'), style: 'destructive', onPress: async () => {
                         try {
                             const res = await apiPost(`/api/publicites/${pubId}/delete`, {});
                             if (res?.success || res?.data?.success) {

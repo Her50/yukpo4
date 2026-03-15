@@ -2162,9 +2162,9 @@ const MesServicesScreen: React.FC = () => {
                   'Supprimer plusieurs produits',
                   `Êtes-vous sûr de vouloir supprimer ${selectedCount} produit(s) ?\n\nCette action est irréversible.`,
                   [
-                    { text: 'Annuler', style: 'cancel' },
+                    { text: t('common.cancel'), style: 'cancel' },
                     {
-                      text: 'Supprimer',
+                      text: t('common.delete'),
                       style: 'destructive',
                       onPress: async () => {
                         const promises = Array.from(selectedItems).map(id => {

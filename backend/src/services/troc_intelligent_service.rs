@@ -7,7 +7,6 @@ use crate::models::troc_livre::{
     MatchingDirect, ParticipantChaine, TrocLivre,
 };
 use log::{self, info};
-use serde_json::json;
 use sqlx::PgPool;
 use std::sync::Arc;
 

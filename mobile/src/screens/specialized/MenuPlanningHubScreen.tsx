@@ -196,9 +196,9 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                 t('menuPlanning.profileRequired'),
                 t('menuPlanning.configureProfileFirst'),
                 [
-                    { text: 'Annuler', style: 'cancel' },
+                    { text: t('common.cancel'), style: 'cancel' },
                     {
-                        text: 'Configurer',
+                        text: t('common.configure'),
                         onPress: () => navigation.navigate('FamilyProfile' as never),
                     },
                 ]

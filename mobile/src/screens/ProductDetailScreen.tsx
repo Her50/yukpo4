@@ -18,11 +18,13 @@ import { useAuth } from '../contexts/AuthContext';
 import { apiGet } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import SafeStorage from '../utils/safeStorage';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const PENDING_DEEP_LINK_KEY = '@yukpomnang:pending_deep_link';
 
 const ProductDetailScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const route = useRoute();
     const { user } = useAuth();
     const [product, setProduct] = useState<any>(null);
@@ -83,7 +85,7 @@ const ProductDetailScreen: React.FC = () => {
                             onPress: () => navigation.navigate('Register' as never)
                         },
                         {
-                            text: 'Se connecter',
+                            text: t('common.login'),
                             onPress: () => navigation.navigate('Login' as never)
                         }
                     ]
@@ -181,7 +183,7 @@ const ProductDetailScreen: React.FC = () => {
                 'Ce produit n\'existe plus ou a été supprimé.',
                 [
                     {
-                        text: 'Retour',
+                        text: t('common.back'),
                         onPress: () => navigation.navigate('Home' as never)
                     }
                 ]

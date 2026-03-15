@@ -95,9 +95,9 @@ const MesLivresScreen: React.FC = () => {
             t('mesLivres.deleteBook'),
             t('mesLivres.confirmDelete', { title: livre.titre }),
             [
-                { text: 'Annuler', style: 'cancel' },
+                { text: t('common.cancel'), style: 'cancel' },
                 {
-                    text: 'Supprimer',
+                    text: t('common.delete'),
                     style: 'destructive',
                     onPress: async () => {
                         try {

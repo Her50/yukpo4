@@ -21,6 +21,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { modernColors } from '../theme/modernTheme';
 import { NativeButton } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface ARVideoEditorProps {
     onVideoCaptured?: (videoUri: string) => void;
@@ -38,7 +39,8 @@ export const ARVideoEditor: React.FC<ARVideoEditorProps> = ({
     isUploading = false, // ✅ NOUVEAU: État d'upload
 }) => {
     const [isCapturing, setIsCapturing] = useState(false);
-    const [capturedVideoUri, setCapturedVideoUri] = useState<string | null>(null);
+
+    const { t } = useLanguageSafe();    const [capturedVideoUri, setCapturedVideoUri] = useState<string | null>(null);
 
     // Capturer une vidéo
     const handleCaptureVideo = useCallback(async () => {
@@ -52,7 +54,7 @@ export const ARVideoEditor: React.FC<ARVideoEditorProps> = ({
                     'Permission requise',
                     'Veuillez autoriser l\'accès à la caméra pour enregistrer une vidéo.',
                     [
-                        { text: 'Annuler', style: 'cancel' },
+                        { text: t('common.cancel'), style: 'cancel' },
                         {
                             text: 'Ouvrir les paramètres',
                             onPress: () => {

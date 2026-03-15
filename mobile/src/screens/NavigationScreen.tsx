@@ -1682,7 +1682,7 @@ const NavigationScreen: React.FC = () => {
                                                         </TouchableOpacity>
                                                     </View>
                                                     {aiInsights.gamification.badges?.length > 0 && <View style={st.badgesWrap}>{aiInsights.gamification.badges.map((b: any, i: number) => (
-                                                        <TouchableOpacity key={i} style={st.badge} onPress={() => Alert.alert(`${b.emoji} ${b.label}`, b.description || `Badge débloqué ! ${b.label}`, [{ text: 'Partager', onPress: sharePerformance }, { text: 'OK' }])} activeOpacity={0.7}>
+                                                        <TouchableOpacity key={i} style={st.badge} onPress={() => Alert.alert(`${b.emoji} ${b.label}`, b.description || `Badge débloqué ! ${b.label}`, [{ text: t('common.share'), onPress: sharePerformance }, { text: 'OK' }])} activeOpacity={0.7}>
                                                             <Text style={{ fontSize: 20 }}>{b.emoji}</Text><Text style={st.badgeLbl} numberOfLines={1}>{b.label}</Text>
                                                         </TouchableOpacity>
                                                     ))}</View>}
@@ -1877,7 +1877,7 @@ const NavigationScreen: React.FC = () => {
                                                                     r.t,
                                                                     `🏅 Record personnel : ${r.v}\nFélicitations pour cette performance !`,
                                                                     [
-                                                                        { text: 'Partager', onPress: () => sharePerformance() },
+                                                                        { text: t('common.share'), onPress: () => sharePerformance() },
                                                                         { text: 'OK', style: 'default' }
                                                                     ]
                                                                 );
@@ -1941,7 +1941,7 @@ const NavigationScreen: React.FC = () => {
                                                                                 Alert.alert('Détails', `Distance moyenne: ${r.avg_distance_km || 'N/A'} km\nDurée moyenne: ${r.avg_duration_min || 'N/A'} min`);
                                                                             }
                                                                         },
-                                                                        { text: 'Annuler', style: 'cancel' }
+                                                                        { text: t('common.cancel'), style: 'cancel' }
                                                                     ]
                                                                 );
                                                             }}

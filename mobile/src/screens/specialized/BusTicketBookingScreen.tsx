@@ -17,6 +17,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { trackBooking } from '../../services/analytics';
 import { apiPost } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface TicketData {
     product_id: string;
@@ -32,6 +33,7 @@ interface TicketData {
 
 const BusTicketBookingScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const route = useRoute();
     const { user } = useAuth();
 
@@ -104,7 +106,7 @@ const BusTicketBookingScreen: React.FC = () => {
                                 });
                             },
                         },
-                        { text: 'Plus tard', style: 'cancel' },
+                        { text: t('common.later'), style: 'cancel' },
                     ]
                 );
             } else {

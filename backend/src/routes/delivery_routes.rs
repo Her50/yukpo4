@@ -3285,6 +3285,51 @@ async fn submit_courier_application(
         }
     };
 
+    // ✅ Sauvegarder les moyens de paiement dans users.payment_methods (pour le système de reversement)
+    if let Some(ref profile) = payload.profile_data {
+        if let Some(pm) = profile.get("paymentMethod") {
+            if !pm.is_null() {
+                let mut payment_methods = serde_json::json!({});
+                // Convertir le format mobile (type/phoneNumber) vers le format backend (mtn_money/orange_money)
+                if let Some(pm_type) = pm.get("type").and_then(|v| v.as_str()) {
+                    if let Some(phone) = pm.get("phoneNumber").and_then(|v| v.as_str()) {
+                        match pm_type {
+                            "mtn_money" | "mtn" => {
+                                payment_methods["mtn_money"] =
+                                    serde_json::json!({"phone": phone, "verified": false});
+                            }
+                            "orange_money" | "orange" => {
+                                payment_methods["orange_money"] =
+                                    serde_json::json!({"phone": phone, "verified": false});
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+                // Aussi supporter le format direct {mtn_money: {phone: ...}, orange_money: {phone: ...}}
+                if pm.get("mtn_money").is_some() || pm.get("orange_money").is_some() {
+                    payment_methods = pm.clone();
+                }
+
+                if payment_methods != serde_json::json!({}) {
+                    let _ = sqlx::query(
+                        "UPDATE users SET payment_methods = $1, updated_at = NOW() WHERE id = $2",
+                    )
+                    .bind(&payment_methods)
+                    .bind(user.id)
+                    .execute(&state.pg)
+                    .await
+                    .map_err(|e| {
+                        log::error!(
+                            "[submit_courier_application] Erreur sauvegarde payment_methods: {e:?}"
+                        )
+                    });
+                    log::info!("[submit_courier_application] ✅ payment_methods sauvegardés pour user_id={}", user.id);
+                }
+            }
+        }
+    }
+
     // ✅ CORRIGÉ: Inclure un champ 'success' explicite pour que le frontend détecte correctement le succès
     Ok(Json(serde_json::json!({
         "success": true,

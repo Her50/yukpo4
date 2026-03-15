@@ -120,9 +120,9 @@ const MesEquipesScreen: React.FC = () => {
             t('mesEquipes.rejectInvitation'),
             t('mesEquipes.confirmReject'),
             [
-                { text: 'Annuler', style: 'cancel' },
+                { text: t('common.cancel'), style: 'cancel' },
                 {
-                    text: 'Rejeter', style: 'destructive', onPress: async () => {
+                    text: t('common.reject'), style: 'destructive', onPress: async () => {
                         setProcessingToken(token);
                         try {
                             const response = await apiPost(`/api/services/team/invitations/${token}/reject`, {});

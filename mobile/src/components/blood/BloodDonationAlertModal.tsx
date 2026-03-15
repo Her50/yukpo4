@@ -16,6 +16,7 @@ import {
 import { apiPost } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 import SafeIcon from '../SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface BloodDonationAlertModalProps {
     visible: boolean;
@@ -44,6 +45,7 @@ const BloodDonationAlertModal: React.FC<BloodDonationAlertModalProps> = ({
     onDecline,
 }) => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const [loading, setLoading] = useState(false);
     const [userLocation, setUserLocation] = useState<Location.LocationObject | null>(null);
 
@@ -120,7 +122,7 @@ const BloodDonationAlertModal: React.FC<BloodDonationAlertModalProps> = ({
             'Refuser la demande',
             'Êtes-vous sûr de vouloir refuser cette demande de don ?',
             [
-                { text: 'Annuler', style: 'cancel' },
+                { text: t('common.cancel'), style: 'cancel' },
                 {
                     text: 'Refuser',
                     style: 'destructive',

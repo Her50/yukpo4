@@ -4,6 +4,7 @@ import { config } from '../config/environment';
 import { modernColors } from '../theme/modernTheme';
 import { theme } from '../theme/theme';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 // ✅ Helper pour construire l'URL complète d'un média (même logique que MesProduitsScreen)
 const buildServiceMediaUrl = (path?: string | null): string | null => {
@@ -118,9 +119,9 @@ const ServiceCardModern: React.FC<ServiceCardModernProps> = ({
             'Supprimer le service',
             `Êtes-vous sûr de vouloir supprimer définitivement le service "${service.title}" ?\n\nCette action est irréversible.`,
             [
-                { text: 'Annuler', style: 'cancel' },
+                { text: t('common.cancel'), style: 'cancel' },
                 {
-                    text: 'Supprimer',
+                    text: t('common.delete'),
                     style: 'destructive',
                     onPress: () => onDelete(service)
                 }

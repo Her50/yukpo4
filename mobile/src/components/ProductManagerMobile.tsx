@@ -56,6 +56,7 @@ import NativeTimePicker from './NativeTimePicker';
 import OptionsPrimesManager, { OptionPrime } from './OptionsPrimesManager';
 import ProductVariantManager, { ProductVariant } from './ProductVariantManager';
 import SelectModalitySelector from './SelectModalitySelector';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const { width } = Dimensions.get('window');
 
@@ -111,9 +112,9 @@ const ModernSelectField = ({
                                         'Nouveau type',
                                         `Entrez le ${label.toLowerCase()} :`,
                                         [
-                                            { text: 'Annuler', style: 'cancel' },
+                                            { text: t('common.cancel'), style: 'cancel' },
                                             {
-                                                text: 'Ajouter',
+                                                text: t('common.add'),
                                                 // @ts-ignore - onPress prend bien un paramètre text dans Alert.prompt
                                                 onPress: (text?: string) => {
                                                     if (text && text.trim()) {
@@ -129,7 +130,7 @@ const ModernSelectField = ({
                                 }
                             }
                         })),
-                        { text: 'Annuler', style: 'cancel' }
+                        { text: t('common.cancel'), style: 'cancel' }
                     ];
 
                     Alert.alert(label, 'Sélectionnez une option :', alertButtons);
@@ -4534,9 +4535,9 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
             'Supprimer le produit',
             'Êtes-vous sûr de vouloir supprimer ce produit ?',
             [
-                { text: 'Annuler', style: 'cancel' },
+                { text: t('common.cancel'), style: 'cancel' },
                 {
-                    text: 'Supprimer',
+                    text: t('common.delete'),
                     style: 'destructive',
                     onPress: () => onProductsChange(products.filter(p => p.id !== id))
                 }
@@ -4955,8 +4956,8 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                 'Importer les photos Google ?',
                                                 `Vous avez déjà ${existingCount} image(s). Voulez-vous ajouter aussi les photos trouvées sur Google Places ?`,
                                                 [
-                                                    { text: 'Non', style: 'cancel' },
-                                                    { text: 'Oui', onPress: () => runImport() },
+                                                    { text: t('common.no'), style: 'cancel' },
+                                                    { text: t('common.yes'), onPress: () => runImport() },
                                                 ]
                                             );
                                         } else {
@@ -5503,8 +5504,8 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                 'Importer les photos Google ?',
                                                 `Vous avez déjà ${existingCount} image(s). Voulez-vous ajouter aussi les photos trouvées sur Google Places ?`,
                                                 [
-                                                    { text: 'Non', style: 'cancel' },
-                                                    { text: 'Oui', onPress: () => runImport() },
+                                                    { text: t('common.no'), style: 'cancel' },
+                                                    { text: t('common.yes'), onPress: () => runImport() },
                                                 ]
                                             );
                                         } else {
@@ -7675,8 +7676,8 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                     'Importer les photos Google ?',
                                                     `Vous avez déjà ${existingCount} image(s). Voulez-vous ajouter aussi les photos trouvées sur Google Places ?`,
                                                     [
-                                                        { text: 'Non', style: 'cancel' },
-                                                        { text: 'Oui', onPress: () => runImport() },
+                                                        { text: t('common.no'), style: 'cancel' },
+                                                        { text: t('common.yes'), onPress: () => runImport() },
                                                     ]
                                                 );
                                             } else {

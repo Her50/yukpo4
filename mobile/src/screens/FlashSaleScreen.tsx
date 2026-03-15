@@ -136,8 +136,8 @@ const FlashSaleScreen: React.FC = () => {
     const handleReserve = async (sale: LiveFlashSale) => {
         if (!user) {
             Alert.alert(t('flashSale.loginRequired'), t('flashSale.loginRequiredMsg'), [
-                { text: 'Annuler', style: 'cancel' },
-                { text: 'Se connecter', onPress: () => navigation.navigate('Login' as never) },
+                { text: t('common.cancel'), style: 'cancel' },
+                { text: t('common.login'), onPress: () => navigation.navigate('Login' as never) },
             ]);
             return;
         }

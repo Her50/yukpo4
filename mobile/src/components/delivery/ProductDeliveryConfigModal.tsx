@@ -18,6 +18,7 @@ import ModernGPSModal from '../ModernGPSModal';
 import SafeIcon from '../SafeIcon';
 import { NativeButton } from '../SafeNativeDesign';
 import TimeSlotPicker from './TimeSlotPicker';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface ProductDeliveryConfigModalProps {
     visible: boolean;
@@ -84,7 +85,8 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
 
     const isTransversalMode = productIndex === -1;
     const [loading, setLoading] = useState(false);
-    const [parcelTypes, setParcelTypes] = useState<ParcelType[]>([]);
+
+    const { t } = useLanguageSafe();    const [parcelTypes, setParcelTypes] = useState<ParcelType[]>([]);
     const [storageLocations, setStorageLocations] = useState<Array<{
         id: number;
         name: string;
@@ -1157,7 +1159,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                                                     text: `${p.name} ${p.is_configured ? '✓' : ''}`,
                                                     onPress: () => setSelectedProductIndex(p.index)
                                                 }));
-                                                options.push({ text: 'Annuler', style: 'cancel' });
+                                                options.push({ text: t('common.cancel'), style: 'cancel' });
                                                 Alert.alert('Sélectionner un produit', '', options);
                                             }}
                                         >
@@ -1278,7 +1280,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                                                     }));
                                                 }
                                             })),
-                                            { text: 'Annuler', style: 'cancel' as const }
+                                            { text: t('common.cancel'), style: 'cancel' as const }
                                         ]
                                     );
                                 }}
@@ -1444,7 +1446,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                                     [
                                         { text: 'Standard', onPress: () => setConfig(prev => ({ ...prev, billing_mode: 'standard' })) },
                                         { text: 'Partenaire', onPress: () => setConfig(prev => ({ ...prev, billing_mode: 'partner' })) },
-                                        { text: 'Annuler', style: 'cancel' as const }
+                                        { text: t('common.cancel'), style: 'cancel' as const }
                                     ]
                                 );
                             }}

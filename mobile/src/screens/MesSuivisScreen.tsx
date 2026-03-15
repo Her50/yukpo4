@@ -14,6 +14,7 @@ import {
 import SafeIcon from '../components/SafeIcon';
 import { useAuth } from '../contexts/AuthContext';
 import { apiGet, apiPost } from '../services/api';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 type FollowedSeller = {
     followed_id: number;
@@ -28,6 +29,7 @@ type FollowedSeller = {
 
 const MesSuivisScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const { user } = useAuth();
     const isFocused = useIsFocused();
     const [following, setFollowing] = useState<FollowedSeller[]>([]);
@@ -61,7 +63,7 @@ const MesSuivisScreen: React.FC = () => {
             'Ne plus suivre',
             `Voulez-vous ne plus suivre ${seller.seller_name || 'ce vendeur'} ?`,
             [
-                { text: 'Annuler', style: 'cancel' },
+                { text: t('common.cancel'), style: 'cancel' },
                 {
                     text: 'Ne plus suivre',
                     style: 'destructive',

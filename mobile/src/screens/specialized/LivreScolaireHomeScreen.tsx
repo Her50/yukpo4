@@ -23,6 +23,7 @@ import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { useLocation } from '../../contexts/LocationContext';
+import { usePaymentMethodCheck } from '../../hooks/usePaymentMethodCheck';
 import { BookImageAnalysis, LivreScolaire, livreScolaireService, SearchLivresFilters } from '../../services/livreScolaireService';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
@@ -38,6 +39,10 @@ const LivreScolaireHomeScreen: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    // Vérification moyen de paiement
+    const paymentCheck = usePaymentMethodCheck();
+    const [showPaymentPrompt, setShowPaymentPrompt] = useState(false);
 
     // États pour ajout simplifié
     const [showAddModal, setShowAddModal] = useState(false);
@@ -196,6 +201,13 @@ const LivreScolaireHomeScreen: React.FC = () => {
     const handleSaveBook = async () => {
         if (!bookInfo || !price.trim()) {
             Alert.alert(t('message.error'), t('livreScolaire.enterPrice'));
+            return;
+        }
+
+        // ✅ Vérifier moyen de paiement avant de mettre en vente
+        const needsPayment = await paymentCheck.checkAndPrompt();
+        if (needsPayment) {
+            setShowPaymentPrompt(true);
             return;
         }
 
@@ -410,6 +422,18 @@ const LivreScolaireHomeScreen: React.FC = () => {
                     analyzing={analyzingImage}
                 />
             )}
+
+            {/* Modal pour configurer les moyens de paiement (vente livre) */}
+            <PaymentMethodPrompt
+                visible={showPaymentPrompt}
+                onClose={() => setShowPaymentPrompt(false)}
+                onSaved={() => {
+                    paymentCheck.refresh();
+                    // Relancer la sauvegarde après configuration du moyen de paiement
+                    handleSaveBook();
+                }}
+                context="book_sell"
+            />
         </SafeNativeView>
     );
 };

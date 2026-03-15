@@ -16,6 +16,7 @@ import { NativeButton } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiGet } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface ReturnTripRequest {
     id: string;
@@ -32,6 +33,7 @@ interface ReturnTripRequest {
 
 const BusReturnRequestsScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const { user } = useAuth();
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -105,9 +107,9 @@ const BusReturnRequestsScreen: React.FC = () => {
             'Confirmer le retour',
             `Voulez-vous confirmer votre retour de ${request.return_from} à ${request.return_to} ?`,
             [
-                { text: 'Annuler', style: 'cancel' },
+                { text: t('common.cancel'), style: 'cancel' },
                 {
-                    text: 'Confirmer',
+                    text: t('common.confirm'),
                     onPress: () => {
                         navigation.navigate('BusTicketBooking' as never, {
                             productId: request.matched_product_id,

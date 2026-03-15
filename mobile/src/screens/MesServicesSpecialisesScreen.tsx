@@ -15,6 +15,7 @@ import { NativeButton } from '../components/SafeNativeDesign';
 import { useAuth } from '../contexts/AuthContext';
 import { servicesApi } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const { width } = Dimensions.get('window');
 const CARD_PADDING = 16; // Padding horizontal du conteneur
@@ -33,6 +34,7 @@ interface ServiceSpecialise {
 
 const MesServicesSpecialisesScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const { user } = useAuth();
     const [creatingService, setCreatingService] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
@@ -162,7 +164,7 @@ const MesServicesSpecialisesScreen: React.FC = () => {
                                 [
                                     { text: 'OK' },
                                     {
-                                        text: 'Réessayer',
+                                        text: t('common.retry'),
                                         onPress: () => handleServicePress(service)
                                     }
                                 ]
@@ -240,7 +242,7 @@ const MesServicesSpecialisesScreen: React.FC = () => {
                         '💸 Solde insuffisant',
                         detailedMessage,
                         [
-                            { text: 'Annuler', style: 'cancel' },
+                            { text: t('common.cancel'), style: 'cancel' },
                             { text: 'Recharger', onPress: () => (navigation as any).navigate('RechargeTokens') },
                         ]
                     );

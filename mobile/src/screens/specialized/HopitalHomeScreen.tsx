@@ -313,7 +313,7 @@ const HopitalHomeScreen: React.FC = () => {
                     onPress: () => handlePickImage('gallery'),
                 },
                 {
-                    text: 'Annuler',
+                    text: t('common.cancel'),
                     style: 'cancel',
                 },
             ]
@@ -327,9 +327,9 @@ const HopitalHomeScreen: React.FC = () => {
             t('hopitalHome.bookAppointment'),
             t('hopitalHome.bookConsultation', { title: service.service_title }),
             [
-                { text: 'Annuler', style: 'cancel' },
+                { text: t('common.cancel'), style: 'cancel' },
                 {
-                    text: 'Réserver',
+                    text: t('common.reserve'),
                     onPress: async () => {
                         try {
                             const resp = await hospitalService.bookAppointment(service.service_id, {

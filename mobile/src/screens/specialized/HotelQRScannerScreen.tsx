@@ -115,9 +115,9 @@ const HotelQRScannerScreen: React.FC = () => {
   const handleCheckOut = useCallback(() => {
     if (!scanData) return;
     Alert.alert(t('hotelQR.confirmCheckOut'), t('hotelQR.checkOutConfirmMsg', { name: scanData.client_name }), [
-      { text: 'Annuler', style: 'cancel' },
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Confirmer', onPress: async () => {
+        text: t('common.confirm'), onPress: async () => {
           try {
             const res = await immobilierService.checkOutReservation(scanData.reservation_id);
             const rd = (res?.data || res) as any;

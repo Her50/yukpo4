@@ -15,6 +15,7 @@ import { apiPost } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 import SafeIcon from '../SafeIcon';
 import { NativeButton, NativeCard } from '../SafeNativeDesign';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface CovoituragePaymentFlowProps {
     total: number;
@@ -36,6 +37,7 @@ const CovoituragePaymentFlow: React.FC<CovoituragePaymentFlowProps> = ({
     onCancel
 }) => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const { user } = useAuth();
     const { walletBalance, refresh: refreshBalance } = useWalletBalance();
     const balance = walletBalance?.balance || 0;
@@ -58,7 +60,7 @@ const CovoituragePaymentFlow: React.FC<CovoituragePaymentFlowProps> = ({
                         'Solde insuffisant',
                         `Votre solde (${balance.toLocaleString('fr-FR')} ${devise}) est insuffisant. Veuillez recharger.`,
                         [
-                            { text: 'Annuler', style: 'cancel' },
+                            { text: t('common.cancel'), style: 'cancel' },
                             {
                                 text: 'Recharger',
                                 onPress: () => {

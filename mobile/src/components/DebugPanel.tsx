@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface LogEntry {
     timestamp: string;
@@ -204,7 +205,7 @@ ${logText}
             '⚠️ Confirmation',
             'Effacer tous les logs ?',
             [
-                { text: 'Annuler', style: 'cancel' },
+                { text: t('common.cancel'), style: 'cancel' },
                 { 
                     text: 'Effacer', 
                     style: 'destructive',

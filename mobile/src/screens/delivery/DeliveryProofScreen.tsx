@@ -107,9 +107,9 @@ const DeliveryProofScreen: React.FC<{ route: any }> = ({ route }) => {
             t('deliveryProof.deleteMedia'),
             t('deliveryProof.confirmDelete'),
             [
-                { text: 'Annuler', style: 'cancel' },
+                { text: t('common.cancel'), style: 'cancel' },
                 {
-                    text: 'Supprimer',
+                    text: t('common.delete'),
                     style: 'destructive',
                     onPress: () => deleteMedia(media),
                 },

@@ -21,6 +21,7 @@ import SkeletonCard from '../../components/SkeletonCard';
 import TripMap from '../../components/TripMap';
 import { apiGet, apiPatch } from '../../services/api';
 import ticketNotifications from '../../services/ticketNotifications';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface TicketDetails {
     payment_id: string;
@@ -47,6 +48,7 @@ interface TicketDetails {
 
 const BusTicketDetailsScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const route = useRoute();
     const paymentId = (route.params as any)?.paymentId as string;
 
@@ -78,7 +80,7 @@ const BusTicketDetailsScreen: React.FC = () => {
     const handleCancel = () => {
         if (!ticket) return;
         Alert.alert('Annuler la réservation', 'Êtes-vous sûr de vouloir annuler ?', [
-            { text: 'Non', style: 'cancel' },
+            { text: t('common.no'), style: 'cancel' },
             {
                 text: 'Oui, annuler', style: 'destructive', onPress: async () => {
                     try { setCancelling(true); for (const rid of ticket.reservation_ids) await apiPatch(`/api/bus-tickets/reservations/${rid}/cancel`, {}); Alert.alert('Succès', 'Réservation annulée'); navigation.goBack(); }

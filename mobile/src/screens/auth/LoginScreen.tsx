@@ -22,6 +22,7 @@ import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import { API_BASE_URL } from '../../config/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { modernColors, modernStyles, modernTheme } from '../../theme/modernTheme';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 // Configuration WebBrowser pour OAuth
 WebBrowser.maybeCompleteAuthSession();
@@ -377,7 +378,7 @@ const LoginScreen: React.FC = () => {
                 'Êtes-vous sûr de vouloir continuer ?',
                 [
                   {
-                    text: 'Annuler',
+                    text: t('common.cancel'),
                     style: 'cancel',
                     onPress: () => {
                       console.log('[LoginScreen] Inscription partenaire annulée par l\'utilisateur');

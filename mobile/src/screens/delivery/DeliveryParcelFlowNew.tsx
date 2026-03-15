@@ -502,7 +502,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
                 t('deliveryParcel.insufficientBalanceMsg', { balance: currentBalance.toLocaleString('fr-FR'), cost: totalCost.toLocaleString('fr-FR') }),
                 [
                     {
-                        text: 'Annuler',
+                        text: t('common.cancel'),
                         style: 'cancel',
                         onPress: () => {
                             SafeStorage.removeItem('pending_delivery');

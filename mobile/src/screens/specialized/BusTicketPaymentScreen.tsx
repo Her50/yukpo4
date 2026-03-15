@@ -19,6 +19,7 @@ import { SafeNativeView } from '../../components/SafeNativeView';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiPost } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface BusTicketPaymentParams {
     productId: string;
@@ -31,6 +32,7 @@ interface BusTicketPaymentParams {
 
 const BusTicketPaymentScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const route = useRoute();
     const { user, refreshUser } = useAuth();
     const [loading, setLoading] = useState(false);
@@ -64,7 +66,7 @@ const BusTicketPaymentScreen: React.FC = () => {
                 'Solde insuffisant',
                 `Vous avez ${user?.credits || 0} tokens. Vous avez besoin de ${totalPrice} tokens.`,
                 [
-                    { text: 'Annuler', style: 'cancel' },
+                    { text: t('common.cancel'), style: 'cancel' },
                     {
                         text: 'Recharger',
                         onPress: () => (navigation as any).navigate('RechargeTokens'),

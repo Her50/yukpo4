@@ -86,7 +86,7 @@ const TrocDetailsScreen: React.FC = () => {
 
     const handleRefuse = () => {
         Alert.alert(t('trocDetails.refuseTitle'), t('trocDetails.refuseConfirm'), [
-            { text: 'Annuler', style: 'cancel' },
+            { text: t('common.cancel'), style: 'cancel' },
             {
                 text: 'Refuser', style: 'destructive', onPress: async () => {
                     try { setActionLoading(true); const r = await apiPost(`/api/troc-livres/${trocId}/refuse`, {}); if (r.success) { Alert.alert(t('message.success'), t('trocDetails.trocRefused')); navigation.goBack(); } else Alert.alert(t('message.error'), (r as any).error || t('trocDetails.cannotRefuse')); }
@@ -98,9 +98,9 @@ const TrocDetailsScreen: React.FC = () => {
 
     const handleComplete = () => {
         Alert.alert(t('trocDetails.completeTitle'), t('trocDetails.completeConfirm'), [
-            { text: 'Annuler', style: 'cancel' },
+            { text: t('common.cancel'), style: 'cancel' },
             {
-                text: 'Confirmer', onPress: async () => {
+                text: t('common.confirm'), onPress: async () => {
                     try { setActionLoading(true); const r = await apiPost(`/api/troc-livres/${trocId}/complete`, {}); if (r.success) { Alert.alert(t('message.success'), t('trocDetails.trocCompleted')); loadTrocDetails(); } else Alert.alert(t('message.error'), (r as any).error || t('trocDetails.cannotComplete')); }
                     catch (e: any) { Alert.alert(t('message.error'), e.message || t('trocDetails.genericError')); } finally { setActionLoading(false); }
                 }

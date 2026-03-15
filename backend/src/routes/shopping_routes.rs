@@ -369,6 +369,7 @@ async fn get_wallet_transactions(
     .fetch_optional(&state.pg)
     .await
     .unwrap_or(None)
+    .flatten()
     .unwrap_or(0);
 
     Ok(Json(json!({
@@ -397,6 +398,7 @@ async fn get_wallet_financial_summary(
     .fetch_optional(&state.pg)
     .await
     .unwrap_or(None)
+    .flatten()
     .unwrap_or(0);
 
     // Total crédits (revenus) sur la période

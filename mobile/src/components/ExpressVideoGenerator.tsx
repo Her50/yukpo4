@@ -16,6 +16,7 @@ import { trackUxEvent } from '../services/uxMetrics';
 import { modernColors } from '../theme/modernTheme';
 import type { ManagedProduct } from '../types/ManagedProduct';
 import { SafeIcon } from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface ExpressVideoGeneratorProps {
     product: ManagedProduct;
@@ -66,7 +67,8 @@ export const ExpressVideoGenerator: React.FC<ExpressVideoGeneratorProps> = ({
     onError
 }) => {
     const [loading, setLoading] = useState(false);
-    const [selectedStyle, setSelectedStyle] = useState<keyof typeof EXPRESS_STYLES>('tiktok_viral');
+
+    const { t } = useLanguageSafe();    const [selectedStyle, setSelectedStyle] = useState<keyof typeof EXPRESS_STYLES>('tiktok_viral');
     const fadeAnim = React.useRef(new Animated.Value(0)).current;
 
     React.useEffect(() => {
@@ -150,7 +152,7 @@ export const ExpressVideoGenerator: React.FC<ExpressVideoGeneratorProps> = ({
                 '⚠️ Erreur de génération',
                 `${errorMsg}\n\nVoulez-vous essayer avec le mode avancé?`,
                 [
-                    { text: 'Réessayer', onPress: () => generateExpressVideo() },
+                    { text: t('common.retry'), onPress: () => generateExpressVideo() },
                     {
                         text: 'Mode Avancé', onPress: () => {
                             // ✅ Rediriger vers l'interface complète existante
@@ -158,7 +160,7 @@ export const ExpressVideoGenerator: React.FC<ExpressVideoGeneratorProps> = ({
                             onError?.('redirect_to_advanced');
                         }
                     },
-                    { text: 'Annuler', style: 'cancel' }
+                    { text: t('common.cancel'), style: 'cancel' }
                 ]
             );
 

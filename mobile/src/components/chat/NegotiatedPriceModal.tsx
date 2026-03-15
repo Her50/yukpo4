@@ -14,6 +14,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { apiGet, apiPost } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 import SafeIcon from '../SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface NegotiatedPriceModalProps {
     visible: boolean;
@@ -282,7 +283,7 @@ const NegotiatedPriceModal: React.FC<NegotiatedPriceModalProps> = ({
                                                     'Annuler la proposition',
                                                     'Voulez-vous annuler cette proposition de prix ?',
                                                     [
-                                                        { text: 'Non', style: 'cancel' },
+                                                        { text: t('common.no'), style: 'cancel' },
                                                         {
                                                             text: 'Oui, annuler',
                                                             style: 'destructive',

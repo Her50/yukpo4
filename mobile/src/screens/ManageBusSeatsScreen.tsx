@@ -90,7 +90,7 @@ const ManageBusSeatsScreen: React.FC = () => {
                 t('busSeats.unblockSeat'),
                 t('busSeats.unblockConfirm', { seat: seat.seat_number }),
                 [
-                    { text: 'Annuler', style: 'cancel' },
+                    { text: t('common.cancel'), style: 'cancel' },
                     {
                         text: 'Débloquer',
                         onPress: async () => {

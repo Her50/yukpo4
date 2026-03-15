@@ -21,6 +21,7 @@ import SafeStorage from '../../utils/safeStorage';
 import SafeIcon from '../SafeIcon';
 import { NativeCard } from '../SafeNativeDesign';
 import DeliveryProofVideoRecorder from './DeliveryProofVideoRecorder';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface ProofMediaUploadProps {
     deliveryId: string;
@@ -51,7 +52,8 @@ const ProofMediaUpload: React.FC<ProofMediaUploadProps> = ({
     onMediaUpdated,
 }) => {
     const [media, setMedia] = useState<DeliveryProofMedia[]>([]);
-    const [loading, setLoading] = useState(false);
+
+    const { t } = useLanguageSafe();    const [loading, setLoading] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [showVideoRecorder, setShowVideoRecorder] = useState(false);
 
@@ -127,7 +129,7 @@ const ProofMediaUpload: React.FC<ProofMediaUploadProps> = ({
                         setShowVideoRecorder(true);
                     },
                 },
-                { text: 'Annuler', style: 'cancel' },
+                { text: t('common.cancel'), style: 'cancel' },
             ]
         );
     };
@@ -199,9 +201,9 @@ const ProofMediaUpload: React.FC<ProofMediaUploadProps> = ({
             'Confirmation',
             'Êtes-vous sûr de vouloir supprimer ce média ?',
             [
-                { text: 'Annuler', style: 'cancel' },
+                { text: t('common.cancel'), style: 'cancel' },
                 {
-                    text: 'Supprimer',
+                    text: t('common.delete'),
                     style: 'destructive',
                     onPress: async () => {
                         try {
@@ -238,7 +240,7 @@ const ProofMediaUpload: React.FC<ProofMediaUploadProps> = ({
                                     [
                                         { text: '📸 Prendre une photo/vidéo', onPress: handleTakePhoto },
                                         { text: '🖼️ Choisir depuis la galerie', onPress: handlePickImage },
-                                        { text: 'Annuler', style: 'cancel' },
+                                        { text: t('common.cancel'), style: 'cancel' },
                                     ]
                                 );
                             }}

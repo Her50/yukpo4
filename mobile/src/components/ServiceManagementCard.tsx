@@ -14,6 +14,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { servicesApi } from '../services/api';
 import { theme } from '../theme/theme';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const { width } = Dimensions.get('window');
 
@@ -29,6 +30,7 @@ const ServiceManagementCard: React.FC<ServiceManagementCardProps> = ({
     onServiceDeleted,
 }) => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const { user } = useAuth();
     const [showShareModal, setShowShareModal] = useState(false);
     const [showPromotionModal, setShowPromotionModal] = useState(false);
@@ -102,9 +104,9 @@ const ServiceManagementCard: React.FC<ServiceManagementCardProps> = ({
                         'Confirmer la réactivation',
                         `Cette action coûtera ${activationCost} FCFA.\n\nVotre solde actuel: ${currentBalance} FCFA\nNouveau solde: ${currentBalance - activationCost} FCFA`,
                         [
-                            { text: 'Annuler', style: 'cancel' },
+                            { text: t('common.cancel'), style: 'cancel' },
                             {
-                                text: 'Confirmer',
+                                text: t('common.confirm'),
                                 onPress: async () => {
                                     try {
                                         // Déduire le coût de réactivation
@@ -159,9 +161,9 @@ const ServiceManagementCard: React.FC<ServiceManagementCardProps> = ({
             'Confirmer la suppression',
             `Êtes-vous sûr de vouloir supprimer définitivement le service "${serviceTitle}" ?\n\nCette action est irréversible.`,
             [
-                { text: 'Annuler', style: 'cancel' },
+                { text: t('common.cancel'), style: 'cancel' },
                 {
-                    text: 'Supprimer',
+                    text: t('common.delete'),
                     style: 'destructive',
                     onPress: async () => {
                         try {

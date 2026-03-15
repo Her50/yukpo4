@@ -16,6 +16,7 @@ import { modernColors } from '../../theme/modernTheme';
 import { NativeButton, NativeCard } from '../SafeNativeDesign';
 import ModernGPSModal from '../ModernGPSModal';
 import SafeIcon from '../SafeIcon';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface Product {
     serviceId: number;
@@ -69,7 +70,8 @@ const GlobalDeliveryConfigModal: React.FC<GlobalDeliveryConfigModalProps> = ({
     onSuccess,
 }) => {
     const [loading, setLoading] = useState(false);
-    const [parcelTypes, setParcelTypes] = useState<ParcelType[]>([]);
+
+    const { t } = useLanguageSafe();    const [parcelTypes, setParcelTypes] = useState<ParcelType[]>([]);
     const [storageLocations, setStorageLocations] = useState<Array<{
         id: number;
         name: string;
@@ -489,7 +491,7 @@ const GlobalDeliveryConfigModal: React.FC<GlobalDeliveryConfigModalProps> = ({
                                                         }));
                                                     }
                                                 })),
-                                                { text: 'Annuler', style: 'cancel' as const }
+                                                { text: t('common.cancel'), style: 'cancel' as const }
                                             ]
                                         );
                                     }}
@@ -549,7 +551,7 @@ const GlobalDeliveryConfigModal: React.FC<GlobalDeliveryConfigModalProps> = ({
                                                     text: pt.name,
                                                     onPress: () => setConfig(prev => ({ ...prev, required_vehicle_type_id: pt.id }))
                                                 })),
-                                                { text: 'Annuler', style: 'cancel' as const }
+                                                { text: t('common.cancel'), style: 'cancel' as const }
                                             ]
                                         );
                                     }}
@@ -737,7 +739,7 @@ const GlobalDeliveryConfigModal: React.FC<GlobalDeliveryConfigModalProps> = ({
                                         [
                                             { text: 'Standard', onPress: () => setConfig(prev => ({ ...prev, billing_mode: 'standard' })) },
                                             { text: 'Partenaire', onPress: () => setConfig(prev => ({ ...prev, billing_mode: 'partner' })) },
-                                            { text: 'Annuler', style: 'cancel' as const }
+                                            { text: t('common.cancel'), style: 'cancel' as const }
                                         ]
                                     );
                                 }}

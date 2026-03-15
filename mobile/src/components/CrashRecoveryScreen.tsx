@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { modernColors } from '../theme/modernTheme';
 import { useDebugLogger } from '../utils/DebugLogger';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface CrashRecoveryScreenProps {
     error?: Error;
@@ -88,7 +89,7 @@ const CrashRecoveryScreen: React.FC<CrashRecoveryScreenProps> = ({
             'Confirmer',
             'Voulez-vous vraiment effacer tous les logs ?',
             [
-                { text: 'Annuler', style: 'cancel' },
+                { text: t('common.cancel'), style: 'cancel' },
                 {
                     text: 'Effacer',
                     style: 'destructive',

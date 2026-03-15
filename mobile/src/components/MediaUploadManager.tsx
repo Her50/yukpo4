@@ -13,6 +13,7 @@ import {
 import { ScrollView } from 'react-native-gesture-handler';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface MediaUploadManagerProps {
   images?: string[];
@@ -57,7 +58,8 @@ const MediaUploadManager: React.FC<MediaUploadManagerProps> = ({
   }, [images.length, videos.length]);
 
   const [uploading, setUploading] = useState(false);
-  const [showImagePreview, setShowImagePreview] = useState<string | null>(null);
+
+    const { t } = useLanguageSafe();  const [showImagePreview, setShowImagePreview] = useState<string | null>(null);
 
   // ✅ AMÉLIORATION: Fonction helper pour vérifier la disponibilité d'ImagePicker
   const checkImagePickerAvailable = (): boolean => {
@@ -106,7 +108,7 @@ const MediaUploadManager: React.FC<MediaUploadManagerProps> = ({
           'Permission refusée',
           'Vous devez autoriser l\'accès à la galerie pour ajouter des images. Veuillez activer cette permission dans les paramètres de l\'application.',
           [
-            { text: 'Annuler', style: 'cancel' },
+            { text: t('common.cancel'), style: 'cancel' },
             {
               text: 'Paramètres', onPress: () => {
                 // L'utilisateur peut ouvrir les paramètres manuellement
@@ -196,7 +198,7 @@ const MediaUploadManager: React.FC<MediaUploadManagerProps> = ({
           'Permission refusée',
           'Vous devez autoriser l\'accès à la galerie pour ajouter des vidéos. Veuillez activer cette permission dans les paramètres de l\'application.',
           [
-            { text: 'Annuler', style: 'cancel' },
+            { text: t('common.cancel'), style: 'cancel' },
             {
               text: 'Paramètres', onPress: () => {
                 // L'utilisateur peut ouvrir les paramètres manuellement
@@ -290,9 +292,9 @@ const MediaUploadManager: React.FC<MediaUploadManagerProps> = ({
       'Supprimer l\'image',
       'Êtes-vous sûr de vouloir supprimer cette image ?',
       [
-        { text: 'Annuler', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Supprimer',
+          text: t('common.delete'),
           style: 'destructive',
           onPress: () => {
             const newImages = images.filter((_, i) => i !== index);
@@ -308,9 +310,9 @@ const MediaUploadManager: React.FC<MediaUploadManagerProps> = ({
       'Supprimer la vidéo',
       'Êtes-vous sûr de vouloir supprimer cette vidéo ?',
       [
-        { text: 'Annuler', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Supprimer',
+          text: t('common.delete'),
           style: 'destructive',
           onPress: () => {
             const newVideos = videos.filter((_, i) => i !== index);

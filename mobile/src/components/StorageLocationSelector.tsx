@@ -11,6 +11,7 @@ import { deliveryApi } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import ModernGPSModal from './ModernGPSModal';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface StorageLocation {
     id: number;
@@ -38,6 +39,7 @@ const StorageLocationSelector: React.FC<StorageLocationSelectorProps> = ({
     showCreateButton = true
 }) => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const [locations, setLocations] = useState<StorageLocation[]>([]);
     const [loading, setLoading] = useState(false);
     const [showGPSModal, setShowGPSModal] = useState(false);
@@ -90,7 +92,7 @@ const StorageLocationSelector: React.FC<StorageLocationSelectorProps> = ({
                     navigation.navigate('StorageLocations');
                 }
             },
-            { text: 'Annuler', style: 'cancel' as const }
+            { text: t('common.cancel'), style: 'cancel' as const }
         ];
         Alert.alert('Sélectionner un lieu de stockage', '', options);
     };
@@ -110,9 +112,9 @@ const StorageLocationSelector: React.FC<StorageLocationSelectorProps> = ({
             'Nom du lieu de stockage',
             'Donnez un nom à ce lieu de stockage (ex: Entrepôt principal, Magasin centre-ville)',
             [
-                { text: 'Annuler', style: 'cancel', onPress: () => { } },
+                { text: t('common.cancel'), style: 'cancel', onPress: () => { } },
                 {
-                    text: 'Continuer',
+                    text: t('common.continue'),
                     onPress: (name) => {
                         if (name && name.trim()) {
                             setNewLocationData(prev => ({ ...prev, name: name.trim() }));
@@ -120,9 +122,9 @@ const StorageLocationSelector: React.FC<StorageLocationSelectorProps> = ({
                                 'Adresse',
                                 'Entrez l\'adresse complète de ce lieu de stockage',
                                 [
-                                    { text: 'Annuler', style: 'cancel', onPress: () => { } },
+                                    { text: t('common.cancel'), style: 'cancel', onPress: () => { } },
                                     {
-                                        text: 'Créer',
+                                        text: t('common.create'),
                                         onPress: async (address) => {
                                             if (address && address.trim()) {
                                                 await createStorageLocation({

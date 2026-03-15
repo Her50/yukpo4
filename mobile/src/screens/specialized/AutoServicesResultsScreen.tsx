@@ -24,6 +24,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { apiGet, apiPost } from '../../services/api';
 import { hapticPress } from '../../utils/hapticFeedback';
 import { generateSmartShareLink } from '../../utils/productShareHelper';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 const ACCENT_COLOR = '#1E3A5F';
 const ACCENT_LIGHT = '#2563EB';
@@ -74,6 +75,7 @@ const SORT_OPTIONS = [
 
 const AutoServicesResultsScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const route = useRoute();
     const { user } = useAuth();
     const params = route.params as { filters?: any } | undefined;
@@ -340,8 +342,8 @@ const AutoServicesResultsScreen: React.FC = () => {
                                 onOpenChat={(userId, userName, userAvatar) => {
                                     if (!user) {
                                         Alert.alert('Connexion requise', 'Veuillez vous connecter pour discuter', [
-                                            { text: 'Annuler', style: 'cancel' },
-                                            { text: 'Se connecter', onPress: () => (navigation as any).navigate('Login') },
+                                            { text: t('common.cancel'), style: 'cancel' },
+                                            { text: t('common.login'), onPress: () => (navigation as any).navigate('Login') },
                                         ]);
                                         return;
                                     }
@@ -413,8 +415,8 @@ const AutoServicesResultsScreen: React.FC = () => {
     const handleChat = useCallback((item: AutoProduct) => {
         if (!user) {
             Alert.alert('Connexion requise', 'Veuillez vous connecter pour contacter le vendeur', [
-                { text: 'Annuler', style: 'cancel' },
-                { text: 'Se connecter', onPress: () => (navigation as any).navigate('Login') },
+                { text: t('common.cancel'), style: 'cancel' },
+                { text: t('common.login'), onPress: () => (navigation as any).navigate('Login') },
             ]);
             return;
         }

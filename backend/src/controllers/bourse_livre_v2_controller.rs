@@ -17,7 +17,6 @@ use axum::{
     Json,
 };
 use log::{error, info};
-use rust_decimal::prelude::FromPrimitive;
 use serde::Deserialize;
 use serde_json::json;
 use std::sync::Arc;
@@ -2109,7 +2108,10 @@ pub async fn browse_books_by_class(
     if let Some(ref search) = params.search {
         conditions.push(format!("(titre ILIKE ${0} OR auteur ILIKE ${0})", bind_idx));
         binds.push(format!("%{}%", search));
-        bind_idx += 1;
+        #[allow(unused_assignments)]
+        {
+            bind_idx += 1;
+        }
     }
 
     let where_clause = conditions.join(" AND ");

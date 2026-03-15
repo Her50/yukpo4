@@ -5,6 +5,7 @@ import useUserCountry from '../hooks/useUserCountry';
 import { modalityService } from '../services/modalityService';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface MultiSelectModalitySelectorProps {
     label: string;
@@ -30,7 +31,8 @@ const MultiSelectModalitySelector: React.FC<MultiSelectModalitySelectorProps> = 
     customOptions: propsCustomOptions // ✅ NOUVEAU: Renommer pour éviter conflit
 }) => {
     const [allOptions, setAllOptions] = useState<string[]>([]);
-    const [loading, setLoading] = useState(false);
+
+    const { t } = useLanguageSafe();    const [loading, setLoading] = useState(false);
     const [showModal, setShowModal] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     // ✅ État pour modale d'ajout (remplace Alert.prompt non supporté Android)
@@ -145,7 +147,7 @@ const MultiSelectModalitySelector: React.FC<MultiSelectModalitySelectorProps> = 
             'Effacer toutes les sélections',
             `Voulez-vous effacer toutes les ${label.toLowerCase()}s sélectionnées ?`,
             [
-                { text: 'Annuler', style: 'cancel' },
+                { text: t('common.cancel'), style: 'cancel' },
                 {
                     text: 'Effacer',
                     style: 'destructive',

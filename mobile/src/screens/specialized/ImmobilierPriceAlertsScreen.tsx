@@ -16,6 +16,7 @@ import SafeIcon from '../../components/SafeIcon';
 import { NativeButton } from '../../components/SafeNativeDesign';
 import { immobilierService } from '../../services/immobilierService';
 import { modernColors } from '../../theme/modernTheme';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface PriceAlert {
     id: number;
@@ -29,6 +30,7 @@ interface PriceAlert {
 
 const ImmobilierPriceAlertsScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const [alerts, setAlerts] = useState<PriceAlert[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -78,9 +80,9 @@ const ImmobilierPriceAlertsScreen: React.FC = () => {
             'Supprimer l\'alerte',
             'Êtes-vous sûr de vouloir supprimer cette alerte ?',
             [
-                { text: 'Annuler', style: 'cancel' },
+                { text: t('common.cancel'), style: 'cancel' },
                 {
-                    text: 'Supprimer',
+                    text: t('common.delete'),
                     style: 'destructive',
                     onPress: () => {
                         // TODO: Implémenter la suppression côté backend

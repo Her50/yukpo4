@@ -739,7 +739,7 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
                                                         { text: 'Tempéré', onPress: () => setCakeTemperature('tempéré') },
                                                         { text: 'Froid', onPress: () => setCakeTemperature('froid') },
                                                         { text: 'Chaud', onPress: () => setCakeTemperature('chaud') },
-                                                        { text: 'Annuler', style: 'cancel' },
+                                                        { text: t('common.cancel'), style: 'cancel' },
                                                     ]
                                                 );
                                             }}
@@ -762,7 +762,7 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
                                                         { text: 'Standard', onPress: () => setCakeFragility('standard') },
                                                         { text: 'Fragile', onPress: () => setCakeFragility('fragile') },
                                                         { text: 'Très fragile', onPress: () => setCakeFragility('très fragile') },
-                                                        { text: 'Annuler', style: 'cancel' },
+                                                        { text: t('common.cancel'), style: 'cancel' },
                                                     ]
                                                 );
                                             }}
