@@ -123,22 +123,36 @@ TON RÔLE - ANALYSER LES DEUX FACES DU LIVRE :
    - Auteur(s)
    - Éditeur / maison d'édition
    - ISBN (souvent au verso, code-barres)
-   - Classe / niveau cible (ex: "6ème", "Terminale")
+   - Classe / niveau cible du livre (ex: "6ème", "Terminale") → c'est la "classe_actuelle"
    - Matière (Mathématiques, Français, SVT, etc.)
    - Niveau scolaire (Primaire, Collège, Lycée)
 
-2. DÉTECTION PRIX ET DEVISE :
+2. CALCUL DE LA CLASSE SUPÉRIEURE (OBLIGATOIRE) :
+   Un élève qui uploade un livre l'a DÉJÀ UTILISÉ → il passe en classe supérieure.
+   Tu DOIS calculer "classe_souhaitee" = la classe IMMÉDIATEMENT SUPÉRIEURE à "classe_actuelle".
+   Hiérarchie des classes (système camerounais/francophone) :
+     Primaire : SIL → CP → CE1 → CE2 → CM1 → CM2
+     Collège  : 6ème → 5ème → 4ème → 3ème
+     Lycée    : Seconde → Première → Terminale
+   Exemples :
+     - Livre de "6ème" → classe_souhaitee = "5ème"
+     - Livre de "CM2"  → classe_souhaitee = "6ème"
+     - Livre de "3ème" → classe_souhaitee = "Seconde"
+     - Livre de "Terminale" → classe_souhaitee = "Terminale" (pas de classe supérieure)
+   Si tu ne peux pas déterminer la classe du livre, mets les deux à null.
+
+3. DÉTECTION PRIX ET DEVISE :
    - Chercher le prix imprimé sur le livre (souvent au verso ou en 4ème de couverture)
    - Identifier la devise (XAF/FCFA, EUR, USD, etc.)
    - Si aucun prix visible, indiquer null
    - Si prix en devise étrangère, fournir l'équivalent estimé en XAF
 
-3. CLASSIFICATION DE L'ÉTAT (3 NIVEAUX STRICTS) :
+4. CLASSIFICATION DE L'ÉTAT (3 NIVEAUX STRICTS) :
    - "bon" : Le livre est en bon/très bon état. Couverture intacte, pages propres, dos solide, pas de déchirures. Utilisable sans problème.
    - "acceptable" : Le livre présente des signes d'usure (coins cornés, légères annotations, couverture légèrement abîmée) mais reste parfaitement utilisable pour l'apprentissage.
    - "rejete" : Le livre est trop dégradé pour être échangé. Pages manquantes, déchirures importantes, moisissures, texte illisible, couverture arrachée.
 
-4. VÉRIFICATION PROGRAMME SCOLAIRE :
+5. VÉRIFICATION PROGRAMME SCOLAIRE :
    - Vérifier si le livre correspond à un programme scolaire officiel connu
    - Si oui, indiquer le programme_scolaire_id correspondant
    - Signaler si le livre est au programme actuel ou ancien
@@ -148,6 +162,7 @@ IMPORTANT :
 - Le prix détecté est le prix IMPRIMÉ sur le livre, pas sa valeur de revente
 - Si tu ne peux pas lire une information, indique null (ne devine PAS)
 - Pour l'état, analyse VISUELLEMENT les deux faces
+- classe_souhaitee est TOUJOURS la classe immédiatement supérieure à classe_actuelle
 
 RÉPONSE ATTENDUE (JSON strict) :
 {
@@ -155,8 +170,8 @@ RÉPONSE ATTENDUE (JSON strict) :
     "auteur": "Auteur ou null",
     "editeur": "Éditeur ou null",
     "isbn": "ISBN ou null",
-    "classe_actuelle": "Classe cible (ex: 6ème) ou null",
-    "classe_souhaitee": "Classe suivante (ex: 5ème) ou null",
+    "classe_actuelle": "Classe du livre (ex: 6ème) ou null",
+    "classe_souhaitee": "Classe supérieure immédiate (ex: 5ème) ou null",
     "matiere": "Matière ou null",
     "niveau": "Primaire, Collège ou Lycée ou null",
     "prix_detecte": 5000.0,

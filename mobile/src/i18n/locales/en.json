@@ -745,7 +745,14 @@
         "bookConditionRequired": "Book condition is required",
         "bookCreated": "Book created successfully!",
         "bookUpdated": "Book updated successfully!",
-        "genericError": "An error occurred"
+        "genericError": "An error occurred",
+        "allowGalleryAccess": "Please allow gallery access",
+        "cannotAnalyzeImage": "Unable to analyze image",
+        "analysisError": "Error during analysis",
+        "enterPrice": "Please enter the price",
+        "bookAdded": "Book added successfully!",
+        "cannotAddBook": "Unable to add book",
+        "saveError": "Error saving"
     },
     "bourseLivreV2": {
         "programmeUpload": {
@@ -870,7 +877,15 @@
         "registerDonation": "Register a donation",
         "confirmDonationToday": "Confirm that you donated blood today?",
         "donationRegistered": "Your donation has been registered",
-        "cannotRegisterDonation": "Unable to register donation"
+        "cannotRegisterDonation": "Unable to register donation",
+        "cannotLoadBanks": "Unable to load your blood banks",
+        "selectBank": "Please select a blood bank",
+        "selectBloodGroup": "Please select a required blood group",
+        "enterValidQuantity": "Please enter a valid quantity",
+        "requestCreated": "Request created",
+        "requestCreatedMsg": "Your request was created successfully. {{count}} compatible donor(s) found.",
+        "viewMatches": "View matches",
+        "cannotCreateRequest": "Unable to create request"
     },
     "pharmacieHome": {
         "permissionRequired": "Permission required",
@@ -947,7 +962,14 @@
         "serviceIdMissing": "Service ID missing",
         "tripCreated": "Trip created!",
         "cannotCreateTrip": "Unable to create trip",
-        "genericError": "An error occurred"
+        "genericError": "An error occurred",
+        "selectDepartureAndDestination": "Please select a departure and destination city",
+        "fillDepartureAndDestination": "Please fill in departure and destination",
+        "serviceRequired": "Service required",
+        "createServiceFirst": "You must first create a service. Would you like to do it now?",
+        "creationError": "Error during creation",
+        "createService": "Create a service",
+        "redirectToCreateService": "Redirecting to service creation..."
     },
     "taxiForm": {
         "nowAvailable": "You are now available",

@@ -179,6 +179,49 @@ pub async fn finalize_upload_session(
 }
 
 // ============================================================================
+// HELPERS: UPLOAD IMAGES S3-CDN + EXTRACTION BASE64
+// ============================================================================
+
+/// Extrait la partie base64 d'un data URI ou retourne la chaîne telle quelle
+fn extract_base64(data_uri: &str) -> String {
+    if data_uri.starts_with("data:image") {
+        if let Some(base64_part) = data_uri.split(',').nth(1) {
+            return base64_part.to_string();
+        }
+    }
+    data_uri.to_string()
+}
+
+/// Upload une image de livre (base64 ou data URI) vers le S3-CDN
+/// Retourne l'URL publique CDN, ou une erreur si l'upload échoue
+async fn upload_book_image_to_cdn(
+    media_storage: &std::sync::Arc<crate::services::media_storage_service::MediaStorageService>,
+    image_data: &str,
+    storage_key: &str,
+) -> Result<String, String> {
+    // Extraire le base64 pur
+    let base64_data = extract_base64(image_data);
+
+    // Décoder base64 en bytes
+    use base64::Engine;
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(&base64_data)
+        .map_err(|e| format!("Erreur décodage base64: {}", e))?;
+
+    if bytes.is_empty() {
+        return Err("Image base64 vide".to_string());
+    }
+
+    // Upload vers S3-CDN via le service média
+    let result = media_storage
+        .store_bytes(&bytes, storage_key, Some("image/jpeg"))
+        .await
+        .map_err(|e| format!("Erreur upload S3: {}", e))?;
+
+    Ok(result.public_url)
+}
+
+// ============================================================================
 // ANALYSE RECTO-VERSO PROGRESSIVE
 // ============================================================================
 
@@ -270,6 +313,49 @@ pub async fn analyze_recto_verso(
         _ => "Bon",
     };
 
+    // ✅ Upload images vers S3-CDN au lieu de stocker base64 brut en PostgreSQL
+    let upload_id = Uuid::new_v4().to_string();
+    let recto_url = upload_book_image_to_cdn(
+        &state.media_storage,
+        &request.image_recto,
+        &format!("livres/{}/recto_{}.jpg", user_id, upload_id),
+    )
+    .await
+    .unwrap_or_else(|e| {
+        error!(
+            "[analyze_recto_verso] Erreur upload recto CDN: {}, fallback base64",
+            e
+        );
+        request.image_recto.clone()
+    });
+    let verso_url = upload_book_image_to_cdn(
+        &state.media_storage,
+        &request.image_verso,
+        &format!("livres/{}/verso_{}.jpg", user_id, upload_id),
+    )
+    .await
+    .unwrap_or_else(|e| {
+        error!(
+            "[analyze_recto_verso] Erreur upload verso CDN: {}, fallback base64",
+            e
+        );
+        request.image_verso.clone()
+    });
+
+    info!(
+        "[analyze_recto_verso] Images uploadées CDN: recto={}, verso={}",
+        if recto_url.starts_with("http") {
+            "CDN"
+        } else {
+            "base64-fallback"
+        },
+        if verso_url.starts_with("http") {
+            "CDN"
+        } else {
+            "base64-fallback"
+        }
+    );
+
     // Créer le livre dans la base
     let livre = sqlx::query_as::<_, crate::models::livre_scolaire::LivreScolaire>(
         r#"
@@ -313,8 +399,8 @@ pub async fn analyze_recto_verso(
     .bind(&analysis.niveau)
     .bind(etat_livre)
     .bind(&analysis.etat_description)
-    .bind(&request.image_recto)
-    .bind(&request.image_verso)
+    .bind(&recto_url)
+    .bind(&verso_url)
     .bind::<&[String]>(&[]) // images_urls vide, on utilise recto/verso
     .bind(&session.gps_recuperation)
     .bind::<Option<&str>>(None) // ville sera déduite du GPS
@@ -1818,6 +1904,261 @@ async fn record_book_commission(
         id, livre_id, type_transaction, montant_commission as i64
     );
     Ok(id)
+}
+
+// ============================================================================
+// PHASE 3: PARCOURIR LIVRES PAR CLASSE (ACHAT SANS TROC)
+// ============================================================================
+
+/// GET /api/bourse-livre/v2/browse-by-class
+/// Parcourir les livres disponibles par classe, avec images et filtres
+/// Permet à un utilisateur de sélectionner des livres à acheter sans avoir de livres à troquer
+#[derive(Debug, Deserialize)]
+pub struct BrowseByClassQuery {
+    pub classe: Option<String>,       // "6ème", "5ème", etc.
+    pub matiere: Option<String>,      // "Mathématiques", etc.
+    pub niveau: Option<String>,       // "Primaire", "Collège", "Lycée"
+    pub mode_listing: Option<String>, // "vente", "troc", "don" — filtre le mode
+    pub ville: Option<String>,
+    pub search: Option<String>, // recherche texte libre (titre, auteur)
+    pub limit: Option<i64>,
+    pub offset: Option<i64>,
+}
+
+pub async fn browse_books_by_class(
+    State(state): State<Arc<AppState>>,
+    Query(params): Query<BrowseByClassQuery>,
+) -> AppResult<impl IntoResponse> {
+    let limit = params.limit.unwrap_or(50).min(100);
+    let offset = params.offset.unwrap_or(0);
+
+    // ✅ Redis cache: clé basée sur les paramètres de recherche
+    let cache_key = format!(
+        "bourse_livre:browse:{}:{}:{}:{}:{}:{}:{}",
+        params.classe.as_deref().unwrap_or("all"),
+        params.matiere.as_deref().unwrap_or("all"),
+        params.niveau.as_deref().unwrap_or("all"),
+        params.mode_listing.as_deref().unwrap_or("all"),
+        params.ville.as_deref().unwrap_or("all"),
+        limit,
+        offset
+    );
+
+    // Tenter le cache Redis
+    if let Some(ref redis) = state.redis {
+        if let Ok(cached) = redis.get::<String>(&cache_key).await {
+            if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&cached) {
+                info!("[browse_books_by_class] Cache hit: {}", cache_key);
+                return Ok(Json(parsed));
+            }
+        }
+    }
+
+    // Construire la requête SQL dynamique
+    let mut conditions = vec![
+        "is_available = true".to_string(),
+        "is_active = true".to_string(),
+    ];
+    let mut bind_idx = 1u32;
+    let mut binds: Vec<String> = Vec::new();
+
+    if let Some(ref classe) = params.classe {
+        conditions.push(format!("classe_actuelle = ${}", bind_idx));
+        binds.push(classe.clone());
+        bind_idx += 1;
+    }
+    if let Some(ref matiere) = params.matiere {
+        conditions.push(format!("matiere = ${}", bind_idx));
+        binds.push(matiere.clone());
+        bind_idx += 1;
+    }
+    if let Some(ref niveau) = params.niveau {
+        conditions.push(format!("niveau = ${}", bind_idx));
+        binds.push(niveau.clone());
+        bind_idx += 1;
+    }
+    if let Some(ref mode) = params.mode_listing {
+        conditions.push(format!("mode_listing = ${}", bind_idx));
+        binds.push(mode.clone());
+        bind_idx += 1;
+    }
+    if let Some(ref ville) = params.ville {
+        conditions.push(format!("ville ILIKE ${}", bind_idx));
+        binds.push(format!("%{}%", ville));
+        bind_idx += 1;
+    }
+    if let Some(ref search) = params.search {
+        conditions.push(format!("(titre ILIKE ${0} OR auteur ILIKE ${0})", bind_idx));
+        binds.push(format!("%{}%", search));
+        bind_idx += 1;
+    }
+
+    let where_clause = conditions.join(" AND ");
+    let sql = format!(
+        r#"SELECT id, titre, auteur, editeur, isbn, classe_actuelle, classe_souhaitee,
+           matiere, niveau, etat_livre, etat_classification, description_etat,
+           image_recto, image_verso,
+           mode_listing, valeur_calculee, prix_detecte, devise_detectee,
+           est_au_programme, programme_scolaire_id, ville, gps,
+           created_at, user_id
+           FROM livres_scolaires
+           WHERE {}
+           ORDER BY est_au_programme DESC NULLS LAST, created_at DESC
+           LIMIT {} OFFSET {}"#,
+        where_clause, limit, offset
+    );
+
+    // Exécuter avec les binds dynamiques
+    let mut query = sqlx::query(&sql);
+    for b in &binds {
+        query = query.bind(b);
+    }
+
+    let rows = query
+        .fetch_all(&state.pg)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur recherche livres: {}", e)))?;
+
+    // Compter le total
+    let count_sql = format!(
+        "SELECT COUNT(*) as total FROM livres_scolaires WHERE {}",
+        where_clause
+    );
+    let mut count_query = sqlx::query_scalar::<_, i64>(&count_sql);
+    for b in &binds {
+        count_query = count_query.bind(b);
+    }
+    let total = count_query.fetch_one(&state.pg).await.unwrap_or(0);
+
+    // Lister les classes disponibles pour le filtre
+    let classes_disponibles: Vec<String> = sqlx::query_scalar::<_, String>(
+        "SELECT DISTINCT classe_actuelle FROM livres_scolaires WHERE is_available = true AND is_active = true ORDER BY classe_actuelle"
+    )
+    .fetch_all(&state.pg)
+    .await
+    .unwrap_or_default();
+
+    // Formater les résultats avec images
+    let livres: Vec<serde_json::Value> = rows
+        .iter()
+        .map(|row| {
+            use sqlx::Row;
+            json!({
+                "id": row.get::<i32, _>("id"),
+                "titre": row.get::<String, _>("titre"),
+                "auteur": row.try_get::<String, _>("auteur").ok(),
+                "editeur": row.try_get::<String, _>("editeur").ok(),
+                "isbn": row.try_get::<String, _>("isbn").ok(),
+                "classe_actuelle": row.get::<String, _>("classe_actuelle"),
+                "classe_souhaitee": row.get::<String, _>("classe_souhaitee"),
+                "matiere": row.get::<String, _>("matiere"),
+                "niveau": row.try_get::<String, _>("niveau").ok(),
+                "etat_livre": row.get::<String, _>("etat_livre"),
+                "etat_classification": row.try_get::<String, _>("etat_classification").ok(),
+                "description_etat": row.try_get::<String, _>("description_etat").ok(),
+                "image_recto": row.try_get::<String, _>("image_recto").ok(),
+                "image_verso": row.try_get::<String, _>("image_verso").ok(),
+                "mode_listing": row.try_get::<String, _>("mode_listing").ok(),
+                "valeur_calculee": row.try_get::<rust_decimal::Decimal, _>("valeur_calculee").ok(),
+                "prix_detecte": row.try_get::<rust_decimal::Decimal, _>("prix_detecte").ok(),
+                "devise": row.try_get::<String, _>("devise_detectee").ok().unwrap_or_else(|| "XAF".to_string()),
+                "est_au_programme": row.try_get::<bool, _>("est_au_programme").ok(),
+                "programme_scolaire_id": row.try_get::<i32, _>("programme_scolaire_id").ok(),
+                "ville": row.try_get::<String, _>("ville").ok(),
+                "user_id": row.get::<i32, _>("user_id"),
+            })
+        })
+        .collect();
+
+    let response = json!({
+        "success": true,
+        "livres": livres,
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+        "classes_disponibles": classes_disponibles,
+        "filtres_appliques": {
+            "classe": params.classe,
+            "matiere": params.matiere,
+            "niveau": params.niveau,
+            "mode_listing": params.mode_listing,
+            "ville": params.ville,
+            "search": params.search
+        }
+    });
+
+    // Sauvegarder en cache Redis (TTL 5 minutes)
+    if let Some(ref redis) = state.redis {
+        if let Ok(json_str) = serde_json::to_string(&response) {
+            let _ = redis.set_ex::<String>(&cache_key, &json_str, 300).await;
+        }
+    }
+
+    Ok(Json(response))
+}
+
+/// GET /api/bourse-livre/v2/classes-programmes
+/// Retourne les classes avec le nombre de livres disponibles et au programme
+pub async fn get_classes_with_programmes(
+    State(state): State<Arc<AppState>>,
+) -> AppResult<impl IntoResponse> {
+    // Cache Redis
+    let cache_key = "bourse_livre:classes_programmes";
+    if let Some(ref redis) = state.redis {
+        if let Ok(cached) = redis.get::<String>(cache_key).await {
+            if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&cached) {
+                return Ok(Json(parsed));
+            }
+        }
+    }
+
+    let rows = sqlx::query(
+        r#"SELECT classe_actuelle as classe,
+           COUNT(*) as total_livres,
+           COUNT(*) FILTER (WHERE est_au_programme = true) as au_programme,
+           COUNT(*) FILTER (WHERE mode_listing = 'vente') as en_vente,
+           COUNT(*) FILTER (WHERE mode_listing = 'troc') as en_troc,
+           COUNT(*) FILTER (WHERE mode_listing = 'don') as en_don
+           FROM livres_scolaires
+           WHERE is_available = true AND is_active = true AND classe_actuelle != ''
+           GROUP BY classe_actuelle
+           ORDER BY classe_actuelle"#,
+    )
+    .fetch_all(&state.pg)
+    .await
+    .unwrap_or_default();
+
+    let classes: Vec<serde_json::Value> = rows
+        .iter()
+        .map(|row| {
+            use sqlx::Row;
+            let classe: String = row.get("classe");
+            let niveau =
+                crate::services::book_exchange_ai_service::compute_niveau_from_classe(&classe);
+            json!({
+                "classe": classe,
+                "niveau": niveau,
+                "total_livres": row.get::<i64, _>("total_livres"),
+                "au_programme": row.get::<i64, _>("au_programme"),
+                "en_vente": row.get::<i64, _>("en_vente"),
+                "en_troc": row.get::<i64, _>("en_troc"),
+                "en_don": row.get::<i64, _>("en_don"),
+            })
+        })
+        .collect();
+
+    let response = json!({
+        "success": true,
+        "classes": classes
+    });
+
+    if let Some(ref redis) = state.redis {
+        if let Ok(json_str) = serde_json::to_string(&response) {
+            let _ = redis.set_ex::<String>(cache_key, &json_str, 600).await;
+        }
+    }
+
+    Ok(Json(response))
 }
 
 // ============================================================================

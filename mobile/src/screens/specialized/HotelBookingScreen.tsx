@@ -18,6 +18,7 @@ import {
 import SafeIcon from '../../components/SafeIcon';
 import { NativeButton } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { immobilierService } from '../../services/immobilierService';
 import { getCurrencyIntelligently } from '../../utils/currencyUtils';
 
@@ -33,6 +34,7 @@ const HotelBookingScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
     const { user } = useAuth();
+    const { t } = useLanguageSafe();
 
     const params = (route.params || {}) as RouteParams;
     const propertyId = params.propertyId;
@@ -73,22 +75,22 @@ const HotelBookingScreen: React.FC = () => {
 
     const handleSubmit = async () => {
         if (!dateArrivee.trim() || !dateDepart.trim()) {
-            Alert.alert('Erreur', 'Veuillez renseigner les dates d\'arrivée et de départ');
+            Alert.alert(t('message.error'), t('hotelBooking.enterDates'));
             return;
         }
         if (!nomClient.trim() || !telephoneClient.trim()) {
-            Alert.alert('Erreur', 'Nom et téléphone sont requis');
+            Alert.alert(t('message.error'), t('hotelBooking.nameAndPhoneRequired'));
             return;
         }
 
         const arrDate = new Date(dateArrivee);
         const depDate = new Date(dateDepart);
         if (isNaN(arrDate.getTime()) || isNaN(depDate.getTime())) {
-            Alert.alert('Erreur', 'Format de date invalide. Utilisez AAAA-MM-JJ');
+            Alert.alert(t('message.error'), t('hotelBooking.invalidDateFormat'));
             return;
         }
         if (depDate <= arrDate) {
-            Alert.alert('Erreur', 'La date de départ doit être après la date d\'arrivée');
+            Alert.alert(t('message.error'), t('hotelBooking.departureMustBeAfterArrival'));
             return;
         }
 
@@ -113,8 +115,8 @@ const HotelBookingScreen: React.FC = () => {
             if (resData?.success) {
                 const reservationId = resData?.data?.id || resData?.data?.reservation_id;
                 Alert.alert(
-                    'Réservation envoyée !',
-                    `Votre demande de réservation a été transmise au gérant de "${propertyName}". Vous recevrez une confirmation bientôt.`,
+                    t('hotelBooking.reservationSent'),
+                    t('hotelBooking.reservationSentMsg', { name: propertyName }),
                     [
                         ...(reservationId && prixTotal > 0 ? [{
                             text: 'Payer maintenant',
@@ -132,11 +134,11 @@ const HotelBookingScreen: React.FC = () => {
                     ]
                 );
             } else {
-                Alert.alert('Erreur', resData?.message || 'Impossible de créer la réservation');
+                Alert.alert(t('message.error'), resData?.message || t('hotelBooking.cannotCreateReservation'));
             }
         } catch (error: any) {
             console.error('[HotelBookingScreen] Erreur:', error);
-            Alert.alert('Erreur', error.message || 'Une erreur est survenue');
+            Alert.alert(t('message.error'), error.message || t('hotelBooking.errorOccurred'));
         } finally {
             setLoading(false);
         }

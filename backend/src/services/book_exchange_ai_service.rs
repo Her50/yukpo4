@@ -13,6 +13,56 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 
+/// Calcule la classe immédiatement supérieure dans le système camerounais/francophone.
+/// Hiérarchie: SIL → CP → CE1 → CE2 → CM1 → CM2 → 6ème → 5ème → 4ème → 3ème → Seconde → Première → Terminale
+pub fn compute_classe_superieure(classe_actuelle: &str) -> String {
+    let normalized = classe_actuelle.trim().to_lowercase();
+    let mapping: &[(&str, &str)] = &[
+        ("sil", "CP"),
+        ("cp", "CE1"),
+        ("ce1", "CE2"),
+        ("ce2", "CM1"),
+        ("cm1", "CM2"),
+        ("cm2", "6ème"),
+        ("6ème", "5ème"),
+        ("6eme", "5ème"),
+        ("5ème", "4ème"),
+        ("5eme", "4ème"),
+        ("4ème", "3ème"),
+        ("4eme", "3ème"),
+        ("3ème", "Seconde"),
+        ("3eme", "Seconde"),
+        ("seconde", "Première"),
+        ("2nde", "Première"),
+        ("première", "Terminale"),
+        ("premiere", "Terminale"),
+        ("1ère", "Terminale"),
+        ("1ere", "Terminale"),
+        ("terminale", "Terminale"),
+        ("tle", "Terminale"),
+    ];
+    for (key, val) in mapping {
+        if normalized == *key {
+            return val.to_string();
+        }
+    }
+    // Si non reconnu, retourner la même classe
+    classe_actuelle.to_string()
+}
+
+/// Déduit le niveau scolaire (Primaire/Collège/Lycée) depuis la classe
+pub fn compute_niveau_from_classe(classe: &str) -> &'static str {
+    let normalized = classe.trim().to_lowercase();
+    match normalized.as_str() {
+        "sil" | "cp" | "ce1" | "ce2" | "cm1" | "cm2" => "Primaire",
+        "6ème" | "6eme" | "5ème" | "5eme" | "4ème" | "4eme" | "3ème" | "3eme" => "Collège",
+        "seconde" | "2nde" | "première" | "premiere" | "1ère" | "1ere" | "terminale" | "tle" => {
+            "Lycée"
+        }
+        _ => "Non déterminé",
+    }
+}
+
 /// Recommandations de livres basées sur classe/matière
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BookRecommendation {
@@ -442,11 +492,19 @@ RÉPONSE ATTENDUE (JSON strict) :
                 e
             );
             format!(
-                r#"Tu es un expert en analyse de livres scolaires pour Yukpo.
+                r#"Tu es un expert en analyse de livres scolaires pour Yukpo (Cameroun/Afrique).
 Analyse les images RECTO et VERSO du livre.
-Extrais: titre, auteur, éditeur, ISBN, classe, matière, niveau.
+Extrais: titre, auteur, éditeur, ISBN, classe du livre (classe_actuelle), matière, niveau (Primaire/Collège/Lycée).
 Détecte le prix imprimé et la devise.
 Classe l'état en 3 niveaux: "bon", "acceptable", "rejete".
+
+CALCUL CLASSE SUPÉRIEURE (OBLIGATOIRE):
+L'élève a DÉJÀ UTILISÉ ce livre → il passe en classe supérieure.
+classe_souhaitee = classe IMMÉDIATEMENT SUPÉRIEURE à classe_actuelle.
+Hiérarchie: SIL→CP→CE1→CE2→CM1→CM2→6ème→5ème→4ème→3ème→Seconde→Première→Terminale.
+Ex: livre "6ème" → classe_souhaitee="5ème", livre "CM2" → classe_souhaitee="6ème", livre "3ème" → classe_souhaitee="Seconde".
+Si Terminale → classe_souhaitee="Terminale".
+
 Localisation: lat={}, lng={}.
 Programmes connus: {}.
 Réponds en JSON strict avec: titre, auteur, editeur, isbn, classe_actuelle, classe_souhaitee, matiere, niveau, prix_detecte, devise_detectee, etat_classification, etat_description, est_au_programme, programme_scolaire_id, programme_match_details, confidence, notes."#,
@@ -504,6 +562,23 @@ Réponds en JSON strict avec: titre, auteur, editeur, isbn, classe_actuelle, cla
                 }
             }
         };
+
+        // ✅ Fallback déterministe: si l'IA a trouvé classe_actuelle mais pas classe_souhaitee,
+        // ou si classe_souhaitee est incorrecte, on la recalcule
+        let mut analysis = analysis;
+        if let Some(ref classe_act) = analysis.classe_actuelle {
+            let computed = compute_classe_superieure(classe_act);
+            if analysis.classe_souhaitee.is_none()
+                || analysis.classe_souhaitee.as_deref() == Some("")
+            {
+                log::info!(
+                    "[BookExchangeAIService] Fallback classe_souhaitee: {} → {}",
+                    classe_act,
+                    computed
+                );
+                analysis.classe_souhaitee = Some(computed);
+            }
+        }
 
         Ok(analysis)
     }

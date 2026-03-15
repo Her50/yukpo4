@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { NativeButton, NativeCard, NativeInput } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { apiPost } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 
@@ -29,6 +30,7 @@ interface ReservationScreenProps {
 
 const ReservationScreen: React.FC<ReservationScreenProps> = ({ route, navigation }) => {
     const { user } = useAuth();
+    const { t } = useLanguageSafe();
     const { serviceId, serviceType, serviceName, prestataireId, reservationType } = route.params;
 
     const [loading, setLoading] = useState(false);
@@ -60,23 +62,23 @@ const ReservationScreen: React.FC<ReservationScreenProps> = ({ route, navigation
 
     const handleCreateReservation = async () => {
         if (!user) {
-            Alert.alert('Erreur', 'Vous devez être connecté pour réserver');
+            Alert.alert(t('message.error'), t('reservation.mustBeLoggedIn'));
             return;
         }
 
         // Validation selon le type
         if (reservationType === 'rdv' && !requestedDate) {
-            Alert.alert('Erreur', 'Veuillez sélectionner une date');
+            Alert.alert(t('message.error'), t('reservation.selectDate'));
             return;
         }
 
         if (reservationType === 'place' && nombrePlaces < 1) {
-            Alert.alert('Erreur', 'Veuillez sélectionner au moins une place');
+            Alert.alert(t('message.error'), t('reservation.selectAtLeastOnePlace'));
             return;
         }
 
         if (reservationType === 'course' && !pickupAddress) {
-            Alert.alert('Erreur', 'Veuillez saisir l\'adresse de prise en charge');
+            Alert.alert(t('message.error'), t('reservation.enterPickupAddress'));
             return;
         }
 
@@ -120,8 +122,8 @@ const ReservationScreen: React.FC<ReservationScreenProps> = ({ route, navigation
             const resData = (response?.data || response) as any;
             if (resData.success) {
                 Alert.alert(
-                    'Succès',
-                    'Votre réservation a été créée avec succès. Le prestataire vous confirmera bientôt.',
+                    t('message.success'),
+                    t('reservation.reservationCreated'),
                     [
                         {
                             text: 'OK',
@@ -130,11 +132,11 @@ const ReservationScreen: React.FC<ReservationScreenProps> = ({ route, navigation
                     ]
                 );
             } else {
-                Alert.alert('Erreur', response.error || 'Impossible de créer la réservation');
+                Alert.alert(t('message.error'), response.error || t('reservation.cannotCreateReservation'));
             }
         } catch (error: any) {
             console.error('[ReservationScreen] Erreur création réservation:', error);
-            Alert.alert('Erreur', 'Une erreur est survenue lors de la création de la réservation');
+            Alert.alert(t('message.error'), t('reservation.errorCreatingReservation'));
         } finally {
             setLoading(false);
         }

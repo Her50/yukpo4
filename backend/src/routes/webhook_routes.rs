@@ -15,18 +15,21 @@ use crate::{
 /// Routes pour les webhooks de paiement
 pub fn webhook_routes() -> Router<Arc<AppState>> {
     Router::new()
-        // ✅ Webhooks agrégateurs (production)
-        .route("/cinetpay", post(cinetpay_webhook))
-        .route("/notchpay", post(notchpay_webhook))
+        // ✅ Webhooks agrégateurs (production) — URL: /api/webhooks/cinetpay et /api/webhooks/notchpay
+        .route("/api/webhooks/cinetpay", post(cinetpay_webhook))
+        .route("/api/webhooks/notchpay", post(notchpay_webhook))
         // Webhooks legacy (providers directs)
-        .route("/orange-money", post(orange_money_webhook))
-        .route("/mtn-money", post(mtn_money_webhook))
-        .route("/generic", post(generic_webhook))
-        .route("/audio-premium/{provider}", post(audio_premium_webhook))
+        .route("/api/webhooks/orange-money", post(orange_money_webhook))
+        .route("/api/webhooks/mtn-money", post(mtn_money_webhook))
+        .route("/api/webhooks/generic", post(generic_webhook))
+        .route(
+            "/api/webhooks/audio-premium/{provider}",
+            post(audio_premium_webhook),
+        )
         // Endpoint de test (bloqué en production)
-        .route("/test", post(test_webhook))
+        .route("/api/webhooks/test", post(test_webhook))
         // Endpoint de santé
-        .route("/webhooks/health", get(webhook_health))
+        .route("/api/webhooks/health", get(webhook_health))
 }
 
 /// Endpoint de santé pour les webhooks

@@ -22,6 +22,7 @@ import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useToaster } from '../../components/ToasterProvider';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { useCurrencyDetection } from '../../hooks/useCurrencyDetection';
 import { Covoiturage, covoiturageService, CreateCovoiturageRequest, SearchCovoituragesFilters } from '../../services/covoiturageService';
@@ -33,6 +34,7 @@ type ViewMode = 'search' | 'create';
 const CovoiturageHomeScreen: React.FC = () => {
     const navigation = useNavigation();
     const { user } = useAuth();
+    const { t } = useLanguageSafe();
     const { location } = useLocation();
     const toaster = useToaster();
 
@@ -207,7 +209,7 @@ const CovoiturageHomeScreen: React.FC = () => {
             : (destination as LocationObject)?.components?.ville || (destination as LocationObject)?.place_name || '';
 
         if (!departStr || !destinationStr) {
-            Alert.alert('Erreur', 'Veuillez sélectionner une ville de départ et une ville de destination');
+            Alert.alert(t('message.error'), t('covoiturage.selectDepartureAndDestination'));
             return;
         }
 
@@ -253,14 +255,14 @@ const CovoiturageHomeScreen: React.FC = () => {
 
     const handleCreateTrajet = async () => {
         if (!trajetForm.depart?.trim() || !trajetForm.destination?.trim()) {
-            Alert.alert('Erreur', 'Veuillez remplir le départ et la destination');
+            Alert.alert(t('message.error'), t('covoiturage.fillDepartureAndDestination'));
             return;
         }
 
         if (!trajetForm.service_id) {
             Alert.alert(
-                'Service requis',
-                'Vous devez d\'abord créer un service. Voulez-vous le faire maintenant ?',
+                t('covoiturage.serviceRequired'),
+                t('covoiturage.createServiceFirst'),
                 [
                     { text: 'Annuler' },
                     {
@@ -299,7 +301,7 @@ const CovoiturageHomeScreen: React.FC = () => {
             const response = await covoiturageService.createCovoiturage(trajetData);
 
             if (response.success) {
-                Alert.alert('Succès', 'Trajet créé avec succès !', [
+                Alert.alert(t('message.success'), t('covoiturage.tripCreated'), [
                     {
                         text: 'OK',
                         onPress: () => {
@@ -320,11 +322,11 @@ const CovoiturageHomeScreen: React.FC = () => {
                     },
                 ]);
             } else {
-                Alert.alert('Erreur', 'Impossible de créer le trajet');
+                Alert.alert(t('message.error'), t('covoiturage.cannotCreateTrip'));
             }
         } catch (err: any) {
             console.error('[CovoiturageHomeScreen] Erreur création:', err);
-            Alert.alert('Erreur', err.message || 'Erreur lors de la création');
+            Alert.alert(t('message.error'), err.message || t('covoiturage.creationError'));
         } finally {
             setCreating(false);
         }
@@ -790,7 +792,7 @@ const CreateTrajetForm: React.FC<CreateTrajetFormProps> = ({
                         style={styles.serviceWarningButton}
                         onPress={() => {
                             // Navigation vers création de service
-                            Alert.alert('Créer un service', 'Redirection vers la création de service...');
+                            Alert.alert(t('covoiturage.createService'), t('covoiturage.redirectToCreateService'));
                         }}
                     >
                         <Text style={styles.serviceWarningButtonText}>Créer un service</Text>

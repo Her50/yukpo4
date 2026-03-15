@@ -21,6 +21,7 @@ import {
 } from 'react-native';
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { BookImageAnalysis, LivreScolaire, livreScolaireService, SearchLivresFilters } from '../../services/livreScolaireService';
 import { modernColors } from '../../theme/modernTheme';
@@ -28,6 +29,7 @@ import { hapticPress } from '../../utils/hapticFeedback';
 
 const LivreScolaireHomeScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const { location } = useLocation();
 
     // États de recherche
@@ -143,7 +145,7 @@ const LivreScolaireHomeScreen: React.FC = () => {
         hapticPress();
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (status !== 'granted') {
-            Alert.alert('Permission requise', 'Veuillez autoriser l\'accès à la galerie');
+            Alert.alert(t('livreScolaire.permissionRequired'), t('livreScolaire.allowGalleryAccess'));
             return;
         }
 
@@ -181,11 +183,11 @@ const LivreScolaireHomeScreen: React.FC = () => {
                 setBookInfo(r.book_info);
                 setShowAddModal(true);
             } else {
-                Alert.alert('Erreur', 'Impossible d\'analyser l\'image');
+                Alert.alert(t('message.error'), t('livreScolaire.cannotAnalyzeImage'));
             }
         } catch (err: any) {
             console.error('[LivreScolaireHomeScreen] Erreur analyse:', err);
-            Alert.alert('Erreur', err.message || 'Erreur lors de l\'analyse');
+            Alert.alert(t('message.error'), err.message || t('livreScolaire.analysisError'));
         } finally {
             setAnalyzingImage(false);
         }
@@ -193,7 +195,7 @@ const LivreScolaireHomeScreen: React.FC = () => {
 
     const handleSaveBook = async () => {
         if (!bookInfo || !price.trim()) {
-            Alert.alert('Erreur', 'Veuillez remplir le prix');
+            Alert.alert(t('message.error'), t('livreScolaire.enterPrice'));
             return;
         }
 
@@ -221,7 +223,7 @@ const LivreScolaireHomeScreen: React.FC = () => {
             const response = await livreScolaireService.createLivre(livreData);
 
             if (response.success) {
-                Alert.alert('Succès', 'Livre ajouté avec succès !', [
+                Alert.alert(t('message.success'), t('livreScolaire.bookAdded'), [
                     {
                         text: 'OK',
                         onPress: () => {
@@ -235,11 +237,11 @@ const LivreScolaireHomeScreen: React.FC = () => {
                     },
                 ]);
             } else {
-                Alert.alert('Erreur', 'Impossible d\'ajouter le livre');
+                Alert.alert(t('message.error'), t('livreScolaire.cannotAddBook'));
             }
         } catch (err: any) {
             console.error('[LivreScolaireHomeScreen] Erreur sauvegarde:', err);
-            Alert.alert('Erreur', err.message || 'Erreur lors de la sauvegarde');
+            Alert.alert(t('message.error'), err.message || t('livreScolaire.saveError'));
         } finally {
             setSaving(false);
         }

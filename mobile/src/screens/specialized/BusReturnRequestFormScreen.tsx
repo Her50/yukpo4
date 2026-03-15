@@ -14,6 +14,7 @@ import { ConfirmationSection } from '../../components/FormConfirmationModal';
 import SafeIcon from '../../components/SafeIcon';
 import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { useFormValidation } from '../../hooks/useFormValidation';
 import { apiPost } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
@@ -22,6 +23,7 @@ const BusReturnRequestFormScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
     const { user } = useAuth();
+    const { t } = useLanguageSafe();
 
     const outboundPaymentId = (route.params as any)?.outboundPaymentId;
     const outboundTicket = (route.params as any)?.outboundTicket;
@@ -75,11 +77,11 @@ const BusReturnRequestFormScreen: React.FC = () => {
 
     const handleSubmit = () => {
         if (!outboundPaymentId) {
-            Alert.alert('Erreur', 'Informations de ticket aller manquantes');
+            Alert.alert(t('message.error'), t('busReturn.missingOutboundTicket'));
             return;
         }
         if (passengerNames.length === 0 || passengerNames.every((name) => !name.trim())) {
-            Alert.alert('Erreur', 'Veuillez renseigner au moins un nom de passager');
+            Alert.alert(t('message.error'), t('busReturn.enterPassengerName'));
             return;
         }
         setShowConfirmation(true);
@@ -87,12 +89,12 @@ const BusReturnRequestFormScreen: React.FC = () => {
 
     const handleFinalSubmit = async () => {
         if (!outboundPaymentId) {
-            Alert.alert('Erreur', 'Informations de ticket aller manquantes');
+            Alert.alert(t('message.error'), t('busReturn.missingOutboundTicket'));
             return;
         }
 
         if (passengerNames.length === 0 || passengerNames.every((name) => !name.trim())) {
-            Alert.alert('Erreur', 'Veuillez renseigner au moins un nom de passager');
+            Alert.alert(t('message.error'), t('busReturn.enterPassengerName'));
             return;
         }
 
@@ -114,8 +116,8 @@ const BusReturnRequestFormScreen: React.FC = () => {
 
             if (resData.success) {
                 Alert.alert(
-                    'Demande créée',
-                    'Votre demande de retour a été créée. Vous serez notifié quand un bus correspondant sera disponible.',
+                    t('busReturn.requestCreated'),
+                    t('busReturn.requestCreatedMsg'),
                     [
                         {
                             text: 'OK',
@@ -124,11 +126,11 @@ const BusReturnRequestFormScreen: React.FC = () => {
                     ]
                 );
             } else {
-                Alert.alert('Erreur', (response as any).error || 'Impossible de créer la demande');
+                Alert.alert(t('message.error'), (response as any).error || t('busReturn.cannotCreateRequest'));
             }
         } catch (error: any) {
             console.error('[BusReturnRequestFormScreen] Erreur:', error);
-            Alert.alert('Erreur', error.message || 'Impossible de créer la demande');
+            Alert.alert(t('message.error'), error.message || t('busReturn.cannotCreateRequest'));
         } finally {
             setLoading(false);
             setShowConfirmation(false);

@@ -439,7 +439,7 @@ pub async fn analyze_book_image(
     // Créer un prompt IA pour analyser l'image et extraire les caractéristiques du livre
     let prompt = format!(
         r#"
-Tu es un expert en reconnaissance de livres scolaires pour Yukpo.
+Tu es un expert en reconnaissance de livres scolaires pour Yukpo (Cameroun/Afrique).
 
 CONTEXTE :
 - Image de livre fournie par l'utilisateur
@@ -452,17 +452,31 @@ TON RÔLE :
   * Auteur(s)
   * Éditeur
   * ISBN (si visible)
-  * Classe/niveau (ex: "6ème", "5ème", "Terminale")
+  * Classe/niveau cible du livre (ex: "6ème", "5ème", "Terminale") → c'est la "classe_actuelle"
   * Matière (Mathématiques, Français, etc.)
   * État visuel du livre (Neuf, Très bon, Bon, Acceptable)
   * Description de l'état (détails visibles : pages, couverture, etc.)
 
+CALCUL CLASSE SUPÉRIEURE (OBLIGATOIRE) :
+L'élève qui uploade ce livre l'a DÉJÀ UTILISÉ → il passe en classe supérieure.
+"classe_souhaitee" = la classe IMMÉDIATEMENT SUPÉRIEURE à "classe_actuelle".
+Hiérarchie des classes (système camerounais/francophone) :
+  Primaire : SIL → CP → CE1 → CE2 → CM1 → CM2
+  Collège  : 6ème → 5ème → 4ème → 3ème
+  Lycée    : Seconde → Première → Terminale
+Exemples :
+  - Livre de "6ème" → classe_souhaitee = "5ème"
+  - Livre de "CM2"  → classe_souhaitee = "6ème"
+  - Livre de "3ème" → classe_souhaitee = "Seconde"
+  - Livre de "Terminale" → classe_souhaitee = "Terminale"
+
 IMPORTANT :
 - Sois précis dans l'extraction des informations
-- Si une information n'est pas visible, indique "Non visible"
-- Pour la classe, utilise les formats standards : "6ème", "5ème", "4ème", "3ème", "Seconde", "Première", "Terminale"
+- Si une information n'est pas visible, indique null
+- Pour la classe, utilise les formats standards : "SIL", "CP", "CE1", "CE2", "CM1", "CM2", "6ème", "5ème", "4ème", "3ème", "Seconde", "Première", "Terminale"
 - Pour la matière, utilise les noms standards : "Mathématiques", "Français", "Anglais", "SVT", "Physique-Chimie", "Histoire-Géo", "Philosophie", etc.
 - Pour l'état, évalue visuellement : "Neuf" (aucun signe d'usure), "Très bon" (légère usure), "Bon" (usure modérée), "Acceptable" (usure importante mais utilisable)
+- classe_souhaitee est TOUJOURS la classe immédiatement supérieure à classe_actuelle
 
 RÉPONSE ATTENDUE (JSON strict) :
 {{
@@ -470,8 +484,8 @@ RÉPONSE ATTENDUE (JSON strict) :
     "auteur": "Nom de l'auteur ou null si non visible",
     "editeur": "Nom de l'éditeur ou null si non visible",
     "isbn": "ISBN ou null si non visible",
-    "classe_actuelle": "Classe actuelle de l'élève (ex: 6ème) ou null",
-    "classe_souhaitee": "Classe souhaitée (ex: 5ème) ou null",
+    "classe_actuelle": "Classe du livre (ex: 6ème) ou null",
+    "classe_souhaitee": "Classe supérieure immédiate (ex: 5ème) ou null",
     "matiere": "Matière (ex: Mathématiques) ou null",
     "niveau": "Primaire, Collège ou Lycée ou null",
     "etat_livre": "Neuf, Très bon, Bon ou Acceptable",
@@ -533,6 +547,32 @@ RÉPONSE ATTENDUE (JSON strict) :
             })
         }
     };
+
+    // ✅ Fallback déterministe: recalculer classe_souhaitee si manquante
+    let mut book_info = book_info;
+    if let Some(classe_act) = book_info.get("classe_actuelle").and_then(|v| v.as_str()) {
+        if !classe_act.is_empty() && classe_act != "null" {
+            let computed =
+                crate::services::book_exchange_ai_service::compute_classe_superieure(classe_act);
+            if book_info
+                .get("classe_souhaitee")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .is_empty()
+                || book_info.get("classe_souhaitee").and_then(|v| v.as_str()) == Some("null")
+            {
+                book_info["classe_souhaitee"] = json!(computed);
+            }
+            // Ajouter le niveau si manquant
+            if book_info.get("niveau").and_then(|v| v.as_str()).unwrap_or("").is_empty() {
+                book_info["niveau"] = json!(
+                    crate::services::book_exchange_ai_service::compute_niveau_from_classe(
+                        classe_act
+                    )
+                );
+            }
+        }
+    }
 
     Ok(Json(json!({
         "success": true,

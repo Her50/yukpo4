@@ -9100,6 +9100,18 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         ),
     }
 
+    // ✅ NOUVEAU 2026-03-15 : Tables user_wallets + wallet_transactions (système de portefeuille interne)
+    match ensure_wallet_tables(pool).await {
+        Ok(_) => info!("✅ Migration auto: wallet tables (user_wallets + wallet_transactions) OK"),
+        Err(e) => error!("❌ Erreur migration auto wallet tables: {}", e),
+    }
+
+    // ✅ NOUVEAU 2026-03-15 : Table disbursement_requests (transferts sortants via agrégateur)
+    match ensure_disbursement_requests_table(pool).await {
+        Ok(_) => info!("✅ Migration auto: disbursement_requests OK"),
+        Err(e) => error!("❌ Erreur migration auto disbursement_requests: {}", e),
+    }
+
     info!("✅ Migrations automatiques terminées");
 }
 
@@ -20268,5 +20280,142 @@ pub async fn ensure_payment_attempts_aggregator_columns(pool: &PgPool) -> Result
         .ok();
 
     info!("✅ Colonnes agrégateur payment_attempts OK");
+    Ok(())
+}
+
+/// ✅ NOUVEAU 2026-03-15 : Tables user_wallets + wallet_transactions
+/// Système de portefeuille interne pour reversements prestataires/coursiers et remboursements
+pub async fn ensure_wallet_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification des tables user_wallets et wallet_transactions...");
+
+    // 1. Table user_wallets — solde courant de chaque utilisateur
+    let wallets_exists = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'user_wallets')",
+    )
+    .fetch_one(pool)
+    .await?;
+
+    if !wallets_exists {
+        info!("📦 Création de la table user_wallets...");
+        sqlx::query(
+            r#"
+            CREATE TABLE user_wallets (
+                id BIGSERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                balance_cents BIGINT NOT NULL DEFAULT 0,
+                currency VARCHAR(10) NOT NULL DEFAULT 'XAF',
+                frozen_cents BIGINT NOT NULL DEFAULT 0,
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                UNIQUE(user_id, currency)
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_user_wallets_user_id ON user_wallets(user_id);
+
+            -- Contrainte: solde ne peut pas être négatif (hors gel)
+            ALTER TABLE user_wallets ADD CONSTRAINT chk_wallet_balance_non_negative
+                CHECK (balance_cents >= 0);
+            "#,
+        )
+        .execute(pool)
+        .await?;
+        info!("✅ Table user_wallets créée");
+    } else {
+        info!("✅ Table user_wallets déjà présente");
+    }
+
+    // 2. Table wallet_transactions — historique complet des mouvements
+    let txn_exists = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'wallet_transactions')",
+    )
+    .fetch_one(pool)
+    .await?;
+
+    if !txn_exists {
+        info!("📦 Création de la table wallet_transactions...");
+        sqlx::query(
+            r#"
+            CREATE TABLE wallet_transactions (
+                id BIGSERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                transaction_type VARCHAR(30) NOT NULL,
+                amount_cents BIGINT NOT NULL,
+                balance_before_cents BIGINT NOT NULL,
+                balance_after_cents BIGINT NOT NULL,
+                currency VARCHAR(10) NOT NULL DEFAULT 'XAF',
+                reference_type VARCHAR(50),
+                reference_id VARCHAR(255),
+                delivery_id UUID,
+                description TEXT,
+                metadata JSONB,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_wallet_txn_user_id ON wallet_transactions(user_id);
+            CREATE INDEX IF NOT EXISTS idx_wallet_txn_user_created ON wallet_transactions(user_id, created_at DESC);
+            CREATE INDEX IF NOT EXISTS idx_wallet_txn_type ON wallet_transactions(transaction_type);
+            CREATE INDEX IF NOT EXISTS idx_wallet_txn_delivery ON wallet_transactions(delivery_id);
+            CREATE INDEX IF NOT EXISTS idx_wallet_txn_reference ON wallet_transactions(reference_type, reference_id);
+            "#,
+        )
+        .execute(pool)
+        .await?;
+        info!("✅ Table wallet_transactions créée");
+    } else {
+        info!("✅ Table wallet_transactions déjà présente");
+    }
+
+    Ok(())
+}
+
+/// ✅ NOUVEAU 2026-03-15 : Table disbursement_requests
+/// Transferts sortants vers prestataires/coursiers via CinetPay/NotchPay
+pub async fn ensure_disbursement_requests_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification de la table disbursement_requests...");
+
+    let exists = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'disbursement_requests')",
+    )
+    .fetch_one(pool)
+    .await?;
+
+    if exists {
+        info!("✅ Table disbursement_requests déjà présente");
+        return Ok(());
+    }
+
+    info!("📦 Création de la table disbursement_requests...");
+    sqlx::query(
+        r#"
+        CREATE TABLE disbursement_requests (
+            id BIGSERIAL PRIMARY KEY,
+            recipient_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            amount_cents BIGINT NOT NULL,
+            currency VARCHAR(10) NOT NULL DEFAULT 'XAF',
+            recipient_phone VARCHAR(30),
+            recipient_method VARCHAR(30) NOT NULL,
+            provider VARCHAR(30),
+            provider_reference VARCHAR(255),
+            status VARCHAR(30) NOT NULL DEFAULT 'pending',
+            delivery_id UUID,
+            reason TEXT,
+            error_message TEXT,
+            attempts INTEGER NOT NULL DEFAULT 0,
+            metadata JSONB,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            processed_at TIMESTAMPTZ,
+            completed_at TIMESTAMPTZ
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_disbursement_user ON disbursement_requests(recipient_user_id);
+        CREATE INDEX IF NOT EXISTS idx_disbursement_status ON disbursement_requests(status);
+        CREATE INDEX IF NOT EXISTS idx_disbursement_delivery ON disbursement_requests(delivery_id);
+        CREATE INDEX IF NOT EXISTS idx_disbursement_provider_ref ON disbursement_requests(provider_reference);
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    info!("✅ Table disbursement_requests créée");
     Ok(())
 }

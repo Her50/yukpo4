@@ -341,11 +341,25 @@ pub async fn webhook_orange_money(Json(payload): Json<serde_json::Value>) -> imp
 }
 
 pub fn payment_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
-    Router::new()
+    use crate::controllers::payment_controller::{
+        confirm_payment, get_payment_history, initiate_payment,
+    };
+    use crate::middlewares::jwt::jwt_auth;
+    use axum::middleware;
+
+    // Routes protégées par JWT (utilisateur authentifié)
+    let protected = Router::new()
+        .route("/api/payments/initiate", post(initiate_payment))
+        .route("/api/payments/confirm", post(confirm_payment))
+        .route("/api/payments/history", get(get_payment_history))
         .route("/methods", get(get_available_payment_methods))
         .route("/validate-phone", post(validate_phone_number))
-        // ✅ Phase 10 - Routes webhooks Mobile Money
+        .layer(middleware::from_fn(jwt_auth));
+
+    // Routes publiques (webhooks externes, pas de JWT)
+    let public = Router::new()
         .route("/webhook/mtn", post(webhook_mtn_money))
-        .route("/webhook/orange", post(webhook_orange_money))
-        .with_state(state)
+        .route("/webhook/orange", post(webhook_orange_money));
+
+    protected.merge(public).with_state(state)
 }

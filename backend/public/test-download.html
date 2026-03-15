@@ -391,6 +391,54 @@
             color: #a5b4fc
         }
 
+        .store-badge.available {
+            background: linear-gradient(135deg, #059669, #10B981);
+            border-color: #10B981;
+            color: #fff;
+            cursor: pointer;
+            font-weight: 600
+        }
+
+        .store-badge.unavailable {
+            opacity: .4;
+            text-decoration: line-through
+        }
+
+        .download-btn.store-btn {
+            transition: all .3s
+        }
+
+        .download-btn.store-btn.disabled {
+            background: linear-gradient(135deg, #374151, #4B5563);
+            opacity: .45;
+            pointer-events: none;
+            box-shadow: none
+        }
+
+        .download-btn.store-btn.disabled .shimmer {
+            display: none
+        }
+
+        .store-checking {
+            font-size: 11px;
+            color: #64748b;
+            text-align: center;
+            margin-top: 8px;
+            animation: pulse 1.5s ease-in-out infinite
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: .5
+            }
+
+            50% {
+                opacity: 1
+            }
+        }
+
         .footer {
             text-align: center;
             padding: 20px 0;
@@ -438,9 +486,17 @@
 
         <!-- Android download -->
         <div class="android-only">
-            <a href="#" class="download-btn" id="downloadBtn" onclick="startDownload(event)">
+            <!-- Bouton Play Store (grise par defaut, active si dispo) -->
+            <a href="#" class="download-btn store-btn disabled" id="playStoreBtn" onclick="return false;">
+                <span class="icon">&#9654;</span>
+                <span>Installer via Google Play</span>
+            </a>
+            <div class="store-checking" id="playStoreStatus">Verification Google Play...</div>
+
+            <!-- Bouton APK (toujours actif) -->
+            <a href="#" class="download-btn" id="downloadBtn" onclick="startDownload(event)" style="margin-top:12px">
                 <span class="icon">&#9660;</span>
-                <span>Installer Yukpo</span>
+                <span>Installer via APK (direct)</span>
                 <span class="shimmer"></span>
             </a>
             <div class="download-info">
@@ -486,9 +542,9 @@
 
         <!-- iOS notice -->
         <div class="ios-only">
-            <div class="ios-notice">
-                <div class="title">&#127823; Bientot sur App Store</div>
-                <p>La version iOS est en cours de validation. En attendant, vous pouvez tester la version Android.</p>
+            <div class="ios-notice" id="iosNotice">
+                <div class="title">&#127823; Verification App Store...</div>
+                <p>Verification de la disponibilite en cours...</p>
             </div>
         </div>
 
@@ -532,8 +588,8 @@
 
         <!-- Store badges -->
         <div class="store-badges">
-            <div class="store-badge active">&#9654; Google Play (bientot)</div>
-            <div class="store-badge">&#127823; App Store (bientot)</div>
+            <div class="store-badge active" id="badgePlay">&#9654; Google Play — verification...</div>
+            <div class="store-badge" id="badgeApple">&#127823; App Store — verification...</div>
         </div>
 
         <div class="footer">
@@ -546,18 +602,15 @@
     <script>
         (function () {
             // === Configuration ===
-            // Priorite: 1) Play Store/App Store → 2) GCS bucket → 3) Google Drive → 4) Cloud Run local
             var PLAY_STORE = 'https://play.google.com/store/apps/details?id=com.yukpomnang.mobile';
             var APP_STORE = 'https://apps.apple.com/app/yukpomnang';
             var APK_URL_GCS = 'https://storage.googleapis.com/yukpo-project-yukpo-backend-media/app/yukpo.apk';
             var APK_URL_DRIVE = 'https://drive.google.com/uc?export=download&id=1J7biLW-6kG0Zp00_Ia0LEvNT4qdi1gTF';
-            var APK_URL_LOCAL = '/downloads/yukpo-mobile-test.apk';
-            var DOWNLOAD_URL = APK_URL_GCS; // Will be updated after availability check
+            var DOWNLOAD_URL = APK_URL_GCS;
             var PAGE_URL = window.location.href;
 
-            // === Store availability state ===
+            // === Store availability (false par defaut, mis a jour par le backend) ===
             var storeAvailable = { play: false, apple: false };
-            var storeCheckDone = { play: false, apple: false };
 
             // === Platform detection ===
             var ua = navigator.userAgent || '';
@@ -574,74 +627,89 @@
                 page.classList.add('platform-desktop');
             }
 
-            // === Verifier disponibilite Play Store ===
-            function checkPlayStore(cb) {
-                var x = new XMLHttpRequest();
-                x.open('HEAD', PLAY_STORE, true);
-                x.timeout = 3000;
-                x.onload = function () {
-                    storeAvailable.play = (x.status >= 200 && x.status < 400);
-                    storeCheckDone.play = true;
-                    cb(storeAvailable.play);
-                };
-                x.onerror = function () {
-                    // CORS bloque = le store existe probablement
-                    storeAvailable.play = true;
-                    storeCheckDone.play = true;
-                    cb(true);
-                };
-                x.ontimeout = function () {
-                    storeCheckDone.play = true;
-                    cb(false);
-                };
-                try { x.send(); } catch (e) {
-                    storeAvailable.play = true;
-                    storeCheckDone.play = true;
-                    cb(true);
-                }
+            // === Verification disponibilite stores via backend (pas de CORS) ===
+            function checkStoreAvailability() {
+                fetch('/api/store-availability')
+                    .then(function (r) { return r.json(); })
+                    .then(function (data) {
+                        storeAvailable.play = !!data.play_store;
+                        storeAvailable.apple = !!data.app_store;
+                        updateStoreUI();
+                    })
+                    .catch(function () {
+                        // Backend indisponible: tout reste grise, APK reste actif
+                        storeAvailable.play = false;
+                        storeAvailable.apple = false;
+                        updateStoreUI();
+                    });
             }
 
-            // === Si Play Store dispo → rediriger Android, sinon APK ===
-            if (isAndroid) {
-                checkPlayStore(function (available) {
-                    if (available) {
-                        // Play Store disponible: afficher badge et changer le bouton
-                        var badge = document.querySelector('.store-badge.active');
-                        if (badge) {
-                            badge.textContent = '▶ Disponible sur Google Play';
-                            badge.style.background = 'linear-gradient(135deg, #059669, #10B981)';
-                            badge.style.cursor = 'pointer';
-                            badge.onclick = function () { window.location.href = PLAY_STORE; };
-                        }
-                        var btn = document.getElementById('downloadBtn');
-                        if (btn) {
-                            // Ajouter un bouton Play Store au-dessus
-                            var storeBtn = document.createElement('a');
-                            storeBtn.href = PLAY_STORE;
-                            storeBtn.className = 'download-btn';
-                            storeBtn.style.background = 'linear-gradient(135deg, #059669, #10B981)';
-                            storeBtn.style.marginBottom = '12px';
-                            storeBtn.innerHTML = '<span class="icon">▶</span><span>Installer via Google Play</span>';
-                            btn.parentNode.insertBefore(storeBtn, btn);
-                            // Garder le bouton APK comme alternative
-                            btn.querySelector('span:nth-child(2)').textContent = 'Installer via APK (alternatif)';
-                            btn.style.background = 'linear-gradient(135deg, #4B5563, #6B7280)';
-                        }
+            // === Mise a jour UI selon disponibilite stores ===
+            function updateStoreUI() {
+                // -- Play Store button (Android) --
+                var playBtn = document.getElementById('playStoreBtn');
+                var playStatus = document.getElementById('playStoreStatus');
+                if (playBtn) {
+                    if (storeAvailable.play) {
+                        playBtn.className = 'download-btn store-btn';
+                        playBtn.style.background = 'linear-gradient(135deg, #059669, #10B981)';
+                        playBtn.style.boxShadow = '0 8px 32px rgba(16, 185, 129, .35)';
+                        playBtn.href = PLAY_STORE;
+                        playBtn.onclick = null;
+                        if (playStatus) playStatus.textContent = 'Disponible sur Google Play';
+                        if (playStatus) playStatus.style.color = '#10B981';
+                        if (playStatus) playStatus.style.animation = 'none';
+                    } else {
+                        playBtn.className = 'download-btn store-btn disabled';
+                        if (playStatus) playStatus.textContent = 'Pas encore sur Google Play — utilisez le bouton APK ci-dessous';
+                        if (playStatus) playStatus.style.animation = 'none';
                     }
-                });
-            }
+                }
 
-            // === iOS: rediriger vers App Store si disponible ===
-            if (isIOS) {
-                // Toujours proposer App Store (gere le "non trouve" elle-meme)
-                var iosNotice = document.querySelector('.ios-notice');
+                // -- Play Store badge --
+                var badgePlay = document.getElementById('badgePlay');
+                if (badgePlay) {
+                    if (storeAvailable.play) {
+                        badgePlay.className = 'store-badge active available';
+                        badgePlay.textContent = '\u25B6 Disponible sur Google Play';
+                        badgePlay.style.cursor = 'pointer';
+                        badgePlay.onclick = function () { window.location.href = PLAY_STORE; };
+                    } else {
+                        badgePlay.className = 'store-badge active unavailable';
+                        badgePlay.textContent = '\u25B6 Google Play (bientot)';
+                    }
+                }
+
+                // -- App Store badge --
+                var badgeApple = document.getElementById('badgeApple');
+                if (badgeApple) {
+                    if (storeAvailable.apple) {
+                        badgeApple.className = 'store-badge available';
+                        badgeApple.textContent = '\uD83C\uDF4E Disponible sur App Store';
+                        badgeApple.style.cursor = 'pointer';
+                        badgeApple.onclick = function () { window.location.href = APP_STORE; };
+                    } else {
+                        badgeApple.className = 'store-badge unavailable';
+                        badgeApple.textContent = '\uD83C\uDF4E App Store (bientot)';
+                    }
+                }
+
+                // -- iOS notice --
+                var iosNotice = document.getElementById('iosNotice');
                 if (iosNotice) {
-                    iosNotice.innerHTML = '<div class="title">🍎 Telecharger sur App Store</div>' +
-                        '<p>Yukpo est disponible sur l\'App Store.</p>' +
-                        '<a href="' + APP_STORE + '" style="display:inline-block;margin-top:12px;padding:12px 24px;background:linear-gradient(135deg,#3B82F6,#7C3AED);color:#fff;border-radius:12px;text-decoration:none;font-weight:600">Ouvrir l\'App Store</a>' +
-                        '<p style="margin-top:8px;font-size:13px;opacity:0.7">Si l\'app n\'est pas encore disponible, revenez bientot.</p>';
+                    if (storeAvailable.apple) {
+                        iosNotice.innerHTML = '<div class="title">\uD83C\uDF4E Telecharger sur App Store</div>' +
+                            '<p>Yukpo est disponible sur l\'App Store.</p>' +
+                            '<a href="' + APP_STORE + '" style="display:inline-block;margin-top:12px;padding:12px 24px;background:linear-gradient(135deg,#059669,#10B981);color:#fff;border-radius:12px;text-decoration:none;font-weight:600">Ouvrir l\'App Store</a>';
+                    } else {
+                        iosNotice.innerHTML = '<div class="title">\uD83C\uDF4E Bientot sur App Store</div>' +
+                            '<p>La version iOS est en cours de validation. Revenez bientot !</p>';
+                    }
                 }
             }
+
+            // Lancer la verification
+            checkStoreAvailability();
 
             // === QR Code ===
             var qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=' + encodeURIComponent(PAGE_URL);
@@ -668,25 +736,16 @@
 
             checkApkUrl(APK_URL_GCS,
                 function (url) { DOWNLOAD_URL = url; },
-                function () {
-                    // GCS not available, use Google Drive
-                    DOWNLOAD_URL = APK_URL_DRIVE;
-                }
+                function () { DOWNLOAD_URL = APK_URL_DRIVE; }
             );
 
-            // === Download handler (APK direct) ===
+            // === Download handler (APK direct — toujours actif) ===
             window.startDownload = function (e) {
                 e.preventDefault();
                 var btn = document.getElementById('downloadBtn');
                 var bar = document.getElementById('statusBar');
                 var fill = document.getElementById('progressFill');
                 var txt = document.getElementById('statusText');
-
-                // Si Play Store disponible, y rediriger d'abord
-                if (isAndroid && storeAvailable.play) {
-                    window.location.href = PLAY_STORE;
-                    return;
-                }
 
                 // Visual feedback
                 bar.classList.add('active');
@@ -728,32 +787,6 @@
                     fetch('/api/track-download', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ platform: 'android', source: 'download_page', timestamp: new Date().toISOString() }) }).catch(function () { });
                 } catch (e) { }
             };
-
-            // === Auto-action on Android (after 1.5s) ===
-            // Si Play Store dispo → rediriger vers Play Store, sinon auto-download APK
-            if (isAndroid) {
-                setTimeout(function () {
-                    if (storeCheckDone.play && storeAvailable.play) {
-                        // Play Store disponible: rediriger
-                        window.location.href = PLAY_STORE;
-                    } else if (storeCheckDone.play && !storeAvailable.play) {
-                        // Play Store non disponible: lancer APK download
-                        var btn = document.getElementById('downloadBtn');
-                        if (btn) btn.click();
-                    }
-                    // Si check pas encore fini, attendre encore
-                    if (!storeCheckDone.play) {
-                        setTimeout(function () {
-                            if (storeAvailable.play) {
-                                window.location.href = PLAY_STORE;
-                            } else {
-                                var btn = document.getElementById('downloadBtn');
-                                if (btn) btn.click();
-                            }
-                        }, 2000);
-                    }
-                }, 1500);
-            }
         })();
     </script>
 </body>

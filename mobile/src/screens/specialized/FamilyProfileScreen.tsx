@@ -12,6 +12,7 @@ import {
 import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import SafeIcon from '../../components/SafeIcon';
 import { NativeButton, NativeCard, NativeInput } from '../../components/SafeNativeDesign';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { FamilyProfile, menuPlanningService } from '../../services/menuPlanningService';
 import { modernColors } from '../../theme/modernTheme';
 
@@ -61,6 +62,7 @@ const DIETARY_RESTRICTIONS = [
 
 const FamilyProfileScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [profile, setProfile] = useState<FamilyProfile>({
@@ -87,7 +89,7 @@ const FamilyProfileScreen: React.FC = () => {
             }
         } catch (error: any) {
             console.error('[FamilyProfile] Erreur chargement:', error);
-            Alert.alert('Erreur', 'Impossible de charger le profil');
+            Alert.alert(t('message.error'), t('familyProfile.cannotLoadProfile'));
         } finally {
             setLoading(false);
         }
@@ -96,15 +98,15 @@ const FamilyProfileScreen: React.FC = () => {
     const handleSave = async () => {
         // ✅ NOUVEAU: Validation avant sauvegarde
         if (profile.total_members < 1) {
-            Alert.alert('Validation', 'Le nombre total de membres doit être au moins 1.');
+            Alert.alert(t('familyProfile.validation'), t('familyProfile.atLeastOneMember'));
             return;
         }
         if (profile.adults_count < 1) {
-            Alert.alert('Validation', 'Il doit y avoir au moins 1 adulte.');
+            Alert.alert(t('familyProfile.validation'), t('familyProfile.atLeastOneAdult'));
             return;
         }
         if (profile.cuisine_styles.length === 0) {
-            Alert.alert('Validation', 'Veuillez sélectionner au moins un style de cuisine préféré.');
+            Alert.alert(t('familyProfile.validation'), t('familyProfile.selectCuisineStyle'));
             return;
         }
 
@@ -113,18 +115,18 @@ const FamilyProfileScreen: React.FC = () => {
             const response = await menuPlanningService.updateFamilyProfile(profile);
 
             if (response.success) {
-                Alert.alert('Succès', 'Profil mis à jour avec succès', [
+                Alert.alert(t('message.success'), t('familyProfile.profileUpdated'), [
                     {
                         text: 'OK',
                         onPress: () => navigation.goBack(),
                     },
                 ]);
             } else {
-                Alert.alert('Erreur', response.error || 'Impossible de mettre à jour le profil');
+                Alert.alert(t('message.error'), response.error || t('familyProfile.cannotUpdateProfile'));
             }
         } catch (error: any) {
             console.error('[FamilyProfile] Erreur sauvegarde:', error);
-            Alert.alert('Erreur', error.message || 'Une erreur est survenue');
+            Alert.alert(t('message.error'), error.message || t('familyProfile.errorOccurred'));
         } finally {
             setSaving(false);
         }

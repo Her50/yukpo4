@@ -20,6 +20,7 @@ import SafeIcon from '../../components/SafeIcon';
 import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import SimplePrestationSelector from '../../components/SimplePrestationSelector';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { clearSavedFormData, loadSavedFormData, useFormAutoSave } from '../../hooks/useFormAutoSave';
 import { useFormValidation } from '../../hooks/useFormValidation';
@@ -34,6 +35,7 @@ const OffresEmploiFormScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
     const { user } = useAuth();
+    const { t } = useLanguageSafe();
     const { location } = useLocation();
     const [serviceId, setServiceId] = useState<number | null>((route.params as any)?.serviceId || null);
     const offreId = (route.params as any)?.offreId as number | undefined;
@@ -103,7 +105,7 @@ const OffresEmploiFormScreen: React.FC = () => {
                 setSelectedLangues(saved.langues_requises || []);
                 setSelectedPermis(saved.permis_requis || []);
                 setSelectedTags(saved.tags || []);
-                Alert.alert('Données restaurées', 'Vos données non envoyées ont été restaurées');
+                Alert.alert(t('offresEmploiForm.dataRestored'), t('offresEmploiForm.dataRestoredMsg'));
             }
         };
         loadSaved();
@@ -255,12 +257,12 @@ const OffresEmploiFormScreen: React.FC = () => {
 
     const handleSubmit = () => {
         if (!validateForm(formData)) {
-            Alert.alert('Erreur', 'Veuillez corriger les erreurs du formulaire');
+            Alert.alert(t('message.error'), t('offresEmploiForm.fixFormErrors'));
             return;
         }
 
         if (!formData.lieu_travail && !formData.remote) {
-            Alert.alert('Erreur', 'Le lieu de travail est obligatoire (ou cochez "Télétravail")');
+            Alert.alert(t('message.error'), t('offresEmploiForm.workLocationRequired'));
             return;
         }
 
@@ -270,7 +272,7 @@ const OffresEmploiFormScreen: React.FC = () => {
             const dateLimite = new Date(formData.date_limite_candidature);
             dateLimite.setHours(0, 0, 0, 0);
             if (dateLimite < now) {
-                Alert.alert('Validation', 'La date limite de candidature ne peut pas être dans le passé');
+                Alert.alert(t('offresEmploiForm.validation'), t('offresEmploiForm.deadlineInPast'));
                 return;
             }
         }
@@ -327,16 +329,16 @@ const OffresEmploiFormScreen: React.FC = () => {
             if (resData?.success) {
                 await clearSavedFormData(STORAGE_KEY);
                 Alert.alert(
-                    'Succès',
-                    mode === 'edit' ? 'Offre d\'emploi modifiée avec succès !' : 'Offre d\'emploi créée avec succès !',
+                    t('message.success'),
+                    mode === 'edit' ? t('offresEmploiForm.offerEdited') : t('offresEmploiForm.offerCreated'),
                     [{ text: 'OK', onPress: () => navigation.goBack() }]
                 );
             } else {
-                Alert.alert('Erreur', resData?.message || resData?.error || 'Impossible d\'enregistrer l\'offre');
+                Alert.alert(t('message.error'), resData?.message || resData?.error || t('offresEmploiForm.cannotSaveOffer'));
             }
         } catch (error: any) {
             console.error('Erreur création offre:', error);
-            Alert.alert('Erreur', error.message || 'Une erreur est survenue');
+            Alert.alert(t('message.error'), error.message || t('offresEmploiForm.errorOccurred'));
         } finally {
             setLoading(false);
             setShowConfirmation(false);

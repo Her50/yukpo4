@@ -21,6 +21,7 @@ import {
 import SafeIcon from '../../components/SafeIcon';
 import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import { useToaster } from '../../components/ToasterProvider';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { useLocationSafe } from '../../contexts/LocationContext';
 import { useAIWithFallback } from '../../hooks/useAIWithFallback';
 import { FamilyProfile, GeneratedRecipe, menuPlanningService, WeeklyMenu } from '../../services/menuPlanningService';
@@ -46,6 +47,7 @@ type MenuPeriod = '1_week' | '2_weeks' | '1_month';
 
 const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const { location, getCurrentLocation } = useLocationSafe();
     const { callWithFallback } = useAIWithFallback();
     const toaster = useToaster();
@@ -122,7 +124,7 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
     // ✅ REFONDU: Générer une recette via IA avec fallback 3 niveaux (ne plante plus jamais)
     const handleGenerateRecipe = async () => {
         if (!recipeRequest.trim()) {
-            Alert.alert('Erreur', 'Veuillez entrer le nom d\'un plat');
+            Alert.alert(t('message.error'), t('menuPlanning.enterDishName'));
             return;
         }
 
@@ -183,7 +185,7 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
             }
             setTimeout(() => setShowRecipeDetails(true), 200);
         } else {
-            Alert.alert('Erreur', 'Impossible de générer la recette. Réessayez plus tard.');
+            Alert.alert(t('message.error'), t('menuPlanning.cannotGenerateRecipe'));
             setLoadingRecipe(false);
         }
     };
@@ -191,8 +193,8 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
     const handleGenerateMenu = async () => {
         if (!hasProfile || !profile) {
             Alert.alert(
-                'Profil requis',
-                'Veuillez d\'abord configurer votre profil famille',
+                t('menuPlanning.profileRequired'),
+                t('menuPlanning.configureProfileFirst'),
                 [
                     { text: 'Annuler', style: 'cancel' },
                     {
@@ -252,8 +254,8 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                 setCurrentMenu(response.data.menu);
                 setShowPeriodSelector(false);
                 Alert.alert(
-                    'Menu généré !',
-                    `Votre menu ${menuPeriod === '1_week' ? 'hebdomadaire' : menuPeriod === '2_weeks' ? 'bi-hebdomadaire (15 jours)' : 'mensuel'} a été généré avec succès`,
+                    t('menuPlanning.menuGenerated'),
+                    t('menuPlanning.menuGeneratedMsg', { period: menuPeriod === '1_week' ? t('menuPlanning.weekly') : menuPeriod === '2_weeks' ? t('menuPlanning.biweekly') : t('menuPlanning.monthly') }),
                     [
                         {
                             text: 'Voir le menu',
@@ -269,7 +271,7 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
             }
         } catch (error: any) {
             console.error('[MenuPlanningHub] Erreur génération:', error);
-            Alert.alert('Erreur', error.message || 'Erreur lors de la génération du menu');
+            Alert.alert(t('message.error'), error.message || t('menuPlanning.menuGenerationError'));
         } finally {
             setLoading(false);
         }
@@ -839,10 +841,10 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                                         });
 
                                         await shareRecipePDF(pdfUri, generatedRecipe.recipe_name);
-                                        Alert.alert('Succès', 'Recette partagée avec succès !');
+                                        Alert.alert(t('message.success'), t('menuPlanning.recipeShared'));
                                     } catch (error: any) {
                                         console.error('[MenuPlanningHub] Erreur partage recette PDF:', error);
-                                        Alert.alert('Erreur', error.message || 'Impossible de partager la recette en PDF');
+                                        Alert.alert(t('message.error'), error.message || t('menuPlanning.cannotShareRecipe'));
                                     } finally {
                                         setExportingRecipePDF(false);
                                     }

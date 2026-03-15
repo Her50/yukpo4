@@ -24,6 +24,7 @@ import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import ServiceTeamManager from '../../components/ServiceTeamManager';
 import SimplePrestationSelector from '../../components/SimplePrestationSelector';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { clearSavedFormData, useFormAutoSave } from '../../hooks/useFormAutoSave';
 import { useFormValidation } from '../../hooks/useFormValidation';
@@ -51,6 +52,7 @@ const LaboratoireFormScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
     const { user } = useAuth();
+    const { t } = useLanguageSafe();
     const { location } = useLocation();
     const [serviceId, setServiceId] = useState<number | null>((route.params as any)?.serviceId || null);
     const specializedServiceId = (route.params as any)?.specializedServiceId as number | undefined;
@@ -212,16 +214,16 @@ const LaboratoireFormScreen: React.FC = () => {
     };
 
     const handleSubmit = async () => {
-        if (!formData.nom.trim()) { Alert.alert('Erreur', 'Nom obligatoire'); return; }
+        if (!formData.nom.trim()) { Alert.alert(t('message.error'), t('laboForm.nameRequired')); return; }
         setLoading(true);
         let finalServiceId = serviceId;
         if (!finalServiceId && user?.id) {
             try {
                 const resp = await servicesApi.createService({ titre_service: formData.nom, description: formData.type_laboratoire, category: 'sante' });
                 if (resp.success && resp.data && typeof resp.data === 'object' && 'id' in resp.data) { finalServiceId = (resp.data as any).id; setServiceId(finalServiceId); }
-            } catch (e) { Alert.alert('Erreur', 'Impossible de créer le service'); setLoading(false); return; }
+            } catch (e) { Alert.alert(t('message.error'), t('laboForm.cannotCreateService')); setLoading(false); return; }
         }
-        if (!finalServiceId) { Alert.alert('Erreur', 'Service ID manquant'); setLoading(false); return; }
+        if (!finalServiceId) { Alert.alert(t('message.error'), t('laboForm.serviceIdMissing')); setLoading(false); return; }
         try {
             const payload = {
                 service_id: finalServiceId, nom: formData.nom, type_laboratoire: formData.type_laboratoire,
@@ -238,9 +240,9 @@ const LaboratoireFormScreen: React.FC = () => {
             const resp = await apiPost('/api/laboratoires', payload);
             if (resp.success) {
                 await clearSavedFormData(STORAGE_KEY);
-                Alert.alert('Succès', 'Laboratoire enregistré !', [{ text: 'OK', onPress: () => { setIsDashboardMode(true); setActiveTab('overview'); handleRefresh(); } }]);
-            } else { Alert.alert('Erreur', (resp as any).error || 'Impossible d\'enregistrer'); }
-        } catch (e: any) { Alert.alert('Erreur', e.message || 'Erreur'); } finally { setLoading(false); }
+                Alert.alert(t('message.success'), t('laboForm.labRegistered'), [{ text: 'OK', onPress: () => { setIsDashboardMode(true); setActiveTab('overview'); handleRefresh(); } }]);
+            } else { Alert.alert(t('message.error'), (resp as any).error || t('laboForm.cannotRegister')); }
+        } catch (e: any) { Alert.alert(t('message.error'), e.message || t('laboForm.errorOccurred')); } finally { setLoading(false); }
     };
 
     // ─── RENDER: Loading ─────────────────────────────────────────────────
@@ -421,7 +423,7 @@ const LaboratoireFormScreen: React.FC = () => {
                 <View style={s.modalFooter}>
                     <NativeButton title="Annuler" onPress={() => setShowExamModal(false)} variant="secondary" style={{ flex: 1 }} />
                     <NativeButton title={editingExam ? 'Modifier' : 'Ajouter'} onPress={() => {
-                        if (!examForm.nom.trim()) { Alert.alert('Erreur', 'Nom requis'); return; }
+                        if (!examForm.nom.trim()) { Alert.alert(t('message.error'), t('laboForm.examNameRequired')); return; }
                         if (editingExam) {
                             setExaminationTypes(prev => prev.map(e => e === editingExam ? { ...examForm } : e));
                         } else {

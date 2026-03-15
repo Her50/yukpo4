@@ -6,7 +6,8 @@ use crate::models::troc_livre::{
     ChaineTrocLivre, CreateTrocChaineRequest, CreateTrocDirectRequest, MatchingChaine,
     MatchingDirect, ParticipantChaine, TrocLivre,
 };
-use log::info;
+use log::{self, info};
+use serde_json::json;
 use sqlx::PgPool;
 use std::sync::Arc;
 
@@ -696,7 +697,9 @@ impl TrocIntelligentService {
             .await
             .map_err(|e| AppError::Internal(format!("Erreur désactivation livres: {}", e)))?;
 
-        // V2: Créer automatiquement un paquet de livraison si les deux parties ont un GPS
+        // V2: Créer automatiquement DEUX paquets de livraison pour le troc
+        // Paquet 1: livre_offert → de initiateur vers participant
+        // Paquet 2: livre_souhaite → de participant vers initiateur
         let livre_offert =
             sqlx::query_as::<_, LivreScolaire>("SELECT * FROM livres_scolaires WHERE id = $1")
                 .bind(troc_complete.livre_offert_id)
@@ -714,38 +717,113 @@ impl TrocIntelligentService {
                 .flatten();
 
         if let (Some(lo), Some(ls)) = (&livre_offert, &livre_souhaite) {
-            if lo.gps.is_some() && ls.gps.is_some() {
-                let ref_paquet = format!(
-                    "BK-TROC-{}-{}",
-                    troc_id,
-                    chrono::Utc::now().format("%Y%m%d%H%M")
-                );
-                let _ = sqlx::query(
-                    r#"
-                    INSERT INTO book_delivery_packages (
-                        reference, expediteur_id, destinataire_id,
-                        livre_ids, gps_recuperation, gps_livraison,
-                        statut, nombre_livres, type_livraison
-                    )
-                    VALUES ($1, $2, $3, $4, $5, $6, 'a_constituer', 2, 'depot_et_recuperation')
-                    "#,
-                )
-                .bind(&ref_paquet)
-                .bind(troc_complete.initiateur_id)
-                .bind(troc_complete.participant_id)
-                .bind(serde_json::json!([
-                    troc_complete.livre_offert_id,
-                    troc_complete.livre_souhaite_id
-                ]))
-                .bind(&lo.gps)
-                .bind(&ls.gps)
-                .execute(&*self.pool)
-                .await;
+            let ts = chrono::Utc::now().format("%Y%m%d%H%M");
 
-                info!(
-                    "[TROC_INTELLIGENT] Paquet livraison créé pour troc {}: {}",
-                    troc_id, ref_paquet
-                );
+            // Helper: construire le JSON livre pour le coursier
+            let build_livre_json = |livre: &LivreScolaire| -> serde_json::Value {
+                let valeur: f64 =
+                    livre.valeur_calculee.and_then(|v| v.to_string().parse().ok()).unwrap_or(0.0);
+                serde_json::json!({
+                    "livre_id": livre.id,
+                    "titre": livre.titre,
+                    "auteur": livre.auteur,
+                    "matiere": livre.matiere,
+                    "classe_actuelle": livre.classe_actuelle,
+                    "classe_souhaitee": livre.classe_souhaitee,
+                    "etat_livre": livre.etat_livre,
+                    "image_recto": livre.image_recto,
+                    "image_verso": livre.image_verso,
+                    "valeur": valeur,
+                    "mode": livre.mode_listing
+                })
+            };
+
+            // Paquet 1: Initiateur envoie livre_offert → Participant
+            let ref_p1 = format!("BK-TROC-{}-A-{}", troc_id, ts);
+            let livres_p1 = serde_json::json!([build_livre_json(lo)]);
+            let valeur_p1 = lo
+                .valeur_calculee
+                .and_then(|v| v.to_string().parse::<f64>().ok())
+                .unwrap_or(0.0);
+
+            match sqlx::query(
+                r#"
+                INSERT INTO book_delivery_packages (
+                    reference, expediteur_id, expediteur_gps, expediteur_adresse,
+                    destinataire_id, destinataire_gps, destinataire_adresse,
+                    livres, nombre_livres, troc_ids,
+                    valeur_totale, commission_app, statut
+                )
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 1, $9, $10, $11, 'a_constituer')
+                "#,
+            )
+            .bind(&ref_p1)
+            .bind(troc_complete.initiateur_id)
+            .bind(&lo.gps)
+            .bind(lo.ville.as_deref().or(lo.quartier.as_deref()))
+            .bind(troc_complete.participant_id)
+            .bind(&ls.gps)
+            .bind(ls.ville.as_deref().or(ls.quartier.as_deref()))
+            .bind(&livres_p1)
+            .bind(serde_json::json!([troc_id]))
+            .bind(rust_decimal::Decimal::from_f64_retain(valeur_p1).unwrap_or_default())
+            .bind(rust_decimal::Decimal::from_f64_retain(valeur_p1 * 0.10).unwrap_or_default())
+            .execute(&*self.pool)
+            .await
+            {
+                Ok(_) => info!(
+                    "[TROC_INTELLIGENT] ✅ Paquet A créé: {} (initiateur {} → participant {})",
+                    ref_p1, troc_complete.initiateur_id, troc_complete.participant_id
+                ),
+                Err(e) => log::error!(
+                    "[TROC_INTELLIGENT] ❌ Erreur création paquet A pour troc {}: {}",
+                    troc_id,
+                    e
+                ),
+            }
+
+            // Paquet 2: Participant envoie livre_souhaite → Initiateur
+            let ref_p2 = format!("BK-TROC-{}-B-{}", troc_id, ts);
+            let livres_p2 = serde_json::json!([build_livre_json(ls)]);
+            let valeur_p2 = ls
+                .valeur_calculee
+                .and_then(|v| v.to_string().parse::<f64>().ok())
+                .unwrap_or(0.0);
+
+            match sqlx::query(
+                r#"
+                INSERT INTO book_delivery_packages (
+                    reference, expediteur_id, expediteur_gps, expediteur_adresse,
+                    destinataire_id, destinataire_gps, destinataire_adresse,
+                    livres, nombre_livres, troc_ids,
+                    valeur_totale, commission_app, statut
+                )
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 1, $9, $10, $11, 'a_constituer')
+                "#,
+            )
+            .bind(&ref_p2)
+            .bind(troc_complete.participant_id)
+            .bind(&ls.gps)
+            .bind(ls.ville.as_deref().or(ls.quartier.as_deref()))
+            .bind(troc_complete.initiateur_id)
+            .bind(&lo.gps)
+            .bind(lo.ville.as_deref().or(lo.quartier.as_deref()))
+            .bind(&livres_p2)
+            .bind(serde_json::json!([troc_id]))
+            .bind(rust_decimal::Decimal::from_f64_retain(valeur_p2).unwrap_or_default())
+            .bind(rust_decimal::Decimal::from_f64_retain(valeur_p2 * 0.10).unwrap_or_default())
+            .execute(&*self.pool)
+            .await
+            {
+                Ok(_) => info!(
+                    "[TROC_INTELLIGENT] ✅ Paquet B créé: {} (participant {} → initiateur {})",
+                    ref_p2, troc_complete.participant_id, troc_complete.initiateur_id
+                ),
+                Err(e) => log::error!(
+                    "[TROC_INTELLIGENT] ❌ Erreur création paquet B pour troc {}: {}",
+                    troc_id,
+                    e
+                ),
             }
         }
 

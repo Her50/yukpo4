@@ -15,6 +15,7 @@ import {
 import SafeIcon from '../../components/SafeIcon';
 import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { apiGet, apiPost } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 
@@ -66,6 +67,7 @@ const CONSULTATION_TYPES_LABO = [
 
 const SlotManagementScreen: React.FC<SlotManagementScreenProps> = ({ route, navigation }) => {
     const { user } = useAuth();
+    const { t } = useLanguageSafe();
     const { serviceId, serviceType, serviceName } = route.params;
 
     const [selectedDate, setSelectedDate] = useState(() => {
@@ -114,7 +116,7 @@ const SlotManagementScreen: React.FC<SlotManagementScreenProps> = ({ route, navi
 
     const handleAddSlot = async () => {
         if (!newSlot.start_time || !newSlot.end_time) {
-            Alert.alert('Erreur', 'Les heures de début et fin sont obligatoires');
+            Alert.alert(t('message.error'), t('slotManagement.startAndEndRequired'));
             return;
         }
 
@@ -138,15 +140,15 @@ const SlotManagementScreen: React.FC<SlotManagementScreenProps> = ({ route, navi
             });
 
             if (response.success) {
-                Alert.alert('Succès', 'Créneau ajouté avec succès');
+                Alert.alert(t('message.success'), t('slotManagement.slotAdded'));
                 setShowAddModal(false);
                 setNewSlot({ start_time: '08:00', end_time: '08:30', max_bookings: '1', consultation_type: '', price: '', notes: '' });
                 loadSlots();
             } else {
-                Alert.alert('Erreur', (response as any).error || 'Impossible d\'ajouter le créneau');
+                Alert.alert(t('message.error'), (response as any).error || t('slotManagement.cannotAddSlot'));
             }
         } catch (error: any) {
-            Alert.alert('Erreur', error.message || 'Une erreur est survenue');
+            Alert.alert(t('message.error'), error.message || t('slotManagement.errorOccurred'));
         } finally {
             setSaving(false);
         }
@@ -154,8 +156,8 @@ const SlotManagementScreen: React.FC<SlotManagementScreenProps> = ({ route, navi
 
     const handleGenerateSlots = async () => {
         Alert.alert(
-            'Générer des créneaux',
-            `Générer des créneaux de 30 min de 08:00 à 17:00 pour le ${selectedDate} ?`,
+            t('slotManagement.generateSlots'),
+            t('slotManagement.generateSlotsMsg', { date: selectedDate }),
             [
                 { text: 'Annuler', style: 'cancel' },
                 {
@@ -188,11 +190,11 @@ const SlotManagementScreen: React.FC<SlotManagementScreenProps> = ({ route, navi
                             });
 
                             if (response.success) {
-                                Alert.alert('Succès', `${generatedSlots.length} créneaux générés`);
+                                Alert.alert(t('message.success'), t('slotManagement.slotsGenerated', { count: generatedSlots.length }));
                                 loadSlots();
                             }
                         } catch (error: any) {
-                            Alert.alert('Erreur', error.message || 'Erreur génération');
+                            Alert.alert(t('message.error'), error.message || t('slotManagement.generationError'));
                         } finally {
                             setSaving(false);
                         }

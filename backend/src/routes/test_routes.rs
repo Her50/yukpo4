@@ -101,6 +101,76 @@ pub async fn serve_logo() -> impl IntoResponse {
     }
 }
 
+/// Verifie la disponibilite de l'app sur Play Store et App Store (cote serveur, pas de CORS)
+pub async fn check_store_availability() -> impl IntoResponse {
+    use std::sync::Mutex;
+    use std::sync::OnceLock;
+    use std::time::{Duration, Instant};
+
+    // Cache simple: (timestamp, play_available, apple_available)
+    static CACHE: OnceLock<Mutex<Option<(Instant, bool, bool)>>> = OnceLock::new();
+    let cache = CACHE.get_or_init(|| Mutex::new(None));
+
+    // Verifier le cache (10 min TTL)
+    if let Ok(guard) = cache.lock() {
+        if let Some((ts, play, apple)) = *guard {
+            if ts.elapsed() < Duration::from_secs(600) {
+                let json = format!(r#"{{"play_store":{},"app_store":{}}}"#, play, apple);
+                return (
+                    StatusCode::OK,
+                    [
+                        (header::CONTENT_TYPE, "application/json"),
+                        (header::CACHE_CONTROL, "public, max-age=600"),
+                    ],
+                    json,
+                )
+                    .into_response();
+            }
+        }
+    }
+
+    let play_url = "https://play.google.com/store/apps/details?id=com.yukpomnang.mobile";
+    let apple_url = "https://apps.apple.com/app/yukpomnang";
+
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(5))
+        .build()
+        .unwrap_or_default();
+
+    // Verifier les deux stores en parallele
+    let (play_res, apple_res) =
+        tokio::join!(client.head(play_url).send(), client.head(apple_url).send());
+
+    let play_available = match play_res {
+        Ok(resp) => resp.status().is_success(),
+        Err(_) => false,
+    };
+    let apple_available = match apple_res {
+        Ok(resp) => resp.status().is_success(),
+        Err(_) => false,
+    };
+
+    // Mettre en cache
+    if let Ok(mut guard) = cache.lock() {
+        *guard = Some((Instant::now(), play_available, apple_available));
+    }
+
+    let json = format!(
+        r#"{{"play_store":{},"app_store":{}}}"#,
+        play_available, apple_available
+    );
+
+    (
+        StatusCode::OK,
+        [
+            (header::CONTENT_TYPE, "application/json"),
+            (header::CACHE_CONTROL, "public, max-age=600"),
+        ],
+        json,
+    )
+        .into_response()
+}
+
 /// Sert la page HTML de téléchargement
 pub async fn get_download_page() -> impl IntoResponse {
     let html = include_str!("../../public/test-download.html");
@@ -124,6 +194,8 @@ pub fn create_test_routes(_state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/download/apk", get(redirect_to_apk))
         // Logo Yukpo
         .route("/download/logo.png", get(serve_logo))
+        // Verification disponibilite stores (appele par la page download)
+        .route("/api/store-availability", get(check_store_availability))
         // Fallback: fichier local
         .route("/downloads/yukpo-mobile-test.apk", get(get_test_apk))
 }

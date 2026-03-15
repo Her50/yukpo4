@@ -745,7 +745,14 @@
         "bookConditionRequired": "L'état du livre est obligatoire",
         "bookCreated": "Livre créé avec succès !",
         "bookUpdated": "Livre modifié avec succès !",
-        "genericError": "Une erreur est survenue"
+        "genericError": "Une erreur est survenue",
+        "allowGalleryAccess": "Veuillez autoriser l'accès à la galerie",
+        "cannotAnalyzeImage": "Impossible d'analyser l'image",
+        "analysisError": "Erreur lors de l'analyse",
+        "enterPrice": "Veuillez remplir le prix",
+        "bookAdded": "Livre ajouté avec succès !",
+        "cannotAddBook": "Impossible d'ajouter le livre",
+        "saveError": "Erreur lors de la sauvegarde"
     },
     "bourseLivreV2": {
         "programmeUpload": {
@@ -870,7 +877,15 @@
         "registerDonation": "Enregistrer un don",
         "confirmDonationToday": "Confirmez que vous avez effectué un don de sang aujourd'hui ?",
         "donationRegistered": "Votre don a été enregistré",
-        "cannotRegisterDonation": "Impossible d'enregistrer le don"
+        "cannotRegisterDonation": "Impossible d'enregistrer le don",
+        "cannotLoadBanks": "Impossible de charger vos banques de sang",
+        "selectBank": "Veuillez sélectionner une banque de sang",
+        "selectBloodGroup": "Veuillez sélectionner un groupe sanguin requis",
+        "enterValidQuantity": "Veuillez entrer une quantité valide",
+        "requestCreated": "Demande créée",
+        "requestCreatedMsg": "Votre demande a été créée avec succès. {{count}} donneur(s) compatible(s) trouvé(s).",
+        "viewMatches": "Voir les correspondances",
+        "cannotCreateRequest": "Impossible de créer la demande"
     },
     "pharmacieHome": {
         "permissionRequired": "Permission requise",
@@ -947,7 +962,14 @@
         "serviceIdMissing": "Service ID manquant",
         "tripCreated": "Trajet créé !",
         "cannotCreateTrip": "Impossible de créer le trajet",
-        "genericError": "Une erreur est survenue"
+        "genericError": "Une erreur est survenue",
+        "selectDepartureAndDestination": "Veuillez sélectionner une ville de départ et une ville de destination",
+        "fillDepartureAndDestination": "Veuillez remplir le départ et la destination",
+        "serviceRequired": "Service requis",
+        "createServiceFirst": "Vous devez d'abord créer un service. Voulez-vous le faire maintenant ?",
+        "creationError": "Erreur lors de la création",
+        "createService": "Créer un service",
+        "redirectToCreateService": "Redirection vers la création de service..."
     },
     "taxiForm": {
         "nowAvailable": "Vous êtes maintenant disponible",
@@ -2094,5 +2116,163 @@
         "loginToAnalyze": "Veuillez vous connecter pour analyser les résultats",
         "info": "Info",
         "labDetailsComingSoon": "Navigation vers les détails du laboratoire sera bientôt disponible"
+    },
+    "liveViewer": {
+        "reservationConfirmed": "Réservation confirmée",
+        "reservationConfirmedMsg": "Votre réservation a été confirmée !",
+        "reservationFailed": "Réservation échouée",
+        "cannotConfirm": "Impossible de confirmer.",
+        "loginRequired": "Connexion requise",
+        "loginToReserve": "Connectez-vous pour réserver.",
+        "reservationInProgress": "Réservation en cours",
+        "reservationProcessing": "Votre réservation est en cours de traitement...",
+        "failed": "Échec",
+        "cannotReserve": "Impossible de réserver."
+    },
+    "mesEquipes": {
+        "invitationAccepted": "Invitation acceptée ! Vous êtes maintenant membre de cette équipe.",
+        "cannotAcceptInvitation": "Impossible d'accepter l'invitation",
+        "rejectInvitation": "Rejeter l'invitation",
+        "confirmReject": "Êtes-vous sûr de vouloir rejeter cette invitation ?",
+        "invitationRejected": "Invitation rejetée.",
+        "cannotRejectInvitation": "Impossible de rejeter l'invitation",
+        "serviceNavUnavailable": "Navigation vers ce type de service non disponible pour le moment."
+    },
+    "providerOrders": {
+        "loadError": "Erreur lors du chargement des commandes",
+        "validateOrder": "Valider la commande",
+        "confirmValidate": "Voulez-vous valider cette commande ?",
+        "orderValidated": "Commande validée",
+        "rejectReasonRequired": "Veuillez indiquer une raison de rejet",
+        "orderRejected": "Commande rejetée"
+    },
+    "videoFeed": {
+        "videosUnavailable": "Vidéos indisponibles",
+        "cannotLoadVideos": "Impossible de charger les vidéos pour l'instant.",
+        "loginRequired": "Connexion requise",
+        "loginToFollow": "Connectez-vous pour suivre ce vendeur.",
+        "invalidServiceId": "Identifiant de service invalide.",
+        "cannotFollowVendor": "Impossible de suivre ce vendeur. Veuillez réessayer.",
+        "noAssociatedProduct": "Aucun produit associé à cette vidéo.",
+        "deliveryUnavailable": "Service de livraison non disponible pour ce produit.",
+        "commentsUnavailable": "Les commentaires ne sont pas disponibles pour cette vidéo."
+    },
+    "deliveryHome": {
+        "navigationUnavailable": "Navigation indisponible. Veuillez réessayer.",
+        "cannotOpenShoppingFlow": "Impossible d'ouvrir le flux de commande. Veuillez réessayer.",
+        "cannotOpenParcelFlow": "Impossible d'ouvrir le flux colis. Veuillez réessayer.",
+        "functionUnavailable": "Fonction indisponible. Veuillez réessayer.",
+        "cannotOpenTracking": "Impossible d'ouvrir le suivi de livraison."
+    },
+    "offreCandidatures": {
+        "cannotLoad": "Impossible de charger les candidatures",
+        "noCVAvailable": "Aucun CV disponible pour ce candidat",
+        "cannotAnalyzeCV": "Impossible d'analyser le CV",
+        "cvAnalysisError": "Erreur lors de l'analyse du CV",
+        "statusUpdated": "Statut mis à jour",
+        "updateError": "Erreur lors de la mise à jour"
+    },
+    "offreDetails": {
+        "cannotLoadOffer": "Impossible de charger l'offre",
+        "loginRequired": "Connexion requise",
+        "loginToApply": "Veuillez vous connecter pour postuler",
+        "profileRequired": "Profil requis",
+        "createProfileAndCV": "Pour postuler, vous devez créer votre profil candidat et uploader votre CV.",
+        "applicationSent": "Candidature envoyée avec succès ! Votre CV a été transmis à l'employeur.",
+        "applicationError": "Erreur lors de la candidature"
+    },
+    "bayamSelam": {
+        "cannotLoadResults": "Impossible de charger les résultats",
+        "enterProductName": "Veuillez entrer un nom de produit",
+        "noResult": "Aucun résultat",
+        "noProductFound": "Aucun produit trouvé avec ce nom",
+        "cannotComparePrices": "Impossible de comparer les prix",
+        "addedToCart": "Ajouté au panier",
+        "productAddedToCart": "{{name}} a été ajouté au panier",
+        "emptyCart": "Panier vide",
+        "addProductsFirst": "Ajoutez des produits au panier avant de commander une livraison",
+        "loginRequired": "Connexion requise",
+        "loginToOrder": "Veuillez vous connecter pour commander une livraison"
+    },
+    "busReturn": {
+        "missingOutboundTicket": "Informations de ticket aller manquantes",
+        "enterPassengerName": "Veuillez renseigner au moins un nom de passager",
+        "requestCreated": "Demande créée",
+        "requestCreatedMsg": "Votre demande de retour a été créée. Vous serez notifié quand un bus correspondant sera disponible.",
+        "cannotCreateRequest": "Impossible de créer la demande"
+    },
+    "familyProfile": {
+        "cannotLoadProfile": "Impossible de charger le profil",
+        "validation": "Validation",
+        "atLeastOneMember": "Le nombre total de membres doit être au moins 1.",
+        "atLeastOneAdult": "Il doit y avoir au moins 1 adulte.",
+        "selectCuisineStyle": "Veuillez sélectionner au moins un style de cuisine préféré.",
+        "profileUpdated": "Profil mis à jour avec succès",
+        "cannotUpdateProfile": "Impossible de mettre à jour le profil",
+        "errorOccurred": "Une erreur est survenue"
+    },
+    "hotelBooking": {
+        "enterDates": "Veuillez renseigner les dates d'arrivée et de départ",
+        "nameAndPhoneRequired": "Nom et téléphone sont requis",
+        "invalidDateFormat": "Format de date invalide. Utilisez AAAA-MM-JJ",
+        "departureMustBeAfterArrival": "La date de départ doit être après la date d'arrivée",
+        "reservationSent": "Réservation envoyée !",
+        "reservationSentMsg": "Votre demande de réservation a été transmise au gérant de \"{{name}}\". Vous recevrez une confirmation bientôt.",
+        "cannotCreateReservation": "Impossible de créer la réservation",
+        "errorOccurred": "Une erreur est survenue"
+    },
+    "laboForm": {
+        "nameRequired": "Nom obligatoire",
+        "cannotCreateService": "Impossible de créer le service",
+        "serviceIdMissing": "Service ID manquant",
+        "labRegistered": "Laboratoire enregistré !",
+        "cannotRegister": "Impossible d'enregistrer",
+        "errorOccurred": "Erreur",
+        "examNameRequired": "Nom requis"
+    },
+    "menuPlanning": {
+        "enterDishName": "Veuillez entrer le nom d'un plat",
+        "cannotGenerateRecipe": "Impossible de générer la recette. Réessayez plus tard.",
+        "profileRequired": "Profil requis",
+        "configureProfileFirst": "Veuillez d'abord configurer votre profil famille",
+        "menuGenerated": "Menu généré !",
+        "menuGeneratedMsg": "Votre menu {{period}} a été généré avec succès",
+        "weekly": "hebdomadaire",
+        "biweekly": "bi-hebdomadaire (15 jours)",
+        "monthly": "mensuel",
+        "menuGenerationError": "Erreur lors de la génération du menu",
+        "recipeShared": "Recette partagée avec succès !",
+        "cannotShareRecipe": "Impossible de partager la recette en PDF"
+    },
+    "offresEmploiForm": {
+        "dataRestored": "Données restaurées",
+        "dataRestoredMsg": "Vos données non envoyées ont été restaurées",
+        "fixFormErrors": "Veuillez corriger les erreurs du formulaire",
+        "workLocationRequired": "Le lieu de travail est obligatoire (ou cochez \"Télétravail\")",
+        "validation": "Validation",
+        "deadlineInPast": "La date limite de candidature ne peut pas être dans le passé",
+        "offerEdited": "Offre d'emploi modifiée avec succès !",
+        "offerCreated": "Offre d'emploi créée avec succès !",
+        "cannotSaveOffer": "Impossible d'enregistrer l'offre",
+        "errorOccurred": "Une erreur est survenue"
+    },
+    "reservation": {
+        "mustBeLoggedIn": "Vous devez être connecté pour réserver",
+        "selectDate": "Veuillez sélectionner une date",
+        "selectAtLeastOnePlace": "Veuillez sélectionner au moins une place",
+        "enterPickupAddress": "Veuillez saisir l'adresse de prise en charge",
+        "reservationCreated": "Votre réservation a été créée avec succès. Le prestataire vous confirmera bientôt.",
+        "cannotCreateReservation": "Impossible de créer la réservation",
+        "errorCreatingReservation": "Une erreur est survenue lors de la création de la réservation"
+    },
+    "slotManagement": {
+        "startAndEndRequired": "Les heures de début et fin sont obligatoires",
+        "slotAdded": "Créneau ajouté avec succès",
+        "cannotAddSlot": "Impossible d'ajouter le créneau",
+        "errorOccurred": "Une erreur est survenue",
+        "generateSlots": "Générer des créneaux",
+        "generateSlotsMsg": "Générer des créneaux de 30 min de 08:00 à 17:00 pour le {{date}} ?",
+        "slotsGenerated": "{{count}} créneaux générés",
+        "generationError": "Erreur génération"
     }
 }
