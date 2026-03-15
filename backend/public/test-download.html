@@ -540,11 +540,31 @@
             </div>
         </div>
 
-        <!-- iOS notice -->
+        <!-- iOS download -->
         <div class="ios-only">
-            <div class="ios-notice" id="iosNotice">
-                <div class="title">&#127823; Verification App Store...</div>
-                <p>Verification de la disponibilite en cours...</p>
+            <!-- Bouton App Store (grise par defaut, active si dispo) -->
+            <a href="#" class="download-btn store-btn disabled" id="appStoreBtn" onclick="return false;">
+                <span class="icon">&#127823;</span>
+                <span>Installer via App Store</span>
+            </a>
+            <div class="store-checking" id="appStoreStatus">Verification App Store...</div>
+
+            <!-- Bouton APK (toujours actif, fallback pour iOS aussi) -->
+            <a href="#" class="download-btn" id="downloadBtnIos" onclick="startDownload(event)" style="margin-top:12px">
+                <span class="icon">&#9660;</span>
+                <span>Telecharger l'APK Android (direct)</span>
+                <span class="shimmer"></span>
+            </a>
+            <div class="download-info">
+                <span>&#128230; ~80 MB</span>
+                <span>&#128274; Securise</span>
+                <span>&#9889; Android uniquement</span>
+            </div>
+
+            <!-- Message informatif iOS -->
+            <div class="ios-notice" id="iosNotice" style="margin-top:16px">
+                <div class="title">&#127823; Verification en cours...</div>
+                <p>Nous verifions si Yukpo est disponible sur l'App Store.</p>
             </div>
         </div>
 
@@ -656,13 +676,67 @@
                         playBtn.style.boxShadow = '0 8px 32px rgba(16, 185, 129, .35)';
                         playBtn.href = PLAY_STORE;
                         playBtn.onclick = null;
-                        if (playStatus) playStatus.textContent = 'Disponible sur Google Play';
-                        if (playStatus) playStatus.style.color = '#10B981';
-                        if (playStatus) playStatus.style.animation = 'none';
+                        if (playStatus) {
+                            playStatus.textContent = '\u2705 Disponible sur Google Play';
+                            playStatus.style.color = '#10B981';
+                            playStatus.style.animation = 'none';
+                        }
                     } else {
                         playBtn.className = 'download-btn store-btn disabled';
-                        if (playStatus) playStatus.textContent = 'Pas encore sur Google Play — utilisez le bouton APK ci-dessous';
-                        if (playStatus) playStatus.style.animation = 'none';
+                        if (playStatus) {
+                            playStatus.innerHTML = '\u23F3 Yukpo sera bientot disponible sur Google Play.<br>En attendant, utilisez le bouton <strong>APK</strong> ci-dessous.';
+                            playStatus.style.color = '#f59e0b';
+                            playStatus.style.animation = 'none';
+                        }
+                    }
+                }
+
+                // -- App Store button (iOS) --
+                var appleBtn = document.getElementById('appStoreBtn');
+                var appleStatus = document.getElementById('appStoreStatus');
+                if (appleBtn) {
+                    if (storeAvailable.apple) {
+                        appleBtn.className = 'download-btn store-btn';
+                        appleBtn.style.background = 'linear-gradient(135deg, #2563EB, #7C3AED)';
+                        appleBtn.style.boxShadow = '0 8px 32px rgba(99, 102, 241, .35)';
+                        appleBtn.href = APP_STORE;
+                        appleBtn.onclick = null;
+                        if (appleStatus) {
+                            appleStatus.textContent = '\u2705 Disponible sur l\'App Store';
+                            appleStatus.style.color = '#10B981';
+                            appleStatus.style.animation = 'none';
+                        }
+                    } else {
+                        appleBtn.className = 'download-btn store-btn disabled';
+                        if (appleStatus) {
+                            appleStatus.innerHTML = '\u23F3 Yukpo sera bientot disponible sur l\'App Store.<br>Si vous avez un appareil Android, telecharger l\'APK via le bouton <strong>\u2B07 ci-dessous</strong>.';
+                            appleStatus.style.color = '#f59e0b';
+                            appleStatus.style.animation = 'none';
+                        }
+                    }
+                }
+
+                // -- iOS notice (message adapte selon disponibilite) --
+                var iosNotice = document.getElementById('iosNotice');
+                if (iosNotice) {
+                    if (storeAvailable.apple) {
+                        iosNotice.innerHTML = '<div class="title">\uD83C\uDF4E Yukpo est sur l\'App Store !</div>' +
+                            '<p>Appuyez sur le bouton ci-dessus pour installer Yukpo directement depuis l\'App Store.</p>';
+                        iosNotice.style.borderColor = 'rgba(16, 185, 129, .3)';
+                        iosNotice.style.background = 'rgba(16, 185, 129, .08)';
+                    } else if (storeAvailable.play) {
+                        // Play Store dispo mais pas App Store
+                        iosNotice.innerHTML = '<div class="title">\u23F3 Bientot sur App Store</div>' +
+                            '<p>La version iOS est en cours de validation par Apple. ' +
+                            'Yukpo est deja disponible sur <strong>Google Play</strong> pour Android. ' +
+                            'Vous pouvez aussi telecharger l\'<strong>APK</strong> via le bouton ci-dessus. ' +
+                            'Revenez bientot pour la version iOS !</p>';
+                    } else {
+                        // Aucun store dispo
+                        iosNotice.innerHTML = '<div class="title">\u23F3 Bientot sur App Store</div>' +
+                            '<p>La version iOS est en cours de validation par Apple. ' +
+                            'Si vous avez un appareil Android, vous pouvez telecharger l\'<strong>APK</strong> via le bouton ci-dessus. ' +
+                            'Revenez tres bientot pour la version iOS !</p>';
                     }
                 }
 
@@ -691,19 +765,6 @@
                     } else {
                         badgeApple.className = 'store-badge unavailable';
                         badgeApple.textContent = '\uD83C\uDF4E App Store (bientot)';
-                    }
-                }
-
-                // -- iOS notice --
-                var iosNotice = document.getElementById('iosNotice');
-                if (iosNotice) {
-                    if (storeAvailable.apple) {
-                        iosNotice.innerHTML = '<div class="title">\uD83C\uDF4E Telecharger sur App Store</div>' +
-                            '<p>Yukpo est disponible sur l\'App Store.</p>' +
-                            '<a href="' + APP_STORE + '" style="display:inline-block;margin-top:12px;padding:12px 24px;background:linear-gradient(135deg,#059669,#10B981);color:#fff;border-radius:12px;text-decoration:none;font-weight:600">Ouvrir l\'App Store</a>';
-                    } else {
-                        iosNotice.innerHTML = '<div class="title">\uD83C\uDF4E Bientot sur App Store</div>' +
-                            '<p>La version iOS est en cours de validation. Revenez bientot !</p>';
                     }
                 }
             }

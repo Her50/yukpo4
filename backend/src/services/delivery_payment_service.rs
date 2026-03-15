@@ -754,7 +754,8 @@ impl DeliveryPaymentService {
         Ok(())
     }
 
-    /// Débite le wallet d'un utilisateur
+    /// ✅ Débite le wallet d'un utilisateur (IMPLÉMENTATION RÉELLE)
+    /// Utilise directement les tables user_wallets + wallet_transactions
     async fn debit_user_wallet(
         &self,
         user_id: i32,
@@ -762,19 +763,73 @@ impl DeliveryPaymentService {
         amount_cents: i64,
         reason: Option<String>,
     ) -> AppResult<()> {
-        // Note: wallet_transactions et user_wallets tables n'existent pas encore dans les migrations
-        // TODO: Créer les migrations pour ces tables
-        // Pour l'instant, utiliser le service DeliveryService si disponible
-        if let Some(ref delivery_service) = self.delivery_service {
-            delivery_service
-                .debit_wallet_for_delivery(user_id, delivery_id, amount_cents, reason.clone())
-                .await?;
+        if amount_cents <= 0 {
+            return Ok(());
         }
+
+        let balance_before: i64 = sqlx::query_scalar::<_, Option<i64>>(
+            "SELECT balance_cents FROM user_wallets WHERE user_id = $1 AND currency = 'XAF'",
+        )
+        .bind(user_id)
+        .fetch_optional(&self.pool)
+        .await?
+        .flatten()
+        .unwrap_or(0);
+
+        if balance_before < amount_cents {
+            return Err(AppError::BadRequest(format!(
+                "Solde insuffisant. Solde: {} FCFA, Requis: {} FCFA",
+                balance_before / 100,
+                amount_cents / 100
+            )));
+        }
+
+        sqlx::query(
+            r#"
+            UPDATE user_wallets
+            SET balance_cents = balance_cents - $2, updated_at = NOW()
+            WHERE user_id = $1 AND currency = 'XAF' AND balance_cents >= $2
+            "#,
+        )
+        .bind(user_id)
+        .bind(amount_cents)
+        .execute(&self.pool)
+        .await?;
+
+        let balance_after = balance_before - amount_cents;
+
+        sqlx::query(
+            r#"
+            INSERT INTO wallet_transactions (
+                user_id, transaction_type, amount_cents,
+                balance_before_cents, balance_after_cents, currency,
+                reference_type, reference_id, delivery_id, description
+            )
+            VALUES ($1, 'debit_delivery', $2, $3, $4, 'XAF', 'delivery', $5, $6, $7)
+            "#,
+        )
+        .bind(user_id)
+        .bind(amount_cents)
+        .bind(balance_before)
+        .bind(balance_after)
+        .bind(delivery_id.to_string())
+        .bind(delivery_id)
+        .bind(reason.as_deref().unwrap_or("Débit livraison"))
+        .execute(&self.pool)
+        .await?;
+
+        log::info!(
+            "[DeliveryPayment] ✅ Débit {} cents user {} (before={}, after={})",
+            amount_cents,
+            user_id,
+            balance_before,
+            balance_after
+        );
 
         Ok(())
     }
 
-    /// Rembourse le wallet d'un utilisateur
+    /// ✅ Rembourse le wallet d'un utilisateur (IMPLÉMENTATION RÉELLE)
     async fn refund_user_wallet(
         &self,
         user_id: i32,
@@ -782,35 +837,133 @@ impl DeliveryPaymentService {
         amount_cents: i64,
         reason: Option<String>,
     ) -> AppResult<()> {
-        // Note: wallet_transactions et user_wallets tables n'existent pas encore dans les migrations
-        // TODO: Créer les migrations pour ces tables
-        // Pour l'instant, utiliser le service DeliveryService si disponible
-        if let Some(ref delivery_service) = self.delivery_service {
-            delivery_service
-                .refund_wallet_for_delivery(user_id, delivery_id, amount_cents, reason.clone())
-                .await?;
+        if amount_cents <= 0 {
+            return Ok(());
         }
+
+        let balance_before: i64 = sqlx::query_scalar::<_, Option<i64>>(
+            "SELECT balance_cents FROM user_wallets WHERE user_id = $1 AND currency = 'XAF'",
+        )
+        .bind(user_id)
+        .fetch_optional(&self.pool)
+        .await?
+        .flatten()
+        .unwrap_or(0);
+
+        sqlx::query(
+            r#"
+            INSERT INTO user_wallets (user_id, balance_cents, currency, updated_at)
+            VALUES ($1, $2, 'XAF', NOW())
+            ON CONFLICT (user_id, currency)
+            DO UPDATE SET
+                balance_cents = user_wallets.balance_cents + $2,
+                updated_at = NOW()
+            "#,
+        )
+        .bind(user_id)
+        .bind(amount_cents)
+        .execute(&self.pool)
+        .await?;
+
+        let balance_after = balance_before + amount_cents;
+
+        sqlx::query(
+            r#"
+            INSERT INTO wallet_transactions (
+                user_id, transaction_type, amount_cents,
+                balance_before_cents, balance_after_cents, currency,
+                reference_type, reference_id, delivery_id, description
+            )
+            VALUES ($1, 'refund_delivery', $2, $3, $4, 'XAF', 'delivery', $5, $6, $7)
+            "#,
+        )
+        .bind(user_id)
+        .bind(amount_cents)
+        .bind(balance_before)
+        .bind(balance_after)
+        .bind(delivery_id.to_string())
+        .bind(delivery_id)
+        .bind(reason.as_deref().unwrap_or("Remboursement livraison"))
+        .execute(&self.pool)
+        .await?;
+
+        log::info!(
+            "[DeliveryPayment] ✅ Remboursement {} cents user {} (before={}, after={})",
+            amount_cents,
+            user_id,
+            balance_before,
+            balance_after
+        );
 
         Ok(())
     }
 
-    /// Crédite le wallet d'un utilisateur (pour reversement prestataire)
+    /// ✅ Crédite le wallet d'un utilisateur (IMPLÉMENTATION RÉELLE - pour reversement prestataire)
     #[allow(dead_code)]
     async fn credit_user_wallet(
         &self,
         user_id: i32,
-        _delivery_id: Uuid,
-        _amount_cents: i64,
-        _reason: Option<String>,
+        delivery_id: Uuid,
+        amount_cents: i64,
+        reason: Option<String>,
     ) -> AppResult<()> {
-        // Note: wallet_transactions et user_wallets tables n'existent pas encore dans les migrations
-        // TODO: Créer les migrations pour ces tables
-        // Pour l'instant, utiliser le service DeliveryService si disponible
-        if let Some(ref delivery_service) = self.delivery_service {
-            // Créditer le wallet via le service de livraison
-            let _ = delivery_service.get_wallet_balance(user_id).await;
-            // TODO: Implémenter credit_wallet_for_delivery dans DeliveryService
+        if amount_cents <= 0 {
+            return Ok(());
         }
+
+        let balance_before: i64 = sqlx::query_scalar::<_, Option<i64>>(
+            "SELECT balance_cents FROM user_wallets WHERE user_id = $1 AND currency = 'XAF'",
+        )
+        .bind(user_id)
+        .fetch_optional(&self.pool)
+        .await?
+        .flatten()
+        .unwrap_or(0);
+
+        sqlx::query(
+            r#"
+            INSERT INTO user_wallets (user_id, balance_cents, currency, updated_at)
+            VALUES ($1, $2, 'XAF', NOW())
+            ON CONFLICT (user_id, currency)
+            DO UPDATE SET
+                balance_cents = user_wallets.balance_cents + $2,
+                updated_at = NOW()
+            "#,
+        )
+        .bind(user_id)
+        .bind(amount_cents)
+        .execute(&self.pool)
+        .await?;
+
+        let balance_after = balance_before + amount_cents;
+
+        sqlx::query(
+            r#"
+            INSERT INTO wallet_transactions (
+                user_id, transaction_type, amount_cents,
+                balance_before_cents, balance_after_cents, currency,
+                reference_type, reference_id, delivery_id, description
+            )
+            VALUES ($1, 'credit_payout', $2, $3, $4, 'XAF', 'delivery', $5, $6, $7)
+            "#,
+        )
+        .bind(user_id)
+        .bind(amount_cents)
+        .bind(balance_before)
+        .bind(balance_after)
+        .bind(delivery_id.to_string())
+        .bind(delivery_id)
+        .bind(reason.as_deref().unwrap_or("Reversement prestataire"))
+        .execute(&self.pool)
+        .await?;
+
+        log::info!(
+            "[DeliveryPayment] ✅ Crédit {} cents user {} (before={}, after={})",
+            amount_cents,
+            user_id,
+            balance_before,
+            balance_after
+        );
 
         Ok(())
     }

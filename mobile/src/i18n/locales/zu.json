@@ -1453,7 +1453,14 @@
         "bookConditionRequired": "Book condition is required",
         "bookCreated": "Book created successfully!",
         "bookUpdated": "Book updated successfully!",
-        "genericError": "An error occurred"
+        "genericError": "An error occurred",
+        "allowGalleryAccess": "Please allow gallery access",
+        "cannotAnalyzeImage": "Unable to analyze image",
+        "analysisError": "Error during analysis",
+        "enterPrice": "Please enter the price",
+        "bookAdded": "Book added successfully!",
+        "cannotAddBook": "Unable to add book",
+        "saveError": "Error saving"
     },
     "bloodDonation": {
         "bloodGroupSaved": "Blood group {{group}} saved",
@@ -1471,7 +1478,15 @@
         "registerDonation": "Register a donation",
         "confirmDonationToday": "Confirm that you donated blood today?",
         "donationRegistered": "Your donation has been registered",
-        "cannotRegisterDonation": "Unable to register donation"
+        "cannotRegisterDonation": "Unable to register donation",
+        "cannotLoadBanks": "Unable to load your blood banks",
+        "selectBank": "Please select a blood bank",
+        "selectBloodGroup": "Please select a required blood group",
+        "enterValidQuantity": "Please enter a valid quantity",
+        "requestCreated": "Request created",
+        "requestCreatedMsg": "Your request was created successfully. {{count}} compatible donor(s) found.",
+        "viewMatches": "View matches",
+        "cannotCreateRequest": "Unable to create request"
     },
     "pharmacieHome": {
         "permissionRequired": "Permission required",
@@ -1548,7 +1563,14 @@
         "serviceIdMissing": "Service ID missing",
         "tripCreated": "Trip created!",
         "cannotCreateTrip": "Unable to create trip",
-        "genericError": "An error occurred"
+        "genericError": "An error occurred",
+        "selectDepartureAndDestination": "Please select a departure and destination city",
+        "fillDepartureAndDestination": "Please fill in departure and destination",
+        "serviceRequired": "Service required",
+        "createServiceFirst": "You must first create a service. Would you like to do it now?",
+        "creationError": "Error during creation",
+        "createService": "Create a service",
+        "redirectToCreateService": "Redirecting to service creation..."
     },
     "taxiForm": {
         "nowAvailable": "You are now available",
@@ -2094,5 +2116,163 @@
         "loginToAnalyze": "Please log in to analyze results",
         "info": "Info",
         "labDetailsComingSoon": "Navigation to lab details will be available soon"
+    },
+    "liveViewer": {
+        "reservationConfirmed": "Reservation confirmed",
+        "reservationConfirmedMsg": "Your reservation has been confirmed!",
+        "reservationFailed": "Reservation failed",
+        "cannotConfirm": "Unable to confirm.",
+        "loginRequired": "Login required",
+        "loginToReserve": "Please log in to reserve.",
+        "reservationInProgress": "Reservation in progress",
+        "reservationProcessing": "Your reservation is being processed...",
+        "failed": "Failed",
+        "cannotReserve": "Unable to reserve."
+    },
+    "mesEquipes": {
+        "invitationAccepted": "Invitation accepted! You are now a member of this team.",
+        "cannotAcceptInvitation": "Unable to accept invitation",
+        "rejectInvitation": "Reject invitation",
+        "confirmReject": "Are you sure you want to reject this invitation?",
+        "invitationRejected": "Invitation rejected.",
+        "cannotRejectInvitation": "Unable to reject invitation",
+        "serviceNavUnavailable": "Navigation to this service type is not available yet."
+    },
+    "providerOrders": {
+        "loadError": "Error loading orders",
+        "validateOrder": "Validate order",
+        "confirmValidate": "Do you want to validate this order?",
+        "orderValidated": "Order validated",
+        "rejectReasonRequired": "Please provide a rejection reason",
+        "orderRejected": "Order rejected"
+    },
+    "videoFeed": {
+        "videosUnavailable": "Videos unavailable",
+        "cannotLoadVideos": "Unable to load videos at this time.",
+        "loginRequired": "Login required",
+        "loginToFollow": "Please log in to follow this seller.",
+        "invalidServiceId": "Invalid service ID.",
+        "cannotFollowVendor": "Unable to follow this seller. Please try again.",
+        "noAssociatedProduct": "No product associated with this video.",
+        "deliveryUnavailable": "Delivery service not available for this product.",
+        "commentsUnavailable": "Comments are not available for this video."
+    },
+    "deliveryHome": {
+        "navigationUnavailable": "Navigation unavailable. Please try again.",
+        "cannotOpenShoppingFlow": "Unable to open shopping flow. Please try again.",
+        "cannotOpenParcelFlow": "Unable to open parcel flow. Please try again.",
+        "functionUnavailable": "Function unavailable. Please try again.",
+        "cannotOpenTracking": "Unable to open delivery tracking."
+    },
+    "offreCandidatures": {
+        "cannotLoad": "Unable to load applications",
+        "noCVAvailable": "No CV available for this candidate",
+        "cannotAnalyzeCV": "Unable to analyze CV",
+        "cvAnalysisError": "Error analyzing CV",
+        "statusUpdated": "Status updated",
+        "updateError": "Error updating"
+    },
+    "offreDetails": {
+        "cannotLoadOffer": "Unable to load offer",
+        "loginRequired": "Login required",
+        "loginToApply": "Please log in to apply",
+        "profileRequired": "Profile required",
+        "createProfileAndCV": "To apply, you must create your candidate profile and upload your CV.",
+        "applicationSent": "Application sent successfully! Your CV has been sent to the employer.",
+        "applicationError": "Error submitting application"
+    },
+    "bayamSelam": {
+        "cannotLoadResults": "Unable to load results",
+        "enterProductName": "Please enter a product name",
+        "noResult": "No result",
+        "noProductFound": "No product found with this name",
+        "cannotComparePrices": "Unable to compare prices",
+        "addedToCart": "Added to cart",
+        "productAddedToCart": "{{name}} has been added to cart",
+        "emptyCart": "Empty cart",
+        "addProductsFirst": "Add products to cart before ordering a delivery",
+        "loginRequired": "Login required",
+        "loginToOrder": "Please log in to order a delivery"
+    },
+    "busReturn": {
+        "missingOutboundTicket": "Outbound ticket information missing",
+        "enterPassengerName": "Please enter at least one passenger name",
+        "requestCreated": "Request created",
+        "requestCreatedMsg": "Your return request has been created. You will be notified when a matching bus is available.",
+        "cannotCreateRequest": "Unable to create request"
+    },
+    "familyProfile": {
+        "cannotLoadProfile": "Unable to load profile",
+        "validation": "Validation",
+        "atLeastOneMember": "Total members must be at least 1.",
+        "atLeastOneAdult": "There must be at least 1 adult.",
+        "selectCuisineStyle": "Please select at least one preferred cuisine style.",
+        "profileUpdated": "Profile updated successfully",
+        "cannotUpdateProfile": "Unable to update profile",
+        "errorOccurred": "An error occurred"
+    },
+    "hotelBooking": {
+        "enterDates": "Please enter check-in and check-out dates",
+        "nameAndPhoneRequired": "Name and phone are required",
+        "invalidDateFormat": "Invalid date format. Use YYYY-MM-DD",
+        "departureMustBeAfterArrival": "Check-out date must be after check-in date",
+        "reservationSent": "Reservation sent!",
+        "reservationSentMsg": "Your reservation request has been sent to the manager of \"{{name}}\". You will receive a confirmation soon.",
+        "cannotCreateReservation": "Unable to create reservation",
+        "errorOccurred": "An error occurred"
+    },
+    "laboForm": {
+        "nameRequired": "Name is required",
+        "cannotCreateService": "Unable to create service",
+        "serviceIdMissing": "Service ID missing",
+        "labRegistered": "Laboratory registered!",
+        "cannotRegister": "Unable to register",
+        "errorOccurred": "Error",
+        "examNameRequired": "Name is required"
+    },
+    "menuPlanning": {
+        "enterDishName": "Please enter a dish name",
+        "cannotGenerateRecipe": "Unable to generate recipe. Please try again later.",
+        "profileRequired": "Profile required",
+        "configureProfileFirst": "Please configure your family profile first",
+        "menuGenerated": "Menu generated!",
+        "menuGeneratedMsg": "Your {{period}} menu has been generated successfully",
+        "weekly": "weekly",
+        "biweekly": "bi-weekly (15 days)",
+        "monthly": "monthly",
+        "menuGenerationError": "Error generating menu",
+        "recipeShared": "Recipe shared successfully!",
+        "cannotShareRecipe": "Unable to share recipe as PDF"
+    },
+    "offresEmploiForm": {
+        "dataRestored": "Data restored",
+        "dataRestoredMsg": "Your unsent data has been restored",
+        "fixFormErrors": "Please fix form errors",
+        "workLocationRequired": "Work location is required (or check \"Remote work\")",
+        "validation": "Validation",
+        "deadlineInPast": "Application deadline cannot be in the past",
+        "offerEdited": "Job offer updated successfully!",
+        "offerCreated": "Job offer created successfully!",
+        "cannotSaveOffer": "Unable to save offer",
+        "errorOccurred": "An error occurred"
+    },
+    "reservation": {
+        "mustBeLoggedIn": "You must be logged in to book",
+        "selectDate": "Please select a date",
+        "selectAtLeastOnePlace": "Please select at least one seat",
+        "enterPickupAddress": "Please enter the pickup address",
+        "reservationCreated": "Your reservation has been created successfully. The provider will confirm shortly.",
+        "cannotCreateReservation": "Unable to create reservation",
+        "errorCreatingReservation": "An error occurred while creating the reservation"
+    },
+    "slotManagement": {
+        "startAndEndRequired": "Start and end times are required",
+        "slotAdded": "Slot added successfully",
+        "cannotAddSlot": "Unable to add slot",
+        "errorOccurred": "An error occurred",
+        "generateSlots": "Generate slots",
+        "generateSlotsMsg": "Generate 30-min slots from 08:00 to 17:00 for {{date}}?",
+        "slotsGenerated": "{{count}} slots generated",
+        "generationError": "Generation error"
     }
 }

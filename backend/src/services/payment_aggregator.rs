@@ -702,6 +702,202 @@ impl PaymentAggregator {
         })
     }
 
+    // ========================================================================
+    // DISBURSEMENT (TRANSFERTS SORTANTS)
+    // ========================================================================
+
+    /// ✅ Initie un transfert sortant (disbursement) vers un numéro mobile money
+    /// Essaie CinetPay transfer API, puis NotchPay transfer API en fallback
+    pub async fn initiate_disbursement(
+        &self,
+        phone: &str,
+        amount_cents: i64,
+        method: &str,    // "mtn_money" ou "orange_money"
+        reference: &str, // Référence unique Yukpo
+    ) -> Result<String, String> {
+        let amount = amount_cents / 100; // Convertir centimes → unité monétaire
+        if amount <= 0 {
+            return Err("Montant de transfert invalide".to_string());
+        }
+
+        // Essayer CinetPay Transfer API en premier
+        if self.config.is_cinetpay_configured() {
+            match self.cinetpay_transfer(phone, amount, method, reference).await {
+                Ok(ref_id) => return Ok(ref_id),
+                Err(e) => {
+                    log::warn!(
+                        "[Disbursement] CinetPay transfer échoué, trying NotchPay: {}",
+                        e
+                    );
+                }
+            }
+        }
+
+        // Fallback NotchPay Transfer API
+        if self.config.is_notchpay_configured() {
+            return self.notchpay_transfer(phone, amount, method, reference).await;
+        }
+
+        Err("Aucun agrégateur configuré pour le disbursement. Configurez CINETPAY_API_KEY ou NOTCHPAY_PUBLIC_KEY.".to_string())
+    }
+
+    /// CinetPay Transfer API (POST /v2/transfer/money/send/contact)
+    async fn cinetpay_transfer(
+        &self,
+        phone: &str,
+        amount: i64,
+        method: &str,
+        reference: &str,
+    ) -> Result<String, String> {
+        log::info!(
+            "[CinetPay Transfer] {} XAF vers {} via {}",
+            amount,
+            phone,
+            method
+        );
+
+        let operator = match method {
+            "mtn_money" | "mtn" => "MTN",
+            "orange_money" | "orange" => "ORANGE",
+            _ => "MTN",
+        };
+
+        let payload = serde_json::json!({
+            "apikey": self.config.cinetpay_api_key,
+            "site_id": self.config.cinetpay_site_id,
+            "transaction_id": reference,
+            "amount": amount,
+            "currency": "XAF",
+            "phone": phone,
+            "operator": operator,
+            "payment_method": "MOBILE_MONEY",
+            "notify_url": format!("{}/api/webhooks/cinetpay/disbursement", self.config.webhook_base_url),
+        });
+
+        let response = self
+            .client
+            .post(&format!(
+                "{}/v2/transfer/money/send/contact",
+                self.config.cinetpay_base_url
+            ))
+            .header("Content-Type", "application/json")
+            .json(&payload)
+            .send()
+            .await
+            .map_err(|e| format!("Erreur réseau CinetPay transfer: {}", e))?;
+
+        let status_code = response.status();
+        let response_text = response
+            .text()
+            .await
+            .map_err(|e| format!("Erreur lecture CinetPay transfer: {}", e))?;
+
+        log::info!(
+            "[CinetPay Transfer] Response {}: {}",
+            status_code,
+            &response_text[..response_text.len().min(500)]
+        );
+
+        let response_json: serde_json::Value = serde_json::from_str(&response_text)
+            .map_err(|e| format!("Erreur parsing CinetPay transfer: {}", e))?;
+
+        let code = response_json.get("code").and_then(|c| c.as_str()).unwrap_or("");
+
+        if code == "00" || code == "201" {
+            let data = response_json.get("data").cloned().unwrap_or(serde_json::json!({}));
+            let txn_id = data
+                .get("transaction_id")
+                .or_else(|| response_json.get("transaction_id"))
+                .and_then(|t| t.as_str())
+                .unwrap_or(reference)
+                .to_string();
+            Ok(txn_id)
+        } else {
+            let message = response_json
+                .get("message")
+                .and_then(|m| m.as_str())
+                .unwrap_or("Erreur inconnue");
+            Err(format!("CinetPay transfer erreur {}: {}", code, message))
+        }
+    }
+
+    /// NotchPay Transfer API (POST /transfers)
+    async fn notchpay_transfer(
+        &self,
+        phone: &str,
+        amount: i64,
+        method: &str,
+        reference: &str,
+    ) -> Result<String, String> {
+        log::info!(
+            "[NotchPay Transfer] {} XAF vers {} via {}",
+            amount,
+            phone,
+            method
+        );
+
+        let channel = match method {
+            "mtn_money" | "mtn" => "cm.mtn",
+            "orange_money" | "orange" => "cm.orange",
+            _ => "cm.mtn",
+        };
+
+        let payload = serde_json::json!({
+            "amount": amount,
+            "currency": "XAF",
+            "phone": phone,
+            "channel": channel,
+            "reference": reference,
+            "description": "Reversement Yukpo",
+            "callback": format!("{}/api/webhooks/notchpay/disbursement", self.config.webhook_base_url),
+        });
+
+        let response = self
+            .client
+            .post(&format!("{}/transfers", self.config.notchpay_base_url))
+            .header("Authorization", &self.config.notchpay_secret_key)
+            .header("Content-Type", "application/json")
+            .json(&payload)
+            .send()
+            .await
+            .map_err(|e| format!("Erreur réseau NotchPay transfer: {}", e))?;
+
+        let status_code = response.status();
+        let response_text = response
+            .text()
+            .await
+            .map_err(|e| format!("Erreur lecture NotchPay transfer: {}", e))?;
+
+        log::info!(
+            "[NotchPay Transfer] Response {}: {}",
+            status_code,
+            &response_text[..response_text.len().min(500)]
+        );
+
+        let response_json: serde_json::Value = serde_json::from_str(&response_text)
+            .map_err(|e| format!("Erreur parsing NotchPay transfer: {}", e))?;
+
+        if status_code.is_success() {
+            let transfer = response_json.get("transfer").cloned().unwrap_or(response_json.clone());
+            let ref_id = transfer
+                .get("reference")
+                .or_else(|| transfer.get("id"))
+                .and_then(|r| r.as_str())
+                .unwrap_or(reference)
+                .to_string();
+            Ok(ref_id)
+        } else {
+            let message = response_json
+                .get("message")
+                .and_then(|m| m.as_str())
+                .unwrap_or("Erreur inconnue");
+            Err(format!(
+                "NotchPay transfer erreur {}: {}",
+                status_code, message
+            ))
+        }
+    }
+
     fn verify_notchpay_webhook(
         &self,
         headers: &std::collections::HashMap<String, String>,

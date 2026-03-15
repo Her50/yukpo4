@@ -79,10 +79,21 @@ pub fn bourse_livre_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
     // ================================================================
 
     // V2 Routes publiques
-    let v2_public_routes = Router::new().route(
-        "/api/bourse-livre/v2/programmes",
-        get(bourse_livre_v2_controller::get_programmes_scolaires),
-    );
+    let v2_public_routes = Router::new()
+        .route(
+            "/api/bourse-livre/v2/programmes",
+            get(bourse_livre_v2_controller::get_programmes_scolaires),
+        )
+        // Parcourir livres par classe (achat sans troc)
+        .route(
+            "/api/bourse-livre/v2/browse-by-class",
+            get(bourse_livre_v2_controller::browse_books_by_class),
+        )
+        // Classes avec stats (nombre de livres disponibles)
+        .route(
+            "/api/bourse-livre/v2/classes-programmes",
+            get(bourse_livre_v2_controller::get_classes_with_programmes),
+        );
 
     // V2 Routes protégées
     let v2_protected_routes = Router::new()
@@ -120,6 +131,11 @@ pub fn bourse_livre_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route(
             "/api/bourse-livre/v2/packages/{id}/status",
             patch(bourse_livre_v2_controller::update_package_status),
+        )
+        // Détail paquet coursier (livres enrichis + itinéraire)
+        .route(
+            "/api/bourse-livre/v2/packages/{id}/detail",
+            get(bourse_livre_v2_controller::get_package_detail_for_courier),
         )
         // Dons de livres
         .route(

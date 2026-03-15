@@ -1324,7 +1324,69 @@
         "visa": "Visa / Mastercard",
         "phone": "Numéro de téléphone",
         "card_number": "Numéro de carte",
-        "expiry": "Date d'expiration"
+        "expiry": "Date d'expiration",
+        "initiating": "Initiation du paiement...",
+        "confirming": "Confirmation en cours...",
+        "confirmed": "Paiement confirmé",
+        "failed": "Paiement échoué",
+        "cancelled": "Paiement annulé",
+        "expired": "Paiement expiré",
+        "pending": "En attente de validation",
+        "processing": "Traitement en cours",
+        "retry": "Réessayer le paiement",
+        "history": "Historique des paiements",
+        "noHistory": "Aucun paiement effectué",
+        "amount": "Montant",
+        "currency": "Devise",
+        "date": "Date",
+        "reference": "Référence",
+        "status": "Statut",
+        "wallet": {
+            "title": "Mon portefeuille",
+            "balance": "Solde disponible",
+            "frozen": "Solde gelé",
+            "transactions": "Transactions",
+            "noTransactions": "Aucune transaction",
+            "credit": "Crédit",
+            "debit": "Débit",
+            "refund": "Remboursement",
+            "payout": "Reversement",
+            "topUp": "Recharger",
+            "withdraw": "Retirer",
+            "insufficientBalance": "Solde insuffisant",
+            "insufficientBalanceMsg": "Votre solde ({{balance}} FCFA) est insuffisant. Montant requis : {{required}} FCFA."
+        },
+        "payout": {
+            "title": "Reversement",
+            "toMtnMoney": "Reversement vers MTN Mobile Money",
+            "toOrangeMoney": "Reversement vers Orange Money",
+            "toWallet": "Crédité au portefeuille interne",
+            "processing": "Reversement en cours...",
+            "completed": "Reversement effectué",
+            "failed": "Reversement échoué, crédité au portefeuille",
+            "fallbackWallet": "Transfert impossible, montant crédité au portefeuille"
+        },
+        "refund": {
+            "title": "Remboursement",
+            "processing": "Remboursement en cours...",
+            "completed": "Remboursement effectué",
+            "failed": "Remboursement échoué",
+            "deliveryCancelled": "Livraison annulée - remboursement automatique",
+            "partialRefund": "Remboursement partiel"
+        },
+        "commission": {
+            "title": "Commission Yukpo",
+            "productCommission": "Commission sur vente de produit",
+            "deliveryCommission": "Commission sur frais de livraison",
+            "bookExchangeCommission": "Commission sur échange de livres",
+            "rate": "Taux de commission : {{rate}}%",
+            "amountDeducted": "Commission déduite : {{amount}} FCFA"
+        },
+        "security": {
+            "rateLimitExceeded": "Trop de tentatives de paiement. Veuillez réessayer dans quelques minutes.",
+            "invalidPhone": "Numéro de téléphone invalide",
+            "webhookError": "Erreur de vérification du paiement"
+        }
     },
     "rechargeScreen": {
         "title": "Recharger mon solde",

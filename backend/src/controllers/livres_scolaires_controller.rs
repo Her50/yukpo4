@@ -550,27 +550,30 @@ RÉPONSE ATTENDUE (JSON strict) :
 
     // ✅ Fallback déterministe: recalculer classe_souhaitee si manquante
     let mut book_info = book_info;
-    if let Some(classe_act) = book_info.get("classe_actuelle").and_then(|v| v.as_str()) {
-        if !classe_act.is_empty() && classe_act != "null" {
-            let computed =
-                crate::services::book_exchange_ai_service::compute_classe_superieure(classe_act);
-            if book_info
-                .get("classe_souhaitee")
-                .and_then(|v| v.as_str())
-                .unwrap_or("")
-                .is_empty()
-                || book_info.get("classe_souhaitee").and_then(|v| v.as_str()) == Some("null")
-            {
-                book_info["classe_souhaitee"] = json!(computed);
-            }
-            // Ajouter le niveau si manquant
-            if book_info.get("niveau").and_then(|v| v.as_str()).unwrap_or("").is_empty() {
-                book_info["niveau"] = json!(
-                    crate::services::book_exchange_ai_service::compute_niveau_from_classe(
-                        classe_act
-                    )
-                );
-            }
+    let classe_act_owned = book_info
+        .get("classe_actuelle")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+    if !classe_act_owned.is_empty() && classe_act_owned != "null" {
+        let computed =
+            crate::services::book_exchange_ai_service::compute_classe_superieure(&classe_act_owned);
+        if book_info
+            .get("classe_souhaitee")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .is_empty()
+            || book_info.get("classe_souhaitee").and_then(|v| v.as_str()) == Some("null")
+        {
+            book_info["classe_souhaitee"] = json!(computed);
+        }
+        // Ajouter le niveau si manquant
+        if book_info.get("niveau").and_then(|v| v.as_str()).unwrap_or("").is_empty() {
+            book_info["niveau"] = json!(
+                crate::services::book_exchange_ai_service::compute_niveau_from_classe(
+                    &classe_act_owned
+                )
+            );
         }
     }
 

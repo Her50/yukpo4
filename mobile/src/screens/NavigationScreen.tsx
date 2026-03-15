@@ -393,15 +393,23 @@ const NavigationScreen: React.FC = () => {
         if (!destCoords && (selectedLocation as any)?.latitude && (selectedLocation as any)?.longitude) { destCoords = { lat: (selectedLocation as any).latitude, lng: (selectedLocation as any).longitude }; setDestinationCoords(destCoords); }
         if (!destCoords && !destination.trim()) { Alert.alert(t('navigation.destinationRequired'), t('navigation.selectDestination')); return; }
         setLoading(true);
+        console.log('[Navigation] 🔍 searchRoutes START — dest:', destination, 'coords:', destCoords, 'mode:', travelMode);
         const modeLabel = travelMode === 'walking' ? t('navigation.walking') : travelMode === 'bicycling' ? t('navigation.bicycling') : travelMode === 'transit' ? t('navigation.transit') : t('navigation.car');
         try {
             const origin = await getCurrentPosition();
+            console.log('[Navigation] 📍 Origin:', origin);
             if (!origin) { Alert.alert(t('message.error'), t('navigation.positionUnavailable')); setLoading(false); return; }
             if (!destCoords) { destCoords = await geocodeDestination(destination); if (!destCoords) { Alert.alert(t('message.error'), t('navigation.destinationNotFound')); setLoading(false); return; } setDestinationCoords(destCoords); }
             const avoidList: string[] = []; if (avoidTolls) avoidList.push('tolls'); if (avoidHighways) avoidList.push('highways'); if (avoidFerries) avoidList.push('ferries');
+            console.log('[Navigation] 📡 Calling API: origin=', origin, 'dest=', destCoords, 'mode=', travelMode);
             const response = await apiPost('/api/navigation/routes', { origin, destination: destCoords, alternatives: true, avoid: avoidList, traffic_model: 'best_guess', mode: travelMode, waypoints: waypoints.length > 0 ? waypoints.map(wp => ({ lat: wp.lat, lng: wp.lng })) : undefined }) as any;
+            console.log('[Navigation] 📨 API Response — success:', response?.success, 'hasData:', !!response?.data, 'routesCount:', response?.data?.routes?.length, 'error:', response?.error);
+            if (response?.data?.routes) {
+                console.log('[Navigation] 📋 Routes raw:', response.data.routes.map((r: any, i: number) => `[${i}] polyline=${!!r?.overview_polyline}(${(r?.overview_polyline || '').length}chars) dist=${r?.distance_meters} dur=${r?.duration_seconds} steps=${Array.isArray(r?.steps) ? r.steps.length : 'N/A'}`));
+            }
             if (response?.success === false) {
                 const errMsg = response?.error || response?.message || '';
+                console.warn('[Navigation] ❌ API error:', errMsg);
                 if (errMsg.toLowerCase().includes('mode') || errMsg.toLowerCase().includes('non disponible') || errMsg.toLowerCase().includes('zero_results')) {
                     Alert.alert(t('navigation.modeUnavailable', { mode: modeLabel }), t('navigation.modeUnavailableMsg', { mode: modeLabel }), [
                         { text: `🚗 ${t('navigation.car')}`, onPress: () => { setTravelMode('driving'); setTimeout(() => searchRoutesRef.current(), 200); } },
@@ -412,11 +420,22 @@ const NavigationScreen: React.FC = () => {
             }
             else if (response?.data?.routes?.length > 0) {
                 const valid = response.data.routes.filter((r: any) => r?.overview_polyline && r.distance_meters > 0 && r.duration_seconds > 0 && Array.isArray(r.steps));
-                if (!valid.length) { Alert.alert(t('navigation.noRoute'), t('navigation.noRouteFound')); setLoading(false); return; }
+                console.log('[Navigation] ✅ Valid routes after filter:', valid.length, '/', response.data.routes.length);
+                if (!valid.length) {
+                    console.warn('[Navigation] ⚠️ All routes filtered out! Raw routes:', JSON.stringify(response.data.routes.map((r: any) => ({ polyline: (r?.overview_polyline || '').substring(0, 20), dist: r?.distance_meters, dur: r?.duration_seconds, stepsType: typeof r?.steps }))));
+                    Alert.alert(t('navigation.noRoute'), t('navigation.noRouteFound')); setLoading(false); return;
+                }
                 setRoutes(valid); setSelectedRoute(valid[0]);
+                showToast(`🛣️ ${valid.length} itinéraire${valid.length > 1 ? 's' : ''} trouvé${valid.length > 1 ? 's' : ''} !`);
+                // ✅ Auto-scroll vers les résultats après un court délai pour que le state se mette à jour
+                setTimeout(() => { scrollViewRef.current?.scrollTo({ y: 400, animated: true }); }, 300);
                 try { await loadPointsOfInterestSafely(valid[0]); setTimeout(() => loadCheckpointsSafely(), 800); } catch { }
-            } else { Alert.alert(t('navigation.noRoute'), t('navigation.noRouteForMode', { mode: modeLabel })); }
+            } else {
+                console.warn('[Navigation] ⚠️ No routes in response. Full response keys:', response?.data ? Object.keys(response.data) : 'no data');
+                Alert.alert(t('navigation.noRoute'), t('navigation.noRouteForMode', { mode: modeLabel }));
+            }
         } catch (e: any) {
+            console.error('[Navigation] 💥 searchRoutes exception:', e?.message || e, 'data:', e?.data);
             const errMsg = e?.data?.message || e?.data?.error || e?.message || e?.error || '';
             const errLower = errMsg.toLowerCase();
             if (errLower.includes('mode') || errLower.includes('non disponible') || errLower.includes('zero_results') || errLower.includes('aucun itin')) {

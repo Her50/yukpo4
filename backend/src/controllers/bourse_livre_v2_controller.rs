@@ -459,15 +459,6 @@ pub async fn analyze_recto_verso(
     ))
 }
 
-/// Extraire le base64 d'un data URI ou retourner tel quel
-fn extract_base64(input: &str) -> String {
-    if input.starts_with("data:image") {
-        input.split(',').nth(1).unwrap_or(input).to_string()
-    } else {
-        input.to_string()
-    }
-}
-
 // ============================================================================
 // PROGRAMMES SCOLAIRES (Admin)
 // ============================================================================
@@ -752,6 +743,138 @@ pub async fn get_courier_packages(
     .map_err(|e| AppError::Internal(format!("Erreur récupération paquets coursier: {}", e)))?;
 
     Ok(Json(json!({ "success": true, "packages": packages })))
+}
+
+/// GET /api/bourse-livre/v2/packages/:id/detail
+/// Détail complet d'un paquet pour le coursier: livres avec images, infos utilisateurs, itinéraire clair
+pub async fn get_package_detail_for_courier(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Path(package_id): Path<i32>,
+) -> AppResult<impl IntoResponse> {
+    // Récupérer le paquet
+    let package = sqlx::query_as::<_, BookDeliveryPackage>(
+        "SELECT * FROM book_delivery_packages WHERE id = $1",
+    )
+    .bind(package_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur récupération paquet: {}", e)))?
+    .ok_or_else(|| AppError::NotFound("Paquet non trouvé".to_string()))?;
+
+    // Vérifier accès: coursier assigné, expéditeur ou destinataire
+    let is_authorized = package.coursier_id == Some(user_id)
+        || package.expediteur_id == user_id
+        || package.destinataire_id == user_id;
+    if !is_authorized {
+        return Err(AppError::Forbidden("Accès refusé à ce paquet".to_string()));
+    }
+
+    // Récupérer infos expéditeur
+    let expediteur_info =
+        sqlx::query("SELECT id, nom, prenom, telephone, photo_url FROM users WHERE id = $1")
+            .bind(package.expediteur_id)
+            .fetch_optional(&state.pg)
+            .await
+            .ok()
+            .flatten();
+
+    // Récupérer infos destinataire
+    let destinataire_info =
+        sqlx::query("SELECT id, nom, prenom, telephone, photo_url FROM users WHERE id = $1")
+            .bind(package.destinataire_id)
+            .fetch_optional(&state.pg)
+            .await
+            .ok()
+            .flatten();
+
+    // Enrichir les livres avec images depuis la DB (au cas où le JSON livres n'a pas les images)
+    let mut livres_enrichis = Vec::new();
+    if let Some(livres_array) = package.livres.as_array() {
+        for livre_json in livres_array {
+            let livre_id = livre_json.get("livre_id").and_then(|v| v.as_i64()).unwrap_or(0) as i32;
+            if livre_id > 0 {
+                if let Ok(Some(livre_db)) =
+                    sqlx::query_as::<_, crate::models::livre_scolaire::LivreScolaire>(
+                        "SELECT * FROM livres_scolaires WHERE id = $1",
+                    )
+                    .bind(livre_id)
+                    .fetch_optional(&state.pg)
+                    .await
+                {
+                    livres_enrichis.push(json!({
+                        "livre_id": livre_db.id,
+                        "titre": livre_db.titre,
+                        "auteur": livre_db.auteur,
+                        "matiere": livre_db.matiere,
+                        "classe_actuelle": livre_db.classe_actuelle,
+                        "classe_souhaitee": livre_db.classe_souhaitee,
+                        "etat_livre": livre_db.etat_livre,
+                        "image_recto": livre_db.image_recto,
+                        "image_verso": livre_db.image_verso,
+                        "valeur": livre_db.valeur_calculee,
+                        "mode": livre_db.mode_listing
+                    }));
+                } else {
+                    livres_enrichis.push(livre_json.clone());
+                }
+            } else {
+                livres_enrichis.push(livre_json.clone());
+            }
+        }
+    }
+
+    // Construire les infos utilisateurs pour le coursier
+    let format_user = |row: &sqlx::postgres::PgRow| -> serde_json::Value {
+        use sqlx::Row;
+        json!({
+            "id": row.get::<i32, _>("id"),
+            "nom": row.try_get::<String, _>("nom").ok().unwrap_or_default(),
+            "prenom": row.try_get::<String, _>("prenom").ok().unwrap_or_default(),
+            "telephone": row.try_get::<String, _>("telephone").ok().unwrap_or_default(),
+            "photo_url": row.try_get::<String, _>("photo_url").ok()
+        })
+    };
+
+    // Construire l'itinéraire clair pour le coursier
+    let itineraire_coursier = json!({
+        "etape_1_pickup": {
+            "action": "RÉCUPÉRER le(s) livre(s)",
+            "chez": expediteur_info.as_ref().map(|r| format_user(r)),
+            "gps": package.expediteur_gps,
+            "adresse": package.expediteur_adresse,
+            "instructions": package.expediteur_instructions,
+            "livres_a_recuperer": livres_enrichis.len()
+        },
+        "etape_2_dropoff": {
+            "action": "LIVRER le(s) livre(s)",
+            "chez": destinataire_info.as_ref().map(|r| format_user(r)),
+            "gps": package.destinataire_gps,
+            "adresse": package.destinataire_adresse,
+            "instructions": package.destinataire_instructions
+        }
+    });
+
+    Ok(Json(json!({
+        "success": true,
+        "package": {
+            "id": package.id,
+            "reference": package.reference,
+            "statut": package.statut,
+            "nombre_livres": package.nombre_livres,
+            "valeur_totale": package.valeur_totale,
+            "frais_livraison": package.frais_livraison,
+            "devise": package.devise.as_deref().unwrap_or("XAF"),
+            "eta_minutes": package.eta_minutes,
+            "distance_metres": package.distance_totale_metres,
+            "created_at": package.created_at,
+        },
+        "livres": livres_enrichis,
+        "expediteur": expediteur_info.as_ref().map(|r| format_user(r)),
+        "destinataire": destinataire_info.as_ref().map(|r| format_user(r)),
+        "itineraire_coursier": itineraire_coursier,
+        "troc_ids": package.troc_ids
+    })))
 }
 
 /// PATCH /api/bourse-livre/v2/packages/:id/status
@@ -1944,14 +2067,10 @@ pub async fn browse_books_by_class(
         offset
     );
 
-    // Tenter le cache Redis
-    if let Some(ref redis) = state.redis {
-        if let Ok(cached) = redis.get::<String>(&cache_key).await {
-            if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&cached) {
-                info!("[browse_books_by_class] Cache hit: {}", cache_key);
-                return Ok(Json(parsed));
-            }
-        }
+    // Tenter le cache Redis via CacheService
+    if let Ok(Some(cached)) = state.cache_service.get::<serde_json::Value>(&cache_key).await {
+        info!("[browse_books_by_class] Cache hit: {}", cache_key);
+        return Ok(Json(cached));
     }
 
     // Construire la requête SQL dynamique
@@ -2087,12 +2206,11 @@ pub async fn browse_books_by_class(
         }
     });
 
-    // Sauvegarder en cache Redis (TTL 5 minutes)
-    if let Some(ref redis) = state.redis {
-        if let Ok(json_str) = serde_json::to_string(&response) {
-            let _ = redis.set_ex::<String>(&cache_key, &json_str, 300).await;
-        }
-    }
+    // Sauvegarder en cache Redis (TTL 5 minutes) via CacheService
+    let _ = state
+        .cache_service
+        .set_with_ttl(&cache_key, &response, std::time::Duration::from_secs(300))
+        .await;
 
     Ok(Json(response))
 }
@@ -2102,14 +2220,11 @@ pub async fn browse_books_by_class(
 pub async fn get_classes_with_programmes(
     State(state): State<Arc<AppState>>,
 ) -> AppResult<impl IntoResponse> {
-    // Cache Redis
+    // Cache Redis via CacheService
     let cache_key = "bourse_livre:classes_programmes";
-    if let Some(ref redis) = state.redis {
-        if let Ok(cached) = redis.get::<String>(cache_key).await {
-            if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&cached) {
-                return Ok(Json(parsed));
-            }
-        }
+    if let Ok(Some(cached)) = state.cache_service.get::<serde_json::Value>(cache_key).await {
+        info!("[get_classes_with_programmes] Cache hit");
+        return Ok(Json(cached));
     }
 
     let rows = sqlx::query(
@@ -2152,11 +2267,11 @@ pub async fn get_classes_with_programmes(
         "classes": classes
     });
 
-    if let Some(ref redis) = state.redis {
-        if let Ok(json_str) = serde_json::to_string(&response) {
-            let _ = redis.set_ex::<String>(cache_key, &json_str, 600).await;
-        }
-    }
+    // Sauvegarder en cache Redis (TTL 10 minutes) via CacheService
+    let _ = state
+        .cache_service
+        .set_with_ttl(cache_key, &response, std::time::Duration::from_secs(600))
+        .await;
 
     Ok(Json(response))
 }

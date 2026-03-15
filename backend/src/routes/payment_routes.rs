@@ -345,21 +345,30 @@ pub fn payment_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         confirm_payment, get_payment_history, initiate_payment,
     };
     use crate::middlewares::jwt::jwt_auth;
+    use crate::middlewares::rate_limit::user_rate_limit_middleware;
     use axum::middleware;
 
-    // Routes protégées par JWT (utilisateur authentifié)
-    let protected = Router::new()
+    // Routes sensibles (initiation/confirmation paiement) : JWT + rate limiting strict
+    let payment_critical = Router::new()
         .route("/api/payments/initiate", post(initiate_payment))
         .route("/api/payments/confirm", post(confirm_payment))
-        .route("/api/payments/history", get(get_payment_history))
-        .route("/methods", get(get_available_payment_methods))
         .route("/validate-phone", post(validate_phone_number))
+        .layer(middleware::from_fn_with_state(
+            state.clone(),
+            user_rate_limit_middleware,
+        ))
         .layer(middleware::from_fn(jwt_auth));
 
-    // Routes publiques (webhooks externes, pas de JWT)
+    // Routes de lecture (historique, méthodes) : JWT, rate limiting standard
+    let payment_read = Router::new()
+        .route("/api/payments/history", get(get_payment_history))
+        .route("/methods", get(get_available_payment_methods))
+        .layer(middleware::from_fn(jwt_auth));
+
+    // Routes publiques (webhooks externes, pas de JWT ni rate limiting)
     let public = Router::new()
         .route("/webhook/mtn", post(webhook_mtn_money))
         .route("/webhook/orange", post(webhook_orange_money));
 
-    protected.merge(public).with_state(state)
+    payment_critical.merge(payment_read).merge(public).with_state(state)
 }
