@@ -23,6 +23,7 @@ import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useToaster } from '../../components/ToasterProvider';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { ExaminationType, LabAnalysisResult, laboratoryService, PathologySearchResult } from '../../services/laboratoryService';
 import { hapticPress } from '../../utils/hapticFeedback';
@@ -32,6 +33,7 @@ type SortOption = 'relevance' | 'price_asc' | 'price_desc' | 'distance_asc' | 'n
 const LaboratoireHomeScreen: React.FC = () => {
     const navigation = useNavigation();
     const { location } = useLocation();
+    const { t } = useLanguageSafe();
     const toaster = useToaster();
 
     // États de recherche
@@ -228,7 +230,7 @@ const LaboratoireHomeScreen: React.FC = () => {
             if (source === 'camera') {
                 const { status: cameraStatus } = await ImagePicker.requestCameraPermissionsAsync();
                 if (cameraStatus !== 'granted') {
-                    Alert.alert('Permission requise', 'Veuillez autoriser l\'accès à la caméra');
+                    Alert.alert(t('labHome.permissionRequired'), t('labHome.allowCamera'));
                     return;
                 }
 
@@ -241,7 +243,7 @@ const LaboratoireHomeScreen: React.FC = () => {
             } else {
                 const { status: galleryStatus } = await ImagePicker.requestMediaLibraryPermissionsAsync();
                 if (galleryStatus !== 'granted') {
-                    Alert.alert('Permission requise', 'Veuillez autoriser l\'accès à la galerie');
+                    Alert.alert(t('labHome.permissionRequired'), t('labHome.allowGallery'));
                     return;
                 }
 
@@ -283,8 +285,8 @@ const LaboratoireHomeScreen: React.FC = () => {
 
     const showImageSourcePicker = () => {
         Alert.alert(
-            'Choisir une source',
-            'Comment souhaitez-vous ajouter l\'image?',
+            t('labHome.chooseSource'),
+            t('labHome.chooseSourceMsg'),
             [
                 {
                     text: 'Caméra',
@@ -557,8 +559,8 @@ const LaboratoireHomeScreen: React.FC = () => {
                                         onPress={() => {
                                             hapticPress();
                                             Alert.alert(
-                                                'Réserver un examen',
-                                                `Réserver un examen à "${labName}" ?`,
+                                                t('labHome.bookExam'),
+                                                t('labHome.bookExamConfirm', { lab: labName }),
                                                 [
                                                     { text: 'Annuler', style: 'cancel' },
                                                     {
@@ -566,9 +568,9 @@ const LaboratoireHomeScreen: React.FC = () => {
                                                         onPress: async () => {
                                                             try {
                                                                 const resp = await laboratoryService.searchExaminationTypes(searchQuery || 'analyse', 1);
-                                                                Alert.alert('Succès', 'Demande de réservation envoyée ! Le laboratoire vous contactera.');
+                                                                Alert.alert(t('message.success'), t('labHome.bookingRequestSent'));
                                                             } catch (e) {
-                                                                Alert.alert('Info', 'La réservation en ligne sera bientôt disponible.');
+                                                                Alert.alert(t('labHome.info'), t('labHome.bookingSoonAvailable'));
                                                             }
                                                         },
                                                     },
@@ -588,11 +590,11 @@ const LaboratoireHomeScreen: React.FC = () => {
                                                 const types = r?.data || r || [];
                                                 if (Array.isArray(types) && types.length > 0) {
                                                     const list = types.slice(0, 8).map((t: any) => `• ${t.name || t}`).join('\n');
-                                                    Alert.alert('Types d\'examens', list);
+                                                    Alert.alert(t('labHome.examTypes'), list);
                                                 } else {
-                                                    Alert.alert('Info', 'Liste des examens non disponible.');
+                                                    Alert.alert(t('labHome.info'), t('labHome.examListUnavailable'));
                                                 }
-                                            }).catch(() => Alert.alert('Info', 'Service indisponible.'));
+                                            }).catch(() => Alert.alert(t('labHome.info'), t('labHome.serviceUnavailable')));
                                         }}
                                     >
                                         <SafeIcon name="list" size={14} color="#16A34A" type="lucide" />

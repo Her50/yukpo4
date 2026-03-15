@@ -22,6 +22,7 @@ import ChatModalMobile from '../../components/ChatModalMobile';
 import ProductCommentsSection from '../../components/ProductCommentsSection';
 import SafeIcon from '../../components/SafeIcon';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { apiGet, apiPost } from '../../services/api';
 import { ExaminationType, labService } from '../../services/labService';
 
@@ -56,6 +57,7 @@ const LaboratoireDetailsScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
     const { user } = useAuth();
+    const { t } = useLanguageSafe();
     const params = route.params as any;
 
     const [laboratoire, setLaboratoire] = useState<LaboratoireDetails | null>(null);
@@ -88,8 +90,8 @@ const LaboratoireDetailsScreen: React.FC = () => {
             setLoading(true);
             const response = await apiGet(`/api/laboratoires/${params.laboratoryId}`);
             if (response.success && response.data) setLaboratoire(response.data as LaboratoireDetails);
-            else { Alert.alert('Erreur', 'Impossible de charger les détails'); navigation.goBack(); }
-        } catch (error: any) { Alert.alert('Erreur', error.message || 'Impossible de charger'); navigation.goBack(); }
+            else { Alert.alert(t('message.error'), t('labDetails.cannotLoadDetails')); navigation.goBack(); }
+        } catch (error: any) { Alert.alert(t('message.error'), error.message || t('labDetails.cannotLoadDetails')); navigation.goBack(); }
         finally { setLoading(false); }
     };
 
@@ -115,13 +117,13 @@ const LaboratoireDetailsScreen: React.FC = () => {
     };
 
     const handleBook = async () => {
-        if (!user) { Alert.alert('Connexion requise', 'Veuillez vous connecter'); navigation.navigate('Login' as never); return; }
+        if (!user) { Alert.alert(t('labDetails.loginRequired'), t('labDetails.pleaseLogin')); navigation.navigate('Login' as never); return; }
         try {
             setBooking(true);
             const response = await apiPost(`/api/laboratoires/${params.laboratoryId}/book`, { notes: 'Réservation depuis l\'application mobile' });
-            if (response.success) Alert.alert('Réservation créée', 'Votre demande a été envoyée.', [{ text: 'OK', onPress: () => navigation.goBack() }]);
-            else Alert.alert('Erreur', response.error || 'Impossible de réserver');
-        } catch (error: any) { Alert.alert('Erreur', error.message || 'Impossible de réserver'); }
+            if (response.success) Alert.alert(t('labDetails.bookingCreated'), t('labDetails.bookingCreatedMsg'), [{ text: 'OK', onPress: () => navigation.goBack() }]);
+            else Alert.alert(t('message.error'), response.error || t('labDetails.cannotBook'));
+        } catch (error: any) { Alert.alert(t('message.error'), error.message || t('labDetails.cannotBook')); }
         finally { setBooking(false); }
     };
 
@@ -134,7 +136,7 @@ const LaboratoireDetailsScreen: React.FC = () => {
     };
 
     const handleBookExamination = (examinationType: ExaminationType) => {
-        if (!user) { Alert.alert('Connexion requise', 'Veuillez vous connecter'); navigation.navigate('Login' as never); return; }
+        if (!user) { Alert.alert(t('labDetails.loginRequired'), t('labDetails.pleaseLogin')); navigation.navigate('Login' as never); return; }
         setSelectedExamination(examinationType);
         setShowBookingModal(true);
     };
@@ -144,9 +146,9 @@ const LaboratoireDetailsScreen: React.FC = () => {
         try {
             setBookingExamination(true);
             const response = await labService.bookExamination(params.laboratoryId, { examination_type_id: selectedExamination.id, notes: bookingNotes.trim() || undefined });
-            if (response.success && response.data) Alert.alert('Réservation réussie', `Examen réservé (ID: ${response.data.examination_id})`, [{ text: 'OK', onPress: () => { setShowBookingModal(false); setSelectedExamination(null); setBookingNotes(''); } }]);
-            else Alert.alert('Erreur', response.error || 'Impossible de réserver');
-        } catch (error: any) { Alert.alert('Erreur', error.message || 'Impossible de réserver'); }
+            if (response.success && response.data) Alert.alert(t('labDetails.bookingSuccess'), `${t('labDetails.examBooked')} (ID: ${response.data.examination_id})`, [{ text: 'OK', onPress: () => { setShowBookingModal(false); setSelectedExamination(null); setBookingNotes(''); } }]);
+            else Alert.alert(t('message.error'), response.error || t('labDetails.cannotBook'));
+        } catch (error: any) { Alert.alert(t('message.error'), error.message || t('labDetails.cannotBook')); }
         finally { setBookingExamination(false); }
     };
 
@@ -160,18 +162,18 @@ const LaboratoireDetailsScreen: React.FC = () => {
     };
 
     const handleOpenChat = () => {
-        if (!user) { Alert.alert('Connexion requise', 'Veuillez vous connecter'); navigation.navigate('Login' as never); return; }
+        if (!user) { Alert.alert(t('labDetails.loginRequired'), t('labDetails.pleaseLogin')); navigation.navigate('Login' as never); return; }
         setShowChat(true);
     };
 
     const handleSearchPathology = async () => {
-        if (symptoms.length === 0) { Alert.alert('Erreur', 'Ajoutez au moins un symptôme'); return; }
+        if (symptoms.length === 0) { Alert.alert(t('message.error'), t('labDetails.addAtLeastOneSymptom')); return; }
         try {
             setSearchingPathology(true);
             const response = await labService.searchPathology(symptoms);
             if (response.success) { const resData = (response as any).data?.data || (response as any).data; setPathologyResult(resData); }
-            else Alert.alert('IA non disponible', 'La recherche par symptômes n\'est pas encore opérationnelle.');
-        } catch { Alert.alert('Erreur', 'Impossible d\'analyser les symptômes'); }
+            else Alert.alert(t('labDetails.aiUnavailable'), t('labDetails.symptomSearchUnavailable'));
+        } catch { Alert.alert(t('message.error'), t('labDetails.cannotAnalyzeSymptoms')); }
         finally { setSearchingPathology(false); }
     };
 
@@ -373,7 +375,7 @@ const LaboratoireDetailsScreen: React.FC = () => {
                         <SafeIcon name="chevron-right" size={18} color="#5EEAD4" />
                     </TouchableOpacity>
                     <TouchableOpacity style={st.fullBtn} onPress={() => {
-                        if (!user) { Alert.alert('Connexion requise', 'Veuillez vous connecter'); navigation.navigate('Login' as never); return; }
+                        if (!user) { Alert.alert(t('labDetails.loginRequired'), t('labDetails.pleaseLogin')); navigation.navigate('Login' as never); return; }
                         navigation.navigate('MyLabExaminations' as never);
                     }}>
                         <SafeIcon name="clipboard-list" size={18} color="#0D9488" />

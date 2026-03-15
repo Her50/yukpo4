@@ -24,6 +24,8 @@ Génère un JSON strictement conforme pour une question d'assistance :
 - `reponse_ia` : réponse claire, synthétique et utile
 - Réponse basée sur la connaissance de Yukpo
 
+**Langue de réponse :** Réponds TOUJOURS en {language}.
+
 **Input utilisateur :** {user_input}
 
 **JSON :** 

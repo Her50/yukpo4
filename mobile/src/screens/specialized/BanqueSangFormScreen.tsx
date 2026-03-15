@@ -21,6 +21,7 @@ import ModernGPSModal from '../../components/ModernGPSModal';
 import SafeIcon from '../../components/SafeIcon';
 import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { clearSavedFormData, useFormAutoSave } from '../../hooks/useFormAutoSave';
 import { useFormValidation } from '../../hooks/useFormValidation';
@@ -35,6 +36,7 @@ const BanqueSangFormScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
     const { user } = useAuth();
+    const { t } = useLanguageSafe();
     const { location } = useLocation();
     const [serviceId, setServiceId] = useState<number | null>((route.params as any)?.serviceId || null);
     const specializedServiceId = (route.params as any)?.specializedServiceId as number | undefined;
@@ -160,25 +162,25 @@ const BanqueSangFormScreen: React.FC = () => {
     const handleGPSSelect = (c: string) => { setSelectedGPS(c); setShowGPSModal(false); };
 
     const handleUpdateStocks = async () => {
-        if (!bankData?.id) { Alert.alert('Erreur', 'Banque non enregistrée'); return; }
+        if (!bankData?.id) { Alert.alert(t('message.error'), t('banqueSang.bankNotRegistered')); return; }
         setLoading(true);
         try {
             await apiPost(`/api/banques-sang/${bankData.id}/stocks`, { stocks });
-            Alert.alert('Succès', 'Stocks mis à jour !');
-        } catch (e: any) { Alert.alert('Erreur', e.message || 'Erreur mise à jour stocks'); } finally { setLoading(false); }
+            Alert.alert(t('message.success'), t('banqueSang.stocksUpdated'));
+        } catch (e: any) { Alert.alert(t('message.error'), e.message || t('banqueSang.stocksUpdateError')); } finally { setLoading(false); }
     };
 
     const handleSubmit = async () => {
-        if (!formData.nom.trim()) { Alert.alert('Erreur', 'Nom obligatoire'); return; }
+        if (!formData.nom.trim()) { Alert.alert(t('message.error'), t('banqueSang.nameRequired')); return; }
         setLoading(true);
         let finalServiceId = serviceId;
         if (!finalServiceId && user?.id) {
             try {
                 const resp = await servicesApi.createService({ titre_service: formData.nom, description: 'Banque de sang', category: 'sante' });
                 if (resp.success && resp.data && typeof resp.data === 'object' && 'id' in resp.data) { finalServiceId = (resp.data as any).id; setServiceId(finalServiceId); }
-            } catch (e) { Alert.alert('Erreur', 'Impossible de créer le service'); setLoading(false); return; }
+            } catch (e) { Alert.alert(t('message.error'), t('banqueSang.cannotCreateService')); setLoading(false); return; }
         }
-        if (!finalServiceId) { Alert.alert('Erreur', 'Service ID manquant'); setLoading(false); return; }
+        if (!finalServiceId) { Alert.alert(t('message.error'), t('banqueSang.serviceIdMissing')); setLoading(false); return; }
         try {
             const payload = {
                 service_id: finalServiceId, nom: formData.nom, adresse: formData.adresse || null,
@@ -193,9 +195,9 @@ const BanqueSangFormScreen: React.FC = () => {
             const resp = await apiPost('/api/banques-sang', payload);
             if (resp.success) {
                 await clearSavedFormData(STORAGE_KEY);
-                Alert.alert('Succès', 'Banque de sang enregistrée !', [{ text: 'OK', onPress: () => { setIsDashboardMode(true); setActiveTab('overview'); handleRefresh(); } }]);
-            } else { Alert.alert('Erreur', (resp as any).error || 'Impossible d\'enregistrer'); }
-        } catch (e: any) { Alert.alert('Erreur', e.message || 'Erreur'); } finally { setLoading(false); }
+                Alert.alert(t('message.success'), t('banqueSang.bankRegistered'), [{ text: 'OK', onPress: () => { setIsDashboardMode(true); setActiveTab('overview'); handleRefresh(); } }]);
+            } else { Alert.alert(t('message.error'), (resp as any).error || t('banqueSang.cannotRegister')); }
+        } catch (e: any) { Alert.alert(t('message.error'), e.message || t('banqueSang.genericError')); } finally { setLoading(false); }
     };
 
     if (initialLoading) return <View style={s.loadingScreen}><ActivityIndicator size="large" color="#DC2626" /><Text style={s.loadingText}>Chargement...</Text></View>;

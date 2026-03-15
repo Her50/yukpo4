@@ -418,6 +418,12 @@ reg('LivreScolaireHome', () => import('../screens/specialized/LivreScolaireHomeS
 reg('LivreScolaireList', () => import('../screens/specialized/LivreScolaireListScreen'));
 reg('LivreScolaireSearch', () => import('../screens/specialized/LivreScolaireSearchScreen'));
 reg('MesLivres', () => import('../screens/specialized/MesLivresScreen'));
+// ✅ V2 Bourse du Livre (5)
+reg('BookUploadV2', () => import('../screens/specialized/BookUploadV2Screen'));
+reg('BookRecapV2', () => import('../screens/specialized/BookRecapV2Screen'));
+reg('BookPackages', () => import('../screens/specialized/BookPackagesScreen'));
+reg('BookBuyDirect', () => import('../screens/bourse-livre/BookBuyDirectScreen'));
+reg('AdminProgrammeUpload', () => import('../screens/bourse-livre/AdminProgrammeUploadScreen'));
 
 // ---------------------------------------------------------------------------
 // Specialized - Menu / Recettes (4)

@@ -312,6 +312,31 @@ const LivreScolaireHomeScreen: React.FC = () => {
                             )}
                         </View>
                     </View>
+
+                    {/* V2 Quick Actions */}
+                    <View style={styles.v2ActionsRow}>
+                        <TouchableOpacity
+                            style={styles.v2ActionBtn}
+                            onPress={() => { hapticPress(); (navigation as any).navigate('BookUploadV2'); }}
+                        >
+                            <SafeIcon name="camera" size={18} color="#FFFFFF" type="lucide" />
+                            <Text style={styles.v2ActionText}>Envoyer livres</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={styles.v2ActionBtn}
+                            onPress={() => { hapticPress(); (navigation as any).navigate('BookPackages'); }}
+                        >
+                            <SafeIcon name="package" size={18} color="#FFFFFF" type="lucide" />
+                            <Text style={styles.v2ActionText}>Mes paquets</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={styles.v2ActionBtn}
+                            onPress={() => { hapticPress(); (navigation as any).navigate('MesLivres'); }}
+                        >
+                            <SafeIcon name="book" size={18} color="#FFFFFF" type="lucide" />
+                            <Text style={styles.v2ActionText}>Mes livres</Text>
+                        </TouchableOpacity>
+                    </View>
                 </LinearGradient>
             </View>
 
@@ -650,6 +675,27 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(255, 255, 255, 0.2)',
         justifyContent: 'center',
         alignItems: 'center',
+    },
+    v2ActionsRow: {
+        flexDirection: 'row',
+        marginTop: 12,
+        gap: 8,
+    },
+    v2ActionBtn: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        backgroundColor: 'rgba(255, 255, 255, 0.25)',
+        borderRadius: 10,
+        paddingVertical: 10,
+        paddingHorizontal: 8,
+    },
+    v2ActionText: {
+        color: '#FFFFFF',
+        fontSize: 11,
+        fontWeight: '700',
     },
     searchContainer: {
         marginTop: 8,

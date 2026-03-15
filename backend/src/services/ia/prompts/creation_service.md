@@ -112,6 +112,8 @@ Si le service contient des prestations (produits avec `type_donnee: "autocomplet
 - Site web doit inclure le protocole (ex: https://www.example.com)
 - Si une information n'est pas disponible, utilise "Non spécifié" comme valeur
 
+**Langue de réponse :** Réponds TOUJOURS en {language}.
+
 **Input utilisateur :** {user_input}
 
 **JSON :** 

@@ -23,6 +23,7 @@ import ProductCommentsSection from '../../components/ProductCommentsSection';
 import SafeIcon from '../../components/SafeIcon';
 import { NativeInput } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { apiGet, apiPost } from '../../services/api';
 import {
     MedicationAvailability,
@@ -62,6 +63,7 @@ const PharmacieDetailsScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
     const { user } = useAuth();
+    const { t } = useLanguageSafe();
     const params = route.params as any;
 
     const [pharmacie, setPharmacie] = useState<PharmacieDetails | null>(null);
@@ -101,11 +103,11 @@ const PharmacieDetailsScreen: React.FC = () => {
             if (response.success && response.data) {
                 setPharmacie(response.data as PharmacieDetails);
             } else {
-                Alert.alert('Erreur', 'Impossible de charger les détails de la pharmacie');
+                Alert.alert(t('message.error'), t('pharmacieDetails.cannotLoadDetails'));
                 navigation.goBack();
             }
         } catch (error: any) {
-            Alert.alert('Erreur', error.message || 'Impossible de charger les détails');
+            Alert.alert(t('message.error'), error.message || t('pharmacieDetails.cannotLoadDetails'));
             navigation.goBack();
         } finally { setLoading(false); }
     };
@@ -155,37 +157,37 @@ const PharmacieDetailsScreen: React.FC = () => {
     };
 
     const handleCheckAvailability = async () => {
-        if (!searchMedication.trim()) { Alert.alert('Erreur', 'Veuillez entrer le nom d\'un médicament'); return; }
-        if (!user) { Alert.alert('Connexion requise', 'Veuillez vous connecter'); navigation.navigate('Login' as never); return; }
+        if (!searchMedication.trim()) { Alert.alert(t('message.error'), t('pharmacieDetails.enterMedicationName')); return; }
+        if (!user) { Alert.alert(t('pharmacieDetails.loginRequired'), t('pharmacieDetails.pleaseLogin')); navigation.navigate('Login' as never); return; }
         setCheckingAvailability(true);
         try {
             const response = await pharmacyService.checkAvailability(params.pharmacieId, searchMedication.trim());
             if (response.success && response.data) { setMedicationAvailability(response.data); setShowSearchModal(false); }
-            else Alert.alert('Erreur', response.error || 'Impossible de vérifier');
-        } catch (error: any) { Alert.alert('Erreur', error.message || 'Impossible de vérifier'); }
+            else Alert.alert(t('message.error'), response.error || t('pharmacieDetails.cannotCheck'));
+        } catch (error: any) { Alert.alert(t('message.error'), error.message || t('pharmacieDetails.cannotCheck')); }
         finally { setCheckingAvailability(false); }
     };
 
     const handleReserveMedication = async () => {
-        if (!medicationAvailability?.available || !user) { Alert.alert('Erreur', 'Médicament non disponible ou connexion requise'); return; }
+        if (!medicationAvailability?.available || !user) { Alert.alert(t('message.error'), t('pharmacieDetails.medicationUnavailable')); return; }
         try {
             const response = await pharmacyService.reserveMedication(params.pharmacieId, medicationAvailability.medication.name, medicationAvailability.requested_quantity || 1);
             if (response.success && response.data) {
-                Alert.alert('Réservation réussie', `ID: ${response.data.reservation_id} — Expire le ${new Date(response.data.expiry_time).toLocaleString()}`);
+                Alert.alert(t('pharmacieDetails.reservationSuccess'), `ID: ${response.data.reservation_id} — ${t('pharmacieDetails.expiresAt')} ${new Date(response.data.expiry_time).toLocaleString()}`);
                 setMedicationAvailability(null); setSearchMedication('');
-            } else Alert.alert('Erreur', response.error || 'Impossible de réserver');
-        } catch (error: any) { Alert.alert('Erreur', error.message || 'Impossible de réserver'); }
+            } else Alert.alert(t('message.error'), response.error || t('pharmacieDetails.cannotReserve'));
+        } catch (error: any) { Alert.alert(t('message.error'), error.message || t('pharmacieDetails.cannotReserve')); }
     };
 
     const handleCheckInteractions = async () => {
-        if (medicationsForInteraction.length === 0) { Alert.alert('Erreur', 'Ajoutez au moins un médicament'); return; }
-        if (!user) { Alert.alert('Connexion requise', 'Veuillez vous connecter'); navigation.navigate('Login' as never); return; }
+        if (medicationsForInteraction.length === 0) { Alert.alert(t('message.error'), t('pharmacieDetails.addAtLeastOneMedication')); return; }
+        if (!user) { Alert.alert(t('pharmacieDetails.loginRequired'), t('pharmacieDetails.pleaseLogin')); navigation.navigate('Login' as never); return; }
         setCheckingInteractions(true);
         try {
             const response = await pharmacyService.checkInteractions(medicationsForInteraction);
             if (response.success && response.data) setInteractionResult(response.data.interaction);
-            else Alert.alert('Erreur', response.error || 'Impossible de vérifier');
-        } catch (error: any) { Alert.alert('Erreur', error.message || 'Impossible de vérifier'); }
+            else Alert.alert(t('message.error'), response.error || t('pharmacieDetails.cannotCheck'));
+        } catch (error: any) { Alert.alert(t('message.error'), error.message || t('pharmacieDetails.cannotCheck')); }
         finally { setCheckingInteractions(false); }
     };
 
@@ -216,7 +218,7 @@ const PharmacieDetailsScreen: React.FC = () => {
     };
 
     const handleOpenChat = () => {
-        if (!user) { Alert.alert('Connexion requise', 'Veuillez vous connecter'); navigation.navigate('Login' as never); return; }
+        if (!user) { Alert.alert(t('pharmacieDetails.loginRequired'), t('pharmacieDetails.pleaseLogin')); navigation.navigate('Login' as never); return; }
         setShowChat(true);
     };
 
@@ -419,7 +421,7 @@ const PharmacieDetailsScreen: React.FC = () => {
                 {/* Boutons supplémentaires */}
                 <View style={st.section}>
                     <TouchableOpacity style={st.fullBtn} onPress={() => {
-                        if (!user) { Alert.alert('Connexion requise', 'Veuillez vous connecter'); navigation.navigate('Login' as never); return; }
+                        if (!user) { Alert.alert(t('pharmacieDetails.loginRequired'), t('pharmacieDetails.pleaseLogin')); navigation.navigate('Login' as never); return; }
                         navigation.navigate('MyPharmacyOrders' as never);
                     }}>
                         <SafeIcon name="clipboard-list" size={18} color="#3B82F6" />

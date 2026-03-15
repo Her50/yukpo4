@@ -304,7 +304,7 @@ const CreatePubliciteScreen: React.FC = () => {
             existingNoticeShownRef.current = true;
             Alert.alert(
                 'ℹ️ Yukpo IA',
-                'Les vidéos existantes ne sont pas rechargées automatiquement. Pensez à les importer à nouveau ou à générer une nouvelle version carrée avec Yukpo IA.',
+                t('createPublicite.existingNotice'),
             );
         }
     }, [isExistingMode]);
@@ -624,7 +624,7 @@ const CreatePubliciteScreen: React.FC = () => {
             // ✅ CORRIGÉ: Protection contre undefined pour MediaType.Videos
             if (!ImagePicker || !ImagePicker.MediaType) {
                 console.error('[CreatePubliciteScreen] ImagePicker ou MediaType est undefined');
-                Alert.alert('Erreur', 'Impossible d\'accéder à la galerie. Veuillez réessayer.');
+                Alert.alert(t('message.error'), t('createPublicite.galleryError'));
                 return;
             }
 
@@ -672,12 +672,12 @@ const CreatePubliciteScreen: React.FC = () => {
                     ]);
                 } catch (thumbError) {
                     console.error('Erreur génération miniature:', thumbError);
-                    Alert.alert(t('message.error'), 'Impossible de générer la miniature de la vidéo');
+                    Alert.alert(t('message.error'), t('createPublicite.thumbnailError'));
                 }
             }
         } catch (error) {
             console.error('Erreur sélection vidéo:', error);
-            Alert.alert(t('message.error'), 'Impossible de sélectionner la vidéo');
+            Alert.alert(t('message.error'), t('createPublicite.videoSelectError'));
         }
     };
 
@@ -685,7 +685,7 @@ const CreatePubliciteScreen: React.FC = () => {
     const handleCreatePublicite = async () => {
         // Validation basique
         if (!titre.trim()) {
-            Alert.alert(t('message.error'), 'Veuillez saisir un titre pour la publicité');
+            Alert.alert(t('message.error'), t('createPublicite.titleRequired'));
             return;
         }
 
@@ -696,7 +696,7 @@ const CreatePubliciteScreen: React.FC = () => {
         }
 
         if (!titre.trim()) {
-            Alert.alert(t('message.error'), 'Veuillez entrer un titre pour la publicité');
+            Alert.alert(t('message.error'), t('createPublicite.titleRequired'));
             return;
         }
 
@@ -706,7 +706,7 @@ const CreatePubliciteScreen: React.FC = () => {
 
             const balanceResponse = await apiGet('/api/users/balance');
             if (!balanceResponse.success) {
-                Alert.alert(t('message.error'), 'Impossible de vérifier votre solde');
+                Alert.alert(t('message.error'), t('createPublicite.balanceCheckError'));
                 setLoading(false);
                 return;
             }
@@ -721,12 +721,12 @@ const CreatePubliciteScreen: React.FC = () => {
                 Alert.alert(
                     `💸 ${t('publicite.balance_insufficient')}`,
                     `${t('publicite.total_cost')} : ${coutEstime.toLocaleString()} ${userCurrency}\n` +
-                    `Votre solde : ${Math.round(solde / exchangeRate).toLocaleString()} ${userCurrency}\n\n` +
+                    `${t('createPublicite.yourBalance')} : ${Math.round(solde / exchangeRate).toLocaleString()} ${userCurrency}\n\n` +
                     `${t('publicite.recharge_account')}`,
                     [
                         { text: t('button.cancel'), style: 'cancel', onPress: () => setLoading(false) },
                         {
-                            text: '💳 Recharger',
+                            text: `💳 ${t('videoWizardExtra.recharge')}`,
                             onPress: () => {
                                 setLoading(false);
                                 (navigation as any).navigate('RechargeTokens');
@@ -740,13 +740,13 @@ const CreatePubliciteScreen: React.FC = () => {
             // Confirmation
             Alert.alert(
                 `💰 ${t('button.confirm')}`,
-                `Créer cette publicité ?\n\n` +
+                `${t('createPublicite.createConfirm')}\n\n` +
                 `${t('publicite.products')} : ${selectedProduits.length}\n` +
                 `${t('publicite.videos')} : ${videos.length}\n` +
                 `${t('publicite.duration')} : ${duree} jours\n` +
                 `${t('publicite.zone')} : ${getZoneLabel(zoneGeographique)}\n\n` +
                 `${t('publicite.total_cost')} : ${coutEstime.toLocaleString()} ${userCurrency}\n` +
-                `Solde après : ${Math.round((solde - coutEnFCFA) / exchangeRate).toLocaleString()} ${userCurrency}`,
+                `${t('createPublicite.balanceAfter')} : ${Math.round((solde - coutEnFCFA) / exchangeRate).toLocaleString()} ${userCurrency}`,
                 [
                     { text: t('button.cancel'), style: 'cancel', onPress: () => setLoading(false) },
                     {
@@ -835,13 +835,13 @@ const CreatePubliciteScreen: React.FC = () => {
                                         ]
                                     );
                                 } else {
-                                    Alert.alert(t('message.error'), response.error || 'Impossible de créer la publicité');
+                                    Alert.alert(t('message.error'), response.error || t('createPublicite.cannotCreate'));
                                 }
 
                                 setLoading(false);
                             } catch (error) {
                                 console.error('[CreatePublicite] Erreur création:', error);
-                                Alert.alert(t('message.error'), 'Une erreur est survenue');
+                                Alert.alert(t('message.error'), t('createPublicite.genericError'));
                                 setLoading(false);
                             }
                         }
@@ -868,7 +868,7 @@ const CreatePubliciteScreen: React.FC = () => {
 
     const openVideoCreator = () => {
         if (produitsList.length === 0) {
-            Alert.alert(t('message.error'), 'Ajoutez au moins un produit pour générer une vidéo.');
+            Alert.alert(t('message.error'), t('createPublicite.addProductFirst'));
             return;
         }
 
@@ -885,7 +885,7 @@ const CreatePubliciteScreen: React.FC = () => {
             const squareVideoUrl = pickSquareVideoUrl(result);
 
             if (!squareVideoUrl) {
-                Alert.alert(t('message.error'), 'Impossible de récupérer la vidéo générée.');
+                Alert.alert(t('message.error'), t('createPublicite.cannotGetVideo'));
                 return;
             }
 
@@ -895,7 +895,7 @@ const CreatePubliciteScreen: React.FC = () => {
                     : buildMediaUrl(squareVideoUrl) || squareVideoUrl;
 
             if (!normalizedVideoUrl || (!normalizedVideoUrl.startsWith('http') && !normalizedVideoUrl.startsWith('data:'))) {
-                Alert.alert(t('message.error'), 'Format de vidéo inattendu.');
+                Alert.alert(t('message.error'), t('createPublicite.unexpectedFormat'));
                 return;
             }
 
@@ -904,7 +904,7 @@ const CreatePubliciteScreen: React.FC = () => {
                 : await downloadAsBase64(normalizedVideoUrl, 'mp4');
 
             if (!videoBase64) {
-                Alert.alert(t('message.error'), 'Conversion de la vidéo IA impossible.');
+                Alert.alert(t('message.error'), t('createPublicite.conversionError'));
                 return;
             }
 
@@ -929,10 +929,10 @@ const CreatePubliciteScreen: React.FC = () => {
             ]);
 
             setVideoCreatorVisible(false);
-            Alert.alert('✅ Vidéo ajoutée', 'La vidéo carrée IA est prête pour votre publicité.');
+            Alert.alert(t('createPublicite.videoAdded'), t('createPublicite.videoAddedMsg'));
         } catch (error) {
             console.error('[CreatePublicite] Erreur intégration vidéo IA:', error);
-            Alert.alert(t('message.error'), 'Impossible d’intégrer la vidéo générée.');
+            Alert.alert(t('message.error'), t('createPublicite.cannotIntegrate'));
         } finally {
             setIsConvertingVideo(false);
         }

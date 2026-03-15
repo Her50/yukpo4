@@ -26,6 +26,24 @@ export interface LivreScolaire {
     created_at?: string;
     updated_at?: string;
     distance_km?: number;
+    // V2 fields
+    image_recto?: string;
+    image_verso?: string;
+    mode_listing?: string; // 'troc', 'vente', 'don'
+    prix_detecte?: number;
+    devise_detectee?: string;
+    valeur_calculee?: number;
+    ratio_etat?: number;
+    etat_classification?: string; // 'bon', 'acceptable', 'rejete'
+    programme_scolaire_id?: number;
+    est_au_programme?: boolean;
+    programme_match_details?: any;
+    ia_analysis_status?: string;
+    ia_analysis_result?: any;
+    ia_confidence?: number;
+    situation_troc?: string;
+    offre_matchee?: boolean;
+    upload_session_id?: string;
 }
 
 export interface BookImageAnalysis {
@@ -56,6 +74,9 @@ export interface SearchLivresFilters {
     rayon_km?: number;
     limit?: number;
     offset?: number;
+    // V2 filters
+    mode_listing?: string;
+    etat_classification?: string;
 }
 
 export interface CreateLivreRequest {

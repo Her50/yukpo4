@@ -21,6 +21,7 @@ import ChatModalMobile from '../../components/ChatModalMobile';
 import ProductCommentsSection from '../../components/ProductCommentsSection';
 import SafeIcon from '../../components/SafeIcon';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { apiGet, apiPost } from '../../services/api';
 import { EmergencyStatus, hospitalService, WaitTime } from '../../services/hospitalService';
 
@@ -58,6 +59,7 @@ const HopitalDetailsScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
     const { user } = useAuth();
+    const { t } = useLanguageSafe();
     const params = route.params as any;
 
     const [hopital, setHopital] = useState<HopitalDetails | null>(null);
@@ -89,8 +91,8 @@ const HopitalDetailsScreen: React.FC = () => {
             setLoading(true);
             const response = await apiGet(`/api/hopitaux/${params.hospitalId}`);
             if (response.success && response.data) setHopital(response.data as HopitalDetails);
-            else { Alert.alert('Erreur', 'Impossible de charger les détails'); navigation.goBack(); }
-        } catch (error: any) { Alert.alert('Erreur', error.message || 'Impossible de charger'); navigation.goBack(); }
+            else { Alert.alert(t('message.error'), t('hopitalDetails.cannotLoadDetails')); navigation.goBack(); }
+        } catch (error: any) { Alert.alert(t('message.error'), error.message || t('hopitalDetails.cannotLoad')); navigation.goBack(); }
         finally { setLoading(false); }
     };
 
@@ -117,13 +119,13 @@ const HopitalDetailsScreen: React.FC = () => {
     };
 
     const handleBook = async () => {
-        if (!user) { Alert.alert('Connexion requise', 'Veuillez vous connecter'); navigation.navigate('Login' as never); return; }
+        if (!user) { Alert.alert(t('hopitalDetails.loginRequired'), t('hopitalDetails.pleaseLogin')); navigation.navigate('Login' as never); return; }
         try {
             setBooking(true);
             const response = await apiPost(`/api/hopitaux/${params.hospitalId}/book`, { notes: 'Réservation depuis l\'application mobile' });
-            if (response.success) Alert.alert('Réservation créée', 'Votre demande de rendez-vous a été envoyée.', [{ text: 'OK', onPress: () => navigation.goBack() }]);
-            else Alert.alert('Erreur', response.error || 'Impossible de réserver');
-        } catch (error: any) { Alert.alert('Erreur', error.message || 'Impossible de réserver'); }
+            if (response.success) Alert.alert(t('hopitalDetails.bookingCreated'), t('hopitalDetails.appointmentSent'), [{ text: 'OK', onPress: () => navigation.goBack() }]);
+            else Alert.alert(t('message.error'), response.error || t('hopitalDetails.cannotBook'));
+        } catch (error: any) { Alert.alert(t('message.error'), error.message || t('hopitalDetails.cannotBook')); }
         finally { setBooking(false); }
     };
 
@@ -149,18 +151,18 @@ const HopitalDetailsScreen: React.FC = () => {
     };
 
     const handleOpenChat = () => {
-        if (!user) { Alert.alert('Connexion requise', 'Veuillez vous connecter'); navigation.navigate('Login' as never); return; }
+        if (!user) { Alert.alert(t('hopitalDetails.loginRequired'), t('hopitalDetails.pleaseLogin')); navigation.navigate('Login' as never); return; }
         setShowChat(true);
     };
 
     const handleSearchPathology = async () => {
-        if (!pathologyQuery.trim()) { Alert.alert('Erreur', 'Décrivez vos symptômes'); return; }
+        if (!pathologyQuery.trim()) { Alert.alert(t('message.error'), t('hopitalDetails.describeSymptoms')); return; }
         try {
             setSearchingPathology(true);
             const response = await hospitalService.searchPathology(pathologyQuery.trim(), undefined, undefined);
             if (response.success && response.results && response.results.length > 0) setPathologyResult(response.results[0]);
-            else Alert.alert('Aucun résultat', (response as any).message || 'Aucun résultat trouvé.');
-        } catch { Alert.alert('IA non disponible', 'La recherche IA n\'est pas encore opérationnelle.'); }
+            else Alert.alert(t('hopitalDetails.noResults'), (response as any).message || t('hopitalDetails.noResultsFound'));
+        } catch { Alert.alert(t('hopitalDetails.aiUnavailable'), t('hopitalDetails.aiSearchNotReady')); }
         finally { setSearchingPathology(false); }
     };
 
@@ -384,7 +386,7 @@ const HopitalDetailsScreen: React.FC = () => {
                         <SafeIcon name="chevron-right" size={18} color="#9CA3AF" />
                     </TouchableOpacity>
                     <TouchableOpacity style={st.fullBtn} onPress={() => {
-                        if (!user) { Alert.alert('Connexion requise', 'Veuillez vous connecter'); navigation.navigate('Login' as never); return; }
+                        if (!user) { Alert.alert(t('hopitalDetails.loginRequired'), t('hopitalDetails.pleaseLogin')); navigation.navigate('Login' as never); return; }
                         navigation.navigate('MyConsultations' as never);
                     }}>
                         <SafeIcon name="clipboard-list" size={18} color="#3B82F6" />

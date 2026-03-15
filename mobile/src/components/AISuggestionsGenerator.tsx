@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 import { apiPost } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import { ManagedProduct } from '../types/ManagedProduct';
@@ -32,6 +33,7 @@ export const AISuggestionsGenerator: React.FC<AISuggestionsGeneratorProps> = ({
     onSuggestionSelect,
     currentValue,
 }) => {
+    const { t } = useLanguageSafe();
     const [suggestions, setSuggestions] = useState<AdSuggestion[]>([]);
     const [loading, setLoading] = useState(false);
     const [expanded, setExpanded] = useState(false);
@@ -39,7 +41,7 @@ export const AISuggestionsGenerator: React.FC<AISuggestionsGeneratorProps> = ({
 
     const generateSuggestions = useCallback(async () => {
         if (products.length === 0) {
-            setError('Sélectionnez au moins un produit');
+            setError(t('ai.selectProduct'));
             return;
         }
 
@@ -66,11 +68,11 @@ export const AISuggestionsGenerator: React.FC<AISuggestionsGeneratorProps> = ({
                 setSuggestions((response.data as any).suggestions || []);
                 setExpanded(true);
             } else {
-                setError(response.error || 'Erreur lors de la génération');
+                setError(response.error || t('ai.generationError'));
             }
         } catch (err: any) {
             console.error('[AISuggestionsGenerator] Erreur:', err);
-            setError('Impossible de générer des suggestions');
+            setError(t('ai.cannotGenerateSuggestions'));
         } finally {
             setLoading(false);
         }
@@ -89,7 +91,7 @@ export const AISuggestionsGenerator: React.FC<AISuggestionsGeneratorProps> = ({
                     <>
                         <SafeIcon name="sparkles" size={18} color={modernColors.primary} />
                         <Text style={styles.generateButtonText}>
-                            ✨ Générer des suggestions IA
+                            ✨ {t('ai.generateSuggestions')}
                         </Text>
                     </>
                 )}
@@ -103,7 +105,7 @@ export const AISuggestionsGenerator: React.FC<AISuggestionsGeneratorProps> = ({
                 <View style={styles.headerLeft}>
                     <SafeIcon name="sparkles" size={20} color={modernColors.primary} />
                     <Text style={styles.title}>
-                        Suggestions IA ({suggestions.length})
+                        {t('ai.suggestionsTitle', { count: suggestions.length })}
                     </Text>
                 </View>
                 <TouchableOpacity
@@ -126,7 +128,7 @@ export const AISuggestionsGenerator: React.FC<AISuggestionsGeneratorProps> = ({
             {loading ? (
                 <View style={styles.loadingContainer}>
                     <ActivityIndicator size="small" color={modernColors.primary} />
-                    <Text style={styles.loadingText}>Génération en cours...</Text>
+                    <Text style={styles.loadingText}>{t('ai.generating')}</Text>
                 </View>
             ) : (
                 <View style={styles.suggestionsList}>
@@ -153,14 +155,14 @@ export const AISuggestionsGenerator: React.FC<AISuggestionsGeneratorProps> = ({
                                 <View style={styles.confidenceBadge}>
                                     <SafeIcon name="trending-up" size={12} color={modernColors.success} />
                                     <Text style={styles.confidenceText}>
-                                        {Math.round(suggestion.confidence * 100)}% confiance
+                                        {t('ai.confidence', { percent: Math.round(suggestion.confidence * 100) })}
                                     </Text>
                                 </View>
                                 <TouchableOpacity
                                     style={styles.useButton}
                                     onPress={() => onSuggestionSelect(suggestion.text)}
                                 >
-                                    <Text style={styles.useButtonText}>Utiliser</Text>
+                                    <Text style={styles.useButtonText}>{t('ai.use')}</Text>
                                     <SafeIcon name="arrow-right" size={12} color="#fff" />
                                 </TouchableOpacity>
                             </View>
@@ -175,7 +177,7 @@ export const AISuggestionsGenerator: React.FC<AISuggestionsGeneratorProps> = ({
                 disabled={loading}
             >
                 <SafeIcon name="refresh-cw" size={16} color={modernColors.primary} />
-                <Text style={styles.regenerateButtonText}>Régénérer</Text>
+                <Text style={styles.regenerateButtonText}>{t('ai.regenerate')}</Text>
             </TouchableOpacity>
         </View>
     );

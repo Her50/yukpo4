@@ -70,6 +70,45 @@ impl PromptManager {
         Ok(Self { prompts })
     }
 
+    /// Convertit un code de langue en nom lisible pour l'IA
+    fn language_name(lang_code: Option<&str>) -> &str {
+        match lang_code.unwrap_or("fr") {
+            "en" => "English",
+            "es" => "Español",
+            "de" => "Deutsch",
+            "pt" => "Português",
+            "ar" => "العربية",
+            "zh" => "中文",
+            "ja" => "日本語",
+            "hi" => "हिन्दी",
+            "ru" => "Русский",
+            "sw" => "Kiswahili",
+            "wo" => "Wolof",
+            "ha" => "Hausa",
+            "yo" => "Yorùbá",
+            "ig" => "Igbo",
+            "ln" => "Lingála",
+            "rw" => "Kinyarwanda",
+            "ff" => "Fulfulde",
+            "sn" => "chiShona",
+            "so" => "Soomaali",
+            "am" => "አማርኛ",
+            "ti" => "ትግርኛ",
+            "mg" => "Malagasy",
+            "zu" => "isiZulu",
+            "ht" => "Kreyòl ayisyen",
+            "pap" => "Papiamentu",
+            _ => "Français",
+        }
+    }
+
+    /// Applique les remplacements standard (user_input + language)
+    fn apply_replacements(prompt: &str, user_input: &str, language: Option<&str>) -> String {
+        prompt
+            .replace("{user_input}", user_input)
+            .replace("{language}", Self::language_name(language))
+    }
+
     /// Obtient le prompt de d?tection d'intention
     pub fn get_intention_detection_prompt(&self, user_input: &str) -> String {
         let prompt = self
@@ -77,32 +116,53 @@ impl PromptManager {
             .get("intention_detection")
             .expect("Prompt de d?tection d'intention manquant");
 
-        prompt.replace("{user_input}", user_input)
+        Self::apply_replacements(prompt, user_input, None)
     }
 
-    /// Obtient le prompt sp?cifique pour une intention
+    /// Obtient le prompt sp?cifique pour une intention (avec langue optionnelle)
     pub fn get_intention_prompt(&self, intention: &str, user_input: &str) -> Option<String> {
+        self.get_intention_prompt_with_lang(intention, user_input, None)
+    }
+
+    /// Obtient le prompt sp?cifique pour une intention avec langue
+    pub fn get_intention_prompt_with_lang(
+        &self,
+        intention: &str,
+        user_input: &str,
+        language: Option<&str>,
+    ) -> Option<String> {
         self.prompts
             .get(intention)
-            .map(|prompt| prompt.replace("{user_input}", user_input))
+            .map(|prompt| Self::apply_replacements(prompt, user_input, language))
     }
 
     /// Obtient le prompt optimis? pour une intention
     pub async fn get_optimized_prompt(&self, intention: &str, user_input: &str) -> String {
-        self.get_intention_prompt(intention, user_input).unwrap_or_else(|| {
-            // Fallback vers le prompt g?n?ral si l'intention n'est pas trouv?e
-            self.prompts
-                .get("assistance_generale")
-                .map(|p| p.replace("{user_input}", user_input))
-                .unwrap_or_else(|| format!("Question: {}", user_input))
-        })
+        self.get_optimized_prompt_with_lang(intention, user_input, None).await
+    }
+
+    /// Obtient le prompt optimis? pour une intention avec langue
+    pub async fn get_optimized_prompt_with_lang(
+        &self,
+        intention: &str,
+        user_input: &str,
+        language: Option<&str>,
+    ) -> String {
+        self.get_intention_prompt_with_lang(intention, user_input, language)
+            .unwrap_or_else(|| {
+                // Fallback vers le prompt g?n?ral si l'intention n'est pas trouv?e
+                self.prompts
+                    .get("assistance_generale")
+                    .map(|p| Self::apply_replacements(p, user_input, language))
+                    .unwrap_or_else(|| format!("Question: {}", user_input))
+            })
     }
 
     /// ✅ NOUVEAU 2026-03-14: Obtient le prompt de classification d'équivalence pour comparaison de prix
     pub fn get_price_comparison_equivalence_prompt(&self, user_input: &str) -> Option<String> {
         self.prompts
             .get("comparaison_prix_equivalence")
-            .map(|prompt| prompt.replace("{user_input}", user_input))
+            .map(|prompt| Self::apply_replacements(prompt, user_input, None))
     }
 
     /// Liste toutes les intentions support?es

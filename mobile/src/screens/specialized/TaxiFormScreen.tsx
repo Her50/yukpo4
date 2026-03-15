@@ -23,6 +23,7 @@ import ModernGPSModal from '../../components/ModernGPSModal';
 import SafeIcon from '../../components/SafeIcon';
 import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { clearSavedFormData, useFormAutoSave } from '../../hooks/useFormAutoSave';
 import { useFormValidation } from '../../hooks/useFormValidation';
@@ -37,6 +38,7 @@ const TaxiFormScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
     const { user } = useAuth();
+    const { t } = useLanguageSafe();
     const { location } = useLocation();
     const [serviceId, setServiceId] = useState<number | null>((route.params as any)?.serviceId || null);
     const specializedServiceId = (route.params as any)?.specializedServiceId as number | undefined;
@@ -150,14 +152,14 @@ const TaxiFormScreen: React.FC = () => {
             const newStatus = !isAvailable;
             await apiPost(`/api/taxis/${taxiData.id}/update-availability`, { disponible: newStatus });
             setIsAvailable(newStatus);
-            Alert.alert('Succès', newStatus ? 'Vous êtes maintenant disponible' : 'Vous êtes hors service');
-        } catch (e) { Alert.alert('Erreur', 'Impossible de changer le statut'); }
+            Alert.alert(t('message.success'), newStatus ? t('taxiForm.nowAvailable') : t('taxiForm.nowOffDuty'));
+        } catch (e) { Alert.alert(t('message.error'), t('taxiForm.cannotChangeStatus')); }
     };
 
     const pickVehicleImage = async (source: 'gallery' | 'camera') => {
         try {
             const perm = source === 'camera' ? await ImagePicker.requestCameraPermissionsAsync() : await ImagePicker.requestMediaLibraryPermissionsAsync();
-            if (!perm.granted) { Alert.alert('Permission refusée'); return; }
+            if (!perm.granted) { Alert.alert(t('taxiForm.permissionDenied')); return; }
             const result = source === 'camera'
                 ? await ImagePicker.launchCameraAsync({ allowsEditing: true, quality: 0.8, base64: true })
                 : await ImagePicker.launchImageLibraryAsync({ mediaTypes: 'images' as any, allowsEditing: true, quality: 0.8, base64: true });
@@ -165,20 +167,20 @@ const TaxiFormScreen: React.FC = () => {
                 const b64 = result.assets[0].base64;
                 setFormData({ ...formData, image_vehicule: b64 ? `data:image/jpeg;base64,${b64}` : result.assets[0].uri });
             }
-        } catch (e) { Alert.alert('Erreur', 'Impossible de sélectionner l\'image'); }
+        } catch (e) { Alert.alert(t('message.error'), t('taxiForm.cannotSelectImage')); }
     };
 
     const handleSubmit = async () => {
-        if (!formData.telephone.trim()) { Alert.alert('Erreur', 'Téléphone obligatoire'); return; }
+        if (!formData.telephone.trim()) { Alert.alert(t('message.error'), t('taxiForm.phoneRequired')); return; }
         setLoading(true);
         let finalServiceId = serviceId;
         if (!finalServiceId && user?.id) {
             try {
                 const resp = await servicesApi.createService({ titre_service: `Taxi ${formData.nom_chauffeur || 'Anonyme'}`, description: 'Taxi', category: 'transport' });
                 if (resp.success && resp.data && typeof resp.data === 'object' && 'id' in resp.data) { finalServiceId = (resp.data as any).id; setServiceId(finalServiceId); }
-            } catch (e) { Alert.alert('Erreur', 'Impossible de créer le service'); setLoading(false); return; }
+            } catch (e) { Alert.alert(t('message.error'), t('taxiForm.cannotCreateService')); setLoading(false); return; }
         }
-        if (!finalServiceId) { Alert.alert('Erreur', 'Service ID manquant'); setLoading(false); return; }
+        if (!finalServiceId) { Alert.alert(t('message.error'), t('taxiForm.serviceIdMissing')); setLoading(false); return; }
         try {
             const payload = {
                 service_id: finalServiceId, nom_chauffeur: formData.nom_chauffeur || null,
@@ -197,9 +199,9 @@ const TaxiFormScreen: React.FC = () => {
             const resp = await apiPost('/api/taxis', payload);
             if (resp.success) {
                 await clearSavedFormData(STORAGE_KEY);
-                Alert.alert('Succès', 'Taxi enregistré !', [{ text: 'OK', onPress: () => { setIsDashboardMode(true); setActiveTab('overview'); } }]);
-            } else { Alert.alert('Erreur', (resp as any).error || 'Impossible d\'enregistrer'); }
-        } catch (e: any) { Alert.alert('Erreur', e.message || 'Erreur'); } finally { setLoading(false); }
+                Alert.alert(t('message.success'), t('taxiForm.taxiRegistered'), [{ text: 'OK', onPress: () => { setIsDashboardMode(true); setActiveTab('overview'); } }]);
+            } else { Alert.alert(t('message.error'), (resp as any).error || t('taxiForm.cannotRegister')); }
+        } catch (e: any) { Alert.alert(t('message.error'), e.message || t('taxiForm.genericError')); } finally { setLoading(false); }
     };
 
     if (initialLoading) return <View style={s.loadingScreen}><ActivityIndicator size="large" color="#F59E0B" /><Text style={s.loadingText}>Chargement...</Text></View>;

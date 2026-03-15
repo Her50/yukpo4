@@ -24,6 +24,7 @@ import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useToaster } from '../../components/ToasterProvider';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { useAIWithFallback } from '../../hooks/useAIWithFallback';
 import { imageAnalysisService } from '../../services/imageAnalysisService';
@@ -37,6 +38,7 @@ type SortOption = 'relevance' | 'price_asc' | 'price_desc' | 'distance_asc' | 'n
 const PharmacieHomeScreen: React.FC = () => {
     const navigation = useNavigation();
     const { location } = useLocation();
+    const { t } = useLanguageSafe();
     const toaster = useToaster();
 
     // États de recherche
@@ -327,7 +329,7 @@ const PharmacieHomeScreen: React.FC = () => {
             if (source === 'camera') {
                 const { status: cameraStatus } = await ImagePicker.requestCameraPermissionsAsync();
                 if (cameraStatus !== 'granted') {
-                    Alert.alert('Permission requise', 'Veuillez autoriser l\'accès à la caméra');
+                    Alert.alert(t('pharmacieHome.permissionRequired'), t('pharmacieHome.allowCamera'));
                     return;
                 }
 
@@ -340,7 +342,7 @@ const PharmacieHomeScreen: React.FC = () => {
             } else {
                 const { status: galleryStatus } = await ImagePicker.requestMediaLibraryPermissionsAsync();
                 if (galleryStatus !== 'granted') {
-                    Alert.alert('Permission requise', 'Veuillez autoriser l\'accès à la galerie');
+                    Alert.alert(t('pharmacieHome.permissionRequired'), t('pharmacieHome.allowGallery'));
                     return;
                 }
 
@@ -382,7 +384,7 @@ const PharmacieHomeScreen: React.FC = () => {
                     const ar = analysisResponse.data as any;
                     const errorMsg = analysisResponse.error || ar?.error || 'Impossible d\'analyser l\'image du médicament. L\'IA d\'analyse d\'images n\'est peut-être pas encore opérationnelle.';
                     Alert.alert(
-                        'Erreur',
+                        t('message.error'),
                         errorMsg,
                         [{ text: 'OK' }]
                     );
@@ -390,7 +392,7 @@ const PharmacieHomeScreen: React.FC = () => {
             }
         } catch (err: any) {
             console.error('[PharmacieHomeScreen] Erreur analyse image:', err);
-            Alert.alert('Erreur', err.message || 'Erreur lors de l\'analyse de l\'image');
+            Alert.alert(t('message.error'), err.message || t('pharmacieHome.imageAnalysisError'));
         } finally {
             setAnalyzingImage(false);
         }
@@ -398,8 +400,8 @@ const PharmacieHomeScreen: React.FC = () => {
 
     const showImageSourcePicker = () => {
         Alert.alert(
-            'Analyser un médicament',
-            'Comment souhaitez-vous ajouter l\'image du médicament?',
+            t('pharmacieHome.analyzeMedication'),
+            t('pharmacieHome.howToAddImage'),
             [
                 {
                     text: 'Prendre une photo',
@@ -440,7 +442,7 @@ const PharmacieHomeScreen: React.FC = () => {
             }
         } else {
             setShowDosageModal(false);
-            Alert.alert('Indisponible', 'Consultez votre pharmacien pour la posologie de ce médicament.');
+            Alert.alert(t('pharmacieHome.unavailable'), t('pharmacieHome.consultPharmacistDosage'));
         }
         setLoadingAI(false);
     };
@@ -467,7 +469,7 @@ const PharmacieHomeScreen: React.FC = () => {
             }
         } else {
             setShowInteractionsModal(false);
-            Alert.alert('Indisponible', 'Consultez votre pharmacien pour vérifier les interactions.');
+            Alert.alert(t('pharmacieHome.unavailable'), t('pharmacieHome.consultPharmacistInteractions'));
         }
         setLoadingAI(false);
     };
@@ -481,15 +483,15 @@ const PharmacieHomeScreen: React.FC = () => {
             );
             if (response?.available) {
                 Alert.alert(
-                    '✅ Disponible',
-                    `${medication.nom_produit} est en stock (${response.medication?.stock_quantity || '?'} unités).\nPrix: ${response.medication?.price ? response.medication.price.toLocaleString() + ' FCFA' : 'Sur demande'}`,
+                    t('pharmacieHome.available'),
+                    t('pharmacieHome.inStockMsg', { name: medication.nom_produit, qty: response.medication?.stock_quantity || '?', price: response.medication?.price ? response.medication.price.toLocaleString() + ' FCFA' : t('pharmacieHome.onRequest') }),
                     [
                         { text: 'Réserver', onPress: () => handleReserveMedication(medication) },
                         { text: 'OK' },
                     ]
                 );
             } else {
-                Alert.alert('❌ Indisponible', `${medication.nom_produit} n'est pas disponible dans cette pharmacie.`);
+                Alert.alert(t('pharmacieHome.notAvailable'), t('pharmacieHome.notInStock', { name: medication.nom_produit }));
             }
         } catch (err: any) {
             console.warn('[PharmacieHome] Erreur vérification stock:', err);
@@ -506,15 +508,15 @@ const PharmacieHomeScreen: React.FC = () => {
             );
             if (response?.reservation_id) {
                 Alert.alert(
-                    '✅ Réservé !',
-                    `Votre réservation est confirmée.\nExpire: ${response.expiry_time || 'dans 2h'}\nPrésentez-vous à la pharmacie pour récupérer votre médicament.`
+                    t('pharmacieHome.reserved'),
+                    t('pharmacieHome.reservationConfirmed', { expiry: response.expiry_time || '2h' })
                 );
             } else {
-                Alert.alert('Erreur', response?.message || 'Impossible de réserver ce médicament.');
+                Alert.alert(t('message.error'), response?.message || t('pharmacieHome.cannotReserve'));
             }
         } catch (err: any) {
             console.warn('[PharmacieHome] Erreur réservation:', err);
-            Alert.alert('Erreur', 'Impossible de réserver. Réessayez ou contactez la pharmacie.');
+            Alert.alert(t('message.error'), t('pharmacieHome.reserveRetry'));
         }
     };
 

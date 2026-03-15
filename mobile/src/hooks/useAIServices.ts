@@ -1,5 +1,6 @@
+import i18n from 'i18next';
 import { useState } from 'react';
-import { apiGet, apiPost } from '../services/api';
+import { apiPost } from '../services/api';
 
 interface AIResponse {
     message: string;
@@ -34,7 +35,7 @@ export const useAIServices = () => {
 
             if (response.success && response.data) {
                 const aiResponse: AIResponse = {
-                    message: response.data.message || response.data.text || response.data.response || 'Réponse non disponible',
+                    message: response.data.message || response.data.text || response.data.response || i18n.t('ai.responseUnavailable'),
                     suggestions: response.data.suggestions || [],
                     confidence: response.data.confidence || 0.8,
                     timestamp: new Date(),
@@ -46,12 +47,12 @@ export const useAIServices = () => {
             return null;
         } catch (err) {
             console.error('AI API error:', err);
-            setError('Service IA temporairement indisponible');
+            setError(i18n.t('ai.serviceUnavailable'));
 
             // Fallback avec réponse par défaut
             const fallbackResponse: AIResponse = {
-                message: 'Je suis temporairement indisponible. Veuillez réessayer plus tard.',
-                suggestions: ['Réessayer', 'Contacter le support'],
+                message: i18n.t('ai.fallbackMessage'),
+                suggestions: [i18n.t('ai.fallbackRetry'), i18n.t('ai.fallbackSupport')],
                 confidence: 0.5,
                 timestamp: new Date(),
                 type: 'question'
@@ -82,12 +83,12 @@ export const useAIServices = () => {
             return [];
         } catch (err) {
             console.error('AI recommendations API error:', err);
-            setError('Impossible de générer des recommandations');
+            setError(i18n.t('ai.cannotGenerateRecommendations'));
 
             // Fallback avec recommandations par défaut
             return [
-                'Vérifiez votre connexion internet',
-                'Réessayez dans quelques instants'
+                i18n.t('ai.checkConnection'),
+                i18n.t('ai.retryShortly')
             ];
         } finally {
             setLoading(false);
@@ -110,7 +111,7 @@ export const useAIServices = () => {
 
             if (response.success && response.data) {
                 return {
-                    sentiment: response.data.sentiment || 'neutre',
+                    sentiment: response.data.sentiment || i18n.t('ai.neutral'),
                     keywords: response.data.keywords || []
                 };
             }
@@ -118,11 +119,11 @@ export const useAIServices = () => {
             return null;
         } catch (err) {
             console.error('AI text analysis API error:', err);
-            setError('Impossible d\'analyser le texte');
+            setError(i18n.t('ai.cannotAnalyzeText'));
 
             // Fallback avec analyse basique
             return {
-                sentiment: 'neutre',
+                sentiment: i18n.t('ai.neutral'),
                 keywords: text.split(' ').slice(0, 3)
             };
         } finally {

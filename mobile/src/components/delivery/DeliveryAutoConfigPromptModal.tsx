@@ -7,6 +7,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
 import SafeIcon from '../SafeIcon';
@@ -31,6 +32,7 @@ const DeliveryAutoConfigPromptModal: React.FC<DeliveryAutoConfigPromptModalProps
     existingConfigProductName,
     onReuseExisting,
 }) => {
+    const { t } = useLanguageSafe();
     const handleYes = () => {
         hapticPress();
         onYes();
@@ -59,45 +61,44 @@ const DeliveryAutoConfigPromptModal: React.FC<DeliveryAutoConfigPromptModalProps
                         <View style={styles.iconContainer}>
                             <SafeIcon name="truck" size={32} color={modernColors.primary} type="lucide" />
                         </View>
-                        <Text style={styles.title}>Livraison automatique Yukpo</Text>
+                        <Text style={styles.title}>{t('deliveryPrompt.title')}</Text>
                     </View>
 
                     <View style={styles.content}>
                         <Text style={styles.question}>
-                            Souhaitez-vous configurer la livraison automatique pour "{productName}" ?
+                            {t('deliveryPrompt.question', { productName })}
                         </Text>
 
                         <View style={styles.advantagesContainer}>
-                            <Text style={styles.advantagesTitle}>✅ Avantages :</Text>
+                            <Text style={styles.advantagesTitle}>{t('deliveryPrompt.advantagesTitle')}</Text>
                             <View style={styles.advantageItem}>
                                 <SafeIcon name="check-circle" size={16} color={modernColors.success} type="lucide" />
                                 <Text style={styles.advantageText}>
-                                    Vos clients pourront commander directement avec livraison
+                                    {t('deliveryPrompt.advantage1')}
                                 </Text>
                             </View>
                             <View style={styles.advantageItem}>
                                 <SafeIcon name="check-circle" size={16} color={modernColors.success} type="lucide" />
                                 <Text style={styles.advantageText}>
-                                    Gestion automatique des commandes et livraisons
+                                    {t('deliveryPrompt.advantage2')}
                                 </Text>
                             </View>
                             <View style={styles.advantageItem}>
                                 <SafeIcon name="check-circle" size={16} color={modernColors.success} type="lucide" />
                                 <Text style={styles.advantageText}>
-                                    Augmentation de vos ventes grâce à la facilité de commande
+                                    {t('deliveryPrompt.advantage3')}
                                 </Text>
                             </View>
                             <View style={styles.advantageItem}>
                                 <SafeIcon name="check-circle" size={16} color={modernColors.success} type="lucide" />
                                 <Text style={styles.advantageText}>
-                                    Suivi en temps réel des livraisons
+                                    {t('deliveryPrompt.advantage4')}
                                 </Text>
                             </View>
                         </View>
 
                         <Text style={styles.note}>
-                            💡 Si votre produit n'est pas livrable (ex: vente de voiture, service sur place),
-                            vous pouvez cliquer sur "Non, pas applicable".
+                            {t('deliveryPrompt.note')}
                         </Text>
                     </View>
 
@@ -111,11 +112,11 @@ const DeliveryAutoConfigPromptModal: React.FC<DeliveryAutoConfigPromptModalProps
                             >
                                 <SafeIcon name="copy" size={16} color="#FFFFFF" type="lucide" />
                                 <Text style={styles.buttonReuseText}>
-                                    Utiliser la même config{existingConfigProductName ? ` que "${existingConfigProductName}"` : ' existante'}
+                                    {existingConfigProductName ? t('deliveryPrompt.reuseConfig', { name: existingConfigProductName }) : t('deliveryPrompt.reuseConfigDefault')}
                                 </Text>
                             </TouchableOpacity>
                             <Text style={styles.reuseHint}>
-                                La configuration sera copiée et appliquée directement. Vous pourrez la modifier plus tard.
+                                {t('deliveryPrompt.reuseHint')}
                             </Text>
                         </View>
                     )}
@@ -126,14 +127,14 @@ const DeliveryAutoConfigPromptModal: React.FC<DeliveryAutoConfigPromptModalProps
                             onPress={handleNo}
                             activeOpacity={0.7}
                         >
-                            <Text style={styles.buttonNoText}>Non, pas applicable</Text>
+                            <Text style={styles.buttonNoText}>{t('deliveryPrompt.noNotApplicable')}</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={[styles.button, styles.buttonYes]}
                             onPress={handleYes}
                             activeOpacity={0.7}
                         >
-                            <Text style={styles.buttonYesText}>{hasExistingConfig ? 'Nouvelle config' : 'Oui, configurer'}</Text>
+                            <Text style={styles.buttonYesText}>{hasExistingConfig ? t('deliveryPrompt.newConfig') : t('deliveryPrompt.yesConfigure')}</Text>
                         </TouchableOpacity>
                     </View>
                 </View>

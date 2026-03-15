@@ -50,6 +50,7 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
     const { user } = useAuth();
     const [services, setServices] = useState<SpecializedService[]>([]);
     const [loading, setLoading] = useState(true);
+    const { t } = useLanguageSafe();
     const [refreshing, setRefreshing] = useState(false);
     const [filter, setFilter] = useState<'tous' | 'sante' | 'transport'>('tous');
     const [viewMode, setViewMode] = useState<'card' | 'list'>('card'); // ✅ NOUVEAU: Mode carte/liste
@@ -191,8 +192,8 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                     // Extraire les infos de conflit depuis les erreurs
                     // TODO: Parser les erreurs pour extraire ConflictInfo
                     Alert.alert(
-                        'Conflits détectés',
-                        'Des conflits ont été détectés lors de la synchronisation. Veuillez les résoudre manuellement.',
+                        t('gestionServices.conflictsDetected'),
+                        t('gestionServices.conflictsDetectedMsg'),
                         [
                             {
                                 text: 'OK', onPress: () => {
@@ -204,8 +205,8 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                 } else {
                     setSyncStatus('error');
                     Alert.alert(
-                        'Erreur de synchronisation',
-                        `${result.failed} élément(s) n'ont pas pu être synchronisés.`
+                        t('gestionServices.syncError'),
+                        t('gestionServices.syncErrorMsg', { count: result.failed })
                     );
                 }
             }
@@ -235,7 +236,7 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
             await checkSyncQueue();
         } catch (error) {
             console.error('[GestionServicesSpecialises] Erreur résolution conflit:', error);
-            Alert.alert('Erreur', 'Impossible de résoudre le conflit');
+            Alert.alert(t('message.error'), t('gestionServices.cannotResolveConflict'));
         }
     };
 
@@ -372,7 +373,7 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
             if (isOffline) {
                 await loadFromCache();
             } else {
-                Alert.alert('Erreur', 'Impossible de charger les services spécialisés');
+                Alert.alert(t('message.error'), t('gestionServices.cannotLoadServices'));
                 setServices([]);
             }
         } finally {
@@ -383,12 +384,12 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
 
     const handleDelete = async (service: SpecializedService) => {
         Alert.alert(
-            'Confirmer la suppression',
-            `Êtes-vous sûr de vouloir supprimer ce service ?`,
+            t('gestionServices.confirmDelete'),
+            t('gestionServices.confirmDeleteMsg'),
             [
-                { text: 'Annuler', style: 'cancel' },
+                { text: t('message.cancel'), style: 'cancel' },
                 {
-                    text: 'Supprimer',
+                    text: t('message.delete'),
                     style: 'destructive',
                     onPress: async () => {
                         try {
@@ -403,8 +404,8 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                                 setPendingSyncCount((prev) => prev + 1);
                                 setSyncStatus('pending');
                                 Alert.alert(
-                                    'Ajouté à la queue',
-                                    'Le service sera supprimé lors de la prochaine synchronisation'
+                                    t('gestionServices.addedToQueue'),
+                                    t('gestionServices.deleteQueueMsg')
                                 );
                                 return;
                             }
@@ -433,14 +434,14 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
 
                             const response = await apiDelete(endpoint);
                             if (response.success) {
-                                Alert.alert('Succès', 'Service supprimé avec succès');
+                                Alert.alert(t('message.success'), t('gestionServices.serviceDeleted'));
                                 loadServices();
                             } else {
-                                Alert.alert('Erreur', 'Impossible de supprimer le service');
+                                Alert.alert(t('message.error'), t('gestionServices.cannotDelete'));
                             }
                         } catch (error) {
                             console.error('Erreur suppression:', error);
-                            Alert.alert('Erreur', 'Une erreur est survenue');
+                            Alert.alert(t('message.error'), t('gestionServices.genericError'));
                         }
                     },
                 },
@@ -466,8 +467,8 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                 setPendingSyncCount((prev) => prev + 1);
                 setSyncStatus('pending');
                 Alert.alert(
-                    'Ajouté à la queue',
-                    'Le statut sera modifié lors de la prochaine synchronisation'
+                    t('gestionServices.addedToQueue'),
+                    t('gestionServices.statusQueueMsg')
                 );
                 return;
             }
@@ -499,14 +500,14 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
             });
 
             if (response.success) {
-                Alert.alert('Succès', `Service ${service.is_active ? 'désactivé' : 'activé'} avec succès`);
+                Alert.alert(t('message.success'), service.is_active ? t('gestionServices.serviceDeactivated') : t('gestionServices.serviceActivated'));
                 loadServices();
             } else {
-                Alert.alert('Erreur', 'Impossible de modifier le statut');
+                Alert.alert(t('message.error'), t('gestionServices.cannotChangeStatus'));
             }
         } catch (error) {
             console.error('Erreur modification statut:', error);
-            Alert.alert('Erreur', 'Une erreur est survenue');
+            Alert.alert(t('message.error'), t('gestionServices.genericError'));
         }
     };
 
@@ -703,19 +704,19 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
     // ✅ Phase 5.5: Actions batch
     const handleBatchAction = async (action: 'activate' | 'deactivate' | 'delete') => {
         if (selectedServices.size === 0) {
-            Alert.alert('Aucune sélection', 'Veuillez sélectionner au moins un service');
+            Alert.alert(t('gestionServices.noSelection'), t('gestionServices.selectAtLeastOne'));
             return;
         }
 
         // ✅ Phase 5.5: Confirmation pour actions destructives
         if (action === 'delete') {
             Alert.alert(
-                'Confirmer la suppression',
-                `Êtes-vous sûr de vouloir supprimer ${selectedServices.size} service(s) ? Cette action est irréversible.`,
+                t('gestionServices.confirmDelete'),
+                t('gestionServices.confirmBatchDelete', { count: selectedServices.size }),
                 [
-                    { text: 'Annuler', style: 'cancel' },
+                    { text: t('message.cancel'), style: 'cancel' },
                     {
-                        text: 'Supprimer',
+                        text: t('message.delete'),
                         style: 'destructive',
                         onPress: async () => {
                             await performBatchAction(action);
@@ -758,8 +759,8 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                 setSelectedServices(new Set());
                 setSelectionMode(false);
                 Alert.alert(
-                    'Ajouté à la queue',
-                    `${selectedServices.size} action(s) seront synchronisées lors de la prochaine connexion`
+                    t('gestionServices.addedToQueue'),
+                    t('gestionServices.batchQueueMsg', { count: selectedServices.size })
                 );
                 return;
             }
@@ -772,18 +773,18 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
             if (response.success) {
                 const data = response.data as any;
                 Alert.alert(
-                    'Succès',
-                    `${data?.processed || selectedServices.size} service(s) ${action === 'activate' ? 'activé(s)' : action === 'deactivate' ? 'désactivé(s)' : 'supprimé(s)'}`
+                    t('message.success'),
+                    action === 'activate' ? t('gestionServices.batchActivated', { count: data?.processed || selectedServices.size }) : action === 'deactivate' ? t('gestionServices.batchDeactivated', { count: data?.processed || selectedServices.size }) : t('gestionServices.batchDeleted', { count: data?.processed || selectedServices.size })
                 );
                 setSelectedServices(new Set());
                 setSelectionMode(false);
                 loadServices();
             } else {
-                Alert.alert('Erreur', 'Une erreur est survenue');
+                Alert.alert(t('message.error'), t('gestionServices.genericError'));
             }
         } catch (error) {
             console.error('[GestionServicesSpecialises] Erreur action batch:', error);
-            Alert.alert('Erreur', 'Impossible d\'effectuer l\'action');
+            Alert.alert(t('message.error'), t('gestionServices.cannotPerformAction'));
         }
     };
 

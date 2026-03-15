@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 import SafeIcon from '../../components/SafeIcon';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { apiGet, apiPost } from '../../services/api';
 
 interface TrocDetails {
@@ -52,6 +53,7 @@ const TrocDetailsScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
     const { user } = useAuth();
+    const { t } = useLanguageSafe();
     const params = route.params as any;
     const trocId = params?.trocId as number;
     const typeTroc = params?.typeTroc as string;
@@ -70,37 +72,37 @@ const TrocDetailsScreen: React.FC = () => {
             const response = await apiGet(endpoint);
             const r = response.data as any;
             if (response.success && r) setTroc(r);
-            else { Alert.alert('Erreur', 'Impossible de charger les détails'); navigation.goBack(); }
-        } catch (e: any) { Alert.alert('Erreur', e.message || 'Erreur de chargement'); navigation.goBack(); }
+            else { Alert.alert(t('message.error'), t('trocDetails.cannotLoad')); navigation.goBack(); }
+        } catch (e: any) { Alert.alert(t('message.error'), e.message || t('trocDetails.loadError')); navigation.goBack(); }
         finally { setLoading(false); }
     };
 
     const handleRefresh = useCallback(async () => { setRefreshing(true); await loadTrocDetails(); setRefreshing(false); }, [trocId, typeTroc]);
 
     const handleAccept = async () => {
-        try { setActionLoading(true); const r = await apiPost(`/api/troc-livres/${trocId}/accept`, {}); if (r.success) { Alert.alert('Succès', 'Troc accepté !'); loadTrocDetails(); } else Alert.alert('Erreur', (r as any).error || 'Impossible d\'accepter'); }
-        catch (e: any) { Alert.alert('Erreur', e.message || 'Une erreur est survenue'); } finally { setActionLoading(false); }
+        try { setActionLoading(true); const r = await apiPost(`/api/troc-livres/${trocId}/accept`, {}); if (r.success) { Alert.alert(t('message.success'), t('trocDetails.trocAccepted')); loadTrocDetails(); } else Alert.alert(t('message.error'), (r as any).error || t('trocDetails.cannotAccept')); }
+        catch (e: any) { Alert.alert(t('message.error'), e.message || t('trocDetails.genericError')); } finally { setActionLoading(false); }
     };
 
     const handleRefuse = () => {
-        Alert.alert('Refuser le troc', 'Êtes-vous sûr ?', [
+        Alert.alert(t('trocDetails.refuseTitle'), t('trocDetails.refuseConfirm'), [
             { text: 'Annuler', style: 'cancel' },
             {
                 text: 'Refuser', style: 'destructive', onPress: async () => {
-                    try { setActionLoading(true); const r = await apiPost(`/api/troc-livres/${trocId}/refuse`, {}); if (r.success) { Alert.alert('Succès', 'Troc refusé'); navigation.goBack(); } else Alert.alert('Erreur', (r as any).error || 'Impossible de refuser'); }
-                    catch (e: any) { Alert.alert('Erreur', e.message || 'Erreur'); } finally { setActionLoading(false); }
+                    try { setActionLoading(true); const r = await apiPost(`/api/troc-livres/${trocId}/refuse`, {}); if (r.success) { Alert.alert(t('message.success'), t('trocDetails.trocRefused')); navigation.goBack(); } else Alert.alert(t('message.error'), (r as any).error || t('trocDetails.cannotRefuse')); }
+                    catch (e: any) { Alert.alert(t('message.error'), e.message || t('trocDetails.genericError')); } finally { setActionLoading(false); }
                 }
             },
         ]);
     };
 
     const handleComplete = () => {
-        Alert.alert('Finaliser le troc', 'Confirmez-vous que l\'échange a été effectué ?', [
+        Alert.alert(t('trocDetails.completeTitle'), t('trocDetails.completeConfirm'), [
             { text: 'Annuler', style: 'cancel' },
             {
                 text: 'Confirmer', onPress: async () => {
-                    try { setActionLoading(true); const r = await apiPost(`/api/troc-livres/${trocId}/complete`, {}); if (r.success) { Alert.alert('Succès', 'Troc finalisé !'); loadTrocDetails(); } else Alert.alert('Erreur', (r as any).error || 'Impossible de finaliser'); }
-                    catch (e: any) { Alert.alert('Erreur', e.message || 'Erreur'); } finally { setActionLoading(false); }
+                    try { setActionLoading(true); const r = await apiPost(`/api/troc-livres/${trocId}/complete`, {}); if (r.success) { Alert.alert(t('message.success'), t('trocDetails.trocCompleted')); loadTrocDetails(); } else Alert.alert(t('message.error'), (r as any).error || t('trocDetails.cannotComplete')); }
+                    catch (e: any) { Alert.alert(t('message.error'), e.message || t('trocDetails.genericError')); } finally { setActionLoading(false); }
                 }
             },
         ]);

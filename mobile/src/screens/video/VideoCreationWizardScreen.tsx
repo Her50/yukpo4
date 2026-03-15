@@ -424,8 +424,8 @@ const VideoCreationWizardScreen: React.FC = () => {
             setStep(newStep);
         } else {
             Alert.alert(
-                'Étape incomplète',
-                validation.error || 'Veuillez compléter les informations requises avant de continuer.'
+                t('videoWizardExtra.stepIncomplete'),
+                validation.error || t('videoWizardExtra.stepIncompleteMsg')
             );
         }
     }, [step, validateStepCompletion, markStepCompleted]);
@@ -446,16 +446,16 @@ const VideoCreationWizardScreen: React.FC = () => {
             setLoadingService(false);
             // ✅ CORRIGÉ: Afficher un message d'erreur si serviceId est manquant
             Alert.alert(
-                'Service requis',
-                'Pour créer une vidéo, vous devez d\'abord sélectionner un service avec au moins un produit.\n\nSouhaitez-vous créer un nouveau service ?',
+                t('videoWizardExtra.serviceRequired'),
+                t('videoWizardExtra.serviceRequiredMsg'),
                 [
                     {
-                        text: 'Retour',
+                        text: t('videoWizardExtra.back'),
                         onPress: () => navigation.goBack(),
                         style: 'cancel',
                     },
                     {
-                        text: 'Créer un service',
+                        text: t('videoWizardExtra.createService'),
                         onPress: () => {
                             const parent = (navigation as any).getParent();
                             if (parent) {
@@ -511,16 +511,16 @@ const VideoCreationWizardScreen: React.FC = () => {
             } else {
                 // ✅ CORRIGÉ: Afficher un message d'erreur si le service n'est pas trouvé
                 Alert.alert(
-                    'Service introuvable',
-                    'Le service sélectionné n\'a pas pu être chargé. Cela peut être dû à:\n\n• Une connexion internet instable\n• Le service a été supprimé\n• Un problème temporaire du serveur\n\nVoulez-vous réessayer ou retourner en arrière ?',
+                    t('videoWizardExtra.serviceNotFound'),
+                    t('videoWizardExtra.serviceNotFoundMsg'),
                     [
                         {
-                            text: 'Retour',
+                            text: t('videoWizardExtra.back'),
                             onPress: () => navigation.goBack(),
                             style: 'cancel',
                         },
                         {
-                            text: 'Réessayer',
+                            text: t('videoWizardExtra.retry'),
                             onPress: () => fetchServiceDetails(),
                         },
                     ]
@@ -535,18 +535,18 @@ const VideoCreationWizardScreen: React.FC = () => {
                 errorMessage.toLowerCase().includes('fetch');
 
             Alert.alert(
-                isNetworkError ? 'Problème de connexion' : 'Erreur de chargement',
+                isNetworkError ? t('videoWizardExtra.connectionProblem') : t('videoWizardExtra.loadError'),
                 isNetworkError
-                    ? 'Impossible de charger le service. Vérifiez votre connexion internet et réessayez.\n\nL\'application va réessayer automatiquement.'
-                    : `Une erreur est survenue lors du chargement du service:\n\n${errorMessage}\n\nVoulez-vous réessayer ?`,
+                    ? t('videoWizardExtra.connectionErrorMsg')
+                    : `${errorMessage}`,
                 [
                     {
-                        text: 'Retour',
+                        text: t('videoWizardExtra.back'),
                         onPress: () => navigation.goBack(),
                         style: 'cancel',
                     },
                     {
-                        text: 'Réessayer',
+                        text: t('videoWizardExtra.retry'),
                         onPress: () => fetchServiceDetails(),
                     },
                 ]
@@ -647,8 +647,8 @@ const VideoCreationWizardScreen: React.FC = () => {
             });
             // ✅ AMÉLIORATION: Afficher une alerte pour informer l'utilisateur
             Alert.alert(
-                'Médias indisponibles',
-                'Impossible de charger les médias pour ce produit. Vous pouvez continuer sans médias ou réessayer plus tard.',
+                t('videoWizardExtra.mediaUnavailable'),
+                t('videoWizardExtra.mediaUnavailableMsg'),
                 [{ text: 'OK' }]
             );
         } finally {
@@ -663,18 +663,18 @@ const VideoCreationWizardScreen: React.FC = () => {
                 const draft = await loadVideoDraft();
                 if (draft && draft.serviceId === serviceId && draft.productIndex === productIndex) {
                     Alert.alert(
-                        'Brouillon trouvé',
-                        'Un brouillon non terminé a été trouvé. Voulez-vous le reprendre ?',
+                        t('videoWizardExtra.draftFound'),
+                        t('videoWizardExtra.draftFoundMsg'),
                         [
                             {
-                                text: 'Non, recommencer',
+                                text: t('videoWizardExtra.draftNo'),
                                 onPress: async () => {
                                     await clearVideoDraft();
                                 },
                                 style: 'cancel',
                             },
                             {
-                                text: 'Oui, reprendre',
+                                text: t('videoWizardExtra.draftYes'),
                                 onPress: () => {
                                     // Restaurer les valeurs du brouillon
                                     if (draft.brief) setBrief(draft.brief);
@@ -949,10 +949,10 @@ const VideoCreationWizardScreen: React.FC = () => {
         ) => {
             try {
                 const profile = await createProfile(payload);
-                Alert.alert('Profil vocal', 'Profil créé avec succès.');
+                Alert.alert(t('videoWizardExtra.voiceProfile'), t('videoWizardExtra.voiceProfileCreated'));
                 setSelectedVoiceProfileId((prev) => prev ?? profile.id);
             } catch (error: any) {
-                Alert.alert('Profil vocal', error?.message || 'Impossible de créer le profil audio.');
+                Alert.alert(t('videoWizardExtra.voiceProfile'), error?.message || t('videoWizardExtra.voiceProfileCreateError'));
             }
         },
         [createProfile],
@@ -962,10 +962,10 @@ const VideoCreationWizardScreen: React.FC = () => {
         async (profileId: number) => {
             try {
                 await deleteProfile(profileId);
-                Alert.alert('Profil vocal', 'Profil supprimé.');
+                Alert.alert(t('videoWizardExtra.voiceProfile'), t('videoWizardExtra.voiceProfileDeleted'));
                 setSelectedVoiceProfileId((prev) => (prev === profileId ? undefined : prev));
             } catch (error: any) {
-                Alert.alert('Profil vocal', error?.message || 'Suppression impossible.');
+                Alert.alert(t('videoWizardExtra.voiceProfile'), error?.message || t('videoWizardExtra.voiceProfileDeleteError'));
             }
         },
         [deleteProfile],
@@ -1017,11 +1017,11 @@ const VideoCreationWizardScreen: React.FC = () => {
                         : 'inconnu';
                     const costStr = `${Math.round(estimation.total_cost_local).toLocaleString()} ${estimation.local_currency}`;
                     Alert.alert(
-                        '💸 Solde insuffisant',
-                        `Coût estimé : ${costStr}\nVotre solde : ${balanceStr}\n\nVeuillez recharger votre compte pour générer cette vidéo.`,
+                        t('videoWizardExtra.insufficientBalance'),
+                        t('videoWizardExtra.insufficientBalanceMsg', { cost: costStr, balance: balanceStr }),
                         [
-                            { text: 'Annuler', style: 'cancel' },
-                            { text: 'Recharger', onPress: () => (navigation as any).navigate('RechargeTokens') },
+                            { text: t('message.cancel'), style: 'cancel' },
+                            { text: t('videoWizardExtra.recharge'), onPress: () => (navigation as any).navigate('RechargeTokens') },
                         ]
                     );
                 }
@@ -1140,8 +1140,8 @@ const VideoCreationWizardScreen: React.FC = () => {
             const sessionId = await ensureStudioSession();
             if (!sessionId) {
                 Alert.alert(
-                    'Erreur',
-                    'Impossible de créer ou récupérer une session Studio. Vérifiez votre connexion.',
+                    t('message.error'),
+                    t('videoWizardExtra.sessionError'),
                 );
                 return;
             }
@@ -1151,8 +1151,8 @@ const VideoCreationWizardScreen: React.FC = () => {
             if (!uuidRegex.test(sessionId)) {
                 console.error('[VideoCreationWizard] Session ID invalide (pas un UUID):', sessionId);
                 Alert.alert(
-                    'Erreur',
-                    'Session Studio invalide. Veuillez réessayer.',
+                    t('message.error'),
+                    t('videoWizardExtra.sessionInvalid'),
                 );
                 return;
             }
@@ -1368,11 +1368,11 @@ const VideoCreationWizardScreen: React.FC = () => {
         // Le service de génération vidéo IA (Runway/Sora/Pika) n'est pas encore activé côté serveur
         if (creationSource === 'ai_virtual') {
             Alert.alert(
-                '🚧 Fonctionnalité bientôt disponible',
-                'La génération de vidéo 100% IA (Runway/Sora/Pika) n\'est pas encore activée sur le serveur.\n\nUtilisez le mode "Mes médias" pour créer une vidéo à partir de vos photos et images existantes.',
+                t('videoWizardExtra.aiNotAvailable'),
+                t('videoWizardExtra.aiNotAvailableMsg'),
                 [
                     { text: 'OK', style: 'cancel' },
-                    { text: 'Utiliser mes médias', onPress: () => setCreationSource('media') },
+                    { text: t('videoWizardExtra.useMyMedia'), onPress: () => setCreationSource('media') },
                 ]
             );
             return;
@@ -1385,11 +1385,11 @@ const VideoCreationWizardScreen: React.FC = () => {
                 : 'inconnu';
             const costStr = `${Math.round(costEstimation.total_cost_local).toLocaleString()} ${costEstimation.local_currency}`;
             Alert.alert(
-                '💸 Solde insuffisant',
-                `Coût de la vidéo : ${costStr}\nVotre solde : ${balanceStr}\n\nVeuillez recharger votre compte avant de lancer la génération.`,
+                t('videoWizardExtra.insufficientBalance'),
+                t('videoWizardExtra.insufficientBalanceGenMsg', { cost: costStr, balance: balanceStr }),
                 [
-                    { text: 'Annuler', style: 'cancel' },
-                    { text: 'Recharger', onPress: () => (navigation as any).navigate('RechargeTokens') },
+                    { text: t('message.cancel'), style: 'cancel' },
+                    { text: t('videoWizardExtra.recharge'), onPress: () => (navigation as any).navigate('RechargeTokens') },
                 ]
             );
             return;
@@ -1514,23 +1514,23 @@ const VideoCreationWizardScreen: React.FC = () => {
             const alertButtons: any[] = [{ text: 'OK' }];
             if (isBalanceError) {
                 alertButtons.push({
-                    text: '💳 Recharger',
+                    text: `💳 ${t('videoWizardExtra.recharge')}`,
                     onPress: () => (navigation as any).navigate('RechargeTokens'),
                 });
             } else {
                 alertButtons.push({
-                    text: 'Réessayer',
+                    text: t('videoWizardExtra.retry'),
                     onPress: () => handleGenerate(),
                 });
             }
 
             Alert.alert(
-                isBalanceError ? '💸 Solde insuffisant' : (isNetworkError ? 'Problème de connexion' : t('videoWizard.alert.renderFailedTitle')),
+                isBalanceError ? t('videoWizardExtra.insufficientBalance') : (isNetworkError ? t('videoWizardExtra.connectionProblem') : t('videoWizard.alert.renderFailedTitle')),
                 isBalanceError
-                    ? 'Votre solde est insuffisant pour générer cette vidéo. Veuillez recharger votre compte.'
+                    ? t('videoWizardExtra.balanceInsufficient')
                     : (isNetworkError
-                        ? 'Impossible de lancer la génération vidéo. Vérifiez votre connexion internet et réessayez.\n\nVotre brouillon a été sauvegardé automatiquement.'
-                        : `${errorMessage}\n\nVotre brouillon a été sauvegardé automatiquement.`),
+                        ? `${t('videoWizardExtra.networkErrorMsg')}\n\n${t('videoWizardExtra.draftSaved')}`
+                        : `${errorMessage}\n\n${t('videoWizardExtra.draftSaved')}`),
                 alertButtons
             );
         }
@@ -1762,8 +1762,8 @@ const VideoCreationWizardScreen: React.FC = () => {
                                         style={styles.pickerButton}
                                         onPress={() => {
                                             Alert.alert(
-                                                'Style de vidéo',
-                                                'Choisissez un style',
+                                                t('videoWizardExtra.videoStyle'),
+                                                t('videoWizardExtra.chooseStyle'),
                                                 ['IntroPulse', 'ProductShowcase', 'ARHighlight', 'GlowCTA'].map((template) => ({
                                                     text: template,
                                                     onPress: () => setSelectedStyle(template),
@@ -1891,8 +1891,8 @@ const VideoCreationWizardScreen: React.FC = () => {
                                                 { key: 'expert', label: t('videoWizard.mode.expertTitle'), description: t('videoWizard.mode.expertDesc') },
                                             ];
                                             Alert.alert(
-                                                'Mode IA',
-                                                'Choisissez un mode',
+                                                t('videoWizardExtra.aiMode'),
+                                                t('videoWizardExtra.chooseMode'),
                                                 modeOptions.map((item) => ({
                                                     text: `${item.label}\n${item.description}`,
                                                     onPress: () => setMode(item.key as ModePreset),
@@ -2329,11 +2329,11 @@ const VideoCreationWizardScreen: React.FC = () => {
                                                 if (!studioSessionId) return;
                                                 try {
                                                     await studioService.setDependencies(studioSessionId, selectedLinkedSessions);
-                                                    Alert.alert('Succès', 'Vidéos liées enregistrées');
+                                                    Alert.alert(t('message.success'), t('videoWizardExtra.linkedSaved'));
                                                     const deps = await studioService.getDependencies(studioSessionId);
                                                     setDependencies(deps);
                                                 } catch (error: any) {
-                                                    Alert.alert('Erreur', error.message || 'Erreur lors de l\'enregistrement');
+                                                    Alert.alert(t('message.error'), error.message || t('videoWizardExtra.linkedSaveError'));
                                                 }
                                             }}
                                             style={{ marginTop: 12 }}

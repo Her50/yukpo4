@@ -16,6 +16,7 @@ import {
 import SafeIcon from '../../components/SafeIcon';
 import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import {
     BloodCompatibility,
     BloodDonationRequest,
@@ -31,6 +32,7 @@ type TabType = 'requests' | 'profile' | 'compatibility';
 const BloodDonationScreen: React.FC = () => {
     const navigation = useNavigation();
     const { user } = useAuth();
+    const { t } = useLanguageSafe();
 
     const [activeTab, setActiveTab] = useState<TabType>('requests');
     const [loading, setLoading] = useState(true);
@@ -98,14 +100,14 @@ const BloodDonationScreen: React.FC = () => {
             if (response.success) {
                 setSelectedBloodGroup(group);
                 setShowGroupSelector(false);
-                Alert.alert('Succès', `Groupe sanguin ${group} enregistré`);
+                Alert.alert(t('message.success'), t('bloodDonation.bloodGroupSaved', { group }));
                 loadData();
             } else {
-                Alert.alert('Erreur', 'Impossible de sauvegarder le groupe sanguin');
+                Alert.alert(t('message.error'), t('bloodDonation.cannotSaveBloodGroup'));
             }
         } catch (error: any) {
             console.error('[BloodDonationScreen] Erreur sauvegarde groupe:', error);
-            Alert.alert('Erreur', error.message || 'Erreur lors de la sauvegarde');
+            Alert.alert(t('message.error'), error.message || t('bloodDonation.saveError'));
         } finally {
             setSavingGroup(false);
         }
@@ -113,7 +115,7 @@ const BloodDonationScreen: React.FC = () => {
 
     const handleLoadCompatibility = async () => {
         if (!selectedBloodGroup) {
-            Alert.alert('Info', 'Veuillez d\'abord enregistrer votre groupe sanguin');
+            Alert.alert('Info', t('bloodDonation.registerBloodGroupFirst'));
             return;
         }
         try {
@@ -134,11 +136,11 @@ const BloodDonationScreen: React.FC = () => {
 
     const handleRespondToRequest = async (request: BloodDonationRequest) => {
         if (!user) {
-            Alert.alert('Connexion requise', 'Veuillez vous connecter pour répondre à une demande');
+            Alert.alert(t('bloodDonation.loginRequired'), t('bloodDonation.loginToRespond'));
             return;
         }
         if (!selectedBloodGroup) {
-            Alert.alert('Profil incomplet', 'Veuillez d\'abord enregistrer votre groupe sanguin dans l\'onglet Profil');
+            Alert.alert(t('bloodDonation.incompleteProfile'), t('bloodDonation.registerBloodGroupInProfile'));
             setActiveTab('profile');
             return;
         }
@@ -154,16 +156,16 @@ const BloodDonationScreen: React.FC = () => {
             const response = await bloodDonationService.notifyDonorsForRequest(selectedRequest.id);
             if (response.success) {
                 Alert.alert(
-                    'Merci !',
-                    'Votre disponibilité a été signalée. La banque de sang vous contactera.',
+                    t('bloodDonation.thankYou'),
+                    t('bloodDonation.availabilityReported'),
                     [{ text: 'OK', onPress: () => setShowRespondModal(false) }]
                 );
             } else {
-                Alert.alert('Erreur', 'Impossible de signaler votre disponibilité');
+                Alert.alert(t('message.error'), t('bloodDonation.cannotReportAvailability'));
             }
         } catch (error: any) {
             console.error('[BloodDonationScreen] Erreur réponse:', error);
-            Alert.alert('Erreur', error.message || 'Erreur lors de la réponse');
+            Alert.alert(t('message.error'), error.message || t('bloodDonation.responseError'));
         } finally {
             setResponding(false);
         }
@@ -399,8 +401,8 @@ const BloodDonationScreen: React.FC = () => {
                                 title="Enregistrer un don"
                                 onPress={() => {
                                     Alert.alert(
-                                        'Enregistrer un don',
-                                        'Confirmez que vous avez effectué un don de sang aujourd\'hui ?',
+                                        t('bloodDonation.registerDonation'),
+                                        t('bloodDonation.confirmDonationToday'),
                                         [
                                             { text: 'Annuler', style: 'cancel' },
                                             {
@@ -410,10 +412,10 @@ const BloodDonationScreen: React.FC = () => {
                                                         await bloodDonationService.updateLastDonation(
                                                             new Date().toISOString().split('T')[0]
                                                         );
-                                                        Alert.alert('Merci !', 'Votre don a été enregistré');
+                                                        Alert.alert(t('bloodDonation.thankYou'), t('bloodDonation.donationRegistered'));
                                                         loadData();
                                                     } catch (err) {
-                                                        Alert.alert('Erreur', 'Impossible d\'enregistrer le don');
+                                                        Alert.alert(t('message.error'), t('bloodDonation.cannotRegisterDonation'));
                                                     }
                                                 },
                                             },

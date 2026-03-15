@@ -18,6 +18,7 @@ import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import SafeIcon from '../../components/SafeIcon';
 import { NativeButton, NativeCard, NativeInput } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { apiGet, apiPost, apiPut } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
@@ -52,6 +53,7 @@ const CreateEtablissementScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
     const { user } = useAuth();
+    const { t } = useLanguageSafe();
     const { location } = useLocation();
     const params = route.params as any;
     const etablissementId = params?.etablissementId;
@@ -127,7 +129,7 @@ const CreateEtablissementScreen: React.FC = () => {
             }
         } catch (error: any) {
             console.error('[CreateEtablissementScreen] Erreur:', error);
-            Alert.alert('Erreur', 'Impossible de charger l\'établissement');
+            Alert.alert(t('message.error'), t('createEtablissement.cannotLoad'));
         } finally {
             setLoadingData(false);
         }
@@ -141,7 +143,7 @@ const CreateEtablissementScreen: React.FC = () => {
                 gps_lon: location.coords.longitude.toString(),
             });
         } else {
-            Alert.alert('Erreur', 'Position GPS non disponible');
+            Alert.alert(t('message.error'), t('createEtablissement.gpsUnavailable'));
         }
     };
 
@@ -164,7 +166,7 @@ const CreateEtablissementScreen: React.FC = () => {
 
     const handleSubmit = async () => {
         if (!formData.nom_etablissement || !formData.ville || !formData.type_etablissement) {
-            Alert.alert('Erreur', 'Veuillez remplir tous les champs obligatoires');
+            Alert.alert(t('message.error'), t('createEtablissement.fillRequired'));
             return;
         }
 
@@ -201,15 +203,15 @@ const CreateEtablissementScreen: React.FC = () => {
             }
 
             if (response.success) {
-                Alert.alert('Succès', etablissementId ? 'Établissement mis à jour' : 'Établissement créé avec succès !', [
+                Alert.alert(t('message.success'), etablissementId ? t('createEtablissement.updated') : t('createEtablissement.created'), [
                     { text: 'OK', onPress: () => navigation.goBack() },
                 ]);
             } else {
-                Alert.alert('Erreur', response.message || 'Erreur lors de la sauvegarde');
+                Alert.alert(t('message.error'), response.message || t('createEtablissement.saveError'));
             }
         } catch (error: any) {
             console.error('[CreateEtablissementScreen] Erreur:', error);
-            Alert.alert('Erreur', 'Erreur lors de la sauvegarde');
+            Alert.alert(t('message.error'), t('createEtablissement.saveError'));
         } finally {
             setLoading(false);
         }
@@ -217,7 +219,7 @@ const CreateEtablissementScreen: React.FC = () => {
 
     const handleUpdateStats = async () => {
         if (!etablissementId) {
-            Alert.alert('Erreur', 'Vous devez d\'abord créer l\'établissement');
+            Alert.alert(t('message.error'), t('createEtablissement.createFirst'));
             return;
         }
 
@@ -230,13 +232,13 @@ const CreateEtablissementScreen: React.FC = () => {
 
             const response = await apiPut(`/api/orientation-scolaire/etablissements/${etablissementId}/statistiques`, payload);
             if (response.success) {
-                Alert.alert('Succès', 'Statistiques mises à jour');
+                Alert.alert(t('message.success'), t('createEtablissement.statsUpdated'));
             } else {
-                Alert.alert('Erreur', response.message || 'Erreur lors de la mise à jour');
+                Alert.alert(t('message.error'), response.message || t('createEtablissement.updateError'));
             }
         } catch (error: any) {
             console.error('[CreateEtablissementScreen] Erreur stats:', error);
-            Alert.alert('Erreur', 'Erreur lors de la mise à jour');
+            Alert.alert(t('message.error'), t('createEtablissement.updateError'));
         } finally {
             setLoading(false);
         }

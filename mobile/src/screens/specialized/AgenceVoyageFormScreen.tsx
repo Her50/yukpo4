@@ -51,6 +51,7 @@ const AgenceVoyageFormScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
     const { user } = useAuth();
+    const { t } = useLanguageSafe();
     const { location } = useLocation();
     const [serviceId, setServiceId] = useState<number | null>((route.params as any)?.serviceId || null);
     const specializedServiceId = (route.params as any)?.specializedServiceId as number | undefined;
@@ -252,10 +253,10 @@ const AgenceVoyageFormScreen: React.FC = () => {
             const resp = await apiPost('/api/bus-tickets/validate/manual', { reservation_id: reservationId });
             const d = (resp?.data || resp) as any;
             if (d.success) {
-                Alert.alert('Succès', 'Passager validé manuellement');
+                Alert.alert(t('message.success'), t('agenceVoyage.passengerValidated'));
                 if (selectedBusProduct) { await loadPassengers(selectedBusProduct); await loadBoardingSummary(selectedBusProduct); }
-            } else { Alert.alert('Erreur', d.error || 'Validation impossible'); }
-        } catch (e) { Alert.alert('Erreur', 'Service indisponible'); }
+            } else { Alert.alert(t('message.error'), d.error || t('agenceVoyage.validationFailed')); }
+        } catch (e) { Alert.alert(t('message.error'), t('agenceVoyage.serviceUnavailable')); }
     };
 
     const generateSeatMap = (model: BusModel): any[] => {
@@ -270,7 +271,7 @@ const AgenceVoyageFormScreen: React.FC = () => {
     };
 
     const handleCreateBusProduct = async (model: BusModel) => {
-        if (!serviceId) { Alert.alert('Erreur', 'Service ID manquant'); return; }
+        if (!serviceId) { Alert.alert(t('message.error'), t('agenceVoyage.serviceIdMissing')); return; }
         try {
             setLoading(true);
             const seatMap = generateSeatMap(model);
@@ -288,42 +289,42 @@ const AgenceVoyageFormScreen: React.FC = () => {
                         classe: model.classe, equipements: model.equipements,
                     });
                 }
-                Alert.alert('Succès', `Bus "${model.nom_modele}" créé et lié au backend !`);
-            } else { Alert.alert('Erreur', d.error || 'Impossible de créer le produit'); }
-        } catch (e: any) { Alert.alert('Erreur', e.message || 'Erreur lors de la création'); } finally { setLoading(false); }
+                Alert.alert(t('message.success'), t('agenceVoyage.busCreated', { name: model.nom_modele }));
+            } else { Alert.alert(t('message.error'), d.error || t('agenceVoyage.cannotCreateProduct')); }
+        } catch (e: any) { Alert.alert(t('message.error'), e.message || t('agenceVoyage.creationError')); } finally { setLoading(false); }
     };
 
     const handleSaveSchedule = async () => {
-        if (!scheduleForm.departure_city.trim() || !scheduleForm.arrival_city.trim()) { Alert.alert('Erreur', 'Villes obligatoires'); return; }
-        if (scheduleForm.departure_times.length === 0) { Alert.alert('Erreur', 'Au moins un horaire requis'); return; }
+        if (!scheduleForm.departure_city.trim() || !scheduleForm.arrival_city.trim()) { Alert.alert(t('message.error'), t('agenceVoyage.citiesRequired')); return; }
+        if (scheduleForm.departure_times.length === 0) { Alert.alert(t('message.error'), t('agenceVoyage.scheduleTimeRequired')); return; }
         try {
             setLoading(true);
             const payload = { departure_city: scheduleForm.departure_city.trim(), arrival_city: scheduleForm.arrival_city.trim(), departure_times: scheduleForm.departure_times, day_of_week: scheduleForm.day_of_week, notes: scheduleForm.notes.trim() || null };
             const resp = editingSchedule ? await apiPut(`/api/bus-tickets/agencies/schedules/${editingSchedule.id}`, payload) : await apiPost('/api/bus-tickets/agencies/schedules', payload);
-            if (resp.success) { Alert.alert('Succès', editingSchedule ? 'Horaire modifié' : 'Horaire créé'); setShowScheduleModal(false); setEditingSchedule(null); await loadSchedules(); }
-            else { Alert.alert('Erreur', (resp as any).error || 'Impossible d\'enregistrer'); }
-        } catch (e: any) { Alert.alert('Erreur', e.message || 'Erreur'); } finally { setLoading(false); }
+            if (resp.success) { Alert.alert(t('message.success'), editingSchedule ? t('agenceVoyage.scheduleModified') : t('agenceVoyage.scheduleCreated')); setShowScheduleModal(false); setEditingSchedule(null); await loadSchedules(); }
+            else { Alert.alert(t('message.error'), (resp as any).error || t('agenceVoyage.cannotSave')); }
+        } catch (e: any) { Alert.alert(t('message.error'), e.message || t('message.error')); } finally { setLoading(false); }
     };
 
     const handleDeleteSchedule = async (id: number) => {
-        Alert.alert('Confirmer', 'Supprimer cet horaire ?', [
-            { text: 'Annuler', style: 'cancel' },
-            { text: 'Supprimer', style: 'destructive', onPress: async () => { try { await apiDelete(`/api/bus-tickets/agencies/schedules/${id}`); await loadSchedules(); } catch (e) { Alert.alert('Erreur', 'Impossible de supprimer'); } } },
+        Alert.alert(t('message.confirm'), t('agenceVoyage.confirmDelete'), [
+            { text: t('message.cancel'), style: 'cancel' },
+            { text: t('message.delete'), style: 'destructive', onPress: async () => { try { await apiDelete(`/api/bus-tickets/agencies/schedules/${id}`); await loadSchedules(); } catch (e) { Alert.alert(t('message.error'), t('agenceVoyage.cannotDelete')); } } },
         ]);
     };
 
     const handleSubmit = async () => {
         const nom = formData.nom_agence;
-        if (!nom.trim()) { Alert.alert('Erreur', 'Nom obligatoire'); return; }
+        if (!nom.trim()) { Alert.alert(t('message.error'), t('agenceVoyage.nameRequired')); return; }
         setLoading(true);
         let finalServiceId = serviceId;
         if (!finalServiceId && user?.id) {
             try {
                 const resp = await servicesApi.createService({ titre_service: nom, description: 'Agence de voyage', category: 'transport' });
                 if (resp.success && resp.data && typeof resp.data === 'object' && 'id' in resp.data) { finalServiceId = (resp.data as any).id; setServiceId(finalServiceId); }
-            } catch (e) { Alert.alert('Erreur', 'Impossible de créer le service'); setLoading(false); return; }
+            } catch (e) { Alert.alert(t('message.error'), t('agenceVoyage.cannotCreateService')); setLoading(false); return; }
         }
-        if (!finalServiceId) { Alert.alert('Erreur', 'Service ID manquant'); setLoading(false); return; }
+        if (!finalServiceId) { Alert.alert(t('message.error'), t('agenceVoyage.serviceIdMissing')); setLoading(false); return; }
         try {
             const payload = {
                 service_id: finalServiceId, nom_agence: nom, adresse: formData.adresse || null,
@@ -343,9 +344,9 @@ const AgenceVoyageFormScreen: React.FC = () => {
             const resp = await apiPost('/api/agences-voyage', payload);
             if (resp.success) {
                 await clearSavedFormData(STORAGE_KEY);
-                Alert.alert('Succès', 'Agence enregistrée !', [{ text: 'OK', onPress: () => { setIsDashboardMode(true); setActiveTab('overview'); handleRefresh(); } }]);
-            } else { Alert.alert('Erreur', (resp as any).error || 'Impossible d\'enregistrer'); }
-        } catch (e: any) { Alert.alert('Erreur', e.message || 'Erreur'); } finally { setLoading(false); }
+                Alert.alert(t('message.success'), t('agenceVoyage.agencySaved'), [{ text: 'OK', onPress: () => { setIsDashboardMode(true); setActiveTab('overview'); handleRefresh(); } }]);
+            } else { Alert.alert(t('message.error'), (resp as any).error || t('agenceVoyage.cannotSave')); }
+        } catch (e: any) { Alert.alert(t('message.error'), e.message || t('message.error')); } finally { setLoading(false); }
     };
 
     if (initialLoading) return <View style={s.loadingScreen}><ActivityIndicator size="large" color="#2563EB" /><Text style={s.loadingText}>Chargement...</Text></View>;
@@ -596,9 +597,9 @@ const AgenceVoyageFormScreen: React.FC = () => {
                             try {
                                 const resp = await apiPost('/api/bus-tickets/validate/qr', { qr_code_data: qrData, product_id: selectedBusProduct });
                                 const d = (resp?.data || resp) as any;
-                                if (d.success) { Alert.alert('Validé ✓', `Passager: ${d.passenger_name || 'Confirmé'}\nPlace: ${d.seat_number || '?'}`); }
-                                else { Alert.alert('Erreur', d.error || 'Ticket invalide'); }
-                            } catch (e) { Alert.alert('Erreur', 'Validation impossible'); }
+                                if (d.success) { Alert.alert(t('agenceVoyage.ticketValidated'), t('agenceVoyage.ticketValidatedMsg', { name: d.passenger_name || 'OK', seat: d.seat_number || '?' })); }
+                                else { Alert.alert(t('message.error'), d.error || t('agenceVoyage.ticketInvalid')); }
+                            } catch (e) { Alert.alert(t('message.error'), t('agenceVoyage.validationFailed')); }
                         }
                     });
                 }}>

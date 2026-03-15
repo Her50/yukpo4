@@ -16,6 +16,7 @@ import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import SafeIcon from '../../components/SafeIcon';
 import { NativeButton, NativeCard, NativeInput } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { apiPost } from '../../services/api';
 import { offreEmploiService } from '../../services/offreEmploiService';
@@ -25,6 +26,7 @@ import { hapticPress } from '../../utils/hapticFeedback';
 const CreateOffreScreen: React.FC = () => {
     const navigation = useNavigation();
     const { user } = useAuth();
+    const { t } = useLanguageSafe();
     const { location } = useLocation();
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
@@ -119,14 +121,14 @@ const CreateOffreScreen: React.FC = () => {
                 gps: `${location.coords.latitude},${location.coords.longitude}`,
             });
         } else {
-            Alert.alert('Erreur', 'Position GPS non disponible');
+            Alert.alert(t('message.error'), t('createOffre.gpsUnavailable'));
         }
     };
 
     // ✅ NOUVEAU: Fonction pour remplir le formulaire via IA
     const handleAIFill = async () => {
         if (!aiPrompt.trim()) {
-            Alert.alert('Erreur', 'Veuillez décrire votre offre d\'emploi');
+            Alert.alert(t('message.error'), t('createOffre.describeOffer'));
             return;
         }
 
@@ -177,13 +179,13 @@ const CreateOffreScreen: React.FC = () => {
 
                 setShowAIModal(false);
                 setAiPrompt('');
-                Alert.alert('Succès', 'Formulaire rempli automatiquement ! Vous pouvez maintenant vérifier et modifier les informations.');
+                Alert.alert(t('message.success'), t('createOffre.aiFormFilled'));
             } else {
-                Alert.alert('Erreur', response.message || 'Impossible de traiter votre demande');
+                Alert.alert(t('message.error'), response.message || t('createOffre.cannotProcessAI'));
             }
         } catch (error: any) {
             console.error('[CreateOffreScreen] Erreur IA:', error);
-            Alert.alert('Erreur', error.message || 'Erreur lors du traitement par IA');
+            Alert.alert(t('message.error'), error.message || t('createOffre.aiError'));
         } finally {
             setLoadingAI(false);
         }
@@ -191,7 +193,7 @@ const CreateOffreScreen: React.FC = () => {
 
     const handleSubmit = async () => {
         if (!formData.titre_poste || !formData.description || !formData.secteur || !formData.lieu_travail) {
-            Alert.alert('Erreur', 'Veuillez remplir tous les champs obligatoires');
+            Alert.alert(t('message.error'), t('createOffre.fillRequired'));
             return;
         }
 
@@ -225,7 +227,7 @@ const CreateOffreScreen: React.FC = () => {
 
             if (response.success) {
                 const offreId = (response.data as any)?.id || (response.data as any)?.offre_id;
-                Alert.alert('Succès', 'Offre créée avec succès !', [
+                Alert.alert(t('message.success'), t('createOffre.offerCreated'), [
                     {
                         text: 'Voir les candidatures',
                         onPress: () => {
@@ -239,11 +241,11 @@ const CreateOffreScreen: React.FC = () => {
                     { text: 'OK', style: 'cancel' },
                 ]);
             } else {
-                Alert.alert('Erreur', response.message || 'Erreur lors de la création de l\'offre');
+                Alert.alert(t('message.error'), response.message || t('createOffre.createError'));
             }
         } catch (error: any) {
             console.error('[CreateOffreScreen] Erreur:', error);
-            Alert.alert('Erreur', 'Erreur lors de la création de l\'offre');
+            Alert.alert(t('message.error'), t('createOffre.createError'));
         } finally {
             setLoading(false);
         }

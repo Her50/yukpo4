@@ -19,6 +19,7 @@ import SafeIcon from '../../components/SafeIcon';
 import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import MediaUploader, { MediaItem } from '../../components/specialized/MediaUploader';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { getCurrencyFromGPS, useCurrencyDetection } from '../../hooks/useCurrencyDetection';
 import { clearSavedFormData, useFormAutoSave } from '../../hooks/useFormAutoSave';
@@ -54,6 +55,7 @@ const ImmobilierFormScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
     const { user } = useAuth();
+    const { t } = useLanguageSafe();
     const { location } = useLocation();
     const [serviceId, setServiceId] = useState<number | null>((route.params as any)?.serviceId || null);
     const propertyId = (route.params as any)?.propertyId as number | undefined;
@@ -159,7 +161,7 @@ const ImmobilierFormScreen: React.FC = () => {
                     const existing = new Set(prev.map(m => m.uploadUrl).filter(Boolean));
                     return [...prev, ...items.filter(m => !m.uploadUrl || !existing.has(m.uploadUrl))];
                 });
-                Alert.alert('📸 Photos ajoutées', `${items.length} photo(s) Google Places importée(s)`);
+                Alert.alert(t('immobilierForm.photosAdded'), t('immobilierForm.photosImported', { count: items.length }));
             }
             setLastImportedPlaceId(placeId);
         } catch (e) { console.error('[Immobilier] Google photos:', e); } finally { setImportingGoogleMedia(false); }
@@ -167,11 +169,11 @@ const ImmobilierFormScreen: React.FC = () => {
 
     // Submit
     const handleSubmit = async () => {
-        if (!formData.titre.trim()) { Alert.alert('Erreur', 'Titre obligatoire'); return; }
-        if (!serviceId) { Alert.alert('Erreur', 'Service non créé'); return; }
-        if (!formData.ville && !selectedGPS) { Alert.alert('Erreur', 'Localisation (ville ou GPS) requise'); return; }
-        if (formData.statut === 'vente' && !formData.prix_vente) { Alert.alert('Erreur', 'Prix de vente requis'); return; }
-        if (formData.statut === 'location' && !formData.prix_location_mensuel) { Alert.alert('Erreur', 'Prix location requis'); return; }
+        if (!formData.titre.trim()) { Alert.alert(t('message.error'), t('immobilierForm.titleRequired')); return; }
+        if (!serviceId) { Alert.alert(t('message.error'), t('immobilierForm.serviceNotCreated')); return; }
+        if (!formData.ville && !selectedGPS) { Alert.alert(t('message.error'), t('immobilierForm.locationRequired')); return; }
+        if (formData.statut === 'vente' && !formData.prix_vente) { Alert.alert(t('message.error'), t('immobilierForm.salePriceRequired')); return; }
+        if (formData.statut === 'location' && !formData.prix_location_mensuel) { Alert.alert(t('message.error'), t('immobilierForm.rentPriceRequired')); return; }
 
         setLoading(true);
         try {
@@ -200,9 +202,9 @@ const ImmobilierFormScreen: React.FC = () => {
             }
             if (resp.success) {
                 await clearSavedFormData(STORAGE_KEY);
-                Alert.alert('Succès', mode === 'edit' ? 'Bien modifié !' : 'Bien créé !', [{ text: 'OK', onPress: () => navigation.goBack() }]);
-            } else { Alert.alert('Erreur', (resp as any).error || 'Impossible d\'enregistrer'); }
-        } catch (e: any) { Alert.alert('Erreur', e.message || 'Erreur'); } finally { setLoading(false); }
+                Alert.alert(t('message.success'), mode === 'edit' ? t('immobilierForm.propertyUpdated') : t('immobilierForm.propertyCreated'), [{ text: 'OK', onPress: () => navigation.goBack() }]);
+            } else { Alert.alert(t('message.error'), (resp as any).error || t('immobilierForm.cannotSave')); }
+        } catch (e: any) { Alert.alert(t('message.error'), e.message || t('immobilierForm.genericError')); } finally { setLoading(false); }
     };
 
     const formatLabel = (s: string) => s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());

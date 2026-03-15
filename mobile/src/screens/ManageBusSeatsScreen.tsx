@@ -17,6 +17,7 @@ import {
     View,
 } from 'react-native';
 import SafeIcon from '../components/SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 import { apiGet, apiPost } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 
@@ -37,6 +38,7 @@ interface SeatBlock {
 const ManageBusSeatsScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
+    const { t } = useLanguageSafe();
     const { productId } = (route.params as any) || {};
 
     const [loading, setLoading] = useState(true);
@@ -51,7 +53,7 @@ const ManageBusSeatsScreen: React.FC = () => {
         if (productId) {
             loadData();
         } else {
-            Alert.alert('Erreur', 'Product ID manquant');
+            Alert.alert(t('message.error'), t('busSeats.productIdMissing'));
             navigation.goBack();
         }
     }, [productId]);
@@ -73,7 +75,7 @@ const ManageBusSeatsScreen: React.FC = () => {
             }
         } catch (error: any) {
             console.error('Erreur chargement données:', error);
-            Alert.alert('Erreur', 'Impossible de charger les données');
+            Alert.alert(t('message.error'), t('busSeats.cannotLoad'));
         } finally {
             setLoading(false);
         }
@@ -85,8 +87,8 @@ const ManageBusSeatsScreen: React.FC = () => {
         if (isBlocked) {
             // Débloquer
             Alert.alert(
-                'Débloquer la place',
-                `Voulez-vous débloquer la place ${seat.seat_number} ?`,
+                t('busSeats.unblockSeat'),
+                t('busSeats.unblockConfirm', { seat: seat.seat_number }),
                 [
                     { text: 'Annuler', style: 'cancel' },
                     {
@@ -99,13 +101,13 @@ const ManageBusSeatsScreen: React.FC = () => {
                                 });
 
                                 if (response.success) {
-                                    Alert.alert('✅ Succès', 'Place débloquée');
+                                    Alert.alert(t('message.success'), t('busSeats.seatUnblocked'));
                                     loadData();
                                 } else {
-                                    Alert.alert('Erreur', response.error || 'Impossible de débloquer');
+                                    Alert.alert(t('message.error'), response.error || t('busSeats.cannotUnblock'));
                                 }
                             } catch (error: any) {
-                                Alert.alert('Erreur', 'Impossible de débloquer la place');
+                                Alert.alert(t('message.error'), t('busSeats.cannotUnblock'));
                             }
                         },
                     },
@@ -122,7 +124,7 @@ const ManageBusSeatsScreen: React.FC = () => {
         if (!selectedSeatForBlock) return;
 
         if (!blockReason) {
-            Alert.alert('Erreur', 'Veuillez sélectionner une raison');
+            Alert.alert(t('message.error'), t('busSeats.selectReason'));
             return;
         }
 
@@ -136,17 +138,17 @@ const ManageBusSeatsScreen: React.FC = () => {
             });
 
             if (response.success) {
-                Alert.alert('✅ Succès', 'Place bloquée avec succès');
+                Alert.alert(t('message.success'), t('busSeats.seatBlocked'));
                 setShowBlockModal(false);
                 setSelectedSeatForBlock(null);
                 setBlockReason('maintenance');
                 setBlockReasonDetails('');
                 loadData();
             } else {
-                Alert.alert('Erreur', response.error || 'Impossible de bloquer la place');
+                Alert.alert(t('message.error'), response.error || t('busSeats.cannotBlock'));
             }
         } catch (error: any) {
-            Alert.alert('Erreur', 'Impossible de bloquer la place');
+            Alert.alert(t('message.error'), t('busSeats.cannotBlock'));
         }
     };
 

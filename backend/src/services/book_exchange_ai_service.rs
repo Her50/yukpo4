@@ -408,4 +408,323 @@ RÉPONSE ATTENDUE (JSON strict) :
 
         Ok(suggestion)
     }
+
+    /// ✅ V2: Analyse recto-verso d'un livre avec classification 3 niveaux,
+    /// détection prix/devise, et vérification programme scolaire
+    pub async fn analyze_book_recto_verso(
+        &self,
+        image_recto_base64: &str,
+        image_verso_base64: &str,
+        user_lat: Option<f64>,
+        user_lng: Option<f64>,
+        programmes_disponibles: &str,
+    ) -> AppResult<BookRectoVersoAnalysis> {
+        let lat = user_lat.unwrap_or(0.0);
+        let lng = user_lng.unwrap_or(0.0);
+
+        let mut variables = std::collections::HashMap::new();
+        variables.insert("user_lat".to_string(), format!("{}", lat));
+        variables.insert("user_lng".to_string(), format!("{}", lng));
+        variables.insert(
+            "programmes_disponibles".to_string(),
+            programmes_disponibles.to_string(),
+        );
+
+        let prompt = crate::services::ia::prompt_loader::load_prompt_section_with_vars(
+            "bourse_livre",
+            "Analyse Recto-Verso Livre",
+            &variables,
+        )
+        .await
+        .unwrap_or_else(|e| {
+            log::warn!(
+                "[BookExchangeAIService] Erreur chargement prompt recto-verso, utilisation fallback: {}",
+                e
+            );
+            format!(
+                r#"Tu es un expert en analyse de livres scolaires pour Yukpo.
+Analyse les images RECTO et VERSO du livre.
+Extrais: titre, auteur, éditeur, ISBN, classe, matière, niveau.
+Détecte le prix imprimé et la devise.
+Classe l'état en 3 niveaux: "bon", "acceptable", "rejete".
+Localisation: lat={}, lng={}.
+Programmes connus: {}.
+Réponds en JSON strict avec: titre, auteur, editeur, isbn, classe_actuelle, classe_souhaitee, matiere, niveau, prix_detecte, devise_detectee, etat_classification, etat_description, est_au_programme, programme_scolaire_id, programme_match_details, confidence, notes."#,
+                lat, lng, programmes_disponibles
+            )
+        });
+
+        let images = vec![
+            image_recto_base64.to_string(),
+            image_verso_base64.to_string(),
+        ];
+
+        let (model_name, response, tokens) =
+            self.app_ia.predict_multimodal(&prompt, Some(images)).await.map_err(|e| {
+                log::error!(
+                    "[BookExchangeAIService] Erreur IA multimodale recto-verso: {}",
+                    e
+                );
+                crate::core::types::AppError::Internal("Erreur analyse IA recto-verso".to_string())
+            })?;
+
+        log::info!(
+            "[BookExchangeAIService] Analyse recto-verso effectuée avec {} (tokens: {})",
+            model_name,
+            tokens
+        );
+
+        let analysis: BookRectoVersoAnalysis = match serde_json::from_str(&response) {
+            Ok(a) => a,
+            Err(e) => {
+                log::warn!(
+                    "[BookExchangeAIService] Erreur parsing JSON recto-verso: {}. Réponse: {}",
+                    e,
+                    &response[..response.len().min(500)]
+                );
+                BookRectoVersoAnalysis {
+                    titre: None,
+                    auteur: None,
+                    editeur: None,
+                    isbn: None,
+                    classe_actuelle: None,
+                    classe_souhaitee: None,
+                    matiere: None,
+                    niveau: None,
+                    prix_detecte: None,
+                    devise_detectee: Some("XAF".to_string()),
+                    etat_classification: "acceptable".to_string(),
+                    etat_description: "Analyse partielle, vérification manuelle recommandée"
+                        .to_string(),
+                    est_au_programme: None,
+                    programme_scolaire_id: None,
+                    programme_match_details: None,
+                    confidence: 0.3,
+                    notes: Some(format!("Erreur parsing: {}", e)),
+                }
+            }
+        };
+
+        Ok(analysis)
+    }
+
+    /// ✅ V2 Phase 2: Extraire la liste de livres d'un fichier programme scolaire
+    /// L'admin upload un PDF/Excel/Image et l'IA extrait tous les livres listés
+    pub async fn extract_programme_from_file(
+        &self,
+        file_base64: &str,
+        file_type: &str, // "pdf", "excel", "image"
+        niveau: &str,
+        periode_academique: &str,
+        classe: Option<&str>,
+    ) -> AppResult<ProgrammeExtractionResult> {
+        let classe_str = classe.unwrap_or("Toutes");
+
+        let prompt = format!(
+            r#"Tu es un expert en extraction de données de programmes scolaires officiels.
+
+CONTEXTE :
+- Type de fichier : {}
+- Niveau : {}
+- Classe : {}
+- Période académique : {}
+
+TON RÔLE :
+- Analyser le document (programme scolaire officiel) 
+- Extraire TOUS les livres/manuels listés dans ce programme
+- Pour chaque livre extraire: titre, auteur, éditeur, ISBN (si visible), classe, matière, prix officiel (si mentionné), si obligatoire ou recommandé
+
+IMPORTANT :
+- Extraire TOUS les livres, pas seulement quelques-uns
+- Si le document couvre plusieurs classes, indiquer la classe pour chaque livre
+- Les prix sont généralement en XAF (FCFA)
+- Distinguer "obligatoire" vs "recommandé/optionnel"
+
+RÉPONSE ATTENDUE (JSON strict) :
+{{
+    "livres": [
+        {{
+            "titre": "Titre du livre",
+            "auteur": "Nom de l'auteur",
+            "editeur": "Maison d'édition",
+            "isbn": "ISBN si disponible",
+            "classe": "6ème",
+            "matiere": "Mathématiques",
+            "prix_officiel": 5000.0,
+            "est_obligatoire": true
+        }}
+    ],
+    "nombre_total": 15,
+    "classes_couvertes": ["6ème", "5ème"],
+    "matieres_couvertes": ["Mathématiques", "Français"],
+    "notes": "Observations sur le document",
+    "confidence": 0.85
+}}"#,
+            file_type, niveau, classe_str, periode_academique
+        );
+
+        // Utiliser predict_multimodal si image/PDF, sinon predict textuel
+        let (model_name, response, tokens) = if file_type == "image" || file_type == "pdf" {
+            self.app_ia
+                .predict_multimodal(&prompt, Some(vec![file_base64.to_string()]))
+                .await?
+        } else {
+            // Pour Excel, on envoie comme texte (le contenu sera pré-extrait côté controller)
+            self.app_ia.predict(&prompt).await?
+        };
+
+        log::info!(
+            "[BookExchangeAIService] Extraction programme effectuée avec {} (tokens: {})",
+            model_name,
+            tokens
+        );
+
+        let result: ProgrammeExtractionResult = match serde_json::from_str(&response) {
+            Ok(r) => r,
+            Err(e) => {
+                log::warn!(
+                    "[BookExchangeAIService] Erreur parsing extraction: {}. Réponse: {}",
+                    e,
+                    &response[..response.len().min(500)]
+                );
+                ProgrammeExtractionResult {
+                    livres: vec![],
+                    nombre_total: 0,
+                    classes_couvertes: vec![],
+                    matieres_couvertes: vec![],
+                    notes: Some(format!("Erreur parsing: {}", e)),
+                    confidence: 0.2,
+                }
+            }
+        };
+
+        Ok(result)
+    }
+
+    /// ✅ V2 Phase 2: Matching intelligent livre ↔ programme scolaire
+    /// Prend en compte la date du troc pour matcher le bon programme académique
+    pub async fn match_livre_to_programme(
+        &self,
+        titre_livre: &str,
+        auteur_livre: Option<&str>,
+        classe: &str,
+        matiere: &str,
+        date_troc: &str,       // Date ISO pour déterminer la période académique
+        programmes_json: &str, // JSON des programmes disponibles
+    ) -> AppResult<ProgrammeMatchResult> {
+        let auteur = auteur_livre.unwrap_or("Inconnu");
+
+        let prompt = format!(
+            r#"Tu es un expert en matching de livres scolaires avec les programmes officiels.
+
+LIVRE À MATCHER :
+- Titre : {}
+- Auteur : {}
+- Classe : {}
+- Matière : {}
+- Date du troc/échange : {}
+
+PROGRAMMES SCOLAIRES DISPONIBLES (JSON) :
+{}
+
+TON RÔLE :
+1. Déterminer la période académique correspondant à la date du troc
+   - Ex: date "2026-01-15" → période "2025-2026"
+   - La rentrée est en septembre, donc sept 2025 → juil 2026 = période "2025-2026"
+2. Filtrer les programmes de la bonne période académique
+3. Matcher le livre avec le meilleur programme possible
+   - Matching flou sur titre (tolérance fautes de frappe, abréviations)
+   - Matching sur auteur si disponible
+   - Matching exact sur classe et matière
+4. Calculer un score de confiance
+
+RÉPONSE ATTENDUE (JSON strict) :
+{{
+    "matched": true,
+    "programme_scolaire_id": 42,
+    "periode_academique_detectee": "2025-2026",
+    "score_match": 0.92,
+    "titre_programme": "Titre officiel dans le programme",
+    "est_obligatoire": true,
+    "prix_officiel": 5000.0,
+    "reasoning": "Explication du matching",
+    "alternatives": []
+}}"#,
+            titre_livre, auteur, classe, matiere, date_troc, programmes_json
+        );
+
+        let (model_name, response, tokens) = self.app_ia.predict(&prompt).await?;
+        log::info!(
+            "[BookExchangeAIService] Matching programme effectué avec {} (tokens: {})",
+            model_name,
+            tokens
+        );
+
+        let result: ProgrammeMatchResult = match serde_json::from_str(&response) {
+            Ok(r) => r,
+            Err(e) => {
+                log::warn!("[BookExchangeAIService] Erreur parsing matching: {}", e);
+                ProgrammeMatchResult {
+                    matched: false,
+                    programme_scolaire_id: None,
+                    periode_academique_detectee: None,
+                    score_match: 0.0,
+                    titre_programme: None,
+                    est_obligatoire: None,
+                    prix_officiel: None,
+                    reasoning: format!("Matching non résolu: {}", e),
+                    alternatives: vec![],
+                }
+            }
+        };
+
+        Ok(result)
+    }
+}
+
+/// Résultat d'extraction de programme scolaire
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProgrammeExtractionResult {
+    pub livres: Vec<crate::models::livre_scolaire::LivreExtraitProgramme>,
+    pub nombre_total: i32,
+    pub classes_couvertes: Vec<String>,
+    pub matieres_couvertes: Vec<String>,
+    pub notes: Option<String>,
+    pub confidence: f64,
+}
+
+/// Résultat de matching livre ↔ programme
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProgrammeMatchResult {
+    pub matched: bool,
+    pub programme_scolaire_id: Option<i32>,
+    pub periode_academique_detectee: Option<String>,
+    pub score_match: f64,
+    pub titre_programme: Option<String>,
+    pub est_obligatoire: Option<bool>,
+    pub prix_officiel: Option<f64>,
+    pub reasoning: String,
+    pub alternatives: Vec<serde_json::Value>,
+}
+
+/// Résultat d'analyse recto-verso d'un livre
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BookRectoVersoAnalysis {
+    pub titre: Option<String>,
+    pub auteur: Option<String>,
+    pub editeur: Option<String>,
+    pub isbn: Option<String>,
+    pub classe_actuelle: Option<String>,
+    pub classe_souhaitee: Option<String>,
+    pub matiere: Option<String>,
+    pub niveau: Option<String>,
+    pub prix_detecte: Option<f64>,
+    pub devise_detectee: Option<String>,
+    pub etat_classification: String, // "bon", "acceptable", "rejete"
+    pub etat_description: String,
+    pub est_au_programme: Option<bool>,
+    pub programme_scolaire_id: Option<i32>,
+    pub programme_match_details: Option<String>,
+    pub confidence: f64,
+    pub notes: Option<String>,
 }

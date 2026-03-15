@@ -19,6 +19,7 @@ import {
 } from 'react-native';
 import SafeIcon from '../../components/SafeIcon';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import assuranceService, {
     type CreateProductPayload,
     type DashboardStats,
@@ -76,6 +77,7 @@ const AssuranceDashboardScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
     const { user } = useAuth();
+    const { t } = useLanguageSafe();
     const serviceId = (route.params as any)?.serviceId || (route.params as any)?.service_id || 0;
 
     const [activeTab, setActiveTab] = useState<TabType>('overview');
@@ -123,7 +125,7 @@ const AssuranceDashboardScreen: React.FC = () => {
 
     const handleCreateProduct = async () => {
         if (!newProduct.nom_produit?.trim()) {
-            Alert.alert('Erreur', 'Le nom du produit est requis');
+            Alert.alert(t('message.error'), t('assuranceDashboard.productNameRequired'));
             return;
         }
         setActionLoading(true);
@@ -146,15 +148,15 @@ const AssuranceDashboardScreen: React.FC = () => {
                 age_max: newProduct.age_max,
             });
             if (result.success) {
-                Alert.alert('Produit créé', `Produit "${newProduct.nom_produit}" créé avec succès.`);
+                Alert.alert(t('assuranceDashboard.productCreated'), t('assuranceDashboard.productCreatedMsg', { name: newProduct.nom_produit }));
                 setShowProductModal(false);
                 setNewProduct({ type_assurance: 'auto', sous_categorie: 'Tous risques' });
                 loadData();
             } else {
-                Alert.alert('Erreur', 'Impossible de créer le produit.');
+                Alert.alert(t('message.error'), t('assuranceDashboard.cannotCreateProduct'));
             }
         } catch (e) {
-            Alert.alert('Erreur', 'Une erreur est survenue.');
+            Alert.alert(t('message.error'), t('assuranceDashboard.genericError'));
         } finally {
             setActionLoading(false);
         }
@@ -173,8 +175,8 @@ const AssuranceDashboardScreen: React.FC = () => {
                 if (analysis) {
                     const score = analysis.fraud_score !== undefined ? `${(analysis.fraud_score * 100).toFixed(0)}%` : 'N/A';
                     Alert.alert(
-                        `Analyse IA - Score fraude: ${score}`,
-                        `Action recommandée: ${analysis.recommended_action || 'N/A'}\n\n${analysis.action_justification || analysis.legitimacy_assessment || 'Analyse complète disponible.'}`,
+                        t('assuranceDashboard.aiAnalysis', { score }),
+                        `${t('assuranceDashboard.recommendedAction')}: ${analysis.recommended_action || 'N/A'}\n\n${analysis.action_justification || analysis.legitimacy_assessment || t('assuranceDashboard.fullAnalysisAvailable')}`,
                         [{ text: 'OK' }]
                     );
                     loadData();
@@ -200,7 +202,7 @@ const AssuranceDashboardScreen: React.FC = () => {
             Alert.prompt?.('Motif de refus', 'Indiquez le motif', async (motif: string) => {
                 await assuranceService.updateClaimStatus(claim.id, newStatus, { motif_refus: motif });
                 loadData();
-            }) || Alert.alert('Refuser', 'Confirmer le refus ?', [
+            }) || Alert.alert(t('assuranceDashboard.refuse'), t('assuranceDashboard.confirmRefusal'), [
                 { text: 'Annuler' },
                 {
                     text: 'Confirmer', onPress: async () => {
@@ -213,7 +215,7 @@ const AssuranceDashboardScreen: React.FC = () => {
         }
 
         if (action === 'indemniser') {
-            Alert.alert('Indemniser', 'Confirmer l\'indemnisation ?', [
+            Alert.alert(t('assuranceDashboard.compensate'), t('assuranceDashboard.confirmCompensation'), [
                 { text: 'Annuler' },
                 {
                     text: 'Confirmer', onPress: async () => {
@@ -433,7 +435,7 @@ const AssuranceDashboardScreen: React.FC = () => {
                         {p.statut === 'active' && (
                             <View style={s.policyActions}>
                                 <TouchableOpacity style={s.policyActionBtn} onPress={() => {
-                                    Alert.alert('Suspendre', 'Suspendre cette police ?', [
+                                    Alert.alert(t('assuranceDashboard.suspend'), t('assuranceDashboard.confirmSuspend'), [
                                         { text: 'Non' },
                                         { text: 'Oui', onPress: async () => { await assuranceService.updatePolicyStatus(p.id, 'suspendue'); loadData(); } },
                                     ]);
@@ -441,7 +443,7 @@ const AssuranceDashboardScreen: React.FC = () => {
                                     <Text style={[s.policyActionText, { color: '#D97706' }]}>Suspendre</Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity style={s.policyActionBtn} onPress={() => {
-                                    Alert.alert('Résilier', 'Résilier cette police ?', [
+                                    Alert.alert(t('assuranceDashboard.terminate'), t('assuranceDashboard.confirmTerminate'), [
                                         { text: 'Non' },
                                         { text: 'Oui', style: 'destructive', onPress: async () => { await assuranceService.updatePolicyStatus(p.id, 'resiliee', 'Résiliation par l\'assureur'); loadData(); } },
                                     ]);

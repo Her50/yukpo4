@@ -65,6 +65,7 @@ const PharmacieFormScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
     const { user } = useAuth();
+    const { t } = useLanguageSafe();
     const { location } = useLocation();
     const [serviceId, setServiceId] = useState<number | null>((route.params as any)?.serviceId || null);
     const specializedServiceId = (route.params as any)?.specializedServiceId as number | undefined;
@@ -266,8 +267,8 @@ const PharmacieFormScreen: React.FC = () => {
             const newStatus = !isOnDuty;
             await apiPatch(`/api/pharmacies/${pharmacyData.id}/on-duty`, { is_on_duty_now: newStatus });
             setIsOnDuty(newStatus);
-            Alert.alert('Succès', newStatus ? 'Pharmacie en garde activée' : 'Pharmacie hors garde');
-        } catch (e) { Alert.alert('Erreur', 'Impossible de changer le statut'); }
+            Alert.alert(t('message.success'), newStatus ? t('pharmacie.guardActivated') : t('pharmacie.guardDeactivated'));
+        } catch (e) { Alert.alert(t('message.error'), t('pharmacie.cannotChangeStatus')); }
     };
 
     const handleGPSSelect = (coords: string) => { setSelectedGPS(coords); setShowGPSModal(false); };
@@ -286,9 +287,9 @@ const PharmacieFormScreen: React.FC = () => {
     const closeProductModal = () => { setShowProductModal(false); setEditingProduct(null); };
 
     const handleSaveProduct = async () => {
-        if (!productFormData.nom_produit.trim()) { Alert.alert('Erreur', 'Nom du produit requis'); return; }
+        if (!productFormData.nom_produit.trim()) { Alert.alert(t('message.error'), t('pharmacie.productNameRequired')); return; }
         const pid = pharmacyData?.service_id || serviceId;
-        if (!pid) { Alert.alert('Erreur', 'Pharmacie non enregistrée'); return; }
+        if (!pid) { Alert.alert(t('message.error'), t('pharmacie.pharmacyNotRegistered')); return; }
         setLoading(true);
         try {
             const payload = { pharmacy_service_id: pid, nom_produit: productFormData.nom_produit.trim(), description: productFormData.description || null, prix: parseFloat(productFormData.prix) || 0, stock: parseInt(productFormData.stock) || 0, unite: productFormData.unite, code_barre: productFormData.code_barre || null, categorie: productFormData.categorie || null };
@@ -299,19 +300,19 @@ const PharmacieFormScreen: React.FC = () => {
             }
             closeProductModal();
             loadProducts(pid);
-        } catch (e: any) { Alert.alert('Erreur', e.message || 'Erreur sauvegarde produit'); } finally { setLoading(false); }
+        } catch (e: any) { Alert.alert(t('message.error'), e.message || t('pharmacie.productSaveError')); } finally { setLoading(false); }
     };
 
     const handleDeleteProduct = (product: PharmacyProduct) => {
-        Alert.alert('Supprimer', `Supprimer "${product.nom_produit}" ?`, [
-            { text: 'Annuler', style: 'cancel' },
+        Alert.alert(t('message.delete'), t('pharmacie.deleteProduct', { name: product.nom_produit }), [
+            { text: t('message.cancel'), style: 'cancel' },
             {
                 text: 'Supprimer', style: 'destructive', onPress: async () => {
                     try {
                         await apiDelete(`/api/pharmacies/products/${product.id}`);
                         const pid = pharmacyData?.service_id || serviceId;
                         if (pid) loadProducts(pid);
-                    } catch (e) { Alert.alert('Erreur', 'Impossible de supprimer'); }
+                    } catch (e) { Alert.alert(t('message.error'), t('pharmacie.cannotDelete')); }
                 }
             },
         ]);
@@ -319,13 +320,13 @@ const PharmacieFormScreen: React.FC = () => {
 
     const handleExportProducts = () => {
         const csv = ['nom_produit,prix,stock,unite,categorie', ...products.map(p => `${p.nom_produit},${p.prix},${p.stock},${p.unite},${p.categorie || ''}`)].join('\n');
-        Alert.alert('Export', `${products.length} produits exportés (CSV copié)`);
+        Alert.alert('Export', t('pharmacie.exportDone', { count: products.length }));
     };
 
     const handleBulkImport = async () => {
         if (!bulkImportText.trim()) return;
         const pid = pharmacyData?.service_id || serviceId;
-        if (!pid) { Alert.alert('Erreur', 'Pharmacie non enregistrée'); return; }
+        if (!pid) { Alert.alert(t('message.error'), t('pharmacie.pharmacyNotRegistered')); return; }
         setLoadingBulkImport(true);
         try {
             let parsedProducts: any[] = [];
@@ -354,7 +355,7 @@ const PharmacieFormScreen: React.FC = () => {
                     });
                 }
             }
-            if (parsedProducts.length === 0) { Alert.alert('Erreur', 'Aucun produit detecte dans les donnees'); setLoadingBulkImport(false); return; }
+            if (parsedProducts.length === 0) { Alert.alert(t('message.error'), t('pharmacie.noProductsDetected')); setLoadingBulkImport(false); return; }
             const resp: any = await apiPost('/api/pharmacies/products/bulk-import', {
                 pharmacy_service_id: pid,
                 products: parsedProducts,
@@ -364,13 +365,13 @@ const PharmacieFormScreen: React.FC = () => {
             setShowBulkImportModal(false); setBulkImportText('');
             loadProducts(pid);
             Alert.alert(
-                'Import termine',
-                `${data?.created || 0} produits crees\n${data?.updated || 0} mis a jour${data?.errors?.length > 0 ? `\n\n${data.errors.length} erreur(s):\n${data.errors.slice(0, 3).join('\n')}` : ''}`,
+                'Import',
+                t('pharmacie.importDone', { created: data?.created || 0, updated: data?.updated || 0 }) + (data?.errors?.length > 0 ? t('pharmacie.importErrors', { count: data.errors.length, errors: data.errors.slice(0, 3).join('\n') }) : ''),
             );
         } catch (e: any) {
             const msg = e?.message || 'Erreur import';
-            if (msg.includes('JSON')) { Alert.alert('Erreur format', 'Le format JSON est invalide. Verifiez la syntaxe.'); }
-            else { Alert.alert('Erreur', msg); }
+            if (msg.includes('JSON')) { Alert.alert(t('pharmacie.jsonFormatError'), t('pharmacie.jsonFormatErrorMsg')); }
+            else { Alert.alert(t('message.error'), msg); }
         } finally { setLoadingBulkImport(false); }
     };
 
@@ -381,11 +382,11 @@ const PharmacieFormScreen: React.FC = () => {
             try {
                 const resp = await servicesApi.createService({ titre_service: formData.nom || 'Pharmacie', description: 'Pharmacie avec garde', category: 'sante' });
                 if (resp.success && resp.data && typeof resp.data === 'object' && 'id' in resp.data) { finalServiceId = (resp.data as any).id; setServiceId(finalServiceId); }
-            } catch (e) { Alert.alert('Erreur', 'Impossible de créer le service'); setLoading(false); return; }
+            } catch (e) { Alert.alert(t('message.error'), t('pharmacie.cannotCreateService')); setLoading(false); return; }
         }
-        if (!finalServiceId) { Alert.alert('Erreur', 'Service ID manquant'); setLoading(false); return; }
-        if (!formData.nom.trim()) { Alert.alert('Erreur', 'Nom obligatoire'); setLoading(false); return; }
-        if (!formData.telephone.trim()) { Alert.alert('Validation', 'Téléphone obligatoire'); setLoading(false); return; }
+        if (!finalServiceId) { Alert.alert(t('message.error'), t('pharmacie.serviceIdMissing')); setLoading(false); return; }
+        if (!formData.nom.trim()) { Alert.alert(t('message.error'), t('pharmacie.nameRequired')); setLoading(false); return; }
+        if (!formData.telephone.trim()) { Alert.alert(t('message.error'), t('pharmacie.phoneRequired')); setLoading(false); return; }
         try {
             const payload = {
                 service_id: finalServiceId, nom: formData.nom, adresse: formData.adresse || null,
@@ -400,9 +401,9 @@ const PharmacieFormScreen: React.FC = () => {
             const resp = await apiPost('/api/pharmacies', payload);
             if (resp.success) {
                 await clearSavedFormData(STORAGE_KEY);
-                Alert.alert('Succès', 'Pharmacie enregistrée !', [{ text: 'OK', onPress: () => { setIsDashboardMode(true); setActiveTab('overview'); handleRefresh(); } }]);
-            } else { Alert.alert('Erreur', (resp as any).error || 'Impossible d\'enregistrer'); }
-        } catch (e: any) { Alert.alert('Erreur', e.message || 'Une erreur est survenue'); } finally { setLoading(false); }
+                Alert.alert(t('message.success'), t('pharmacie.pharmacySaved'), [{ text: 'OK', onPress: () => { setIsDashboardMode(true); setActiveTab('overview'); handleRefresh(); } }]);
+            } else { Alert.alert(t('message.error'), (resp as any).error || t('pharmacie.cannotSave')); }
+        } catch (e: any) { Alert.alert(t('message.error'), e.message || t('pharmacie.genericError')); } finally { setLoading(false); }
     };
 
     // ─── RENDER: Loading ─────────────────────────────────────────────────

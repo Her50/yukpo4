@@ -46,6 +46,7 @@ const CourierRegistrationScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
     const { user } = useAuth();
+    const { t } = useLanguageSafe();
     const toaster = useToaster(); // ✅ NOUVEAU: Pour afficher les toasts de confirmation
     const applicationType = (route.params as any)?.applicationType as 'courier' | 'driver' | undefined; // ✅ NOUVEAU: Type d'application (coursier ou chauffeur)
     const isDriverApplication = applicationType === 'driver'; // ✅ NOUVEAU: Indique si c'est une candidature de chauffeur
@@ -188,8 +189,8 @@ const CourierRegistrationScreen: React.FC = () => {
                         console.error('[CourierRegistrationScreen] Erreur chargement tous les partenaires:', err);
                         if (err.response?.status === 403) {
                             Alert.alert(
-                                'Accès refusé',
-                                'Vous n\'avez pas les permissions nécessaires pour charger les partenaires. Veuillez contacter le support.'
+                                t('courierRegistration.accessDenied'),
+                                t('courierRegistration.accessDeniedMsg')
                             );
                         }
                     }
@@ -240,14 +241,14 @@ const CourierRegistrationScreen: React.FC = () => {
                 // Feedback utilisateur selon le type d'erreur
                 if (apiError.response?.status === 403) {
                     Alert.alert(
-                        'Accès refusé',
-                        'Vous n\'avez pas les permissions nécessaires pour charger les partenaires. Veuillez contacter le support.'
+                        t('courierRegistration.accessDenied'),
+                        t('courierRegistration.accessDeniedMsg')
                     );
                     return; // Ne pas continuer si accès refusé
                 } else if (apiError.response?.status >= 500) {
                     Alert.alert(
-                        'Erreur serveur',
-                        'Le serveur rencontre des difficultés. Veuillez réessayer plus tard.'
+                        t('courierRegistration.serverError'),
+                        t('courierRegistration.serverErrorMsg')
                     );
                 }
 
@@ -304,8 +305,8 @@ const CourierRegistrationScreen: React.FC = () => {
                 } catch (fallbackError: any) {
                     console.error('[CourierRegistrationScreen] ❌ Erreur lors du fallback:', fallbackError);
                     Alert.alert(
-                        'Erreur',
-                        'Impossible de charger les partenaires. Veuillez vérifier votre connexion et réessayer.'
+                        t('message.error'),
+                        t('courierRegistration.cannotLoadPartners')
                     );
                 }
             }
@@ -314,14 +315,14 @@ const CourierRegistrationScreen: React.FC = () => {
             // ✅ AMÉLIORÉ 2026-01-14: Feedback utilisateur selon le type d'erreur
             if (error.response?.status === 403) {
                 Alert.alert(
-                    'Accès refusé',
-                    'Vous n\'avez pas les permissions nécessaires. Veuillez contacter le support.'
+                    t('courierRegistration.accessDenied'),
+                    t('courierRegistration.accessDeniedMsg')
                 );
             } else if (!error.response) {
                 // Erreur réseau
                 Alert.alert(
-                    'Erreur de connexion',
-                    'Vérifiez votre connexion internet et réessayez.'
+                    t('courierRegistration.connectionError'),
+                    t('courierRegistration.connectionErrorMsg')
                 );
             }
             // En cas d'erreur, créer quand même le partenaire Yukpo par défaut
@@ -540,7 +541,7 @@ const CourierRegistrationScreen: React.FC = () => {
             }
         } catch (error) {
             console.error('[CourierRegistrationScreen] Erreur sélection document:', error);
-            Alert.alert('Erreur', 'Impossible de sélectionner le document');
+            Alert.alert(t('message.error'), t('courierRegistration.cannotSelectDoc'));
         }
     };
 
@@ -550,8 +551,8 @@ const CourierRegistrationScreen: React.FC = () => {
             const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
             if (!permissionResult.granted) {
                 Alert.alert(
-                    'Permission requise',
-                    'Autorisez l\'accès à la galerie pour ajouter des photos'
+                    t('courierRegistration.permissionRequired'),
+                    t('courierRegistration.permissionRequiredMsg')
                 );
                 return;
             }
@@ -596,8 +597,8 @@ const CourierRegistrationScreen: React.FC = () => {
         } catch (error: any) {
             console.error('[CourierRegistrationScreen] Erreur sélection image:', error);
             Alert.alert(
-                'Erreur',
-                error.message || 'Impossible de sélectionner l\'image. Veuillez réessayer.'
+                t('message.error'),
+                error.message || t('courierRegistration.cannotSelectImage')
             );
         }
     };
@@ -624,55 +625,55 @@ const CourierRegistrationScreen: React.FC = () => {
 
     const validateForm = (): boolean => {
         if (!courierType) {
-            Alert.alert('Erreur', 'Veuillez sélectionner la nature de votre activité');
+            Alert.alert(t('message.error'), t('courierRegistration.selectActivityType'));
             return false;
         }
         if (!fullName.trim()) {
-            Alert.alert('Erreur', 'Le nom complet est requis');
+            Alert.alert(t('message.error'), t('courierRegistration.fullNameRequired'));
             return false;
         }
         if (!phone.trim()) {
-            Alert.alert('Erreur', 'Le numéro de téléphone est requis');
+            Alert.alert(t('message.error'), t('courierRegistration.phoneRequired'));
             return false;
         }
         if (!address.trim()) {
-            Alert.alert('Erreur', 'L\'adresse est requise');
+            Alert.alert(t('message.error'), t('courierRegistration.addressRequired'));
             return false;
         }
         if (!city.trim()) {
-            Alert.alert('Erreur', 'La ville est requise');
+            Alert.alert(t('message.error'), t('courierRegistration.cityRequired'));
             return false;
         }
         if (!idNumber.trim()) {
-            Alert.alert('Erreur', 'Le numéro de pièce d\'identité est requis');
+            Alert.alert(t('message.error'), t('courierRegistration.idNumberRequired'));
             return false;
         }
         if (!idDocument) {
-            Alert.alert('Erreur', 'La pièce d\'identité est requise');
+            Alert.alert(t('message.error'), t('courierRegistration.idDocRequired'));
             return false;
         }
         if (vehicleType !== 'walking' && !driverLicense) {
-            Alert.alert('Erreur', 'Le permis de conduire est requis');
+            Alert.alert(t('message.error'), t('courierRegistration.licenseRequired'));
             return false;
         }
         if (!locationPlan) {
-            Alert.alert('Erreur', 'Le plan de localisation est obligatoire');
+            Alert.alert(t('message.error'), t('courierRegistration.locationPlanRequired'));
             return false;
         }
         // ✅ REFONTE: Vérifier le schedule JSON au lieu de availabilityDays
         try {
             const parsedSchedule = JSON.parse(availabilitySchedule || '{}');
             if (Object.keys(parsedSchedule).length === 0) {
-                Alert.alert('Erreur', 'Sélectionnez au moins un jour de disponibilité avec des plages horaires');
+                Alert.alert(t('message.error'), t('courierRegistration.selectAvailability'));
                 return false;
             }
         } catch {
-            Alert.alert('Erreur', 'Sélectionnez au moins un jour de disponibilité avec des plages horaires');
+            Alert.alert(t('message.error'), t('courierRegistration.selectAvailability'));
             return false;
         }
         // ✅ NOUVEAU 2026-01-04: Vérifier que le partenaire est sélectionné
         if (!selectedPartnerId) {
-            Alert.alert('Erreur', 'Veuillez sélectionner un partenaire de livraison');
+            Alert.alert(t('message.error'), t('courierRegistration.selectPartner'));
             return false;
         }
         return true;
@@ -852,13 +853,10 @@ const CourierRegistrationScreen: React.FC = () => {
                     console.log('[CourierRegistrationScreen] Affichage Alert après toast (1.5s)');
                     // ✅ AMÉLIORÉ: Alert avec message plus clair
                     Alert.alert(
-                        submit ? '✅ Candidature soumise' : '💾 Brouillon enregistré',
+                        submit ? t('courierRegistration.applicationSubmitted') : t('courierRegistration.draftSaved'),
                         submit
-                            ? 'Votre candidature a été soumise avec succès et est en attente de validation par les administrateurs.\n\n' +
-                            'Vous recevrez une notification une fois la décision prise. ' +
-                            'Merci de votre patience !'
-                            : 'Votre candidature a été enregistrée en brouillon.\n\n' +
-                            'Vous pouvez la compléter et la soumettre plus tard depuis cet écran.',
+                            ? t('courierRegistration.applicationSubmittedMsg')
+                            : t('courierRegistration.draftSavedMsg'),
                         [
                             {
                                 text: 'OK',
@@ -892,13 +890,13 @@ const CourierRegistrationScreen: React.FC = () => {
                     data: response.data,
                 });
                 Alert.alert(
-                    'Erreur',
-                    response.error || 'Impossible de soumettre la candidature. Veuillez réessayer.'
+                    t('message.error'),
+                    response.error || t('courierRegistration.cannotSubmit')
                 );
             }
         } catch (error: any) {
             console.error('[CourierRegistrationScreen] Erreur soumission:', error);
-            Alert.alert('Erreur', error.message || 'Impossible de soumettre la candidature');
+            Alert.alert(t('message.error'), error.message || t('courierRegistration.cannotSubmitShort'));
         } finally {
             setLoading(false);
         }

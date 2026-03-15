@@ -15,6 +15,7 @@ import {
 import SafeIcon from '../../components/SafeIcon';
 import { NativeButton, NativeCard, NativeInput } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { offreEmploiService } from '../../services/offreEmploiService';
 import { modernColors } from '../../theme/modernTheme';
@@ -22,6 +23,7 @@ import { modernColors } from '../../theme/modernTheme';
 const ProfilCandidatScreen: React.FC = () => {
     const navigation = useNavigation();
     const { user } = useAuth();
+    const { t } = useLanguageSafe();
     const { location } = useLocation();
     const [loading, setLoading] = useState(false);
     const [loadingData, setLoadingData] = useState(true);
@@ -181,7 +183,7 @@ const ProfilCandidatScreen: React.FC = () => {
                 gps: `${location.coords.latitude},${location.coords.longitude}`,
             });
         } else {
-            Alert.alert('Erreur', 'Position GPS non disponible');
+            Alert.alert(t('message.error'), t('profilCandidat.gpsUnavailable'));
         }
     };
 
@@ -216,15 +218,15 @@ const ProfilCandidatScreen: React.FC = () => {
             const response = await offreEmploiService.createOrUpdateProfil(payload);
 
             if (response.success) {
-                Alert.alert('Succès', 'Profil mis à jour avec succès !', [
+                Alert.alert(t('message.success'), t('profilCandidat.profileUpdated'), [
                     { text: 'OK', onPress: () => navigation.goBack() },
                 ]);
             } else {
-                Alert.alert('Erreur', response.message || 'Erreur lors de la mise à jour du profil');
+                Alert.alert(t('message.error'), response.message || t('profilCandidat.updateError'));
             }
         } catch (error: any) {
             console.error('[ProfilCandidatScreen] Erreur:', error);
-            Alert.alert('Erreur', 'Erreur lors de la mise à jour du profil');
+            Alert.alert(t('message.error'), t('profilCandidat.updateError'));
         } finally {
             setLoading(false);
         }
@@ -466,14 +468,14 @@ const ProfilCandidatScreen: React.FC = () => {
                                     const data = await response.json();
                                     if (data.success && data.data?.url) {
                                         setFormData({ ...formData, cv_url: data.data.url } as any);
-                                        Alert.alert('Succès', 'CV téléchargé avec succès !');
+                                        Alert.alert(t('message.success'), t('profilCandidat.cvUploaded'));
                                     } else {
-                                        Alert.alert('Erreur', 'Erreur lors du téléchargement du CV');
+                                        Alert.alert(t('message.error'), t('profilCandidat.cvUploadError'));
                                     }
                                 }
                             } catch (error: any) {
                                 console.error('[ProfilCandidatScreen] Erreur upload CV:', error);
-                                Alert.alert('Erreur', 'Erreur lors du téléchargement du CV');
+                                Alert.alert(t('message.error'), t('profilCandidat.cvUploadError'));
                             } finally {
                                 setLoading(false);
                             }
@@ -524,14 +526,14 @@ const ProfilCandidatScreen: React.FC = () => {
                                     const data = await response.json();
                                     if (data.success && data.data?.url) {
                                         setFormData({ ...formData, lettre_motivation_url: data.data.url } as any);
-                                        Alert.alert('Succès', 'Lettre de motivation téléchargée avec succès !');
+                                        Alert.alert(t('message.success'), t('profilCandidat.letterUploaded'));
                                     } else {
-                                        Alert.alert('Erreur', 'Erreur lors du téléchargement de la lettre');
+                                        Alert.alert(t('message.error'), t('profilCandidat.letterUploadError'));
                                     }
                                 }
                             } catch (error: any) {
                                 console.error('[ProfilCandidatScreen] Erreur upload lettre:', error);
-                                Alert.alert('Erreur', 'Erreur lors du téléchargement de la lettre');
+                                Alert.alert(t('message.error'), t('profilCandidat.letterUploadError'));
                             } finally {
                                 setLoading(false);
                             }

@@ -87,6 +87,7 @@ impl TrocIntelligentService {
         // Chercher les livres qui correspondent: classe_souhaitee du livre offert = classe_actuelle du livre souhaité
         // ET classe_actuelle du livre offert = classe_souhaitee du livre souhaité
         // ET même matière
+        // V2: Exclure les livres rejetés et ceux pas en mode troc
         let livres_candidates = sqlx::query_as::<_, LivreScolaire>(
             r#"
             SELECT * FROM livres_scolaires
@@ -97,6 +98,8 @@ impl TrocIntelligentService {
             AND classe_actuelle = $3
             AND classe_souhaitee = $4
             AND matiere = $5
+            AND COALESCE(etat_classification, 'acceptable') != 'rejete'
+            AND COALESCE(mode_listing, 'troc') IN ('troc', 'vente')
             ORDER BY created_at DESC
             LIMIT 50
             "#,
@@ -182,6 +185,7 @@ impl TrocIntelligentService {
         .ok_or_else(|| AppError::NotFound("Livre offert non trouvé".to_string()))?;
 
         // Récupérer tous les livres disponibles (sauf celui de l'initiateur)
+        // V2: Exclure les livres rejetés et ceux pas en mode troc
         let all_livres = sqlx::query_as::<_, LivreScolaire>(
             r#"
             SELECT * FROM livres_scolaires
@@ -189,6 +193,8 @@ impl TrocIntelligentService {
             AND is_available = true
             AND id != $1
             AND user_id != $2
+            AND COALESCE(etat_classification, 'acceptable') != 'rejete'
+            AND COALESCE(mode_listing, 'troc') IN ('troc', 'vente')
             ORDER BY created_at DESC
             LIMIT 200
             "#,
@@ -689,6 +695,59 @@ impl TrocIntelligentService {
             .execute(&*self.pool)
             .await
             .map_err(|e| AppError::Internal(format!("Erreur désactivation livres: {}", e)))?;
+
+        // V2: Créer automatiquement un paquet de livraison si les deux parties ont un GPS
+        let livre_offert =
+            sqlx::query_as::<_, LivreScolaire>("SELECT * FROM livres_scolaires WHERE id = $1")
+                .bind(troc_complete.livre_offert_id)
+                .fetch_optional(&*self.pool)
+                .await
+                .ok()
+                .flatten();
+
+        let livre_souhaite =
+            sqlx::query_as::<_, LivreScolaire>("SELECT * FROM livres_scolaires WHERE id = $1")
+                .bind(troc_complete.livre_souhaite_id)
+                .fetch_optional(&*self.pool)
+                .await
+                .ok()
+                .flatten();
+
+        if let (Some(lo), Some(ls)) = (&livre_offert, &livre_souhaite) {
+            if lo.gps.is_some() && ls.gps.is_some() {
+                let ref_paquet = format!(
+                    "BK-TROC-{}-{}",
+                    troc_id,
+                    chrono::Utc::now().format("%Y%m%d%H%M")
+                );
+                let _ = sqlx::query(
+                    r#"
+                    INSERT INTO book_delivery_packages (
+                        reference, expediteur_id, destinataire_id,
+                        livre_ids, gps_recuperation, gps_livraison,
+                        statut, nombre_livres, type_livraison
+                    )
+                    VALUES ($1, $2, $3, $4, $5, $6, 'a_constituer', 2, 'depot_et_recuperation')
+                    "#,
+                )
+                .bind(&ref_paquet)
+                .bind(troc_complete.initiateur_id)
+                .bind(troc_complete.participant_id)
+                .bind(serde_json::json!([
+                    troc_complete.livre_offert_id,
+                    troc_complete.livre_souhaite_id
+                ]))
+                .bind(&lo.gps)
+                .bind(&ls.gps)
+                .execute(&*self.pool)
+                .await;
+
+                info!(
+                    "[TROC_INTELLIGENT] Paquet livraison créé pour troc {}: {}",
+                    troc_id, ref_paquet
+                );
+            }
+        }
 
         info!("[TROC_INTELLIGENT] ✅ Troc complété: id={}", troc_id);
         Ok(troc_complete)

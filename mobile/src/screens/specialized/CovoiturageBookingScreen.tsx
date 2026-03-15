@@ -16,6 +16,7 @@ import { QRCodeDisplay } from '../../components/covoiturage/QRCodeDisplay';
 import SafeIcon from '../../components/SafeIcon';
 import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { useWalletBalance } from '../../hooks/useWalletBalance';
 import { apiGet, apiPost } from '../../services/api';
 import PushNotificationService from '../../services/pushNotificationService';
@@ -54,6 +55,7 @@ const CovoiturageBookingScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
     const { user } = useAuth();
+    const { t } = useLanguageSafe();
     const { walletBalance, refresh: refreshBalance } = useWalletBalance();
     const balance = walletBalance?.balance || 0;
     const params = route.params as CovoiturageBookingScreenParams;
@@ -82,12 +84,12 @@ const CovoiturageBookingScreen: React.FC = () => {
             if (response.success && response.data) {
                 setCovoiturage(response.data as any);
             } else {
-                Alert.alert('Erreur', 'Impossible de charger les détails du trajet');
+                Alert.alert(t('message.error'), t('covoiturageBooking.cannotLoadTrip'));
                 navigation.goBack();
             }
         } catch (error: any) {
             console.error('[CovoiturageBookingScreen] Erreur:', error);
-            Alert.alert('Erreur', error.message || 'Impossible de charger les détails');
+            Alert.alert(t('message.error'), error.message || t('covoiturageBooking.cannotLoadDetails'));
             navigation.goBack();
         } finally {
             setLoading(false);
@@ -101,7 +103,7 @@ const CovoiturageBookingScreen: React.FC = () => {
 
     const handleProceedToPayment = () => {
         if (!user) {
-            Alert.alert('Connexion requise', 'Veuillez vous connecter pour réserver');
+            Alert.alert(t('covoiturageBooking.loginRequired'), t('covoiturageBooking.loginToBook'));
             navigation.navigate('Login' as never);
             return;
         }
@@ -109,20 +111,20 @@ const CovoiturageBookingScreen: React.FC = () => {
         if (!covoiturage) return;
 
         if (numberOfPlaces > covoiturage.places_disponibles) {
-            Alert.alert('Erreur', `Seulement ${covoiturage.places_disponibles} place(s) disponible(s)`);
+            Alert.alert(t('message.error'), t('covoiturageBooking.onlyNSeats', { count: covoiturage.places_disponibles }));
             return;
         }
 
         if (covoiturage.statut !== 'ouvert') {
-            Alert.alert('Erreur', 'Ce trajet n\'est plus disponible');
+            Alert.alert(t('message.error'), t('covoiturageBooking.tripUnavailable'));
             return;
         }
 
         const total = calculateTotal();
         if (balance < total) {
             Alert.alert(
-                'Solde insuffisant',
-                `Votre solde (${balance.toLocaleString('fr-FR')} ${covoiturage.devise}) est insuffisant. Total requis: ${total.toLocaleString('fr-FR')} ${covoiturage.devise}`,
+                t('covoiturageBooking.insufficientBalance'),
+                t('covoiturageBooking.insufficientBalanceMsg', { balance: balance.toLocaleString('fr-FR'), currency: covoiturage.devise, total: total.toLocaleString('fr-FR') }),
                 [
                     { text: 'Annuler', style: 'cancel' },
                     {
@@ -199,8 +201,8 @@ const CovoiturageBookingScreen: React.FC = () => {
                 }
 
                 Alert.alert(
-                    'Réservation confirmée !',
-                    `${numberOfPlaces} place(s) réservée(s) pour ${calculateTotal().toLocaleString('fr-FR')} ${covoiturage?.devise}`,
+                    t('covoiturageBooking.bookingConfirmed'),
+                    t('covoiturageBooking.bookingConfirmedMsg', { places: numberOfPlaces, total: calculateTotal().toLocaleString('fr-FR'), currency: covoiturage?.devise }),
                     [
                         {
                             text: 'Voir mes réservations',
@@ -219,11 +221,11 @@ const CovoiturageBookingScreen: React.FC = () => {
                     ]
                 );
             } else {
-                Alert.alert('Erreur', 'Réservation créée mais ID manquant');
+                Alert.alert(t('message.error'), t('covoiturageBooking.bookingIdMissing'));
             }
         } catch (error: any) {
             console.error('[CovoiturageBookingScreen] Erreur réservation:', error);
-            Alert.alert('Erreur', error.message || 'Impossible de finaliser la réservation');
+            Alert.alert(t('message.error'), error.message || t('covoiturageBooking.cannotFinalize'));
         } finally {
             setLoading(false);
             setShowPayment(false);

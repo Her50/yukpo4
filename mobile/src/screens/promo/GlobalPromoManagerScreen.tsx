@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import useGlobalPromos from '../../hooks/useGlobalPromos';
 import { modernColors } from '../../theme/modernTheme';
 import type { GlobalPromoEntry } from '../../types/GlobalPromo';
@@ -44,6 +45,7 @@ const availabilityOptions = [
 ];
 
 const GlobalPromoManagerScreen: React.FC = () => {
+    const { t } = useLanguageSafe();
     const {
         events,
         entries,
@@ -126,9 +128,9 @@ const GlobalPromoManagerScreen: React.FC = () => {
                 description: '',
                 recurrenceRule: '',
             }));
-            Alert.alert('Succès', 'Campagne créée avec succès');
+            Alert.alert(t('message.success'), t('promoManager.campaignCreated'));
         } catch (err: any) {
-            Alert.alert('Erreur', err.message || 'Impossible de créer la campagne');
+            Alert.alert(t('message.error'), err.message || t('promoManager.cannotCreateCampaign'));
         } finally {
             setSubmittingEvent(false);
         }
@@ -164,9 +166,9 @@ const GlobalPromoManagerScreen: React.FC = () => {
                 promoPriceCfa: '',
                 stockCap: '',
             }));
-            Alert.alert('Succès', 'Produit ajouté à la campagne');
+            Alert.alert(t('message.success'), t('promoManager.productAdded'));
         } catch (err: any) {
-            Alert.alert('Erreur', err.message || 'Impossible de créer cette entrée. Vérifiez les identifiants service & format JSON.');
+            Alert.alert(t('message.error'), err.message || t('promoManager.cannotCreateEntry'));
         } finally {
             setSubmittingEntry(false);
         }
@@ -175,9 +177,9 @@ const GlobalPromoManagerScreen: React.FC = () => {
     const handleApproveEntry = async (entryId: string) => {
         try {
             await reviewEntry(entryId, { status: 'approved' });
-            Alert.alert('Succès', 'Entrée approuvée');
+            Alert.alert(t('message.success'), t('promoManager.entryApproved'));
         } catch (err: any) {
-            Alert.alert('Erreur', err.message || "Impossible d'approuver cette entrée.");
+            Alert.alert(t('message.error'), err.message || t('promoManager.cannotApprove'));
         }
     };
 
@@ -198,12 +200,12 @@ const GlobalPromoManagerScreen: React.FC = () => {
                 status: 'rejected',
                 message: rejectMessage || undefined,
             });
-            Alert.alert('Succès', 'Entrée refusée');
+            Alert.alert(t('message.success'), t('promoManager.entryRejected'));
             setRejectModalVisible(false);
             setRejectEntryId(null);
             setRejectMessage('');
         } catch (err: any) {
-            Alert.alert('Erreur', err.message || 'Impossible de refuser cette entrée.');
+            Alert.alert(t('message.error'), err.message || t('promoManager.cannotReject'));
         }
     };
 
@@ -212,9 +214,9 @@ const GlobalPromoManagerScreen: React.FC = () => {
         try {
             await reviewEntriesBulk(selectedEntryIds, { status: 'approved' });
             setSelectedEntryIds([]);
-            Alert.alert('Succès', 'Entrées approuvées en masse');
+            Alert.alert(t('message.success'), t('promoManager.bulkApproved'));
         } catch (err: any) {
-            Alert.alert('Erreur', err.message || "Impossible d'approuver les entrées sélectionnées.");
+            Alert.alert(t('message.error'), err.message || t('promoManager.cannotBulkApprove'));
         }
     };
 

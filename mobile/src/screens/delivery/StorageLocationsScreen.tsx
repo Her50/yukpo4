@@ -13,6 +13,7 @@ import {
 import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import SafeIcon from '../../components/SafeIcon';
 import { NativeButton, NativeCard, NativeInput } from '../../components/SafeNativeDesign';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { deliveryApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 
@@ -38,6 +39,7 @@ interface DeliveryZone {
 
 const StorageLocationsScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const [locations, setLocations] = useState<StorageLocation[]>([]);
     const [zones, setZones] = useState<DeliveryZone[]>([]);
     const [loading, setLoading] = useState(true);
@@ -104,7 +106,7 @@ const StorageLocationsScreen: React.FC = () => {
                 setLocations(rd.locations);
             }
         } catch (error: any) {
-            Alert.alert('Erreur', error.message || 'Impossible de charger les lieux de stock');
+            Alert.alert(t('message.error'), error.message || t('storageLocations.cannotLoad'));
         } finally {
             setLoading(false);
         }
@@ -138,8 +140,8 @@ const StorageLocationsScreen: React.FC = () => {
 
     const handleDelete = async (id: number) => {
         Alert.alert(
-            'Confirmation',
-            'Êtes-vous sûr de vouloir supprimer ce lieu de stock ?',
+            t('message.confirm'),
+            t('storageLocations.confirmDelete'),
             [
                 { text: 'Annuler', style: 'cancel' },
                 {
@@ -148,10 +150,10 @@ const StorageLocationsScreen: React.FC = () => {
                     onPress: async () => {
                         try {
                             await deliveryApi.deleteStorageLocation(id);
-                            Alert.alert('Succès', 'Lieu de stock supprimé avec succès');
+                            Alert.alert(t('message.success'), t('storageLocations.deleted'));
                             loadLocations();
                         } catch (error: any) {
-                            Alert.alert('Erreur', error.message || 'Impossible de supprimer le lieu de stock');
+                            Alert.alert(t('message.error'), error.message || t('storageLocations.cannotDelete'));
                         }
                     },
                 },
@@ -161,17 +163,17 @@ const StorageLocationsScreen: React.FC = () => {
 
     const handleSave = async () => {
         if (!formData.name.trim()) {
-            Alert.alert('Erreur', 'Le nom est obligatoire');
+            Alert.alert(t('message.error'), t('storageLocations.nameRequired'));
             return;
         }
         if (!formData.address.trim()) {
-            Alert.alert('Erreur', 'L\'adresse est obligatoire');
+            Alert.alert(t('message.error'), t('storageLocations.addressRequired'));
             return;
         }
         const lat = parseFloat(formData.latitude);
         const lng = parseFloat(formData.longitude);
         if (isNaN(lat) || isNaN(lng)) {
-            Alert.alert('Erreur', 'Veuillez entrer des coordonnées GPS valides');
+            Alert.alert(t('message.error'), t('storageLocations.invalidGPS'));
             return;
         }
 
@@ -187,15 +189,15 @@ const StorageLocationsScreen: React.FC = () => {
 
             if (editingLocation) {
                 await deliveryApi.updateStorageLocation(editingLocation.id, payload);
-                Alert.alert('Succès', 'Lieu de stock mis à jour avec succès');
+                Alert.alert(t('message.success'), t('storageLocations.updated'));
             } else {
                 await deliveryApi.createStorageLocation(payload);
-                Alert.alert('Succès', 'Lieu de stock créé avec succès');
+                Alert.alert(t('message.success'), t('storageLocations.created'));
             }
             setShowModal(false);
             loadLocations();
         } catch (error: any) {
-            Alert.alert('Erreur', error.message || 'Impossible de sauvegarder le lieu de stock');
+            Alert.alert(t('message.error'), error.message || t('storageLocations.cannotSave'));
         }
     };
 
@@ -360,7 +362,7 @@ const StorageLocationsScreen: React.FC = () => {
                                             })),
                                             { text: 'Annuler', style: 'cancel' as const }
                                         ];
-                                        Alert.alert('Sélectionner une zone', '', options);
+                                        Alert.alert(t('storageLocations.selectZone'), '', options);
                                     }}
                                 >
                                     <Text style={styles.selectButtonText}>

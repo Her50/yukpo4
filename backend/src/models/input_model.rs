@@ -43,6 +43,11 @@ pub struct MultiModalInput {
     /// Type de service spécialisé (pour recherche spécialisée dédiée)
     /// Valeurs possibles: "pharmacie", "hopital_clinique", "laboratoire_imagerie", etc.
     pub specialized_type: Option<String>,
+
+    /// Langue préférée de l'utilisateur (ex: "fr", "en", "de", "es", etc.)
+    /// Utilisée pour que l'IA réponde dans la langue choisie par l'utilisateur
+    #[serde(default)]
+    pub language: Option<String>,
 }
 
 // ? ? placer dans: src/models/input_model.rs

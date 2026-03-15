@@ -21,6 +21,7 @@ import SafeIcon from '../../components/SafeIcon';
 import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import { useToaster } from '../../components/ToasterProvider';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { useAIWithFallback } from '../../hooks/useAIWithFallback';
 import { useFormAutoSave } from '../../hooks/useFormAutoSave';
@@ -40,6 +41,7 @@ const LivreScolaireFormScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
     const { user } = useAuth();
+    const { t } = useLanguageSafe();
     const { location } = useLocation();
     const toaster = useToaster();
     const { callWithFallback } = useAIWithFallback();
@@ -121,7 +123,7 @@ const LivreScolaireFormScreen: React.FC = () => {
             }
         } catch (error: any) {
             console.error('[LivreScolaireFormScreen] Erreur chargement:', error);
-            Alert.alert('Erreur', 'Impossible de charger les données du livre');
+            Alert.alert(t('message.error'), t('livreScolaire.cannotLoadBook'));
         } finally {
             setLoading(false);
         }
@@ -194,7 +196,7 @@ const LivreScolaireFormScreen: React.FC = () => {
         hapticPress();
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
         if (status !== 'granted') {
-            Alert.alert('Permission requise', 'Veuillez autoriser l\'accès à la caméra');
+            Alert.alert(t('livreScolaire.permissionRequired'), t('livreScolaire.allowCamera'));
             return;
         }
 
@@ -224,7 +226,7 @@ const LivreScolaireFormScreen: React.FC = () => {
             }
         } catch (error: any) {
             console.error('[LivreScolaireFormScreen] Erreur prise photo:', error);
-            Alert.alert('Erreur', 'Impossible de prendre la photo');
+            Alert.alert(t('message.error'), t('livreScolaire.cannotTakePhoto'));
         }
     };
 
@@ -233,7 +235,7 @@ const LivreScolaireFormScreen: React.FC = () => {
         hapticPress();
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (status !== 'granted') {
-            Alert.alert('Permission requise', 'Veuillez autoriser l\'accès à la galerie');
+            Alert.alert(t('livreScolaire.permissionRequired'), t('livreScolaire.allowGallery'));
             return;
         }
 
@@ -269,7 +271,7 @@ const LivreScolaireFormScreen: React.FC = () => {
             }
         } catch (error: any) {
             console.error('[LivreScolaireFormScreen] Erreur sélection image:', error);
-            Alert.alert('Erreur', 'Impossible de sélectionner l\'image');
+            Alert.alert(t('message.error'), t('livreScolaire.cannotSelectImage'));
         }
     };
 
@@ -372,7 +374,7 @@ const LivreScolaireFormScreen: React.FC = () => {
 
     const handleSubmit = () => {
         if (!validateForm(formData)) {
-            Alert.alert('Erreur', 'Veuillez corriger les erreurs du formulaire');
+            Alert.alert(t('message.error'), t('livreScolaire.fixFormErrors'));
             return;
         }
         setShowConfirmation(true);
@@ -381,23 +383,23 @@ const LivreScolaireFormScreen: React.FC = () => {
     const handleFinalSubmit = async () => {
         // Validation
         if (!formData.titre.trim()) {
-            Alert.alert('Erreur', 'Le titre est obligatoire');
+            Alert.alert(t('message.error'), t('livreScolaire.titleRequired'));
             return;
         }
         if (!formData.classe_actuelle.trim()) {
-            Alert.alert('Erreur', 'La classe actuelle est obligatoire');
+            Alert.alert(t('message.error'), t('livreScolaire.currentClassRequired'));
             return;
         }
         if (!formData.classe_souhaitee.trim()) {
-            Alert.alert('Erreur', 'La classe souhaitée est obligatoire');
+            Alert.alert(t('message.error'), t('livreScolaire.desiredClassRequired'));
             return;
         }
         if (!formData.matiere.trim()) {
-            Alert.alert('Erreur', 'La matière est obligatoire');
+            Alert.alert(t('message.error'), t('livreScolaire.subjectRequired'));
             return;
         }
         if (!formData.etat_livre.trim()) {
-            Alert.alert('Erreur', 'L\'état du livre est obligatoire');
+            Alert.alert(t('message.error'), t('livreScolaire.bookConditionRequired'));
             return;
         }
 
@@ -457,8 +459,8 @@ const LivreScolaireFormScreen: React.FC = () => {
 
             if (response.success) {
                 Alert.alert(
-                    'Succès',
-                    mode === 'edit' ? 'Livre modifié avec succès !' : 'Livre créé avec succès !',
+                    t('message.success'),
+                    mode === 'edit' ? t('livreScolaire.bookUpdated') : t('livreScolaire.bookCreated'),
                     [
                         {
                             text: 'OK',
@@ -467,11 +469,11 @@ const LivreScolaireFormScreen: React.FC = () => {
                     ]
                 );
             } else {
-                Alert.alert('Erreur', response.error || 'Une erreur est survenue');
+                Alert.alert(t('message.error'), response.error || t('livreScolaire.genericError'));
             }
         } catch (error: any) {
             console.error('[LivreScolaireFormScreen] Erreur:', error);
-            Alert.alert('Erreur', error.message || 'Une erreur est survenue');
+            Alert.alert(t('message.error'), error.message || t('livreScolaire.genericError'));
         } finally {
             setLoading(false);
         }

@@ -57,6 +57,7 @@ const CovoiturageFormScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
     const { user } = useAuth();
+    const { t } = useLanguageSafe();
     const { location } = useLocation();
     const [serviceId, setServiceId] = useState<number | null>((route.params as any)?.serviceId || null);
     const specializedServiceId = (route.params as any)?.specializedServiceId as number | undefined;
@@ -182,7 +183,7 @@ const CovoiturageFormScreen: React.FC = () => {
     const pickVehicleImage = async (source: 'gallery' | 'camera') => {
         try {
             const perm = source === 'camera' ? await ImagePicker.requestCameraPermissionsAsync() : await ImagePicker.requestMediaLibraryPermissionsAsync();
-            if (!perm.granted) { Alert.alert('Permission refusée'); return; }
+            if (!perm.granted) { Alert.alert(t('covoiturage.permissionDenied')); return; }
             const result = source === 'camera'
                 ? await ImagePicker.launchCameraAsync({ allowsEditing: true, quality: 0.8, base64: true })
                 : await ImagePicker.launchImageLibraryAsync({ mediaTypes: 'images' as any, allowsEditing: true, quality: 0.8, base64: true });
@@ -190,16 +191,16 @@ const CovoiturageFormScreen: React.FC = () => {
                 const b64 = result.assets[0].base64;
                 setFormData({ ...formData, image_vehicule: b64 ? `data:image/jpeg;base64,${b64}` : result.assets[0].uri });
             }
-        } catch (e) { Alert.alert('Erreur', 'Impossible de sélectionner l\'image'); }
+        } catch (e) { Alert.alert(t('message.error'), t('covoiturage.cannotSelectImage')); }
     };
 
     // ─── SUBMIT ──────────────────────────────────────────────────────────
     const handleSubmit = async () => {
-        if (!formData.depart || !formData.destination) { Alert.alert('Erreur', 'Départ et destination obligatoires'); return; }
-        if (!formData.prix_par_place.trim()) { Alert.alert('Erreur', 'Prix par place obligatoire'); return; }
+        if (!formData.depart || !formData.destination) { Alert.alert(t('message.error'), t('covoiturage.departDestRequired')); return; }
+        if (!formData.prix_par_place.trim()) { Alert.alert(t('message.error'), t('covoiturage.priceRequired')); return; }
         const now = new Date(); now.setHours(0, 0, 0, 0);
         const dep = new Date(formData.date_depart); dep.setHours(0, 0, 0, 0);
-        if (dep < now) { Alert.alert('Validation', 'Date dans le passé'); return; }
+        if (dep < now) { Alert.alert(t('covoiturage.validation'), t('covoiturage.dateInPast')); return; }
 
         setLoading(true);
         let finalServiceId = serviceId;
@@ -209,9 +210,9 @@ const CovoiturageFormScreen: React.FC = () => {
                 const aStr = formData.destination?.raw || formData.destination?.place_name || '';
                 const resp = await servicesApi.createService({ titre_service: `Covoiturage ${dStr} → ${aStr}`, description: 'Trajet covoiturage', category: 'transport' });
                 if (resp.success && resp.data && typeof resp.data === 'object' && 'id' in resp.data) { finalServiceId = (resp.data as any).id; setServiceId(finalServiceId); }
-            } catch (e) { Alert.alert('Erreur', 'Impossible de créer le service'); setLoading(false); return; }
+            } catch (e) { Alert.alert(t('message.error'), t('covoiturage.cannotCreateService')); setLoading(false); return; }
         }
-        if (!finalServiceId) { Alert.alert('Erreur', 'Service ID manquant'); setLoading(false); return; }
+        if (!finalServiceId) { Alert.alert(t('message.error'), t('covoiturage.serviceIdMissing')); setLoading(false); return; }
 
         try {
             const payload = {
@@ -236,12 +237,12 @@ const CovoiturageFormScreen: React.FC = () => {
             const resp = await apiPost('/api/covoiturages', payload);
             if (resp.success) {
                 await clearSavedFormData(STORAGE_KEY);
-                Alert.alert('Succès', 'Trajet créé !', [
+                Alert.alert(t('message.success'), t('covoiturage.tripCreated'), [
                     { text: 'Mes trajets', onPress: () => { setActiveTab('trips'); loadTrips(); setHasPreviousTrips(true); } },
                     { text: 'OK', style: 'cancel', onPress: () => navigation.goBack() },
                 ]);
-            } else { Alert.alert('Erreur', (resp as any).error || 'Impossible de créer le trajet'); }
-        } catch (e: any) { Alert.alert('Erreur', e.message || 'Erreur'); } finally { setLoading(false); }
+            } else { Alert.alert(t('message.error'), (resp as any).error || t('covoiturage.cannotCreateTrip')); }
+        } catch (e: any) { Alert.alert(t('message.error'), e.message || t('covoiturage.genericError')); } finally { setLoading(false); }
     };
 
     // ─── RENDER: Loading ─────────────────────────────────────────────────

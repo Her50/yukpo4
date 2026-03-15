@@ -28,6 +28,8 @@ Génère un JSON strictement conforme pour un échange/troc :
 - `offre` et `besoin` : objets détaillés avec toutes les infos détectées
 - Enrichir avec marque, couleur, spécifications si détectées
 
+**Langue de réponse :** Réponds TOUJOURS en {language}.
+
 **Input utilisateur :** {user_input}
 
 **JSON :** 

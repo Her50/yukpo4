@@ -1545,7 +1545,7 @@ pub async fn share_product_redirect(
     html.push_str(&escaped_product_description);
     html.push_str("</div>\n");
     html.push_str("        <a id=\"open-app-btn\" class=\"button\" href=\"#\">\u{1F4F1} Ouvrir dans l'app Yukpomnang</a>\n");
-    html.push_str("        <a class=\"button button-secondary\" href=\"https://play.google.com/store/apps/details?id=com.yukpomnang.mobile\" target=\"_blank\">\u{1F4E5} T\u{00E9}l\u{00E9}charger l'app</a>\n");
+    html.push_str("        <a class=\"button button-secondary\" href=\"/download\">\u{1F4E5} T\u{00E9}l\u{00E9}charger l'app</a>\n");
     html.push_str("    </div>\n");
     html.push_str("    <script>\n");
     html.push_str("        var DEEP_LINK = '");
@@ -1556,6 +1556,7 @@ pub async fn share_product_redirect(
     html.push_str("';\n");
     html.push_str("        var PLAY_STORE = 'https://play.google.com/store/apps/details?id=com.yukpomnang.mobile';\n");
     html.push_str("        var APP_STORE = 'https://apps.apple.com/app/yukpomnang';\n");
+    html.push_str("        var APK_DOWNLOAD = window.location.origin + '/download';\n");
     html.push_str("        var mediaItems = ");
     html.push_str(&media_js_array);
     html.push_str(";");
@@ -1568,6 +1569,28 @@ pub async fn share_product_redirect(
         var isIOS = /iPhone|iPad|iPod/i.test(ua);
         var isMobile = isAndroid || isIOS;
 
+        // ✅ NOUVEAU: Vérification intelligente de la disponibilité sur les stores
+        var APP_ON_PLAY_STORE = false; // À changer en true quand l'app sera sur Play Store
+        var APP_ON_APP_STORE = false;  // À changer en true quand l'app sera sur App Store
+
+        // Fonction pour vérifier si l'app est disponible sur le store
+        function checkStoreAvailability(storeUrl, callback) {
+            var img = new Image();
+            img.onload = function() { callback(true); };
+            img.onerror = function() { callback(false); };
+            img.src = storeUrl + '?t=' + Date.now();
+            setTimeout(function() { callback(false); }, 3000); // Timeout 3s
+        }
+
+        // Déterminer l'URL de fallback selon la disponibilité
+        function getFallbackUrl(isAndroid) {
+            if (isAndroid) {
+                return APP_ON_PLAY_STORE ? PLAY_STORE : APK_DOWNLOAD;
+            } else {
+                return APP_ON_APP_STORE ? APP_STORE : APK_DOWNLOAD;
+            }
+        }
+
         // Configurer le bouton "Ouvrir dans l'app"
         var openBtn = document.getElementById('open-app-btn');
         if (openBtn) {
@@ -1576,7 +1599,9 @@ pub async fn share_product_redirect(
             } else if (isIOS) {
                 openBtn.href = DEEP_LINK;
                 openBtn.onclick = function() {
-                    setTimeout(function() { window.location.href = APP_STORE; }, 1500);
+                    setTimeout(function() { 
+                        window.location.href = getFallbackUrl(false);
+                    }, 1500);
                 };
             } else {
                 openBtn.style.display = 'none';
@@ -1586,10 +1611,21 @@ pub async fn share_product_redirect(
         if (isMobile) {
             setTimeout(function() {
                 if (isAndroid) {
+                    // Essayer d'ouvrir l'app via Intent
                     window.location.href = INTENT_URL;
+                    // Si l'app n'est pas installée, rediriger vers fallback après 2s
+                    setTimeout(function() {
+                        if (document.hidden || document.webkitHidden) return; // App s'est ouverte
+                        window.location.href = getFallbackUrl(true);
+                    }, 2000);
                 } else if (isIOS) {
+                    // Essayer d'ouvrir l'app via deep link
                     window.location.href = DEEP_LINK;
-                    setTimeout(function() { window.location.href = APP_STORE; }, 1500);
+                    // Si l'app n'est pas installée, rediriger vers fallback après 1.5s
+                    setTimeout(function() {
+                        if (document.hidden || document.webkitHidden) return; // App s'est ouverte
+                        window.location.href = getFallbackUrl(false);
+                    }, 1500);
                 }
             }, 800);
         }
@@ -2087,7 +2123,7 @@ pub async fn share_service_redirect(
     html.push_str(&html_attr_escape(&service_description));
     html.push_str("</div>\n");
     html.push_str("        <a id=\"open-app-btn\" class=\"button\" href=\"#\">\u{1F4F1} Ouvrir dans l'app Yukpomnang</a>\n");
-    html.push_str("        <a class=\"button button-secondary\" href=\"https://play.google.com/store/apps/details?id=com.yukpomnang.mobile\" target=\"_blank\">\u{1F4E5} T\u{00E9}l\u{00E9}charger l'app</a>\n");
+    html.push_str("        <a class=\"button button-secondary\" href=\"/download\">\u{1F4E5} T\u{00E9}l\u{00E9}charger l'app</a>\n");
     html.push_str("    </div>\n");
     html.push_str("    <script>\n");
     html.push_str("        var DEEP_LINK = '");
@@ -2098,6 +2134,7 @@ pub async fn share_service_redirect(
     html.push_str("';\n");
     html.push_str("        var PLAY_STORE = 'https://play.google.com/store/apps/details?id=com.yukpomnang.mobile';\n");
     html.push_str("        var APP_STORE = 'https://apps.apple.com/app/yukpomnang';\n");
+    html.push_str("        var APK_DOWNLOAD = window.location.origin + '/download';\n");
     html.push_str("        var mediaItems = ");
     html.push_str(&media_js_array);
     html.push_str(";");
@@ -2109,6 +2146,28 @@ pub async fn share_service_redirect(
         var isIOS = /iPhone|iPad|iPod/i.test(ua);
         var isMobile = isAndroid || isIOS;
 
+        // ✅ NOUVEAU: Vérification intelligente de la disponibilité sur les stores
+        var APP_ON_PLAY_STORE = false; // À changer en true quand l'app sera sur Play Store
+        var APP_ON_APP_STORE = false;  // À changer en true quand l'app sera sur App Store
+
+        // Fonction pour vérifier si l'app est disponible sur le store
+        function checkStoreAvailability(storeUrl, callback) {
+            var img = new Image();
+            img.onload = function() { callback(true); };
+            img.onerror = function() { callback(false); };
+            img.src = storeUrl + '?t=' + Date.now();
+            setTimeout(function() { callback(false); }, 3000); // Timeout 3s
+        }
+
+        // Déterminer l'URL de fallback selon la disponibilité
+        function getFallbackUrl(isAndroid) {
+            if (isAndroid) {
+                return APP_ON_PLAY_STORE ? PLAY_STORE : APK_DOWNLOAD;
+            } else {
+                return APP_ON_APP_STORE ? APP_STORE : APK_DOWNLOAD;
+            }
+        }
+
         var openBtn = document.getElementById('open-app-btn');
         if (openBtn) {
             if (isAndroid) {
@@ -2116,7 +2175,9 @@ pub async fn share_service_redirect(
             } else if (isIOS) {
                 openBtn.href = DEEP_LINK;
                 openBtn.onclick = function() {
-                    setTimeout(function() { window.location.href = APP_STORE; }, 1500);
+                    setTimeout(function() { 
+                        window.location.href = getFallbackUrl(false);
+                    }, 1500);
                 };
             } else {
                 openBtn.style.display = 'none';
@@ -2126,10 +2187,21 @@ pub async fn share_service_redirect(
         if (isMobile) {
             setTimeout(function() {
                 if (isAndroid) {
+                    // Essayer d'ouvrir l'app via Intent
                     window.location.href = INTENT_URL;
+                    // Si l'app n'est pas installée, rediriger vers fallback après 2s
+                    setTimeout(function() {
+                        if (document.hidden || document.webkitHidden) return; // App s'est ouverte
+                        window.location.href = getFallbackUrl(true);
+                    }, 2000);
                 } else if (isIOS) {
+                    // Essayer d'ouvrir l'app via deep link
                     window.location.href = DEEP_LINK;
-                    setTimeout(function() { window.location.href = APP_STORE; }, 1500);
+                    // Si l'app n'est pas installée, rediriger vers fallback après 1.5s
+                    setTimeout(function() {
+                        if (document.hidden || document.webkitHidden) return; // App s'est ouverte
+                        window.location.href = getFallbackUrl(false);
+                    }, 1500);
                 }
             }, 800);
         }
@@ -2320,7 +2392,7 @@ pub async fn share_tracking_redirect(
     html.push_str(&description);
     html.push_str("</div>\n");
     html.push_str("        <a id=\"open-app-btn\" class=\"button\" href=\"#\">\u{1F4F1} Suivre dans l'app Yukpomnang</a>\n");
-    html.push_str("        <a class=\"button button-secondary\" href=\"https://play.google.com/store/apps/details?id=com.yukpomnang.mobile\" target=\"_blank\">\u{1F4E5} T\u{00E9}l\u{00E9}charger l'app</a>\n");
+    html.push_str("        <a class=\"button button-secondary\" href=\"/download\">\u{1F4E5} T\u{00E9}l\u{00E9}charger l'app</a>\n");
     html.push_str("    </div>\n");
     html.push_str("    <script>\n");
     html.push_str("        var DEEP_LINK = '");

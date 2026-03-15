@@ -37,6 +37,8 @@ Génère un JSON strictement conforme pour la recherche d'un besoin :
 **Champs conditionnels :**
 - Si suggestions : `suggestions_complementaires` avec structure array
 
+**Langue de réponse :** Réponds TOUJOURS en {language}.
+
 **Input utilisateur :** {user_input}
 
 **JSON :** 

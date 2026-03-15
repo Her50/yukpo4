@@ -50,6 +50,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
     const route = useRoute();
     const menu: WeeklyMenu | undefined = route.params?.menu;
     const { currency } = useShoppingContext();
+    const { t } = useLanguageSafe();
 
     const [selectedDay, setSelectedDay] = useState<number | null>(null);
     const [selectedMealType, setSelectedMealType] = useState<string | null>(null);
@@ -300,7 +301,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
     // ✅ NOUVEAU: Ouvrir le modal de commande
     const handleOpenOrderModal = async () => {
         if (!generatedShoppingList && editableShoppingList.length === 0) {
-            Alert.alert('Erreur', 'Aucune liste de courses disponible');
+            Alert.alert(t('message.error'), t('menuWeekCalendar.noShoppingList'));
             return;
         }
 
@@ -315,7 +316,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
     // Le backend fera automatiquement le matching avec les coursiers spécialisés food_shopping
     const handleCreateOrder = async () => {
         if (!generatedShoppingList && editableShoppingList.length === 0) {
-            Alert.alert('Erreur', 'Aucune liste de courses disponible');
+            Alert.alert(t('message.error'), t('menuWeekCalendar.noShoppingList'));
             return;
         }
 
@@ -324,12 +325,12 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
         // Vérifier le solde
         if (userBalance < fees.total) {
             Alert.alert(
-                'Solde insuffisant',
-                `Votre solde (${formatPrice(userBalance)}) est insuffisant pour cette commande (${formatPrice(fees.total)}). Veuillez recharger votre compte.`,
+                t('menuWeekCalendar.insufficientBalance'),
+                t('menuWeekCalendar.insufficientBalanceMsg', { balance: formatPrice(userBalance), total: formatPrice(fees.total) }),
                 [
-                    { text: 'Annuler', style: 'cancel' },
+                    { text: t('message.cancel'), style: 'cancel' },
                     {
-                        text: 'Recharger',
+                        text: t('menuWeekCalendar.recharge'),
                         onPress: () => {
                             // TODO: Naviguer vers l'écran de recharge
                             navigation.navigate('RechargeTokens' as never);
@@ -369,7 +370,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
 
             // ✅ CORRIGÉ: Utiliser le marché sélectionné par l'utilisateur via Google Places
             if (!selectedMarket) {
-                Alert.alert('Erreur', 'Veuillez sélectionner un marché');
+                Alert.alert(t('message.error'), t('menuWeekCalendar.selectMarket'));
                 return;
             }
 
@@ -423,8 +424,8 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
             if (response.success && response.data?.id) {
                 const deliveryId = response.data.id;
                 Alert.alert(
-                    'Commande créée',
-                    'Votre commande de courses a été créée avec succès. Le système recherche automatiquement un coursier spécialisé dans les courses de marché.',
+                    t('menuWeekCalendar.orderCreated'),
+                    t('menuWeekCalendar.orderCreatedMsg'),
                     [
                         {
                             text: 'OK',
@@ -442,7 +443,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
             }
         } catch (error: any) {
             console.error('[MenuWeekCalendar] Erreur création commande:', error);
-            Alert.alert('Erreur', error.message || 'Impossible de créer la commande. Veuillez réessayer.');
+            Alert.alert(t('message.error'), error.message || t('menuWeekCalendar.cannotCreateOrder'));
         } finally {
             setCreatingOrder(false);
         }
@@ -492,7 +493,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
     // ✅ NOUVEAU: Confirmer l'ajout d'un repas
     const handleConfirmAddMeal = () => {
         if (!newMealName.trim()) {
-            Alert.alert('Erreur', 'Veuillez entrer le nom du repas');
+            Alert.alert(t('message.error'), t('menuWeekCalendar.mealNameRequired'));
             return;
         }
 
@@ -531,7 +532,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
 
     const handleGenerateShoppingList = async () => {
         if (mealItems.length === 0) {
-            Alert.alert('Erreur', 'Veuillez sélectionner au moins un repas');
+            Alert.alert(t('message.error'), t('menuWeekCalendar.selectAtLeastOneMeal'));
             return;
         }
 
@@ -577,11 +578,11 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                 setShowShoppingModal(false);
                 setShowShoppingListModal(true);
             } else {
-                Alert.alert('Erreur', response.error || 'Impossible de générer la liste de courses');
+                Alert.alert(t('message.error'), response.error || t('menuWeekCalendar.cannotGenerateShoppingList'));
             }
         } catch (error: any) {
             console.error('[MenuWeekCalendar] Erreur génération liste:', error);
-            Alert.alert('Erreur', error.message || 'Une erreur est survenue');
+            Alert.alert(t('message.error'), error.message || t('menuWeekCalendar.genericError'));
         } finally {
             setGeneratingShoppingList(false);
         }
@@ -615,12 +616,12 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
             // Partager vers WhatsApp
             await shareMenuPDF(pdfUri, `Semaine du ${weekStartDate.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}`);
 
-            Alert.alert('Succès', 'Menu exporté et partagé avec succès !');
+            Alert.alert(t('message.success'), t('menuWeekCalendar.menuExported'));
         } catch (error: any) {
             console.error('[MenuWeekCalendar] Erreur export PDF:', error);
             Alert.alert(
-                'Erreur',
-                error.message || 'Impossible d\'exporter le menu. Veuillez installer expo-print: npm install expo-print'
+                t('message.error'),
+                error.message || t('menuWeekCalendar.cannotExportMenu')
             );
         } finally {
             setExportingPDF(false);
@@ -679,7 +680,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
     // ✅ NOUVEAU: Générer une recette via IA
     const handleGenerateRecipe = async () => {
         if (!recipeRequest.trim()) {
-            Alert.alert('Erreur', 'Veuillez entrer le nom d\'un plat');
+            Alert.alert(t('message.error'), t('menuWeekCalendar.dishNameRequired'));
             return;
         }
 
@@ -693,11 +694,11 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                 setShowRecipeDetails(true);
                 setRecipeRequest('');
             } else {
-                Alert.alert('Erreur', response.error || 'Impossible de générer la recette');
+                Alert.alert(t('message.error'), response.error || t('menuWeekCalendar.cannotGenerateRecipe'));
             }
         } catch (error: any) {
             console.error('[MenuWeekCalendar] Erreur génération recette:', error);
-            Alert.alert('Erreur', error.message || 'Une erreur est survenue');
+            Alert.alert(t('message.error'), error.message || t('menuWeekCalendar.genericError'));
         } finally {
             setLoadingRecipe(false);
         }
@@ -1361,10 +1362,10 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                                         });
 
                                         await shareRecipePDF(pdfUri, generatedRecipe.recipe_name);
-                                        Alert.alert('Succès', 'Recette partagée avec succès !');
+                                        Alert.alert(t('message.success'), t('menuWeekCalendar.recipeShared'));
                                     } catch (error: any) {
                                         console.error('[MenuWeekCalendar] Erreur partage recette PDF:', error);
-                                        Alert.alert('Erreur', error.message || 'Impossible de partager la recette en PDF');
+                                        Alert.alert(t('message.error'), error.message || t('menuWeekCalendar.cannotShareRecipe'));
                                     } finally {
                                         setExportingRecipePDF(false);
                                     }
@@ -1856,10 +1857,10 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                                         });
 
                                         await shareShoppingListPDF(pdfUri, 'Liste de courses');
-                                        Alert.alert('Succès', 'Liste de courses partagée avec succès !');
+                                        Alert.alert(t('message.success'), t('menuWeekCalendar.shoppingListShared'));
                                     } catch (error: any) {
                                         console.error('[MenuWeekCalendar] Erreur partage liste:', error);
-                                        Alert.alert('Erreur', error.message || 'Impossible de partager la liste de courses');
+                                        Alert.alert(t('message.error'), error.message || t('menuWeekCalendar.cannotShareShoppingList'));
                                     }
                                 }}
                                 variant="outline"

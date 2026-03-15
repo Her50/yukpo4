@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import ReactNative from 'react-native';
 import { SafeNativeView } from '../components/SafeNativeView';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { apiPatch, apiPost } from '../services/api'; // ✅ NOUVEAU 2026-02-06: Ajouter apiPost pour changement de mot de passe
 import { theme } from '../theme/theme';
@@ -50,6 +51,7 @@ const SettingsScreen: React.FC = () => {
   const navigation = useNavigation();
   const route = useRoute();
   const { user, updateUser } = useAuth();
+  const { t } = useLanguageSafe();
   const { themeMode, setThemeMode, isDark } = useTheme(); // ✅ NOUVEAU: Utiliser ThemeContext
   const [loading, setLoading] = useState(false);
 
@@ -130,16 +132,16 @@ const SettingsScreen: React.FC = () => {
 
         if (response.success) {
           updateUser(response.data);
-          Alert.alert('Succès', 'Paramètres sauvegardés avec succès');
+          Alert.alert(t('message.success'), t('settings.savedSuccess'));
         } else {
-          Alert.alert('Erreur', 'Impossible de sauvegarder les paramètres');
+          Alert.alert(t('message.error'), t('settings.saveError'));
         }
       } else {
-        Alert.alert('Succès', 'Paramètres sauvegardés avec succès');
+        Alert.alert(t('message.success'), t('settings.savedSuccess'));
       }
     } catch (error) {
       console.error('Erreur sauvegarde paramètres:', error);
-      Alert.alert('Erreur', 'Impossible de sauvegarder les paramètres');
+      Alert.alert(t('message.error'), t('settings.saveError'));
     } finally {
       setLoading(false);
     }
@@ -147,12 +149,12 @@ const SettingsScreen: React.FC = () => {
 
   const handleChangePassword = async () => {
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      Alert.alert('Erreur', 'Les mots de passe ne correspondent pas');
+      Alert.alert(t('message.error'), t('settings.passwordMismatch'));
       return;
     }
 
     if (passwordData.newPassword.length < 8) {
-      Alert.alert('Erreur', 'Le mot de passe doit contenir au moins 8 caractères');
+      Alert.alert(t('message.error'), t('settings.passwordTooShort'));
       return;
     }
 
@@ -165,7 +167,7 @@ const SettingsScreen: React.FC = () => {
       });
 
       if (response.success) {
-        Alert.alert('Succès', 'Votre mot de passe a été modifié avec succès', [
+        Alert.alert(t('message.success'), t('settings.passwordChanged'), [
           {
             text: 'OK', onPress: () => {
               setShowPasswordModal(false);
@@ -178,7 +180,7 @@ const SettingsScreen: React.FC = () => {
       }
     } catch (error: any) {
       console.error('Erreur changement mot de passe:', error);
-      Alert.alert('Erreur', error.message || 'Impossible de modifier le mot de passe');
+      Alert.alert(t('message.error'), error.message || t('settings.passwordChangeError'));
     } finally {
       setChangingPassword(false);
     }
@@ -186,12 +188,12 @@ const SettingsScreen: React.FC = () => {
 
   const handleReset = () => {
     Alert.alert(
-      'Réinitialiser les paramètres',
-      'Êtes-vous sûr de vouloir réinitialiser tous les paramètres aux valeurs par défaut ?',
+      t('settings.resetTitle'),
+      t('settings.resetConfirm'),
       [
-        { text: 'Annuler', style: 'cancel' },
+        { text: t('button.cancel'), style: 'cancel' },
         {
-          text: 'Réinitialiser',
+          text: t('settings.reset'),
           style: 'destructive',
           onPress: () => {
             setSettings({
@@ -366,20 +368,20 @@ const SettingsScreen: React.FC = () => {
           style={styles.selector}
           onPress={() => {
             Alert.alert(
-              'Visibilité du profil',
-              'Choisissez qui peut voir votre profil',
+              t('settings.profileVisibility'),
+              t('settings.profileVisibilityDesc'),
               [
-                { text: 'Public', onPress: () => updateSetting('profileVisibility', 'public') },
-                { text: 'Privé', onPress: () => updateSetting('profileVisibility', 'private') },
-                { text: 'Amis seulement', onPress: () => updateSetting('profileVisibility', 'friends') },
-                { text: 'Annuler', style: 'cancel' }
+                { text: t('settings.public'), onPress: () => updateSetting('profileVisibility', 'public') },
+                { text: t('settings.private'), onPress: () => updateSetting('profileVisibility', 'private') },
+                { text: t('settings.contactsOnly'), onPress: () => updateSetting('profileVisibility', 'friends') },
+                { text: t('button.cancel'), style: 'cancel' }
               ]
             );
           }}
         >
           <Text style={styles.selectorText}>
-            {settings.profileVisibility === 'public' ? 'Public' :
-              settings.profileVisibility === 'private' ? 'Privé' : 'Amis seulement'}
+            {settings.profileVisibility === 'public' ? t('settings.public') :
+              settings.profileVisibility === 'private' ? t('settings.private') : t('settings.contactsOnly')}
           </Text>
         </TouchableOpacity>
       </View>
@@ -438,38 +440,38 @@ const SettingsScreen: React.FC = () => {
           style={styles.selector}
           onPress={() => {
             Alert.alert(
-              'Thème',
-              'Choisissez le thème de l\'application',
+              t('settings.themeTitle'),
+              t('settings.themeDesc'),
               [
                 {
-                  text: 'Clair',
+                  text: t('settings.themeLight'),
                   onPress: () => {
                     updateSetting('theme', 'light');
                     setThemeMode('light'); // ✅ NOUVEAU: Mettre à jour le context
                   }
                 },
                 {
-                  text: 'Sombre',
+                  text: t('settings.themeDark'),
                   onPress: () => {
                     updateSetting('theme', 'dark');
                     setThemeMode('dark'); // ✅ NOUVEAU: Mettre à jour le context
                   }
                 },
                 {
-                  text: 'Automatique',
+                  text: t('settings.themeSystem'),
                   onPress: () => {
                     updateSetting('theme', 'auto');
                     setThemeMode('auto'); // ✅ NOUVEAU: Mettre à jour le context
                   }
                 },
-                { text: 'Annuler', style: 'cancel' }
+                { text: t('button.cancel'), style: 'cancel' }
               ]
             );
           }}
         >
           <Text style={styles.selectorText}>
-            {themeMode === 'light' ? 'Clair' :
-              themeMode === 'dark' ? 'Sombre' : 'Automatique'}
+            {themeMode === 'light' ? t('settings.themeLight') :
+              themeMode === 'dark' ? t('settings.themeDark') : t('settings.themeSystem')}
           </Text>
         </TouchableOpacity>
       </View>
@@ -483,20 +485,20 @@ const SettingsScreen: React.FC = () => {
           style={styles.selector}
           onPress={() => {
             Alert.alert(
-              'Taille de police',
-              'Choisissez la taille de police',
+              t('settings.fontSizeTitle'),
+              t('settings.fontSizeDesc'),
               [
-                { text: 'Petite', onPress: () => updateSetting('fontSize', 'small') },
-                { text: 'Moyenne', onPress: () => updateSetting('fontSize', 'medium') },
-                { text: 'Grande', onPress: () => updateSetting('fontSize', 'large') },
-                { text: 'Annuler', style: 'cancel' }
+                { text: t('settings.fontSmall'), onPress: () => updateSetting('fontSize', 'small') },
+                { text: t('settings.fontMedium'), onPress: () => updateSetting('fontSize', 'medium') },
+                { text: t('settings.fontLarge'), onPress: () => updateSetting('fontSize', 'large') },
+                { text: t('button.cancel'), style: 'cancel' }
               ]
             );
           }}
         >
           <Text style={styles.selectorText}>
-            {settings.fontSize === 'small' ? 'Petite' :
-              settings.fontSize === 'medium' ? 'Moyenne' : 'Grande'}
+            {settings.fontSize === 'small' ? t('settings.fontSmall') :
+              settings.fontSize === 'medium' ? t('settings.fontMedium') : t('settings.fontLarge')}
           </Text>
         </TouchableOpacity>
       </View>
@@ -550,22 +552,22 @@ const SettingsScreen: React.FC = () => {
           style={styles.selector}
           onPress={() => {
             Alert.alert(
-              'Délai de session',
-              'Choisissez le délai de déconnexion automatique',
+              t('settings.sessionTimeoutTitle'),
+              t('settings.sessionTimeoutDesc'),
               [
-                { text: '15 minutes', onPress: () => updateSetting('sessionTimeout', 15) },
-                { text: '30 minutes', onPress: () => updateSetting('sessionTimeout', 30) },
-                { text: '1 heure', onPress: () => updateSetting('sessionTimeout', 60) },
-                { text: '2 heures', onPress: () => updateSetting('sessionTimeout', 120) },
-                { text: 'Annuler', style: 'cancel' }
+                { text: t('settings.timeout15'), onPress: () => updateSetting('sessionTimeout', 15) },
+                { text: t('settings.timeout30'), onPress: () => updateSetting('sessionTimeout', 30) },
+                { text: t('settings.timeout60'), onPress: () => updateSetting('sessionTimeout', 60) },
+                { text: t('settings.timeoutNever'), onPress: () => updateSetting('sessionTimeout', 120) },
+                { text: t('button.cancel'), style: 'cancel' }
               ]
             );
           }}
         >
           <Text style={styles.selectorText}>
-            {settings.sessionTimeout === 15 ? '15 minutes' :
-              settings.sessionTimeout === 30 ? '30 minutes' :
-                settings.sessionTimeout === 60 ? '1 heure' : '2 heures'}
+            {settings.sessionTimeout === 15 ? t('settings.timeout15') :
+              settings.sessionTimeout === 30 ? t('settings.timeout30') :
+                settings.sessionTimeout === 60 ? t('settings.timeout60') : t('settings.timeoutNever')}
           </Text>
         </TouchableOpacity>
       </View>

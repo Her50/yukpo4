@@ -16,6 +16,7 @@ import SafeIcon from '../../components/SafeIcon';
 import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { apiGet, apiPost, apiPut } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 import { isAdminUser } from '../../utils/roleHelpers'; // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
@@ -54,6 +55,7 @@ interface PendingPartner {
 const DeliveryPartnersAdminScreen: React.FC = () => {
     const navigation = useNavigation();
     const { user } = useAuth();
+    const { t } = useLanguageSafe();
     const [activeTab, setActiveTab] = useState<'pending' | 'approved'>('pending');
     const [partners, setPartners] = useState<DeliveryPartner[]>([]);
     const [pendingPartners, setPendingPartners] = useState<PendingPartner[]>([]);
@@ -89,7 +91,7 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
     useEffect(() => {
         // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
         if (!user || !isAdminUser(user)) {
-            Alert.alert('Accès refusé', 'Cette page est réservée aux administrateurs');
+            Alert.alert(t('deliveryPartnersAdmin.accessDenied'), t('deliveryPartnersAdmin.adminOnly'));
             navigation.goBack();
             return;
         }
@@ -108,7 +110,7 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
             setPartners(partnersList);
         } catch (error: any) {
             console.error('[DeliveryPartnersAdminScreen] Erreur chargement partenaires:', error);
-            Alert.alert('Erreur', error?.message || 'Impossible de charger les partenaires');
+            Alert.alert(t('message.error'), error?.message || t('deliveryPartnersAdmin.cannotLoadPartners'));
         } finally {
             setLoading(false);
         }
@@ -169,7 +171,7 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
         } catch (error: any) {
             console.error('[DeliveryPartnersAdminScreen] ❌ Erreur chargement candidatures:', error);
             console.error('[DeliveryPartnersAdminScreen] ❌ Stack trace:', error.stack);
-            Alert.alert('Erreur', error.message || 'Impossible de charger les candidatures');
+            Alert.alert(t('message.error'), error.message || t('deliveryPartnersAdmin.cannotLoadApplications'));
             setPendingPartners([]);
         } finally {
             setLoadingPending(false);
@@ -184,7 +186,7 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
             });
 
             if (response.success) {
-                Alert.alert('✅ Succès', 'Le partenaire a été approuvé avec succès', [
+                Alert.alert(t('message.success'), t('deliveryPartnersAdmin.partnerApproved'), [
                     {
                         text: 'OK', onPress: () => {
                             setShowDetailModal(false);
@@ -198,7 +200,7 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
             }
         } catch (error: any) {
             console.error('[DeliveryPartnersAdminScreen] Erreur approbation:', error);
-            Alert.alert('Erreur', error.message || 'Impossible d\'approuver le partenaire');
+            Alert.alert(t('message.error'), error.message || t('deliveryPartnersAdmin.cannotApprove'));
         } finally {
             setProcessing(null);
         }
@@ -206,7 +208,7 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
 
     const handleReject = async (userId: number) => {
         if (!rejectionReason.trim()) {
-            Alert.alert('Erreur', 'Veuillez indiquer une raison de refus');
+            Alert.alert(t('message.error'), t('deliveryPartnersAdmin.provideRejectionReason'));
             return;
         }
 
@@ -218,7 +220,7 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
             });
 
             if (response.success) {
-                Alert.alert('✅ Succès', 'Le partenaire a été rejeté', [
+                Alert.alert(t('message.success'), t('deliveryPartnersAdmin.partnerRejected'), [
                     {
                         text: 'OK', onPress: () => {
                             setShowRejectModal(false);
@@ -233,7 +235,7 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
             }
         } catch (error: any) {
             console.error('[DeliveryPartnersAdminScreen] Erreur rejet:', error);
-            Alert.alert('Erreur', error.message || 'Impossible de rejeter le partenaire');
+            Alert.alert(t('message.error'), error.message || t('deliveryPartnersAdmin.cannotReject'));
         } finally {
             setProcessing(null);
         }
@@ -286,7 +288,7 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
         if (!editingPartner) return;
 
         if (!editForm.name.trim()) {
-            Alert.alert('Erreur', 'Le nom est requis');
+            Alert.alert(t('message.error'), t('deliveryPartnersAdmin.nameRequired'));
             return;
         }
 
@@ -295,7 +297,7 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
             const response = await apiPut(`/api/delivery/partners/${editingPartner.id}`, editForm);
 
             if (response.success !== false) {
-                Alert.alert('✅ Succès', 'Le partenaire a été modifié avec succès', [
+                Alert.alert(t('message.success'), t('deliveryPartnersAdmin.partnerUpdated'), [
                     {
                         text: 'OK', onPress: () => {
                             setShowEditModal(false);
@@ -309,7 +311,7 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
             }
         } catch (error: any) {
             console.error('[DeliveryPartnersAdminScreen] Erreur modification:', error);
-            Alert.alert('Erreur', error.message || 'Impossible de modifier le partenaire');
+            Alert.alert(t('message.error'), error.message || t('deliveryPartnersAdmin.cannotUpdate'));
         } finally {
             setProcessing(null);
         }
@@ -319,10 +321,8 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
         // ✅ NOTE: La suppression des partenaires validés n'est pas recommandée car ils sont liés à des utilisateurs
         // Pour désactiver un partenaire, utilisez plutôt la fonctionnalité de désactivation (is_active = false)
         Alert.alert(
-            'Information',
-            'La suppression des partenaires validés n\'est pas disponible dans l\'application mobile.\n\n' +
-            'Les partenaires sont liés à des comptes utilisateurs et ne doivent pas être supprimés.\n\n' +
-            'Pour désactiver un partenaire, utilisez l\'interface web d\'administration ou contactez le support.'
+            'Info',
+            t('deliveryPartnersAdmin.deletionNotAvailable')
         );
     };
 
@@ -412,12 +412,12 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
                                         onPress={() => {
                                             setSelectedPendingPartner(partner);
                                             Alert.alert(
-                                                'Confirmer',
-                                                'Êtes-vous sûr de vouloir approuver ce partenaire ?',
+                                                t('message.confirm'),
+                                                t('deliveryPartnersAdmin.confirmApprove'),
                                                 [
-                                                    { text: 'Annuler', style: 'cancel' },
+                                                    { text: t('message.cancel'), style: 'cancel' },
                                                     {
-                                                        text: 'Approuver',
+                                                        text: t('deliveryPartnersAdmin.approve'),
                                                         onPress: () => handleApprove(partner.id),
                                                     },
                                                 ],
@@ -575,12 +575,12 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
                                             variant="primary"
                                             onPress={() => {
                                                 Alert.alert(
-                                                    'Confirmer',
-                                                    'Êtes-vous sûr de vouloir approuver ce partenaire ?',
+                                                    t('message.confirm'),
+                                                    t('deliveryPartnersAdmin.confirmApprove'),
                                                     [
-                                                        { text: 'Annuler', style: 'cancel' },
+                                                        { text: t('message.cancel'), style: 'cancel' },
                                                         {
-                                                            text: 'Approuver',
+                                                            text: t('deliveryPartnersAdmin.approve'),
                                                             onPress: () =>
                                                                 handleApprove(selectedPendingPartner.id),
                                                         },

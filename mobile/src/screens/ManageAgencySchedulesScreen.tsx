@@ -15,6 +15,7 @@ import {
     View,
 } from 'react-native';
 import SafeIcon from '../components/SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 import { apiDelete, apiGet, apiPost, apiPut } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 
@@ -40,6 +41,7 @@ interface Schedule {
 
 const ManageAgencySchedulesScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const [loading, setLoading] = useState(true);
     const [schedules, setSchedules] = useState<Schedule[]>([]);
     const [showAddModal, setShowAddModal] = useState(false);
@@ -66,7 +68,7 @@ const ManageAgencySchedulesScreen: React.FC = () => {
             }
         } catch (error: any) {
             console.error('[ManageAgencySchedulesScreen] Erreur chargement:', error);
-            Alert.alert('Erreur', 'Impossible de charger les horaires');
+            Alert.alert(t('message.error'), t('agencySchedules.cannotLoad'));
         } finally {
             setLoading(false);
         }
@@ -94,19 +96,19 @@ const ManageAgencySchedulesScreen: React.FC = () => {
 
     const handleSaveSchedule = async () => {
         if (!departureCity.trim() || !arrivalCity.trim() || !departureTime.trim()) {
-            Alert.alert('Erreur', 'Veuillez remplir tous les champs obligatoires');
+            Alert.alert(t('message.error'), t('agencySchedules.fillRequiredFields'));
             return;
         }
 
         if (selectedDays.length === 0) {
-            Alert.alert('Erreur', 'Veuillez sélectionner au moins un jour de la semaine');
+            Alert.alert(t('message.error'), t('agencySchedules.selectAtLeastOneDay'));
             return;
         }
 
         // Valider le format de l'heure (HH:MM)
         const timeRegex = /^([0-1][0-9]|2[0-3]):[0-5][0-9]$/;
         if (!timeRegex.test(departureTime)) {
-            Alert.alert('Erreur', 'Format d\'heure invalide. Utilisez HH:MM (ex: 08:00, 14:30)');
+            Alert.alert(t('message.error'), t('agencySchedules.invalidTimeFormat'));
             return;
         }
 
@@ -120,11 +122,11 @@ const ManageAgencySchedulesScreen: React.FC = () => {
                 });
 
                 if (response.success) {
-                    Alert.alert('✅ Succès', 'Horaire mis à jour avec succès');
+                    Alert.alert(t('message.success'), t('agencySchedules.scheduleUpdated'));
                     setShowAddModal(false);
                     loadSchedules();
                 } else {
-                    Alert.alert('Erreur', response.error || 'Impossible de mettre à jour');
+                    Alert.alert(t('message.error'), response.error || t('agencySchedules.cannotUpdate'));
                 }
             } else {
                 // Création
@@ -137,23 +139,23 @@ const ManageAgencySchedulesScreen: React.FC = () => {
                 });
 
                 if (response.success) {
-                    Alert.alert('✅ Succès', 'Horaire créé avec succès');
+                    Alert.alert(t('message.success'), t('agencySchedules.scheduleCreated'));
                     setShowAddModal(false);
                     loadSchedules();
                 } else {
-                    Alert.alert('Erreur', response.error || 'Impossible de créer');
+                    Alert.alert(t('message.error'), response.error || t('agencySchedules.cannotCreate'));
                 }
             }
         } catch (error: any) {
             console.error('[ManageAgencySchedulesScreen] Erreur sauvegarde:', error);
-            Alert.alert('Erreur', error.message || 'Une erreur est survenue');
+            Alert.alert(t('message.error'), error.message || t('agencySchedules.genericError'));
         }
     };
 
     const handleDeleteSchedule = (schedule: Schedule) => {
         Alert.alert(
-            'Supprimer l\'horaire',
-            `Êtes-vous sûr de vouloir supprimer l'horaire ${schedule.departure_city} → ${schedule.arrival_city} à ${schedule.departure_time} ?`,
+            t('agencySchedules.deleteSchedule'),
+            t('agencySchedules.deleteConfirm', { from: schedule.departure_city, to: schedule.arrival_city, time: schedule.departure_time }),
             [
                 { text: 'Annuler', style: 'cancel' },
                 {
@@ -163,14 +165,14 @@ const ManageAgencySchedulesScreen: React.FC = () => {
                         try {
                             const response = await apiDelete(`/api/bus-tickets/agencies/schedules/${schedule.id}`);
                             if (response.success) {
-                                Alert.alert('✅ Succès', 'Horaire supprimé');
+                                Alert.alert(t('message.success'), t('agencySchedules.scheduleDeleted'));
                                 loadSchedules();
                             } else {
-                                Alert.alert('Erreur', response.error || 'Impossible de supprimer');
+                                Alert.alert(t('message.error'), response.error || t('agencySchedules.cannotDelete'));
                             }
                         } catch (error: any) {
                             console.error('[ManageAgencySchedulesScreen] Erreur suppression:', error);
-                            Alert.alert('Erreur', error.message || 'Une erreur est survenue');
+                            Alert.alert(t('message.error'), error.message || t('agencySchedules.genericError'));
                         }
                     },
                 },
@@ -240,7 +242,7 @@ const ManageAgencySchedulesScreen: React.FC = () => {
                                             });
                                             loadSchedules();
                                         } catch (error) {
-                                            Alert.alert('Erreur', 'Impossible de mettre à jour');
+                                            Alert.alert(t('message.error'), t('agencySchedules.cannotUpdate'));
                                         }
                                     }}
                                     trackColor={{ false: '#D1D5DB', true: modernColors.primary }}

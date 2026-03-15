@@ -1,12 +1,13 @@
-// ✅ Routes pour Bourse du Livre avec IA
+// ✅ Routes pour Bourse du Livre avec IA - V1 + V2
 
 use axum::{
     middleware,
-    routing::{get, post},
+    routing::{get, patch, post},
     Router,
 };
 use std::sync::Arc;
 
+use crate::controllers::bourse_livre_v2_controller;
 use crate::controllers::livres_scolaires_controller;
 use crate::middlewares::jwt::jwt_auth;
 use crate::state::AppState;
@@ -73,5 +74,106 @@ pub fn bourse_livre_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         )
         .layer(middleware::from_fn_with_state(state.clone(), jwt_auth));
 
-    Router::new().merge(public_routes).merge(protected_routes).with_state(state)
+    // ================================================================
+    // V2 Routes - Sessions, Recto-Verso, Paquets, Dons, Programmes
+    // ================================================================
+
+    // V2 Routes publiques
+    let v2_public_routes = Router::new().route(
+        "/api/bourse-livre/v2/programmes",
+        get(bourse_livre_v2_controller::get_programmes_scolaires),
+    );
+
+    // V2 Routes protégées
+    let v2_protected_routes = Router::new()
+        // Sessions d'upload progressive
+        .route(
+            "/api/bourse-livre/v2/sessions",
+            post(bourse_livre_v2_controller::create_upload_session),
+        )
+        .route(
+            "/api/bourse-livre/v2/sessions/{id}",
+            get(bourse_livre_v2_controller::get_upload_session),
+        )
+        .route(
+            "/api/bourse-livre/v2/sessions/{id}/finalize",
+            post(bourse_livre_v2_controller::finalize_upload_session),
+        )
+        // Analyse recto-verso IA
+        .route(
+            "/api/bourse-livre/v2/analyze-recto-verso",
+            post(bourse_livre_v2_controller::analyze_recto_verso),
+        )
+        // Paquets livraison coursier
+        .route(
+            "/api/bourse-livre/v2/packages",
+            post(bourse_livre_v2_controller::create_delivery_package),
+        )
+        .route(
+            "/api/bourse-livre/v2/packages/my",
+            get(bourse_livre_v2_controller::get_my_packages),
+        )
+        .route(
+            "/api/bourse-livre/v2/packages/courier",
+            get(bourse_livre_v2_controller::get_courier_packages),
+        )
+        .route(
+            "/api/bourse-livre/v2/packages/{id}/status",
+            patch(bourse_livre_v2_controller::update_package_status),
+        )
+        // Dons de livres
+        .route(
+            "/api/bourse-livre/v2/donations/request",
+            post(bourse_livre_v2_controller::request_donation),
+        )
+        .route(
+            "/api/bourse-livre/v2/donations/my",
+            get(bourse_livre_v2_controller::get_my_donation_requests),
+        )
+        // Calcul net échange
+        .route(
+            "/api/bourse-livre/v2/calculate-net",
+            post(bourse_livre_v2_controller::calculate_net_amount),
+        )
+        // Admin: Programmes scolaires
+        .route(
+            "/api/bourse-livre/v2/admin/programmes",
+            post(bourse_livre_v2_controller::create_programme_scolaire),
+        )
+        // Admin: Upload fichier programme (PDF/Excel/Image) + extraction IA
+        .route(
+            "/api/bourse-livre/v2/admin/programmes/upload",
+            post(bourse_livre_v2_controller::upload_programme_file),
+        )
+        // Matching IA livre ↔ programme (avec date)
+        .route(
+            "/api/bourse-livre/v2/match-programme",
+            post(bourse_livre_v2_controller::match_livre_programme),
+        )
+        // Achats directs (sans échange)
+        .route(
+            "/api/bourse-livre/v2/purchases",
+            post(bourse_livre_v2_controller::create_book_purchase),
+        )
+        .route(
+            "/api/bourse-livre/v2/purchases/my",
+            get(bourse_livre_v2_controller::get_my_purchases),
+        )
+        .route(
+            "/api/bourse-livre/v2/purchases/{id}/status",
+            patch(bourse_livre_v2_controller::update_purchase_status),
+        )
+        // Paquet dépôt-seulement (coursier dépose sans récupérer)
+        .route(
+            "/api/bourse-livre/v2/packages/depot-only",
+            post(bourse_livre_v2_controller::create_depot_only_package),
+        )
+        .layer(middleware::from_fn_with_state(state.clone(), jwt_auth));
+
+    Router::new()
+        .merge(public_routes)
+        .merge(protected_routes)
+        .merge(v2_public_routes)
+        .merge(v2_protected_routes)
+        .with_state(state)
 }

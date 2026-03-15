@@ -79,6 +79,7 @@ const COURIER_TYPE_LABELS: Record<string, string> = {
 
 const FleetDashboardScreen: React.FC = () => {
     const { user } = useAuth();
+    const { t } = useLanguageSafe();
     const partnerType = ((user as any)?.partner_type || '').toLowerCase().trim();
 
     const [activeTab, setActiveTab] = useState<TabKey>('overview');
@@ -172,8 +173,8 @@ const FleetDashboardScreen: React.FC = () => {
 
     const handleApproveApplication = async (appId: string) => {
         Alert.alert(
-            'Approuver la candidature',
-            'Voulez-vous approuver ce candidat dans votre flotte ?',
+            t('fleet.approveApplication'),
+            t('fleet.approveConfirm'),
             [
                 { text: 'Annuler', style: 'cancel' },
                 {
@@ -182,10 +183,10 @@ const FleetDashboardScreen: React.FC = () => {
                         setProcessing(appId);
                         try {
                             await apiPost(`/api/partners/me/fleet/applications/${appId}/approve`, {});
-                            Alert.alert('Candidature approuvee', 'Le coursier a ete ajoute a votre flotte.');
+                            Alert.alert(t('fleet.applicationApproved'), t('fleet.courierAddedToFleet'));
                             loadAll(true);
                         } catch (err: any) {
-                            Alert.alert('Erreur', err?.message || 'Impossible d\'approuver la candidature');
+                            Alert.alert(t('message.error'), err?.message || t('fleet.cannotApprove'));
                         } finally {
                             setProcessing(null);
                         }
@@ -202,13 +203,13 @@ const FleetDashboardScreen: React.FC = () => {
             await apiPost(`/api/partners/me/fleet/applications/${rejectTarget}/reject`, {
                 reason: rejectReason || undefined,
             });
-            Alert.alert('Candidature rejetee', 'Le candidat a ete informe.');
+            Alert.alert(t('fleet.applicationRejected'), t('fleet.candidateInformed'));
             setRejectModalVisible(false);
             setRejectTarget(null);
             setRejectReason('');
             loadAll(true);
         } catch (err: any) {
-            Alert.alert('Erreur', err?.message || 'Impossible de rejeter la candidature');
+            Alert.alert(t('message.error'), err?.message || t('fleet.cannotReject'));
         } finally {
             setProcessing(null);
         }
@@ -218,9 +219,9 @@ const FleetDashboardScreen: React.FC = () => {
         const action = currentStatus === 'approved' ? 'suspend' : 'activate';
         const label = action === 'suspend' ? 'Suspendre' : 'Reactiver';
         Alert.alert(
-            `${label} le coursier`,
+            t('fleet.toggleCourier', { action: label }),
             action === 'suspend'
-                ? 'Ce coursier ne pourra plus recevoir de courses.'
+                ? t('fleet.suspendWarning')
                 : 'Ce coursier pourra a nouveau recevoir des courses.',
             [
                 { text: 'Annuler', style: 'cancel' },
@@ -234,7 +235,7 @@ const FleetDashboardScreen: React.FC = () => {
                             loadCouriers();
                             loadStats();
                         } catch (err: any) {
-                            Alert.alert('Erreur', err?.message || 'Impossible de modifier le statut');
+                            Alert.alert(t('message.error'), err?.message || t('fleet.cannotToggleStatus'));
                         } finally {
                             setProcessing(null);
                         }

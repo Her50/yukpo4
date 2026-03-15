@@ -145,6 +145,7 @@ const ResultatBesoinScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
     const { user } = useAuth();
+    const { t } = useLanguageSafe();
     const { location } = useLocation();
 
     // États
@@ -1649,7 +1650,7 @@ const ResultatBesoinScreen: React.FC = () => {
     // ✅ CORRECTION: Gestionnaires pour les services
     const handleContactPress = (service: Service) => {
         if (!service.user_id) {
-            Alert.alert("Erreur", "Impossible d'identifier le prestataire");
+            Alert.alert(t('message.error'), t('resultatBesoin.cannotIdentify'));
             return;
         }
         handleContact(service.user_id, 'message');
@@ -1657,7 +1658,7 @@ const ResultatBesoinScreen: React.FC = () => {
 
     const handleCallPress = (service: Service) => {
         if (!service.user_id) {
-            Alert.alert("Erreur", "Impossible d'identifier le prestataire");
+            Alert.alert(t('message.error'), t('resultatBesoin.cannotIdentify'));
             return;
         }
         handleContact(service.user_id, 'call');
@@ -1668,11 +1669,11 @@ const ResultatBesoinScreen: React.FC = () => {
     const handleContact = useCallback((prestataireId: string, type: 'message' | 'call') => {
         if (!user) {
             Alert.alert(
-                "Connexion requise",
-                "Veuillez vous connecter pour contacter le prestataire",
+                t('resultatBesoin.loginRequired'),
+                t('resultatBesoin.loginToContact'),
                 [
-                    { text: "Annuler", style: "cancel" },
-                    { text: "Se connecter", onPress: () => navigation.navigate('Login' as never) }
+                    { text: t('message.cancel'), style: "cancel" },
+                    { text: t('resultatBesoin.login'), onPress: () => navigation.navigate('Login' as never) }
                 ]
             );
             return;
@@ -1680,7 +1681,7 @@ const ResultatBesoinScreen: React.FC = () => {
 
         const prestataire = prestataires.get(prestataireId);
         if (!prestataire) {
-            Alert.alert("Erreur", "Impossible de récupérer les informations du prestataire");
+            Alert.alert(t('message.error'), t('resultatBesoin.cannotGetInfo'));
             return;
         }
 
@@ -1716,11 +1717,11 @@ const ResultatBesoinScreen: React.FC = () => {
                                         await createContactNotification(prestataireId, 'whatsapp', foundService);
                                     }
                                 } else {
-                                    Alert.alert("Erreur", "WhatsApp n'est pas installé sur cet appareil");
+                                    Alert.alert(t('message.error'), t('resultatBesoin.whatsappNotInstalled'));
                                 }
                             } catch (error) {
                                 console.error('Erreur ouverture WhatsApp:', error);
-                                Alert.alert("Erreur", "Impossible d'ouvrir WhatsApp");
+                                Alert.alert(t('message.error'), t('resultatBesoin.cannotOpenWhatsapp'));
                             }
                         }
                     });
@@ -1744,23 +1745,23 @@ const ResultatBesoinScreen: React.FC = () => {
                                         await createContactNotification(prestataireId, 'call', foundService);
                                     }
                                 } else {
-                                    Alert.alert("Erreur", "Impossible de passer l'appel");
+                                    Alert.alert(t('message.error'), t('resultatBesoin.cannotCall'));
                                 }
                             } catch (error) {
                                 console.error('Erreur ouverture appel:', error);
-                                Alert.alert("Erreur", "Impossible d'ouvrir l'application téléphone");
+                                Alert.alert(t('message.error'), t('resultatBesoin.cannotOpenPhone'));
                             }
                         }
                     });
                 }
 
                 Alert.alert(
-                    "Contacter le prestataire",
-                    `Comment souhaitez-vous contacter ${prestataire?.nom_complet || prestataire?.nom || prestataire?.name || 'ce prestataire'} ?`,
-                    contactOptions.concat([{ text: "Annuler", style: "cancel" }])
+                    t('resultatBesoin.contactProvider'),
+                    t('resultatBesoin.contactProviderMsg', { name: prestataire?.nom_complet || prestataire?.nom || prestataire?.name || '' }),
+                    contactOptions.concat([{ text: t('message.cancel'), style: "cancel" }])
                 );
             } else {
-                Alert.alert("Contact", "Aucune information de contact disponible pour ce prestataire");
+                Alert.alert("Contact", t('resultatBesoin.noContactInfo'));
             }
         }
     }, [user, prestataires, services, navigation]);
@@ -1769,11 +1770,11 @@ const ResultatBesoinScreen: React.FC = () => {
     const handleChat = useCallback(async (service: Service) => {
         if (!user) {
             Alert.alert(
-                "Connexion requise",
-                "Veuillez vous connecter pour chatter avec le prestataire",
+                t('resultatBesoin.loginRequired'),
+                t('resultatBesoin.loginToChat'),
                 [
-                    { text: "Annuler", style: "cancel" },
-                    { text: "Se connecter", onPress: () => navigation.navigate('Login' as never) }
+                    { text: t('message.cancel'), style: "cancel" },
+                    { text: t('resultatBesoin.login'), onPress: () => navigation.navigate('Login' as never) }
                 ]
             );
             return;
@@ -1808,7 +1809,7 @@ const ResultatBesoinScreen: React.FC = () => {
                 console.error('[ResultatBesoinScreen] Erreur création notification chat:', error);
             }
         } else {
-            Alert.alert("Erreur", "Impossible de récupérer les informations du prestataire");
+            Alert.alert(t('message.error'), t('resultatBesoin.cannotGetInfo'));
         }
     }, [user, prestataires, services, navigation]);
 
@@ -1859,11 +1860,11 @@ const ResultatBesoinScreen: React.FC = () => {
     }, [services]);
 
     const handleFavorite = useCallback((service: Service) => {
-        Alert.alert('Favoris', `Service ${service.titre || service.title || 'Service'} ajouté aux favoris`);
+        Alert.alert(t('resultatBesoin.favorites'), t('resultatBesoin.addedToFavorites', { name: service.titre || service.title || 'Service' }));
     }, []);
 
     const handleReview = useCallback((service: Service) => {
-        Alert.alert('Avis', 'Ouverture du formulaire d\'avis');
+        Alert.alert(t('resultatBesoin.reviews'), t('resultatBesoin.openReviewForm'));
     }, []);
 
     const handleServicePress = useCallback((service: Service) => {
@@ -1921,14 +1922,14 @@ const ResultatBesoinScreen: React.FC = () => {
     const handleGeolocation = async () => {
         if (!location) {
             Alert.alert(
-                "Géolocalisation non disponible",
-                "Impossible de récupérer votre position pour le tri par proximité"
+                t('resultatBesoin.geoNotAvailable'),
+                t('resultatBesoin.geoNotAvailableMsg')
             );
             return;
         }
 
         Alert.alert(
-            "Géolocalisation activée",
+            t('resultatBesoin.geoEnabled'),
             `Position: ${(location as any).coords.latitude.toFixed(4)}, ${(location as any).coords.longitude.toFixed(4)}`
         );
 
@@ -1968,7 +1969,7 @@ const ResultatBesoinScreen: React.FC = () => {
         try {
             // Vérifier l'authentification
             if (!user) {
-                Alert.alert('Erreur d\'authentification', 'Vous devez être connecté pour effectuer une recherche');
+                Alert.alert(t('resultatBesoin.authError'), t('resultatBesoin.mustBeLoggedIn'));
                 return;
             }
 
@@ -2060,17 +2061,17 @@ const ResultatBesoinScreen: React.FC = () => {
                 if (serviceIds.length > 0) {
                     await fetchServicesByIds(serviceIds, sortedResults);
                 } else {
-                    Alert.alert('Aucun résultat', 'Aucun service trouvé pour cette recherche');
+                    Alert.alert(t('resultatBesoin.noResults'), t('resultatBesoin.noServicesFound'));
                 }
             } else {
                 if (__DEV__) console.log('[ResultatBesoinScreen] Aucun résultat trouvé');
-                Alert.alert('Aucun résultat', 'Aucun service trouvé pour cette recherche');
+                Alert.alert(t('resultatBesoin.noResults'), t('resultatBesoin.noServicesFound'));
             }
 
             setLoading(false);
         } catch (error) {
             console.error('[ResultatBesoinScreen] Erreur recherche:', error);
-            Alert.alert('Erreur', 'Impossible d\'effectuer la recherche');
+            Alert.alert(t('message.error'), t('resultatBesoin.cannotSearch'));
             setLoading(false);
         }
     };

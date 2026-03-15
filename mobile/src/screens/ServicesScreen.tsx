@@ -214,7 +214,7 @@ const ServicesScreen: React.FC = () => {
       // Validation et passage complet des données
       if (!service || !service.id) {
         console.error('[ServicesScreen] Service invalide pour édition:', service);
-        Alert.alert('Erreur', 'Impossible d\'éditer ce service (données manquantes)');
+        Alert.alert(t('message.error'), t('services.cannotEdit'));
         return;
       }
 
@@ -241,31 +241,31 @@ const ServicesScreen: React.FC = () => {
       } as never);
     } catch (error) {
       console.error('[ServicesScreen] Erreur navigation édition:', error);
-      Alert.alert('Erreur', 'Impossible d\'ouvrir l\'édition du service');
+      Alert.alert(t('message.error'), t('services.cannotOpenEdit'));
     }
   };
 
   const handleDeleteService = async (service: Service) => {
     Alert.alert(
-      'Supprimer le service',
-      `Êtes-vous sûr de vouloir supprimer "${service.title}" ?`,
+      t('services.deleteTitle'),
+      t('services.deleteConfirm', { title: service.title }),
       [
-        { text: 'Annuler', style: 'cancel' },
+        { text: t('message.cancel'), style: 'cancel' },
         {
-          text: 'Supprimer',
+          text: t('message.delete'),
           style: 'destructive',
           onPress: async () => {
             try {
               const response = await apiDelete(`/api/services/${service.id}`);
               if (response.success) {
                 setServices(prev => prev.filter(s => s.id !== service.id));
-                Alert.alert('Succès', 'Service supprimé avec succès');
+                Alert.alert(t('message.success'), t('services.deleted'));
               } else {
-                Alert.alert('Erreur', 'Impossible de supprimer le service');
+                Alert.alert(t('message.error'), t('services.cannotDelete'));
               }
             } catch (error) {
               console.error('Erreur suppression service:', error);
-              Alert.alert('Erreur', 'Impossible de supprimer le service');
+              Alert.alert(t('message.error'), t('services.cannotDelete'));
             }
           }
         }
@@ -306,23 +306,24 @@ const ServicesScreen: React.FC = () => {
         setServices(prev => prev.map(s =>
           s.id === service.id ? { ...s, status: newStatus } : s
         ));
-        Alert.alert('Succès', `Service ${newStatus === 'active' ? 'activé' : 'désactivé'} avec succès`);
+        Alert.alert(t('message.success'), newStatus === 'active' ? t('services.activated') : t('services.deactivated'));
       } else {
-        Alert.alert('Erreur', 'Impossible de modifier le statut du service');
+        Alert.alert(t('message.error'), t('services.cannotChangeStatus'));
       }
     } catch (error) {
       console.error('Erreur modification statut:', error);
-      Alert.alert('Erreur', 'Impossible de modifier le statut du service');
+      Alert.alert(t('message.error'), t('services.cannotChangeStatus'));
     }
   };
 
   const handleViewProducts = (service: Service) => {
     try {
+      // Navigation vers les produits du service
       // ✅ Navigation vers les produits du service
       navigation.navigate('MesProduits' as never, { serviceId: service.id } as never);
     } catch (error) {
       console.error('Erreur navigation produits:', error);
-      Alert.alert('Erreur', 'Impossible d\'accéder aux produits');
+      Alert.alert(t('message.error'), t('services.cannotAccessProducts'));
     }
   };
 
@@ -331,7 +332,7 @@ const ServicesScreen: React.FC = () => {
       // ✅ CORRECTION: Validation des données avant navigation
       if (!service || !service.id) {
         console.error('[ServicesScreen] Service invalide:', service);
-        Alert.alert('Erreur', 'Impossible d\'afficher ce service (données manquantes)');
+        Alert.alert(t('message.error'), t('services.cannotView'));
         return;
       }
 
@@ -356,7 +357,7 @@ const ServicesScreen: React.FC = () => {
       } as never);
     } catch (error) {
       console.error('[ServicesScreen] ❌ Erreur navigation visualisation:', error);
-      Alert.alert('Erreur', 'Impossible d\'ouvrir la visualisation du service');
+      Alert.alert(t('message.error'), t('services.cannotOpenView'));
     }
   };
 

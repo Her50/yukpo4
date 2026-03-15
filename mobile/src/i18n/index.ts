@@ -37,6 +37,42 @@ import wo from './locales/wo.json';
 import yo from './locales/yo.json';
 import zh from './locales/zh.json';
 import zu from './locales/zu.json';
+import ewo from './locales/ewo.json';
+import dua from './locales/dua.json';
+import bbj from './locales/bbj.json';
+import bas from './locales/bas.json';
+import bum from './locales/bum.json';
+import bci from './locales/bci.json';
+import dyu from './locales/dyu.json';
+import bet from './locales/bet.json';
+import pcm from './locales/pcm.json';
+import mos from './locales/mos.json';
+import bm from './locales/bm.json';
+import dje from './locales/dje.json';
+import ee from './locales/ee.json';
+import kbp from './locales/kbp.json';
+import sar from './locales/sar.json';
+import sg from './locales/sg.json';
+import kg from './locales/kg.json';
+import lua from './locales/lua.json';
+import fan from './locales/fan.json';
+import xh from './locales/xh.json';
+import af from './locales/af.json';
+import st from './locales/st.json';
+import rn from './locales/rn.json';
+import srr from './locales/srr.json';
+import ko from './locales/ko.json';
+import tr from './locales/tr.json';
+import id from './locales/id.json';
+import vi from './locales/vi.json';
+import th from './locales/th.json';
+import bn from './locales/bn.json';
+import tl from './locales/tl.json';
+import ms from './locales/ms.json';
+import uk from './locales/uk.json';
+import pl from './locales/pl.json';
+import it from './locales/it.json';
+import nl from './locales/nl.json';
 
 export const SUPPORTED_LANGUAGES = [
     { code: 'fr', name: 'Français', flag: '🇫🇷' },
@@ -67,6 +103,44 @@ export const SUPPORTED_LANGUAGES = [
     // 🌴 Langues caraïbéennes
     { code: 'ht', name: 'Kreyòl Ayisyen', flag: '🇭🇹' },
     { code: 'pap', name: 'Papiamentu', flag: '🇨🇼' },
+
+    // 🌍 Nouvelles langues (ajoutées automatiquement)
+    { code: 'ewo', name: 'Ewondo', flag: '🇨🇲' },
+    { code: 'dua', name: 'Duálá', flag: '🇨🇲' },
+    { code: 'bbj', name: 'Ghomálá'', flag: '🇨🇲' },
+    { code: 'bas', name: 'Bassa', flag: '🇨🇲' },
+    { code: 'bum', name: 'Bulu', flag: '🇨🇲' },
+    { code: 'bci', name: 'Baoulé', flag: '🇨🇮' },
+    { code: 'dyu', name: 'Dioula', flag: '🇨🇮' },
+    { code: 'bet', name: 'Bété', flag: '🇨🇮' },
+    { code: 'pcm', name: 'Naijá (Pidgin)', flag: '🇳🇬' },
+    { code: 'mos', name: 'Mooré', flag: '🇧🇫' },
+    { code: 'bm', name: 'Bamanankan', flag: '🇲🇱' },
+    { code: 'dje', name: 'Zarma', flag: '🇳🇪' },
+    { code: 'ee', name: 'Eʋegbe (Éwé)', flag: '🇹🇬' },
+    { code: 'kbp', name: 'Kabɩyɛ', flag: '🇹🇬' },
+    { code: 'sar', name: 'Sara', flag: '🇹🇩' },
+    { code: 'sg', name: 'Sängö', flag: '🇨🇫' },
+    { code: 'kg', name: 'Kikongo', flag: '🇨🇩' },
+    { code: 'lua', name: 'Tshiluba', flag: '🇨🇩' },
+    { code: 'fan', name: 'Fang', flag: '🇬🇦' },
+    { code: 'xh', name: 'isiXhosa', flag: '🇿🇦' },
+    { code: 'af', name: 'Afrikaans', flag: '🇿🇦' },
+    { code: 'st', name: 'Sesotho', flag: '🇿🇦' },
+    { code: 'rn', name: 'Ikirundi', flag: '🇧🇮' },
+    { code: 'srr', name: 'Seereer', flag: '🇸🇳' },
+    { code: 'ko', name: '한국어', flag: '🇰🇷' },
+    { code: 'tr', name: 'Türkçe', flag: '🇹🇷' },
+    { code: 'id', name: 'Bahasa Indonesia', flag: '🇮🇩' },
+    { code: 'vi', name: 'Tiếng Việt', flag: '🇻🇳' },
+    { code: 'th', name: 'ภาษาไทย', flag: '🇹🇭' },
+    { code: 'bn', name: 'বাংলা', flag: '🇧🇩' },
+    { code: 'tl', name: 'Filipino', flag: '🇵🇭' },
+    { code: 'ms', name: 'Bahasa Melayu', flag: '🇲🇾' },
+    { code: 'uk', name: 'Українська', flag: '🇺🇦' },
+    { code: 'pl', name: 'Polski', flag: '🇵🇱' },
+    { code: 'it', name: 'Italiano', flag: '🇮🇹' },
+    { code: 'nl', name: 'Nederlands', flag: '🇳🇱' },
 ] as const;
 
 export type SupportedLanguage = typeof SUPPORTED_LANGUAGES[number]['code'];
@@ -98,6 +172,43 @@ const resources = {
     mg: { translation: mg },
     ht: { translation: ht },
     pap: { translation: pap },
+
+    ewo: { translation: ewo },
+    dua: { translation: dua },
+    bbj: { translation: bbj },
+    bas: { translation: bas },
+    bum: { translation: bum },
+    bci: { translation: bci },
+    dyu: { translation: dyu },
+    bet: { translation: bet },
+    pcm: { translation: pcm },
+    mos: { translation: mos },
+    bm: { translation: bm },
+    dje: { translation: dje },
+    ee: { translation: ee },
+    kbp: { translation: kbp },
+    sar: { translation: sar },
+    sg: { translation: sg },
+    kg: { translation: kg },
+    lua: { translation: lua },
+    fan: { translation: fan },
+    xh: { translation: xh },
+    af: { translation: af },
+    st: { translation: st },
+    rn: { translation: rn },
+    srr: { translation: srr },
+    ko: { translation: ko },
+    tr: { translation: tr },
+    id: { translation: id },
+    vi: { translation: vi },
+    th: { translation: th },
+    bn: { translation: bn },
+    tl: { translation: tl },
+    ms: { translation: ms },
+    uk: { translation: uk },
+    pl: { translation: pl },
+    it: { translation: it },
+    nl: { translation: nl },
 };
 
 // Détecter la langue du device

@@ -88,13 +88,13 @@ const ProfileScreen: React.FC = () => {
       // ✅ CORRIGÉ: Vérifier que les fonctions API existent avant de les appeler
       if (!userApi || typeof userApi.getUserProfile !== 'function') {
         console.error('[ProfileScreen] userApi.getUserProfile non disponible');
-        Alert.alert('Erreur', 'Service de profil non disponible');
+        Alert.alert(t('message.error'), t('profile.cannotAccess'));
         return;
       }
 
       if (!servicesApi || typeof servicesApi.getUserServices !== 'function') {
         console.error('[ProfileScreen] servicesApi.getUserServices non disponible');
-        Alert.alert('Erreur', 'Service de services non disponible');
+        Alert.alert(t('message.error'), t('profile.cannotAccess'));
         return;
       }
 

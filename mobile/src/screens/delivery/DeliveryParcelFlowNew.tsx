@@ -29,6 +29,7 @@ import ModernGPSModal from '../../components/ModernGPSModal';
 import SafeIcon from '../../components/SafeIcon';
 import { NativeButton, NativeCard, NativeInput } from '../../components/SafeNativeDesign';
 import { VEHICLE_TRANSPORT_OPTIONS } from '../../config/deliveryConfig';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { UserSavedAddress } from '../../hooks/useSavedAddresses';
 import { CreateDeliveryRequestPayload, deliveryApi, userApi } from '../../services/api';
@@ -55,6 +56,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
 }) => {
     const { location: userLocation } = useLocation();
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const [loading, setLoading] = useState(false);
     const [loadingLocation, setLoadingLocation] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -221,8 +223,8 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
 
                         // Afficher une notification
                         Alert.alert(
-                            'Commande en attente',
-                            'Votre solde est maintenant suffisant. Vous pouvez finaliser votre commande.',
+                            t('deliveryParcel.pendingOrder'),
+                            t('deliveryParcel.balanceSufficient'),
                             [{ text: 'OK' }]
                         );
                     }
@@ -318,7 +320,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
         try {
             const { status } = await Location.requestForegroundPermissionsAsync();
             if (status !== 'granted') {
-                Alert.alert('Permission requise', 'L\'accès à la localisation est nécessaire.');
+                Alert.alert(t('deliveryParcel.permissionRequired'), t('deliveryParcel.locationAccessNeeded'));
                 return;
             }
 
@@ -348,7 +350,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
             setErrors(prev => ({ ...prev, [isPickup ? 'pickup' : 'dropoff']: '' }));
         } catch (error) {
             console.error('Erreur géolocalisation:', error);
-            Alert.alert('Erreur', 'Impossible d\'obtenir votre position.');
+            Alert.alert(t('message.error'), t('deliveryParcel.cannotGetPosition'));
         } finally {
             setLoadingLocation(false);
         }
@@ -432,26 +434,26 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
         // Validation
         if (!pickupLocation) {
             console.log('[DeliveryParcelFlowNew] ❌ Erreur: pas d\'adresse de collecte');
-            Alert.alert('Erreur', 'Veuillez sélectionner une adresse de collecte');
+            Alert.alert(t('message.error'), t('deliveryParcel.selectPickupAddress'));
             return;
         }
 
         if (!dropoffLocation) {
             console.log('[DeliveryParcelFlowNew] ❌ Erreur: pas d\'adresse de livraison');
-            Alert.alert('Erreur', 'Veuillez sélectionner une adresse de livraison');
+            Alert.alert(t('message.error'), t('deliveryParcel.selectDropoffAddress'));
             return;
         }
 
         if (!recipientName || !recipientPhone || !recipientConsentGranted) {
             console.log('[DeliveryParcelFlowNew] ❌ Erreur: informations destinataire incomplètes');
-            Alert.alert('Erreur', 'Veuillez renseigner toutes les informations obligatoires du destinataire');
+            Alert.alert(t('message.error'), t('deliveryParcel.recipientInfoRequired'));
             return;
         }
 
         // ✅ Validation valeur déclarée obligatoire
         if (!declaredValue || isNaN(parseFloat(declaredValue)) || parseFloat(declaredValue) <= 0) {
             console.log('[DeliveryParcelFlowNew] ❌ Erreur: valeur déclarée manquante ou invalide');
-            Alert.alert('Erreur', 'La valeur déclarée est obligatoire et doit être supérieure à 0');
+            Alert.alert(t('message.error'), t('deliveryParcel.declaredValueRequired'));
             return;
         }
 
@@ -496,8 +498,8 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
             setPendingDeliveryData(deliveryData);
 
             Alert.alert(
-                'Solde insuffisant',
-                `Votre solde actuel (${currentBalance.toLocaleString('fr-FR')} FCFA) est insuffisant pour couvrir le coût total (${totalCost.toLocaleString('fr-FR')} FCFA).\n\nVeuillez recharger votre compte pour continuer.`,
+                t('deliveryParcel.insufficientBalance'),
+                t('deliveryParcel.insufficientBalanceMsg', { balance: currentBalance.toLocaleString('fr-FR'), cost: totalCost.toLocaleString('fr-FR') }),
                 [
                     {
                         text: 'Annuler',
@@ -554,7 +556,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
 
         // ✅ Validation aller-retour
         if (deliveryData.isRoundTrip && (!deliveryData.returnPickupLocation || !deliveryData.returnDropoffLocation)) {
-            Alert.alert('Erreur', 'Veuillez sélectionner les points de collecte et de livraison pour le retour');
+            Alert.alert(t('message.error'), t('deliveryParcel.returnAddressesRequired'));
             return;
         }
 
@@ -626,8 +628,8 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
                 setPendingDeliveryData(null);
 
                 Alert.alert(
-                    'Livraison créée',
-                    'Votre demande de livraison a été créée avec succès. Le matching d\'un coursier est en cours.',
+                    t('deliveryParcel.deliveryCreated'),
+                    t('deliveryParcel.deliveryCreatedMsg'),
                     [
                         {
                             text: 'OK',
@@ -641,11 +643,11 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
                     ]
                 );
             } else {
-                Alert.alert('Erreur', (result as any).error || 'Impossible de créer la livraison');
+                Alert.alert(t('message.error'), (result as any).error || t('deliveryParcel.cannotCreateDelivery'));
             }
         } catch (error: any) {
             console.error('Erreur création livraison:', error);
-            Alert.alert('Erreur', error.message || 'Une erreur est survenue');
+            Alert.alert(t('message.error'), error.message || t('deliveryParcel.genericError'));
         } finally {
             setLoading(false);
         }
@@ -1528,13 +1530,13 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
             component: ParcelInfoStep,
             validation: () => {
                 if (!parcelType) {
-                    Alert.alert('Champ requis', 'Veuillez sélectionner un type de colis.');
+                    Alert.alert(t('deliveryParcel.fieldRequired'), t('deliveryParcel.selectParcelType'));
                     return false;
                 }
                 if (!declaredValue || isNaN(parseFloat(declaredValue)) || parseFloat(declaredValue) <= 0) {
                     Alert.alert(
-                        'Valeur déclarée obligatoire',
-                        'Veuillez renseigner la valeur estimée de votre colis (en FCFA) pour pouvoir continuer. Cette valeur permet de calculer l\'assurance de votre envoi.'
+                        t('deliveryParcel.declaredValueMandatory'),
+                        t('deliveryParcel.declaredValueExplanation')
                     );
                     return false;
                 }

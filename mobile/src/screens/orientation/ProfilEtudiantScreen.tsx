@@ -17,6 +17,7 @@ import {
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { apiPost } from '../../services/api';
 import { orientationScolaireService } from '../../services/orientationScolaireService';
 import { modernColors } from '../../theme/modernTheme';
@@ -25,6 +26,7 @@ import { hapticPress } from '../../utils/hapticFeedback';
 const ProfilEtudiantScreen: React.FC = () => {
     const navigation = useNavigation() as any;
     const { user } = useAuth();
+    const { t } = useLanguageSafe();
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [profileDescription, setProfileDescription] = useState('');
@@ -70,7 +72,7 @@ const ProfilEtudiantScreen: React.FC = () => {
             hapticPress();
             const permission = await Audio.requestPermissionsAsync();
             if (permission.status !== 'granted') {
-                Alert.alert('Permission requise', 'Veuillez autoriser l\'accès au microphone');
+                Alert.alert(t('profilEtudiant.permissionRequired'), t('profilEtudiant.allowMicrophone'));
                 return;
             }
 
@@ -94,7 +96,7 @@ const ProfilEtudiantScreen: React.FC = () => {
 
         } catch (error: any) {
             console.error('[ProfilEtudiant] Erreur démarrage enregistrement:', error);
-            Alert.alert('Erreur', 'Impossible de démarrer l\'enregistrement');
+            Alert.alert(t('message.error'), t('profilEtudiant.cannotStartRecording'));
         }
     };
 
@@ -116,7 +118,7 @@ const ProfilEtudiantScreen: React.FC = () => {
             setRecordingDuration(0);
 
             if (!uri) {
-                Alert.alert('Erreur', 'Aucun enregistrement disponible');
+                Alert.alert(t('message.error'), t('profilEtudiant.noRecordingAvailable'));
                 return;
             }
 
@@ -143,13 +145,13 @@ const ProfilEtudiantScreen: React.FC = () => {
                         if (transcribeResponse.success && trd?.transcription) {
                             const transcription = trd.transcription;
                             setProfileDescription(prev => prev ? `${prev}\n${transcription}` : transcription);
-                            Alert.alert('Succès', 'Audio transcrit avec succès');
+                            Alert.alert(t('message.success'), t('profilEtudiant.audioTranscribed'));
                         } else {
-                            Alert.alert('Erreur', 'Impossible de transcrire l\'audio');
+                            Alert.alert(t('message.error'), t('profilEtudiant.cannotTranscribe'));
                         }
                     } catch (err: any) {
                         console.error('[ProfilEtudiant] Erreur transcription:', err);
-                        Alert.alert('Erreur', 'Erreur lors de la transcription');
+                        Alert.alert(t('message.error'), t('profilEtudiant.transcriptionError'));
                     } finally {
                         setIsTranscribing(false);
                     }
@@ -157,24 +159,24 @@ const ProfilEtudiantScreen: React.FC = () => {
 
                 reader.onerror = () => {
                     setIsTranscribing(false);
-                    Alert.alert('Erreur', 'Impossible de lire le fichier audio');
+                    Alert.alert(t('message.error'), t('profilEtudiant.cannotReadAudio'));
                 };
 
                 reader.readAsDataURL(blob);
             } catch (err: any) {
                 console.error('[ProfilEtudiant] Erreur conversion audio:', err);
                 setIsTranscribing(false);
-                Alert.alert('Erreur', 'Impossible de convertir l\'audio');
+                Alert.alert(t('message.error'), t('profilEtudiant.cannotConvertAudio'));
             }
         } catch (error: any) {
             console.error('[ProfilEtudiant] Erreur arrêt enregistrement:', error);
-            Alert.alert('Erreur', 'Impossible d\'arrêter l\'enregistrement');
+            Alert.alert(t('message.error'), t('profilEtudiant.cannotStopRecording'));
         }
     };
 
     const handleSave = async () => {
         if (!profileDescription.trim()) {
-            Alert.alert('Erreur', 'Veuillez décrire votre profil académique');
+            Alert.alert(t('message.error'), t('profilEtudiant.describeProfile'));
             return;
         }
 
@@ -188,14 +190,14 @@ const ProfilEtudiantScreen: React.FC = () => {
 
             if (response.success) {
                 // Demander une recommandation IA
-                Alert.alert('Profil enregistré', 'Génération de la recommandation IA en cours...');
+                Alert.alert(t('profilEtudiant.profileSaved'), t('profilEtudiant.generatingRecommendation'));
                 await generateRecommendation();
             } else {
-                Alert.alert('Erreur', 'Impossible d\'enregistrer le profil');
+                Alert.alert(t('message.error'), t('profilEtudiant.cannotSaveProfile'));
             }
         } catch (error: any) {
             console.error('[ProfilEtudiant] Erreur sauvegarde:', error);
-            Alert.alert('Erreur', 'Impossible d\'enregistrer le profil');
+            Alert.alert(t('message.error'), t('profilEtudiant.cannotSaveProfile'));
         } finally {
             setSaving(false);
         }
@@ -220,11 +222,11 @@ const ProfilEtudiantScreen: React.FC = () => {
                     recommendation_ia: rd.recommendation,
                 });
             } else {
-                Alert.alert('Erreur', 'Impossible de générer la recommandation');
+                Alert.alert(t('message.error'), t('profilEtudiant.cannotGenerateRecommendation'));
             }
         } catch (error: any) {
             console.error('[ProfilEtudiant] Erreur génération recommandation:', error);
-            Alert.alert('Erreur', 'Erreur lors de la génération de la recommandation');
+            Alert.alert(t('message.error'), t('profilEtudiant.recommendationError'));
         } finally {
             setLoading(false);
         }

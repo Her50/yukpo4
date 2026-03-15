@@ -25,6 +25,7 @@ pub mod ar_preview_controller; // ✅ NOUVEAU Phase 3.2: Contrôleur pour previe
 pub mod autocomplete_controller; // ✅ NOUVEAU: Contrôleur pour autocomplete characteristics
 pub mod blood_bank_controller; // ✅ 2025-11-27: Contrôleur pour banques de sang (service spécialisé isolé)
 pub mod blood_donation_matching_controller; // ✅ 2025-11-27: Contrôleur pour système intelligent matching banque de sang
+pub mod bourse_livre_v2_controller; // ✅ V2 2026-03-15: Sessions upload, recto-verso, paquets, dons
 pub mod bus_return_trip_controller; // ✅ 2025-01-28: Contrôleur pour demandes de retour (aller-retour)
 pub mod bus_seat_management_controller; // ✅ 2025-11-27: Contrôleur pour gestion manuelle places non disponibles
 pub mod bus_ticket_controller; // ✅ 2025-11-27: Contrôleur pour tickets bus avec agences de voyage

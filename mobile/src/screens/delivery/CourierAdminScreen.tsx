@@ -16,6 +16,7 @@ import SafeIcon from '../../components/SafeIcon';
 import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { apiGet, apiPost } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 import { isAdminUser } from '../../utils/roleHelpers'; // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
@@ -41,6 +42,8 @@ interface CourierApplication {
 const CourierAdminScreen: React.FC = () => {
     const navigation = useNavigation();
     const { user } = useAuth();
+    const { t } = useLanguageSafe();
+
     const [loading, setLoading] = useState(true);
     const [applications, setApplications] = useState<CourierApplication[]>([]);
     // ✅ CORRIGÉ: Par défaut, "all" exclut les drafts (uniquement les soumissions réelles)
@@ -55,7 +58,7 @@ const CourierAdminScreen: React.FC = () => {
     useEffect(() => {
         // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
         if (!user || !isAdminUser(user)) {
-            Alert.alert('Accès refusé', 'Cette page est réservée aux administrateurs', [
+            Alert.alert(t('courierAdmin.accessDenied'), t('courierAdmin.adminOnly'), [
                 { text: 'OK', onPress: () => navigation.goBack() },
             ]);
             return;
@@ -136,7 +139,7 @@ const CourierAdminScreen: React.FC = () => {
         } catch (error: any) {
             console.error('[CourierAdminScreen] ❌ Erreur chargement candidatures:', error);
             console.error('[CourierAdminScreen] ❌ Stack trace:', error.stack);
-            Alert.alert('Erreur', error.message || 'Impossible de charger les candidatures');
+            Alert.alert(t('message.error'), error.message || t('courierAdmin.cannotLoad'));
             setApplications([]);
         } finally {
             setLoading(false);
@@ -149,7 +152,7 @@ const CourierAdminScreen: React.FC = () => {
             const response = await apiPost(`/api/courier/applications/${applicationId}/approve`, {});
 
             if (response.success) {
-                Alert.alert('✅ Succès', 'La candidature a été approuvée avec succès', [
+                Alert.alert(t('message.success'), t('courierAdmin.applicationApproved'), [
                     {
                         text: 'OK', onPress: () => {
                             setShowDetailModal(false);
@@ -162,7 +165,7 @@ const CourierAdminScreen: React.FC = () => {
             }
         } catch (error: any) {
             console.error('[CourierAdminScreen] Erreur approbation:', error);
-            Alert.alert('Erreur', error.message || 'Impossible d\'approuver la candidature');
+            Alert.alert(t('message.error'), error.message || t('courierAdmin.cannotApprove'));
         } finally {
             setProcessing(null);
         }
@@ -170,7 +173,7 @@ const CourierAdminScreen: React.FC = () => {
 
     const handleReject = async (applicationId: string) => {
         if (!rejectionReason.trim()) {
-            Alert.alert('Erreur', 'Veuillez indiquer une raison de refus');
+            Alert.alert(t('message.error'), t('courierAdmin.rejectReasonRequired'));
             return;
         }
 
@@ -181,7 +184,7 @@ const CourierAdminScreen: React.FC = () => {
             });
 
             if (response.success) {
-                Alert.alert('✅ Succès', 'La candidature a été rejetée', [
+                Alert.alert(t('message.success'), t('courierAdmin.applicationRejected'), [
                     {
                         text: 'OK', onPress: () => {
                             setShowRejectModal(false);
@@ -196,7 +199,7 @@ const CourierAdminScreen: React.FC = () => {
             }
         } catch (error: any) {
             console.error('[CourierAdminScreen] Erreur rejet:', error);
-            Alert.alert('Erreur', error.message || 'Impossible de rejeter la candidature');
+            Alert.alert(t('message.error'), error.message || t('courierAdmin.cannotReject'));
         } finally {
             setProcessing(null);
         }
@@ -529,7 +532,7 @@ const CourierAdminScreen: React.FC = () => {
                                                             style={styles.viewButton}
                                                             onPress={() => {
                                                                 // TODO: Ouvrir le document dans un viewer
-                                                                Alert.alert('Document', `Document: ${label}`);
+                                                                Alert.alert(t('courierAdmin.document'), `Document: ${label}`);
                                                             }}
                                                         >
                                                             <Text style={styles.viewButtonText}>Voir</Text>
@@ -560,8 +563,8 @@ const CourierAdminScreen: React.FC = () => {
                                             variant="primary"
                                             onPress={() => {
                                                 Alert.alert(
-                                                    'Confirmer',
-                                                    'Êtes-vous sûr de vouloir approuver cette candidature ?',
+                                                    t('message.confirm'),
+                                                    t('courierAdmin.confirmApprove'),
                                                     [
                                                         { text: 'Annuler', style: 'cancel' },
                                                         {

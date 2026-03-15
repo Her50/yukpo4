@@ -23,6 +23,7 @@ import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useToaster } from '../../components/ToasterProvider';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { useAIWithFallback } from '../../hooks/useAIWithFallback';
 import { hospitalService, MedicalService, MedicalServiceAvailability, PathologySearchResult } from '../../services/hospitalService';
@@ -34,6 +35,7 @@ type SortOption = 'relevance' | 'price_asc' | 'price_desc' | 'distance_asc' | 'n
 const HopitalHomeScreen: React.FC = () => {
     const navigation = useNavigation();
     const { location } = useLocation();
+    const { t } = useLanguageSafe();
     const toaster = useToaster();
 
     // États de recherche
@@ -219,7 +221,7 @@ const HopitalHomeScreen: React.FC = () => {
                 // Demander permission caméra
                 const { status: cameraStatus } = await ImagePicker.requestCameraPermissionsAsync();
                 if (cameraStatus !== 'granted') {
-                    Alert.alert('Permission requise', 'Veuillez autoriser l\'accès à la caméra');
+                    Alert.alert(t('hopitalHome.permissionRequired'), t('hopitalHome.allowCamera'));
                     return;
                 }
 
@@ -233,7 +235,7 @@ const HopitalHomeScreen: React.FC = () => {
                 // Demander permission galerie
                 const { status: galleryStatus } = await ImagePicker.requestMediaLibraryPermissionsAsync();
                 if (galleryStatus !== 'granted') {
-                    Alert.alert('Permission requise', 'Veuillez autoriser l\'accès à la galerie');
+                    Alert.alert(t('hopitalHome.permissionRequired'), t('hopitalHome.allowGallery'));
                     return;
                 }
 
@@ -299,8 +301,8 @@ const HopitalHomeScreen: React.FC = () => {
 
     const showImageSourcePicker = () => {
         Alert.alert(
-            'Choisir une source',
-            'Comment souhaitez-vous ajouter l\'image?',
+            t('hopitalHome.chooseSource'),
+            t('hopitalHome.howToAddImage'),
             [
                 {
                     text: 'Caméra',
@@ -322,8 +324,8 @@ const HopitalHomeScreen: React.FC = () => {
     const handleBookAppointment = (service: MedicalServiceAvailability) => {
         hapticPress();
         Alert.alert(
-            'Prendre rendez-vous',
-            `Réserver une consultation à "${service.service_title}" ?`,
+            t('hopitalHome.bookAppointment'),
+            t('hopitalHome.bookConsultation', { title: service.service_title }),
             [
                 { text: 'Annuler', style: 'cancel' },
                 {
@@ -335,12 +337,12 @@ const HopitalHomeScreen: React.FC = () => {
                                 notes: 'Réservé depuis l\'application',
                             });
                             if ((resp as any).success) {
-                                Alert.alert('Succès', 'Rendez-vous réservé ! Vous recevrez une confirmation.');
+                                Alert.alert(t('message.success'), t('hopitalHome.appointmentBooked'));
                             } else {
-                                Alert.alert('Info', 'Le service de réservation en ligne n\'est pas encore disponible pour cet hôpital.');
+                                Alert.alert('Info', t('hopitalHome.onlineBookingUnavailable'));
                             }
                         } catch (e) {
-                            Alert.alert('Info', 'La réservation en ligne sera bientôt disponible.');
+                            Alert.alert('Info', t('hopitalHome.onlineBookingSoon'));
                         }
                     },
                 },
@@ -365,7 +367,7 @@ const HopitalHomeScreen: React.FC = () => {
             if ((resp as any).success && (resp as any).data?.recommendation) {
                 const reco = (resp as any).data.recommendation;
                 const msg = reco.preliminary_analysis || reco.advice?.join('\n') || 'Consultez un médecin.';
-                Alert.alert('Évaluation IA', msg);
+                Alert.alert(t('hopitalHome.aiEvaluation'), msg);
             }
         } catch (e) { toaster.error('Service IA momentanément indisponible.'); }
         finally { setLoadingAI(false); }
@@ -589,11 +591,11 @@ const HopitalHomeScreen: React.FC = () => {
                                             const wt = resp?.data?.wait_times || resp?.wait_times;
                                             if (wt && wt.length > 0) {
                                                 const avg = wt[0]?.avg_wait_time_minutes || wt[0]?.estimated_wait_minutes || '?';
-                                                Alert.alert('Temps d\'attente', `Temps moyen estimé : ${avg} min`);
+                                                Alert.alert(t('hopitalHome.waitTime'), t('hopitalHome.avgWaitTime', { minutes: avg }));
                                             } else {
-                                                Alert.alert('Info', 'Données de temps d\'attente non disponibles actuellement.');
+                                                Alert.alert('Info', t('hopitalHome.waitTimeUnavailable'));
                                             }
-                                        }).catch(() => Alert.alert('Info', 'Service de temps d\'attente indisponible.'));
+                                        }).catch(() => Alert.alert('Info', t('hopitalHome.waitTimeServiceDown')));
                                     }}
                                 >
                                     <SafeIcon name="clock" size={14} color="#EF4444" type="lucide" />

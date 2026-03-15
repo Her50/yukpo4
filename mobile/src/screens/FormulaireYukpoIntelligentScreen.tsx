@@ -71,6 +71,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   const navigation = useNavigation();
   const route = useRoute();
   const { user, logout } = useAuth();
+  const { t } = useLanguageSafe();
   const mainScrollViewRef = React.useRef<KeyboardAwareScrollView>(null);
   const blockTabsScrollRef = React.useRef<ScrollView>(null);
   const blockRefs = React.useRef<Record<number, View | null>>({});
@@ -130,8 +131,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         setLoading(false);
         setIsSubmitting(false);
         Alert.alert(
-          '⏱️ Délai dépassé',
-          'La création a pris trop de temps. Le serveur ou la base de données est peut-être inaccessible.\n\nVérifiez votre connexion et réessayez.',
+          t('formulaire.timeout'),
+          t('formulaire.timeoutMsg'),
           [{ text: 'OK' }]
         );
       }, 4 * 60 * 1000); // 4 min
@@ -1443,8 +1444,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
     if (titreServiceEmpty) {
       Alert.alert(
-        '⚠️ Champ obligatoire',
-        'Le "Nom de votre structure" est obligatoire. Veuillez saisir le vrai nom de votre structure avant de continuer.',
+        t('formulaire.requiredField'),
+        t('formulaire.requiredFieldMsg'),
         [{ text: 'OK' }]
       );
       setFieldErrors(prev => ({
@@ -1457,7 +1458,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       // ✅ Vérifier que displayedBlocks existe et n'est pas vide
       if (!displayedBlocks || !Array.isArray(displayedBlocks) || displayedBlocks.length === 0) {
         console.error('[NAVIGATION_BLOC] ❌ displayedBlocks invalide dans goToNextBlock');
-        Alert.alert('Erreur', 'Impossible de naviguer. Veuillez réessayer.');
+        Alert.alert(t('message.error'), t('formulaire.cannotNavigate'));
         return;
       }
 
@@ -1470,7 +1471,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           .map(err => String(err))
           .filter(err => err.trim().length > 0);
         if (errorMessages.length > 0) {
-          Alert.alert('Champs invalides', errorMessages.join('\n\n'), [{ text: 'OK' }]);
+          Alert.alert(t('formulaire.invalidFields'), errorMessages.join('\n\n'), [{ text: 'OK' }]);
         }
         return;
       }
@@ -1534,7 +1535,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       }
     } catch (error) {
       console.error('[NAVIGATION_BLOC] ❌ Erreur:', error);
-      Alert.alert('Erreur', 'Une erreur est survenue lors de la navigation. Veuillez réessayer.', [{ text: 'OK' }]);
+      Alert.alert(t('message.error'), t('formulaire.navigationError'), [{ text: 'OK' }]);
     }
   };
 
@@ -1543,7 +1544,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     try {
       if (!displayedBlocks || !Array.isArray(displayedBlocks) || displayedBlocks.length === 0) {
         console.error('[NAVIGATION_BLOC] ❌ displayedBlocks invalide dans goToPreviousBlock');
-        Alert.alert('Erreur', 'Impossible de naviguer. Veuillez réessayer.');
+        Alert.alert(t('message.error'), t('formulaire.cannotNavigate'));
         return;
       }
 
@@ -1582,7 +1583,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       }
     } catch (error) {
       console.error('[NAVIGATION_BLOC] ❌ Erreur:', error);
-      Alert.alert('Erreur', 'Une erreur est survenue lors de la navigation. Veuillez réessayer.', [{ text: 'OK' }]);
+      Alert.alert(t('message.error'), t('formulaire.navigationError'), [{ text: 'OK' }]);
     }
   };
 
@@ -1607,8 +1608,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       if (productsBlockIndex !== -1 && currentBlock === productsBlockIndex && blockIndex > productsBlockIndex && !isEditingServiceInfo) {
         if (!hasAtLeastOneProduct()) {
           Alert.alert(
-            'Bloc Produits obligatoire',
-            'Vous devez ajouter au moins un produit ou une prestation avant de continuer.',
+            t('formulaire.productsRequired'),
+            t('formulaire.productsRequiredMsg'),
             [{ text: 'OK' }]
           );
           setFieldErrors({ produits: 'Au moins un produit est requis' });
@@ -1644,7 +1645,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       });
     } catch (error) {
       console.error('[NAVIGATION_BLOC] ❌ Erreur:', error);
-      Alert.alert('Erreur', 'Une erreur est survenue lors de la navigation. Veuillez réessayer.', [{ text: 'OK' }]);
+      Alert.alert(t('message.error'), t('formulaire.navigationError'), [{ text: 'OK' }]);
     }
   };
 
@@ -2334,8 +2335,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
       // Ne pas crasher l'app, afficher un message d'erreur
       Alert.alert(
-        'Erreur de chargement',
-        'Impossible de charger les données du formulaire. Veuillez réessayer.',
+        t('formulaire.loadError'),
+        t('formulaire.loadErrorMsg'),
         [{
           text: 'OK', onPress: () => {
             // ✅ AMÉLIORATION : Retour automatique si l'utilisateur est venu de MesProduits
@@ -2575,7 +2576,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
     } catch (error) {
       console.error('[FormulaireYukpoIntelligentScreen] Erreur génération:', error);
-      Alert.alert('Erreur', 'Impossible de générer le formulaire');
+      Alert.alert(t('message.error'), t('formulaire.cannotGenerate'));
     } finally {
       setLoading(false);
     }
@@ -3192,7 +3193,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                         if (dateRegex.test(dateStr)) {
                           handleFieldChange(field.name, dateStr);
                         } else {
-                          Alert.alert('Erreur', 'Format de date invalide. Utilisez YYYY-MM-DD (ex: 2024-12-25)');
+                          Alert.alert(t('message.error'), t('formulaire.invalidDateFormat'));
                         }
                       }
                     }
@@ -3660,8 +3661,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   style={styles.pickerButton}
                   onPress={() => {
                     Alert.alert(
-                      'Sélectionner la devise',
-                      'Choisissez la devise du prix',
+                      t('formulaire.selectCurrency'),
+                      t('formulaire.selectCurrencyMsg'),
                       [
                         { text: 'XAF (Franc CFA)', onPress: () => handleFieldChange('devise', 'XAF') },
                         { text: 'EUR (Euro)', onPress: () => handleFieldChange('devise', 'EUR') },
@@ -3669,7 +3670,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                         { text: 'GBP (Livre)', onPress: () => handleFieldChange('devise', 'GBP') },
                         { text: 'CAD (Dollar canadien)', onPress: () => handleFieldChange('devise', 'CAD') },
                         { text: 'CHF (Franc suisse)', onPress: () => handleFieldChange('devise', 'CHF') },
-                        { text: 'Annuler', style: 'cancel' }
+                        { text: t('message.cancel'), style: 'cancel' }
                       ]
                     );
                   }}
@@ -3854,8 +3855,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     const validationErrors = validateRequiredFields();
     if (validationErrors.length > 0) {
       Alert.alert(
-        '⚠️ Champs obligatoires manquants',
-        `Veuillez remplir les champs obligatoires :\n\n${validationErrors.join('\n')}`,
+        t('formulaire.requiredFieldsMissing'),
+        t('formulaire.requiredFieldsMissingMsg') + `\n\n${validationErrors.join('\n')}`,
         [{ text: 'OK' }]
       );
       return;
@@ -3870,7 +3871,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         // Le champ prix existe dans le formulaire, vérifier qu'il est rempli
         const prixNum = typeof prixValue === 'number' ? prixValue : parseFloat(String(prixValue || ''));
         if (isNaN(prixNum) || prixNum <= 0) {
-          Alert.alert('Erreur', 'Le prix du produit est obligatoire. Veuillez indiquer un prix supérieur à 0.');
+          Alert.alert(t('message.error'), t('formulaire.priceRequired'));
           return;
         }
       } else {
@@ -3878,7 +3879,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         // (les services/prestations n'ont pas forcément de prix unitaire)
         const isProductForm = composants.some(c => c.name === 'prix_produit' || c.name === 'prix');
         if (isProductForm) {
-          Alert.alert('Erreur', 'Le prix du produit est obligatoire. Veuillez indiquer un prix supérieur à 0.');
+          Alert.alert(t('message.error'), t('formulaire.priceRequired'));
           return;
         }
       }
@@ -4335,7 +4336,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           const errorMsg = balanceResponse.error || 'Impossible de vérifier votre solde';
           console.error('💰 [FormulaireYukpoIntelligentScreen] ❌ Erreur vérification solde:', errorMsg);
           if (errorMsg.includes('401') || errorMsg.includes('Unauthorized') || errorMsg.includes('authentification')) {
-            Alert.alert('Session expirée', 'Votre session a expiré. Veuillez vous reconnecter.', [{ text: 'OK', onPress: () => logout() }]);
+            Alert.alert(t('formulaire.sessionExpired'), t('formulaire.sessionExpiredMsg'), [{ text: 'OK', onPress: () => logout() }]);
             return;
           }
           throw new Error(errorMsg);
@@ -4351,11 +4352,11 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
         if (effectiveCost > 0 && soldeActuel < effectiveCost) {
           Alert.alert(
-            '💸 Solde insuffisant',
-            `Coût d'ajout de produit : ${effectiveCost.toLocaleString()} FCFA\nVotre solde : ${soldeActuel.toLocaleString()} FCFA\n\nVeuillez recharger votre compte pour ajouter ce produit.`,
+            t('formulaire.insufficientBalance'),
+            t('formulaire.addProductCostMsg', { cost: effectiveCost.toLocaleString(), balance: soldeActuel.toLocaleString() }),
             [
-              { text: 'Annuler', style: 'cancel' },
-              { text: 'Recharger', onPress: () => (navigation as any).navigate('RechargeTokens') },
+              { text: t('message.cancel'), style: 'cancel' },
+              { text: t('mesProducts.recharge'), onPress: () => (navigation as any).navigate('RechargeTokens') },
             ]
           );
           return;
@@ -4363,18 +4364,18 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
         // 💰 ÉTAPE 2 : Confirmation (gratuit ou coût)
         const confirmMessage = isFree
-          ? "🆓 Gratuit (période de lancement)\n\nConfirmez-vous l'ajout de ce produit à votre service ?"
-          : `Coût : ${effectiveCost.toLocaleString()} FCFA\nVotre solde : ${soldeActuel.toLocaleString()} FCFA\nSolde après ajout : ${(soldeActuel - effectiveCost).toLocaleString()} FCFA\n\nConfirmez-vous l'ajout de ce produit à votre service ?`;
+          ? t('formulaire.freeConfirm')
+          : t('formulaire.addProductCostConfirm', { cost: effectiveCost.toLocaleString(), balance: soldeActuel.toLocaleString(), after: (soldeActuel - effectiveCost).toLocaleString() });
         Alert.alert(
-          '💰 Ajout de produit',
+          t('formulaire.addProduct'),
           confirmMessage,
           [
             {
-              text: 'Annuler',
+              text: t('message.cancel'),
               style: 'cancel'
             },
             {
-              text: 'Confirmer',
+              text: t('message.confirm'),
               onPress: async () => {
                 try {
                   // ✅ NOUVEAU: Vérification finale avant envoi
@@ -4436,11 +4437,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                       : undefined);
 
                   Alert.alert(
-                    '✅ Produit créé',
-                    `Votre nouveau produit a été ajouté au service avec succès !\n\n` +
-                    `💰 Coût: ${costPaid.toLocaleString('fr-FR')} FCFA\n` +
-                    `💳 Nouveau solde: ${newBalanceValue.toLocaleString('fr-FR')} FCFA\n` +
-                    `📦 Index produit: ${productIndexResult ?? 'non communiqué'}`,
+                    t('formulaire.productCreated'),
+                    t('formulaire.productCreatedMsg', { cost: costPaid.toLocaleString('fr-FR'), balance: newBalanceValue.toLocaleString('fr-FR') }),
                     [
                       {
                         text: 'OK',
@@ -4543,10 +4541,10 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         // ✅ SUPPRIMÉ: Vérification tickets de voyage - Géré maintenant via les champs dynamiques
 
         // ✅ Succès modification (pas de coût)
-        const successTitle = isEditingServiceInfo ? '✅ Informations mises à jour' : '✅ Service modifié';
+        const successTitle = isEditingServiceInfo ? t('formulaire.serviceInfoUpdated') : t('formulaire.serviceUpdated');
         const successMessage = isEditingServiceInfo
-          ? 'Les informations de votre service ont été mises à jour avec succès.\n\n✅ Modification gratuite - Aucun frais'
-          : 'Votre service a été mis à jour avec succès.\n\n✅ Modification gratuite - Aucun frais';
+          ? t('formulaire.serviceInfoUpdatedMsg')
+          : t('formulaire.serviceUpdatedMsg');
 
         Alert.alert(
           successTitle,
@@ -4785,8 +4783,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           });
 
           Alert.alert(
-            '✅ Produit ajouté',
-            `Votre produit a été ajouté avec succès au service.\n\n💰 Coût: ${cost.toLocaleString()} FCFA\n💳 Nouveau solde: ${new_balance.toLocaleString()} FCFA`,
+            t('formulaire.productAdded'),
+            t('formulaire.productAddedMsg', { cost: cost.toLocaleString(), balance: new_balance.toLocaleString() }),
             [
               {
                 text: 'OK',
@@ -4834,11 +4832,9 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       if (payloadSizeMB > 30) {
         const estimatedTime = Math.ceil((payloadSizeMB * 8) / 5 / 60); // Upload à 5 Mbps en minutes
         Alert.alert(
-          '⏳ Upload en cours',
-          `Votre service contient ${payloadSizeMB.toFixed(0)} MB de données (${compressedMedia.images.length} images, ${compressedMedia.videos.length} vidéos).\n\n` +
-          `⏱️ Temps estimé : ${estimatedTime}-${estimatedTime + 2} minutes\n\n` +
-          `✅ Ne fermez pas l'application pendant l'upload.`,
-          [{ text: 'Compris, continuer' }]
+          t('formulaire.uploadInProgress'),
+          t('formulaire.largePayloadMsg'),
+          [{ text: t('formulaire.understood') }]
         );
       }
 
@@ -4886,8 +4882,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
         if (errorMsg.includes('401') || errorMsg.includes('Unauthorized') || errorMsg.includes('authentification')) {
           Alert.alert(
-            'Session expirée',
-            'Votre session a expiré. Veuillez vous reconnecter.',
+            t('formulaire.sessionExpired'),
+            t('formulaire.sessionExpiredMsg'),
             [{ text: 'OK', onPress: () => logout() }]
           );
           return;
@@ -4907,11 +4903,11 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       // Bloquer seulement si coût > 0 et solde insuffisant
       if (coutReel > 0 && soldeActuel < coutReel) {
         Alert.alert(
-          '💸 Solde insuffisant',
-          `Coût réel : ${coutReel.toLocaleString()} FCFA\nVotre solde : ${soldeActuel.toLocaleString()} FCFA\n\nVeuillez recharger votre compte avant de créer ce service.`,
+          t('formulaire.insufficientBalance'),
+          t('formulaire.createServiceCostMsg', { cost: coutReel.toLocaleString(), balance: soldeActuel.toLocaleString() }),
           [
-            { text: 'Annuler', style: 'cancel' },
-            { text: 'Recharger', onPress: () => (navigation as any).navigate('RechargeTokens') },
+            { text: t('message.cancel'), style: 'cancel' },
+            { text: t('mesProducts.recharge'), onPress: () => (navigation as any).navigate('RechargeTokens') },
           ]
         );
         return;
@@ -4919,21 +4915,21 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
       // Demander confirmation avec le coût effectif
       const confirmMessage = isFree
-        ? "🆓 Gratuit (période de lancement)\n\nConfirmez-vous la création de ce service ?"
-        : `Coût réel : ${coutReel.toLocaleString()} FCFA\nVotre solde : ${soldeActuel.toLocaleString()} FCFA\nSolde après création : ${(soldeActuel - coutReel).toLocaleString()} FCFA\n\nConfirmez-vous la création de ce service ?`;
+        ? t('formulaire.createServiceFreeConfirm')
+        : t('formulaire.createServiceCostConfirm', { cost: coutReel.toLocaleString(), balance: soldeActuel.toLocaleString(), after: (soldeActuel - coutReel).toLocaleString() });
       Alert.alert(
-        '💰 Création de service',
+        t('formulaire.createService'),
         confirmMessage,
         [
           {
-            text: 'Annuler',
+            text: t('message.cancel'),
             style: 'cancel',
             onPress: () => {
               setLoading(false); // ✅ Remettre loading à false si annulé
             }
           },
           {
-            text: 'Confirmer',
+            text: t('message.confirm'),
             onPress: async () => {
               // ✅ Protection contre double-clic sur le bouton Confirmer
               if (isSubmitting) {
@@ -4996,11 +4992,11 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 if (payloadSizeMB > 100) {
                   console.warn(`[FormulaireYukpoIntelligentScreen] ⚠️ Payload très volumineux: ${payloadSizeMB.toFixed(2)} MB - Risque d'erreur 413`);
                   Alert.alert(
-                    '⚠️ Données volumineuses',
-                    `Votre service contient beaucoup de médias (${payloadSizeMB.toFixed(2)} MB).\n\nCela pourrait causer des problèmes d'envoi. Conseils :\n- Réduisez le nombre d'images\n- Raccourcissez les vidéos`,
+                    t('formulaire.largeData'),
+                    t('formulaire.largeDataMsg'),
                     [
-                      { text: 'Annuler', style: 'cancel', onPress: () => { setIsSubmitting(false); setLoading(false); return; } },
-                      { text: 'Continuer quand même', onPress: () => { /* Continue */ } }
+                      { text: t('message.cancel'), style: 'cancel', onPress: () => { setIsSubmitting(false); setLoading(false); return; } },
+                      { text: t('formulaire.continueAnyway'), onPress: () => { /* Continue */ } }
                     ]
                   );
                   return;
@@ -5087,8 +5083,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   console.error('[FormulaireYukpoIntelligentScreen] ❌ Champs obligatoires manquants:', champManquants);
                   console.error('[FormulaireYukpoIntelligentScreen] ❌ Données finales:', JSON.stringify(finalServiceData, null, 2));
                   Alert.alert(
-                    'Erreur de validation',
-                    `Les champs suivants sont manquants : ${champManquants.join(', ')}\n\nVeuillez réessayer.`,
+                    t('formulaire.validationError'),
+                    t('formulaire.validationErrorMsg', { fields: champManquants.join(', ') }),
                     [{ text: 'OK' }]
                   );
                   setIsSubmitting(false);
@@ -5477,7 +5473,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                         text: 'Copier à nouveau',
                         onPress: () => {
                           Clipboard.setStringAsync(errorLogString);
-                          Alert.alert('✅ Copié', 'Le log d\'erreur a été copié dans le presse-papiers');
+                          Alert.alert(t('formulaire.copied'), t('formulaire.errorLogCopied'));
                         }
                       },
                       { text: 'OK', style: 'cancel' }
@@ -5579,7 +5575,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                       text: 'Copier à nouveau',
                       onPress: () => {
                         Clipboard.setStringAsync(errorLogString);
-                        Alert.alert('✅ Copié', 'Le log d\'erreur a été copié');
+                        Alert.alert(t('formulaire.copied'), t('formulaire.errorLogCopied'));
                       }
                     },
                     { text: 'OK', style: 'cancel' }
@@ -5625,7 +5621,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             text: 'Copier à nouveau',
             onPress: () => {
               Clipboard.setStringAsync(errorLogString);
-              Alert.alert('✅ Copié', 'Le log d\'erreur a été copié');
+              Alert.alert(t('formulaire.copied'), t('formulaire.errorLogCopied'));
             }
           },
           { text: 'OK', style: 'cancel' }
@@ -6197,7 +6193,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                     }]
                   );
                 } else {
-                  Alert.alert('Erreur', 'Impossible de copier la configuration. Veuillez configurer manuellement.');
+                  Alert.alert(t('message.error'), t('formulaire.cannotCopyConfig'));
                   setProductDeliveryConfigData({
                     serviceId: successModalData.serviceId,
                     productIndex: successModalData.productIndex,
@@ -6209,7 +6205,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               }
             } catch (error) {
               console.error('[FormulaireYukpoIntelligent] Erreur copie config:', error);
-              Alert.alert('Erreur', 'Impossible de copier la configuration. Ouverture de la configuration manuelle...');
+              Alert.alert(t('message.error'), t('formulaire.cannotCopyConfigManual'));
               setProductDeliveryConfigData({
                 serviceId: successModalData.serviceId,
                 productIndex: successModalData.productIndex,

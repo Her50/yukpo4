@@ -12,6 +12,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { apiPost } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 import SafeIcon from '../SafeIcon';
@@ -29,13 +30,14 @@ const BloodGroupPromptModal: React.FC<BloodGroupPromptModalProps> = ({
     onClose,
     onSuccess,
 }) => {
+    const { t } = useLanguageSafe();
     const navigation = useNavigation();
     const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
 
     const handleSave = async () => {
         if (!selectedGroup) {
-            Alert.alert('Erreur', 'Veuillez sélectionner votre groupe sanguin');
+            Alert.alert(t('message.error'), t('bloodPrompt.errorSelectGroup'));
             return;
         }
 
@@ -50,8 +52,8 @@ const BloodGroupPromptModal: React.FC<BloodGroupPromptModalProps> = ({
 
             if (response.success) {
                 Alert.alert(
-                    '✅ Groupe sanguin enregistré !',
-                    'Votre groupe sanguin a été enregistré. Vous serez automatiquement notifié en cas de demande compatible.',
+                    t('bloodPrompt.successTitle'),
+                    t('bloodPrompt.successMessage'),
                     [
                         {
                             text: 'OK',
@@ -63,11 +65,11 @@ const BloodGroupPromptModal: React.FC<BloodGroupPromptModalProps> = ({
                     ]
                 );
             } else {
-                Alert.alert('Erreur', response.error || 'Impossible d\'enregistrer votre groupe sanguin');
+                Alert.alert(t('message.error'), response.error || t('bloodPrompt.errorSave'));
             }
         } catch (error: any) {
             console.error('[BloodGroupPromptModal] Erreur sauvegarde:', error);
-            Alert.alert('Erreur', error.message || 'Une erreur est survenue');
+            Alert.alert(t('message.error'), error.message || t('bloodPrompt.errorGeneric'));
         } finally {
             setSaving(false);
         }
@@ -98,15 +100,15 @@ const BloodGroupPromptModal: React.FC<BloodGroupPromptModalProps> = ({
                         <View style={styles.iconContainer}>
                             <SafeIcon name="droplet" size={32} color={modernColors.primary} />
                         </View>
-                        <Text style={styles.title}>Enregistrer votre groupe sanguin</Text>
+                        <Text style={styles.title}>{t('bloodPrompt.title')}</Text>
                         <Text style={styles.subtitle}>
-                            Cela nous permettra de vous notifier automatiquement en cas de demande urgente compatible
+                            {t('bloodPrompt.subtitle')}
                         </Text>
                     </View>
 
                     {/* Sélection groupe sanguin */}
                     <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>Votre groupe sanguin</Text>
+                        <Text style={styles.sectionTitle}>{t('bloodPrompt.sectionTitle')}</Text>
                         <View style={styles.bloodGroupGrid}>
                             {BLOOD_GROUPS.map((group) => (
                                 <TouchableOpacity
@@ -134,7 +136,7 @@ const BloodGroupPromptModal: React.FC<BloodGroupPromptModalProps> = ({
                     <View style={styles.infoBox}>
                         <SafeIcon name="info" size={18} color={modernColors.primary} />
                         <Text style={styles.infoText}>
-                            Votre groupe sanguin sera utilisé uniquement pour vous notifier en cas de demande urgente compatible. Vos données sont sécurisées.
+                            {t('bloodPrompt.infoText')}
                         </Text>
                     </View>
 
@@ -145,7 +147,7 @@ const BloodGroupPromptModal: React.FC<BloodGroupPromptModalProps> = ({
                             onPress={handleLater}
                             disabled={saving}
                         >
-                            <Text style={styles.laterButtonText}>Plus tard</Text>
+                            <Text style={styles.laterButtonText}>{t('bloodPrompt.later')}</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={[
@@ -161,7 +163,7 @@ const BloodGroupPromptModal: React.FC<BloodGroupPromptModalProps> = ({
                             ) : (
                                 <>
                                     <SafeIcon name="check-circle" size={18} color="#fff" />
-                                    <Text style={styles.saveButtonText}>Enregistrer</Text>
+                                    <Text style={styles.saveButtonText}>{t('bloodPrompt.save')}</Text>
                                 </>
                             )}
                         </TouchableOpacity>
@@ -173,7 +175,7 @@ const BloodGroupPromptModal: React.FC<BloodGroupPromptModalProps> = ({
                         onPress={handleManageBloodGroup}
                     >
                         <Text style={styles.manageLinkText}>
-                            Gérer mon groupe sanguin et disponibilité
+                            {t('bloodPrompt.manageLink')}
                         </Text>
                         <SafeIcon name="chevron-right" size={16} color={modernColors.primary} />
                     </TouchableOpacity>

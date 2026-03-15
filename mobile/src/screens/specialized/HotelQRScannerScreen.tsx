@@ -5,6 +5,7 @@ import QRCodeScanner from '../../components/QRCodeScanner';
 import SafeIcon from '../../components/SafeIcon';
 import { NativeButton } from '../../components/SafeNativeDesign';
 import { SafeNativeView } from '../../components/SafeNativeView';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { apiPost } from '../../services/api';
 import { immobilierService } from '../../services/immobilierService';
 import { modernColors, modernStyles } from '../../theme/modernTheme';
@@ -40,6 +41,7 @@ type ScanResponse = {
 const HotelQRScannerScreen: React.FC = () => {
   const navigation = useNavigation();
   const route = useRoute() as any;
+  const { t } = useLanguageSafe();
   const [scannerVisible, setScannerVisible] = useState(true);
   const [loading, setLoading] = useState(false);
   const [scanData, setScanData] = useState<ScanResponse | null>(null);
@@ -59,20 +61,20 @@ const HotelQRScannerScreen: React.FC = () => {
         const resData = (response?.data || response) as any;
         if (resData?.success && resData?.data) {
           setScanData(resData.data as ScanResponse);
-          Alert.alert("Succès", "Réservation trouvée et chargée");
+          Alert.alert(t('message.success'), t('hotelQR.reservationFound'));
           setScannerVisible(false);
         } else {
           Alert.alert(
-            "Erreur",
+            t('message.error'),
             resData?.message || resData?.error ||
-            "Impossible de trouver une réservation pour ce QR code"
+            t('hotelQR.cannotFindReservation')
           );
         }
       } catch (error: any) {
         console.error('[HotelQRScannerScreen] Erreur scan:', error);
         Alert.alert(
-          "Erreur",
-          error?.message || "Erreur lors de la validation du QR code"
+          t('message.error'),
+          error?.message || t('hotelQR.qrValidationError')
         );
       } finally {
         setLoading(false);
@@ -100,19 +102,19 @@ const HotelQRScannerScreen: React.FC = () => {
       const res = await immobilierService.checkInReservation(scanData.reservation_id);
       const rd = (res?.data || res) as any;
       if (rd?.success) {
-        Alert.alert('Succès', `Check-in effectué pour ${scanData.client_name}`);
+        Alert.alert(t('message.success'), t('hotelQR.checkInDone', { name: scanData.client_name }));
         setScanData({ ...scanData, status: 'checked_in', can_check_in: false, can_check_out: true });
       } else {
-        Alert.alert('Erreur', rd?.message || 'Erreur lors du check-in');
+        Alert.alert(t('message.error'), rd?.message || t('hotelQR.checkInError'));
       }
     } catch (e: any) {
-      Alert.alert('Erreur', e.message || 'Impossible d\'effectuer le check-in');
+      Alert.alert(t('message.error'), e.message || t('hotelQR.cannotCheckIn'));
     }
   }, [scanData]);
 
   const handleCheckOut = useCallback(() => {
     if (!scanData) return;
-    Alert.alert('Confirmer le check-out', `Check-out de ${scanData.client_name} ?`, [
+    Alert.alert(t('hotelQR.confirmCheckOut'), t('hotelQR.checkOutConfirmMsg', { name: scanData.client_name }), [
       { text: 'Annuler', style: 'cancel' },
       {
         text: 'Confirmer', onPress: async () => {
@@ -120,13 +122,13 @@ const HotelQRScannerScreen: React.FC = () => {
             const res = await immobilierService.checkOutReservation(scanData.reservation_id);
             const rd = (res?.data || res) as any;
             if (rd?.success) {
-              Alert.alert('Succès', 'Check-out effectué');
+              Alert.alert(t('message.success'), t('hotelQR.checkOutDone'));
               setScanData({ ...scanData, status: 'checked_out', can_check_in: false, can_check_out: false });
             } else {
-              Alert.alert('Erreur', rd?.message || 'Erreur check-out');
+              Alert.alert(t('message.error'), rd?.message || t('hotelQR.checkOutError'));
             }
           } catch (e: any) {
-            Alert.alert('Erreur', e.message || 'Impossible d\'effectuer le check-out');
+            Alert.alert(t('message.error'), e.message || t('hotelQR.cannotCheckOut'));
           }
         }
       }
@@ -398,7 +400,7 @@ const HotelQRScannerScreen: React.FC = () => {
         visible={scannerVisible}
         onClose={handleCloseScanner}
         onScan={handleScan}
-        onError={(msg) => Alert.alert("Erreur", msg)}
+        onError={(msg) => Alert.alert(t('message.error'), msg)}
       />
     </SafeNativeView>
   );

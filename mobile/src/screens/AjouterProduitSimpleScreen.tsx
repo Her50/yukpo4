@@ -164,6 +164,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
     const { user } = useAuth();
+    const { t } = useLanguageSafe();
     const toaster = useToaster(); // ✅ NOUVEAU: Pour les toasts de confirmation
 
     // Récupérer les paramètres
@@ -1437,12 +1438,12 @@ const AjouterProduitSimpleScreen: React.FC = () => {
     const handleSubmit = async () => {
         // Validation minimale
         if (!formValues.nom_produit || !formValues.nom_produit.trim()) {
-            Alert.alert('Erreur', 'Le nom du produit est obligatoire');
+            Alert.alert(t('message.error'), t('ajouterProduit.nameRequired'));
             return;
         }
 
         if (!isEditing && !formValues.lieu_produit) {
-            Alert.alert('Erreur', 'Le lieu de commercialisation est obligatoire');
+            Alert.alert(t('message.error'), t('ajouterProduit.locationRequired'));
             return;
         }
 
@@ -1453,7 +1454,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
             const prixValue = formValues.prix_produit || formValues.prix;
             const prixNum = typeof prixValue === 'number' ? prixValue : parseFloat(String(prixValue || ''));
             if (!prixValue || isNaN(prixNum) || prixNum <= 0) {
-                Alert.alert('Erreur', 'Le prix du produit est obligatoire. Veuillez indiquer un prix supérieur à 0.');
+                Alert.alert(t('message.error'), t('ajouterProduit.priceRequired'));
                 return;
             }
         }
@@ -1476,12 +1477,12 @@ const AjouterProduitSimpleScreen: React.FC = () => {
             if (!balanceResponse.success) {
                 const errorMsg = balanceResponse.error || 'Impossible de vérifier votre solde';
                 console.error('💰 [AjouterProduitSimple] ❌ Erreur vérification solde:', errorMsg);
-                Alert.alert('Erreur', errorMsg);
+                Alert.alert(t('message.error'), errorMsg);
                 return;
             }
             if (!balanceResponse.data || typeof balanceResponse.data.tokens_balance === 'undefined') {
                 console.error('💰 [AjouterProduitSimple] ❌ Données solde invalides:', balanceResponse.data);
-                Alert.alert('Erreur', 'Données de solde invalides reçues du serveur');
+                Alert.alert(t('message.error'), t('ajouterProduit.balanceInvalid'));
                 return;
             }
 
@@ -1491,26 +1492,22 @@ const AjouterProduitSimpleScreen: React.FC = () => {
             // Bloquer seulement si coût > 0 et solde insuffisant
             if (effectiveCost > 0 && soldeActuel < effectiveCost) {
                 Alert.alert(
-                    '💸 Solde insuffisant',
-                    `Coût d'ajout de produit : ${effectiveCost.toLocaleString()} FCFA\nVotre solde : ${soldeActuel.toLocaleString()} FCFA\n\nVeuillez recharger votre compte pour ajouter ce produit.`,
+                    t('ajouterProduit.insufficientBalance'),
+                    t('ajouterProduit.insufficientBalanceMsg', { cost: effectiveCost.toLocaleString(), balance: soldeActuel.toLocaleString() }),
                     [
-                        { text: 'Annuler', style: 'cancel' },
-                        { text: 'Recharger', onPress: () => (navigation as any).navigate('RechargeTokens') },
+                        { text: t('message.cancel'), style: 'cancel' },
+                        { text: t('ajouterProduit.recharge'), onPress: () => (navigation as any).navigate('RechargeTokens') },
                     ]
                 );
                 return;
             }
 
             // ✅ ÉTAPE 2 : Confirmation avec message adapté (gratuit ou coût)
-            const actionTitle = isDuplicate ? '💰 Duplication de produit' : '💰 Ajout de produit';
+            const actionLabel = isDuplicate ? t('ajouterProduit.actionDuplicate') : t('ajouterProduit.actionAdd');
+            const actionTitle = isDuplicate ? t('ajouterProduit.duplicateProduct') : t('ajouterProduit.addProduct');
             const confirmationMessage = isFree
-                ? `🆓 Gratuit (période de lancement)\n\nConfirmez-vous l'${isDuplicate ? 'duplication' : 'ajout'} de ce produit à votre service ?`
-                : `Coût : ${effectiveCost.toLocaleString()} FCFA\n` +
-                `Votre solde : ${soldeActuel.toLocaleString()} FCFA\n` +
-                `Solde après ${isDuplicate ? 'duplication' : 'ajout'} : ${(soldeActuel - effectiveCost).toLocaleString()} FCFA\n\n` +
-                (isDuplicate
-                    ? 'Confirmez-vous la duplication de ce produit sur votre service ?'
-                    : 'Confirmez-vous l\'ajout de ce produit à votre service ?');
+                ? t('ajouterProduit.freeConfirm', { action: actionLabel })
+                : t('ajouterProduit.costConfirm', { cost: effectiveCost.toLocaleString(), balance: soldeActuel.toLocaleString(), action: actionLabel, after: (soldeActuel - effectiveCost).toLocaleString() });
 
             console.log('[AjouterProduitSimple] 📋 Confirmation création produit:', {
                 serviceId,
@@ -1526,14 +1523,14 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                 confirmationMessage,
                 [
                     {
-                        text: 'Annuler',
+                        text: t('message.cancel'),
                         style: 'cancel',
                         onPress: () => {
                             console.log('[AjouterProduitSimple] ❌ Création annulée par l\'utilisateur');
                         }
                     },
                     {
-                        text: 'Confirmer',
+                        text: t('message.confirm'),
                         onPress: async () => {
                             // ✅ MAINTENANT on fait les opérations lourdes après confirmation
                             setLoading(true);
@@ -1542,13 +1539,13 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                 if (isEditing) {
                                     if (productId === null || Number.isNaN(productId)) {
                                         setLoading(false);
-                                        Alert.alert('Erreur', 'Identifiant du produit introuvable.');
+                                        Alert.alert(t('message.error'), t('ajouterProduit.productIdNotFound'));
                                         return;
                                     }
 
                                     if (productIndex === null || Number.isNaN(productIndex)) {
                                         setLoading(false);
-                                        Alert.alert('Erreur', 'Index du produit introuvable.');
+                                        Alert.alert(t('message.error'), t('ajouterProduit.productIndexNotFound'));
                                         return;
                                     }
                                 }
@@ -1919,7 +1916,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                         });
                                     } catch (error: any) {
                                         console.error('[AjouterProduitSimple] Erreur mise à jour produit:', error);
-                                        Alert.alert('Erreur', error.message || 'Impossible de mettre à jour le produit');
+                                        Alert.alert(t('message.error'), error.message || t('ajouterProduit.cannotUpdate'));
                                     } finally {
                                         setLoading(false);
                                     }
@@ -2245,12 +2242,12 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                         errorMessage,
                                         [
                                             {
-                                                text: 'Vérifier mes produits', onPress: () => {
+                                                text: t('ajouterProduit.checkProducts'), onPress: () => {
                                                     DeviceEventEmitter.emit('service:refresh');
                                                     (navigation as any).navigate('Main', { screen: 'Services' });
                                                 }
                                             },
-                                            { text: 'Réessayer', onPress: () => soumettreFormulaire() }
+                                            { text: t('ajouterProduit.retry'), onPress: () => soumettreFormulaire() }
                                         ]
                                     );
                                     return;
@@ -2355,7 +2352,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                 errorMessage = error.message;
             }
 
-            Alert.alert('Erreur', errorMessage);
+            Alert.alert(t('message.error'), errorMessage);
             setLoading(false);
         }
     };
@@ -3064,8 +3061,8 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                     setExistingDeliveryConfig(null);
                                     setSuccessModalData(null);
                                     Alert.alert(
-                                        '✅ Configuration copiée',
-                                        `La configuration de livraison de "${existingDeliveryConfig.productName}" a été appliquée à "${successModalData.productName}".`
+                                        t('ajouterProduit.configCopied'),
+                                        t('ajouterProduit.configCopiedMsg', { source: existingDeliveryConfig.productName, target: successModalData.productName })
                                     );
                                     // ✅ CORRIGÉ 2026-03-11: Utiliser reset() pour aller à MesProduits
                                     setTimeout(() => {
@@ -3075,7 +3072,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                         });
                                     }, 300);
                                 } else {
-                                    Alert.alert('Erreur', 'Impossible de copier la configuration. Veuillez configurer manuellement.');
+                                    Alert.alert(t('message.error'), t('ajouterProduit.cannotCopyConfig'));
                                     setProductDeliveryConfigData({
                                         serviceId: successModalData.serviceId,
                                         productIndex: successModalData.productIndex,
@@ -3087,7 +3084,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                             }
                         } catch (error) {
                             console.error('[AjouterProduitSimple] Erreur copie config:', error);
-                            Alert.alert('Erreur', 'Impossible de copier la configuration. Ouverture de la configuration manuelle...');
+                            Alert.alert(t('message.error'), t('ajouterProduit.cannotCopyConfigManual'));
                             setProductDeliveryConfigData({
                                 serviceId: successModalData.serviceId,
                                 productIndex: successModalData.productIndex,
@@ -3124,8 +3121,8 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                         setShowProductDeliveryConfig(false);
                         setProductDeliveryConfigData(null);
                         Alert.alert(
-                            '✅ Configuration terminée',
-                            'Votre produit a été configuré avec succès !'
+                            t('ajouterProduit.configComplete'),
+                            t('ajouterProduit.configCompleteMsg')
                         );
                         // Utiliser reset() pour aller à l'écran de gestion des produits (MesProduits)
                         setTimeout(() => {

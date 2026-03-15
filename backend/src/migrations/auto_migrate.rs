@@ -8519,6 +8519,12 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Err(e) => error!("❌ Erreur migration auto livres scolaires: {}", e),
     }
 
+    // ✅ 2026-03-15 : Bourse du Livre V2 - recto/verso, modes, paquets, commissions, dons
+    match ensure_bourse_livre_v2_tables(pool).await {
+        Ok(_) => info!("✅ Migration auto: bourse livre V2 tables OK"),
+        Err(e) => error!("❌ Erreur migration auto bourse livre V2: {}", e),
+    }
+
     // ✅ 2025-01-28 : Tables pour système d'offres d'emploi avec matching intelligent
     match ensure_offres_emploi_tables(pool).await {
         Ok(_) => info!("✅ Migration auto: offres d'emploi tables OK"),
@@ -16916,6 +16922,19 @@ pub async fn ensure_livres_scolaires_tables(pool: &PgPool) -> Result<(), sqlx::E
     execute_migration_sql_safe(pool, migration_sql).await?;
 
     info!("✅ Tables livres scolaires et troc créées");
+    Ok(())
+}
+
+/// ✅ 2026-03-15 : Bourse du Livre V2 - recto/verso, modes, paquets, commissions, dons
+/// Migration: 20260315_bourse_livre_v2_complete.sql
+pub async fn ensure_bourse_livre_v2_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification/création des tables Bourse du Livre V2...");
+
+    let migration_sql = include_str!("../../migrations/20260315_bourse_livre_v2_complete.sql");
+
+    execute_migration_sql_safe(pool, migration_sql).await?;
+
+    info!("✅ Tables Bourse du Livre V2 créées");
     Ok(())
 }
 

@@ -22,6 +22,7 @@ import SafeIcon from '../../components/SafeIcon';
 import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import ServiceTeamManager from '../../components/ServiceTeamManager';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { immobilierService } from '../../services/immobilierService';
 import { modernColors } from '../../theme/modernTheme';
 import { getCurrencyIntelligently } from '../../utils/currencyUtils';
@@ -70,6 +71,7 @@ const HotelDashboardScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
     const { user } = useAuth();
+    const { t } = useLanguageSafe();
 
     const [activeTab, setActiveTab] = useState<TabType>('overview');
     const [loading, setLoading] = useState(true);
@@ -169,33 +171,33 @@ const HotelDashboardScreen: React.FC = () => {
             const res = await immobilierService.checkInReservation(reservation.id);
             const resData = (res?.data || res) as any;
             if (resData?.success) {
-                Alert.alert('Succès', `Check-in effectué pour ${reservation.nom_client}`);
+                Alert.alert(t('message.success'), t('hotelDashboard.checkInDone', { name: reservation.nom_client }));
                 loadData(true);
             } else {
-                Alert.alert('Erreur', resData?.message || 'Erreur lors du check-in');
+                Alert.alert(t('message.error'), resData?.message || t('hotelDashboard.checkInError'));
             }
         } catch (error: any) {
-            Alert.alert('Erreur', error.message || 'Impossible d\'effectuer le check-in');
+            Alert.alert(t('message.error'), error.message || t('hotelDashboard.cannotCheckIn'));
         }
     };
 
     // ✅ Check-out
     const handleCheckOut = async (reservation: Reservation) => {
-        Alert.alert('Confirmer le check-out', `Check-out de ${reservation.nom_client} ?`, [
-            { text: 'Annuler', style: 'cancel' },
+        Alert.alert(t('hotelDashboard.confirmCheckOut'), t('hotelDashboard.checkOutQuestion', { name: reservation.nom_client }), [
+            { text: t('message.cancel'), style: 'cancel' },
             {
                 text: 'Confirmer', onPress: async () => {
                     try {
                         const res = await immobilierService.checkOutReservation(reservation.id);
                         const resData = (res?.data || res) as any;
                         if (resData?.success) {
-                            Alert.alert('Succès', 'Check-out effectué');
+                            Alert.alert(t('message.success'), t('hotelDashboard.checkOutDone'));
                             loadData(true);
                         } else {
-                            Alert.alert('Erreur', resData?.message || 'Erreur check-out');
+                            Alert.alert(t('message.error'), resData?.message || t('hotelDashboard.checkOutError'));
                         }
                     } catch (error: any) {
-                        Alert.alert('Erreur', error.message || 'Impossible d\'effectuer le check-out');
+                        Alert.alert(t('message.error'), error.message || t('hotelDashboard.cannotCheckOut'));
                     }
                 }
             }
@@ -213,15 +215,15 @@ const HotelDashboardScreen: React.FC = () => {
     // ✅ Create manual reservation
     const handleCreateReservation = async () => {
         if (!selectedProperty) {
-            Alert.alert('Erreur', 'Sélectionnez d\'abord une propriété');
+            Alert.alert(t('message.error'), t('hotelDashboard.selectPropertyFirst'));
             return;
         }
         if (!newReservation.nom_client.trim() || !newReservation.telephone_client.trim()) {
-            Alert.alert('Erreur', 'Nom et téléphone du client sont requis');
+            Alert.alert(t('message.error'), t('hotelDashboard.namePhoneRequired'));
             return;
         }
         if (!newReservation.date_arrivee || !newReservation.date_depart) {
-            Alert.alert('Erreur', 'Dates d\'arrivée et de départ requises');
+            Alert.alert(t('message.error'), t('hotelDashboard.datesRequired'));
             return;
         }
 
@@ -252,7 +254,7 @@ const HotelDashboardScreen: React.FC = () => {
 
             const resData = (res?.data || res) as any;
             if (resData?.success) {
-                Alert.alert('Succès', 'Réservation créée avec succès');
+                Alert.alert(t('message.success'), t('hotelDashboard.reservationCreated'));
                 setShowNewReservationModal(false);
                 setNewReservation({
                     nom_client: '', telephone_client: '', email_client: '',
@@ -262,10 +264,10 @@ const HotelDashboardScreen: React.FC = () => {
                 });
                 loadData(true);
             } else {
-                Alert.alert('Erreur', resData?.message || 'Erreur lors de la création');
+                Alert.alert(t('message.error'), resData?.message || t('hotelDashboard.creationError'));
             }
         } catch (error: any) {
-            Alert.alert('Erreur', error.message || 'Impossible de créer la réservation');
+            Alert.alert(t('message.error'), error.message || t('hotelDashboard.cannotCreateReservation'));
         }
     };
 
@@ -278,11 +280,11 @@ const HotelDashboardScreen: React.FC = () => {
             if (resData?.success) {
                 setAiInsights(resData?.data || resData);
             } else {
-                Alert.alert('Info', 'Les insights IA ne sont pas encore disponibles pour ce bien');
+                Alert.alert('Info', t('hotelDashboard.aiInsightsUnavailable'));
             }
         } catch (error) {
             console.error('[HotelDashboard] Erreur IA insights:', error);
-            Alert.alert('Info', 'Les insights IA seront disponibles prochainement');
+            Alert.alert('Info', t('hotelDashboard.aiInsightsComingSoon'));
         } finally {
             setLoadingAI(false);
         }

@@ -184,6 +184,10 @@ import LivreScolaireHomeScreen from '../screens/specialized/LivreScolaireHomeScr
 import LivreScolaireListScreen from '../screens/specialized/LivreScolaireListScreen';
 import LivreScolaireSearchScreen from '../screens/specialized/LivreScolaireSearchScreen';
 import MesLivresScreen from '../screens/specialized/MesLivresScreen';
+// ✅ V2 2026-03-15: Écrans Bourse du Livre V2
+import BookPackagesScreen from '../screens/specialized/BookPackagesScreen';
+import BookRecapV2Screen from '../screens/specialized/BookRecapV2Screen';
+import BookUploadV2Screen from '../screens/specialized/BookUploadV2Screen';
 // ✅ NOUVEAU 2025-01-28: Écrans Orientation scolaire
 import ConcoursEntreeScreen from '../screens/orientation/ConcoursEntreeScreen';
 import ConferencesLivesScreen from '../screens/orientation/ConferencesLivesScreen';
@@ -379,6 +383,10 @@ const TrocMatchingScreenWithSafeArea = withNavigatorSafeArea(TrocMatchingScreen)
 const TrocDetailsScreenWithSafeArea = withNavigatorSafeArea(TrocDetailsScreen);
 const TrocLiveValidationScreenWithSafeArea = withNavigatorSafeArea(TrocLiveValidationScreen);
 const MesTrocsScreenWithSafeArea = withNavigatorSafeArea(MesTrocsScreen);
+// ✅ V2 Bourse du Livre
+const BookUploadV2ScreenWithSafeArea = withNavigatorSafeArea(BookUploadV2Screen);
+const BookRecapV2ScreenWithSafeArea = withNavigatorSafeArea(BookRecapV2Screen);
+const BookPackagesScreenWithSafeArea = withNavigatorSafeArea(BookPackagesScreen);
 // ✅ NOUVEAU: Immobilier
 const HotelMeubleHomeScreenWithSafeArea = withNavigatorSafeArea(HotelMeubleHomeScreen);
 const ImmobilierSearchScreenWithSafeArea = withNavigatorSafeArea(ImmobilierSearchScreen);
@@ -1291,6 +1299,31 @@ const SecondaryStack = () => {
         options={{
           ...defaultScreenOptions,
           title: 'Mes Troc',
+        }}
+      />
+      {/* ✅ V2 Bourse du Livre */}
+      <Stack.Screen
+        name="BookUploadV2"
+        component={BookUploadV2ScreenWithSafeArea}
+        options={{
+          ...defaultScreenOptions,
+          title: 'Envoyer mes livres',
+        }}
+      />
+      <Stack.Screen
+        name="BookRecapV2"
+        component={BookRecapV2ScreenWithSafeArea}
+        options={{
+          ...defaultScreenOptions,
+          title: 'R\u00e9capitulatif livres',
+        }}
+      />
+      <Stack.Screen
+        name="BookPackages"
+        component={BookPackagesScreenWithSafeArea}
+        options={{
+          ...defaultScreenOptions,
+          title: 'Paquets livres',
         }}
       />
       {/* ✅ NOUVEAU 2025-01-28: Orientation scolaire */}

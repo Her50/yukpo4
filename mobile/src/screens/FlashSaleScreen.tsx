@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { SafeNativeView } from '../components/SafeNativeView';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 import {
     fetchActiveFlashSales,
     fetchFlashSalesBySession,
@@ -46,6 +47,7 @@ const FlashSaleScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
     const { user } = useAuth();
+    const { t } = useLanguageSafe();
     const sessionId = (route.params as any)?.sessionId;
 
     const [flashSales, setFlashSales] = useState<LiveFlashSale[]>([]);
@@ -76,7 +78,7 @@ const FlashSaleScreen: React.FC = () => {
             setFlashSales(sales);
         } catch (error: any) {
             console.error('[FlashSaleScreen] Erreur chargement flash sales:', error);
-            Alert.alert('Erreur', error.message || 'Impossible de charger les ventes flash');
+            Alert.alert(t('message.error'), error.message || t('flashSale.cannotLoad'));
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -107,10 +109,10 @@ const FlashSaleScreen: React.FC = () => {
 
                     if (updatedTicket.status !== 'pending') {
                         if (updatedTicket.status === 'confirmed') {
-                            Alert.alert('✅ Réservation confirmée', 'Votre réservation a été confirmée avec succès !');
+                            Alert.alert(t('flashSale.reservationConfirmed'), t('flashSale.reservationConfirmedMsg'));
                             loadFlashSales(); // Recharger pour mettre à jour le stock
                         } else if (updatedTicket.status === 'failed' || updatedTicket.status === 'out_of_stock') {
-                            Alert.alert('❌ Réservation échouée', updatedTicket.message || 'Impossible de confirmer votre réservation');
+                            Alert.alert(t('flashSale.reservationFailed'), updatedTicket.message || t('flashSale.cannotConfirm'));
                         }
                         return;
                     }
@@ -119,7 +121,7 @@ const FlashSaleScreen: React.FC = () => {
                     if (attempts < maxAttempts) {
                         setTimeout(poll, 2000);
                     } else {
-                        Alert.alert('⏱️ Temps écoulé', 'Le traitement de votre réservation prend plus de temps que prévu. Vérifiez votre statut plus tard.');
+                        Alert.alert(t('flashSale.timeExpired'), t('flashSale.timeExpiredMsg'));
                     }
                 } catch (error: any) {
                     console.error('[FlashSaleScreen] Erreur polling ticket:', error);
@@ -133,7 +135,7 @@ const FlashSaleScreen: React.FC = () => {
 
     const handleReserve = async (sale: LiveFlashSale) => {
         if (!user) {
-            Alert.alert('Connexion requise', 'Connectez-vous pour réserver cette promotion.', [
+            Alert.alert(t('flashSale.loginRequired'), t('flashSale.loginRequiredMsg'), [
                 { text: 'Annuler', style: 'cancel' },
                 { text: 'Se connecter', onPress: () => navigation.navigate('Login' as never) },
             ]);
@@ -149,17 +151,17 @@ const FlashSaleScreen: React.FC = () => {
             }));
 
             if (ticket.status === 'pending') {
-                Alert.alert('⏳ Réservation en cours', 'Votre réservation est en cours de traitement...');
+                Alert.alert(t('flashSale.reservationPending'), t('flashSale.reservationPendingMsg'));
                 pollTicketStatus(ticket.ticket_id, sale.id);
             } else if (ticket.status === 'confirmed') {
-                Alert.alert('✅ Réservation confirmée', 'Votre réservation a été confirmée avec succès !');
+                Alert.alert(t('flashSale.reservationConfirmed'), t('flashSale.reservationConfirmedMsg'));
                 loadFlashSales();
             } else {
-                Alert.alert('❌ Réservation échouée', ticket.message || 'Impossible de réserver cette vente flash');
+                Alert.alert(t('flashSale.reservationFailed'), ticket.message || t('flashSale.cannotReserve'));
             }
         } catch (error: any) {
             console.error('[FlashSaleScreen] Erreur réservation:', error);
-            Alert.alert('Erreur', error.message || 'Impossible de réserver cette vente flash');
+            Alert.alert(t('message.error'), error.message || t('flashSale.cannotReserve'));
         } finally {
             setReservingSaleId(null);
         }

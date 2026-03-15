@@ -215,6 +215,7 @@ const NavigationScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute() as any;
     const { user } = useAuth();
+    const { t } = useLanguageSafe();
     const { location: currentLocation } = useLocationSafe();
     const [destination, setDestination] = useState('');
     const [destinationCoords, setDestinationCoords] = useState<{ lat: number; lng: number } | null>(null);
@@ -321,7 +322,7 @@ const NavigationScreen: React.FC = () => {
         try {
             if (currentLocation) return { lat: currentLocation.coords.latitude, lng: currentLocation.coords.longitude };
             const { status } = await Location.requestForegroundPermissionsAsync();
-            if (status !== 'granted') { Alert.alert('Permission requise', 'Veuillez autoriser la localisation'); return null; }
+            if (status !== 'granted') { Alert.alert(t('navigation.permissionRequired'), t('navigation.allowLocation')); return null; }
             const loc = await Location.getCurrentPositionAsync({});
             return { lat: loc.coords.latitude, lng: loc.coords.longitude };
         } catch { return null; }
@@ -359,7 +360,7 @@ const NavigationScreen: React.FC = () => {
                 setDestination(name);
                 setDestinationCoords({ lat, lng });
                 if (params.mode) setTravelMode(params.mode);
-                showToast(`📍 Destination: ${name}`);
+                showToast(`📍 ${t('navigation.destination', { name })}`);
                 // Lancer la recherche d'itinéraires après un court délai
                 setTimeout(() => searchRoutesRef.current(), 500);
             }
@@ -389,41 +390,41 @@ const NavigationScreen: React.FC = () => {
     const searchRoutes = useCallback(async () => {
         let destCoords = destinationCoords;
         if (!destCoords && (selectedLocation as any)?.latitude && (selectedLocation as any)?.longitude) { destCoords = { lat: (selectedLocation as any).latitude, lng: (selectedLocation as any).longitude }; setDestinationCoords(destCoords); }
-        if (!destCoords && !destination.trim()) { Alert.alert('Destination requise', 'Veuillez sélectionner une destination'); return; }
+        if (!destCoords && !destination.trim()) { Alert.alert(t('navigation.destinationRequired'), t('navigation.selectDestination')); return; }
         setLoading(true);
-        const modeLabel = travelMode === 'walking' ? 'à pied' : travelMode === 'bicycling' ? 'vélo' : travelMode === 'transit' ? 'transport en commun' : 'voiture';
+        const modeLabel = travelMode === 'walking' ? t('navigation.walking') : travelMode === 'bicycling' ? t('navigation.bicycling') : travelMode === 'transit' ? t('navigation.transit') : t('navigation.car');
         try {
             const origin = await getCurrentPosition();
-            if (!origin) { Alert.alert('Erreur', 'Position indisponible'); setLoading(false); return; }
-            if (!destCoords) { destCoords = await geocodeDestination(destination); if (!destCoords) { Alert.alert('Erreur', 'Destination introuvable'); setLoading(false); return; } setDestinationCoords(destCoords); }
+            if (!origin) { Alert.alert(t('message.error'), t('navigation.positionUnavailable')); setLoading(false); return; }
+            if (!destCoords) { destCoords = await geocodeDestination(destination); if (!destCoords) { Alert.alert(t('message.error'), t('navigation.destinationNotFound')); setLoading(false); return; } setDestinationCoords(destCoords); }
             const avoidList: string[] = []; if (avoidTolls) avoidList.push('tolls'); if (avoidHighways) avoidList.push('highways'); if (avoidFerries) avoidList.push('ferries');
             const response = await apiPost('/api/navigation/routes', { origin, destination: destCoords, alternatives: true, avoid: avoidList, traffic_model: 'best_guess', mode: travelMode, waypoints: waypoints.length > 0 ? waypoints.map(wp => ({ lat: wp.lat, lng: wp.lng })) : undefined }) as any;
             if (response?.success === false) {
                 const errMsg = response?.error || response?.message || '';
                 if (errMsg.toLowerCase().includes('mode') || errMsg.toLowerCase().includes('non disponible') || errMsg.toLowerCase().includes('zero_results')) {
-                    Alert.alert(`Mode ${modeLabel} indisponible`, `Le mode ${modeLabel} n'est pas disponible pour ce trajet dans cette région.\n\nEssayez un autre mode de transport.`, [
-                        { text: '🚗 Voiture', onPress: () => { setTravelMode('driving'); setTimeout(() => searchRoutesRef.current(), 200); } },
-                        { text: '🚶 À pied', onPress: () => { setTravelMode('walking'); setTimeout(() => searchRoutesRef.current(), 200); } },
+                    Alert.alert(t('navigation.modeUnavailable', { mode: modeLabel }), t('navigation.modeUnavailableMsg', { mode: modeLabel }), [
+                        { text: `🚗 ${t('navigation.car')}`, onPress: () => { setTravelMode('driving'); setTimeout(() => searchRoutesRef.current(), 200); } },
+                        { text: `🚶 ${t('navigation.walking')}`, onPress: () => { setTravelMode('walking'); setTimeout(() => searchRoutesRef.current(), 200); } },
                         { text: 'OK' }
                     ]);
-                } else { Alert.alert('Erreur', errMsg || 'Erreur serveur'); }
+                } else { Alert.alert(t('message.error'), errMsg || t('navigation.serverError')); }
             }
             else if (response?.data?.routes?.length > 0) {
                 const valid = response.data.routes.filter((r: any) => r?.overview_polyline && r.distance_meters > 0 && r.duration_seconds > 0 && Array.isArray(r.steps));
-                if (!valid.length) { Alert.alert('Aucun itinéraire', 'Aucun itinéraire valide trouvé.'); setLoading(false); return; }
+                if (!valid.length) { Alert.alert(t('navigation.noRoute'), t('navigation.noRouteFound')); setLoading(false); return; }
                 setRoutes(valid); setSelectedRoute(valid[0]);
                 try { await loadPointsOfInterestSafely(valid[0]); setTimeout(() => loadCheckpointsSafely(), 800); } catch { }
-            } else { Alert.alert('Aucun itinéraire', `Aucune route trouvée pour le mode ${modeLabel}.`); }
+            } else { Alert.alert(t('navigation.noRoute'), t('navigation.noRouteForMode', { mode: modeLabel })); }
         } catch (e: any) {
             const errMsg = e?.data?.message || e?.data?.error || e?.message || e?.error || '';
             const errLower = errMsg.toLowerCase();
             if (errLower.includes('mode') || errLower.includes('non disponible') || errLower.includes('zero_results') || errLower.includes('aucun itin')) {
-                Alert.alert(`Mode ${modeLabel} indisponible`, `Le mode ${modeLabel} n'est pas disponible pour ce trajet dans cette région.\n\nEssayez un autre mode de transport.`, [
-                    { text: '🚗 Voiture', onPress: () => { setTravelMode('driving'); setTimeout(() => searchRoutesRef.current(), 200); } },
-                    { text: '🚶 À pied', onPress: () => { setTravelMode('walking'); setTimeout(() => searchRoutesRef.current(), 200); } },
+                Alert.alert(t('navigation.modeUnavailable', { mode: modeLabel }), t('navigation.modeUnavailableMsg', { mode: modeLabel }), [
+                    { text: `🚗 ${t('navigation.car')}`, onPress: () => { setTravelMode('driving'); setTimeout(() => searchRoutesRef.current(), 200); } },
+                    { text: `🚶 ${t('navigation.walking')}`, onPress: () => { setTravelMode('walking'); setTimeout(() => searchRoutesRef.current(), 200); } },
                     { text: 'OK' }
                 ]);
-            } else { Alert.alert('Erreur', errMsg || 'Erreur réseau'); }
+            } else { Alert.alert(t('message.error'), errMsg || t('navigation.networkError')); }
         } finally { setLoading(false); }
     }, [destination, destinationCoords, selectedLocation, getCurrentPosition, geocodeDestination, avoidTolls, avoidHighways, avoidFerries, waypoints, travelMode]);
     useEffect(() => { searchRoutesRef.current = searchRoutes; }, [searchRoutes]);
@@ -507,20 +508,20 @@ const NavigationScreen: React.FC = () => {
                 const url = Platform.select({ ios: `maps://app?daddr=${destinationCoords.lat},${destinationCoords.lng}&dirflg=d`, android: `google.navigation:q=${destinationCoords.lat},${destinationCoords.lng}`, default: `https://www.google.com/maps/dir/?api=1&destination=${destinationCoords.lat},${destinationCoords.lng}&travelmode=driving` });
                 const can = await Linking.canOpenURL(url || ''); if (can) await Linking.openURL(url || ''); else await Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${destinationCoords.lat},${destinationCoords.lng}&travelmode=driving`);
             }
-        } catch { Alert.alert('Erreur', 'Impossible d\'ouvrir la navigation'); }
+        } catch { Alert.alert(t('message.error'), t('navigation.cannotOpenNav')); }
     }, [destinationCoords, waypoints, getCurrentPosition]);
 
     const saveDestination = useCallback(async (label: string, customLabel?: string) => {
         if (!destinationCoords) return;
-        try { const r = await apiPost('/api/navigation/destinations', { label, custom_label: customLabel, address: destination, latitude: destinationCoords.lat, longitude: destinationCoords.lng, place_id: null }); if (r?.data) { Alert.alert('Succès', `Destination enregistrée`); loadSavedDestinations(); } } catch (e: any) { Alert.alert('Erreur', e?.message || 'Erreur'); }
+        try { const r = await apiPost('/api/navigation/destinations', { label, custom_label: customLabel, address: destination, latitude: destinationCoords.lat, longitude: destinationCoords.lng, place_id: null }); if (r?.data) { Alert.alert(t('message.success'), t('navigation.destinationSaved')); loadSavedDestinations(); } } catch (e: any) { Alert.alert(t('message.error'), e?.message || t('message.error')); }
     }, [destinationCoords, destination, loadSavedDestinations]);
 
     const addWaypoint = useCallback((poi: PointOfInterest) => {
         const lat = getPoiLat(poi), lng = getPoiLng(poi);
-        if (waypoints.some(wp => wp.lat === lat && wp.lng === lng)) { Alert.alert('Déjà ajouté'); return; }
+        if (waypoints.some(wp => wp.lat === lat && wp.lng === lng)) { Alert.alert(t('navigation.alreadyAdded')); return; }
         const safeName = typeof poi.name === 'string' ? poi.name : (typeof poi.name === 'object' && poi.name !== null ? (poi.name as any).name || (poi.name as any).text || JSON.stringify(poi.name) : 'Nom inconnu');
         setWaypoints(prev => [...prev, { lat, lng, name: safeName }]);
-        Alert.alert('Étape ajoutée', `${safeName} ajouté`);
+        Alert.alert(t('navigation.stepAdded'), t('navigation.stepAddedMsg', { name: safeName }));
     }, [waypoints]);
     const removeWaypoint = useCallback((i: number) => { setWaypoints(prev => prev.filter((_, idx) => idx !== i)); }, []);
     const toggleCategory = useCallback((k: string) => { setExpandedCategories(prev => ({ ...prev, [k]: !prev[k] })); }, []);
@@ -639,21 +640,21 @@ const NavigationScreen: React.FC = () => {
         const typeIcon = CHECKPOINT_LABELS[type]?.icon || '⚠️';
         // Demander confirmation AVANT d'envoyer le signalement
         Alert.alert(
-            `${typeIcon} Confirmer le signalement`,
-            `Voulez-vous vraiment signaler : ${typeLabel} ?`,
+            `${typeIcon} ${t('message.confirm')}`,
+            `${typeLabel} ?`,
             [
-                { text: 'Annuler', style: 'cancel' },
+                { text: t('message.cancel'), style: 'cancel' },
                 {
-                    text: 'Confirmer',
+                    text: t('message.confirm'),
                     style: 'default',
                     onPress: async () => {
-                        let pos = livePosition; if (!pos) pos = await getCurrentPosition(); if (!pos) { Alert.alert('Erreur', 'GPS indisponible'); return; }
+                        let pos = livePosition; if (!pos) pos = await getCurrentPosition(); if (!pos) { Alert.alert(t('message.error'), t('navigation.positionUnavailable')); return; }
                         try {
                             await apiPost('/api/navigation/checkpoints', { checkpoint_type: type, latitude: pos.lat, longitude: pos.lng, is_permanent: type === 'speed_bump' });
                             checkpointsReportedRef.current += 1;
-                            showConfirmationToast(`✅ ${typeLabel} signalé avec succès !`, '✅');
+                            showConfirmationToast(`✅ ${t('navigation.checkpointAdded')}`, '✅');
                             loadCheckpointsSafely();
-                        } catch { Alert.alert('Erreur', 'Échec du signalement'); }
+                        } catch { Alert.alert(t('message.error'), t('navigation.errorAddCheckpoint')); }
                     }
                 }
             ]
@@ -785,15 +786,15 @@ const NavigationScreen: React.FC = () => {
             // Recharger l'historique pour refléter les nouveaux votes
             setTimeout(() => loadAlertHistory(), 500);
         } catch {
-            Alert.alert('Erreur', 'Échec du vote');
+            Alert.alert(t('message.error'), t('navigation.voteFailed'));
         }
     }, [showConfirmationToast, loadAlertHistory]);
 
     const startTracking = useCallback(async () => {
         if (!selectedRoute || isTracking) return;
-        if (!selectedRoute.distance_meters || !selectedRoute.duration_seconds) { Alert.alert('Erreur', 'Itinéraire invalide'); return; }
+        if (!selectedRoute.distance_meters || !selectedRoute.duration_seconds) { Alert.alert(t('message.error'), t('navigation.invalidRoute')); return; }
         const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== 'granted') { Alert.alert('Permission requise'); return; }
+        if (status !== 'granted') { Alert.alert(t('navigation.permissionRequired')); return; }
         trackingStartTimeRef.current = new Date().toISOString(); speedSamplesRef.current = []; maxSpeedRef.current = 0; distanceTraveledRef.current = 0; lastPositionRef.current = null; checkpointsReportedRef.current = 0; checkpointsEncounteredRef.current = 0; wasOffRouteRef.current = false; encounteredCheckpointIdsRef.current = new Map();
         setIsTracking(true); setNextStepIndex(0); setDistanceRemaining(selectedRoute.distance_meters || 1000); setDurationRemaining(selectedRoute.duration_in_traffic_seconds || selectedRoute.duration_seconds || 300);
         loadCheckpointsSafely();
@@ -859,7 +860,7 @@ const NavigationScreen: React.FC = () => {
     const startFreeWalking = useCallback(async () => {
         if (isTracking || isFreeWalking) return;
         const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== 'granted') { Alert.alert('Permission requise', 'Veuillez autoriser la localisation pour le suivi de marche'); return; }
+        if (status !== 'granted') { Alert.alert(t('navigation.permissionRequired'), t('navigation.allowLocationWalking')); return; }
         trackingStartTimeRef.current = new Date().toISOString();
         speedSamplesRef.current = []; maxSpeedRef.current = 0; distanceTraveledRef.current = 0;
         lastPositionRef.current = null; checkpointsReportedRef.current = 0;
@@ -1014,9 +1015,9 @@ const NavigationScreen: React.FC = () => {
         const backAction = () => {
             // Si en marche libre, demander confirmation avant d'arrêter
             if (isFreeWalking) {
-                Alert.alert('Arrêter la marche ?', 'Votre activité sera enregistrée.', [
-                    { text: 'Continuer', style: 'cancel' },
-                    { text: 'Arrêter', style: 'destructive', onPress: () => stopFreeWalking() }
+                Alert.alert(t('navigation.stopWalking'), t('navigation.activityWillBeSaved'), [
+                    { text: t('navigation.continueWalking'), style: 'cancel' },
+                    { text: t('navigation.stop'), style: 'destructive', onPress: () => stopFreeWalking() }
                 ]);
                 return true;
             }
@@ -1049,9 +1050,9 @@ const NavigationScreen: React.FC = () => {
                         <View style={st.headerLeft}>
                             <TouchableOpacity onPress={() => {
                                 if (isFreeWalking) {
-                                    Alert.alert('Arrêter la marche ?', 'Votre activité sera enregistrée.', [
-                                        { text: 'Continuer', style: 'cancel' },
-                                        { text: 'Arrêter', style: 'destructive', onPress: () => stopFreeWalking() }
+                                    Alert.alert(t('navigation.stopWalking'), t('navigation.activityWillBeSaved'), [
+                                        { text: t('navigation.continueWalking'), style: 'cancel' },
+                                        { text: t('navigation.stop'), style: 'destructive', onPress: () => stopFreeWalking() }
                                     ]);
                                 } else if (showActivityStats || showAlertHistory) {
                                     setShowActivityStats(false);
@@ -2026,7 +2027,7 @@ const NavigationScreen: React.FC = () => {
                                 </TouchableOpacity>
                                 {destinationCoords && (
                                     <View style={st.destActions}>
-                                        <TouchableOpacity style={st.actChip} onPress={() => Alert.alert('Enregistrer', 'Type ?', [{ text: '🏠 Domicile', onPress: () => saveDestination('domicile') }, { text: '💼 Bureau', onPress: () => saveDestination('bureau') }, { text: '⭐ Favori', onPress: () => saveDestination('autre', destination.substring(0, 30) || 'Favori') }, { text: 'Annuler', style: 'cancel' }])}>
+                                        <TouchableOpacity style={st.actChip} onPress={() => Alert.alert(t('navigation.destinationSaved'), '', [{ text: '🏠 Domicile', onPress: () => saveDestination('domicile') }, { text: '💼 Bureau', onPress: () => saveDestination('bureau') }, { text: '⭐ Favori', onPress: () => saveDestination('autre', destination.substring(0, 30) || 'Favori') }, { text: t('message.cancel'), style: 'cancel' }])}>
                                             <Text style={{ fontSize: 12 }}>🔖</Text>
                                             <Text style={st.actChipTxt}>Enregistrer</Text>
                                         </TouchableOpacity>
@@ -2037,8 +2038,8 @@ const NavigationScreen: React.FC = () => {
                                         <TouchableOpacity style={st.actChip} onPress={async () => {
                                             const p = await getCurrentPosition();
                                             if (p) {
-                                                setWaypoints([...waypoints, { lat: p.lat, lng: p.lng, name: 'Position actuelle' }]);
-                                                Alert.alert('Étape ajoutée');
+                                                setWaypoints([...waypoints, { lat: p.lat, lng: p.lng, name: t('navigation.myPosition') }]);
+                                                Alert.alert(t('navigation.stepAdded'));
                                             }
                                         }}>
                                             <Text style={{ fontSize: 12 }}>➕</Text>
@@ -2053,7 +2054,7 @@ const NavigationScreen: React.FC = () => {
                                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8, paddingHorizontal: 14, marginBottom: 10, borderRadius: 10, backgroundColor: '#10B98112', borderWidth: 1, borderColor: '#10B98130' }}>
                                     <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#10B981' }} />
                                     <Text style={{ flex: 1, fontSize: 12, color: '#059669', fontWeight: '600' }}>Suivi automatique actif — vos déplacements sont enregistrés</Text>
-                                    <TouchableOpacity onPress={async () => { await PassiveActivityTracker.stop(); setPassiveTrackingActive(false); showToast('Suivi automatique désactivé'); }}>
+                                    <TouchableOpacity onPress={async () => { await PassiveActivityTracker.stop(); setPassiveTrackingActive(false); showToast('OK'); }}>
                                         <Text style={{ fontSize: 11, color: modernColors.textSecondary, textDecorationLine: 'underline' }}>Désactiver</Text>
                                     </TouchableOpacity>
                                 </View>
@@ -2061,7 +2062,7 @@ const NavigationScreen: React.FC = () => {
                             {!passiveTrackingActive && (
                                 <TouchableOpacity
                                     style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8, paddingHorizontal: 14, marginBottom: 10, borderRadius: 10, backgroundColor: '#FEF3C7', borderWidth: 1, borderColor: '#FDE68A' }}
-                                    onPress={async () => { const ok = await PassiveActivityTracker.start(); setPassiveTrackingActive(ok); if (ok) showToast('✅ Suivi automatique activé !'); else Alert.alert('Permission requise', 'Veuillez autoriser la localisation en arrière-plan pour le suivi automatique de vos activités.'); }}
+                                    onPress={async () => { const ok = await PassiveActivityTracker.start(); setPassiveTrackingActive(ok); if (ok) showToast('✅ OK'); else Alert.alert(t('navigation.permissionRequired'), t('navigation.allowLocation')); }}
                                 >
                                     <Text style={{ fontSize: 14 }}>⚠️</Text>
                                     <Text style={{ flex: 1, fontSize: 12, color: '#92400E', fontWeight: '600' }}>Suivi automatique inactif — Appuyez pour activer</Text>

@@ -65,6 +65,8 @@ pub async fn search_livres_scolaires(
         rayon_km: params.rayon_km,
         limit: params.limit,
         offset: params.offset,
+        mode_listing: None,
+        etat_classification: None,
     };
 
     let service = Service::new(Arc::new(state.pg.clone()));
