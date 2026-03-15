@@ -834,7 +834,7 @@ const ResultatBesoinScreen: React.FC = () => {
                 }
             }
             const productName = product.nom || 'Ce produit';
-            const SHARE_BASE_URL = process.env.EXPO_PUBLIC_SHARE_URL || 'https://yukpo-backend-376093909298.europe-west1.run.app';
+            const SHARE_BASE_URL = process.env.EXPO_PUBLIC_SHARE_URL || 'https://yukpomnang.com';
             const shareUrl = `${SHARE_BASE_URL}/product/${product.product_index ?? 0}?serviceId=${product.service_id}`;
             const shareMessage = `🌟 Découvrez "${productName}" sur Yukpomnang\n\n${shareUrl}`;
             const result = await Share.share({

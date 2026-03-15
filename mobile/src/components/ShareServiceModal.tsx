@@ -14,7 +14,7 @@ interface ShareServiceModalProps {
 }
 
 // ✅ CORRIGÉ: Utiliser l'URL du backend Cloud Run qui sert la route /service/:id
-const SHARE_BASE_URL = process.env.EXPO_PUBLIC_SHARE_URL || 'https://yukpo-backend-376093909298.europe-west1.run.app';
+const SHARE_BASE_URL = process.env.EXPO_PUBLIC_SHARE_URL || 'https://yukpomnang.com';
 const getServiceUrl = (serviceId: string) => `${SHARE_BASE_URL}/service/${serviceId}`;
 
 const ShareServiceModal: React.FC<ShareServiceModalProps> = ({ open, onClose, serviceId, titre, description, prix, devise }) => {

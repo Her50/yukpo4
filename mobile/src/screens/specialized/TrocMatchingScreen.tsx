@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import SafeIcon from '../../components/SafeIcon';
 import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { apiPost } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 
@@ -43,6 +44,7 @@ interface MatchingChaine {
 const TrocMatchingScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
+    const { t } = useLanguageSafe();
     const params = route.params as any;
     const livreId = params?.livreId as number;
     const initialMatchings = params?.matchings as any;
@@ -76,11 +78,11 @@ const TrocMatchingScreen: React.FC = () => {
                 setDirectMatches(matchings.matches || []);
                 setChainMatches(matchings.chaines || []);
             } else {
-                Alert.alert('Erreur', 'Impossible de trouver des matchings');
+                Alert.alert(t('message.error'), t('trocMatching.noMatchings'));
             }
         } catch (error: any) {
             console.error('[TrocMatchingScreen] Erreur:', error);
-            Alert.alert('Erreur', error.message || 'Impossible de charger les matchings');
+            Alert.alert(t('message.error'), error.message || t('trocMatching.cannotLoadMatchings'));
         } finally {
             setLoading(false);
         }
@@ -97,8 +99,8 @@ const TrocMatchingScreen: React.FC = () => {
 
             if (response.success) {
                 Alert.alert(
-                    'Succès',
-                    'Troc proposé ! Le participant recevra une notification.',
+                    t('message.success'),
+                    t('trocMatching.trocProposed'),
                     [
                         {
                             text: 'Voir mes trocs',
@@ -113,10 +115,10 @@ const TrocMatchingScreen: React.FC = () => {
                     ]
                 );
             } else {
-                Alert.alert('Erreur', response.error || 'Impossible de créer le troc');
+                Alert.alert(t('message.error'), response.error || t('trocMatching.cannotCreateTroc'));
             }
         } catch (error: any) {
-            Alert.alert('Erreur', error.message || 'Une erreur est survenue');
+            Alert.alert(t('message.error'), error.message || t('trocMatching.genericError'));
         } finally {
             setCreating(false);
         }
@@ -131,8 +133,8 @@ const TrocMatchingScreen: React.FC = () => {
 
             if (response.success) {
                 Alert.alert(
-                    'Succès',
-                    `Chaîne de ${chaine.nombre_participants} personnes créée ! Tous les participants seront notifiés.`,
+                    t('message.success'),
+                    t('trocMatching.chainCreated', { count: chaine.nombre_participants }),
                     [
                         {
                             text: 'Voir mes trocs',
@@ -147,10 +149,10 @@ const TrocMatchingScreen: React.FC = () => {
                     ]
                 );
             } else {
-                Alert.alert('Erreur', response.error || 'Impossible de créer la chaîne');
+                Alert.alert(t('message.error'), response.error || t('trocMatching.cannotCreateChain'));
             }
         } catch (error: any) {
-            Alert.alert('Erreur', error.message || 'Une erreur est survenue');
+            Alert.alert(t('message.error'), error.message || t('trocMatching.genericError'));
         } finally {
             setCreating(false);
         }

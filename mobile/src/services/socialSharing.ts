@@ -26,7 +26,7 @@ class SocialSharingService {
     }): Promise<boolean> {
         try {
             const message = `🚌 Voyage ${trip.departure} → ${trip.arrival}\n📅 ${trip.date}\n💰 ${trip.price.toLocaleString()} FCFA\n🏢 ${trip.agency}\n\nRéservez sur Yukpo !`;
-            const url = `https://yukpo-backend-376093909298.europe-west1.run.app/trips/${trip.departure}-${trip.arrival}`;
+            const url = `https://yukpomnang.com/trips/${trip.departure}-${trip.arrival}`;
 
             const result = await Share.share({
                 message: `${message}\n${url}`,
@@ -60,7 +60,7 @@ class SocialSharingService {
     }): Promise<boolean> {
         try {
             const message = `✅ J'ai réservé ${ticket.seats} place(s) pour ${ticket.departure} → ${ticket.arrival} le ${ticket.date} sur Yukpo !`;
-            const url = `https://yukpo-backend-376093909298.europe-west1.run.app/tickets/${ticket.id}`;
+            const url = `https://yukpomnang.com/tickets/${ticket.id}`;
 
             const result = await Share.share({
                 message: `${message}\n${url}`,
@@ -92,7 +92,7 @@ class SocialSharingService {
     }): Promise<boolean> {
         try {
             const message = `🎉 ${promotion.title}\n${promotion.description}\n💰 Réduction de ${promotion.discount}%${promotion.code ? `\n🎫 Code: ${promotion.code}` : ''}\n\nProfitez-en sur Yukpo !`;
-            const url = 'https://yukpo-backend-376093909298.europe-west1.run.app/promotions';
+            const url = 'https://yukpomnang.com/promotions';
 
             const result = await Share.share({
                 message: `${message}\n${url}`,
@@ -151,7 +151,7 @@ class SocialSharingService {
             lines.push(`Rejoins-moi sur Yukpo ! 🚀`);
             // URL de la page de partage backend (avec OG tags pour preview WhatsApp/Facebook + deep link + store fallback)
             if (stats.userId) {
-                lines.push(`https://yukpo-backend-376093909298.europe-west1.run.app/navigation/share/${stats.userId}`);
+                lines.push(`https://yukpomnang.com/navigation/share/${stats.userId}`);
             } else {
                 lines.push(Platform.OS === 'ios'
                     ? 'https://apps.apple.com/app/yukpomnang'

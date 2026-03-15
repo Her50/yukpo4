@@ -276,7 +276,7 @@ const ServicesScreen: React.FC = () => {
   const handleShareService = async (service: Service) => {
     try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch (_) { }
     try {
-      const SHARE_BASE_URL = process.env.EXPO_PUBLIC_SHARE_URL || 'https://yukpo-backend-376093909298.europe-west1.run.app';
+      const SHARE_BASE_URL = process.env.EXPO_PUBLIC_SHARE_URL || 'https://yukpomnang.com';
       const shareUrl = `${SHARE_BASE_URL}/service/${service.id}`;
       const titre = service.title || service.titre || 'Service <Text style={styles.brandYuk}>Yuk</Text><Text style={styles.brandPo}>po</Text>';
       const description = service.description || '';

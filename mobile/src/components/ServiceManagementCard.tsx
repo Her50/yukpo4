@@ -186,7 +186,7 @@ const ServiceManagementCard: React.FC<ServiceManagementCardProps> = ({
     // Fonction pour partager un service
     const shareService = async () => {
         try {
-            const SHARE_BASE_URL = process.env.EXPO_PUBLIC_SHARE_URL || 'https://yukpo-backend-376093909298.europe-west1.run.app';
+            const SHARE_BASE_URL = process.env.EXPO_PUBLIC_SHARE_URL || 'https://yukpomnang.com';
             const serviceUrl = `${SHARE_BASE_URL}/service/${service.id}`;
 
             const description = service.description || service.data?.description?.valeur || '';

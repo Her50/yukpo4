@@ -19,6 +19,7 @@ import NativeDatePicker from '../../components/NativeDatePicker';
 import NativeTimePicker from '../../components/NativeTimePicker';
 import SafeIcon from '../../components/SafeIcon';
 import { VEHICLE_TRANSPORT_OPTIONS, VEHICLE_TRANSPORT_OPTIONS_FOR_ALERT } from '../../config/deliveryConfig';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { CreateDeliveryRequestPayload, deliveryApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
@@ -42,6 +43,7 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
     onSuccess,
 }) => {
     const { location: userLocation } = useLocation();
+    const { t } = useLanguageSafe();
     const [loading, setLoading] = useState(false);
     const [loadingLocation, setLoadingLocation] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -211,8 +213,8 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
             const { status } = await Location.requestForegroundPermissionsAsync();
             if (status !== 'granted') {
                 Alert.alert(
-                    'Permission requise',
-                    'L\'accès à la localisation est nécessaire pour utiliser votre position actuelle.'
+                    t('deliveryParcel.permissionRequired'),
+                    t('deliveryParcel.locationPermissionMsg')
                 );
                 return;
             }
@@ -248,7 +250,7 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
             }
         } catch (error) {
             console.error('Erreur géolocalisation:', error);
-            Alert.alert('Erreur', 'Impossible d\'obtenir votre position. Vérifiez que le GPS est activé.');
+            Alert.alert(t('message.error'), t('deliveryParcel.cannotGetPosition'));
         } finally {
             setLoadingLocation(false);
         }
@@ -329,8 +331,8 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
 
         if (Object.keys(newErrors).length > 0) {
             Alert.alert(
-                'Formulaire incomplet',
-                'Veuillez corriger les erreurs avant de continuer.',
+                t('deliveryParcel.formIncomplete'),
+                t('deliveryParcel.fixErrors'),
                 [{ text: 'OK' }]
             );
             return;
@@ -416,8 +418,8 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
 
             if (result.success && result.data?.id) {
                 Alert.alert(
-                    'Livraison créée',
-                    'Votre demande de livraison a été créée avec succès. Le matching des coursiers est en cours.',
+                    t('deliveryParcel.deliveryCreated'),
+                    t('deliveryParcel.deliveryCreatedMsg'),
                     [
                         {
                             text: 'OK',
@@ -432,12 +434,12 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
                     ]
                 );
             } else {
-                const errorMessage = (result as any).error || (result as any).message || 'Impossible de créer la livraison';
-                Alert.alert('Erreur', errorMessage);
+                const errorMessage = (result as any).error || (result as any).message || t('deliveryParcel.cannotCreate');
+                Alert.alert(t('message.error'), errorMessage);
             }
         } catch (error: any) {
             console.error('Erreur création livraison:', error);
-            Alert.alert('Erreur', error.message || 'Une erreur est survenue lors de la création de la livraison');
+            Alert.alert(t('message.error'), error.message || t('deliveryParcel.createError'));
         } finally {
             setLoading(false);
         }
@@ -731,8 +733,8 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
                                             style={styles.pickerButton}
                                             onPress={() => {
                                                 Alert.alert(
-                                                    'Température',
-                                                    'Quelle température requise pour le gâteau ?',
+                                                    t('deliveryParcel.temperature'),
+                                                    t('deliveryParcel.temperatureMsg'),
                                                     [
                                                         { text: 'Tempéré', onPress: () => setCakeTemperature('tempéré') },
                                                         { text: 'Froid', onPress: () => setCakeTemperature('froid') },
@@ -754,8 +756,8 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
                                             style={styles.pickerButton}
                                             onPress={() => {
                                                 Alert.alert(
-                                                    'Fragilité',
-                                                    'Quel est le niveau de fragilité ?',
+                                                    t('deliveryParcel.fragility'),
+                                                    t('deliveryParcel.fragilityMsg'),
                                                     [
                                                         { text: 'Standard', onPress: () => setCakeFragility('standard') },
                                                         { text: 'Fragile', onPress: () => setCakeFragility('fragile') },
@@ -988,8 +990,8 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
                                         style={styles.pickerButton}
                                         onPress={() => {
                                             Alert.alert(
-                                                'Niveau d\'urgence',
-                                                'Choisissez le niveau d\'urgence',
+                                                t('deliveryParcel.urgencyLevel'),
+                                                t('deliveryParcel.chooseUrgency'),
                                                 [
                                                     { text: 'Standard', onPress: () => setUrgencyLevel('standard') },
                                                     { text: 'Urgent', onPress: () => setUrgencyLevel('urgent') },

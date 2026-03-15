@@ -209,7 +209,7 @@ const playContextualAlert = async (checkpointType: string, distanceMeters: numbe
     } catch (e) { console.warn('[NavigationScreen] TTS fallback error:', e); }
 };
 
-const SHARE_BASE_URL = 'https://yukpo-backend-376093909298.europe-west1.run.app';
+const SHARE_BASE_URL = 'https://yukpomnang.com';
 
 const NavigationScreen: React.FC = () => {
     const navigation = useNavigation();

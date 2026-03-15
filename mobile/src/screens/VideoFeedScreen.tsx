@@ -754,7 +754,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
     const handleShare = useCallback(async (item: FeedItem) => {
         try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch (_) { }
         try {
-            const SHARE_BASE_URL = process.env.EXPO_PUBLIC_SHARE_URL || 'https://yukpo-backend-376093909298.europe-west1.run.app';
+            const SHARE_BASE_URL = process.env.EXPO_PUBLIC_SHARE_URL || 'https://yukpomnang.com';
             const shareUrl = item.serviceId
                 ? `${SHARE_BASE_URL}/product/${item.serviceId}_${item.productIndex ?? 0}`
                 : item.videoUrl;

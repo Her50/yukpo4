@@ -24,9 +24,8 @@ export const generateSmartShareLink = (
   productId: string | number,
   serviceId: string | number
 ): string => {
-  // ✅ CORRIGÉ 2026-02-27: Utiliser l'URL du backend Cloud Run qui sert la route /product/:id
-  // yukpomnang.com ne route PAS vers le backend — le backend Cloud Run est le seul qui sert cette page
-  const baseUrl = process.env.EXPO_PUBLIC_SHARE_URL || 'https://yukpo-backend-376093909298.europe-west1.run.app';
+  // ✅ CORRIGÉ 2026-03-15: Utiliser le domaine personnalisé yukpomnang.com (via Cloudflare Worker → Cloud Run)
+  const baseUrl = process.env.EXPO_PUBLIC_SHARE_URL || 'https://yukpomnang.com';
   return `${baseUrl}/product/${productId}?serviceId=${serviceId}`;
 };
 

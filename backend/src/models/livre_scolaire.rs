@@ -390,8 +390,8 @@ pub const RATIO_ETAT_BON: f64 = 0.70;
 pub const RATIO_ETAT_ACCEPTABLE: f64 = 0.40;
 pub const RATIO_ETAT_REJETE: f64 = 0.0;
 
-/// Taux de commission de l'application (10%)
-pub const TAUX_COMMISSION_APP: f64 = 0.10;
+/// Taux de commission de l'application (20%)
+pub const TAUX_COMMISSION_APP: f64 = 0.20;
 
 /// Calculer la valeur d'un livre selon son état et son prix détecté
 pub fn calculer_valeur_livre(prix_detecte: f64, etat_classification: &str) -> (f64, f64) {
