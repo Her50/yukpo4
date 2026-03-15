@@ -505,3 +505,90 @@ pub async fn get_user_conversations(
 ) -> AppResult<Json<serde_json::Value>> {
     Err(AppError::NotImplemented("Fonction à implémenter".into()))
 }
+
+/// GET /api/user/payment-methods - Récupère les moyens de paiement sauvegardés
+pub async fn get_user_payment_methods(
+    Extension(user): Extension<AuthenticatedUser>,
+    State(state): State<Arc<AppState>>,
+) -> AppResult<Json<serde_json::Value>> {
+    let row: Option<(Option<serde_json::Value>,)> =
+        sqlx::query_as("SELECT payment_methods FROM users WHERE id = $1")
+            .bind(user.id)
+            .fetch_optional(&state.pg)
+            .await
+            .map_err(|e| {
+                error!("[get_user_payment_methods] Erreur: {e:?}");
+                AppError::Internal("Erreur récupération moyens de paiement".into())
+            })?;
+
+    let payment_methods = row.and_then(|r| r.0).unwrap_or_else(|| serde_json::json!({}));
+
+    // Déterminer si l'utilisateur a au moins un moyen de paiement configuré
+    let has_mtn = payment_methods
+        .get("mtn_money")
+        .and_then(|v| v.get("phone"))
+        .and_then(|v| v.as_str())
+        .map(|s| !s.is_empty())
+        .unwrap_or(false);
+    let has_orange = payment_methods
+        .get("orange_money")
+        .and_then(|v| v.get("phone"))
+        .and_then(|v| v.as_str())
+        .map(|s| !s.is_empty())
+        .unwrap_or(false);
+    let has_card = payment_methods
+        .get("carte_bancaire")
+        .and_then(|v| v.get("cardNumber"))
+        .and_then(|v| v.as_str())
+        .map(|s| !s.is_empty())
+        .unwrap_or(false);
+    let has_any = has_mtn || has_orange || has_card;
+
+    Ok(Json(serde_json::json!({
+        "success": true,
+        "payment_methods": payment_methods,
+        "has_payment_method": has_any,
+        "has_mtn_money": has_mtn,
+        "has_orange_money": has_orange,
+        "has_bank_card": has_card,
+    })))
+}
+
+/// PUT /api/user/payment-methods - Sauvegarde les moyens de paiement
+pub async fn save_user_payment_methods(
+    Extension(user): Extension<AuthenticatedUser>,
+    State(state): State<Arc<AppState>>,
+    Json(input): Json<serde_json::Value>,
+) -> AppResult<Json<serde_json::Value>> {
+    info!(
+        "[save_user_payment_methods] Mise à jour pour user_id={}",
+        user.id
+    );
+
+    // Valider la structure minimale
+    let payment_methods = if let Some(pm) = input.get("payment_methods") {
+        pm.clone()
+    } else {
+        input.clone()
+    };
+
+    sqlx::query("UPDATE users SET payment_methods = $1, updated_at = NOW() WHERE id = $2")
+        .bind(&payment_methods)
+        .bind(user.id)
+        .execute(&state.pg)
+        .await
+        .map_err(|e| {
+            error!("[save_user_payment_methods] Erreur: {e:?}");
+            AppError::Internal("Erreur sauvegarde moyens de paiement".into())
+        })?;
+
+    info!(
+        "[save_user_payment_methods] Moyens de paiement mis à jour pour user_id={}",
+        user.id
+    );
+
+    Ok(Json(serde_json::json!({
+        "success": true,
+        "message": "Moyens de paiement sauvegardés",
+    })))
+}

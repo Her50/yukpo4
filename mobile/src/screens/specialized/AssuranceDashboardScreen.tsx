@@ -299,6 +299,7 @@ const AssuranceDashboardScreen: React.FC = () => {
                     { label: 'Émettre police', icon: 'file-plus', color: '#10B981', onPress: () => setActiveTab('policies') },
                     { label: 'Sinistres', icon: 'alert-triangle', color: '#F59E0B', onPress: () => setActiveTab('claims') },
                     { label: 'Devis IA', icon: 'cpu', color: '#7C3AED', onPress: () => (navigation as any).navigate('InsuranceQuoteRequest') },
+                    { label: 'Portefeuille', icon: 'wallet', color: '#10B981', onPress: () => (navigation as any).navigate('WalletFinancial') },
                 ].map((a, i) => (
                     <TouchableOpacity key={i} style={s.quickAction} onPress={a.onPress}>
                         <View style={[s.quickIcon, { backgroundColor: a.color + '15' }]}>

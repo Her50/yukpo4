@@ -378,6 +378,12 @@ const HotelDashboardScreen: React.FC = () => {
                     </View>
                     <Text style={styles.quickActionLabel}>IA Insights</Text>
                 </TouchableOpacity>
+                <TouchableOpacity style={styles.quickAction} onPress={() => (navigation as any).navigate('WalletFinancial')}>
+                    <View style={[styles.quickActionIcon, { backgroundColor: '#10B98115' }]}>
+                        <SafeIcon name="wallet" size={22} color="#10B981" />
+                    </View>
+                    <Text style={styles.quickActionLabel}>Portefeuille</Text>
+                </TouchableOpacity>
             </View>
 
             {/* Pending reservations */}

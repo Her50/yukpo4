@@ -111,6 +111,7 @@ const AutomobileDashboardScreen: React.FC = () => {
                     { label: 'Ajouter véhicule', icon: 'plus-circle', color: '#F59E0B', onPress: () => setActiveTab('vehicles') },
                     { label: 'Recherche', icon: 'search', color: '#3B82F6', onPress: () => (navigation as any).navigate('AutoServicesSearch') },
                     { label: 'Statistiques', icon: 'bar-chart-2', color: '#8B5CF6', onPress: () => setActiveTab('analytics') },
+                    { label: 'Portefeuille', icon: 'wallet', color: '#10B981', onPress: () => (navigation as any).navigate('WalletFinancial') },
                 ].map((a, i) => (
                     <TouchableOpacity key={i} style={s.quickAction} onPress={a.onPress}>
                         <View style={[s.quickIcon, { backgroundColor: a.color + '15' }]}>

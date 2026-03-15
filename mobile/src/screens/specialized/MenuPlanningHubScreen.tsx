@@ -181,7 +181,7 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
             setRecipeRequest('');
             setLoadingRecipe(false);
             if (result.source === 'local') {
-                toaster?.show?.('Recette générée localement — résultats approximatifs', 'info');
+                toaster?.show?.(t('menuPlanning.recipeLocalApprox'), 'info');
             }
             setTimeout(() => setShowRecipeDetails(true), 200);
         } else {

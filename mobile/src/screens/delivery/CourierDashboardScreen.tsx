@@ -235,18 +235,10 @@ const CourierDashboardScreen: React.FC = () => {
                             }}
                         />
                         <NativeButton
-                            title="💰 Voir mes gains"
+                            title="💰 Mon portefeuille"
                             variant="outline"
                             onPress={() => {
-                                // ✅ FIX 2026-03-14: Afficher le détail des gains
-                                Alert.alert(
-                                    'Détail des gains',
-                                    `Gains totaux: ${safeStats.totalEarnings.toFixed(0)} XAF\n` +
-                                    `Ce mois-ci: ${safeStats.currentMonthEarnings.toFixed(0)} XAF\n` +
-                                    `Livraisons: ${safeStats.completedDeliveries}\n` +
-                                    `Moyenne par livraison: ${safeStats.completedDeliveries > 0 ? (safeStats.totalEarnings / safeStats.completedDeliveries).toFixed(0) : 0} XAF`,
-                                    [{ text: 'OK' }]
-                                );
+                                (navigation as any).navigate('WalletFinancial');
                             }}
                         />
                     </View>

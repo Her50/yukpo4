@@ -285,13 +285,13 @@ const PharmacieHomeScreen: React.FC = () => {
                 setAiSuggestions(result.data.suggestions);
             }
             if (result.source === 'local') {
-                toaster?.show?.('Réponse basée sur des données locales', 'info');
+                toaster?.show?.(t('pharmacieHome.responseLocalData'), 'info');
             } else {
-                toaster?.show?.('Réponse IA générée', 'success');
+                toaster?.show?.(t('pharmacieHome.aiResponseGenerated'), 'success');
             }
         } else {
             setAiResponse('Consultez votre pharmacien pour des conseils personnalisés.');
-            toaster?.show?.('IA temporairement indisponible', 'error');
+            toaster?.show?.(t('pharmacieHome.aiTemporarilyUnavailable'), 'error');
         }
     };
 
@@ -438,7 +438,7 @@ const PharmacieHomeScreen: React.FC = () => {
                 warnings: Array.isArray(dosage.warnings) ? dosage.warnings : [],
             });
             if (result.source === 'local') {
-                toaster?.show?.('Information basée sur des données locales', 'info');
+                toaster?.show?.(t('pharmacieHome.infoLocalData'), 'info');
             }
         } else {
             setShowDosageModal(false);
@@ -465,7 +465,7 @@ const PharmacieHomeScreen: React.FC = () => {
                     interaction.alternative_suggestions : [],
             });
             if (result.source === 'local') {
-                toaster?.show?.('Consultez votre pharmacien pour une vérification complète', 'info');
+                toaster?.show?.(t('pharmacieHome.consultPharmacistFull'), 'info');
             }
         } else {
             setShowInteractionsModal(false);
@@ -495,7 +495,7 @@ const PharmacieHomeScreen: React.FC = () => {
             }
         } catch (err: any) {
             console.warn('[PharmacieHome] Erreur vérification stock:', err);
-            toaster?.show?.('Impossible de vérifier le stock', 'error');
+            toaster?.show?.(t('pharmacieHome.cannotCheckStock'), 'error');
         }
     };
 

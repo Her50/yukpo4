@@ -149,6 +149,7 @@ reg('CreationServiceEtape1', () => import('../screens/CreationServiceEtape1'));
 reg('CreatorAnalytics', () => import('../screens/CreatorAnalyticsScreen'));
 reg('DashboardPrestataire', () => import('../screens/DashboardPrestataireScreen'));
 reg('Dashboard', () => import('../screens/DashboardScreen'));
+reg('WalletFinancial', () => import('../screens/WalletFinancialScreen'));
 reg('EnhancedSettings', () => import('../screens/EnhancedSettingsScreen'));
 reg('Error', () => import('../screens/ErrorScreen'));
 reg('FlashPromosActive', () => import('../screens/FlashPromosActiveScreen'));

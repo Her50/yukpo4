@@ -98,6 +98,7 @@ const OrientationPartnerDashboardScreen: React.FC = () => {
                     { label: 'Hub Orientation', icon: 'compass', color: '#10B981', onPress: () => (navigation as any).navigate('OrientationScolaireHub') },
                     { label: 'IA Recommandations', icon: 'brain', color: '#7C3AED', onPress: () => (navigation as any).navigate('OrientationAIRecommendations') },
                     { label: 'Programmes', icon: 'book-open', color: '#F59E0B', onPress: () => (navigation as any).navigate('ProgrammesList') },
+                    { label: 'Portefeuille', icon: 'wallet', color: '#8B5CF6', onPress: () => (navigation as any).navigate('WalletFinancial') },
                 ].map((a, i) => (
                     <TouchableOpacity key={i} style={s.quickAction} onPress={a.onPress}>
                         <View style={[s.quickIcon, { backgroundColor: a.color + '15' }]}>

@@ -200,12 +200,12 @@ const HopitalHomeScreen: React.FC = () => {
         if (result.success && result.data && Array.isArray(result.data) && result.data.length > 0) {
             setPathologyResults(result.data);
             if (result.source === 'local') {
-                toaster?.show?.('Résultats basés sur des données locales — consultez un médecin', 'info');
+                toaster?.show?.(t('hopitalHome.resultsLocalData'), 'info');
             } else {
-                toaster?.show?.(`${result.data.length} pathologie(s) trouvée(s)`, 'success');
+                toaster?.show?.(t('hopitalHome.pathologiesFound', { count: result.data.length }), 'success');
             }
         } else {
-            toaster?.show?.('Aucun résultat. Consultez un médecin généraliste.', 'info');
+            toaster?.show?.(t('hopitalHome.noResultConsultDoctor'), 'info');
             setPathologyResults([]);
         }
         setLoadingAI(false);

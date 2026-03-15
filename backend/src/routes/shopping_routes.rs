@@ -251,6 +251,316 @@ async fn get_wallet_balance(
     Ok(Json(json!({ "balance": balance })))
 }
 
+#[derive(Debug, Deserialize)]
+struct WalletTransactionsQuery {
+    limit: Option<i64>,
+    offset: Option<i64>,
+    #[serde(rename = "type")]
+    transaction_type: Option<String>,
+}
+
+/// ✅ Historique des transactions wallet (crédit, débit, remboursement, reversement)
+async fn get_wallet_transactions(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    axum::extract::Query(query): axum::extract::Query<WalletTransactionsQuery>,
+) -> AppResult<Json<Value>> {
+    let limit = query.limit.unwrap_or(50).min(200);
+    let offset = query.offset.unwrap_or(0);
+
+    let transactions = if let Some(ref txn_type) = query.transaction_type {
+        sqlx::query_as::<
+            _,
+            (
+                i64,
+                i32,
+                String,
+                i64,
+                i64,
+                i64,
+                String,
+                Option<String>,
+                Option<String>,
+                Option<uuid::Uuid>,
+                Option<String>,
+                chrono::DateTime<chrono::Utc>,
+            ),
+        >(
+            r#"
+            SELECT id, user_id, transaction_type, amount_cents,
+                   balance_before_cents, balance_after_cents, currency,
+                   reference_type, reference_id, delivery_id, description,
+                   created_at
+            FROM wallet_transactions
+            WHERE user_id = $1 AND transaction_type = $2
+            ORDER BY created_at DESC
+            LIMIT $3 OFFSET $4
+            "#,
+        )
+        .bind(user.id)
+        .bind(txn_type)
+        .bind(limit)
+        .bind(offset)
+        .fetch_all(&state.pg)
+        .await
+        .unwrap_or_default()
+    } else {
+        sqlx::query_as::<
+            _,
+            (
+                i64,
+                i32,
+                String,
+                i64,
+                i64,
+                i64,
+                String,
+                Option<String>,
+                Option<String>,
+                Option<uuid::Uuid>,
+                Option<String>,
+                chrono::DateTime<chrono::Utc>,
+            ),
+        >(
+            r#"
+            SELECT id, user_id, transaction_type, amount_cents,
+                   balance_before_cents, balance_after_cents, currency,
+                   reference_type, reference_id, delivery_id, description,
+                   created_at
+            FROM wallet_transactions
+            WHERE user_id = $1
+            ORDER BY created_at DESC
+            LIMIT $2 OFFSET $3
+            "#,
+        )
+        .bind(user.id)
+        .bind(limit)
+        .bind(offset)
+        .fetch_all(&state.pg)
+        .await
+        .unwrap_or_default()
+    };
+
+    let txn_json: Vec<Value> = transactions
+        .iter()
+        .map(|t| {
+            json!({
+                "id": t.0,
+                "user_id": t.1,
+                "transaction_type": t.2,
+                "amount_cents": t.3,
+                "balance_before_cents": t.4,
+                "balance_after_cents": t.5,
+                "currency": t.6,
+                "reference_type": t.7,
+                "reference_id": t.8,
+                "delivery_id": t.9,
+                "description": t.10,
+                "created_at": t.11.to_rfc3339(),
+            })
+        })
+        .collect();
+
+    // Solde actuel
+    let balance: i64 = sqlx::query_scalar::<_, Option<i64>>(
+        "SELECT balance_cents FROM user_wallets WHERE user_id = $1 AND currency = 'XAF'",
+    )
+    .bind(user.id)
+    .fetch_optional(&state.pg)
+    .await
+    .unwrap_or(None)
+    .unwrap_or(0);
+
+    Ok(Json(json!({
+        "success": true,
+        "balance_cents": balance,
+        "transactions": txn_json,
+        "count": txn_json.len(),
+        "limit": limit,
+        "offset": offset,
+    })))
+}
+
+/// ✅ Résumé financier avec analytics périodiques (7j, 30j, 90j)
+async fn get_wallet_financial_summary(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    axum::extract::Query(query): axum::extract::Query<std::collections::HashMap<String, String>>,
+) -> AppResult<Json<Value>> {
+    let days: i32 = query.get("days").and_then(|d| d.parse().ok()).unwrap_or(30);
+
+    // Solde actuel
+    let balance: i64 = sqlx::query_scalar::<_, Option<i64>>(
+        "SELECT balance_cents FROM user_wallets WHERE user_id = $1 AND currency = 'XAF'",
+    )
+    .bind(user.id)
+    .fetch_optional(&state.pg)
+    .await
+    .unwrap_or(None)
+    .unwrap_or(0);
+
+    // Total crédits (revenus) sur la période
+    let total_credits: i64 = sqlx::query_scalar::<_, Option<i64>>(
+        r#"
+        SELECT COALESCE(SUM(amount_cents), 0)
+        FROM wallet_transactions
+        WHERE user_id = $1 AND transaction_type LIKE 'credit%'
+        AND created_at >= NOW() - make_interval(days => $2)
+        "#,
+    )
+    .bind(user.id)
+    .bind(days)
+    .fetch_one(&state.pg)
+    .await
+    .unwrap_or(Some(0))
+    .unwrap_or(0);
+
+    // Total débits sur la période
+    let total_debits: i64 = sqlx::query_scalar::<_, Option<i64>>(
+        r#"
+        SELECT COALESCE(SUM(amount_cents), 0)
+        FROM wallet_transactions
+        WHERE user_id = $1 AND transaction_type LIKE 'debit%'
+        AND created_at >= NOW() - make_interval(days => $2)
+        "#,
+    )
+    .bind(user.id)
+    .bind(days)
+    .fetch_one(&state.pg)
+    .await
+    .unwrap_or(Some(0))
+    .unwrap_or(0);
+
+    // Total remboursements sur la période
+    let total_refunds: i64 = sqlx::query_scalar::<_, Option<i64>>(
+        r#"
+        SELECT COALESCE(SUM(amount_cents), 0)
+        FROM wallet_transactions
+        WHERE user_id = $1 AND transaction_type LIKE 'refund%'
+        AND created_at >= NOW() - make_interval(days => $2)
+        "#,
+    )
+    .bind(user.id)
+    .bind(days)
+    .fetch_one(&state.pg)
+    .await
+    .unwrap_or(Some(0))
+    .unwrap_or(0);
+
+    // Nombre de transactions sur la période
+    let transaction_count: i64 = sqlx::query_scalar::<_, Option<i64>>(
+        r#"
+        SELECT COUNT(*)
+        FROM wallet_transactions
+        WHERE user_id = $1
+        AND created_at >= NOW() - make_interval(days => $2)
+        "#,
+    )
+    .bind(user.id)
+    .bind(days)
+    .fetch_one(&state.pg)
+    .await
+    .unwrap_or(Some(0))
+    .unwrap_or(0);
+
+    // Revenus par jour (pour graphique)
+    let daily_revenue = sqlx::query_as::<_, (chrono::NaiveDate, i64)>(
+        r#"
+        SELECT DATE(created_at) as day, COALESCE(SUM(amount_cents), 0) as total
+        FROM wallet_transactions
+        WHERE user_id = $1 AND transaction_type LIKE 'credit%'
+        AND created_at >= NOW() - make_interval(days => $2)
+        GROUP BY DATE(created_at)
+        ORDER BY day ASC
+        "#,
+    )
+    .bind(user.id)
+    .bind(days)
+    .fetch_all(&state.pg)
+    .await
+    .unwrap_or_default();
+
+    let daily_revenue_json: Vec<Value> = daily_revenue
+        .iter()
+        .map(|(day, total)| json!({ "date": day.to_string(), "amount_cents": total }))
+        .collect();
+
+    // Disbursements (transferts sortants)
+    let disbursements_count: i64 = sqlx::query_scalar::<_, Option<i64>>(
+        r#"
+        SELECT COUNT(*)
+        FROM disbursement_requests
+        WHERE recipient_user_id = $1
+        AND created_at >= NOW() - make_interval(days => $2)
+        "#,
+    )
+    .bind(user.id)
+    .bind(days)
+    .fetch_one(&state.pg)
+    .await
+    .unwrap_or(Some(0))
+    .unwrap_or(0);
+
+    let disbursements_total: i64 = sqlx::query_scalar::<_, Option<i64>>(
+        r#"
+        SELECT COALESCE(SUM(amount_cents), 0)
+        FROM disbursement_requests
+        WHERE recipient_user_id = $1 AND status = 'completed'
+        AND created_at >= NOW() - make_interval(days => $2)
+        "#,
+    )
+    .bind(user.id)
+    .bind(days)
+    .fetch_one(&state.pg)
+    .await
+    .unwrap_or(Some(0))
+    .unwrap_or(0);
+
+    // Période précédente pour comparaison (croissance)
+    let prev_credits: i64 = sqlx::query_scalar::<_, Option<i64>>(
+        r#"
+        SELECT COALESCE(SUM(amount_cents), 0)
+        FROM wallet_transactions
+        WHERE user_id = $1 AND transaction_type LIKE 'credit%'
+        AND created_at >= NOW() - make_interval(days => $2 * 2)
+        AND created_at < NOW() - make_interval(days => $2)
+        "#,
+    )
+    .bind(user.id)
+    .bind(days)
+    .fetch_one(&state.pg)
+    .await
+    .unwrap_or(Some(0))
+    .unwrap_or(0);
+
+    let growth_pct = if prev_credits > 0 {
+        ((total_credits - prev_credits) as f64 / prev_credits as f64) * 100.0
+    } else if total_credits > 0 {
+        100.0
+    } else {
+        0.0
+    };
+
+    Ok(Json(json!({
+        "success": true,
+        "period_days": days,
+        "balance_cents": balance,
+        "summary": {
+            "total_credits_cents": total_credits,
+            "total_debits_cents": total_debits,
+            "total_refunds_cents": total_refunds,
+            "net_income_cents": total_credits - total_debits,
+            "transaction_count": transaction_count,
+            "growth_percent": (growth_pct * 10.0).round() / 10.0,
+        },
+        "disbursements": {
+            "count": disbursements_count,
+            "total_completed_cents": disbursements_total,
+        },
+        "daily_revenue": daily_revenue_json,
+    })))
+}
+
 async fn update_shopping_item(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<AuthenticatedUser>,

@@ -288,11 +288,11 @@ const OrientationScolaireHomeScreen: React.FC = () => {
         if (result.success && result.data) {
             setAcademicResponse(result.data);
             if (result.source === 'local') {
-                toaster?.show?.('Réponse basée sur des données locales', 'info');
+                toaster?.show?.(t('orientationScolaire.responseLocalData'), 'info');
             }
         } else {
             setAcademicResponse('Consultez un conseiller d\'orientation pour des conseils personnalisés.');
-            toaster?.show?.('IA temporairement indisponible', 'error');
+            toaster?.show?.(t('orientationScolaire.aiTemporarilyUnavailable'), 'error');
         }
         setLoadingAI(false);
     };

@@ -386,8 +386,12 @@ const DashboardPrestataireScreen: React.FC = () => {
           <Text style={styles.actionButtonText}>Créer un nouveau service</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.actionButton}>
+        <TouchableOpacity style={styles.actionButton} onPress={() => (navigation as any).navigate('AnalyticsDashboard')}>
           <Text style={styles.actionButtonText}>Voir les statistiques détaillées</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.actionButton} onPress={() => (navigation as any).navigate('WalletFinancial')}>
+          <Text style={styles.actionButtonText}>💰 Mon portefeuille financier</Text>
         </TouchableOpacity>
 
         <TouchableOpacity

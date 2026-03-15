@@ -238,6 +238,7 @@ const SupermarketPartnerDashboardScreen: React.FC = () => {
                     { label: 'Import masse', icon: 'upload', color: '#3B82F6', onPress: () => setShowBulkModal(true) },
                     { label: 'Mes produits', icon: 'package', color: '#F59E0B', onPress: () => (navigation as any).navigate('MesProduits') },
                     { label: 'Commandes', icon: 'shopping-cart', color: '#EF4444', onPress: () => setActiveTab('orders') },
+                    { label: 'Portefeuille', icon: 'wallet', color: '#8B5CF6', onPress: () => (navigation as any).navigate('WalletFinancial') },
                 ].map((a, i) => (
                     <TouchableOpacity key={i} style={s.quickAction} onPress={a.onPress}>
                         <View style={[s.quickIcon, { backgroundColor: a.color + '15' }]}>

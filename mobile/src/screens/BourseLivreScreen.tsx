@@ -21,6 +21,7 @@ import {
 import SafeIcon from '../components/SafeIcon';
 import { NativeBadge, NativeButton } from '../components/SafeNativeDesign';
 import { useToaster } from '../components/ToasterProvider';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 import { useAIWithFallback } from '../hooks/useAIWithFallback';
 import { apiGet } from '../services/api';
 import { BookRecommendationRequest, bourseLivreApi, PriceSuggestionRequest } from '../services/bourseLivreApi';
@@ -68,6 +69,7 @@ const BourseLivreScreen: React.FC = () => {
     const navigation = useNavigation() as any;
     const { callWithFallback } = useAIWithFallback();
     const toaster = useToaster();
+    const { t } = useLanguageSafe();
     const [searchQuery, setSearchQuery] = useState('');
     const [livres, setLivres] = useState<LivreScolaire[]>([]);
     const [loading, setLoading] = useState(false);
@@ -182,9 +184,9 @@ const BourseLivreScreen: React.FC = () => {
         if (result.success && result.data) {
             setRecommendations(result.data);
             setShowRecommendations(true);
-            if (result.source === 'local') toaster?.show?.('Recommandations basées sur des données locales', 'info');
+            if (result.source === 'local') toaster?.show?.(t('bourseLivre.recommendationsLocalData'), 'info');
         } else {
-            Alert.alert('Indisponible', 'Recommandations IA temporairement indisponibles.');
+            Alert.alert(t('bourseLivre.unavailable'), t('bourseLivre.aiRecommendationsUnavailable'));
         }
         setLoading(false);
     };
@@ -226,9 +228,9 @@ const BourseLivreScreen: React.FC = () => {
         if (result.success && result.data) {
             setPriceSuggestion(result.data);
             setShowPriceSuggestion(true);
-            if (result.source === 'local') toaster?.show?.('Estimation basée sur des données locales', 'info');
+            if (result.source === 'local') toaster?.show?.(t('bourseLivre.estimateLocalData'), 'info');
         } else {
-            Alert.alert('Indisponible', 'Estimation de prix IA temporairement indisponible.');
+            Alert.alert(t('bourseLivre.unavailable'), t('bourseLivre.aiPriceEstimateUnavailable'));
         }
         setLoading(false);
     };

@@ -18,8 +18,7 @@ import {
 import SafeIcon from '../../components/SafeIcon';
 import { NativeButton } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
-import { apiGet, apiPost } from '../../services/api';
-import { modernColors } from '../../theme/modernTheme';
+import { apiGet } from '../../services/api';
 import { getCurrencyIntelligently } from '../../utils/currencyUtils';
 
 type TabType = 'overview' | 'menu' | 'orders' | 'analytics';
@@ -145,6 +144,7 @@ const RestaurantDashboardScreen: React.FC = () => {
                     { label: 'Commandes', icon: 'shopping-bag', color: '#3B82F6', onPress: () => setActiveTab('orders') },
                     { label: 'Planifier menu', icon: 'calendar', color: '#8B5CF6', onPress: () => (navigation as any).navigate('MenuPlanningHub') },
                     { label: 'Statistiques', icon: 'bar-chart-2', color: '#F59E0B', onPress: () => setActiveTab('analytics') },
+                    { label: 'Portefeuille', icon: 'wallet', color: '#8B5CF6', onPress: () => (navigation as any).navigate('WalletFinancial') },
                 ].map((a, i) => (
                     <TouchableOpacity key={i} style={s.quickAction} onPress={a.onPress}>
                         <View style={[s.quickIcon, { backgroundColor: a.color + '15' }]}>

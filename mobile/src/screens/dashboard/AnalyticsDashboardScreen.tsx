@@ -1,4 +1,5 @@
 // ✅ Phase 10 - Écran Analytics Dashboard pour prestataires (Mobile)
+import { useNavigation } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -79,6 +80,7 @@ interface ProviderAnalytics {
 }
 
 const AnalyticsDashboardScreen: React.FC = () => {
+  const navigation = useNavigation();
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -395,6 +397,23 @@ const AnalyticsDashboardScreen: React.FC = () => {
           </View>
         </NativeCard>
       )}
+
+      {/* Accès au portefeuille financier */}
+      <NativeCard style={styles.sectionCard}>
+        <TouchableOpacity
+          style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 4 }}
+          onPress={() => (navigation as any).navigate('WalletFinancial')}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <SafeIcon name="wallet" size={22} color={modernColors.primary} />
+            <View>
+              <Text style={{ fontSize: 15, fontWeight: '600', color: modernColors.text }}>Mon portefeuille</Text>
+              <Text style={{ fontSize: 12, color: modernColors.textSecondary }}>Solde, transactions, reversements</Text>
+            </View>
+          </View>
+          <SafeIcon name="chevron-right" size={20} color={modernColors.textSecondary} />
+        </TouchableOpacity>
+      </NativeCard>
 
       <View style={styles.footer} />
     </ScrollView>
