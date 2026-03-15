@@ -16,6 +16,7 @@ import {
 import SafeIcon from '../../components/SafeIcon';
 import { NativeCard } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { apiGet, apiPost } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 
@@ -40,6 +41,7 @@ interface TrocLivre {
 const MesTrocsScreen: React.FC = () => {
     const navigation = useNavigation();
     const { user } = useAuth();
+    const { t } = useLanguageSafe();
     const [trocs, setTrocs] = useState<TrocLivre[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -66,11 +68,11 @@ const MesTrocsScreen: React.FC = () => {
             if (response.success && r) {
                 setTrocs(r.trocs || []);
             } else {
-                Alert.alert('Erreur', 'Impossible de charger vos trocs');
+                Alert.alert(t('message.error'), t('mesTrocs.cannotLoad'));
             }
         } catch (error: any) {
             console.error('[MesTrocsScreen] Erreur:', error);
-            Alert.alert('Erreur', error.message || 'Impossible de charger vos trocs');
+            Alert.alert(t('message.error'), error.message || t('mesTrocs.cannotLoad'));
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -104,31 +106,31 @@ const MesTrocsScreen: React.FC = () => {
         try {
             const response = await apiPost(`/api/troc-livres/${trocId}/accept`, {});
             if (response.success) {
-                Alert.alert('Succès', 'Troc accepté !');
+                Alert.alert(t('message.success'), t('mesTrocs.trocAccepted'));
                 loadTrocs();
             } else {
-                Alert.alert('Erreur', response.error || 'Impossible d\'accepter');
+                Alert.alert(t('message.error'), response.error || t('mesTrocs.cannotAccept'));
             }
         } catch (error: any) {
-            Alert.alert('Erreur', error.message || 'Une erreur est survenue');
+            Alert.alert(t('message.error'), error.message || t('mesTrocs.genericError'));
         }
     };
 
     // ✅ NOUVEAU: Refuser rapidement un troc
     const handleQuickRefuse = async (trocId: number) => {
-        Alert.alert('Confirmer', 'Voulez-vous vraiment refuser ce troc ?', [
-            { text: 'Annuler', style: 'cancel' },
+        Alert.alert(t('mesTrocs.confirm'), t('mesTrocs.confirmRefuse'), [
+            { text: t('message.cancel'), style: 'cancel' },
             {
-                text: 'Refuser', style: 'destructive',
+                text: t('mesTrocs.refuse'), style: 'destructive',
                 onPress: async () => {
                     try {
                         const response = await apiPost(`/api/troc-livres/${trocId}/refuse`, {});
                         if (response.success) {
-                            Alert.alert('Refusé', 'Le troc a été refusé.');
+                            Alert.alert(t('mesTrocs.refused'), t('mesTrocs.trocRefused'));
                             loadTrocs();
                         }
                     } catch (error: any) {
-                        Alert.alert('Erreur', error.message || 'Erreur');
+                        Alert.alert(t('message.error'), error.message || t('mesTrocs.genericError'));
                     }
                 },
             },

@@ -11,12 +11,14 @@ import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useDeliveryContext } from '../../contexts/DeliveryContext';
 import { useFeatureFlags } from '../../contexts/FeatureFlagContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { notificationSoundService } from '../../services/notificationSoundService';
 import { modernColors } from '../../theme/modernTheme';
 import { useScreenEnter } from '../../utils/animations';
 
 const DeliveryHomeScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const {
         deliveries,
         refreshActiveDeliveries,
@@ -136,7 +138,7 @@ const DeliveryHomeScreen: React.FC = () => {
         // ✅ CORRIGÉ: Vérifier que navigation existe et a la méthode navigate
         if (!navigation || typeof navigation.navigate !== 'function') {
             console.error('[DeliveryHomeScreen] ❌ navigation.navigate n\'est pas disponible');
-            Alert.alert('Erreur', 'Navigation indisponible. Veuillez réessayer.');
+            Alert.alert(t('message.error'), t('deliveryHome.navigationUnavailable'));
             return;
         }
 
@@ -153,8 +155,8 @@ const DeliveryHomeScreen: React.FC = () => {
             console.error('[DeliveryHomeScreen] ❌ Erreur navigation:', error);
             setNavigating(false); // Réinitialiser en cas d'erreur
             Alert.alert(
-                'Erreur',
-                'Impossible d\'ouvrir le flux de commande. Veuillez réessayer.',
+                t('message.error'),
+                t('deliveryHome.cannotOpenShoppingFlow'),
                 [{ text: 'OK' }]
             );
         }
@@ -166,7 +168,7 @@ const DeliveryHomeScreen: React.FC = () => {
         // ✅ CORRIGÉ: Vérifier que navigation existe et a la méthode navigate
         if (!navigation || typeof navigation.navigate !== 'function') {
             console.error('[DeliveryHomeScreen] ❌ navigation.navigate n\'est pas disponible');
-            Alert.alert('Erreur', 'Navigation indisponible. Veuillez réessayer.');
+            Alert.alert(t('message.error'), t('deliveryHome.navigationUnavailable'));
             return;
         }
 
@@ -183,8 +185,8 @@ const DeliveryHomeScreen: React.FC = () => {
             console.error('[DeliveryHomeScreen] ❌ Erreur navigation:', error);
             setNavigating(false); // Réinitialiser en cas d'erreur
             Alert.alert(
-                'Erreur',
-                'Impossible d\'ouvrir le flux colis. Veuillez réessayer.',
+                t('message.error'),
+                t('deliveryHome.cannotOpenParcelFlow'),
                 [{ text: 'OK' }]
             );
         }
@@ -196,14 +198,14 @@ const DeliveryHomeScreen: React.FC = () => {
         // ✅ CORRIGÉ: Vérifier que navigation existe et a la méthode navigate
         if (!navigation || typeof navigation.navigate !== 'function') {
             console.error('[DeliveryHomeScreen] ❌ navigation.navigate n\'est pas disponible');
-            Alert.alert('Erreur', 'Navigation indisponible. Veuillez réessayer.');
+            Alert.alert(t('message.error'), t('deliveryHome.navigationUnavailable'));
             return;
         }
 
         // ✅ CORRIGÉ: Vérifier que setActiveDeliveryId existe
         if (typeof setActiveDeliveryId !== 'function') {
             console.error('[DeliveryHomeScreen] ❌ setActiveDeliveryId n\'est pas disponible');
-            Alert.alert('Erreur', 'Fonction indisponible. Veuillez réessayer.');
+            Alert.alert(t('message.error'), t('deliveryHome.functionUnavailable'));
             return;
         }
 
@@ -221,8 +223,8 @@ const DeliveryHomeScreen: React.FC = () => {
             console.error('[DeliveryHomeScreen] ❌ Erreur navigation:', error);
             setNavigating(false); // Réinitialiser en cas d'erreur
             Alert.alert(
-                'Erreur',
-                'Impossible d\'ouvrir le suivi de livraison.',
+                t('message.error'),
+                t('deliveryHome.cannotOpenTracking'),
                 [{ text: 'OK' }]
             );
         }
@@ -335,6 +337,9 @@ const DeliveryHomeScreen: React.FC = () => {
                             <SkeletonDeliveryCard />
                         </View>
                     )}
+
+                    {/* ✅ PHASE 3: Sous-dashboard Livres Scolaires pour l'utilisateur */}
+                    <BookUserSubDashboard onRefresh={handleRefresh} />
 
                     {/* ✅ NOUVEAU: Section pour créer une nouvelle livraison */}
                     <View style={styles.sectionHeader}>

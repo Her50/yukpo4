@@ -331,33 +331,37 @@ const apiCallInternal = async <T>(
     // ✅ CORRIGÉ 2026-01-07: 90s pour /api/menus/ai/generate-recipe (génération recette IA peut prendre 30-60s)
     // ✅ CORRIGÉ 2026-01-08: 90s pour analyse d'images IA (hôpital, laboratoire, pharmacie) - peut prendre 30-60s
     // ✅ CORRIGÉ 2026-01-08: 60s pour recherche pathologie IA et autres fonctionnalités IA médicales
-    const timeoutDuration = endpoint.includes('/menus/ai/generate-week')
-      ? 120000  // ✅ CORRIGÉ 2026-01-06: 120s (2min) pour génération menu IA (géocodage + DB + IA peut prendre 60-90s)
-      : endpoint.includes('/menus/ai/generate-recipe')
-        ? 90000  // ✅ CORRIGÉ 2026-01-07: 90s pour génération recette IA (peut prendre 30-60s)
-        : endpoint.includes('/examinations/analyze-image') || endpoint.includes('/search/by-image')
-          ? 90000  // ✅ CORRIGÉ 2026-01-08: 90s pour analyse d'images IA (peut prendre 30-60s avec traitement IA)
-          : endpoint.includes('/ai/search-pathology') || endpoint.includes('/ai/interactions') || endpoint.includes('/ai/dosage')
-            ? 60000  // ✅ CORRIGÉ 2026-01-08: 60s pour recherche pathologie IA et autres fonctionnalités IA médicales
-            : endpoint.includes('/services/create')
-              ? 180000
-              : endpoint.includes('/ia/creation-service')
-                ? 90000  // ✅ AUGMENTÉ: 90s pour supporter traitement images + appel IA multimodal
-                : endpoint.includes('/ia/video/timeline-variants')
-                  ? 60000  // ✅ 60s pour timeline-variants (génération de variantes peut prendre du temps)
-                  : endpoint.includes('/services/') && endpoint.includes('/products')
-                    ? 180000  // ✅ AUGMENTÉ: 180s (3min) pour création/modification produit (le backend peut prendre du temps même sans médias)
-                    : endpoint.includes('/preview') || endpoint.includes('/preview/short')
-                      ? 120000  // ✅ CORRIGÉ 2026-01-02: 120s (2min) pour preview (génération vidéo peut prendre 60-90s)
-                      : endpoint.includes('/search/direct')
-                        ? 30000  // ✅ 30s pour recherche par image (analyse IA + recherche SQL peut prendre 20-25s)
-                        : endpoint.includes('/mobile-logs')
-                          ? 60000  // ✅ CORRIGÉ 2026-01-12: 60s pour logs mobiles (traitement batch peut prendre du temps, éviter AbortError)
-                          : endpoint.includes('/services/') && (endpoint.includes('/reviews') || endpoint.includes('/stats'))
-                            ? 30000  // ✅ 30s pour reviews et stats (peuvent être lents)
-                            : endpoint.includes('/prestataire/services')
-                              ? 30000  // ✅ 30s pour chargement services (peut être lent avec cache Redis)
-                              : 15000;
+    const timeoutDuration = endpoint.includes('/navigation/activity/ai-insights')
+      ? 90000  // ✅ CORRIGÉ 2026-03-15: 90s pour Coach IA navigation (DB queries + calculs + appel LLM peut prendre 30-60s)
+      : endpoint.includes('/navigation/checkpoints/ai-analysis')
+        ? 60000  // ✅ CORRIGÉ 2026-03-15: 60s pour analyse IA checkpoints (requêtes DB + LLM)
+        : endpoint.includes('/menus/ai/generate-week')
+          ? 120000  // ✅ CORRIGÉ 2026-01-06: 120s (2min) pour génération menu IA (géocodage + DB + IA peut prendre 60-90s)
+          : endpoint.includes('/menus/ai/generate-recipe')
+            ? 90000  // ✅ CORRIGÉ 2026-01-07: 90s pour génération recette IA (peut prendre 30-60s)
+            : endpoint.includes('/examinations/analyze-image') || endpoint.includes('/search/by-image')
+              ? 90000  // ✅ CORRIGÉ 2026-01-08: 90s pour analyse d'images IA (peut prendre 30-60s avec traitement IA)
+              : endpoint.includes('/ai/search-pathology') || endpoint.includes('/ai/interactions') || endpoint.includes('/ai/dosage')
+                ? 60000  // ✅ CORRIGÉ 2026-01-08: 60s pour recherche pathologie IA et autres fonctionnalités IA médicales
+                : endpoint.includes('/services/create')
+                  ? 180000
+                  : endpoint.includes('/ia/creation-service')
+                    ? 90000  // ✅ AUGMENTÉ: 90s pour supporter traitement images + appel IA multimodal
+                    : endpoint.includes('/ia/video/timeline-variants')
+                      ? 60000  // ✅ 60s pour timeline-variants (génération de variantes peut prendre du temps)
+                      : endpoint.includes('/services/') && endpoint.includes('/products')
+                        ? 180000  // ✅ AUGMENTÉ: 180s (3min) pour création/modification produit (le backend peut prendre du temps même sans médias)
+                        : endpoint.includes('/preview') || endpoint.includes('/preview/short')
+                          ? 120000  // ✅ CORRIGÉ 2026-01-02: 120s (2min) pour preview (génération vidéo peut prendre 60-90s)
+                          : endpoint.includes('/search/direct')
+                            ? 30000  // ✅ 30s pour recherche par image (analyse IA + recherche SQL peut prendre 20-25s)
+                            : endpoint.includes('/mobile-logs')
+                              ? 60000  // ✅ CORRIGÉ 2026-01-12: 60s pour logs mobiles (traitement batch peut prendre du temps, éviter AbortError)
+                              : endpoint.includes('/services/') && (endpoint.includes('/reviews') || endpoint.includes('/stats'))
+                                ? 30000  // ✅ 30s pour reviews et stats (peuvent être lents)
+                                : endpoint.includes('/prestataire/services')
+                                  ? 30000  // ✅ 30s pour chargement services (peut être lent avec cache Redis)
+                                  : 15000;
     const timeoutId = setTimeout(() => controller.abort(), timeoutDuration);
 
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {

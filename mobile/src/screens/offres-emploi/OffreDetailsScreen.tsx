@@ -13,6 +13,7 @@ import {
 import SafeIcon from '../../components/SafeIcon';
 import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { offreEmploiService } from '../../services/offreEmploiService';
 import { modernColors } from '../../theme/modernTheme';
 
@@ -53,6 +54,7 @@ const OffreDetailsScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
     const { user } = useAuth();
+    const { t } = useLanguageSafe();
     const params = route.params as any;
 
     const [offre, setOffre] = useState<OffreEmploi | null>(null);
@@ -78,12 +80,12 @@ const OffreDetailsScreen: React.FC = () => {
             if (response.success && offreData) {
                 setOffre(offreData);
             } else {
-                Alert.alert('Erreur', 'Impossible de charger l\'offre');
+                Alert.alert(t('message.error'), t('offreDetails.cannotLoadOffer'));
                 navigation.goBack();
             }
         } catch (error: any) {
             console.error('[OffreDetailsScreen] Erreur:', error);
-            Alert.alert('Erreur', error.message || 'Impossible de charger l\'offre');
+            Alert.alert(t('message.error'), error.message || t('offreDetails.cannotLoadOffer'));
             navigation.goBack();
         } finally {
             setLoading(false);
@@ -116,7 +118,7 @@ const OffreDetailsScreen: React.FC = () => {
 
     const handlePostuler = async () => {
         if (!user) {
-            Alert.alert('Connexion requise', 'Veuillez vous connecter pour postuler');
+            Alert.alert(t('offreDetails.loginRequired'), t('offreDetails.loginToApply'));
             (navigation as any).navigate('Login');
             return;
         }
@@ -131,8 +133,8 @@ const OffreDetailsScreen: React.FC = () => {
 
             if (!hasProfil || !hasCV) {
                 Alert.alert(
-                    'Profil requis',
-                    'Pour postuler, vous devez créer votre profil candidat et uploader votre CV.',
+                    t('offreDetails.profileRequired'),
+                    t('offreDetails.createProfileAndCV'),
                     [
                         { text: 'Annuler' },
                         {
@@ -151,15 +153,15 @@ const OffreDetailsScreen: React.FC = () => {
             setPostulating(true);
             const response = await offreEmploiService.createCandidature(params.offreId);
             if (response.success) {
-                Alert.alert('Succès', 'Candidature envoyée avec succès ! Votre CV a été transmis à l\'employeur.', [
+                Alert.alert(t('message.success'), t('offreDetails.applicationSent'), [
                     { text: 'OK', onPress: () => navigation.goBack() },
                 ]);
             } else {
-                Alert.alert('Erreur', response.message || 'Erreur lors de la candidature');
+                Alert.alert(t('message.error'), response.message || t('offreDetails.applicationError'));
             }
         } catch (error: any) {
             console.error('[OffreDetailsScreen] Erreur candidature:', error);
-            Alert.alert('Erreur', 'Erreur lors de la candidature');
+            Alert.alert(t('message.error'), t('offreDetails.applicationError'));
         } finally {
             setPostulating(false);
         }

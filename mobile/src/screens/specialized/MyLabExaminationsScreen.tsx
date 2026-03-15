@@ -11,16 +11,18 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import { SkeletonList } from '../../components/SkeletonLoader';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { LabExamination, labService } from '../../services/labService';
 import { modernColors } from '../../theme/modernTheme';
 
 const MyLabExaminationsScreen: React.FC = () => {
     const navigation = useNavigation();
     const { user } = useAuth();
+    const { t } = useLanguageSafe();
 
     const [examinations, setExaminations] = useState<LabExamination[]>([]);
     const [loading, setLoading] = useState(true);
@@ -36,7 +38,7 @@ const MyLabExaminationsScreen: React.FC = () => {
         if (user) {
             loadExaminations(true);
         } else {
-            Alert.alert('Connexion requise', 'Veuillez vous connecter pour voir vos examens');
+            Alert.alert(t('labExams.loginRequired'), t('labExams.loginToViewExams'));
             navigation.goBack();
         }
     }, [statusFilter]);
@@ -72,11 +74,11 @@ const MyLabExaminationsScreen: React.FC = () => {
                 setHasMore(newExaminations.length === limit);
                 setPage(currentPage + 1);
             } else {
-                Alert.alert('Erreur', response.error || 'Impossible de charger les examens');
+                Alert.alert(t('message.error'), response.error || t('labExams.cannotLoadExams'));
             }
         } catch (error: any) {
             console.error('[MyLabExaminationsScreen] Erreur chargement:', error);
-            Alert.alert('Erreur', error.message || 'Impossible de charger les examens');
+            Alert.alert(t('message.error'), error.message || t('labExams.cannotLoadExams'));
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -160,14 +162,14 @@ const MyLabExaminationsScreen: React.FC = () => {
     const handleViewResults = async (examination: LabExamination) => {
         if (examination.status?.toLowerCase() !== 'completed') {
             Alert.alert(
-                'Résultats non disponibles',
-                'Les résultats ne sont pas encore disponibles pour cet examen.'
+                t('labExams.resultsUnavailable'),
+                t('labExams.resultsUnavailableMsg')
             );
             return;
         }
 
         if (!user) {
-            Alert.alert('Connexion requise', 'Veuillez vous connecter pour voir les résultats');
+            Alert.alert(t('labExams.loginRequired'), t('labExams.loginToViewResults'));
             navigation.navigate('Login' as never);
             return;
         }
@@ -181,14 +183,14 @@ const MyLabExaminationsScreen: React.FC = () => {
     const handleAnalyzeWithAI = async (examination: LabExamination) => {
         if (examination.status?.toLowerCase() !== 'completed') {
             Alert.alert(
-                'Analyse IA non disponible',
-                'Les résultats doivent être disponibles pour effectuer une analyse IA.'
+                t('labExams.aiAnalysisUnavailable'),
+                t('labExams.aiAnalysisUnavailableMsg')
             );
             return;
         }
 
         if (!user) {
-            Alert.alert('Connexion requise', 'Veuillez vous connecter pour analyser les résultats');
+            Alert.alert(t('labExams.loginRequired'), t('labExams.loginToAnalyze'));
             navigation.navigate('Login' as never);
             return;
         }
@@ -201,7 +203,7 @@ const MyLabExaminationsScreen: React.FC = () => {
 
     const handleViewDetails = (examination: LabExamination) => {
         // TODO: Récupérer le laboratoire ID depuis l'examen
-        Alert.alert('Info', 'Navigation vers les détails du laboratoire sera bientôt disponible');
+        Alert.alert(t('labExams.info'), t('labExams.labDetailsComingSoon'));
     };
 
     const renderExamination = ({ item }: { item: LabExamination }) => {

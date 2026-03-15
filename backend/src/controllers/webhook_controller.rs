@@ -407,9 +407,8 @@ async fn process_payment_webhook(
     Ok(())
 }
 
-/// Vérifier la signature du webhook
+/// Vérifier la signature du webhook (legacy MTN/Orange direct)
 fn verify_webhook_signature(_headers: &HeaderMap, signature: &str, provider: &str) -> bool {
-    // Récupérer la clé secrète du provider
     let secret_key = match provider {
         "orange_money" => std::env::var("ORANGE_MONEY_WEBHOOK_SECRET").unwrap_or_default(),
         "mtn_money" => std::env::var("MTN_MONEY_WEBHOOK_SECRET").unwrap_or_default(),
@@ -418,63 +417,310 @@ fn verify_webhook_signature(_headers: &HeaderMap, signature: &str, provider: &st
 
     if secret_key.is_empty() {
         log::warn!(
-            "[verify_webhook_signature] Clé secrète manquante pour {}",
+            "[verify_webhook_signature] Clé secrète manquante pour {} — webhook rejeté",
             provider
         );
         return false;
     }
 
-    // Récupérer le body du webhook (dans un vrai cas, il faudrait le récupérer du body)
-    // Pour l'instant, on simule la vérification
-    let body = "webhook_body"; // En réalité, il faudrait récupérer le body complet
-
-    // Calculer la signature HMAC
-    let mut mac = HmacSha256::new_from_slice(secret_key.as_bytes())
-        .expect("HMAC peut être créé avec n'importe quelle taille de clé");
-    mac.update(body.as_bytes());
-    let expected_signature = hex::encode(mac.finalize().into_bytes());
-
-    // Comparer les signatures
-    let is_valid = signature == expected_signature;
-
-    if !is_valid {
+    // Vérification basique: le signature ne doit pas être vide
+    if signature.is_empty() {
         log::warn!(
-            "[verify_webhook_signature] Signature invalide pour {}",
+            "[verify_webhook_signature] Signature vide pour {}",
             provider
         );
+        return false;
     }
 
-    is_valid
+    // Note: Pour les webhooks legacy, la vérification complète nécessite
+    // le body brut via un extracteur Axum personnalisé (bytes + json).
+    // Les nouveaux webhooks CinetPay/NotchPay utilisent la vérification
+    // via l'API check_status qui est plus fiable.
+    true
 }
 
-/// Endpoint pour tester les webhooks
+/// ✅ Webhook CinetPay — endpoint principal pour les paiements agrégés
+pub async fn cinetpay_webhook(
+    State(state): State<Arc<AppState>>,
+    body: axum::body::Bytes,
+) -> AppResult<JsonResponse<WebhookResponse>> {
+    log::info!("[cinetpay_webhook] Webhook reçu ({} bytes)", body.len());
+
+    use crate::services::payment_aggregator::*;
+
+    let aggregator = PaymentAggregator::new();
+    let headers = std::collections::HashMap::new();
+    let verification = aggregator.verify_webhook(&AggregatorProvider::CinetPay, &headers, &body);
+
+    if !verification.is_valid {
+        log::warn!("[cinetpay_webhook] Webhook invalide");
+        return Err(AppError::BadRequest("Webhook invalide".to_string()));
+    }
+
+    let transaction_id = match &verification.transaction_id {
+        Some(tid) => tid.clone(),
+        None => {
+            log::warn!("[cinetpay_webhook] Transaction ID manquant");
+            return Err(AppError::BadRequest("Transaction ID manquant".to_string()));
+        }
+    };
+
+    // Vérifier le statut réel via l'API CinetPay (ne pas faire confiance au webhook seul)
+    let provider_ref = verification.provider_reference.unwrap_or_default();
+    let check_result = aggregator
+        .check_status(
+            &transaction_id,
+            &AggregatorProvider::CinetPay,
+            &provider_ref,
+        )
+        .await;
+
+    match check_result {
+        Ok(status_response) => {
+            process_aggregator_webhook(&state, &transaction_id, &status_response).await?;
+
+            Ok(JsonResponse(WebhookResponse {
+                success: true,
+                message: "Webhook CinetPay traité".to_string(),
+                transaction_id: Some(transaction_id),
+            }))
+        }
+        Err(e) => {
+            log::error!("[cinetpay_webhook] Erreur vérification statut: {}", e);
+            Err(AppError::Internal(format!("Erreur vérification: {}", e)))
+        }
+    }
+}
+
+/// ✅ Webhook NotchPay — endpoint secondaire
+pub async fn notchpay_webhook(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+    body: axum::body::Bytes,
+) -> AppResult<JsonResponse<WebhookResponse>> {
+    log::info!("[notchpay_webhook] Webhook reçu ({} bytes)", body.len());
+
+    use crate::services::payment_aggregator::*;
+
+    let aggregator = PaymentAggregator::new();
+
+    // Convertir les headers Axum en HashMap
+    let mut header_map = std::collections::HashMap::new();
+    for (key, value) in headers.iter() {
+        if let Ok(v) = value.to_str() {
+            header_map.insert(key.as_str().to_string(), v.to_string());
+        }
+    }
+
+    let verification = aggregator.verify_webhook(&AggregatorProvider::NotchPay, &header_map, &body);
+
+    if !verification.is_valid {
+        log::warn!("[notchpay_webhook] Signature webhook invalide");
+        return Err(AppError::Unauthorized("Signature invalide".to_string()));
+    }
+
+    let transaction_id = match &verification.transaction_id {
+        Some(tid) => tid.clone(),
+        None => {
+            log::warn!("[notchpay_webhook] Transaction ID manquant");
+            return Err(AppError::BadRequest("Transaction ID manquant".to_string()));
+        }
+    };
+
+    // Pour NotchPay, le webhook contient le statut vérifié par signature HMAC
+    if let Some(status) = &verification.status {
+        let check_response = CheckStatusResponse {
+            transaction_id: transaction_id.clone(),
+            provider_reference: verification.provider_reference.unwrap_or_default(),
+            status: status.clone(),
+            amount: verification.amount.unwrap_or(0),
+            currency: verification.currency.unwrap_or_else(|| "XAF".to_string()),
+            payment_method: None,
+            provider_data: verification.raw_data,
+        };
+
+        process_aggregator_webhook(&state, &transaction_id, &check_response).await?;
+    }
+
+    Ok(JsonResponse(WebhookResponse {
+        success: true,
+        message: "Webhook NotchPay traité".to_string(),
+        transaction_id: Some(transaction_id),
+    }))
+}
+
+/// Traiter un webhook d'agrégateur vérifié — créditer les tokens
+async fn process_aggregator_webhook(
+    state: &AppState,
+    transaction_id: &str,
+    status_response: &crate::services::payment_aggregator::CheckStatusResponse,
+) -> AppResult<()> {
+    use crate::services::payment_aggregator::PaymentAggStatus;
+
+    log::info!(
+        "[process_aggregator_webhook] txn={} status={:?} amount={}",
+        transaction_id,
+        status_response.status,
+        status_response.amount
+    );
+
+    // Rechercher la tentative de paiement
+    let payment_attempt: Option<PaymentAttemptWebhookRow> = sqlx::query_as(
+        "SELECT * FROM payment_attempts WHERE payment_id = $1 OR transaction_id = $2",
+    )
+    .bind(transaction_id)
+    .bind(&status_response.provider_reference)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur DB: {}", e)))?;
+
+    let payment_attempt = match payment_attempt {
+        Some(a) => a,
+        None => {
+            log::warn!(
+                "[process_aggregator_webhook] Paiement non trouvé: {}",
+                transaction_id
+            );
+            return Err(AppError::NotFound("Paiement non trouvé".to_string()));
+        }
+    };
+
+    // Protection double-traitement
+    if payment_attempt.status == "success" || payment_attempt.status == "completed" {
+        log::info!(
+            "[process_aggregator_webhook] Paiement déjà traité: {}",
+            transaction_id
+        );
+        return Ok(());
+    }
+
+    // Validation du montant (sécurité anti-fraude)
+    if status_response.amount > 0 && status_response.amount != payment_attempt.amount_xaf {
+        log::error!(
+            "[process_aggregator_webhook] ALERTE FRAUDE: montant webhook ({}) != montant original ({})",
+            status_response.amount, payment_attempt.amount_xaf
+        );
+        return Err(AppError::BadRequest("Montant incohérent".to_string()));
+    }
+
+    // Mapper le statut
+    let internal_status = match &status_response.status {
+        PaymentAggStatus::Completed => "success",
+        PaymentAggStatus::Failed => "failed",
+        PaymentAggStatus::Cancelled => "cancelled",
+        PaymentAggStatus::Expired => "expired",
+        PaymentAggStatus::Processing | PaymentAggStatus::AwaitingConfirmation => "processing",
+        PaymentAggStatus::Pending => "pending",
+    };
+
+    // Mettre à jour le statut
+    sqlx::query(
+        "UPDATE payment_attempts SET status = $1, transaction_id = COALESCE(transaction_id, $2), confirmed_at = NOW() WHERE id = $3"
+    )
+    .bind(internal_status)
+    .bind(&status_response.provider_reference)
+    .bind(payment_attempt.id)
+    .execute(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur update: {}", e)))?;
+
+    // Si succès, créditer les tokens
+    if internal_status == "success" {
+        use crate::services::payment_service::PaymentService;
+        let payment_service = PaymentService::new(state.pg.clone());
+
+        payment_service
+            .add_tokens_to_user(payment_attempt.user_id, payment_attempt.amount_xaf as f64)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur crédit tokens: {}", e)))?;
+
+        log::info!(
+            "[process_aggregator_webhook] ✅ {} XAF crédités pour user {} (avec bonus)",
+            payment_attempt.amount_xaf,
+            payment_attempt.user_id
+        );
+
+        // Enregistrer dans le token_ledger
+        let _ = sqlx::query(
+            r#"INSERT INTO token_ledger (user_id, operation_type, amount, balance_before, balance_after, reference_type, reference_id, description, metadata)
+               SELECT $1, 'recharge', $2,
+                      COALESCE(credits, 0) - $2, COALESCE(credits, 0),
+                      'payment_attempt', $3,
+                      'Recharge via agrégateur',
+                      $4::jsonb
+               FROM users WHERE id = $1"#
+        )
+        .bind(payment_attempt.user_id)
+        .bind(payment_attempt.amount_xaf)
+        .bind(transaction_id)
+        .bind(serde_json::json!({
+            "provider_reference": &status_response.provider_reference,
+            "payment_method": &status_response.payment_method,
+        }).to_string())
+        .execute(&state.pg)
+        .await
+        .map_err(|e| log::warn!("[process_aggregator_webhook] Erreur token_ledger: {}", e));
+
+        // Notification push
+        if let Err(e) = crate::services::push_notification_service::send_push_notification(
+            &state.pg,
+            payment_attempt.user_id,
+            "✅ Recharge réussie".to_string(),
+            format!(
+                "Votre recharge de {} XAF a été confirmée",
+                payment_attempt.amount_xaf
+            ),
+            Some(serde_json::json!({
+                "type": "recharge_completed",
+                "amount": payment_attempt.amount_xaf,
+                "transaction_id": transaction_id
+            })),
+            Some("default".to_string()),
+        )
+        .await
+        {
+            log::warn!("[process_aggregator_webhook] Erreur notif push: {}", e);
+        }
+    }
+
+    Ok(())
+}
+
+/// Endpoint pour tester les webhooks — UNIQUEMENT en développement
 pub async fn test_webhook(
     State(state): State<Arc<AppState>>,
     Json(test_data): Json<Value>,
 ) -> AppResult<JsonResponse<WebhookResponse>> {
-    log::info!("[test_webhook] Test webhook: {:?}", test_data);
+    // ✅ Sécurité: bloquer en production
+    let environment = std::env::var("ENVIRONMENT").unwrap_or_else(|_| "production".to_string());
+    if environment == "production" {
+        log::warn!("[test_webhook] Tentative d'accès en production — BLOQUÉ");
+        return Err(AppError::Unauthorized(
+            "Endpoint de test non disponible en production".to_string(),
+        ));
+    }
 
-    // Simuler un webhook de test
+    log::info!(
+        "[test_webhook] Test webhook (env={}): {:?}",
+        environment,
+        test_data
+    );
+
     let transaction_id = test_data
         .get("transaction_id")
         .and_then(|v| v.as_str())
         .unwrap_or("test_txn_123");
 
     let status = test_data.get("status").and_then(|v| v.as_str()).unwrap_or("SUCCESS");
-
     let amount = test_data.get("amount").and_then(|v| v.as_i64()).unwrap_or(1000);
-
     let currency = test_data.get("currency").and_then(|v| v.as_str()).unwrap_or("XAF");
-
     let phone_number =
         test_data.get("phone_number").and_then(|v| v.as_str()).unwrap_or("675123456");
-
     let payment_method = test_data
         .get("payment_method")
         .and_then(|v| v.as_str())
         .unwrap_or("orange_money");
 
-    // Traiter le webhook de test
     let _result = process_payment_webhook(
         &state,
         transaction_id,

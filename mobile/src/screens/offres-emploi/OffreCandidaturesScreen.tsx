@@ -17,6 +17,7 @@ import {
 import SafeIcon from '../../components/SafeIcon';
 import { NativeCard } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { offreEmploiService } from '../../services/offreEmploiService';
 import { modernColors } from '../../theme/modernTheme';
 
@@ -37,6 +38,7 @@ const OffreCandidaturesScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
     const { user } = useAuth();
+    const { t } = useLanguageSafe();
     const params = route.params as any;
     const offreId = params?.offreId;
 
@@ -66,7 +68,7 @@ const OffreCandidaturesScreen: React.FC = () => {
             }
         } catch (error: any) {
             console.error('[OffreCandidaturesScreen] Erreur:', error);
-            Alert.alert('Erreur', 'Impossible de charger les candidatures');
+            Alert.alert(t('message.error'), t('offreCandidatures.cannotLoad'));
         } finally {
             setLoading(false);
         }
@@ -90,7 +92,7 @@ const OffreCandidaturesScreen: React.FC = () => {
 
     const handleAnalyzeCV = async (candidature: Candidature) => {
         if (!candidature.candidat_cv_url) {
-            Alert.alert('Erreur', 'Aucun CV disponible pour ce candidat');
+            Alert.alert(t('message.error'), t('offreCandidatures.noCVAvailable'));
             return;
         }
 
@@ -105,11 +107,11 @@ const OffreCandidaturesScreen: React.FC = () => {
                 });
                 setShowAnalysisModal(true);
             } else {
-                Alert.alert('Erreur', 'Impossible d\'analyser le CV');
+                Alert.alert(t('message.error'), t('offreCandidatures.cannotAnalyzeCV'));
             }
         } catch (error: any) {
             console.error('[OffreCandidaturesScreen] Erreur analyse:', error);
-            Alert.alert('Erreur', 'Erreur lors de l\'analyse du CV');
+            Alert.alert(t('message.error'), t('offreCandidatures.cvAnalysisError'));
         } finally {
             setAnalyzing(null);
         }
@@ -119,14 +121,14 @@ const OffreCandidaturesScreen: React.FC = () => {
         try {
             const response = await offreEmploiService.updateStatutCandidature(candidatureId, statut);
             if (response.success) {
-                Alert.alert('Succès', 'Statut mis à jour');
+                Alert.alert(t('message.success'), t('offreCandidatures.statusUpdated'));
                 loadCandidatures();
             } else {
-                Alert.alert('Erreur', response.message || 'Erreur lors de la mise à jour');
+                Alert.alert(t('message.error'), response.message || t('offreCandidatures.updateError'));
             }
         } catch (error: any) {
             console.error('[OffreCandidaturesScreen] Erreur:', error);
-            Alert.alert('Erreur', 'Erreur lors de la mise à jour');
+            Alert.alert(t('message.error'), t('offreCandidatures.updateError'));
         }
     };
 

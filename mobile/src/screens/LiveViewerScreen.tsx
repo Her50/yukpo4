@@ -1,5 +1,5 @@
 import { useNavigation, useRoute } from '@react-navigation/native';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -15,14 +15,15 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import SafeIcon from '../components/SafeIcon';
 import { LiveChatModal } from '../components/video/LiveChatModal';
 import { useAuth } from '../contexts/AuthContext';
-import { liveStreamingService } from '../services/liveStreamingService';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 import {
     fetchFlashSalesBySession,
-    reserveFlashSaleSlot,
     getFlashSaleTicketStatus,
-    type LiveFlashSale,
+    reserveFlashSaleSlot,
     type FlashSaleReservationTicket,
+    type LiveFlashSale,
 } from '../services/flashSaleService';
+import { liveStreamingService } from '../services/liveStreamingService';
 import { modernColors } from '../theme/modernTheme';
 
 const PLACEHOLDER_IMAGE = 'https://via.placeholder.com/400x300?text=Live';
@@ -42,6 +43,7 @@ export default function LiveViewerScreen() {
     const navigation = useNavigation();
     const route = useRoute();
     const { user } = useAuth();
+    const { t } = useLanguageSafe();
     const { sessionId } = (route.params as any) || {};
 
     const [loading, setLoading] = useState(true);
@@ -118,10 +120,10 @@ export default function LiveViewerScreen() {
                     setActiveTickets(prev => ({ ...prev, [flashSaleId]: updatedTicket }));
                     if (updatedTicket.status !== 'pending') {
                         if (updatedTicket.status === 'confirmed') {
-                            Alert.alert('Réservation confirmée', 'Votre réservation a été confirmée !');
+                            Alert.alert(t('liveViewer.bookingConfirmed'), t('liveViewer.bookingConfirmedMsg'));
                             loadFlashSales();
                         } else {
-                            Alert.alert('Réservation échouée', updatedTicket.message || 'Impossible de confirmer.');
+                            Alert.alert(t('liveViewer.bookingFailed'), updatedTicket.message || t('liveViewer.cannotConfirm'));
                         }
                         return;
                     }
@@ -136,9 +138,9 @@ export default function LiveViewerScreen() {
 
     const handleReserve = async (sale: LiveFlashSale) => {
         if (!user) {
-            Alert.alert('Connexion requise', 'Connectez-vous pour réserver.', [
-                { text: 'Annuler', style: 'cancel' },
-                { text: 'Se connecter', onPress: () => navigation.navigate('Login' as never) },
+            Alert.alert(t('liveViewer.loginRequired'), t('liveViewer.loginToReserve'), [
+                { text: t('message.cancel'), style: 'cancel' },
+                { text: t('liveViewer.login'), onPress: () => navigation.navigate('Login' as never) },
             ]);
             return;
         }
@@ -147,16 +149,16 @@ export default function LiveViewerScreen() {
             const ticket = await reserveFlashSaleSlot(sale.id, 1);
             setActiveTickets(prev => ({ ...prev, [sale.id]: ticket }));
             if (ticket.status === 'pending') {
-                Alert.alert('Réservation en cours', 'Votre réservation est en cours de traitement...');
+                Alert.alert(t('liveViewer.bookingPending'), t('liveViewer.bookingPendingMsg'));
                 pollTicketStatus(ticket.ticket_id, sale.id);
             } else if (ticket.status === 'confirmed') {
-                Alert.alert('Réservation confirmée', 'Votre réservation a été confirmée !');
+                Alert.alert(t('liveViewer.bookingConfirmed'), t('liveViewer.bookingConfirmedMsg'));
                 loadFlashSales();
             } else {
-                Alert.alert('Échec', ticket.message || 'Impossible de réserver.');
+                Alert.alert(t('liveViewer.failure'), ticket.message || t('liveViewer.cannotReserve'));
             }
         } catch (error: any) {
-            Alert.alert('Erreur', error.message || 'Impossible de réserver.');
+            Alert.alert(t('message.error'), error.message || t('liveViewer.cannotReserve'));
         } finally {
             setReservingSaleId(null);
         }
@@ -290,10 +292,10 @@ export default function LiveViewerScreen() {
                                                 <Text style={styles.reserveBtnText}>
                                                     {isEnded ? 'Terminé'
                                                         : isUpcoming ? 'Bientôt'
-                                                        : isSoldOut ? 'Épuisé'
-                                                        : ticket?.status === 'pending' ? 'Traitement...'
-                                                        : ticket?.status === 'confirmed' ? 'Réservé'
-                                                        : user ? 'Réserver' : 'Se connecter'}
+                                                            : isSoldOut ? 'Épuisé'
+                                                                : ticket?.status === 'pending' ? 'Traitement...'
+                                                                    : ticket?.status === 'confirmed' ? 'Réservé'
+                                                                        : user ? 'Réserver' : 'Se connecter'}
                                                 </Text>
                                             )}
                                         </TouchableOpacity>

@@ -16,6 +16,7 @@ import {
 import SafeIcon from '../components/SafeIcon';
 import { NativeCard } from '../components/SafeNativeDesign';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 import { apiGet, apiPost } from '../services/api';
 
 interface TeamMembership {
@@ -67,6 +68,7 @@ const CATEGORY_SCREEN_MAP: Record<string, string> = {
 const MesEquipesScreen: React.FC = () => {
     const navigation = useNavigation<any>();
     const { user } = useAuth();
+    const { t } = useLanguageSafe();
     const [memberships, setMemberships] = useState<TeamMembership[]>([]);
     const [pendingInvitations, setPendingInvitations] = useState<PendingInvitation[]>([]);
     const [loading, setLoading] = useState(true);
@@ -101,13 +103,13 @@ const MesEquipesScreen: React.FC = () => {
         try {
             const response = await apiPost(`/api/services/team/invitations/${token}/accept`, {});
             if (response.success || (response.data as any)?.success) {
-                Alert.alert('Succès', 'Invitation acceptée ! Vous êtes maintenant membre de cette équipe.');
+                Alert.alert(t('message.success'), t('mesEquipes.invitationAccepted'));
                 loadData();
             } else {
-                Alert.alert('Erreur', (response.data as any)?.message || 'Impossible d\'accepter l\'invitation');
+                Alert.alert(t('message.error'), (response.data as any)?.message || t('mesEquipes.cannotAccept'));
             }
         } catch (error) {
-            Alert.alert('Erreur', 'Impossible d\'accepter l\'invitation');
+            Alert.alert(t('message.error'), t('mesEquipes.cannotAccept'));
         } finally {
             setProcessingToken(null);
         }
@@ -115,8 +117,8 @@ const MesEquipesScreen: React.FC = () => {
 
     const handleRejectInvitation = async (token: string) => {
         Alert.alert(
-            'Rejeter l\'invitation',
-            'Êtes-vous sûr de vouloir rejeter cette invitation ?',
+            t('mesEquipes.rejectInvitation'),
+            t('mesEquipes.confirmReject'),
             [
                 { text: 'Annuler', style: 'cancel' },
                 {
@@ -125,11 +127,11 @@ const MesEquipesScreen: React.FC = () => {
                         try {
                             const response = await apiPost(`/api/services/team/invitations/${token}/reject`, {});
                             if (response.success || (response.data as any)?.success) {
-                                Alert.alert('OK', 'Invitation rejetée.');
+                                Alert.alert('OK', t('mesEquipes.invitationRejected'));
                                 loadData();
                             }
                         } catch (error) {
-                            Alert.alert('Erreur', 'Impossible de rejeter l\'invitation');
+                            Alert.alert(t('message.error'), t('mesEquipes.cannotReject'));
                         } finally {
                             setProcessingToken(null);
                         }
@@ -149,7 +151,7 @@ const MesEquipesScreen: React.FC = () => {
             // Fallback: aller vers les produits du service
             navigation.navigate('MesProduitsScreen', { serviceId: membership.service_id });
         } else {
-            Alert.alert('Info', 'Navigation vers ce type de service non disponible pour le moment.');
+            Alert.alert(t('mesEquipes.info'), t('mesEquipes.navigationUnavailable'));
         }
     };
 

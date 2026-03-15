@@ -17,6 +17,7 @@ import { NativeCard } from '../components/NativeDesign';
 import SafeIcon from '../components/SafeIcon';
 import { SafeNativeView } from '../components/SafeNativeView';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 import { useLocationSafe } from '../contexts/LocationContext';
 import { apiGet, apiPost } from '../services/api';
 import { PassiveActivityTracker } from '../services/PassiveActivityTracker';
@@ -587,7 +588,15 @@ const NavigationScreen: React.FC = () => {
 
             if (sr?.data) {
                 console.log('[Navigation] Setting activity summary:', sr.data);
-                setActivitySummary(sr.data);
+                const summary = sr.data.summary || {};
+                setActivitySummary({
+                    ...summary,
+                    by_mode: sr.data.by_mode || [],
+                    best_session: sr.data.best_session || null,
+                    daily_trend: sr.data.daily_trend || [],
+                    most_visited_places: (sr.data.top_destinations || []).map((d: any) => ({ name: d.address || 'Lieu inconnu', visit_count: d.visits || 0 })),
+                    favorite_poi_types: (sr.data.by_mode || []).map((m: any) => ({ poi_type: m.mode, count: m.count || 0 })),
+                });
             }
             if (hr?.data?.activities) {
                 console.log('[Navigation] Setting activity history:', hr.data.activities);

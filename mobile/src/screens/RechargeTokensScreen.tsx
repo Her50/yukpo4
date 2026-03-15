@@ -2,13 +2,15 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import * as React from 'react';
-import { useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useCallback, useState } from 'react';
+import { Alert, Linking, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Card, RadioButton, Title } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import NavigatorToolbar from '../components/NavigatorToolbar';
 import ReceiptModal from '../components/ReceiptModal';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguageSafe } from '../contexts/LanguageContext';
+import { apiPost } from '../services/api';
 import { theme } from '../theme/theme';
 
 interface RechargeOption {
@@ -32,7 +34,8 @@ interface PaymentMethod {
 
 const RechargeTokensScreen: React.FC = () => {
   const navigation = useNavigation();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
+  const { t } = useLanguageSafe();
   const [loading, setLoading] = useState(false);
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [customAmount, setCustomAmount] = useState<string>('');
@@ -40,6 +43,7 @@ const RechargeTokensScreen: React.FC = () => {
   const [currentStep, setCurrentStep] = useState<'amount' | 'payment' | 'confirm'>('amount');
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [receiptData, setReceiptData] = useState<any>(null);
+  const [paymentStatus, setPaymentStatus] = useState<'idle' | 'processing' | 'awaiting' | 'success' | 'failed'>('idle');
 
   // Options de recharge prédéfinies
   const rechargeOptions: RechargeOption[] = [
@@ -75,31 +79,40 @@ const RechargeTokensScreen: React.FC = () => {
   // Méthodes de paiement disponibles
   const paymentMethods: PaymentMethod[] = [
     {
-      id: 'mtn_money',
-      name: 'MTN Mobile Money',
+      id: 'mtn_momo',
+      name: t('payment.mobile_money') || 'MTN Mobile Money',
       type: 'mobile',
-      processingTime: 'Instantané',
+      processingTime: t('rechargeScreen.instant') || 'Instantané',
       fees: 0,
       available: true,
       icon: 'phone-portrait',
     },
     {
       id: 'orange_money',
-      name: 'Orange Money',
+      name: t('payment.orange_money') || 'Orange Money',
       type: 'mobile',
-      processingTime: 'Instantané',
+      processingTime: t('rechargeScreen.instant') || 'Instantané',
       fees: 0,
       available: true,
       icon: 'phone-portrait',
     },
     {
-      id: 'bank_transfer',
-      name: 'Virement bancaire',
-      type: 'bank',
-      processingTime: '1-2 jours',
+      id: 'visa',
+      name: t('payment.visa') || 'Visa / Mastercard',
+      type: 'card',
+      processingTime: t('rechargeScreen.instant') || 'Instantané',
       fees: 0,
       available: true,
       icon: 'card',
+    },
+    {
+      id: 'bank_transfer',
+      name: t('rechargeScreen.bankTransfer') || 'Virement bancaire',
+      type: 'bank',
+      processingTime: '1-2 ' + (t('rechargeScreen.days') || 'jours'),
+      fees: 0,
+      available: true,
+      icon: 'business',
     },
   ];
 
@@ -107,94 +120,172 @@ const RechargeTokensScreen: React.FC = () => {
 
   const handleRecharge = async () => {
     if (!selectedOption && !customAmount) {
-      Alert.alert('Erreur', 'Veuillez sélectionner un montant');
+      Alert.alert(
+        t('rechargeScreen.errorTitle') || 'Erreur',
+        t('rechargeScreen.errorSelectAmount') || 'Veuillez sélectionner un montant'
+      );
       return;
     }
 
     if (!selectedPaymentMethod) {
-      Alert.alert('Erreur', 'Veuillez sélectionner une méthode de paiement');
+      Alert.alert(
+        t('rechargeScreen.errorTitle') || 'Erreur',
+        t('rechargeScreen.errorSelectMethod') || 'Veuillez sélectionner une méthode de paiement'
+      );
+      return;
+    }
+
+    // Validation numéro pour Mobile Money
+    const isMobileMoney = selectedPaymentMethod === 'mtn_momo' || selectedPaymentMethod === 'orange_money';
+    if (isMobileMoney && (!phoneNumber || phoneNumber.length < 9)) {
+      Alert.alert(
+        t('rechargeScreen.errorTitle') || 'Erreur',
+        t('rechargeScreen.errorPhone') || 'Veuillez entrer un numéro de téléphone valide'
+      );
       return;
     }
 
     try {
       setLoading(true);
+      setPaymentStatus('processing');
 
       const amount = selectedOption
         ? rechargeOptions.find(opt => opt.id === selectedOption)?.amount || 0
         : parseInt(customAmount) || 0;
 
-      // Appel API pour recharger les tokens (route corrigée)
-      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001'}/api/tokens/recharge`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user?.token}`
-        },
-        body: JSON.stringify({
-          amount: amount,
-          payment_method: {
-            type: selectedPaymentMethod,
-            phone_number: phoneNumber,
-            country_code: '+237',
-          },
-          description: `Recharge de ${amount} XAF via ${selectedPaymentMethod}`
-        })
+      // Appel API via l'agrégateur (CinetPay/NotchPay)
+      const response = await apiPost('/api/payments/initiate', {
+        amount_xaf: amount,
+        payment_method: selectedPaymentMethod,
+        currency: 'XAF',
+        phone_number: isMobileMoney ? phoneNumber : undefined,
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Erreur lors de la recharge');
+      const paymentData = (response as any)?.data || response;
+
+      if (!paymentData?.payment_id) {
+        throw new Error(paymentData?.message || t('rechargeScreen.failedMessage') || 'Erreur lors de la recharge');
       }
 
-      const paymentData = await response.json();
+      // Si l'agrégateur retourne une URL de paiement (cartes, certains Mobile Money)
+      if (paymentData.payment_url) {
+        setPaymentStatus('awaiting');
+        // Ouvrir la page de paiement sécurisée de l'agrégateur
+        const canOpen = await Linking.canOpenURL(paymentData.payment_url);
+        if (canOpen) {
+          await Linking.openURL(paymentData.payment_url);
+        } else {
+          Alert.alert(
+            t('payment.title') || 'Paiement',
+            (t('rechargeScreen.openBrowser') || 'Ouvrez ce lien pour payer') + ':\n' + paymentData.payment_url
+          );
+        }
 
-      if (!paymentData.success) {
-        throw new Error(paymentData.message || 'Erreur lors de la recharge');
+        // Informer l'utilisateur
+        Alert.alert(
+          t('rechargeScreen.awaitingTitle') || 'Paiement en cours',
+          paymentData.instructions || t('rechargeScreen.awaitingMessage') || 'Validez le paiement. Vos tokens seront crédités automatiquement.',
+          [
+            {
+              text: t('rechargeScreen.checkStatus') || 'Vérifier le statut',
+              onPress: () => pollPaymentStatus(paymentData.payment_id)
+            },
+            { text: 'OK' }
+          ]
+        );
+      } else {
+        // Mobile Money direct — l'utilisateur confirme sur son téléphone
+        setPaymentStatus('awaiting');
+        Alert.alert(
+          t('rechargeScreen.awaitingTitle') || 'Paiement en cours',
+          paymentData.instructions || t('rechargeScreen.confirmPhone') || 'Confirmez le paiement sur votre téléphone. Vos tokens seront crédités automatiquement.',
+          [
+            {
+              text: t('rechargeScreen.checkStatus') || 'Vérifier le statut',
+              onPress: () => pollPaymentStatus(paymentData.payment_id)
+            },
+            { text: 'OK' }
+          ]
+        );
       }
 
-      // Les tokens sont déjà crédités par le backend, utiliser les données de la réponse
-      const tokens = paymentData.data.amount; // Montant en XAF = tokens
-      const bonus = tokens >= 10000 ? Math.floor(tokens * 0.2) :
-        tokens >= 5000 ? Math.floor(tokens * 0.1) :
-          tokens >= 2000 ? Math.floor(tokens * 0.05) : 0;
-      const totalTokens = tokens + bonus;
-
-      // Générer le reçu
+      // Générer le reçu provisoire
       const receipt = {
-        id: paymentData.data.transaction_id,
+        id: paymentData.payment_id,
         amount: amount,
-        tokens: tokens,
-        bonus: bonus,
-        paymentMethod: paymentMethods.find(method => method.id === selectedPaymentMethod)?.name || 'Méthode de paiement',
-        transactionId: paymentData.data.transaction_id,
+        tokens: amount, // 1:1, le bonus sera calculé côté serveur
+        bonus: 0,
+        paymentMethod: paymentMethods.find(method => method.id === selectedPaymentMethod)?.name || '',
+        transactionId: paymentData.payment_id,
         date: new Date().toISOString(),
-        status: 'completed' as const,
-        instructions: paymentData.instructions
+        status: 'pending' as const,
+        instructions: paymentData.instructions,
       };
 
       setReceiptData(receipt);
       setShowReceiptModal(true);
 
-      // Afficher un message de succès
-      Alert.alert(
-        '✅ Recharge réussie',
-        `Votre compte a été crédité de ${totalTokens.toLocaleString()} tokens (${tokens.toLocaleString()} XAF${bonus > 0 ? ` + ${bonus.toLocaleString()} bonus` : ''})`,
-        [{ text: 'OK' }]
-      );
-
-      // Réinitialiser le formulaire
-      setSelectedOption(null);
-      setCustomAmount('');
-      setSelectedPaymentMethod(null);
-      setCurrentStep('amount');
     } catch (error) {
       console.error('Erreur paiement:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Le paiement a échoué. Veuillez réessayer.';
-      Alert.alert('Erreur', errorMessage);
+      setPaymentStatus('failed');
+      const errorMessage = error instanceof Error ? error.message : (t('rechargeScreen.failedMessage') || 'Le paiement a échoué. Veuillez réessayer.');
+      Alert.alert(t('rechargeScreen.failedTitle') || 'Erreur', errorMessage);
     } finally {
       setLoading(false);
     }
   };
+
+  // Vérifier le statut du paiement (polling)
+  const pollPaymentStatus = useCallback(async (paymentId: string) => {
+    try {
+      setLoading(true);
+      // Appeler l'endpoint de vérification du statut
+      const response = await apiPost('/api/payments/confirm', {
+        payment_id: paymentId,
+        status: 'check',
+      });
+
+      const data = (response as any)?.data || response;
+      if (data?.success && data?.tokens_added) {
+        setPaymentStatus('success');
+        // Rafraîchir le solde utilisateur
+        if (refreshUser) await refreshUser();
+        Alert.alert(
+          t('rechargeScreen.successTitle') || 'Recharge réussie',
+          (t('rechargeScreen.successMessage') || 'Votre compte a été crédité de {{tokens}} tokens')
+            .replace('{{tokens}}', String(data.tokens_added)),
+          [{
+            text: 'OK', onPress: () => {
+              setSelectedOption(null);
+              setCustomAmount('');
+              setSelectedPaymentMethod(null);
+              setCurrentStep('amount');
+              setPaymentStatus('idle');
+            }
+          }]
+        );
+      } else if (data?.status === 'pending' || data?.status === 'processing') {
+        Alert.alert(
+          t('rechargeScreen.processingTitle') || 'En cours',
+          t('rechargeScreen.processingMessage') || 'Le paiement est toujours en cours de traitement. Réessayez dans quelques instants.',
+          [
+            { text: t('rechargeScreen.checkStatus') || 'Revérifier', onPress: () => setTimeout(() => pollPaymentStatus(paymentId), 3000) },
+            { text: 'OK' }
+          ]
+        );
+      } else {
+        setPaymentStatus('failed');
+        Alert.alert(
+          t('rechargeScreen.failedTitle') || 'Échec',
+          t('rechargeScreen.failedMessage') || 'Le paiement a échoué. Veuillez réessayer.'
+        );
+      }
+    } catch (e) {
+      console.error('Erreur vérification statut:', e);
+    } finally {
+      setLoading(false);
+    }
+  }, [t, refreshUser]);
 
   const getSelectedAmount = () => {
     if (selectedOption) {
@@ -214,7 +305,7 @@ const RechargeTokensScreen: React.FC = () => {
 
   const renderAmountStep = () => (
     <View style={styles.stepContainer}>
-      <Title style={styles.stepTitle}>Choisissez le montant</Title>
+      <Title style={styles.stepTitle}>{t('rechargeScreen.selectAmount') || 'Choisissez le montant'}</Title>
 
       {/* Options prédéfinies */}
       <View style={styles.optionsContainer}>
@@ -233,7 +324,7 @@ const RechargeTokensScreen: React.FC = () => {
           >
             {option.popular && (
               <View style={styles.popularBadge}>
-                <Text style={styles.popularText}>Populaire</Text>
+                <Text style={styles.popularText}>{t('rechargeScreen.popular') || 'Populaire'}</Text>
               </View>
             )}
 
@@ -242,7 +333,7 @@ const RechargeTokensScreen: React.FC = () => {
                 {option.amount.toLocaleString()} FCFA
               </Text>
               <Text style={styles.optionTokens}>
-                Crédité à votre solde
+                {t('rechargeScreen.creditedToBalance') || 'Crédité à votre solde'}
               </Text>
               {option.savings && (
                 <Text style={styles.savingsText}>
@@ -266,10 +357,10 @@ const RechargeTokensScreen: React.FC = () => {
       {/* Option personnalisée */}
       <Card style={styles.customCard}>
         <Card.Content>
-          <Title style={styles.customTitle}>Montant personnalisé</Title>
+          <Title style={styles.customTitle}>{t('rechargeScreen.customAmount') || 'Montant personnalisé'}</Title>
           <TextInput
             style={styles.customInput}
-            placeholder="Entrez le montant en XAF"
+            placeholder={t('rechargeScreen.enterAmount') || 'Entrez le montant en XAF'}
             value={customAmount}
             onChangeText={(text) => {
               setCustomAmount(text);
@@ -279,7 +370,7 @@ const RechargeTokensScreen: React.FC = () => {
           />
           {customAmount && (
             <Text style={styles.customTokens}>
-              {parseInt(customAmount).toLocaleString() || 0} FCFA seront crédités à votre solde
+              {(t('rechargeScreen.willBeCredited') || '{{amount}} FCFA seront crédités à votre solde').replace('{{amount}}', (parseInt(customAmount) || 0).toLocaleString())}
             </Text>
           )}
         </Card.Content>
@@ -293,14 +384,14 @@ const RechargeTokensScreen: React.FC = () => {
           (!selectedOption && !customAmount) && styles.nextButtonDisabled
         ]}
       >
-        <Text style={styles.nextButtonText}>Continuer →</Text>
+        <Text style={styles.nextButtonText}>{t('rechargeScreen.continue') || 'Continuer →'}</Text>
       </TouchableOpacity>
     </View>
   );
 
   const renderPaymentStep = () => (
     <View style={styles.stepContainer}>
-      <Title style={styles.stepTitle}>Méthode de paiement</Title>
+      <Title style={styles.stepTitle}>{t('payment.method') || 'Méthode de paiement'}</Title>
 
       <View style={styles.paymentMethodsContainer}>
         {paymentMethods.map((method) => (
@@ -337,13 +428,13 @@ const RechargeTokensScreen: React.FC = () => {
       </View>
 
       {/* Champ numéro de téléphone pour Mobile Money */}
-      {(selectedPaymentMethod === 'mtn_money' || selectedPaymentMethod === 'orange_money') && (
+      {(selectedPaymentMethod === 'mtn_momo' || selectedPaymentMethod === 'orange_money') && (
         <Card style={styles.phoneCard}>
           <Card.Content>
-            <Text style={styles.phoneLabel}>📱 Numéro de téléphone</Text>
+            <Text style={styles.phoneLabel}>📱 {t('payment.phone') || 'Numéro de téléphone'}</Text>
             <TextInput
               style={styles.phoneInput}
-              placeholder="Exemple: 699999999"
+              placeholder={t('rechargeScreen.phonePlaceholder') || 'Exemple: 699999999'}
               placeholderTextColor="#999"
               value={phoneNumber}
               onChangeText={setPhoneNumber}
@@ -351,7 +442,7 @@ const RechargeTokensScreen: React.FC = () => {
               maxLength={9}
             />
             <Text style={styles.phoneHint}>
-              {selectedPaymentMethod === 'mtn_money' ? '💡 MTN : 67X XXX XXX ou 65X XXX XXX' : '💡 Orange : 69X XXX XXX'}
+              {selectedPaymentMethod === 'mtn_momo' ? '💡 MTN : 67X XXX XXX ou 65X XXX XXX' : '💡 Orange : 69X XXX XXX'}
             </Text>
           </Card.Content>
         </Card>
@@ -362,17 +453,17 @@ const RechargeTokensScreen: React.FC = () => {
           onPress={() => setCurrentStep('amount')}
           style={styles.backButton}
         >
-          <Text style={styles.backButtonText}>← Retour</Text>
+          <Text style={styles.backButtonText}>{t('rechargeScreen.back') || '← Retour'}</Text>
         </TouchableOpacity>
         <TouchableOpacity
           onPress={() => setCurrentStep('confirm')}
-          disabled={!selectedPaymentMethod || ((selectedPaymentMethod === 'mtn_money' || selectedPaymentMethod === 'orange_money') && !phoneNumber)}
+          disabled={!selectedPaymentMethod || ((selectedPaymentMethod === 'mtn_momo' || selectedPaymentMethod === 'orange_money') && !phoneNumber)}
           style={[
             styles.nextButton,
-            (!selectedPaymentMethod || ((selectedPaymentMethod === 'mtn_money' || selectedPaymentMethod === 'orange_money') && !phoneNumber)) && styles.nextButtonDisabled
+            (!selectedPaymentMethod || ((selectedPaymentMethod === 'mtn_momo' || selectedPaymentMethod === 'orange_money') && !phoneNumber)) && styles.nextButtonDisabled
           ]}
         >
-          <Text style={styles.nextButtonText}>Continuer →</Text>
+          <Text style={styles.nextButtonText}>{t('rechargeScreen.continue') || 'Continuer →'}</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -380,31 +471,31 @@ const RechargeTokensScreen: React.FC = () => {
 
   const renderConfirmStep = () => (
     <View style={styles.stepContainer}>
-      <Title style={styles.stepTitle}>Confirmation</Title>
+      <Title style={styles.stepTitle}>{t('rechargeScreen.summary') || 'Confirmation'}</Title>
 
       <Card style={styles.confirmCard}>
         <Card.Content>
           <View style={styles.confirmRow}>
-            <Text style={styles.confirmLabel}>Montant:</Text>
+            <Text style={styles.confirmLabel}>{t('rechargeScreen.amount') || 'Montant'}:</Text>
             <Text style={styles.confirmValue}>
               {getSelectedAmount().toLocaleString()} XAF
             </Text>
           </View>
 
           <View style={styles.confirmRow}>
-            <Text style={styles.confirmLabel}>Montant crédité:</Text>
+            <Text style={styles.confirmLabel}>{t('rechargeScreen.credited') || 'Montant crédité'}:</Text>
             <Text style={styles.confirmValue}>{getSelectedAmount().toLocaleString()} FCFA</Text>
           </View>
 
           <View style={styles.confirmRow}>
-            <Text style={styles.confirmLabel}>Méthode de paiement:</Text>
+            <Text style={styles.confirmLabel}>{t('payment.method') || 'Méthode de paiement'}:</Text>
             <Text style={styles.confirmValue}>
               {paymentMethods.find(m => m.id === selectedPaymentMethod)?.name}
             </Text>
           </View>
 
           <View style={styles.confirmRow}>
-            <Text style={styles.confirmLabel}>Temps de traitement:</Text>
+            <Text style={styles.confirmLabel}>{t('rechargeScreen.processingTime') || 'Temps de traitement'}:</Text>
             <Text style={styles.confirmValue}>
               {paymentMethods.find(m => m.id === selectedPaymentMethod)?.processingTime}
             </Text>
@@ -417,7 +508,7 @@ const RechargeTokensScreen: React.FC = () => {
           onPress={() => setCurrentStep('payment')}
           style={styles.backButton}
         >
-          <Text style={styles.backButtonText}>← Retour</Text>
+          <Text style={styles.backButtonText}>{t('rechargeScreen.back') || '← Retour'}</Text>
         </TouchableOpacity>
         <TouchableOpacity
           onPress={handleRecharge}
@@ -428,21 +519,21 @@ const RechargeTokensScreen: React.FC = () => {
           ]}
         >
           <Text style={styles.confirmButtonText}>
-            {loading ? 'Traitement...' : '✓ Confirmer le paiement'}
+            {loading ? (t('rechargeScreen.processing') || 'Traitement...') : (t('rechargeScreen.confirm') || '✓ Confirmer le paiement')}
           </Text>
         </TouchableOpacity>
       </View>
     </View>
   );
 
-  const creditNumber = Number(user?.credits ?? 0);
+  const creditNumber = Number(user?.credits ?? user?.tokens_balance ?? 0);
   const formattedCredits = Number.isFinite(creditNumber) ? creditNumber.toLocaleString() : '0';
-  const balanceLabel = `Solde actuel: ${formattedCredits} XAF`;
+  const balanceLabel = `${t('yourBalance') || 'Solde actuel'}: ${formattedCredits} XAF`;
 
   return (
     <SafeAreaView style={styles.container}>
       <NavigatorToolbar
-        title="Recharger mon solde"
+        title={t('rechargeScreen.title') || 'Recharger mon solde'}
         subtitle={balanceLabel}
         showHandle={false}
         density="compact"
@@ -453,7 +544,7 @@ const RechargeTokensScreen: React.FC = () => {
             style={styles.historyButton}
             onPress={() => (navigation as any).navigate('SoldeDetail')}
           >
-            <Text style={styles.historyButtonText}>📊 Historique</Text>
+            <Text style={styles.historyButtonText}>📊 {t('tokens.history') || 'Historique'}</Text>
           </TouchableOpacity>
         )}
       />
@@ -462,17 +553,17 @@ const RechargeTokensScreen: React.FC = () => {
         <View style={styles.stepsIndicator}>
           <View style={[styles.step, currentStep === 'amount' && styles.stepActive]}>
             <Text style={[styles.stepText, currentStep === 'amount' && styles.stepTextActive]}>
-              1. Montant
+              1. {t('rechargeScreen.amount') || 'Montant'}
             </Text>
           </View>
           <View style={[styles.step, currentStep === 'payment' && styles.stepActive]}>
             <Text style={[styles.stepText, currentStep === 'payment' && styles.stepTextActive]}>
-              2. Paiement
+              2. {t('payment.title') || 'Paiement'}
             </Text>
           </View>
           <View style={[styles.step, currentStep === 'confirm' && styles.stepActive]}>
             <Text style={[styles.stepText, currentStep === 'confirm' && styles.stepTextActive]}>
-              3. Confirmation
+              3. {t('rechargeScreen.summary') || 'Confirmation'}
             </Text>
           </View>
         </View>

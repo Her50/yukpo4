@@ -710,6 +710,70 @@ pub async fn update_package_status(
         .map_err(|e| AppError::Internal(format!("Erreur MAJ paquet: {}", e)))?
         .ok_or_else(|| AppError::NotFound("Paquet non trouvé".to_string()))?;
 
+    // ✅ PHASE 3: Si constitué, déclencher automatiquement le dispatch (matching coursier)
+    if payload.statut == "constitue" && package.delivery_uuid.is_none() {
+        if package.expediteur_gps.is_some() && package.destinataire_gps.is_some() {
+            info!(
+                "[update_package_status] Auto-dispatch paquet {} vers système de livraison",
+                package_id
+            );
+            // Mettre matching_status à 'searching' immédiatement
+            sqlx::query(
+                "UPDATE book_delivery_packages SET matching_status = 'searching' WHERE id = $1",
+            )
+            .bind(package_id)
+            .execute(&state.pg)
+            .await
+            .ok();
+
+            // Calculer itinéraire et frais
+            let parse_gps = |gps: &str| -> Option<(f64, f64)> {
+                let parts: Vec<&str> = gps.split(',').collect();
+                if parts.len() == 2 {
+                    Some((parts[0].trim().parse().ok()?, parts[1].trim().parse().ok()?))
+                } else {
+                    None
+                }
+            };
+            if let (Some((exp_lat, exp_lng)), Some((dest_lat, dest_lng))) = (
+                package.expediteur_gps.as_deref().and_then(parse_gps),
+                package.destinataire_gps.as_deref().and_then(parse_gps),
+            ) {
+                let distance_m = crate::services::delivery_service::haversine_distance(
+                    (exp_lat, exp_lng),
+                    (dest_lat, dest_lng),
+                );
+                let eta_min = ((distance_m / 1000.0) / 25.0 * 60.0).max(15.0) as i32;
+                let frais = package
+                    .frais_livraison
+                    .and_then(|f| f.to_string().parse::<f64>().ok())
+                    .unwrap_or_else(|| (distance_m / 1000.0 * 500.0).max(1000.0));
+
+                let itineraire = json!([
+                    {"type":"pickup","gps":format!("{},{}", exp_lat, exp_lng),"adresse":package.expediteur_adresse,"user_id":package.expediteur_id,"ordre":1},
+                    {"type":"dropoff","gps":format!("{},{}", dest_lat, dest_lng),"adresse":package.destinataire_adresse,"user_id":package.destinataire_id,"ordre":2}
+                ]);
+
+                sqlx::query(
+                    "UPDATE book_delivery_packages SET itineraire = $1, eta_minutes = $2, distance_totale_metres = $3, frais_livraison = COALESCE(frais_livraison, $4) WHERE id = $5"
+                )
+                .bind(&itineraire)
+                .bind(eta_min)
+                .bind(distance_m as i32)
+                .bind(rust_decimal::Decimal::from_f64_retain(frais))
+                .bind(package_id)
+                .execute(&state.pg)
+                .await
+                .ok();
+            }
+        } else {
+            info!(
+                "[update_package_status] GPS manquant pour auto-dispatch paquet {}",
+                package_id
+            );
+        }
+    }
+
     // ✅ Si confirmé: créditer le coursier et marquer les commissions comme reversées
     if payload.statut == "confirme" {
         // Créditer le coursier avec les frais de livraison (moins commission 20%)

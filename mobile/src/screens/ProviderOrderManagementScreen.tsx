@@ -19,6 +19,7 @@ import {
 } from 'react-native';
 import SafeIcon from '../components/SafeIcon';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 import { notificationSoundService } from '../services/notificationSoundService';
 import { Order, orderService } from '../services/orderService';
 import { modernColors } from '../theme/modernTheme';
@@ -34,6 +35,7 @@ const STATUS_LABELS: Record<string, string> = {
 const ProviderOrderManagementScreen: React.FC = () => {
     const navigation = useNavigation();
     const { user } = useAuth();
+    const { t } = useLanguageSafe();
 
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(true);
@@ -61,7 +63,7 @@ const ProviderOrderManagementScreen: React.FC = () => {
             setLastOrderCount(newOrdersCount);
         } catch (err: any) {
             console.error('[ProviderOrderManagement] Erreur chargement commandes:', err);
-            Alert.alert('Erreur', err.message || 'Erreur lors du chargement des commandes');
+            Alert.alert(t('message.error'), err.message || t('providerOrders.cannotLoadOrders'));
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -104,8 +106,8 @@ const ProviderOrderManagementScreen: React.FC = () => {
 
     const handleValidate = async (order: Order) => {
         Alert.alert(
-            'Valider la commande',
-            'Voulez-vous valider cette commande ?',
+            t('providerOrders.validateOrder'),
+            t('providerOrders.confirmValidate'),
             [
                 { text: 'Annuler', style: 'cancel' },
                 {
@@ -114,10 +116,10 @@ const ProviderOrderManagementScreen: React.FC = () => {
                         try {
                             setValidatingOrderId(order.id);
                             await orderService.validateOrder(order.id, {});
-                            Alert.alert('Succès', 'Commande validée');
+                            Alert.alert(t('message.success'), t('providerOrders.orderValidated'));
                             loadOrders();
                         } catch (err: any) {
-                            Alert.alert('Erreur', err.message);
+                            Alert.alert(t('message.error'), err.message);
                         } finally {
                             setValidatingOrderId(null);
                         }
@@ -135,20 +137,20 @@ const ProviderOrderManagementScreen: React.FC = () => {
 
     const confirmReject = async () => {
         if (!selectedOrder || !rejectReason.trim()) {
-            Alert.alert('Erreur', 'Veuillez indiquer une raison de rejet');
+            Alert.alert(t('message.error'), t('providerOrders.rejectReasonRequired'));
             return;
         }
 
         try {
             setRejectingOrderId(selectedOrder.id);
             await orderService.rejectOrder(selectedOrder.id, rejectReason);
-            Alert.alert('Succès', 'Commande rejetée');
+            Alert.alert(t('message.success'), t('providerOrders.orderRejected'));
             setShowRejectModal(false);
             setSelectedOrder(null);
             setRejectReason('');
             loadOrders();
         } catch (err: any) {
-            Alert.alert('Erreur', err.message);
+            Alert.alert(t('message.error'), err.message);
         } finally {
             setRejectingOrderId(null);
         }

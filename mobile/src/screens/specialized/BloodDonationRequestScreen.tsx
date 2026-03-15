@@ -15,6 +15,7 @@ import {
 import SafeIcon from '../../components/SafeIcon';
 import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { apiGet, apiPost } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
@@ -36,6 +37,7 @@ const BloodDonationRequestScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
     const { user } = useAuth();
+    const { t } = useLanguageSafe();
     const { location } = useLocation();
     const banqueId = (route.params as any)?.banqueId as number | undefined;
 
@@ -87,7 +89,7 @@ const BloodDonationRequestScreen: React.FC = () => {
             }
         } catch (error: any) {
             console.error('[BloodDonationRequestScreen] Erreur chargement banques:', error);
-            Alert.alert('Erreur', 'Impossible de charger vos banques de sang');
+            Alert.alert(t('message.error'), t('bloodDonation.cannotLoadBanks'));
         } finally {
             setLoadingBanks(false);
         }
@@ -111,17 +113,17 @@ const BloodDonationRequestScreen: React.FC = () => {
     const handleSubmit = async () => {
         // Validation
         if (!formData.banque_sang_id) {
-            Alert.alert('Erreur', 'Veuillez sélectionner une banque de sang');
+            Alert.alert(t('message.error'), t('bloodDonation.selectBank'));
             return;
         }
 
         if (!formData.groupe_sanguin_requis) {
-            Alert.alert('Erreur', 'Veuillez sélectionner un groupe sanguin requis');
+            Alert.alert(t('message.error'), t('bloodDonation.selectBloodGroup'));
             return;
         }
 
         if (!formData.quantite_requise || parseInt(formData.quantite_requise) <= 0) {
-            Alert.alert('Erreur', 'Veuillez entrer une quantité valide');
+            Alert.alert(t('message.error'), t('bloodDonation.enterValidQuantity'));
             return;
         }
 
@@ -153,11 +155,11 @@ const BloodDonationRequestScreen: React.FC = () => {
                 const matchesFound = (response.data as any)?.matches_found || 0;
 
                 Alert.alert(
-                    'Demande créée',
-                    `Votre demande a été créée avec succès. ${matchesFound} donneur(s) compatible(s) trouvé(s).`,
+                    t('bloodDonation.requestCreated'),
+                    t('bloodDonation.requestCreatedMsg', { count: matchesFound }),
                     [
                         {
-                            text: 'Voir les matches',
+                            text: t('bloodDonation.viewMatches'),
                             onPress: () => {
                                 navigation.navigate('BloodDonationMatches' as never, {
                                     requestId,
@@ -181,11 +183,11 @@ const BloodDonationRequestScreen: React.FC = () => {
                     notes: '',
                 });
             } else {
-                Alert.alert('Erreur', (response as any).error || 'Impossible de créer la demande');
+                Alert.alert(t('message.error'), (response as any).error || t('bloodDonation.cannotCreateRequest'));
             }
         } catch (error: any) {
             console.error('[BloodDonationRequestScreen] Erreur création demande:', error);
-            Alert.alert('Erreur', error.message || 'Impossible de créer la demande');
+            Alert.alert(t('message.error'), error.message || t('bloodDonation.cannotCreateRequest'));
         } finally {
             setLoading(false);
         }

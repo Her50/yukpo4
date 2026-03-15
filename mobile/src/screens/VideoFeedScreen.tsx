@@ -29,6 +29,7 @@ import ProductDescriptionSection from '../components/ProductDescriptionSection';
 import SafeIcon from '../components/SafeIcon';
 import { SafeNativeView } from '../components/SafeNativeView';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 import { apiGet, apiPost } from '../services/api';
 import { mediaService } from '../services/mediaService';
 import { videoCacheService } from '../services/videoCacheService';
@@ -268,6 +269,7 @@ const VideoProgressBar: React.FC<{ progress: number }> = React.memo(({ progress 
 const VideoFeedScreen: React.FC = ({ route }: any) => {
     const navigation = useNavigation();
     const { user } = useAuth();
+    const { t } = useLanguageSafe();
     const isFocused = useIsFocused();
     const showOnlyMyVideos = route?.params?.showOnlyMyVideos || false;
 
@@ -360,7 +362,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
         } catch (error) {
             console.error('[VideoFeedScreen] Erreur chargement feed', error);
             if (!isRefresh && pageNum === 1) {
-                Alert.alert('Vidéos indisponibles', "Impossible de charger les vidéos pour l'instant.");
+                Alert.alert(t('videoFeed.videosUnavailable'), t('videoFeed.cannotLoadVideos'));
             }
         } finally {
             setLoading(false);
@@ -484,7 +486,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
 
     const handleToggleFollow = useCallback(async (serviceId: string | number) => {
         if (!serviceId || !user?.id) {
-            Alert.alert('Connexion requise', 'Connectez-vous pour suivre ce vendeur.');
+            Alert.alert(t('videoFeed.loginRequired'), t('videoFeed.loginToFollow'));
             return;
         }
 
@@ -492,7 +494,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
         const numericServiceId = typeof serviceId === 'string' ? parseInt(serviceId, 10) : serviceId;
         if (isNaN(numericServiceId) || numericServiceId <= 0) {
             console.error(`[VideoFeed] Invalid serviceId: ${serviceId}`);
-            Alert.alert('Erreur', 'Identifiant de service invalide.');
+            Alert.alert(t('message.error'), t('videoFeed.invalidServiceId'));
             return;
         }
 
@@ -524,8 +526,8 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
 
             // Afficher un message d'erreur à l'utilisateur
             Alert.alert(
-                'Erreur',
-                'Impossible de suivre ce vendeur. Veuillez réessayer.',
+                t('message.error'),
+                t('videoFeed.cannotFollow'),
                 [{ text: 'OK' }]
             );
         }
@@ -814,7 +816,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
         if (item.serviceId) {
             (navigation as any).navigate('ServiceDetailShared', { serviceId: item.serviceId });
         } else {
-            Alert.alert('Information', 'Aucun produit associé à cette vidéo.');
+            Alert.alert(t('videoFeed.information'), t('videoFeed.noProductAssociated'));
         }
     }, [navigation]);
 
@@ -825,7 +827,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
             setSelectedDeliveryItem(item);
             setShowDeliveryModal(true);
         } else {
-            Alert.alert('Information', 'Service de livraison non disponible pour ce produit.');
+            Alert.alert(t('videoFeed.information'), t('videoFeed.deliveryUnavailable'));
         }
     }, []);
 
@@ -847,7 +849,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
         if (item.serviceId) {
             setCommentsModalItem(item);
         } else {
-            Alert.alert('Commentaires', 'Les commentaires ne sont pas disponibles pour cette vidéo.');
+            Alert.alert(t('videoFeed.comments'), t('videoFeed.commentsUnavailable'));
         }
     }, []);
 

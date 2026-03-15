@@ -6,8 +6,8 @@ use std::sync::Arc;
 
 use crate::{
     controllers::webhook_controller::{
-        audio_premium_webhook, generic_webhook, mtn_money_webhook, orange_money_webhook,
-        test_webhook,
+        audio_premium_webhook, cinetpay_webhook, generic_webhook, mtn_money_webhook,
+        notchpay_webhook, orange_money_webhook, test_webhook,
     },
     state::AppState,
 };
@@ -15,14 +15,17 @@ use crate::{
 /// Routes pour les webhooks de paiement
 pub fn webhook_routes() -> Router<Arc<AppState>> {
     Router::new()
-        // Webhooks spécifiques aux providers
+        // ✅ Webhooks agrégateurs (production)
+        .route("/cinetpay", post(cinetpay_webhook))
+        .route("/notchpay", post(notchpay_webhook))
+        // Webhooks legacy (providers directs)
         .route("/orange-money", post(orange_money_webhook))
         .route("/mtn-money", post(mtn_money_webhook))
         .route("/generic", post(generic_webhook))
         .route("/audio-premium/{provider}", post(audio_premium_webhook))
-        // Endpoint de test pour les webhooks
+        // Endpoint de test (bloqué en production)
         .route("/test", post(test_webhook))
-        // Endpoint de santé spécifique aux webhooks (évite conflit avec /health global)
+        // Endpoint de santé
         .route("/webhooks/health", get(webhook_health))
 }
 

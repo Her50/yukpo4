@@ -11,6 +11,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import BookCourierSubDashboard from '../../components/delivery/BookCourierSubDashboard';
 import CourierStatsChart from '../../components/delivery/CourierStatsChart';
 import SkeletonDeliveryCard from '../../components/delivery/SkeletonDeliveryCard';
 import SafeIcon from '../../components/SafeIcon';
@@ -149,6 +150,9 @@ const CourierDashboardScreen: React.FC = () => {
                         avgDeliveryTime={safeStats.avgDeliveryTime}
                         successRate={safeStats.successRate}
                     />
+
+                    {/* ✅ PHASE 3: Sous-dashboard Livres Scolaires */}
+                    <BookCourierSubDashboard onRefresh={handleRefresh} />
 
                     {/* Livraisons actives */}
                     <View style={styles.section}>

@@ -1,6 +1,6 @@
 // ✅ Écran Résultats BayamSelam - Comparaison de prix avec livraison, panier, tendances et promotions
-import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
@@ -15,14 +15,14 @@ import {
     View,
 } from 'react-native';
 import SafeIcon from '../../components/SafeIcon';
-import { SafeNativeView } from '../../components/SafeNativeView';
-import { useLocation } from '../../contexts/LocationContext';
-import { useAuth } from '../../contexts/AuthContext';
-import { supermarketService, Supermarket, SupermarketProduct, PriceComparison, SupermarketPromotion } from '../../services/supermarketService';
-import { modernColors } from '../../theme/modernTheme';
-import { hapticPress } from '../../utils/hapticFeedback';
 import { NativeButton } from '../../components/SafeNativeDesign';
+import { SafeNativeView } from '../../components/SafeNativeView';
+import { useAuth } from '../../contexts/AuthContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
+import { useLocation } from '../../contexts/LocationContext';
 import { useCurrencyDetection } from '../../hooks/useCurrencyDetection';
+import { PriceComparison, Supermarket, SupermarketProduct, SupermarketPromotion, supermarketService } from '../../services/supermarketService';
+import { hapticPress } from '../../utils/hapticFeedback';
 
 type ViewMode = 'results' | 'compare' | 'trends' | 'promotions';
 
@@ -44,34 +44,35 @@ const BayamSelamResultsScreen: React.FC = () => {
     const route = useRoute();
     const { location } = useLocation();
     const { user } = useAuth();
+    const { t } = useLanguageSafe();
     const detectedCurrency = useCurrencyDetection();
-    
+
     const filters = (route.params as any)?.filters as SearchFilters || {};
     const [viewMode, setViewMode] = useState<ViewMode>('results');
-    
+
     // États pour résultats
     const [products, setProducts] = useState<Array<SupermarketProduct & { distance_km?: number }>>([]);
     const [supermarkets, setSupermarkets] = useState<Supermarket[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
-    
+
     // États pour comparaison
     const [compareQuery, setCompareQuery] = useState(filters.produit || '');
     const [priceComparison, setPriceComparison] = useState<PriceComparison | null>(null);
     const [loadingComparison, setLoadingComparison] = useState(false);
-    
+
     // États pour tendances
     const [trendingProducts, setTrendingProducts] = useState<SupermarketProduct[]>([]);
     const [loadingTrends, setLoadingTrends] = useState(false);
-    
+
     // États pour promotions
     const [promotions, setPromotions] = useState<SupermarketPromotion[]>([]);
     const [loadingPromotions, setLoadingPromotions] = useState(false);
-    
+
     // États pour panier
     const [cartItems, setCartItems] = useState<Array<{ product: SupermarketProduct; quantity: number }>>([]);
     const [showCart, setShowCart] = useState(false);
-    
+
     useEffect(() => {
         loadResults();
         loadTrends();
@@ -93,19 +94,19 @@ const BayamSelamResultsScreen: React.FC = () => {
     const loadResults = useCallback(async () => {
         try {
             setLoading(true);
-            
+
             // Charger les supermarchés à proximité
             if (location?.coords) {
                 const userLat = filters.gps_lat || location.coords.latitude;
                 const userLng = filters.gps_lon || location.coords.longitude;
-                
+
                 const supermarketsResponse = await supermarketService.listSupermarkets(
                     userLat,
                     userLng,
                     filters.rayon_km || 20
                 );
                 setSupermarkets(supermarketsResponse.supermarkets || []);
-                
+
                 // Charger les produits de chaque supermarché
                 const allProducts: Array<SupermarketProduct & { distance_km?: number }> = [];
                 for (const supermarket of supermarketsResponse.supermarkets || []) {
@@ -130,7 +131,7 @@ const BayamSelamResultsScreen: React.FC = () => {
                         console.error(`[BayamSelamResults] Erreur chargement produits ${supermarket.id}:`, err);
                     }
                 }
-                
+
                 // Filtrer et trier par prix
                 let filteredProducts = allProducts;
                 if (filters.prix_min) {
@@ -139,7 +140,7 @@ const BayamSelamResultsScreen: React.FC = () => {
                 if (filters.prix_max) {
                     filteredProducts = filteredProducts.filter(p => p.price <= filters.prix_max!);
                 }
-                
+
                 // Grouper par produit et garder le meilleur prix
                 const productMap = new Map<string, SupermarketProduct & { distance_km?: number }>();
                 filteredProducts.forEach(product => {
@@ -149,12 +150,12 @@ const BayamSelamResultsScreen: React.FC = () => {
                         productMap.set(key, product);
                     }
                 });
-                
+
                 setProducts(Array.from(productMap.values()).sort((a, b) => a.price - b.price));
             }
         } catch (err: any) {
             console.error('[BayamSelamResults] Erreur chargement résultats:', err);
-            Alert.alert('Erreur', 'Impossible de charger les résultats');
+            Alert.alert(t('message.error'), t('bayamSelam.cannotLoadResults'));
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -179,14 +180,14 @@ const BayamSelamResultsScreen: React.FC = () => {
                 } catch (err) {
                     console.warn('[BayamSelamResults] Service tendances non disponible, fallback...');
                 }
-                
+
                 // Fallback: Charger les produits les plus recherchés/vendus
                 const supermarketsResponse = await supermarketService.listSupermarkets(
                     location.coords.latitude,
                     location.coords.longitude,
                     20
                 );
-                
+
                 const allTrendingProducts: SupermarketProduct[] = [];
                 for (const supermarket of supermarketsResponse.supermarkets?.slice(0, 5) || []) {
                     try {
@@ -202,7 +203,7 @@ const BayamSelamResultsScreen: React.FC = () => {
                         console.error(`[BayamSelamResults] Erreur chargement tendances ${supermarket.id}:`, err);
                     }
                 }
-                
+
                 // Trier par popularité (promotions d'abord, puis prix)
                 setTrendingProducts(
                     allTrendingProducts
@@ -243,7 +244,7 @@ const BayamSelamResultsScreen: React.FC = () => {
 
     const handleCompareProduct = async () => {
         if (!compareQuery.trim()) {
-            Alert.alert('Erreur', 'Veuillez entrer un nom de produit');
+            Alert.alert(t('message.error'), t('bayamSelam.enterProductName'));
             return;
         }
 
@@ -264,11 +265,11 @@ const BayamSelamResultsScreen: React.FC = () => {
                 setPriceComparison(response.data.comparison);
                 setViewMode('compare');
             } else {
-                Alert.alert('Aucun résultat', 'Aucun produit trouvé avec ce nom');
+                Alert.alert(t('bayamSelam.noResult'), t('bayamSelam.noProductFound'));
             }
         } catch (err: any) {
             console.error('[BayamSelamResults] Erreur comparaison:', err);
-            Alert.alert('Erreur', 'Impossible de comparer les prix');
+            Alert.alert(t('message.error'), t('bayamSelam.cannotComparePrices'));
         } finally {
             setLoadingComparison(false);
         }
@@ -287,7 +288,7 @@ const BayamSelamResultsScreen: React.FC = () => {
             }
             return [...prev, { product, quantity: 1 }];
         });
-        Alert.alert('Ajouté au panier', `${product.name} a été ajouté au panier`);
+        Alert.alert(t('bayamSelam.addedToCart'), t('bayamSelam.productAddedToCart', { name: product.name }));
     };
 
     const removeFromCart = (productId: string) => {
@@ -313,12 +314,12 @@ const BayamSelamResultsScreen: React.FC = () => {
 
     const handleDelivery = () => {
         if (cartItems.length === 0) {
-            Alert.alert('Panier vide', 'Ajoutez des produits au panier avant de commander une livraison');
+            Alert.alert(t('bayamSelam.emptyCart'), t('bayamSelam.addProductsFirst'));
             return;
         }
 
         if (!user) {
-            Alert.alert('Connexion requise', 'Veuillez vous connecter pour commander une livraison', [
+            Alert.alert(t('bayamSelam.loginRequired'), t('bayamSelam.loginToOrder'), [
                 { text: 'Annuler' },
                 { text: 'Se connecter', onPress: () => navigation.navigate('Login' as never) },
             ]);

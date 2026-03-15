@@ -16,6 +16,7 @@ import {
 import SafeIcon from '../../components/SafeIcon';
 import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { apiDelete, apiGet, apiPatch } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 
@@ -37,6 +38,7 @@ interface LivreScolaire {
 const MesLivresScreen: React.FC = () => {
     const navigation = useNavigation();
     const { user } = useAuth();
+    const { t } = useLanguageSafe();
     const [livres, setLivres] = useState<LivreScolaire[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -60,11 +62,11 @@ const MesLivresScreen: React.FC = () => {
             if (response.success && response.data) {
                 setLivres((response.data as any).livres || []);
             } else {
-                Alert.alert('Erreur', 'Impossible de charger vos livres');
+                Alert.alert(t('message.error'), t('mesLivres.cannotLoad'));
             }
         } catch (error: any) {
             console.error('[MesLivresScreen] Erreur:', error);
-            Alert.alert('Erreur', error.message || 'Impossible de charger vos livres');
+            Alert.alert(t('message.error'), error.message || t('mesLivres.cannotLoad'));
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -79,19 +81,19 @@ const MesLivresScreen: React.FC = () => {
 
             if (response.success) {
                 loadLivres();
-                Alert.alert('Succès', 'Disponibilité mise à jour');
+                Alert.alert(t('message.success'), t('mesLivres.availabilityUpdated'));
             } else {
-                Alert.alert('Erreur', 'Impossible de mettre à jour la disponibilité');
+                Alert.alert(t('message.error'), t('mesLivres.cannotUpdateAvailability'));
             }
         } catch (error: any) {
-            Alert.alert('Erreur', error.message || 'Une erreur est survenue');
+            Alert.alert(t('message.error'), error.message || t('mesLivres.genericError'));
         }
     };
 
     const handleDelete = (livre: LivreScolaire) => {
         Alert.alert(
-            'Supprimer le livre',
-            `Êtes-vous sûr de vouloir supprimer "${livre.titre}" ?`,
+            t('mesLivres.deleteBook'),
+            t('mesLivres.confirmDelete', { title: livre.titre }),
             [
                 { text: 'Annuler', style: 'cancel' },
                 {
@@ -102,10 +104,10 @@ const MesLivresScreen: React.FC = () => {
                             const response = await apiDelete(`/api/bourse-livre/${livre.id}`);
                             if (response.success) {
                                 loadLivres();
-                                Alert.alert('Succès', 'Livre supprimé');
+                                Alert.alert(t('message.success'), t('mesLivres.bookDeleted'));
                             }
                         } catch (error: any) {
-                            Alert.alert('Erreur', 'Impossible de supprimer le livre');
+                            Alert.alert(t('message.error'), t('mesLivres.cannotDelete'));
                         }
                     },
                 },

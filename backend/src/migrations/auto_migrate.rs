@@ -9085,6 +9085,21 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Err(e) => error!("❌ Erreur migration auto backfill services.category: {}", e),
     }
 
+    // ✅ NOUVEAU 2026-03-15 : Table token_ledger (historique complet des mouvements de tokens)
+    match ensure_token_ledger_table(pool).await {
+        Ok(_) => info!("✅ Migration auto: token_ledger OK"),
+        Err(e) => error!("❌ Erreur migration auto token_ledger: {}", e),
+    }
+
+    // ✅ NOUVEAU 2026-03-15 : Colonnes agrégateur dans payment_attempts
+    match ensure_payment_attempts_aggregator_columns(pool).await {
+        Ok(_) => info!("✅ Migration auto: payment_attempts aggregator columns OK"),
+        Err(e) => error!(
+            "❌ Erreur migration auto payment_attempts aggregator: {}",
+            e
+        ),
+    }
+
     info!("✅ Migrations automatiques terminées");
 }
 
@@ -20128,5 +20143,130 @@ pub async fn backfill_services_category_from_data(pool: &PgPool) -> Result<(), s
         "✅ Backfill services.category terminé: {} services corrigés",
         total
     );
+    Ok(())
+}
+
+/// ✅ NOUVEAU 2026-03-15 : Table token_ledger pour historique complet des mouvements de tokens
+/// Chaque crédit (recharge, bonus, refund) et débit (consommation IA, achat service) est enregistré.
+pub async fn ensure_token_ledger_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification de la table token_ledger...");
+
+    let exists = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'token_ledger')",
+    )
+    .fetch_one(pool)
+    .await?;
+
+    if exists {
+        info!("✅ Table token_ledger déjà présente");
+        return Ok(());
+    }
+
+    info!("📦 Création de la table token_ledger...");
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS token_ledger (
+            id BIGSERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            operation_type VARCHAR(30) NOT NULL,
+            amount BIGINT NOT NULL,
+            balance_before BIGINT NOT NULL DEFAULT 0,
+            balance_after BIGINT NOT NULL DEFAULT 0,
+            reference_type VARCHAR(50),
+            reference_id VARCHAR(255),
+            description TEXT,
+            metadata JSONB DEFAULT '{}',
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_token_ledger_user_id ON token_ledger(user_id);
+        CREATE INDEX IF NOT EXISTS idx_token_ledger_user_created ON token_ledger(user_id, created_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_token_ledger_operation_type ON token_ledger(operation_type);
+        CREATE INDEX IF NOT EXISTS idx_token_ledger_reference ON token_ledger(reference_type, reference_id);
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    info!("✅ Table token_ledger créée avec succès");
+    Ok(())
+}
+
+/// ✅ NOUVEAU 2026-03-15 : Colonnes agrégateur dans payment_attempts
+/// Ajoute aggregator_provider, aggregator_ref, payment_url pour le flux CinetPay/NotchPay
+pub async fn ensure_payment_attempts_aggregator_columns(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification des colonnes agrégateur dans payment_attempts...");
+
+    let table_exists = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'payment_attempts')",
+    )
+    .fetch_one(pool)
+    .await?;
+
+    if !table_exists {
+        info!("⚠️ Table payment_attempts n'existe pas encore, création complète...");
+        sqlx::query(
+            r#"
+            CREATE TABLE IF NOT EXISTS payment_attempts (
+                id SERIAL PRIMARY KEY,
+                payment_id VARCHAR(255) NOT NULL UNIQUE,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                amount_xaf BIGINT NOT NULL,
+                currency VARCHAR(10) NOT NULL DEFAULT 'XAF',
+                payment_method VARCHAR(50) NOT NULL,
+                phone_number VARCHAR(20),
+                status VARCHAR(30) NOT NULL DEFAULT 'pending',
+                transaction_id VARCHAR(255),
+                aggregator_provider VARCHAR(30),
+                aggregator_ref VARCHAR(255),
+                payment_url TEXT,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                confirmed_at TIMESTAMPTZ
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_payment_attempts_user ON payment_attempts(user_id);
+            CREATE INDEX IF NOT EXISTS idx_payment_attempts_status ON payment_attempts(status);
+            CREATE INDEX IF NOT EXISTS idx_payment_attempts_payment_id ON payment_attempts(payment_id);
+            CREATE INDEX IF NOT EXISTS idx_payment_attempts_aggregator_ref ON payment_attempts(aggregator_ref);
+            "#,
+        )
+        .execute(pool)
+        .await?;
+        info!("✅ Table payment_attempts créée avec colonnes agrégateur");
+        return Ok(());
+    }
+
+    // Ajouter les colonnes manquantes
+    let columns = vec![
+        ("aggregator_provider", "VARCHAR(30)"),
+        ("aggregator_ref", "VARCHAR(255)"),
+        ("payment_url", "TEXT"),
+    ];
+
+    for (col, col_type) in columns {
+        let col_exists = sqlx::query_scalar::<_, bool>(&format!(
+            "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'payment_attempts' AND column_name = '{}')",
+            col
+        ))
+        .fetch_one(pool)
+        .await?;
+
+        if !col_exists {
+            let query = format!(
+                "ALTER TABLE payment_attempts ADD COLUMN IF NOT EXISTS {} {}",
+                col, col_type
+            );
+            sqlx::query(&query).execute(pool).await?;
+            info!("  ✅ Colonne '{}' ajoutée à payment_attempts", col);
+        }
+    }
+
+    // Index sur aggregator_ref
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_payment_attempts_aggregator_ref ON payment_attempts(aggregator_ref)")
+        .execute(pool)
+        .await
+        .ok();
+
+    info!("✅ Colonnes agrégateur payment_attempts OK");
     Ok(())
 }

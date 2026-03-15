@@ -169,40 +169,70 @@ pub async fn initiate_payment(
         ));
     }
 
-    // Logique selon le moyen de paiement
+    // Logique selon le moyen de paiement — via agrégateur (CinetPay/NotchPay)
     let (payment_url, instructions) = match req.payment_method.as_str() {
-        "orange_money" => {
-            // Int?gration Orange Money API
-            let instructions = format!(
-                "Composez #144*4*4*{}*{}# et suivez les instructions",
-                req.amount_xaf,
-                req.phone_number.as_deref().unwrap_or("VOTRE_NUMERO")
-            );
-            (None, instructions)
-        }
-        "mtn_momo" => {
-            // Int?gration MTN Mobile Money API
-            let instructions = format!(
-                "Composez *126# > Envoyer de l'argent > Marchand > Code: YUKPO > Montant: {}",
-                req.amount_xaf
-            );
-            (None, instructions)
-        }
-        "visa" | "mastercard" => {
-            // Redirection vers une page de paiement s?curis?e
-            let payment_url = format!("https://payment.yukpo.com/secure/{}", payment_id);
-            (
-                Some(payment_url),
-                "Vous allez ?tre redirig? vers la page de paiement s?curis?e".to_string(),
-            )
+        "orange_money" | "mtn_momo" | "visa" | "mastercard" | "mobile_money" => {
+            use crate::services::payment_aggregator::*;
+
+            let aggregator = PaymentAggregator::new();
+            let channel = match req.payment_method.as_str() {
+                "orange_money" => PayChannel::OrangeMoney,
+                "mtn_momo" => PayChannel::MtnMoney,
+                "visa" | "mastercard" => PayChannel::Visa,
+                _ => PayChannel::AllMobileMoney,
+            };
+
+            let agg_request = InitPaymentRequest {
+                user_id,
+                amount: req.amount_xaf,
+                currency: "XAF".to_string(),
+                channel,
+                phone_number: req.phone_number.clone(),
+                description: format!("Recharge Yukpo {} XAF", req.amount_xaf),
+                customer_email: None,
+                customer_name: None,
+                metadata: Some(serde_json::json!({"payment_id": &payment_id, "user_id": user_id})),
+            };
+
+            match aggregator.initiate_payment(agg_request).await {
+                Ok(response) => {
+                    // Sauvegarder la référence agrégateur et l'URL de paiement
+                    let _ = sqlx::query(
+                        "UPDATE payment_attempts SET transaction_id = $1, aggregator_provider = $2, aggregator_ref = $3, payment_url = $4 WHERE payment_id = $5"
+                    )
+                    .bind(&response.provider_reference)
+                    .bind(&response.provider.to_string())
+                    .bind(&response.provider_reference)
+                    .bind(&response.payment_url)
+                    .bind(&payment_id)
+                    .execute(&state.pg)
+                    .await;
+
+                    let instr = response.instructions.unwrap_or_else(|| {
+                        if response.payment_url.is_some() {
+                            "Validez le paiement via la page sécurisée.".to_string()
+                        } else {
+                            "Confirmez le paiement sur votre téléphone.".to_string()
+                        }
+                    });
+                    (response.payment_url, instr)
+                }
+                Err(e) => {
+                    log::error!("[initiate_payment] Erreur agrégateur: {}", e);
+                    return Err(AppError::Internal(format!("Erreur paiement: {}", e)));
+                }
+            }
         }
         "paypal" => {
             let payment_url = format!("https://www.paypal.com/checkout?token={}", payment_id);
             (Some(payment_url), "Redirection vers PayPal".to_string())
         }
+        "bank_transfer" => {
+            (None, "Effectuez un virement bancaire vers le compte Yukpo. Les tokens seront crédités après réception.".to_string())
+        }
         _ => {
             return Err(AppError::BadRequest(
-                "Moyen de paiement non support?".to_string(),
+                "Moyen de paiement non supporté. Utilisez: orange_money, mtn_momo, visa, mastercard, paypal, bank_transfer".to_string(),
             ));
         }
     };
@@ -222,7 +252,7 @@ pub async fn initiate_payment(
     }))
 }
 
-/// Confirmer un paiement (webhook ou manuel)
+/// Confirmer un paiement (webhook ou manuel) / Vérifier le statut
 pub async fn confirm_payment(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<AuthenticatedUser>,
@@ -241,8 +271,33 @@ pub async fn confirm_payment(
 
     let payment = payment.ok_or_else(|| AppError::NotFound("Paiement non trouvé".to_string()))?;
 
-    if payment.status != "pending" {
-        return Err(AppError::BadRequest("Paiement déjà traité".to_string()));
+    // Mode "check" — le frontend vérifie simplement le statut actuel
+    if req.status == "check" {
+        let is_success = payment.status == "success" || payment.status == "completed";
+        let tokens_added = if is_success { payment.amount_xaf } else { 0 };
+        return Ok(Json(serde_json::json!({
+            "success": is_success,
+            "status": payment.status,
+            "tokens_added": tokens_added,
+            "payment_id": req.payment_id
+        })));
+    }
+
+    // Ne pas re-traiter un paiement déjà finalisé
+    if payment.status == "success" || payment.status == "completed" {
+        return Ok(Json(serde_json::json!({
+            "success": true,
+            "message": "Paiement déjà crédité",
+            "tokens_added": payment.amount_xaf
+        })));
+    }
+
+    if payment.status == "failed" || payment.status == "cancelled" || payment.status == "expired" {
+        return Ok(Json(serde_json::json!({
+            "success": false,
+            "status": payment.status,
+            "message": "Paiement échoué ou annulé"
+        })));
     }
 
     // Mettre à jour le statut du paiement
@@ -250,7 +305,7 @@ pub async fn confirm_payment(
     sqlx::query(
         r#"
         UPDATE payment_attempts 
-        SET status = $1, transaction_id = $2, confirmed_at = NOW()
+        SET status = $1, transaction_id = COALESCE($2, transaction_id), confirmed_at = NOW()
         WHERE payment_id = $3
         "#,
     )
@@ -261,37 +316,36 @@ pub async fn confirm_payment(
     .await
     .map_err(|e| AppError::Internal(format!("Erreur mise à jour paiement: {}", e)))?;
 
-    // Si le paiement est r?ussi, cr?diter les tokens
+    // Si le paiement est réussi, créditer les tokens via PaymentService
     if req.status == "success" {
-        let tokens_to_add = payment.amount_xaf; // 1 token = 1 XAF
+        use crate::services::payment_service::PaymentService;
+        let payment_service = PaymentService::new(state.pg.clone());
 
-        sqlx::query("UPDATE users SET tokens_balance = tokens_balance + $1 WHERE id = $2")
-            .bind(tokens_to_add)
-            .bind(user_id)
-            .execute(&state.pg)
+        payment_service
+            .add_tokens_to_user(user_id, payment.amount_xaf as f64)
             .await
             .map_err(|e| AppError::Internal(format!("Erreur crédit tokens: {}", e)))?;
 
         log::info!(
-            "[confirm_payment] {} tokens cr?dit?s pour utilisateur {}",
-            tokens_to_add,
+            "[confirm_payment] {} tokens crédités pour utilisateur {}",
+            payment.amount_xaf,
             user_id
         );
 
         Ok(Json(serde_json::json!({
             "success": true,
-            "message": format!("{} tokens cr?dit?s avec succ?s", tokens_to_add),
-            "tokens_added": tokens_to_add
+            "message": format!("{} tokens crédités avec succès", payment.amount_xaf),
+            "tokens_added": payment.amount_xaf
         })))
     } else {
         log::warn!(
-            "[confirm_payment] Paiement ?chou? pour utilisateur {}: {}",
+            "[confirm_payment] Paiement échoué pour utilisateur {}: {}",
             user_id,
             req.status
         );
         Ok(Json(serde_json::json!({
             "success": false,
-            "message": "Paiement ?chou?",
+            "message": "Paiement échoué",
             "status": req.status
         })))
     }

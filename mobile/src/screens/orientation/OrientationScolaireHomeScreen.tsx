@@ -21,6 +21,7 @@ import {
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useToaster } from '../../components/ToasterProvider';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { useAIWithFallback } from '../../hooks/useAIWithFallback';
 import { ConcoursEntree, ConferenceLive, EtablissementScolaire, FournituresScolaires, orientationScolaireService, ProgrammeScolaire, ProgramRecommendation, StudentProfileAnalysis } from '../../services/orientationScolaireService';
@@ -31,6 +32,7 @@ type TabType = 'etablissements' | 'programmes' | 'concours' | 'conferences' | 'f
 
 const OrientationScolaireHomeScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const { location } = useLocation();
     const { callWithFallback } = useAIWithFallback();
     const toaster = useToaster();
@@ -187,28 +189,24 @@ const OrientationScolaireHomeScreen: React.FC = () => {
     // Fonctions IA
     const handleAnalyzeProfile = async () => {
         if (!hasProfile || !profileId) {
-            Alert.alert('Profil requis', 'Veuillez d\'abord créer votre profil étudiant', [
-                { text: 'Annuler' },
-                { text: 'Créer mon profil', onPress: () => navigation.navigate('ProfilEtudiant' as never) },
+            Alert.alert(t('orientation.profileRequired'), t('orientation.createProfileFirst'), [
+                { text: t('message.cancel') },
+                { text: t('orientation.createMyProfile'), onPress: () => navigation.navigate('ProfilEtudiant' as never) },
             ]);
             return;
         }
 
-        hapticPress();
-        setAiMode('analyze');
         setLoadingAI(true);
-        setShowAIModal(true);
-
         try {
             const response = await orientationScolaireService.analyzeProfile(profileId);
             if (response.success && response.data?.analysis) {
                 setProfileAnalysis(response.data.analysis);
             } else {
-                Alert.alert('Erreur', 'Impossible d\'analyser le profil');
+                Alert.alert(t('message.error'), t('orientation.cannotAnalyzeProfile'));
             }
         } catch (err: any) {
             console.error('[OrientationScolaireHomeScreen] Erreur analyse:', err);
-            Alert.alert('Erreur', err.message || 'Erreur lors de l\'analyse');
+            Alert.alert(t('message.error'), err.message || t('orientation.analysisError'));
         } finally {
             setLoadingAI(false);
         }
@@ -216,18 +214,14 @@ const OrientationScolaireHomeScreen: React.FC = () => {
 
     const handleGetRecommendations = async () => {
         if (!hasProfile || !profileId) {
-            Alert.alert('Profil requis', 'Veuillez d\'abord créer votre profil étudiant', [
-                { text: 'Annuler' },
-                { text: 'Créer mon profil', onPress: () => navigation.navigate('ProfilEtudiant' as never) },
+            Alert.alert(t('orientation.profileRequired'), t('orientation.createProfileFirst'), [
+                { text: t('message.cancel') },
+                { text: t('orientation.createMyProfile'), onPress: () => navigation.navigate('ProfilEtudiant' as never) },
             ]);
             return;
         }
 
-        hapticPress();
-        setAiMode('recommendations');
         setLoadingAI(true);
-        setShowAIModal(true);
-
         try {
             const response = await orientationScolaireService.getRecommendations(
                 profileId,
@@ -242,11 +236,11 @@ const OrientationScolaireHomeScreen: React.FC = () => {
                 const recs = (response.data as any)?.recommendations || [];
                 setRecommendations(recs);
             } else {
-                Alert.alert('Erreur', 'Impossible d\'obtenir les recommandations');
+                Alert.alert(t('message.error'), t('orientation.cannotGetRecommendations'));
             }
         } catch (err: any) {
             console.error('[OrientationScolaireHomeScreen] Erreur recommandations:', err);
-            Alert.alert('Erreur', err.message || 'Erreur lors de la recherche');
+            Alert.alert(t('message.error'), err.message || t('orientation.searchError'));
         } finally {
             setLoadingAI(false);
         }
@@ -255,7 +249,7 @@ const OrientationScolaireHomeScreen: React.FC = () => {
     // ✅ REFONDU: Recherche académique IA avec fallback 3 niveaux
     const handleAcademicSearch = async () => {
         if (!academicQuery.trim()) {
-            Alert.alert('Erreur', 'Veuillez saisir votre question');
+            Alert.alert(t('message.error'), t('orientation.enterQuestion'));
             return;
         }
 
@@ -350,9 +344,9 @@ const OrientationScolaireHomeScreen: React.FC = () => {
                                     if (hasProfile) {
                                         handleGetRecommendations();
                                     } else {
-                                        Alert.alert('Profil requis', 'Créez votre profil pour obtenir des recommandations IA', [
-                                            { text: 'Annuler' },
-                                            { text: 'Créer mon profil', onPress: () => navigation.navigate('ProfilEtudiant' as never) },
+                                        Alert.alert(t('orientation.profileRequired'), t('orientation.createProfileForAI'), [
+                                            { text: t('message.cancel') },
+                                            { text: t('orientation.createMyProfile'), onPress: () => navigation.navigate('ProfilEtudiant' as never) },
                                         ]);
                                     }
                                 }}

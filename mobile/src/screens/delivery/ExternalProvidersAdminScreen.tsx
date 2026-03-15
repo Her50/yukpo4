@@ -18,6 +18,7 @@ import SafeIcon from '../../components/SafeIcon';
 import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { apiDelete, apiGet, apiPost } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 import { isAdminUser } from '../../utils/roleHelpers';
@@ -42,6 +43,7 @@ const FORM_URL = 'https://yukpo-backend-376093909298.europe-west1.run.app/api/de
 const ExternalProvidersAdminScreen: React.FC = () => {
     const navigation = useNavigation();
     const { user } = useAuth();
+    const { t } = useLanguageSafe();
     const [providers, setProviders] = useState<ExternalProvider[]>([]);
     const [loading, setLoading] = useState(true);
     const [showCreateModal, setShowCreateModal] = useState(false);
@@ -59,7 +61,7 @@ const ExternalProvidersAdminScreen: React.FC = () => {
 
     useEffect(() => {
         if (!user || !isAdminUser(user)) {
-            Alert.alert('Accès refusé', 'Cette page est réservée aux administrateurs');
+            Alert.alert(t('extProviders.accessDenied'), t('extProviders.adminOnly'));
             navigation.goBack();
             return;
         }
@@ -75,7 +77,7 @@ const ExternalProvidersAdminScreen: React.FC = () => {
             setProviders(list);
         } catch (error: any) {
             console.error('[ExternalProviders] Erreur chargement:', error);
-            Alert.alert('Erreur', error?.message || 'Impossible de charger les prestataires');
+            Alert.alert(t('message.error'), error?.message || t('extProviders.cannotLoadProviders'));
         } finally {
             setLoading(false);
         }
@@ -83,7 +85,7 @@ const ExternalProvidersAdminScreen: React.FC = () => {
 
     const handleCreate = async () => {
         if (!createForm.provider_name.trim()) {
-            Alert.alert('Erreur', 'Le nom du prestataire est requis');
+            Alert.alert(t('message.error'), t('extProviders.nameRequired'));
             return;
         }
 
@@ -112,7 +114,7 @@ const ExternalProvidersAdminScreen: React.FC = () => {
             }
         } catch (error: any) {
             console.error('[ExternalProviders] Erreur création:', error);
-            Alert.alert('Erreur', error?.message || 'Impossible de créer le prestataire');
+            Alert.alert(t('message.error'), error?.message || t('extProviders.cannotCreate'));
         } finally {
             setCreating(false);
         }
@@ -120,8 +122,8 @@ const ExternalProvidersAdminScreen: React.FC = () => {
 
     const handleDeactivate = (provider: ExternalProvider) => {
         Alert.alert(
-            'Désactiver le prestataire',
-            `Êtes-vous sûr de vouloir désactiver "${provider.provider_name}" ?\n\nSon API key ne fonctionnera plus.`,
+            t('extProviders.deactivateProvider'),
+            t('extProviders.confirmDeactivate', { name: provider.provider_name }),
             [
                 { text: 'Annuler', style: 'cancel' },
                 {
@@ -133,9 +135,9 @@ const ExternalProvidersAdminScreen: React.FC = () => {
                             loadProviders();
                             setShowDetailModal(false);
                             setSelectedProvider(null);
-                            Alert.alert('Succès', 'Prestataire désactivé');
+                            Alert.alert(t('message.success'), t('extProviders.providerDeactivated'));
                         } catch (error: any) {
-                            Alert.alert('Erreur', error?.message || 'Impossible de désactiver');
+                            Alert.alert(t('message.error'), error?.message || t('extProviders.cannotDeactivate'));
                         }
                     },
                 },
@@ -206,7 +208,7 @@ const ExternalProvidersAdminScreen: React.FC = () => {
         if (supported) {
             await Linking.openURL(url);
         } else {
-            Alert.alert('Erreur', 'Impossible d\'ouvrir l\'application SMS');
+            Alert.alert(t('message.error'), t('extProviders.cannotOpenSMS'));
         }
     };
 

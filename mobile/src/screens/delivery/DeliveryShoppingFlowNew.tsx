@@ -26,6 +26,7 @@ import StepWizardForm from '../../components/delivery/StepWizardForm';
 import { LocationObject } from '../../components/LocationSelector';
 import ModernGPSModal from '../../components/ModernGPSModal';
 import SafeIcon from '../../components/SafeIcon';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { useCurrencyDetection } from '../../hooks/useCurrencyDetection';
 import { UserSavedAddress } from '../../hooks/useSavedAddresses';
@@ -63,6 +64,7 @@ interface BasketItem {
 
 const DeliveryShoppingFlowNew: React.FC<DeliveryShoppingFlowNewProps> = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const { location: userLocation } = useLocation();
     // ✅ NOUVEAU: Détection automatique de devise depuis GPS/localisation
     const detectedCurrency = useCurrencyDetection(
@@ -220,7 +222,7 @@ const DeliveryShoppingFlowNew: React.FC<DeliveryShoppingFlowNewProps> = () => {
         try {
             const { status } = await Location.requestForegroundPermissionsAsync();
             if (status !== 'granted') {
-                Alert.alert('Permission requise', 'L\'accès à la localisation est nécessaire.');
+                Alert.alert(t('shoppingFlowNew.permissionRequired'), t('shoppingFlowNew.locationPermissionMsg'));
                 return;
             }
 
@@ -246,7 +248,7 @@ const DeliveryShoppingFlowNew: React.FC<DeliveryShoppingFlowNewProps> = () => {
             setErrors(prev => ({ ...prev, dropoff: '' }));
         } catch (error) {
             console.error('Erreur géolocalisation:', error);
-            Alert.alert('Erreur', 'Impossible d\'obtenir votre position.');
+            Alert.alert(t('message.error'), t('shoppingFlowNew.cannotGetPosition'));
         } finally {
             setLoadingLocation(false);
         }
@@ -323,19 +325,19 @@ const DeliveryShoppingFlowNew: React.FC<DeliveryShoppingFlowNewProps> = () => {
         // Validation
         if (!selectedSupermarket) {
             console.log('[DeliveryShoppingFlowNew] ❌ Erreur: pas de supermarché sélectionné');
-            Alert.alert('Erreur', 'Veuillez sélectionner un supermarché');
+            Alert.alert(t('message.error'), t('shoppingFlowNew.selectSupermarket'));
             return;
         }
 
         if (basketItems.length === 0) {
             console.log('[DeliveryShoppingFlowNew] ❌ Erreur: panier vide');
-            Alert.alert('Erreur', 'Veuillez ajouter au moins un article au panier');
+            Alert.alert(t('message.error'), t('shoppingFlowNew.emptyBasket'));
             return;
         }
 
         if (!dropoffLocation) {
             console.log('[DeliveryShoppingFlowNew] ❌ Erreur: pas d\'adresse de livraison');
-            Alert.alert('Erreur', 'Veuillez sélectionner une adresse de livraison');
+            Alert.alert(t('message.error'), t('shoppingFlowNew.selectDeliveryAddress'));
             return;
         }
 
@@ -384,8 +386,8 @@ const DeliveryShoppingFlowNew: React.FC<DeliveryShoppingFlowNewProps> = () => {
 
             if (result.success && result.data?.id) {
                 Alert.alert(
-                    'Commande créée',
-                    'Votre commande de courses a été créée avec succès.',
+                    t('shoppingFlowNew.orderCreated'),
+                    t('shoppingFlowNew.orderCreatedMsg'),
                     [
                         {
                             text: 'OK',
@@ -397,11 +399,11 @@ const DeliveryShoppingFlowNew: React.FC<DeliveryShoppingFlowNewProps> = () => {
                     ]
                 );
             } else {
-                Alert.alert('Erreur', (result as any).error || 'Impossible de créer la commande');
+                Alert.alert(t('message.error'), (result as any).error || t('shoppingFlowNew.cannotCreateOrder'));
             }
         } catch (error: any) {
             console.error('Erreur création commande:', error);
-            Alert.alert('Erreur', error.message || 'Une erreur est survenue');
+            Alert.alert(t('message.error'), error.message || t('shoppingFlowNew.genericError'));
         } finally {
             setLoading(false);
         }

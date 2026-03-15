@@ -22,6 +22,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import DeliveryProofVideoRecorder from '../../components/delivery/DeliveryProofVideoRecorder';
 import { SafeIcon } from '../../components/SafeIcon';
 import { useDeliveryContext } from '../../contexts/DeliveryContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { apiDelete, apiGet, apiPost } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 
@@ -39,6 +40,7 @@ interface ProofMedia {
 const DeliveryProofScreen: React.FC<{ route: any }> = ({ route }) => {
     const { deliveryId } = route.params;
     const { delivery, refreshDelivery } = useDeliveryContext();
+    const { t } = useLanguageSafe();
     const [proofMedias, setProofMedias] = useState<ProofMedia[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const [showVideoRecorder, setShowVideoRecorder] = useState<boolean>(false);
@@ -66,7 +68,7 @@ const DeliveryProofScreen: React.FC<{ route: any }> = ({ route }) => {
 
     const handleAddPhoto = async () => {
         // TODO: Implémenter la sélection de photo depuis la galerie ou la caméra
-        Alert.alert('Photo', 'Fonctionnalité photo à implémenter');
+        Alert.alert(t('deliveryProof.photo'), t('deliveryProof.photoTodo'));
     };
 
     const handleAddVideo = () => {
@@ -89,21 +91,21 @@ const DeliveryProofScreen: React.FC<{ route: any }> = ({ route }) => {
             });
 
             if (response.success) {
-                Alert.alert('✅ Succès', 'Vidéo de preuve ajoutée avec succès');
+                Alert.alert(t('message.success'), t('deliveryProof.videoAdded'));
                 loadProofMedias();
                 refreshDelivery(deliveryId);
             } else {
-                Alert.alert('Erreur', response.message || 'Impossible d\'ajouter la vidéo');
+                Alert.alert(t('message.error'), response.message || t('deliveryProof.cannotAddVideo'));
             }
         } catch (error: any) {
-            Alert.alert('Erreur', error.response?.data?.message || 'Impossible d\'ajouter la vidéo');
+            Alert.alert(t('message.error'), error.response?.data?.message || t('deliveryProof.cannotAddVideo'));
         }
     };
 
     const handleDeleteMedia = (media: ProofMedia) => {
         Alert.alert(
-            'Supprimer le média',
-            'Êtes-vous sûr de vouloir supprimer cette preuve ? Cette action est irréversible.',
+            t('deliveryProof.deleteMedia'),
+            t('deliveryProof.confirmDelete'),
             [
                 { text: 'Annuler', style: 'cancel' },
                 {
@@ -119,14 +121,14 @@ const DeliveryProofScreen: React.FC<{ route: any }> = ({ route }) => {
         try {
             const response = await apiDelete(`/api/delivery/${deliveryId}/proof-media/${media.id}`);
             if (response.success) {
-                Alert.alert('✅ Succès', 'Média supprimé avec succès');
+                Alert.alert(t('message.success'), t('deliveryProof.mediaDeleted'));
                 loadProofMedias();
                 refreshDelivery(deliveryId);
             } else {
-                Alert.alert('Erreur', response.message || 'Impossible de supprimer le média');
+                Alert.alert(t('message.error'), response.message || t('deliveryProof.cannotDeleteMedia'));
             }
         } catch (error: any) {
-            Alert.alert('Erreur', error.response?.data?.message || 'Impossible de supprimer le média');
+            Alert.alert(t('message.error'), error.response?.data?.message || t('deliveryProof.cannotDeleteMedia'));
         }
     };
 

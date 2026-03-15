@@ -221,7 +221,7 @@ impl PaymentService {
         })
     }
 
-    /// Traiter un paiement Orange Money
+    /// Traiter un paiement Orange Money via agrégateur (CinetPay/NotchPay)
     async fn process_orange_money_payment(
         &self,
         transaction_id: &str,
@@ -229,30 +229,31 @@ impl PaymentService {
         country_code: &str,
         amount: f64,
     ) -> Result<(PaymentStatus, Option<serde_json::Value>), String> {
-        // ✅ Phase 10 - Utiliser le service Mobile Money
-        use crate::services::mobile_money_service::{
-            MobileMoneyPaymentRequest, MobileMoneyProvider, MobileMoneyService,
-        };
+        use crate::services::payment_aggregator::*;
 
-        let mobile_money_service = MobileMoneyService::new();
+        let aggregator = PaymentAggregator::new();
+        let full_phone = format!("{}{}", country_code, phone_number);
 
-        let request = MobileMoneyPaymentRequest {
-            provider: MobileMoneyProvider::Orange,
-            phone_number: format!("{}{}", country_code, phone_number),
-            amount,
+        let request = InitPaymentRequest {
+            user_id: 0, // sera renseigné par le caller
+            amount: amount as i64,
             currency: "XAF".to_string(),
-            transaction_reference: transaction_id.to_string(),
-            description: Some("Paiement Yukpo".to_string()),
-            callback_url: None,
+            channel: PayChannel::OrangeMoney,
+            phone_number: Some(full_phone.clone()),
+            description: format!("Recharge Yukpo {} XAF via Orange Money", amount as i64),
+            customer_email: None,
+            customer_name: None,
+            metadata: Some(serde_json::json!({"internal_txn": transaction_id})),
         };
 
-        match mobile_money_service.initiate_payment(request).await {
+        match aggregator.initiate_payment(request).await {
             Ok(response) => {
                 let gateway_response = serde_json::json!({
-                    "provider": "orange_money",
-                    "transaction_reference": format!("OM_{}", transaction_id),
-                    "provider_transaction_id": response.provider_transaction_id,
-                    "status": format!("{:?}", response.status),
+                    "provider": format!("{:?}", response.provider),
+                    "aggregator_txn": response.transaction_id,
+                    "provider_reference": response.provider_reference,
+                    "payment_url": response.payment_url,
+                    "payment_token": response.payment_token,
                     "phone_number": phone_number,
                     "country_code": country_code,
                     "amount": amount,
@@ -261,44 +262,23 @@ impl PaymentService {
                 });
 
                 let status = match response.status {
-                    crate::services::mobile_money_service::PaymentStatus::Completed => {
-                        PaymentStatus::Completed
-                    }
-                    crate::services::mobile_money_service::PaymentStatus::Pending => {
-                        PaymentStatus::Pending
-                    }
-                    crate::services::mobile_money_service::PaymentStatus::Processing => {
-                        PaymentStatus::Processing
-                    }
-                    crate::services::mobile_money_service::PaymentStatus::Failed => {
-                        PaymentStatus::Failed
-                    }
-                    crate::services::mobile_money_service::PaymentStatus::Cancelled => {
-                        PaymentStatus::Cancelled
-                    }
+                    PaymentAggStatus::Completed => PaymentStatus::Completed,
+                    PaymentAggStatus::Processing => PaymentStatus::Processing,
+                    PaymentAggStatus::Failed => PaymentStatus::Failed,
+                    PaymentAggStatus::Cancelled => PaymentStatus::Cancelled,
+                    _ => PaymentStatus::Pending,
                 };
 
                 Ok((status, Some(gateway_response)))
             }
             Err(e) => {
-                log::error!("[PaymentService] Erreur Orange Money: {}", e);
-                // Fallback: simulation
-                let gateway_response = serde_json::json!({
-                    "provider": "orange_money",
-                    "transaction_reference": format!("OM_{}", transaction_id),
-                    "status": "pending",
-                    "phone_number": phone_number,
-                    "country_code": country_code,
-                    "amount": amount,
-                    "error": e.to_string(),
-                    "timestamp": chrono::Utc::now()
-                });
-                Ok((PaymentStatus::Pending, Some(gateway_response)))
+                log::error!("[PaymentService] Erreur Orange Money agrégateur: {}", e);
+                Err(format!("Échec paiement Orange Money: {}", e))
             }
         }
     }
 
-    /// Traiter un paiement MTN Money
+    /// Traiter un paiement MTN Money via agrégateur (CinetPay/NotchPay)
     async fn process_mtn_money_payment(
         &self,
         transaction_id: &str,
@@ -306,30 +286,31 @@ impl PaymentService {
         country_code: &str,
         amount: f64,
     ) -> Result<(PaymentStatus, Option<serde_json::Value>), String> {
-        // ✅ Phase 10 - Utiliser le service Mobile Money
-        use crate::services::mobile_money_service::{
-            MobileMoneyPaymentRequest, MobileMoneyProvider, MobileMoneyService,
-        };
+        use crate::services::payment_aggregator::*;
 
-        let mobile_money_service = MobileMoneyService::new();
+        let aggregator = PaymentAggregator::new();
+        let full_phone = format!("{}{}", country_code, phone_number);
 
-        let request = MobileMoneyPaymentRequest {
-            provider: MobileMoneyProvider::MTN,
-            phone_number: format!("{}{}", country_code, phone_number),
-            amount,
+        let request = InitPaymentRequest {
+            user_id: 0,
+            amount: amount as i64,
             currency: "XAF".to_string(),
-            transaction_reference: transaction_id.to_string(),
-            description: Some("Paiement Yukpo".to_string()),
-            callback_url: None,
+            channel: PayChannel::MtnMoney,
+            phone_number: Some(full_phone.clone()),
+            description: format!("Recharge Yukpo {} XAF via MTN MoMo", amount as i64),
+            customer_email: None,
+            customer_name: None,
+            metadata: Some(serde_json::json!({"internal_txn": transaction_id})),
         };
 
-        match mobile_money_service.initiate_payment(request).await {
+        match aggregator.initiate_payment(request).await {
             Ok(response) => {
                 let gateway_response = serde_json::json!({
-                    "provider": "mtn_money",
-                    "transaction_reference": format!("MTN_{}", transaction_id),
-                    "provider_transaction_id": response.provider_transaction_id,
-                    "status": format!("{:?}", response.status),
+                    "provider": format!("{:?}", response.provider),
+                    "aggregator_txn": response.transaction_id,
+                    "provider_reference": response.provider_reference,
+                    "payment_url": response.payment_url,
+                    "payment_token": response.payment_token,
                     "phone_number": phone_number,
                     "country_code": country_code,
                     "amount": amount,
@@ -338,68 +319,78 @@ impl PaymentService {
                 });
 
                 let status = match response.status {
-                    crate::services::mobile_money_service::PaymentStatus::Completed => {
-                        PaymentStatus::Completed
-                    }
-                    crate::services::mobile_money_service::PaymentStatus::Pending => {
-                        PaymentStatus::Pending
-                    }
-                    crate::services::mobile_money_service::PaymentStatus::Processing => {
-                        PaymentStatus::Processing
-                    }
-                    crate::services::mobile_money_service::PaymentStatus::Failed => {
-                        PaymentStatus::Failed
-                    }
-                    crate::services::mobile_money_service::PaymentStatus::Cancelled => {
-                        PaymentStatus::Cancelled
-                    }
+                    PaymentAggStatus::Completed => PaymentStatus::Completed,
+                    PaymentAggStatus::Processing => PaymentStatus::Processing,
+                    PaymentAggStatus::Failed => PaymentStatus::Failed,
+                    PaymentAggStatus::Cancelled => PaymentStatus::Cancelled,
+                    _ => PaymentStatus::Pending,
                 };
 
                 Ok((status, Some(gateway_response)))
             }
             Err(e) => {
-                log::error!("[PaymentService] Erreur MTN Money: {}", e);
-                // Fallback: simulation
-                let gateway_response = serde_json::json!({
-                    "provider": "mtn_money",
-                    "transaction_reference": format!("MTN_{}", transaction_id),
-                    "status": "pending",
-                    "phone_number": phone_number,
-                    "country_code": country_code,
-                    "amount": amount,
-                    "error": e.to_string(),
-                    "timestamp": chrono::Utc::now()
-                });
-                Ok((PaymentStatus::Pending, Some(gateway_response)))
+                log::error!("[PaymentService] Erreur MTN Money agrégateur: {}", e);
+                Err(format!("Échec paiement MTN Money: {}", e))
             }
         }
     }
 
-    /// Traiter un paiement Visa/Mastercard via Stripe (temporairement désactivé)
+    /// Traiter un paiement Visa/Mastercard via agrégateur (CinetPay/NotchPay)
     async fn process_visa_payment(
         &self,
         transaction_id: &str,
-        card_number: &str,
+        _card_number: &str,
         _expiry_date: &str,
         _cvv: &str,
         cardholder_name: &str,
         amount: f64,
     ) -> Result<(PaymentStatus, Option<serde_json::Value>), String> {
-        // TODO: Réactiver l'intégration Stripe une fois les dépendances corrigées
-        // Pour l'instant, on simule un paiement réussi
-        let gateway_response = serde_json::json!({
-            "transaction_id": transaction_id,
-            "payment_method": "visa",
-            "status": "succeeded",
-            "card_last_four": &card_number[card_number.len()-4..],
-            "cardholder_name": cardholder_name,
-            "amount": amount,
-            "currency": "XAF",
-            "timestamp": chrono::Utc::now(),
-            "note": "Simulation - intégration Stripe temporairement désactivée"
-        });
+        use crate::services::payment_aggregator::*;
 
-        Ok((PaymentStatus::Completed, Some(gateway_response)))
+        // Les cartes sont gérées via la page de paiement de l'agrégateur
+        // On ne transmet JAMAIS les numéros de carte directement (PCI DSS)
+        let aggregator = PaymentAggregator::new();
+
+        let request = InitPaymentRequest {
+            user_id: 0,
+            amount: amount as i64,
+            currency: "XAF".to_string(),
+            channel: PayChannel::Visa,
+            phone_number: None,
+            description: format!("Recharge Yukpo {} XAF par carte", amount as i64),
+            customer_email: None,
+            customer_name: Some(cardholder_name.to_string()),
+            metadata: Some(serde_json::json!({"internal_txn": transaction_id})),
+        };
+
+        match aggregator.initiate_payment(request).await {
+            Ok(response) => {
+                let gateway_response = serde_json::json!({
+                    "provider": format!("{:?}", response.provider),
+                    "aggregator_txn": response.transaction_id,
+                    "provider_reference": response.provider_reference,
+                    "payment_url": response.payment_url,
+                    "payment_token": response.payment_token,
+                    "cardholder_name": cardholder_name,
+                    "amount": amount,
+                    "instructions": response.instructions,
+                    "timestamp": chrono::Utc::now()
+                });
+
+                let status = match response.status {
+                    PaymentAggStatus::Completed => PaymentStatus::Completed,
+                    PaymentAggStatus::Processing => PaymentStatus::Processing,
+                    PaymentAggStatus::Failed => PaymentStatus::Failed,
+                    _ => PaymentStatus::Pending,
+                };
+
+                Ok((status, Some(gateway_response)))
+            }
+            Err(e) => {
+                log::error!("[PaymentService] Erreur carte agrégateur: {}", e);
+                Err(format!("Échec paiement par carte: {}", e))
+            }
+        }
     }
 
     /// Traiter un paiement PayPal via PayPal API

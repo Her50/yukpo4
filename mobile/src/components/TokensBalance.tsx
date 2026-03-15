@@ -1,9 +1,9 @@
 import * as React from "react";
 import { useEffect } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-// Note: useUserContext doit être adapté pour React Native ou utiliser AuthContext
-// import { useUserContext } from '../context/UserContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguageSafe } from '../contexts/LanguageContext';
+import { apiGet } from '../services/api';
 
 interface TokensBalanceProps {
   showLabel?: boolean;
@@ -14,25 +14,36 @@ export const TokensBalance: React.FC<TokensBalanceProps> = ({
   showLabel = true,
   style
 }) => {
-  // TODO: Adapter useUserContext ou utiliser AuthContext avec tokensBalance
-  const { user } = useAuth();
-  const [tokensBalance, setTokensBalance] = React.useState<number | null>(null);
+  const { user, refreshUser } = useAuth();
+  const { t } = useLanguageSafe();
+  const initialBalance = Number(user?.credits ?? user?.tokens_balance ?? 0);
+  const [tokensBalance, setTokensBalance] = React.useState<number | null>(initialBalance || null);
   const [loading, setLoading] = React.useState(false);
 
-  // Placeholder pour refreshTokensBalance
+  // Synchroniser avec le user context quand il change
+  useEffect(() => {
+    const b = Number(user?.credits ?? user?.tokens_balance ?? 0);
+    if (Number.isFinite(b) && b > 0) setTokensBalance(b);
+  }, [user?.credits, user?.tokens_balance]);
+
   const refreshTokensBalance = React.useCallback(async () => {
     if (!user) return;
     setLoading(true);
     try {
-      // TODO: Implémenter l'appel API pour récupérer le solde
-      // const response = await apiGet('/user/tokens-balance');
-      // setTokensBalance(response.data.balance);
+      const response = await apiGet('/api/tokens/stats');
+      const data = (response as any)?.data || response;
+      const balance = data?.current_balance ?? data?.balance ?? data?.tokens_balance;
+      if (balance !== undefined && balance !== null) {
+        setTokensBalance(Number(balance));
+      }
+      // Aussi rafraîchir le contexte auth
+      if (refreshUser) await refreshUser();
     } catch (error) {
       console.error('Erreur rafraîchissement solde:', error);
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, refreshUser]);
 
   useEffect(() => {
     // Rafraîchir le solde périodiquement (toutes les 30 secondes)
@@ -70,7 +81,7 @@ export const TokensBalance: React.FC<TokensBalanceProps> = ({
   return (
     <View style={[styles.container, style]}>
       {showLabel && (
-        <Text style={styles.label}>Solde:</Text>
+        <Text style={styles.label}>{t?.('yourBalance') || 'Solde'}:</Text>
       )}
       <View style={styles.balanceContainer}>
         <Text style={[styles.balanceText, getBalanceColor(tokensBalance)]}>
