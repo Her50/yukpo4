@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import SafeIcon from '../components/SafeIcon';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 import { apiGet, apiPost } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 
@@ -21,6 +22,7 @@ const BLOOD_GROUPS = ['O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'];
 
 const BloodGroupManagementScreen: React.FC = () => {
     const { user } = useAuth();
+    const { t } = useLanguageSafe();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [bloodGroup, setBloodGroup] = useState<string | null>(null);
@@ -57,12 +59,12 @@ const BloodGroupManagementScreen: React.FC = () => {
 
     const handleSave = async () => {
         if (!bloodGroup) {
-            Alert.alert('Erreur', 'Veuillez sélectionner votre groupe sanguin');
+            Alert.alert(t('message.error'), t('bloodGroup.selectBloodGroup'));
             return;
         }
 
         if (!user?.id) {
-            Alert.alert('Erreur', 'Vous devez être connecté');
+            Alert.alert(t('message.error'), t('bloodGroup.mustBeConnected'));
             return;
         }
 
@@ -76,14 +78,14 @@ const BloodGroupManagementScreen: React.FC = () => {
             });
 
             if (response.success) {
-                Alert.alert('✅ Succès', 'Votre groupe sanguin a été enregistré avec succès');
+                Alert.alert(t('message.success'), t('bloodGroup.bloodGroupSaved'));
                 await loadBloodGroupInfo();
             } else {
-                Alert.alert('Erreur', response.error || 'Impossible d\'enregistrer votre groupe sanguin');
+                Alert.alert(t('message.error'), response.error || t('bloodGroup.cannotSave'));
             }
         } catch (error: any) {
             console.error('[BloodGroupManagementScreen] Erreur sauvegarde:', error);
-            Alert.alert('Erreur', error.message || 'Une erreur est survenue');
+            Alert.alert(t('message.error'), error.message || t('bloodGroup.genericError'));
         } finally {
             setSaving(false);
         }
@@ -91,13 +93,13 @@ const BloodGroupManagementScreen: React.FC = () => {
 
     const handleUpdateLastDonation = async () => {
         if (!bloodGroup) {
-            Alert.alert('Erreur', 'Veuillez d\'abord enregistrer votre groupe sanguin');
+            Alert.alert(t('message.error'), t('bloodGroup.registerFirst'));
             return;
         }
 
         Alert.alert(
-            'Mettre à jour le dernier don',
-            'Voulez-vous enregistrer la date d\'aujourd\'hui comme date de votre dernier don ?',
+            t('bloodGroup.updateLastDonation'),
+            t('bloodGroup.confirmUpdateDonation'),
             [
                 { text: 'Annuler', style: 'cancel' },
                 {
@@ -112,16 +114,16 @@ const BloodGroupManagementScreen: React.FC = () => {
 
                             if (response.success) {
                                 Alert.alert(
-                                    '✅ Succès',
-                                    `Votre dernier don a été enregistré. Prochain don possible le ${(response.data as any)?.next_donation_available_date || 'N/A'}`
+                                    t('message.success'),
+                                    t('bloodGroup.donationRegistered', { date: (response.data as any)?.next_donation_available_date || 'N/A' })
                                 );
                                 await loadBloodGroupInfo();
                             } else {
-                                Alert.alert('Erreur', response.error || 'Impossible de mettre à jour');
+                                Alert.alert(t('message.error'), response.error || t('bloodGroup.cannotUpdate'));
                             }
                         } catch (error: any) {
                             console.error('[BloodGroupManagementScreen] Erreur:', error);
-                            Alert.alert('Erreur', error.message || 'Une erreur est survenue');
+                            Alert.alert(t('message.error'), error.message || t('bloodGroup.genericError'));
                         } finally {
                             setSaving(false);
                         }

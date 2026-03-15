@@ -18,6 +18,7 @@ import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import ModernGPSModal from '../../components/ModernGPSModal';
 import SafeIcon from '../../components/SafeIcon';
 import { VEHICLE_TRANSPORT_OPTIONS } from '../../config/deliveryConfig';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { CreateDeliveryRequestPayload, deliveryApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
@@ -61,6 +62,7 @@ const DeliveryShoppingFlow: React.FC<DeliveryShoppingFlowProps> = ({
     initialSupermarket,
 }) => {
     const { location: userLocation } = useLocation();
+    const { t } = useLanguageSafe();
     const [loading, setLoading] = useState(false);
     const [loadingLocation, setLoadingLocation] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -237,16 +239,16 @@ const DeliveryShoppingFlow: React.FC<DeliveryShoppingFlowProps> = ({
                 console.warn('[DeliveryShoppingFlow] Aucun supermarché trouvé dans la base de données');
                 setSupermarkets([]);
                 Alert.alert(
-                    'Aucun supermarché trouvé',
-                    'Aucun supermarché n\'a été trouvé près de votre position. Veuillez essayer d\'élargir votre recherche ou vérifier votre connexion.',
+                    t('shoppingFlow.noSupermarkets'),
+                    t('shoppingFlow.noSupermarketsMsg'),
                     [{ text: 'OK' }]
                 );
             }
         } catch (error) {
             console.error('Erreur chargement supermarchés:', error);
             Alert.alert(
-                'Erreur',
-                'Impossible de charger la liste des supermarchés. Vérifiez votre connexion internet.',
+                t('message.error'),
+                t('shoppingFlow.cannotLoadSupermarkets'),
                 [{ text: 'OK' }]
             );
             setSupermarkets([]);
@@ -261,8 +263,8 @@ const DeliveryShoppingFlow: React.FC<DeliveryShoppingFlowProps> = ({
             const { status } = await Location.requestForegroundPermissionsAsync();
             if (status !== 'granted') {
                 Alert.alert(
-                    'Permission requise',
-                    'L\'accès à la localisation est nécessaire pour utiliser votre position actuelle.'
+                    t('shoppingFlow.permissionRequired'),
+                    t('shoppingFlow.locationPermissionMsg')
                 );
                 return;
             }
@@ -293,7 +295,7 @@ const DeliveryShoppingFlow: React.FC<DeliveryShoppingFlowProps> = ({
             setErrors(prev => ({ ...prev, dropoff: '' }));
         } catch (error) {
             console.error('Erreur géolocalisation:', error);
-            Alert.alert('Erreur', 'Impossible d\'obtenir votre position. Vérifiez que le GPS est activé.');
+            Alert.alert(t('message.error'), t('shoppingFlow.cannotGetPosition'));
         } finally {
             setLoadingLocation(false);
         }
@@ -396,8 +398,8 @@ const DeliveryShoppingFlow: React.FC<DeliveryShoppingFlowProps> = ({
 
         if (Object.keys(newErrors).length > 0) {
             Alert.alert(
-                'Formulaire incomplet',
-                'Veuillez corriger les erreurs avant de continuer.',
+                t('shoppingFlow.formIncomplete'),
+                t('shoppingFlow.fixErrors'),
                 [{ text: 'OK' }]
             );
             return;
@@ -447,8 +449,8 @@ const DeliveryShoppingFlow: React.FC<DeliveryShoppingFlowProps> = ({
 
             if (result.success && result.data?.id) {
                 Alert.alert(
-                    'Commande créée',
-                    'Votre commande de courses a été créée avec succès. Le matching des coursiers est en cours.',
+                    t('shoppingFlow.orderCreated'),
+                    t('shoppingFlow.orderCreatedMsg'),
                     [
                         {
                             text: 'OK',
@@ -462,11 +464,11 @@ const DeliveryShoppingFlow: React.FC<DeliveryShoppingFlowProps> = ({
                     ]
                 );
             } else {
-                Alert.alert('Erreur', (result as any).error || 'Impossible de créer la commande');
+                Alert.alert(t('message.error'), (result as any).error || t('shoppingFlow.cannotCreateOrder'));
             }
         } catch (error: any) {
             console.error('Erreur création commande:', error);
-            Alert.alert('Erreur', error.message || 'Une erreur est survenue lors de la création de la commande');
+            Alert.alert(t('message.error'), error.message || t('shoppingFlow.createError'));
         } finally {
             setLoading(false);
         }
@@ -581,16 +583,16 @@ const DeliveryShoppingFlow: React.FC<DeliveryShoppingFlowProps> = ({
                                                     if (supported) {
                                                         await Linking.openURL(url);
                                                         Alert.alert(
-                                                            'Redirection',
-                                                            'Vous allez être redirigé vers la plateforme du marché. Une fois votre commande finalisée, revenez ici pour activer la livraison Yukpo.',
+                                                            t('shoppingFlow.redirect'),
+                                                            t('shoppingFlow.redirectMsg'),
                                                             [{ text: 'OK' }]
                                                         );
                                                     } else {
-                                                        Alert.alert('Erreur', 'Impossible d\'ouvrir ce lien');
+                                                        Alert.alert(t('message.error'), t('shoppingFlow.cannotOpenLink'));
                                                     }
                                                 } catch (error) {
                                                     console.error('Erreur ouverture URL:', error);
-                                                    Alert.alert('Erreur', 'Impossible d\'ouvrir le site web du marché');
+                                                    Alert.alert(t('message.error'), t('shoppingFlow.cannotOpenWebsite'));
                                                 }
                                             }}
                                         >

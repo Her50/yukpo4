@@ -631,7 +631,7 @@ const MesServicesScreen: React.FC = () => {
       const localisation = service.data?.localisation?.valeur || service.localisation;
 
       // ✅ CORRIGÉ: Utiliser l'URL du backend Cloud Run qui sert la route /service/:id
-      const serviceUrl = `https://yukpo-backend-376093909298.europe-west1.run.app/service/${service.id}`;
+      const serviceUrl = `https://yukpomnang.com/service/${service.id}`;
 
       let shareText = `🛍️ ${titre}\n\n${description}`;
 

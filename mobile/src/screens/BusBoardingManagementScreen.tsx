@@ -18,6 +18,7 @@ import {
 import QRCodeScanner from '../components/QRCodeScanner';
 import SafeIcon from '../components/SafeIcon';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 import { trackQRScan } from '../services/analytics';
 import { apiGet, apiPost } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
@@ -54,6 +55,7 @@ const BusBoardingManagementScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
     const { user } = useAuth();
+    const { t } = useLanguageSafe();
     const { productId, busNumber } = (route.params as any) || {};
 
     const [loading, setLoading] = useState(true);
@@ -71,7 +73,7 @@ const BusBoardingManagementScreen: React.FC = () => {
         if (productId) {
             loadBoardingData();
         } else {
-            Alert.alert('Erreur', 'Product ID manquant');
+            Alert.alert(t('message.error'), t('busBoarding.productIdMissing'));
             navigation.goBack();
         }
     }, [productId, user]);
@@ -95,7 +97,7 @@ const BusBoardingManagementScreen: React.FC = () => {
             }
         } catch (error: any) {
             console.error('Erreur chargement données embarquement:', error);
-            Alert.alert('Erreur', 'Impossible de charger les données');
+            Alert.alert(t('message.error'), t('busBoarding.cannotLoadData'));
         } finally {
             setLoading(false);
         }
@@ -116,8 +118,8 @@ const BusBoardingManagementScreen: React.FC = () => {
             // Vérifier format QR code
             if (!qrJson.type || !qrJson.type.includes('BUS_TICKET')) {
                 Alert.alert(
-                    'Erreur',
-                    'QR code invalide. Ce QR code n\'est pas un ticket de bus.',
+                    t('message.error'),
+                    t('busBoarding.invalidQRCode'),
                     [
                         {
                             text: 'Réessayer',
@@ -148,8 +150,8 @@ const BusBoardingManagementScreen: React.FC = () => {
                 trackQRScan(true);
 
                 Alert.alert(
-                    '✅ Validé',
-                    `Passager: ${responseData.passenger_name || 'N/A'}\nPlace: ${responseData.seat_number || 'N/A'}`,
+                    t('busBoarding.validated'),
+                    `${t('busBoarding.passenger')}: ${responseData.passenger_name || 'N/A'}\n${t('busBoarding.seat')}: ${responseData.seat_number || 'N/A'}`,
                     [
                         {
                             text: 'OK',
@@ -166,8 +168,8 @@ const BusBoardingManagementScreen: React.FC = () => {
                 trackQRScan(false, responseData.error || 'Validation échouée');
                 if (responseData.already_boarded) {
                     Alert.alert(
-                        '⚠️ Déjà embarqué',
-                        'Ce passager a déjà été validé',
+                        t('busBoarding.alreadyBoarded'),
+                        t('busBoarding.alreadyBoardedMsg'),
                         [
                             {
                                 text: 'OK',
@@ -180,8 +182,8 @@ const BusBoardingManagementScreen: React.FC = () => {
                     );
                 } else {
                     Alert.alert(
-                        'Erreur',
-                        responseData.error || 'Validation échouée',
+                        t('message.error'),
+                        responseData.error || t('busBoarding.validationFailed'),
                         [
                             {
                                 text: 'Réessayer',
@@ -201,8 +203,8 @@ const BusBoardingManagementScreen: React.FC = () => {
         } catch (error: any) {
             console.error('Erreur validation QR code:', error);
             Alert.alert(
-                'Erreur',
-                'QR code invalide ou corrompu. Veuillez réessayer.',
+                t('message.error'),
+                t('busBoarding.corruptQRCode'),
                 [
                     {
                         text: 'Réessayer',
@@ -222,8 +224,8 @@ const BusBoardingManagementScreen: React.FC = () => {
 
     const handleManualValidation = async (passenger: PassengerInfo) => {
         Alert.alert(
-            'Validation manuelle',
-            `Valider manuellement ${passenger.passenger_name || 'ce passager'} ?`,
+            t('busBoarding.manualValidation'),
+            t('busBoarding.confirmManualValidation', { name: passenger.passenger_name || t('busBoarding.thisPassenger') }),
             [
                 { text: 'Annuler', style: 'cancel' },
                 {
@@ -236,13 +238,13 @@ const BusBoardingManagementScreen: React.FC = () => {
                             });
 
                             if (response.success) {
-                                Alert.alert('✅ Validé', 'Passager validé avec succès');
+                                Alert.alert(t('busBoarding.validated'), t('busBoarding.passengerValidated'));
                                 loadBoardingData();
                             } else {
-                                Alert.alert('Erreur', response.error || 'Validation échouée');
+                                Alert.alert(t('message.error'), response.error || t('busBoarding.validationFailed'));
                             }
                         } catch (error: any) {
-                            Alert.alert('Erreur', 'Impossible de valider le passager');
+                            Alert.alert(t('message.error'), t('busBoarding.cannotValidate'));
                         }
                     },
                 },
@@ -434,7 +436,7 @@ const BusBoardingManagementScreen: React.FC = () => {
                         }}
                         onScan={handleQRCodeScanned}
                         onError={(error) => {
-                            Alert.alert('Erreur', error);
+                            Alert.alert(t('message.error'), error);
                             setScanning(false);
                         }}
                     />

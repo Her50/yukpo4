@@ -175,8 +175,8 @@ const VideoCreationIntroScreen: React.FC = () => {
                     // ✅ AMÉLIORATION: Afficher une alerte si la réponse est invalide
                     if (response.success === false) {
                         Alert.alert(
-                            'Erreur de chargement',
-                            'Impossible de charger vos services. Veuillez réessayer.',
+                            t('videoIntro.loadError'),
+                            t('videoIntro.cannotLoadServices'),
                             [{ text: 'OK' }]
                         );
                     } else if (response.data && !Array.isArray(response.data)) {
@@ -199,8 +199,8 @@ const VideoCreationIntroScreen: React.FC = () => {
                         } else {
                             console.error('[VideoCreationIntroScreen] ❌ Impossible d\'extraire les données');
                             Alert.alert(
-                                'Format de données invalide',
-                                'Les données reçues ne sont pas dans le format attendu. Veuillez réessayer.',
+                                t('videoIntro.invalidDataFormat'),
+                                t('videoIntro.invalidDataFormatMsg'),
                                 [{ text: 'OK' }]
                             );
                         }
@@ -212,21 +212,21 @@ const VideoCreationIntroScreen: React.FC = () => {
                 const errorMessage = error?.message || error?.error || '';
                 if (errorMessage.includes('Timeout') || errorMessage.includes('expiré') || errorMessage.includes('timeout')) {
                     Alert.alert(
-                        'Chargement lent',
-                        'Le chargement prend plus de temps que prévu. Vérifiez votre connexion internet.',
+                        t('videoIntro.slowLoading'),
+                        t('videoIntro.slowLoadingMsg'),
                         [{ text: 'OK' }]
                     );
                 } else if (errorMessage.includes('réseau') || errorMessage.includes('connexion') || errorMessage.includes('Network')) {
                     Alert.alert(
-                        'Problème de connexion',
-                        'Impossible de se connecter au serveur. Vérifiez votre connexion internet.',
+                        t('videoIntro.connectionProblem'),
+                        t('videoIntro.connectionProblemMsg'),
                         [{ text: 'OK' }]
                     );
                 } else {
                     // ✅ AMÉLIORATION: Afficher une alerte pour les autres erreurs
                     Alert.alert(
-                        'Erreur de chargement',
-                        errorMessage || 'Impossible de charger vos services. Veuillez réessayer plus tard.',
+                        t('videoIntro.loadError'),
+                        errorMessage || t('videoIntro.cannotLoadServicesLater'),
                         [{ text: 'OK' }]
                     );
                 }
@@ -306,7 +306,7 @@ const VideoCreationIntroScreen: React.FC = () => {
             );
 
             if (!service) {
-                Alert.alert('Erreur', 'Service introuvable');
+                Alert.alert(t('message.error'), t('videoIntro.serviceNotFound'));
                 return;
             }
 
@@ -315,7 +315,7 @@ const VideoCreationIntroScreen: React.FC = () => {
             const produits = normalizeServiceProducts(produitsRaw);
 
             if (!Array.isArray(produits) || produits.length === 0) {
-                Alert.alert('Erreur', 'Aucun produit trouvé dans ce service');
+                Alert.alert(t('message.error'), t('videoIntro.noProductsFound'));
                 return;
             }
 
@@ -325,7 +325,7 @@ const VideoCreationIntroScreen: React.FC = () => {
                 .filter((p): p is ManagedProduct => p !== null);
 
             if (managedProducts.length === 0) {
-                Alert.alert('Erreur', 'Impossible de charger les produits');
+                Alert.alert(t('message.error'), t('videoIntro.cannotLoadProducts'));
                 return;
             }
 
@@ -348,7 +348,7 @@ const VideoCreationIntroScreen: React.FC = () => {
             setShowVideoCreationModal(true);
         } catch (error) {
             console.error('[VideoCreationIntroScreen] Erreur ouverture modal:', error);
-            Alert.alert('Erreur', 'Impossible d\'ouvrir l\'éditeur de vidéo');
+            Alert.alert(t('message.error'), t('videoIntro.cannotOpenEditor'));
         }
     };
 
@@ -500,8 +500,8 @@ const VideoCreationIntroScreen: React.FC = () => {
 
             if (allProducts.length === 0) {
                 Alert.alert(
-                    'Produit requis',
-                    'Vous n\'avez pas encore de produit. Créez d\'abord un produit pour pouvoir créer une vidéo.',
+                    t('videoIntro.productRequired'),
+                    t('videoIntro.productRequiredMsg'),
                     [
                         { text: 'Annuler', style: 'cancel' },
                         {
@@ -529,8 +529,8 @@ const VideoCreationIntroScreen: React.FC = () => {
 
         // Pas de services → Rediriger vers MesServices
         Alert.alert(
-            'Service requis',
-            'Pour créer une vidéo, vous devez d\'abord créer un service avec au moins un produit.',
+            t('videoIntro.serviceRequired'),
+            t('videoIntro.serviceRequiredMsg'),
             [
                 { text: 'Annuler', style: 'cancel' },
                 {

@@ -15,6 +15,7 @@ import ModernGPSModal from '../../components/ModernGPSModal';
 import SafeIcon from '../../components/SafeIcon';
 import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { apiGet, apiPost } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
@@ -27,6 +28,7 @@ const TaxiAvailabilityScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
     const { user } = useAuth();
+    const { t } = useLanguageSafe();
     const { location } = useLocation();
     const params = route.params as TaxiAvailabilityScreenParams;
 
@@ -71,12 +73,12 @@ const TaxiAvailabilityScreen: React.FC = () => {
                     }
                 }
             } else {
-                Alert.alert('Erreur', 'Impossible de charger les détails du taxi');
+                Alert.alert(t('message.error'), t('taxiAvailability.cannotLoadDetails'));
                 navigation.goBack();
             }
         } catch (error: any) {
             console.error('[TaxiAvailabilityScreen] Erreur:', error);
-            Alert.alert('Erreur', error.message || 'Impossible de charger les détails');
+            Alert.alert(t('message.error'), error.message || t('taxiAvailability.cannotLoad'));
             navigation.goBack();
         } finally {
             setLoading(false);
@@ -94,7 +96,7 @@ const TaxiAvailabilityScreen: React.FC = () => {
 
     const handleSave = async () => {
         if (!user) {
-            Alert.alert('Erreur', 'Vous devez être connecté');
+            Alert.alert(t('message.error'), t('taxiAvailability.mustBeConnected'));
             return;
         }
 
@@ -111,25 +113,25 @@ const TaxiAvailabilityScreen: React.FC = () => {
             }
 
             if (Object.keys(payload).length === 0) {
-                Alert.alert('Info', 'Aucune modification à enregistrer');
+                Alert.alert(t('message.info'), t('taxiAvailability.noChanges'));
                 return;
             }
 
             const response = await apiPost(`/api/taxis/${params.taxiId}/update-availability`, payload);
 
             if (response.success) {
-                Alert.alert('Succès', 'Disponibilité mise à jour avec succès', [
+                Alert.alert(t('message.success'), t('taxiAvailability.availabilityUpdated'), [
                     {
                         text: 'OK',
                         onPress: () => navigation.goBack(),
                     },
                 ]);
             } else {
-                Alert.alert('Erreur', response.error || 'Impossible de mettre à jour la disponibilité');
+                Alert.alert(t('message.error'), response.error || t('taxiAvailability.cannotUpdate'));
             }
         } catch (error: any) {
             console.error('[TaxiAvailabilityScreen] Erreur sauvegarde:', error);
-            Alert.alert('Erreur', error.message || 'Impossible de mettre à jour la disponibilité');
+            Alert.alert(t('message.error'), error.message || t('taxiAvailability.cannotUpdate'));
         } finally {
             setSaving(false);
         }
@@ -221,7 +223,7 @@ const TaxiAvailabilityScreen: React.FC = () => {
                                     setGpsString(`${lat},${lng}`);
                                     setGpsData({ lat, lng });
                                 } else {
-                                    Alert.alert('Erreur', 'Position GPS actuelle non disponible');
+                                    Alert.alert(t('message.error'), t('taxiAvailability.gpsUnavailable'));
                                 }
                             }}
                         >

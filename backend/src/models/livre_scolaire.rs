@@ -332,6 +332,23 @@ pub struct BookDeliveryPackage {
     pub date_constitution: Option<DateTime<Utc>>,
     pub date_livraison: Option<DateTime<Utc>>,
     pub date_confirmation: Option<DateTime<Utc>>,
+    // Phase 3: Pont vers système de livraison intelligent
+    pub delivery_uuid: Option<uuid::Uuid>,
+    pub matching_status: Option<String>,
+    // Disponibilité expéditeur
+    pub creneau_expediteur_debut: Option<DateTime<Utc>>,
+    pub creneau_expediteur_fin: Option<DateTime<Utc>>,
+    pub expediteur_instructions: Option<String>,
+    // Disponibilité destinataire
+    pub creneau_destinataire_debut: Option<DateTime<Utc>>,
+    pub creneau_destinataire_fin: Option<DateTime<Utc>>,
+    pub destinataire_instructions: Option<String>,
+    // Itinéraire et tracking
+    pub itineraire: Option<serde_json::Value>,
+    pub eta_minutes: Option<i32>,
+    pub distance_totale_metres: Option<i32>,
+    pub coursier_gps_actuel: Option<String>,
+    pub coursier_gps_updated_at: Option<DateTime<Utc>>,
 }
 
 /// Commission sur transaction livre

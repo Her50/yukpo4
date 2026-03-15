@@ -8525,6 +8525,18 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Err(e) => error!("❌ Erreur migration auto bourse livre V2: {}", e),
     }
 
+    // ✅ 2026-03-15 : Bourse du Livre V2 Phase 2 - achats directs, dépôt-seulement
+    match ensure_bourse_livre_v2_phase2_tables(pool).await {
+        Ok(_) => info!("✅ Migration auto: bourse livre V2 phase2 tables OK"),
+        Err(e) => error!("❌ Erreur migration auto bourse livre V2 phase2: {}", e),
+    }
+
+    // ✅ 2026-03-15 : Bourse du Livre V2 Phase 3 - Pont livraison intelligent + disponibilité + dashboards
+    match ensure_bourse_livre_v2_phase3_tables(pool).await {
+        Ok(_) => info!("✅ Migration auto: bourse livre V2 phase3 (delivery bridge) OK"),
+        Err(e) => error!("❌ Erreur migration auto bourse livre V2 phase3: {}", e),
+    }
+
     // ✅ 2025-01-28 : Tables pour système d'offres d'emploi avec matching intelligent
     match ensure_offres_emploi_tables(pool).await {
         Ok(_) => info!("✅ Migration auto: offres d'emploi tables OK"),
@@ -16935,6 +16947,35 @@ pub async fn ensure_bourse_livre_v2_tables(pool: &PgPool) -> Result<(), sqlx::Er
     execute_migration_sql_safe(pool, migration_sql).await?;
 
     info!("✅ Tables Bourse du Livre V2 créées");
+    Ok(())
+}
+
+/// ✅ 2026-03-15 : Bourse du Livre V2 Phase 2 - achats directs, dépôt-seulement
+/// Migration: 20260315_bourse_livre_v2_phase2.sql
+pub async fn ensure_bourse_livre_v2_phase2_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification/création des tables Bourse du Livre V2 Phase 2...");
+
+    let migration_sql = include_str!("../../migrations/20260315_bourse_livre_v2_phase2.sql");
+
+    execute_migration_sql_safe(pool, migration_sql).await?;
+
+    info!("✅ Tables Bourse du Livre V2 Phase 2 créées (book_purchases, etc.)");
+    Ok(())
+}
+
+/// ✅ 2026-03-15 : Bourse du Livre V2 Phase 3 - Pont livraison intelligent + disponibilité + dashboards
+/// Migration: 20260315_bourse_livre_v2_phase3_delivery_bridge.sql
+pub async fn ensure_bourse_livre_v2_phase3_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification/création des tables Bourse du Livre V2 Phase 3 (delivery bridge)...");
+
+    let migration_sql =
+        include_str!("../../migrations/20260315_bourse_livre_v2_phase3_delivery_bridge.sql");
+
+    execute_migration_sql_safe(pool, migration_sql).await?;
+
+    info!(
+        "✅ Tables Bourse du Livre V2 Phase 3 créées (delivery bridge, disponibilité, itinéraire)"
+    );
     Ok(())
 }
 

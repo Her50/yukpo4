@@ -719,7 +719,11 @@ pub async fn update_package_status(
                 .and_then(|f| f.to_string().parse::<f64>().ok())
                 .unwrap_or(0.0);
             if frais > 0.0 {
-                let commission_livraison = frais * 0.20; // 20% commission livraison
+                let delivery_commission_rate = std::env::var("YUKPO_DELIVERY_COMMISSION_RATE")
+                    .ok()
+                    .and_then(|v| v.parse::<f64>().ok())
+                    .unwrap_or(0.20);
+                let commission_livraison = frais * delivery_commission_rate;
                 let net_coursier = frais - commission_livraison;
                 match credit_book_wallet(
                     &state.pg,
@@ -737,6 +741,27 @@ pub async fn update_package_status(
                         "[update_package_status] Erreur crédit coursier {}: {}",
                         coursier_id, e
                     ),
+                }
+
+                // ✅ Traçabilité: enregistrer la commission LIVRAISON séparément
+                // (distincte de la commission LIVRE qui est de type 'troc' ou 'vente')
+                if let Err(e) = record_book_commission(
+                    &state.pg,
+                    0,
+                    Some(package_id),
+                    None,
+                    Some(coursier_id),
+                    "commission_livraison",
+                    frais,
+                    commission_livraison,
+                    net_coursier,
+                )
+                .await
+                {
+                    error!(
+                        "[update_package_status] Erreur enregistrement commission livraison: {}",
+                        e
+                    );
                 }
             }
         }
@@ -1226,10 +1251,53 @@ pub async fn create_book_purchase(
         ));
     }
 
-    let taux_commission = 0.10; // 10%
+    let taux_commission = crate::models::livre_scolaire::TAUX_COMMISSION_APP;
     let commission = prix_achat * taux_commission;
     let montant_vendeur = prix_achat - commission;
-    let frais_livraison = 500.0; // Frais de base
+
+    // ✅ Calcul automatique des frais de livraison via distance GPS (haversine)
+    // Formule: distance_km * 500 XAF, minimum 1000 XAF, 0 si pas de GPS
+    let frais_livraison = {
+        let vendeur_gps = livre.gps.as_deref().unwrap_or("");
+        let acheteur_gps = payload.gps_livraison.as_deref().unwrap_or("");
+
+        if !vendeur_gps.is_empty() && !acheteur_gps.is_empty() {
+            // Parser les coordonnées GPS "lat,lng"
+            let parse_gps = |gps: &str| -> Option<(f64, f64)> {
+                let parts: Vec<&str> = gps.split(',').collect();
+                if parts.len() == 2 {
+                    Some((parts[0].trim().parse().ok()?, parts[1].trim().parse().ok()?))
+                } else {
+                    None
+                }
+            };
+
+            match (parse_gps(vendeur_gps), parse_gps(acheteur_gps)) {
+                (Some(pos_vendeur), Some(pos_acheteur)) => {
+                    let distance_km = crate::services::delivery_service::haversine_distance(
+                        pos_vendeur,
+                        pos_acheteur,
+                    );
+                    let cost = (distance_km * 500.0).max(1000.0);
+                    info!(
+                        "[create_book_purchase] Frais livraison calculés: {:.0} XAF (distance: {:.1} km)",
+                        cost, distance_km
+                    );
+                    cost
+                }
+                _ => {
+                    info!(
+                        "[create_book_purchase] GPS invalide, frais livraison par défaut: 1000 XAF"
+                    );
+                    1000.0 // Minimum par défaut si GPS invalide
+                }
+            }
+        } else {
+            info!("[create_book_purchase] Pas de GPS, frais livraison: 0 (à calculer au dépôt)");
+            0.0 // Sera calculé lors de la création du paquet livraison
+        }
+    };
+
     let montant_total = prix_achat + frais_livraison;
 
     let mode_livraison = payload.mode_livraison.as_deref().unwrap_or("depot_seulement");
@@ -1686,6 +1754,565 @@ async fn record_book_commission(
         id, livre_id, type_transaction, montant_commission as i64
     );
     Ok(id)
+}
+
+// ============================================================================
+// PHASE 3: PONT VERS SYSTÈME DE LIVRAISON INTELLIGENT
+// ============================================================================
+
+/// POST /api/bourse-livre/v2/packages/:id/dispatch
+/// Déclenche le matching coursier via le système de livraison intelligent
+pub async fn dispatch_book_package(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Path(package_id): Path<i32>,
+) -> AppResult<impl IntoResponse> {
+    info!(
+        "[dispatch_book_package] User: {}, Package: {}",
+        user_id, package_id
+    );
+
+    let package = sqlx::query_as::<_, BookDeliveryPackage>(
+        "SELECT * FROM book_delivery_packages WHERE id = $1 AND (expediteur_id = $2 OR destinataire_id = $2)",
+    )
+    .bind(package_id)
+    .bind(user_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?;
+
+    let package = match package {
+        Some(p) => p,
+        None => {
+            // Fallback: chercher sans filtre user (admin peut dispatcher)
+            sqlx::query_as::<_, BookDeliveryPackage>(
+                "SELECT * FROM book_delivery_packages WHERE id = $1",
+            )
+            .bind(package_id)
+            .fetch_optional(&state.pg)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
+            .ok_or_else(|| AppError::NotFound("Paquet non trouvé".to_string()))?
+        }
+    };
+
+    if package.statut != "constitue" && package.statut != "a_constituer" {
+        return Err(AppError::BadRequest(
+            "Le paquet doit être au statut 'constitué' ou 'à constituer' pour être dispatché"
+                .to_string(),
+        ));
+    }
+
+    // Parser les coordonnées GPS
+    let parse_gps = |gps: &str| -> Option<(f64, f64)> {
+        let parts: Vec<&str> = gps.split(',').collect();
+        if parts.len() == 2 {
+            Some((parts[0].trim().parse().ok()?, parts[1].trim().parse().ok()?))
+        } else {
+            None
+        }
+    };
+
+    let expediteur_pos = package.expediteur_gps.as_deref().and_then(parse_gps);
+    let destinataire_pos = package.destinataire_gps.as_deref().and_then(parse_gps);
+
+    if expediteur_pos.is_none() || destinataire_pos.is_none() {
+        return Err(AppError::BadRequest(
+            "Coordonnées GPS manquantes pour l'expéditeur ou le destinataire".to_string(),
+        ));
+    }
+
+    let (exp_lat, exp_lng) = expediteur_pos.unwrap();
+    let (dest_lat, dest_lng) = destinataire_pos.unwrap();
+
+    // Calculer la distance et l'ETA
+    let distance_m = crate::services::delivery_service::haversine_distance(
+        (exp_lat, exp_lng),
+        (dest_lat, dest_lng),
+    );
+    let eta_min = ((distance_m / 1000.0) / 25.0 * 60.0).max(15.0) as i32; // ~25 km/h en ville
+
+    // Construire l'itinéraire multi-points
+    let itineraire = json!([
+        {
+            "type": "pickup",
+            "gps": format!("{},{}", exp_lat, exp_lng),
+            "adresse": package.expediteur_adresse,
+            "user_id": package.expediteur_id,
+            "ordre": 1,
+            "instructions": package.expediteur_instructions
+        },
+        {
+            "type": "dropoff",
+            "gps": format!("{},{}", dest_lat, dest_lng),
+            "adresse": package.destinataire_adresse,
+            "user_id": package.destinataire_id,
+            "ordre": 2,
+            "instructions": package.destinataire_instructions
+        }
+    ]);
+
+    // Calculer les frais de livraison si pas encore fait
+    let frais_livraison = package
+        .frais_livraison
+        .and_then(|f| f.to_string().parse::<f64>().ok())
+        .unwrap_or_else(|| (distance_m / 1000.0 * 500.0).max(1000.0));
+
+    // Créer la livraison dans le système intelligent
+    let delivery_uuid = Uuid::new_v4();
+    let metadata = json!({
+        "source": "bourse_livre_v2",
+        "book_package_id": package.id,
+        "book_package_reference": package.reference,
+        "nombre_livres": package.nombre_livres,
+        "type": "book_delivery",
+        "itineraire": itineraire,
+        "creneau_expediteur": {
+            "debut": package.creneau_expediteur_debut,
+            "fin": package.creneau_expediteur_fin,
+        },
+        "creneau_destinataire": {
+            "debut": package.creneau_destinataire_debut,
+            "fin": package.creneau_destinataire_fin,
+        }
+    });
+
+    // Insérer dans la table deliveries du système intelligent
+    let delivery_insert = sqlx::query_scalar::<_, Uuid>(
+        r#"
+        INSERT INTO deliveries (
+            id, creator_id, status,
+            pickup_address, pickup_location,
+            dropoff_address, dropoff_location,
+            distance_meters, metadata, created_at, updated_at
+        )
+        VALUES (
+            $1, $2, 'pending'::delivery_status,
+            $3, ST_SetSRID(ST_MakePoint($4::double precision, $5::double precision), 4326)::geography,
+            $6, ST_SetSRID(ST_MakePoint($7::double precision, $8::double precision), 4326)::geography,
+            $9, $10, NOW(), NOW()
+        )
+        RETURNING id
+        "#,
+    )
+    .bind(delivery_uuid)
+    .bind(user_id)
+    .bind(package.expediteur_adresse.as_deref().unwrap_or("Expéditeur livres"))
+    .bind(exp_lng)
+    .bind(exp_lat)
+    .bind(package.destinataire_adresse.as_deref().unwrap_or("Destinataire livres"))
+    .bind(dest_lng)
+    .bind(dest_lat)
+    .bind(distance_m as i32)
+    .bind(&metadata)
+    .fetch_one(&state.pg)
+    .await;
+
+    match delivery_insert {
+        Ok(did) => {
+            info!(
+                "[dispatch_book_package] ✅ Delivery {} créée pour paquet {}",
+                did, package.reference
+            );
+
+            // Mettre à jour le paquet avec le delivery_uuid et les infos calculées
+            sqlx::query(
+                r#"
+                UPDATE book_delivery_packages
+                SET delivery_uuid = $1, matching_status = 'searching',
+                    frais_livraison = $2, itineraire = $3,
+                    eta_minutes = $4, distance_totale_metres = $5,
+                    statut = CASE WHEN statut = 'a_constituer' THEN 'constitue' ELSE statut END,
+                    date_constitution = COALESCE(date_constitution, NOW()),
+                    updated_at = NOW()
+                WHERE id = $6
+                "#,
+            )
+            .bind(did)
+            .bind(rust_decimal::Decimal::from_f64_retain(frais_livraison))
+            .bind(&itineraire)
+            .bind(eta_min)
+            .bind(distance_m as i32)
+            .bind(package_id)
+            .execute(&state.pg)
+            .await
+            .ok();
+
+            // Envoyer notification aux expéditeur et destinataire
+            let _ = sqlx::query(
+                r#"INSERT INTO push_notifications (user_id, title, body, data, created_at)
+                VALUES ($1, 'Coursier en recherche', 'Un coursier est recherché pour votre paquet de livres ' || $2, $3, NOW())"#,
+            )
+            .bind(package.expediteur_id)
+            .bind(&package.reference)
+            .bind(json!({"type": "book_package_dispatched", "package_id": package_id}))
+            .execute(&state.pg)
+            .await;
+
+            let _ = sqlx::query(
+                r#"INSERT INTO push_notifications (user_id, title, body, data, created_at)
+                VALUES ($1, 'Livres en préparation', 'Un paquet de livres est en cours de préparation pour vous', $2, NOW())"#,
+            )
+            .bind(package.destinataire_id)
+            .bind(json!({"type": "book_package_incoming", "package_id": package_id}))
+            .execute(&state.pg)
+            .await;
+
+            Ok(Json(json!({
+                "success": true,
+                "delivery_uuid": did,
+                "matching_status": "searching",
+                "itineraire": itineraire,
+                "eta_minutes": eta_min,
+                "distance_metres": distance_m as i32,
+                "frais_livraison": frais_livraison,
+            })))
+        }
+        Err(e) => {
+            error!("[dispatch_book_package] Erreur création delivery: {}", e);
+            // Mettre le matching_status à 'pending' pour retry
+            sqlx::query(
+                "UPDATE book_delivery_packages SET matching_status = 'pending' WHERE id = $1",
+            )
+            .bind(package_id)
+            .execute(&state.pg)
+            .await
+            .ok();
+            Err(AppError::Internal(format!("Erreur dispatch: {}", e)))
+        }
+    }
+}
+
+/// PATCH /api/bourse-livre/v2/packages/:id/availability
+/// Mettre à jour les créneaux de disponibilité
+#[derive(Debug, Deserialize)]
+pub struct UpdateAvailabilityRequest {
+    pub creneau_debut: Option<String>,
+    pub creneau_fin: Option<String>,
+    pub instructions: Option<String>,
+    pub role: String, // "expediteur" ou "destinataire"
+}
+
+pub async fn update_package_availability(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Path(package_id): Path<i32>,
+    Json(payload): Json<UpdateAvailabilityRequest>,
+) -> AppResult<impl IntoResponse> {
+    let (debut_col, fin_col, instr_col) = match payload.role.as_str() {
+        "expediteur" => (
+            "creneau_expediteur_debut",
+            "creneau_expediteur_fin",
+            "expediteur_instructions",
+        ),
+        "destinataire" => (
+            "creneau_destinataire_debut",
+            "creneau_destinataire_fin",
+            "destinataire_instructions",
+        ),
+        _ => {
+            return Err(AppError::BadRequest(
+                "Role doit être 'expediteur' ou 'destinataire'".to_string(),
+            ))
+        }
+    };
+
+    let sql = format!(
+        "UPDATE book_delivery_packages SET {} = $1, {} = $2, {} = $3, updated_at = NOW() WHERE id = $4 AND ({} = $5 OR {} = $5) RETURNING id",
+        debut_col, fin_col, instr_col,
+        if payload.role == "expediteur" { "expediteur_id" } else { "destinataire_id" },
+        if payload.role == "expediteur" { "expediteur_id" } else { "destinataire_id" },
+    );
+
+    let debut = payload
+        .creneau_debut
+        .as_deref()
+        .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
+        .map(|dt| dt.with_timezone(&chrono::Utc));
+    let fin = payload
+        .creneau_fin
+        .as_deref()
+        .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
+        .map(|dt| dt.with_timezone(&chrono::Utc));
+
+    let result = sqlx::query_scalar::<_, i32>(&sql)
+        .bind(debut)
+        .bind(fin)
+        .bind(&payload.instructions)
+        .bind(package_id)
+        .bind(user_id)
+        .fetch_optional(&state.pg)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur MAJ disponibilité: {}", e)))?;
+
+    match result {
+        Some(_) => Ok(Json(
+            json!({"success": true, "message": "Créneaux mis à jour"}),
+        )),
+        None => Err(AppError::NotFound(
+            "Paquet non trouvé ou non autorisé".to_string(),
+        )),
+    }
+}
+
+// ============================================================================
+// DASHBOARDS LIVRES SCOLAIRES
+// ============================================================================
+
+/// GET /api/bourse-livre/v2/courier/dashboard
+/// Dashboard coursier pour les paquets de livres
+pub async fn courier_book_dashboard(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+) -> AppResult<impl IntoResponse> {
+    // Paquets assignés au coursier (actifs)
+    let mes_paquets = sqlx::query_as::<_, BookDeliveryPackage>(
+        r#"
+        SELECT * FROM book_delivery_packages
+        WHERE coursier_id = $1 AND statut IN ('constitue', 'en_route')
+        ORDER BY
+            CASE WHEN statut = 'en_route' THEN 0 ELSE 1 END,
+            created_at ASC
+        "#,
+    )
+    .bind(user_id)
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?;
+
+    // Paquets disponibles dans la zone du coursier (pas encore assignés)
+    // Utilise le GPS du coursier pour trouver les paquets proches
+    let paquets_disponibles = sqlx::query_as::<_, BookDeliveryPackage>(
+        r#"
+        SELECT * FROM book_delivery_packages
+        WHERE coursier_id IS NULL
+            AND statut = 'constitue'
+            AND matching_status IN ('searching', 'no_courier')
+        ORDER BY created_at ASC
+        LIMIT 20
+        "#,
+    )
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?;
+
+    // Stats coursier livres
+    let stats = sqlx::query_as::<_, (i64, i64, i64)>(
+        r#"
+        SELECT
+            COUNT(*) FILTER (WHERE statut IN ('constitue', 'en_route')) as actifs,
+            COUNT(*) FILTER (WHERE statut = 'confirme') as completes,
+            COUNT(*) FILTER (WHERE statut = 'livre') as livres
+        FROM book_delivery_packages
+        WHERE coursier_id = $1
+        "#,
+    )
+    .bind(user_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur stats: {}", e)))?
+    .unwrap_or((0, 0, 0));
+
+    // Gains totaux livres
+    let gains: Option<f64> = sqlx::query_scalar(
+        r#"
+        SELECT COALESCE(SUM(
+            COALESCE(frais_livraison::float8, 0) * 0.80
+        ), 0)
+        FROM book_delivery_packages
+        WHERE coursier_id = $1 AND statut IN ('livre', 'confirme')
+        "#,
+    )
+    .bind(user_id)
+    .fetch_optional(&state.pg)
+    .await
+    .ok()
+    .flatten();
+
+    Ok(Json(json!({
+        "success": true,
+        "mes_paquets": mes_paquets,
+        "paquets_disponibles": paquets_disponibles,
+        "stats": {
+            "actifs": stats.0,
+            "completes": stats.1,
+            "livres": stats.2,
+            "gains_totaux_xaf": gains.unwrap_or(0.0) as i64,
+        }
+    })))
+}
+
+/// POST /api/bourse-livre/v2/courier/accept/:package_id
+/// Coursier accepte un paquet de livres disponible
+pub async fn courier_accept_book_package(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Path(package_id): Path<i32>,
+) -> AppResult<impl IntoResponse> {
+    info!(
+        "[courier_accept_book_package] Coursier {} accepte paquet {}",
+        user_id, package_id
+    );
+
+    // Vérifier que le paquet est disponible
+    let result = sqlx::query_scalar::<_, i32>(
+        r#"
+        UPDATE book_delivery_packages
+        SET coursier_id = $1, matching_status = 'matched', updated_at = NOW()
+        WHERE id = $2 AND coursier_id IS NULL AND statut = 'constitue'
+        RETURNING id
+        "#,
+    )
+    .bind(user_id)
+    .bind(package_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?;
+
+    match result {
+        Some(_) => {
+            info!(
+                "[courier_accept_book_package] ✅ Coursier {} assigné au paquet {}",
+                user_id, package_id
+            );
+
+            // Notifier expéditeur et destinataire
+            let package = sqlx::query_as::<_, BookDeliveryPackage>(
+                "SELECT * FROM book_delivery_packages WHERE id = $1",
+            )
+            .bind(package_id)
+            .fetch_optional(&state.pg)
+            .await
+            .ok()
+            .flatten();
+
+            if let Some(pkg) = &package {
+                let _ = sqlx::query(
+                    "INSERT INTO push_notifications (user_id, title, body, data, created_at) VALUES ($1, 'Coursier trouvé !', 'Un coursier a accepté votre paquet de livres', $2, NOW())",
+                )
+                .bind(pkg.expediteur_id)
+                .bind(json!({"type": "book_courier_matched", "package_id": package_id}))
+                .execute(&state.pg)
+                .await;
+
+                let _ = sqlx::query(
+                    "INSERT INTO push_notifications (user_id, title, body, data, created_at) VALUES ($1, 'Livres en chemin !', 'Un coursier va récupérer vos livres', $2, NOW())",
+                )
+                .bind(pkg.destinataire_id)
+                .bind(json!({"type": "book_courier_matched", "package_id": package_id}))
+                .execute(&state.pg)
+                .await;
+            }
+
+            Ok(Json(json!({
+                "success": true,
+                "message": "Paquet accepté",
+                "package": package,
+            })))
+        }
+        None => Err(AppError::BadRequest(
+            "Paquet non disponible ou déjà pris".to_string(),
+        )),
+    }
+}
+
+/// GET /api/bourse-livre/v2/user/book-dashboard
+/// Dashboard utilisateur pour ses livres (à envoyer, à recevoir, achats)
+pub async fn user_book_dashboard(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+) -> AppResult<impl IntoResponse> {
+    // Paquets à envoyer (je suis expéditeur)
+    let paquets_a_envoyer = sqlx::query_as::<_, BookDeliveryPackage>(
+        r#"
+        SELECT * FROM book_delivery_packages
+        WHERE expediteur_id = $1 AND statut NOT IN ('confirme', 'annule')
+        ORDER BY created_at DESC
+        LIMIT 20
+        "#,
+    )
+    .bind(user_id)
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?;
+
+    // Paquets à recevoir (je suis destinataire)
+    let paquets_a_recevoir = sqlx::query_as::<_, BookDeliveryPackage>(
+        r#"
+        SELECT * FROM book_delivery_packages
+        WHERE destinataire_id = $1 AND statut NOT IN ('confirme', 'annule')
+        ORDER BY
+            CASE WHEN statut = 'en_route' THEN 0
+                 WHEN statut = 'constitue' THEN 1
+                 ELSE 2 END,
+            created_at DESC
+        LIMIT 20
+        "#,
+    )
+    .bind(user_id)
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?;
+
+    // Mes achats en cours
+    let achats_en_cours = sqlx::query_as::<_, crate::models::livre_scolaire::BookPurchase>(
+        r#"
+        SELECT * FROM book_purchases
+        WHERE (acheteur_id = $1 OR vendeur_id = $1)
+            AND statut NOT IN ('livre', 'annule')
+        ORDER BY created_at DESC
+        LIMIT 20
+        "#,
+    )
+    .bind(user_id)
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?;
+
+    // Historique complété
+    let historique = sqlx::query_as::<_, BookDeliveryPackage>(
+        r#"
+        SELECT * FROM book_delivery_packages
+        WHERE (expediteur_id = $1 OR destinataire_id = $1) AND statut IN ('confirme', 'livre')
+        ORDER BY date_confirmation DESC NULLS LAST
+        LIMIT 10
+        "#,
+    )
+    .bind(user_id)
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?;
+
+    // Stats utilisateur
+    let total_envoyes: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM book_delivery_packages WHERE expediteur_id = $1 AND statut = 'confirme'",
+    )
+    .bind(user_id)
+    .fetch_one(&state.pg)
+    .await
+    .unwrap_or(0);
+
+    let total_recus: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM book_delivery_packages WHERE destinataire_id = $1 AND statut = 'confirme'",
+    )
+    .bind(user_id)
+    .fetch_one(&state.pg)
+    .await
+    .unwrap_or(0);
+
+    Ok(Json(json!({
+        "success": true,
+        "paquets_a_envoyer": paquets_a_envoyer,
+        "paquets_a_recevoir": paquets_a_recevoir,
+        "achats_en_cours": achats_en_cours,
+        "historique": historique,
+        "stats": {
+            "total_envoyes": total_envoyes,
+            "total_recus": total_recus,
+            "en_cours_envoi": paquets_a_envoyer.len(),
+            "en_cours_reception": paquets_a_recevoir.len(),
+        }
+    })))
 }
 
 /// Marquer les commissions comme reversées

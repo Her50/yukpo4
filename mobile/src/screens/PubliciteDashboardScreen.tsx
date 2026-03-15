@@ -127,7 +127,7 @@ const PubliciteDashboardScreen: React.FC = () => {
     };
 
     const handlePause = useCallback(async (pubId: number | string) => {
-        Alert.alert('Mettre en pause', 'Voulez-vous mettre cette publicité en pause ?', [
+        Alert.alert(t('pubDashboard.pauseAd'), t('pubDashboard.confirmPause'), [
             { text: 'Annuler', style: 'cancel' },
             {
                 text: 'Confirmer', onPress: async () => {
@@ -136,9 +136,9 @@ const PubliciteDashboardScreen: React.FC = () => {
                         if (res?.success || res?.data?.success) {
                             loadDashboard();
                         } else {
-                            Alert.alert('Erreur', res?.data?.error || 'Impossible de mettre en pause');
+                            Alert.alert(t('message.error'), res?.data?.error || t('pubDashboard.cannotPause'));
                         }
-                    } catch (e) { Alert.alert('Erreur', 'Erreur réseau'); }
+                    } catch (e) { Alert.alert(t('message.error'), t('pubDashboard.networkError')); }
                 }
             }
         ]);
@@ -150,15 +150,15 @@ const PubliciteDashboardScreen: React.FC = () => {
             if (res?.success || res?.data?.success) {
                 loadDashboard();
             } else {
-                Alert.alert('Erreur', res?.data?.error || 'Impossible de reprendre');
+                Alert.alert(t('message.error'), res?.data?.error || t('pubDashboard.cannotResume'));
             }
-        } catch (e) { Alert.alert('Erreur', 'Erreur réseau'); }
+        } catch (e) { Alert.alert(t('message.error'), t('pubDashboard.networkError')); }
     }, []);
 
     const handleDelete = useCallback(async (pubId: number | string) => {
         Alert.alert(
-            'Supprimer la publicité',
-            'Cette action est irréversible. Un remboursement partiel (50%) sera effectué. Continuer ?',
+            t('pubDashboard.deleteAd'),
+            t('pubDashboard.confirmDelete'),
             [
                 { text: 'Annuler', style: 'cancel' },
                 {
@@ -168,9 +168,9 @@ const PubliciteDashboardScreen: React.FC = () => {
                             if (res?.success || res?.data?.success) {
                                 loadDashboard();
                             } else {
-                                Alert.alert('Erreur', res?.data?.error || 'Impossible de supprimer');
+                                Alert.alert(t('message.error'), res?.data?.error || t('pubDashboard.cannotDelete'));
                             }
-                        } catch (e) { Alert.alert('Erreur', 'Erreur réseau'); }
+                        } catch (e) { Alert.alert(t('message.error'), t('pubDashboard.networkError')); }
                     }
                 }
             ]

@@ -16,12 +16,14 @@ import {
 import { Card, Paragraph, TextInput, Title } from 'react-native-paper';
 import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import ModernGPSModal from '../../components/ModernGPSModal';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { authApi } from '../../services/api';
 import { theme } from '../../theme/theme';
 
 const PartnerRegisterScreen: React.FC = () => {
   const navigation = useNavigation();
   const route = useRoute();
+  const { t } = useLanguageSafe();
   // ✅ NOUVEAU: Lire le paramètre partner_type depuis la route
   const routeParams = (route.params as any) || {};
   const initialPartnerType = routeParams.partner_type || '';
@@ -141,8 +143,8 @@ const PartnerRegisterScreen: React.FC = () => {
       const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permissionResult.granted) {
         Alert.alert(
-          'Permission refusée',
-          'Vous devez autoriser l\'accès à la galerie pour ajouter un logo.'
+          t('partnerRegister.permissionDenied'),
+          t('partnerRegister.galleryAccessRequired')
         );
         setUploadingLogo(false);
         return;
@@ -166,7 +168,7 @@ const PartnerRegisterScreen: React.FC = () => {
       }
     } catch (error: any) {
       console.error('[PartnerRegisterScreen] Erreur sélection logo:', error);
-      Alert.alert('Erreur', 'Impossible de sélectionner le logo');
+      Alert.alert(t('message.error'), t('partnerRegister.cannotSelectLogo'));
     } finally {
       setUploadingLogo(false);
     }
@@ -275,8 +277,8 @@ const PartnerRegisterScreen: React.FC = () => {
 
       if (response.success || response.token) {
         Alert.alert(
-          'Inscription réussie',
-          'Votre compte partenaire est en attente de validation. Vous recevrez un email une fois approuvé.',
+          t('partnerRegister.registrationSuccess'),
+          t('partnerRegister.pendingValidation'),
           [{ text: 'OK', onPress: () => navigation.navigate('Login' as never) }]
         );
       } else {
@@ -602,7 +604,7 @@ const PartnerRegisterScreen: React.FC = () => {
                       setUploadingLogo(true);
                       const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
                       if (!permissionResult.granted) {
-                        Alert.alert('Permission refusée', 'Vous devez autoriser l\'accès à la galerie');
+                        Alert.alert(t('partnerRegister.permissionDenied'), t('partnerRegister.galleryAccessRequired'));
                         return;
                       }
                       const result = await ImagePicker.launchImageLibraryAsync({
@@ -616,7 +618,7 @@ const PartnerRegisterScreen: React.FC = () => {
                         setForm({ ...form, driver_license_photo: `data:image/jpeg;base64,${result.assets[0].base64}` });
                       }
                     } catch (error: any) {
-                      Alert.alert('Erreur', 'Impossible de sélectionner la photo');
+                      Alert.alert(t('message.error'), t('partnerRegister.cannotSelectPhoto'));
                     } finally {
                       setUploadingLogo(false);
                     }
@@ -651,7 +653,7 @@ const PartnerRegisterScreen: React.FC = () => {
                       setUploadingLogo(true);
                       const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
                       if (!permissionResult.granted) {
-                        Alert.alert('Permission refusée', 'Vous devez autoriser l\'accès à la galerie');
+                        Alert.alert(t('partnerRegister.permissionDenied'), t('partnerRegister.galleryAccessRequired'));
                         return;
                       }
                       const result = await ImagePicker.launchImageLibraryAsync({
@@ -665,7 +667,7 @@ const PartnerRegisterScreen: React.FC = () => {
                         setForm({ ...form, driver_id_photo: `data:image/jpeg;base64,${result.assets[0].base64}` });
                       }
                     } catch (error: any) {
-                      Alert.alert('Erreur', 'Impossible de sélectionner la photo');
+                      Alert.alert(t('message.error'), t('partnerRegister.cannotSelectPhoto'));
                     } finally {
                       setUploadingLogo(false);
                     }
@@ -785,7 +787,7 @@ const PartnerRegisterScreen: React.FC = () => {
             setShowGPSModal(false);
           } catch (error) {
             console.error('[PartnerRegisterScreen] Erreur sélection GPS:', error);
-            Alert.alert('Erreur', 'Impossible de traiter la localisation sélectionnée');
+            Alert.alert(t('message.error'), t('partnerRegister.cannotProcessLocation'));
           }
         }}
         currentLocation={form.partner_gps}

@@ -746,7 +746,8 @@
         "draftSaved": "💾 Draft saved",
         "draftSavedMsg": "Your application has been saved as a draft.\n\nYou can complete and submit it later.",
         "cannotSubmit": "Unable to submit application. Please try again.",
-        "cannotSubmitShort": "Unable to submit application"
+        "cannotSubmitShort": "Unable to submit application",
+        "genericError": "An error occurred. Please try again."
     },
     "agenceVoyage": {
         "passengerValidated": "Passenger validated manually",
@@ -1624,7 +1625,7 @@
             "horsProgramme": "Not found in official programs",
             "prixDetail": "Price breakdown",
             "prixLivre": "Book price",
-            "commission": "Commission (10%)",
+            "commission": "Commission (20%)",
             "fraisLivraison": "Delivery fee",
             "total": "Total",
             "adresseLivraison": "Delivery address",
@@ -1642,7 +1643,8 @@
             "errorAdresse": "Please enter a delivery address",
             "errorAchat": "Error during purchase",
             "achatConfirme": "Purchase confirmed",
-            "commandeCreee": "Your order #{{id}} has been created.\nTotal amount: {{total}} {{devise}}"
+            "commandeCreee": "Your order #{{id}} has been created.\nTotal amount: {{total}} {{devise}}",
+            "aCalculer": "To be calculated (GPS)"
         },
         "packages": {
             "title": "My Packages",
@@ -1858,5 +1860,124 @@
         "confirmSuspend": "Suspend this policy?",
         "terminate": "Terminate",
         "confirmTerminate": "Terminate this policy?"
+    },
+    "trocMatching": {
+        "noMatchings": "Unable to find matchings",
+        "cannotLoadMatchings": "Unable to load matchings",
+        "trocProposed": "Swap proposed! The participant will receive a notification.",
+        "cannotCreateTroc": "Unable to create swap",
+        "genericError": "An error occurred",
+        "chainCreated": "Chain of {{count}} people created! All participants will be notified.",
+        "cannotCreateChain": "Unable to create chain"
+    },
+    "taxiAvailability": {
+        "cannotLoadDetails": "Unable to load taxi details",
+        "cannotLoad": "Unable to load details",
+        "mustBeConnected": "You must be logged in",
+        "noChanges": "No changes to save",
+        "availabilityUpdated": "Availability updated successfully",
+        "cannotUpdate": "Unable to update availability",
+        "gpsUnavailable": "Current GPS position unavailable"
+    },
+    "pubDashboard": {
+        "pauseAd": "Pause",
+        "confirmPause": "Do you want to pause this ad?",
+        "cannotPause": "Unable to pause",
+        "networkError": "Network error",
+        "cannotResume": "Unable to resume",
+        "deleteAd": "Delete ad",
+        "confirmDelete": "This action is irreversible. A partial refund (50%) will be issued. Continue?",
+        "cannotDelete": "Unable to delete"
+    },
+    "partnerRegister": {
+        "permissionDenied": "Permission denied",
+        "galleryAccessRequired": "You must allow gallery access to add a logo.",
+        "cannotSelectLogo": "Unable to select logo",
+        "registrationSuccess": "Registration successful",
+        "pendingValidation": "Your partner account is pending validation. You will receive an email once approved.",
+        "cannotSelectPhoto": "Unable to select photo",
+        "cannotProcessLocation": "Unable to process selected location"
+    },
+    "busBoarding": {
+        "productIdMissing": "Product ID missing",
+        "cannotLoadData": "Unable to load data",
+        "invalidQRCode": "Invalid QR code. This QR code is not a bus ticket.",
+        "validated": "✅ Validated",
+        "passenger": "Passenger",
+        "seat": "Seat",
+        "alreadyBoarded": "⚠️ Already boarded",
+        "alreadyBoardedMsg": "This passenger has already been validated",
+        "validationFailed": "Validation failed",
+        "corruptQRCode": "Invalid or corrupt QR code. Please try again.",
+        "manualValidation": "Manual validation",
+        "confirmManualValidation": "Manually validate {{name}}?",
+        "thisPassenger": "this passenger",
+        "passengerValidated": "Passenger validated successfully",
+        "cannotValidate": "Unable to validate passenger"
+    },
+    "shoppingFlow": {
+        "noSupermarkets": "No supermarkets found",
+        "noSupermarketsMsg": "No supermarkets were found near your location. Please try expanding your search or check your connection.",
+        "cannotLoadSupermarkets": "Unable to load supermarket list. Check your internet connection.",
+        "permissionRequired": "Permission required",
+        "locationPermissionMsg": "Location access is needed to use your current position.",
+        "cannotGetPosition": "Unable to get your position. Check that GPS is enabled.",
+        "formIncomplete": "Incomplete form",
+        "fixErrors": "Please fix errors before continuing.",
+        "orderCreated": "Order created",
+        "orderCreatedMsg": "Your shopping order has been created successfully. Courier matching is in progress.",
+        "cannotCreateOrder": "Unable to create order",
+        "createError": "An error occurred while creating the order",
+        "redirect": "Redirect",
+        "redirectMsg": "You will be redirected to the marketplace. Once your order is finalized, come back here to activate Yukpo delivery.",
+        "cannotOpenLink": "Unable to open this link",
+        "cannotOpenWebsite": "Unable to open the marketplace website"
+    },
+    "videoIntro": {
+        "loadError": "Loading error",
+        "cannotLoadServices": "Unable to load your services. Please try again.",
+        "invalidDataFormat": "Invalid data format",
+        "invalidDataFormatMsg": "The received data is not in the expected format. Please try again.",
+        "slowLoading": "Slow loading",
+        "slowLoadingMsg": "Loading is taking longer than expected. Check your internet connection.",
+        "connectionProblem": "Connection problem",
+        "connectionProblemMsg": "Unable to connect to the server. Check your internet connection.",
+        "cannotLoadServicesLater": "Unable to load your services. Please try again later.",
+        "serviceNotFound": "Service not found",
+        "noProductsFound": "No products found in this service",
+        "cannotLoadProducts": "Unable to load products",
+        "cannotOpenEditor": "Unable to open video editor",
+        "productRequired": "Product required",
+        "productRequiredMsg": "You don't have any products yet. Create a product first to be able to create a video.",
+        "serviceRequired": "Service required",
+        "serviceRequiredMsg": "To create a video, you must first create a service with at least one product."
+    },
+    "bloodGroup": {
+        "selectBloodGroup": "Please select your blood group",
+        "mustBeConnected": "You must be logged in",
+        "bloodGroupSaved": "Your blood group has been saved successfully",
+        "cannotSave": "Unable to save your blood group",
+        "genericError": "An error occurred",
+        "registerFirst": "Please register your blood group first",
+        "updateLastDonation": "Update last donation",
+        "confirmUpdateDonation": "Do you want to record today's date as your last donation date?",
+        "donationRegistered": "Your last donation has been recorded. Next donation possible on {{date}}",
+        "cannotUpdate": "Unable to update"
+    },
+    "taxiBooking": {
+        "cannotLoadDetails": "Unable to load taxi details",
+        "cannotLoad": "Unable to load details",
+        "loginRequired": "Login required",
+        "loginToBook": "Please log in to book a taxi",
+        "selectDeparture": "Please select your departure point",
+        "selectDestination": "Please select your destination",
+        "taxiUnavailable": "Taxi unavailable",
+        "taxiUnavailableMsg": "This taxi is not available at the moment",
+        "bookingConfirmed": "Booking confirmed!",
+        "bookingConfirmedMsg": "Your booking has been created. The driver will contact you soon.{{price}}",
+        "estimatedPrice": "Estimated price",
+        "cannotCreateBooking": "Unable to create booking",
+        "call": "Call",
+        "confirmCall": "Do you want to call {{phone}}?"
     }
 }

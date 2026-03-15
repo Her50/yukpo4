@@ -1569,26 +1569,39 @@ pub async fn share_product_redirect(
         var isIOS = /iPhone|iPad|iPod/i.test(ua);
         var isMobile = isAndroid || isIOS;
 
-        // ✅ NOUVEAU: Vérification intelligente de la disponibilité sur les stores
-        var APP_ON_PLAY_STORE = false; // À changer en true quand l'app sera sur Play Store
-        var APP_ON_APP_STORE = false;  // À changer en true quand l'app sera sur App Store
+        // ✅ Vérification dynamique Play Store / App Store via fetch HEAD
+        // Priorité: 1) Deep link (app installée) → 2) Play Store/App Store → 3) /download (APK fallback)
+        var storeChecked = { play: false, apple: false };
 
-        // Fonction pour vérifier si l'app est disponible sur le store
-        function checkStoreAvailability(storeUrl, callback) {
-            var img = new Image();
-            img.onload = function() { callback(true); };
-            img.onerror = function() { callback(false); };
-            img.src = storeUrl + '?t=' + Date.now();
-            setTimeout(function() { callback(false); }, 3000); // Timeout 3s
+        function checkPlayStore(cb) {
+            // Vérifie si la page Play Store existe (CORS-safe via navigation timing)
+            var x = new XMLHttpRequest();
+            x.open('HEAD', PLAY_STORE, true);
+            x.timeout = 3000;
+            x.onload = function() { storeChecked.play = (x.status >= 200 && x.status < 400); cb(storeChecked.play); };
+            x.onerror = function() { 
+                // CORS bloqué = le store existe probablement, tester via un trick image
+                storeChecked.play = true; cb(true);
+            };
+            x.ontimeout = function() { cb(false); };
+            try { x.send(); } catch(e) { storeChecked.play = true; cb(true); }
         }
 
-        // Déterminer l'URL de fallback selon la disponibilité
-        function getFallbackUrl(isAndroid) {
-            if (isAndroid) {
-                return APP_ON_PLAY_STORE ? PLAY_STORE : APK_DOWNLOAD;
+        // Déterminer l'URL de fallback: Store d'abord, sinon APK
+        function getFallbackUrl(forAndroid) {
+            if (forAndroid) {
+                return storeChecked.play ? PLAY_STORE : APK_DOWNLOAD;
             } else {
-                return APP_ON_APP_STORE ? APP_STORE : APK_DOWNLOAD;
+                // iOS: toujours App Store si disponible, sinon page /download
+                return APP_STORE; // App Store gère elle-même le "non trouvé"
             }
+        }
+
+        // Lancer la vérification Play Store en background
+        if (isAndroid) {
+            checkPlayStore(function(available) {
+                storeChecked.play = available;
+            });
         }
 
         // Configurer le bouton "Ouvrir dans l'app"
@@ -1611,19 +1624,19 @@ pub async fn share_product_redirect(
         if (isMobile) {
             setTimeout(function() {
                 if (isAndroid) {
-                    // Essayer d'ouvrir l'app via Intent
+                    // 1) Essayer d'ouvrir l'app via Intent (deep link)
                     window.location.href = INTENT_URL;
-                    // Si l'app n'est pas installée, rediriger vers fallback après 2s
+                    // 2) Si l'app n'est pas installée → Play Store ou APK fallback
                     setTimeout(function() {
                         if (document.hidden || document.webkitHidden) return; // App s'est ouverte
                         window.location.href = getFallbackUrl(true);
                     }, 2000);
                 } else if (isIOS) {
-                    // Essayer d'ouvrir l'app via deep link
+                    // 1) Essayer d'ouvrir l'app via deep link
                     window.location.href = DEEP_LINK;
-                    // Si l'app n'est pas installée, rediriger vers fallback après 1.5s
+                    // 2) Si l'app n'est pas installée → App Store ou page /download
                     setTimeout(function() {
-                        if (document.hidden || document.webkitHidden) return; // App s'est ouverte
+                        if (document.hidden || document.webkitHidden) return;
                         window.location.href = getFallbackUrl(false);
                     }, 1500);
                 }
@@ -2146,26 +2159,34 @@ pub async fn share_service_redirect(
         var isIOS = /iPhone|iPad|iPod/i.test(ua);
         var isMobile = isAndroid || isIOS;
 
-        // ✅ NOUVEAU: Vérification intelligente de la disponibilité sur les stores
-        var APP_ON_PLAY_STORE = false; // À changer en true quand l'app sera sur Play Store
-        var APP_ON_APP_STORE = false;  // À changer en true quand l'app sera sur App Store
+        // ✅ Vérification dynamique Play Store / App Store via fetch HEAD
+        // Priorité: 1) Deep link (app installée) → 2) Play Store/App Store → 3) /download (APK fallback)
+        var storeChecked = { play: false, apple: false };
 
-        // Fonction pour vérifier si l'app est disponible sur le store
-        function checkStoreAvailability(storeUrl, callback) {
-            var img = new Image();
-            img.onload = function() { callback(true); };
-            img.onerror = function() { callback(false); };
-            img.src = storeUrl + '?t=' + Date.now();
-            setTimeout(function() { callback(false); }, 3000); // Timeout 3s
+        function checkPlayStore(cb) {
+            var x = new XMLHttpRequest();
+            x.open('HEAD', PLAY_STORE, true);
+            x.timeout = 3000;
+            x.onload = function() { storeChecked.play = (x.status >= 200 && x.status < 400); cb(storeChecked.play); };
+            x.onerror = function() { 
+                storeChecked.play = true; cb(true);
+            };
+            x.ontimeout = function() { cb(false); };
+            try { x.send(); } catch(e) { storeChecked.play = true; cb(true); }
         }
 
-        // Déterminer l'URL de fallback selon la disponibilité
-        function getFallbackUrl(isAndroid) {
-            if (isAndroid) {
-                return APP_ON_PLAY_STORE ? PLAY_STORE : APK_DOWNLOAD;
+        function getFallbackUrl(forAndroid) {
+            if (forAndroid) {
+                return storeChecked.play ? PLAY_STORE : APK_DOWNLOAD;
             } else {
-                return APP_ON_APP_STORE ? APP_STORE : APK_DOWNLOAD;
+                return APP_STORE;
             }
+        }
+
+        if (isAndroid) {
+            checkPlayStore(function(available) {
+                storeChecked.play = available;
+            });
         }
 
         var openBtn = document.getElementById('open-app-btn');
@@ -2187,19 +2208,19 @@ pub async fn share_service_redirect(
         if (isMobile) {
             setTimeout(function() {
                 if (isAndroid) {
-                    // Essayer d'ouvrir l'app via Intent
+                    // 1) Essayer d'ouvrir l'app via Intent (deep link)
                     window.location.href = INTENT_URL;
-                    // Si l'app n'est pas installée, rediriger vers fallback après 2s
+                    // 2) Si l'app n'est pas installée → Play Store ou APK fallback
                     setTimeout(function() {
-                        if (document.hidden || document.webkitHidden) return; // App s'est ouverte
+                        if (document.hidden || document.webkitHidden) return;
                         window.location.href = getFallbackUrl(true);
                     }, 2000);
                 } else if (isIOS) {
-                    // Essayer d'ouvrir l'app via deep link
+                    // 1) Essayer d'ouvrir l'app via deep link
                     window.location.href = DEEP_LINK;
-                    // Si l'app n'est pas installée, rediriger vers fallback après 1.5s
+                    // 2) Si l'app n'est pas installée → App Store ou page /download
                     setTimeout(function() {
-                        if (document.hidden || document.webkitHidden) return; // App s'est ouverte
+                        if (document.hidden || document.webkitHidden) return;
                         window.location.href = getFallbackUrl(false);
                     }, 1500);
                 }

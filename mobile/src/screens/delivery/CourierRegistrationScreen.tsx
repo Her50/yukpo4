@@ -1033,7 +1033,7 @@ const CourierRegistrationScreen: React.FC = () => {
                                             setCourierType(type.value);
                                         } catch (error) {
                                             console.error('[CourierRegistrationScreen] Erreur lors de la sélection:', error);
-                                            Alert.alert('Erreur', 'Une erreur est survenue. Veuillez réessayer.');
+                                            Alert.alert(t('message.error'), t('courierRegistration.genericError'));
                                         }
                                     }}
                                     activeOpacity={0.7}

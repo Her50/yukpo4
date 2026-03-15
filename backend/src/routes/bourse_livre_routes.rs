@@ -168,6 +168,28 @@ pub fn bourse_livre_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             "/api/bourse-livre/v2/packages/depot-only",
             post(bourse_livre_v2_controller::create_depot_only_package),
         )
+        // Phase 3: Pont vers système de livraison intelligent
+        .route(
+            "/api/bourse-livre/v2/packages/{id}/dispatch",
+            post(bourse_livre_v2_controller::dispatch_book_package),
+        )
+        .route(
+            "/api/bourse-livre/v2/packages/{id}/availability",
+            patch(bourse_livre_v2_controller::update_package_availability),
+        )
+        // Phase 3: Dashboards livres scolaires
+        .route(
+            "/api/bourse-livre/v2/courier/dashboard",
+            get(bourse_livre_v2_controller::courier_book_dashboard),
+        )
+        .route(
+            "/api/bourse-livre/v2/courier/accept/{id}",
+            post(bourse_livre_v2_controller::courier_accept_book_package),
+        )
+        .route(
+            "/api/bourse-livre/v2/user/book-dashboard",
+            get(bourse_livre_v2_controller::user_book_dashboard),
+        )
         .layer(middleware::from_fn_with_state(state.clone(), jwt_auth));
 
     Router::new()

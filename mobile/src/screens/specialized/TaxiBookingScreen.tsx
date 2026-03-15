@@ -17,6 +17,7 @@ import { NativeButton, NativeCard, NativeInput } from '../../components/SafeNati
 import { InsuranceSelector } from '../../components/covoiturage/InsuranceSelector';
 import { QRCodeDisplay } from '../../components/covoiturage/QRCodeDisplay';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { apiGet, apiPost } from '../../services/api';
 import PushNotificationService from '../../services/pushNotificationService';
@@ -60,6 +61,7 @@ const TaxiBookingScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
     const { user } = useAuth();
+    const { t } = useLanguageSafe();
     const { location } = useLocation();
     const params = route.params as TaxiBookingScreenParams;
 
@@ -127,12 +129,12 @@ const TaxiBookingScreen: React.FC = () => {
             if (response.success && r) {
                 setTaxi(r);
             } else {
-                Alert.alert('Erreur', 'Impossible de charger les détails du taxi');
+                Alert.alert(t('message.error'), t('taxiBooking.cannotLoadDetails'));
                 navigation.goBack();
             }
         } catch (error: any) {
             console.error('[TaxiBookingScreen] Erreur:', error);
-            Alert.alert('Erreur', error.message || 'Impossible de charger les détails');
+            Alert.alert(t('message.error'), error.message || t('taxiBooking.cannotLoad'));
             navigation.goBack();
         } finally {
             setLoading(false);
@@ -213,25 +215,25 @@ const TaxiBookingScreen: React.FC = () => {
 
     const handleBook = async () => {
         if (!user) {
-            Alert.alert('Connexion requise', 'Veuillez vous connecter pour réserver un taxi');
+            Alert.alert(t('taxiBooking.loginRequired'), t('taxiBooking.loginToBook'));
             navigation.navigate('Login' as never);
             return;
         }
 
         if (!departureGPS) {
-            Alert.alert('Erreur', 'Veuillez sélectionner votre point de départ');
+            Alert.alert(t('message.error'), t('taxiBooking.selectDeparture'));
             return;
         }
 
         if (!arrivalGPS) {
-            Alert.alert('Erreur', 'Veuillez sélectionner votre destination');
+            Alert.alert(t('message.error'), t('taxiBooking.selectDestination'));
             return;
         }
 
         if (!taxi) return;
 
         if (!taxi.is_available_now || !taxi.is_on_duty) {
-            Alert.alert('Taxi indisponible', 'Ce taxi n\'est pas disponible pour le moment');
+            Alert.alert(t('taxiBooking.taxiUnavailable'), t('taxiBooking.taxiUnavailableMsg'));
             return;
         }
 
@@ -278,8 +280,8 @@ const TaxiBookingScreen: React.FC = () => {
                 }
 
                 Alert.alert(
-                    'Réservation confirmée !',
-                    `Votre réservation a été créée. Le chauffeur vous contactera bientôt.${estimatedPrice ? `\nPrix estimé: ${estimatedPrice.toLocaleString('fr-FR')} FCFA` : ''}`,
+                    t('taxiBooking.bookingConfirmed'),
+                    t('taxiBooking.bookingConfirmedMsg', { price: estimatedPrice ? `\n${t('taxiBooking.estimatedPrice')}: ${estimatedPrice.toLocaleString('fr-FR')} FCFA` : '' }),
                     [
                         {
                             text: 'Voir mes réservations',
@@ -292,11 +294,11 @@ const TaxiBookingScreen: React.FC = () => {
                     ]
                 );
             } else {
-                Alert.alert('Erreur', response.error || 'Impossible de créer la réservation');
+                Alert.alert(t('message.error'), response.error || t('taxiBooking.cannotCreateBooking'));
             }
         } catch (error: any) {
             console.error('[TaxiBookingScreen] Erreur réservation:', error);
-            Alert.alert('Erreur', error.message || 'Impossible de créer la réservation');
+            Alert.alert(t('message.error'), error.message || t('taxiBooking.cannotCreateBooking'));
         } finally {
             setBooking(false);
         }
@@ -305,8 +307,8 @@ const TaxiBookingScreen: React.FC = () => {
     const handleCall = () => {
         if (taxi?.telephone) {
             Alert.alert(
-                'Appeler',
-                `Voulez-vous appeler ${taxi.telephone}?`,
+                t('taxiBooking.call'),
+                t('taxiBooking.confirmCall', { phone: taxi.telephone }),
                 [
                     { text: 'Annuler', style: 'cancel' },
                     {
