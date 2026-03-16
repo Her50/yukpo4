@@ -21,10 +21,10 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 import { apiGet, apiPost } from '../services/api';
 import { hapticPress } from '../utils/hapticFeedback';
 import SafeIcon from './SafeIcon';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface TriageResult {
     severity: 'low' | 'moderate' | 'high' | 'critical';
@@ -68,8 +68,8 @@ const HospitalAIFeatures: React.FC<HospitalAIFeaturesProps> = ({
     visible,
     onClose
 }) => {
-        const { t } = useLanguageSafe();
-const [activeTab, setActiveTab] = useState<'triage' | 'recommendations' | 'wait_time' | 'slots'>('triage');
+    const { t } = useLanguageSafe();
+    const [activeTab, setActiveTab] = useState<'triage' | 'recommendations' | 'wait_time' | 'slots'>('triage');
     const [loading, setLoading] = useState(false);
 
     // État pour triage
@@ -400,7 +400,7 @@ const [activeTab, setActiveTab] = useState<'triage' | 'recommendations' | 'wait_
                             <View>
                                 <Text style={styles.sectionTitle}>Temps d'attente</Text>
                                 <Text style={styles.sectionDescription}>
-                                    Consultez les temps dt('hospitalAIFeatures.attenteActuelsAL')hôpital
+                                    {t('hospitalAIFeatures.consultWaitTimes')}
                                 </Text>
 
                                 {hospitalId ? (
@@ -456,7 +456,7 @@ const [activeTab, setActiveTab] = useState<'triage' | 'recommendations' | 'wait_
                                     <>
                                         <TextInput
                                             style={styles.input}
-                                            placeholder={t('hospitalAIFeatures.dateJjmmaaaaLaisserVidePourAujourd')}hui"
+                                            placeholder={t('hospitalAIFeatures.datePlaceholder')}
                                             value={selectedDate}
                                             onChangeText={setSelectedDate}
                                         />

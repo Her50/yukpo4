@@ -32,8 +32,8 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({
     onScan,
     onError,
 }) => {
-        const { t } = useLanguageSafe();
-const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+    const { t } = useLanguageSafe();
+    const [hasPermission, setHasPermission] = useState<boolean | null>(null);
     const [scanned, setScanned] = useState(false);
 
     useEffect(() => {
@@ -51,7 +51,7 @@ const [hasPermission, setHasPermission] = useState<boolean | null>(null);
                 Alert.alert(
                     'Permission requise',
                     'L\t('qRCodeScanner.accesALaCameraEstNecessaire'),
-                    [{ text: 'OK', onPress: onClose }]
+                [{ text: 'OK', onPress: onClose }]
                 );
             }
         } catch (error: any) {
@@ -92,9 +92,9 @@ const [hasPermission, setHasPermission] = useState<boolean | null>(null);
                 <View style={styles.container}>
                     <View style={styles.header}>
                         <Text style={styles.title}>{t('qRCodeScanner.demandeDePermission')}/Text>
-                        <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-                            <SafeIcon name="x" size={24} color="#111827" />
-                        </TouchableOpacity>
+                            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+                                <SafeIcon name="x" size={24} color="#111827" />
+                            </TouchableOpacity>
                     </View>
                     <View style={styles.content}>
                         <Text style={styles.message}>
@@ -126,7 +126,7 @@ const [hasPermission, setHasPermission] = useState<boolean | null>(null);
                             L'accès à la caméra a été refusé
                         </Text>
                         <Text style={styles.errorSubtext}>
-                            Veuillez autoriser lt('qRCodeScanner.accesALaCameraDansLes')appareil
+                            {t('qRCodeScanner.pleaseAllowCameraAccess')}
                         </Text>
                         <TouchableOpacity
                             style={styles.retryButton}
