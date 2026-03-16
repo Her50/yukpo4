@@ -506,7 +506,7 @@ const PharmacieFormScreen: React.FC = () => {
             {!pharmacyData && products.length === 0 && (
                 <View style={s.emptyDash}>
                     <SafeIcon name="activity" size={48} color="#9CA3AF" />
-                    <Text style={s.emptyTitle}>{t('pharmacieForm.bienvenueSurVotreDashboard')}/Text>
+                    <Text style={s.emptyTitle}>{t('pharmacieForm.bienvenueSurVotreDashboard')}</Text>
                         <Text style={s.emptyText}>{t('pharmacieForm.configurezVotrePharmacieDansMon')}</Text>
                         <NativeButton title="Configurer" onPress={() => setActiveTab('service')} style={{ marginTop: 16 }} />
                 </View>
@@ -521,7 +521,7 @@ const PharmacieFormScreen: React.FC = () => {
                 <View style={s.field}><NativeInput label={t('pharmacieForm.nomDeLaPharmacie')} value={formData.nom} onChangeText={t => setFormData({ ...formData, nom: t })} placeholder="Ex: Pharmacie Centrale" /></View>
             )}
             <View style={s.field}>
-                <Text style={s.label}>{t('pharmacieForm.localisationGps')}/Text>
+                <Text style={s.label}>{t('pharmacieForm.localisationGps')}</Text>
                     <TouchableOpacity style={s.gpsBtn} onPress={() => setShowGPSModal(true)}>
                         <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
                         <Text style={s.gpsBtnText}>{selectedGPS ? t('pharmacieFormScreen.localisationSelectionnee') : 'Sélectionner sur la carte'}</Text>
@@ -535,7 +535,7 @@ const PharmacieFormScreen: React.FC = () => {
                 <LocationSelector label={t('pharmacieForm.quartier')} value={formData.quartier ? (typeof formData.quartier === 'string' ? { raw: formData.quartier, place_name: formData.quartier } : formData.quartier) : ''} onSelect={(loc: LocationObject) => setFormData({ ...formData, quartier: loc })} placeholder={t('pharmacieForm.rechercherUnLieu')} scope="all" enrichWithBackend />
             </View>
             <View style={s.field}>
-                <Text style={s.label}>{t('pharmacieForm.joursDeGarde')}/Text>
+                <Text style={s.label}>{t('pharmacieForm.joursDeGarde')}</Text>
                     <TouchableOpacity style={s.greenBtn} onPress={() => setShowGuardDaysModal(true)}>
                         <SafeIcon name="calendar" size={18} color="#fff" />
                         <Text style={s.greenBtnText}>{Object.keys(formData.jours_garde).length > 0 ? 'Modifier planification' : 'Planifier jours de garde'}</Text>
@@ -630,7 +630,7 @@ const PharmacieFormScreen: React.FC = () => {
     const renderAnalytics = () => (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
             <View style={s.analyticsCard}>
-                <View style={s.analyticsHdr}><SafeIcon name="bar-chart-2" size={22} color="#8B5CF6" /><Text style={s.analyticsTitle}>{t('pharmacieForm.commandes')}/Text></View>
+                <View style={s.analyticsHdr}><SafeIcon name="bar-chart-2" size={22} color="#8B5CF6" /><Text style={s.analyticsTitle}>{t('pharmacieForm.commandes')}</Text></View>
                 {analyticsData ? (
                     <View style={{ gap: 12 }}>
                         {[

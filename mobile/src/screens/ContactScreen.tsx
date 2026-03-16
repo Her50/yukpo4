@@ -120,13 +120,13 @@ const [name, setName] = useState('');
           </View>
 
           <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
-            <Text style={styles.submitButtonText}>{t('contact.envoyerLeMessage')}/Text>
+            <Text style={styles.submitButtonText}>{t('contact.envoyerLeMessage')}</Text>
           </TouchableOpacity>
         </View>
 
         {/* Infos de contact rapide */}
         <View style={styles.quickContact}>
-          <Text style={styles.quickContactTitle}>{t('contact.contactRapide')}/Text>
+          <Text style={styles.quickContactTitle}>{t('contact.contactRapide')}</Text>
 
           <TouchableOpacity
             style={styles.contactCard}
@@ -164,7 +164,7 @@ const [name, setName] = useState('');
 
         {/* Informations supplémentaires */}
         <View style={styles.infoSection}>
-          <Text style={styles.infoTitle}>{t('contact.informations')}/Text>
+          <Text style={styles.infoTitle}>{t('contact.informations')}</Text>
           <View style={styles.infoCard}>
             <Text style={styles.infoText}>
               • <Text style={styles.bold}>Heures d'ouverture :</Text> 8h00 - 18h00 (Lun-Ven)
@@ -173,7 +173,7 @@ const [name, setName] = useState('');
               • <Text style={styles.bold}>{t('contact.tempsDeReponse')}</Text> Moins de 24h
             </Text>
             <Text style={styles.infoText}>
-              • <Text style={styles.bold}>{t('contact.supportTechnique')}/Text> Disponible 7j/7
+              • <Text style={styles.bold}>{t('contact.supportTechnique')}</Text> Disponible 7j/7
             </Text>
           </View>
         </View>

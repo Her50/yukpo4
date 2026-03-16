@@ -317,7 +317,7 @@ const CovoiturageSearchScreen: React.FC = () => {
 
                     {/* Formulaire de recherche */}
                     <View style={styles.searchFormCard}>
-                        <Text style={styles.sectionTitle}>{t('covoiturageSearch.recherche')}/Text>
+                        <Text style={styles.sectionTitle}>{t('covoiturageSearch.recherche')}</Text>
 
                         {/* Recherche GPS */}
                         <View style={styles.inputGroup}>

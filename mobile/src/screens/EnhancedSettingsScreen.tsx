@@ -251,7 +251,7 @@ const EnhancedSettingsScreen: React.FC = () => {
 
             {/* Informations utilisateur */}
             <View style={styles.userInfoCard}>
-                <Text style={styles.userInfoTitle}>{t('enhancedSettings.informationsDuCompte')}/Text>
+                <Text style={styles.userInfoTitle}>{t('enhancedSettings.informationsDuCompte')}</Text>
                 <View style={styles.userInfoRow}>
                     <Text style={styles.userInfoLabel}>Nom:</Text>
                     <Text style={styles.userInfoValue}>{user?.name || t('enhancedSettings.nonDefini')}</Text>
@@ -387,7 +387,7 @@ const EnhancedSettingsScreen: React.FC = () => {
             <ScrollView style={styles.sectionScroll} showsVerticalScrollIndicator={false}>
                 <View style={styles.formContainer}>
                     <View style={styles.toggleGroup}>
-                        <Text style={styles.toggleLabel}>{t('enhancedSettings.notificationsPush')}/Text>
+                        <Text style={styles.toggleLabel}>{t('enhancedSettings.notificationsPush')}</Text>
                         <TouchableOpacity
                             style={[styles.toggle, notifications.push && styles.toggleActive]}
                             onPress={() => setNotifications({ ...notifications, push: !notifications.push })}
@@ -397,7 +397,7 @@ const EnhancedSettingsScreen: React.FC = () => {
                     </View>
 
                     <View style={styles.toggleGroup}>
-                        <Text style={styles.toggleLabel}>{t('enhancedSettings.notificationsEmail')}/Text>
+                        <Text style={styles.toggleLabel}>{t('enhancedSettings.notificationsEmail')}</Text>
                         <TouchableOpacity
                             style={[styles.toggle, notifications.email && styles.toggleActive]}
                             onPress={() => setNotifications({ ...notifications, email: !notifications.email })}
@@ -407,7 +407,7 @@ const EnhancedSettingsScreen: React.FC = () => {
                     </View>
 
                     <View style={styles.toggleGroup}>
-                        <Text style={styles.toggleLabel}>{t('enhancedSettings.notificationsSms')}/Text>
+                        <Text style={styles.toggleLabel}>{t('enhancedSettings.notificationsSms')}</Text>
                         <TouchableOpacity
                             style={[styles.toggle, notifications.sms && styles.toggleActive]}
                             onPress={() => setNotifications({ ...notifications, sms: !notifications.sms })}
@@ -465,7 +465,7 @@ const EnhancedSettingsScreen: React.FC = () => {
             <ScrollView style={styles.sectionScroll} showsVerticalScrollIndicator={false}>
                 <View style={styles.formContainer}>
                     <View style={styles.toggleGroup}>
-                        <Text style={styles.toggleLabel}>{t('enhancedSettings.afficherMaLocalisation')}/Text>
+                        <Text style={styles.toggleLabel}>{t('enhancedSettings.afficherMaLocalisation')}</Text>
                         <TouchableOpacity
                             style={[styles.toggle, privacy.showLocation && styles.toggleActive]}
                             onPress={() => setPrivacy({ ...privacy, showLocation: !privacy.showLocation })}
@@ -475,7 +475,7 @@ const EnhancedSettingsScreen: React.FC = () => {
                     </View>
 
                     <View style={styles.toggleGroup}>
-                        <Text style={styles.toggleLabel}>{t('enhancedSettings.afficherMonStatutEnLigne')}/Text>
+                        <Text style={styles.toggleLabel}>{t('enhancedSettings.afficherMonStatutEnLigne')}</Text>
                         <TouchableOpacity
                             style={[styles.toggle, privacy.showOnlineStatus && styles.toggleActive]}
                             onPress={() => setPrivacy({ ...privacy, showOnlineStatus: !privacy.showOnlineStatus })}
@@ -686,7 +686,7 @@ const EnhancedSettingsScreen: React.FC = () => {
             <ScrollView style={styles.sectionScroll} showsVerticalScrollIndicator={false}>
                 <View style={styles.formContainer}>
                     <View style={styles.infoCard}>
-                        <Text style={styles.infoCardTitle}>{t('enhancedSettings.cacheDeLapplication')}/Text>
+                        <Text style={styles.infoCardTitle}>{t('enhancedSettings.cacheDeLapplication')}</Text>
                         <Text style={styles.infoCardValue}>{data.cacheSize}</Text>
                         <TouchableOpacity style={styles.actionButton}>
                             <Text style={styles.actionButtonText}>Vider le cache</Text>

@@ -151,7 +151,7 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
                     const [startH, startM] = value.split(':').map(Number);
                     const [endH, endM] = preferredDeliveryTimeEnd.split(':').map(Number);
                     if (startH > endH || (startH === endH && startM >= endM)) {
-                        return 'L\t('deliveryParcelFlow.heureDeDebutDoitEtreAvantLheure');
+                        return t('deliveryParcelFlow.lheureDeDebutDoitEtreAvantLheureDe');
                     }
                 }
                 return '';
@@ -464,7 +464,7 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
                         <View style={styles.headerContent}>
                             <SafeIcon name="package" size={24} color="#FFFFFF" />
                             <View style={styles.headerText}>
-                                <Text style={styles.headerTitle}>{t('deliveryParcelFlow.livraisonDeColis')}/Text>
+                                <Text style={styles.headerTitle}>{t('deliveryParcelFlow.livraisonDeColis')}</Text>
                                 <Text style={styles.headerSubtitle}>{t('deliveryParcelFlow.expediezUnColisOuUn')}</Text>
                             </View>
                         </View>
@@ -527,7 +527,7 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
                             <View style={styles.section}>
                                 <View style={styles.sectionHeader}>
                                     <SafeIcon name="info" size={18} color={modernColors.accent} />
-                                    <Text style={styles.sectionTitle}>{t('deliveryParcelFlow.informationsDuColis')}/Text>
+                                    <Text style={styles.sectionTitle}>{t('deliveryParcelFlow.informationsDuColis')}</Text>
                                 </View>
                                 {/* Poids et volume uniquement pour document, paquet et gâteau */}
                                 {(parcelType === 'document' || parcelType === 'package' || parcelType === 'cake') && (
@@ -550,7 +550,7 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
                                             ) : null}
                                         </View>
                                         <View style={styles.formItem}>
-                                            <Text style={styles.label}>{t('deliveryParcelFlow.volumeCm')}/Text>
+                                            <Text style={styles.label}>{t('deliveryParcelFlow.volumeCm')}</Text>
                                             <TextInput
                                                 style={[styles.input, errors.volume && styles.inputError]}
                                                 placeholder="Ex: 5000"
@@ -669,7 +669,7 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
                         <View style={[styles.section, styles.sectionCompact]}>
                             <View style={styles.sectionHeader}>
                                 <SafeIcon name="camera" size={16} color={modernColors.accent} />
-                                <Text style={[styles.sectionTitle, styles.sectionTitleCompact]}>{t('deliveryParcelFlow.photosDuColisOptionnel')}/Text>
+                                <Text style={[styles.sectionTitle, styles.sectionTitleCompact]}>{t('deliveryParcelFlow.photosDuColisOptionnel')}</Text>
                                 <Text style={styles.sectionSubtitleCompact}>{photos.length}/5</Text>
                             </View>
                             <View style={styles.mediaUploadWrapper}>
@@ -1138,7 +1138,7 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
                 <View style={styles.transportModalOverlay}>
                     <View style={styles.transportModalContent}>
                         <View style={styles.transportModalHeader}>
-                            <Text style={styles.transportModalTitle}>{t('deliveryParcelFlow.modeDeTransport')}/Text>
+                            <Text style={styles.transportModalTitle}>{t('deliveryParcelFlow.modeDeTransport')}</Text>
                             <TouchableOpacity
                                 onPress={() => setShowTransportModal(false)}
                                 style={styles.transportModalCloseButton}

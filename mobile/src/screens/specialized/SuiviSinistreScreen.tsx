@@ -86,7 +86,7 @@ const SuiviSinistreScreen: React.FC = () => {
                         <SafeIcon name="arrow-left" size={22} color="#fff" />
                     </TouchableOpacity>
                     <View style={{ flex: 1 }}>
-                        <Text style={s.headerTitle}>{t('suiviSinistre.suiviDesSinistres')}/Text>
+                        <Text style={s.headerTitle}>{t('suiviSinistre.suiviDesSinistres')}</Text>
                         <Text style={s.headerSub}>{claims.length} sinistre(s) - {openCount} en cours</Text>
                     </View>
                 </View>
@@ -197,7 +197,7 @@ const SuiviSinistreScreen: React.FC = () => {
                                         {/* Status timeline */}
                                         {c.historique_statuts && Array.isArray(c.historique_statuts) && c.historique_statuts.length > 0 && (
                                             <View style={s.timelineSection}>
-                                                <Text style={s.timelineTitle}>{t('suiviSinistre.historique')}/Text>
+                                                <Text style={s.timelineTitle}>{t('suiviSinistre.historique')}</Text>
                                                 {(c.historique_statuts as any[]).map((h, idx) => {
                                                     const hst = getStatusInfo(h.statut || h.status || '');
                                                     return (

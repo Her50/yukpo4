@@ -64,7 +64,7 @@ const VideoLangDetector: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>{t('videoLangDetector.analyseDeLaLangueEt')}/Text>
+      <Text style={styles.title}>{t('videoLangDetector.analyseDeLaLangueEt')}</Text>
 
       <TouchableOpacity style={styles.pickButton} onPress={handlePickVideo}>
         <Text style={styles.pickButtonText}>

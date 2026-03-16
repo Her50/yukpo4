@@ -323,7 +323,7 @@ const CourierAdminScreen: React.FC = () => {
                 >
                     <SafeIcon name="arrow-left" size={24} color={modernColors.text} />
                 </TouchableOpacity>
-                <Text style={styles.title}>{t('courierAdmin.gestionDesCoursiers')}/Text>
+                <Text style={styles.title}>{t('courierAdmin.gestionDesCoursiers')}</Text>
             </View>
 
             {/* Filtres */}
@@ -406,7 +406,7 @@ const CourierAdminScreen: React.FC = () => {
                         {selectedApplication ? (
                             <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={true}>
                                 <NativeCard style={styles.detailCard}>
-                                    <Text style={styles.detailLabel}>{t('courierAdmin.informationsCandidat')}/Text>
+                                    <Text style={styles.detailLabel}>{t('courierAdmin.informationsCandidat')}</Text>
                                     <Text style={styles.detailValue}>
                                         {selectedApplication.user_name}
                                     </Text>
@@ -460,7 +460,7 @@ const CourierAdminScreen: React.FC = () => {
                                 </NativeCard>
 
                                 <NativeCard style={styles.detailCard}>
-                                    <Text style={styles.detailLabel}>{t('courierAdmin.informationsPersonnelles')}/Text>
+                                    <Text style={styles.detailLabel}>{t('courierAdmin.informationsPersonnelles')}</Text>
                                     {selectedApplication.profile_data?.personal && (
                                         <View style={styles.profileSection}>
                                             <Text style={styles.profileText}>
@@ -503,7 +503,7 @@ const CourierAdminScreen: React.FC = () => {
                                 {/* Documents */}
                                 {selectedApplication.documents && (
                                     <NativeCard style={styles.detailCard}>
-                                        <Text style={styles.detailLabel}>{t('courierAdmin.documentsSoumis')}/Text>
+                                        <Text style={styles.detailLabel}>{t('courierAdmin.documentsSoumis')}</Text>
                                         {Object.entries(selectedApplication.documents).map(([key, doc]: [string, any]) => {
                                             const docLabels: Record<string, string> = {
                                                 id_document: t('courierAdminScreen.pieceDidentite'),

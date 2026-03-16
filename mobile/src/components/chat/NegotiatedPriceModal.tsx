@@ -342,7 +342,7 @@ const [negotiatedPrice, setNegotiatedPrice] = useState<string>('');
                                             ) : (
                                                 <>
                                                     <SafeIcon name="send" size={18} color="#FFFFFF" />
-                                                    <Text style={styles.buttonText}>{t('negotiatedPrice.envoyerLaProposition')}/Text>
+                                                    <Text style={styles.buttonText}>{t('negotiatedPrice.envoyerLaProposition')}</Text>
                                                 </>
                                             )}
                                         </TouchableOpacity>

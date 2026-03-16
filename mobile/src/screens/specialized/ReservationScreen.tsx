@@ -199,7 +199,7 @@ const ReservationScreen: React.FC<ReservationScreenProps> = ({ route, navigation
         if (reservationType === 'rdv') {
             return (
                 <View style={styles.section}>
-                    <Text style={styles.label}>{t('reservation.nomDuPatientOptionnel')}/Text>
+                    <Text style={styles.label}>{t('reservation.nomDuPatientOptionnel')}</Text>
                     <NativeInput
                         value={patientName}
                         onChangeText={setPatientName}
@@ -241,7 +241,7 @@ const ReservationScreen: React.FC<ReservationScreenProps> = ({ route, navigation
                 {renderSpecificFields()}
 
                 <View style={styles.section}>
-                    <Text style={styles.label}>{t('reservation.notesOptionnel')}/Text>
+                    <Text style={styles.label}>{t('reservation.notesOptionnel')}</Text>
                     <NativeInput
                         value={notes}
                         onChangeText={setNotes}

@@ -188,7 +188,7 @@ const OffresEmploiHubScreen: React.FC = () => {
                         <View style={[s.statCard, { borderLeftColor: '#F59E0B' }]}>
                             <SafeIcon name="clock" size={18} color="#F59E0B" type="lucide" />
                             <Text style={s.statValue}>{String(stats.candidatures_attente || 0)}</Text>
-                            <Text style={s.statLabel}>{t('offresEmploiHub.enAttente')}/Text>
+                            <Text style={s.statLabel}>{t('offresEmploiHub.enAttente')}</Text>
                         </View>
                         <View style={[s.statCard, { borderLeftColor: '#8B5CF6' }]}>
                             <SafeIcon name={isEmployer ? 'eye' : 'zap'} size={18} color="#8B5CF6" type="lucide" />

@@ -89,7 +89,7 @@ ${errorInfo?.componentStack}
                 <View style={styles.container}>
                     <View style={styles.header}>
                         <Ionicons name="warning" size={64} color="#EF4444" />
-                        <Text style={styles.title}>{t('errorBoundaryWithDebug.oupsUneErreurEstSurvenue')}/Text>
+                        <Text style={styles.title}>{t('errorBoundaryWithDebug.oupsUneErreurEstSurvenue')}</Text>
                         <Text style={styles.subtitle}>
                             L'application a rencontré un problème
                         </Text>
@@ -97,7 +97,7 @@ ${errorInfo?.componentStack}
 
                     <ScrollView style={styles.errorContainer}>
                         <View style={styles.errorSection}>
-                            <Text style={styles.errorLabel}>{t('errorBoundaryWithDebug.typeDerreur')}/Text>
+                            <Text style={styles.errorLabel}>{t('errorBoundaryWithDebug.typeDerreur')}</Text>
                             <Text style={styles.errorText}>{error?.name}</Text>
                         </View>
 

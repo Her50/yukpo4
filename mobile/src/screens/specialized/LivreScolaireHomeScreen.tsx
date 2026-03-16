@@ -284,7 +284,7 @@ const LivreScolaireHomeScreen: React.FC = () => {
                             <SafeIcon name="arrow-left" size={24} color="#FFFFFF" />
                         </TouchableOpacity>
                         <View style={styles.headerTitleContainer}>
-                            <Text style={styles.headerTitle}>{t('livreScolaireHome.bourseDuLivre')}/Text>
+                            <Text style={styles.headerTitle}>{t('livreScolaireHome.bourseDuLivre')}</Text>
                             <Text style={styles.headerSubtitle}>
                                 {livres.length} livre{livres.length > 1 ? 's' : ''} disponible{livres.length > 1 ? 's' : ''}
                             </Text>
@@ -334,7 +334,7 @@ const LivreScolaireHomeScreen: React.FC = () => {
                             onPress={() => { hapticPress(); (navigation as any).navigate('BookUploadV2'); }}
                         >
                             <SafeIcon name="camera" size={18} color="#FFFFFF" type="lucide" />
-                            <Text style={styles.v2ActionText}>{t('livreScolaireHome.envoyerLivres')}/Text>
+                            <Text style={styles.v2ActionText}>{t('livreScolaireHome.envoyerLivres')}</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={styles.v2ActionBtn}
@@ -604,7 +604,7 @@ const AddBookModal: React.FC<AddBookModalProps> = ({
                                 </View>
 
                                 <View style={styles.priceContainer}>
-                                    <Text style={styles.priceLabel}>{t('livreScolaireHome.prixDeVenteFcfa')}/Text>
+                                    <Text style={styles.priceLabel}>{t('livreScolaireHome.prixDeVenteFcfa')}</Text>
                                     <TextInput
                                         style={styles.priceInput}
                                         placeholder="Ex: 5000"

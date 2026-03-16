@@ -2080,7 +2080,7 @@ Plafonnier LED,25000,XAF,Plafonnier moderne 3 spots orientables,Luminaires inté
                 telephone: t('productManagerMobile.modeleDuTelephone'),
                 ordinateur: t('productManagerMobile.modeleDeLordinateur'),
                 mobilier: 'Nom du meuble',
-                decoration: 'Nom de l\t('productManagerMobile.articleDeco'),
+                decoration: t('productManagerMobile.nomDeLarticleDeco'),
             ustensiles_cuisine: 'Nom de l\'ustensile',
                 pieces_auto: t('productManagerMobile.referenceDeLaPiece'),
                 pieces_industrielles: t('productManagerMobile.referenceDeLaPiece'),
@@ -2098,7 +2098,7 @@ Plafonnier LED,25000,XAF,Plafonnier moderne 3 spots orientables,Luminaires inté
                 bijoux: 'Nom du bijou',
                 coiffure_beaute: 'Nom du produit',
                 restauration: 'Nom du restaurant',
-                sport_fitness: 'Titre de l\t('productManagerMobile.activite'),
+                sport_fitness: t('productManagerMobile.titreDeLactivite'),
             formation_education: 'Titre de la formation',
                 evenementiel: 'Titre de l\'événement',
                 electricite: t('productManagerMobile.nomDuProduitElectrique'),
@@ -4881,7 +4881,7 @@ const renderSpecificFields = () => {
                     {/* Titre de section : Localisation */}
                     <View style={styles.sectionHeader}>
                         <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
-                        <Text style={styles.sectionTitle}>{t('productManagerMobile.localisation')}/Text>
+                        <Text style={styles.sectionTitle}>{t('productManagerMobile.localisation')}</Text>
                     </View>
 
                     {/* ✅ NOUVEAU: Ville avec LocationSelector (Google Maps API + fallback local) */}
@@ -4998,7 +4998,7 @@ const renderSpecificFields = () => {
 
                     {/* GPS */}
                     <View style={styles.fieldContainer}>
-                        <Text style={styles.fieldLabel}>{t('productManagerMobile.localisationGps')}/Text>
+                        <Text style={styles.fieldLabel}>{t('productManagerMobile.localisationGps')}</Text>
                             <TouchableOpacity
                                 style={styles.gpsButton}
                                 onPress={() => setShowGPSModal(true)}
@@ -5366,7 +5366,7 @@ placeholder = { t('productManagerMobile.exCuisineEquipeeLavelingeDraps') }
     {/* Titre de section : Services Inclus */ }
     < View style = { styles.sectionHeader } >
                             <SafeIcon name="star" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>{t('productManagerMobile.servicesInclus')}/Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.servicesInclus')}</Text>
                         </View>
 
 {/* Toggles services */ }
@@ -5444,7 +5444,7 @@ placeholder = { t('productManagerMobile.exCuisineEquipeeLavelingeDraps') }
 {/* Titre de section : Localisation */ }
 <View style={styles.sectionHeader}>
     <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
-    <Text style={styles.sectionTitle}>{t('productManagerMobile.localisation')}/Text>
+    <Text style={styles.sectionTitle}>{t('productManagerMobile.localisation')}</Text>
 </View>
 
 {/* ✅ NOUVEAU: Ville avec LocationSelector (Google Maps API + fallback local) */ }
@@ -5808,7 +5808,7 @@ return (
         {/* Titre de section : Informations juridiques */}
         <View style={styles.sectionHeader}>
             <SafeIcon name="file-text" size={20} color={modernColors.primary} />
-            <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsJuridiques')}/Text>
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsJuridiques')}</Text>
         </View>
 
         {/* Toggles juridiques */}
@@ -6016,7 +6016,7 @@ return (
         {/* Titre de section : Localisation */}
         <View style={styles.sectionHeader}>
             <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
-            <Text style={styles.sectionTitle}>{t('productManagerMobile.localisation')}/Text>
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.localisation')}</Text>
         </View>
 
         {/* ✅ NOUVEAU: Ville avec LocationSelector (Google Maps API + fallback local) */}
@@ -6058,7 +6058,7 @@ return (
 
         {/* GPS */}
         <View style={styles.fieldContainer}>
-            <Text style={styles.fieldLabel}>{t('productManagerMobile.localisationGps')}/Text>
+            <Text style={styles.fieldLabel}>{t('productManagerMobile.localisationGps')}</Text>
                 <TouchableOpacity
                     style={styles.gpsButton}
                     onPress={() => setShowGPSModal(true)}
@@ -6402,14 +6402,14 @@ return (
         <View style={styles.hintBox}>
             <SafeIcon name="info" size={14} color={modernColors.primary} />
             <Text style={styles.hintText}>
-                💡 <Text style={styles.hintBold}>{t('productManagerMobile.localisation')}/Text> Indiquez où se trouve le véhicule pour faciliter les visites des acheteurs potentiels
+                💡 <Text style={styles.hintBold}>{t('productManagerMobile.localisation')}</Text> Indiquez où se trouve le véhicule pour faciliter les visites des acheteurs potentiels
                 </Text>
         </View>
 
         {/* Section 5: Prix de Vente */}
         <View style={styles.sectionHeader}>
             <SafeIcon name="dollar-sign" size={20} color={modernColors.primary} />
-            <Text style={styles.sectionTitle}>{t('productManagerMobile.prixDeVente')}/Text>
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.prixDeVente')}</Text>
         </View>
 
         <View style={styles.fieldRow}>
@@ -6479,7 +6479,7 @@ return (
         {/* Section 1: Informations du Garage */}
         <View style={styles.sectionHeader}>
             <SafeIcon name="tool" size={20} color={modernColors.primary} />
-            <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsDuGarage')}/Text>
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsDuGarage')}</Text>
         </View>
 
         {/* Nom du garage */}
@@ -6618,7 +6618,7 @@ placeholder = "Ex: Oui - 24h/24..."
     {/* Section 5: Localisation intelligente - Zone d'intervention */ }
     < View style = { styles.sectionHeader } >
                             <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>{t('productManagerMobile.zoneDintervention')}/Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.zoneDintervention')}</Text>
                         </View>
 
                         <View style={styles.hintBox}>
@@ -6652,7 +6652,7 @@ placeholder = "Ex: Oui - 24h/24..."
 {/* Section 6: Modes de paiement & Options */ }
 <View style={styles.sectionHeader}>
     <SafeIcon name="credit-card" size={20} color={modernColors.primary} />
-    <Text style={styles.sectionTitle}>{t('productManagerMobile.paiementOptions')}/Text>
+    <Text style={styles.sectionTitle}>{t('productManagerMobile.paiementOptions')}</Text>
 </View>
 
 {/* Modes de paiement */ }
@@ -6828,7 +6828,7 @@ return (
         </View>
         <View style={styles.sectionHeader}>
             <SafeIcon name="star" size={20} color="#F59E0B" />
-            <Text style={styles.sectionTitle}>{t('productManagerMobile.optionsDeConfort')}/Text>
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.optionsDeConfort')}</Text>
         </View>
         <MultiSelectModalitySelector
             label={t('productManagerMobile.optionsDeConfort')}
@@ -6849,7 +6849,7 @@ return (
         />
         <View style={styles.sectionHeader}>
             <SafeIcon name="globe" size={20} color="#F59E0B" />
-            <Text style={styles.sectionTitle}>{t('productManagerMobile.languesEtZoneDintervention')}/Text>
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.languesEtZoneDintervention')}</Text>
         </View>
         <MultiSelectModalitySelector
             label={t('productManagerMobile.languesParlees')}
@@ -6869,7 +6869,7 @@ return (
                         />
         <View style={styles.sectionHeader}>
             <SafeIcon name="check-circle" size={20} color="#10B981" />
-            <Text style={styles.sectionTitle}>{t('productManagerMobile.servicesAdditionnelsInnovants')}/Text>
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.servicesAdditionnelsInnovants')}</Text>
         </View>
         <View style={styles.checkboxGroup}>
             <TouchableOpacity style={styles.checkboxRow} onPress={() => setNewProduct({ ...newProduct, gpsTempsReel: !newProduct.gpsTempsReel })}>
@@ -7388,7 +7388,7 @@ return (
         {/* Section 2: Services inclus */}
         <View style={styles.sectionHeader}>
             <SafeIcon name="package" size={20} color={modernColors.primary} />
-            <Text style={styles.sectionTitle}>{t('productManagerMobile.servicesInclus')}/Text>
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.servicesInclus')}</Text>
         </View>
 
         <View style={styles.fieldRow}>
@@ -7415,7 +7415,7 @@ return (
 
         {/* Services booléens (toggles) */}
         <View style={styles.fieldContainer}>
-            <Text style={styles.fieldLabel}>{t('productManagerMobile.servicesAdditionnels')}/Text>
+            <Text style={styles.fieldLabel}>{t('productManagerMobile.servicesAdditionnels')}</Text>
                 <View style={styles.togglesContainer}>
                     <TouchableOpacity
                         style={[styles.toggleOption, newProduct.repas && styles.toggleOptionActive]}
@@ -7510,7 +7510,7 @@ return (
         <View style={styles.ticketInfoSection}>
             <View style={styles.sectionHeaderWithIcon}>
                 <SafeIcon name="file-text" size={20} color={modernColors.primary} />
-                <Text style={styles.sectionTitleMedium}>{t('productManagerMobile.informationsTicketDeVoyage')}/Text>
+                <Text style={styles.sectionTitleMedium}>{t('productManagerMobile.informationsTicketDeVoyage')}</Text>
             </View>
 
             <View style={styles.fieldContainer}>
@@ -7524,7 +7524,7 @@ return (
             </View>
 
             <View style={styles.fieldContainer}>
-                <Text style={styles.fieldLabel}>{t('productManagerMobile.logoDeLagenceOptionnel')}/Text>
+                <Text style={styles.fieldLabel}>{t('productManagerMobile.logoDeLagenceOptionnel')}</Text>
                     <TouchableOpacity
                         style={styles.logoUploadButton}
                         onPress={async () => {
@@ -7633,7 +7633,7 @@ return (
         {/* Section 2: Localisation */}
         <View style={styles.sectionHeader}>
             <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
-            <Text style={styles.sectionTitle}>{t('productManagerMobile.localisation')}/Text>
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.localisation')}</Text>
         </View>
 
         <View style={styles.fieldRow}>
@@ -7720,7 +7720,7 @@ return (
 
         {/* GPS de l'hôtel */}
         <View style={styles.fieldContainer}>
-            <Text style={styles.fieldLabel}>{t('productManagerMobile.localisationGps')}/Text>
+            <Text style={styles.fieldLabel}>{t('productManagerMobile.localisationGps')}</Text>
                 <TouchableOpacity
                     style={styles.gpsButton}
                     onPress={() => setShowGPSModal(true)}
@@ -8017,7 +8017,7 @@ return (
                 />
             </View>
             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                <Text style={styles.fieldLabel}>{t('productManagerMobile.prixParPlace')}/Text>
+                <Text style={styles.fieldLabel}>{t('productManagerMobile.prixParPlace')}</Text>
                     <NativeInput
                         placeholder="Ex: 5000"
                         value={newProduct.prixParPlace || ''}
@@ -8058,7 +8058,7 @@ return (
         {/* Section 1: Informations de base */}
         <View style={styles.sectionHeader}>
             <SafeIcon name="shirt" size={20} color={modernColors.primary} />
-            <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsDeBase')}/Text>
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsDeBase')}</Text>
         </View>
 
         <View style={styles.fieldRow}>
@@ -8250,7 +8250,7 @@ return (
         <View style={styles.hintBox}>
             <SafeIcon name="info" size={14} color={modernColors.primary} />
             <Text style={styles.hintText}>
-                📸 <Text style={styles.hintBold}>{t('productManagerMobile.photos')}/Text> Ajoutez 3-5 photos par variante montrant la couleur, les détails et le rendu porté.
+                📸 <Text style={styles.hintBold}>{t('productManagerMobile.photos')}</Text> Ajoutez 3-5 photos par variante montrant la couleur, les détails et le rendu porté.
                 </Text>
         </View>
     </>
@@ -8262,7 +8262,7 @@ return (
         {/* Section 1: Type d'Article */}
         <View style={styles.sectionHeader}>
             <SafeIcon name="star" size={20} color={modernColors.primary} />
-            <Text style={styles.sectionTitle}>{t('productManagerMobile.typeDarticle')}/Text>
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.typeDarticle')}</Text>
         </View>
 
         <SelectModalitySelector
@@ -8446,7 +8446,7 @@ return (
         </View>
 
         <View style={styles.fieldContainer}>
-            <Text style={styles.fieldLabel}>{t('productManagerMobile.joursDouverture')}/Text>
+            <Text style={styles.fieldLabel}>{t('productManagerMobile.joursDouverture')}</Text>
 
                 {/* ✅ NOUVEAU: Bouton "Tout sélectionner" */}
                 <TouchableOpacity
@@ -8670,7 +8670,7 @@ return (
         {/* Section 2: Contact */}
         <View style={styles.sectionHeader}>
             <SafeIcon name="phone" size={20} color={modernColors.primary} />
-            <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsDeContact')}/Text>
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsDeContact')}</Text>
         </View>
 
         <View style={styles.fieldRow}>
@@ -8718,7 +8718,7 @@ return (
         </View>
 
         <View style={styles.fieldContainer}>
-            <Text style={styles.fieldLabel}>{t('productManagerMobile.joursDouverture')}/Text>
+            <Text style={styles.fieldLabel}>{t('productManagerMobile.joursDouverture')}</Text>
 
                 {/* Bouton "Tout sélectionner" */}
                 <TouchableOpacity
@@ -8853,7 +8853,7 @@ return (
         </View>
 
         <View style={styles.fieldContainer}>
-            <Text style={styles.fieldLabel}>{t('productManagerMobile.joursDouverture')}/Text>
+            <Text style={styles.fieldLabel}>{t('productManagerMobile.joursDouverture')}</Text>
 
                 <TouchableOpacity
                     style={styles.selectAllButton}
@@ -9504,7 +9504,7 @@ return (
         {/* Section 3: Services et livraison */}
         <View style={styles.sectionHeader}>
             <SafeIcon name="truck" size={20} color={modernColors.primary} />
-            <Text style={styles.sectionTitle}>{t('productManagerMobile.servicesEtLivraison')}/Text>
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.servicesEtLivraison')}</Text>
         </View>
 
         <View style={styles.togglesContainer}>
@@ -9564,7 +9564,7 @@ return (
         {/* Section 4: Localisation */}
         <View style={styles.sectionHeader}>
             <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
-            <Text style={styles.sectionTitle}>{t('productManagerMobile.localisationDuMeuble')}/Text>
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.localisationDuMeuble')}</Text>
         </View>
 
         <Text style={styles.fieldHint}>
@@ -9600,7 +9600,7 @@ return (
 
         <View style={styles.hintBox}>
             <Text style={styles.hintText}>
-                📸 <Text style={styles.hintBold}>{t('productManagerMobile.photos')}/Text> Ajoutez 4 à 8 images (vue d'ensemble, détails matériaux, dimensions, défauts éventuels)
+                📸 <Text style={styles.hintBold}>{t('productManagerMobile.photos')}</Text> Ajoutez 4 à 8 images (vue d'ensemble, détails matériaux, dimensions, défauts éventuels)
                 </Text>
         </View>
 
@@ -9681,7 +9681,7 @@ return (
         {/* Section 1: Informations Produit */}
         <View style={styles.sectionHeader}>
             <SafeIcon name="package" size={20} color={modernColors.primary} />
-            <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsProduit')}/Text>
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsProduit')}</Text>
         </View>
 
         {/* Catégorie et Type */}
@@ -10203,12 +10203,12 @@ return (
         {/* Section 5: Stock et Localisation */}
         <View style={styles.sectionHeader}>
             <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
-            <Text style={styles.sectionTitle}>{t('productManagerMobile.stockEtLocalisation')}/Text>
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.stockEtLocalisation')}</Text>
         </View>
 
         {/* Stock disponible */}
         <View style={styles.fieldContainer}>
-            <Text style={styles.fieldLabel}>{t('productManagerMobile.stockDisponible')}/Text>
+            <Text style={styles.fieldLabel}>{t('productManagerMobile.stockDisponible')}</Text>
                 <NativeInput
                     placeholder="Ex: 10"
                     value={newProduct.stockDisponiblePieceAuto?.toString() || ''}
@@ -10431,7 +10431,7 @@ return (
         {/* ✅ SECTION 5 : STOCK & FOURNISSEUR */}
         <View style={styles.sectionHeader}>
             <SafeIcon name="box" size={20} color={modernColors.primary} />
-            <Text style={styles.sectionTitle}>{t('productManagerMobile.stockFournisseur')}/Text>
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.stockFournisseur')}</Text>
         </View>
 
         {/* Unité et Stock */}
@@ -10448,7 +10448,7 @@ return (
                 />
             </View>
             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                <Text style={styles.fieldLabel}>{t('productManagerMobile.stockDisponible')}/Text>
+                <Text style={styles.fieldLabel}>{t('productManagerMobile.stockDisponible')}</Text>
                     <NativeInput
                         placeholder="Ex: 50"
                         value={newProduct.stockDisponible?.toString() || ''}
@@ -10873,7 +10873,7 @@ return (
                 {/* Horaires de service */}
                 {prestationFieldsConfig.showHoraires && (
                     <View style={styles.fieldContainer}>
-                        <Text style={styles.fieldLabel}>{t('productManagerMobile.horairesDeService')}/Text>
+                        <Text style={styles.fieldLabel}>{t('productManagerMobile.horairesDeService')}</Text>
                             <NativeInput
                                 placeholder="Ex: Lundi-Vendredi 8h-18h"
                                 value={newProduct.horairesService || ''}
@@ -11157,7 +11157,7 @@ return (
             <>
                 <View style={styles.sectionHeader}>
                     <SafeIcon name="phone" size={20} color={modernColors.primary} />
-                    <Text style={styles.sectionTitle}>{t('productManagerMobile.contactCommunication')}/Text>
+                    <Text style={styles.sectionTitle}>{t('productManagerMobile.contactCommunication')}</Text>
                 </View>
 
                 <View style={styles.fieldRow}>
@@ -11201,7 +11201,7 @@ return (
         {/* ============ SECTION 9: OFFRES DE SERVICE ============ */}
         <View style={styles.sectionHeader}>
             <SafeIcon name="briefcase" size={20} color={modernColors.warning} />
-            <Text style={styles.sectionTitle}>{t('productManagerMobile.offresDeService')}/Text>
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.offresDeService')}</Text>
         </View>
 
         <View style={styles.hintBox}>
@@ -11294,7 +11294,7 @@ return (
 
                     <View style={styles.prestationFieldRow}>
                         <View style={[styles.prestationFieldContainerCompact, { flex: 1 }]}>
-                            <Text style={styles.prestationFieldLabelCompact}>{t('productManagerMobile.prixMinXaf')}/Text>
+                            <Text style={styles.prestationFieldLabelCompact}>{t('productManagerMobile.prixMinXaf')}</Text>
                                 <NativeInput
                                     placeholder="50000"
                                     value={prestation.prixAPartirDe}
@@ -11530,7 +11530,7 @@ return (
         {/* Section 1: Informations de base */}
         <View style={styles.sectionHeader}>
             <SafeIcon name="book-open" size={20} color={modernColors.primary} />
-            <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsDeBase')}/Text>
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsDeBase')}</Text>
         </View>
 
         <View style={styles.fieldRow}>
@@ -11580,7 +11580,7 @@ return (
         {/* Section 2: Localisation (où trouver les fournitures) */}
         <View style={styles.sectionHeader}>
             <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
-            <Text style={styles.sectionTitle}>{t('productManagerMobile.localisation')}/Text>
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.localisation')}</Text>
         </View>
 
         <LocationSelector
@@ -11613,7 +11613,7 @@ return (
                 <>
                     <View style={styles.sectionHeader}>
                         <SafeIcon name="book" size={20} color={modernColors.primary} />
-                        <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsLivre')}/Text>
+                        <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsLivre')}</Text>
                     </View>
 
                     {/* Auteur */}
@@ -11667,7 +11667,7 @@ return (
                 <>
                     <View style={styles.sectionHeader}>
                         <SafeIcon name="calculator" size={20} color={modernColors.primary} />
-                        <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsCalculatrice')}/Text>
+                        <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsCalculatrice')}</Text>
                     </View>
 
                     <SelectModalitySelector
@@ -11781,7 +11781,7 @@ return (
                                         <Text style={styles.prestationPlanningTitle}>📅 Planning pour {prestation}</Text>
 
                                         {/* Jours disponibles */}
-                                        <Text style={styles.fieldHint}>{t('productManagerMobile.joursDisponibles')}/Text>
+                                        <Text style={styles.fieldHint}>{t('productManagerMobile.joursDisponibles')}</Text>
                                             <View style={styles.weekDaysContainer}>
                                                 {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map((jour) => {
                                                     const joursArray = (newProduct.planningHebdomadaire?.[prestation]?.jours || '').split(',').map(j => j.trim());
@@ -11998,7 +11998,7 @@ return (
                                         <Text style={styles.prestationPlanningTitle}>📅 Planning pour {examen}</Text>
 
                                         {/* Jours disponibles */}
-                                        <Text style={styles.fieldHint}>{t('productManagerMobile.joursDisponibles')}/Text>
+                                        <Text style={styles.fieldHint}>{t('productManagerMobile.joursDisponibles')}</Text>
                                             <View style={styles.weekDaysContainer}>
                                                 {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map((jour) => {
                                                     const joursArray = (newProduct.planningExamens?.[examen]?.jours || '').split(',').map(j => j.trim());
@@ -12488,7 +12488,7 @@ return (
         {/* Section 4: Services Inclus */}
         <View style={styles.sectionHeader}>
             <SafeIcon name="check-square" size={20} color={modernColors.primary} />
-            <Text style={styles.sectionTitle}>{t('productManagerMobile.servicesInclus')}/Text>
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.servicesInclus')}</Text>
         </View>
 
         <MultiSelectModalitySelector
@@ -12504,7 +12504,7 @@ return (
         <View style={styles.hintBox}>
             <SafeIcon name="info" size={14} color={modernColors.primary} />
             <Text style={styles.hintText}>
-                💡 <Text style={styles.hintBold}>{t('productManagerMobile.services')}/Text> Sélectionnez tous les services que vous proposez pour attirer plus de clients
+                💡 <Text style={styles.hintBold}>{t('productManagerMobile.services')}</Text> Sélectionnez tous les services que vous proposez pour attirer plus de clients
                 </Text>
         </View>
 
@@ -12620,7 +12620,7 @@ return (
         {/* Section 7: Description */}
         <View style={styles.sectionHeader}>
             <SafeIcon name="file-text" size={20} color={modernColors.primary} />
-            <Text style={styles.sectionTitle}>{t('productManagerMobile.descriptionDuService')}/Text>
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.descriptionDuService')}</Text>
         </View>
 
         <View style={styles.fieldContainer}>
@@ -12649,7 +12649,7 @@ return (
         {/* ====== SECTION 1: INFORMATIONS PRODUIT ====== */}
         <View style={styles.sectionHeader}>
             <SafeIcon name="sparkles" size={20} color={modernColors.primary} />
-            <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsProduit')}/Text>
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsProduit')}</Text>
         </View>
 
         {/* Type + Genre */}
@@ -13260,7 +13260,7 @@ return (
         {/* ========================================== */}
         <View style={styles.sectionHeader}>
             <SafeIcon name="scissors" size={20} color="#8B5CF6" />
-            <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsDuService')}/Text>
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsDuService')}</Text>
         </View>
 
         {/* Description obligatoire */}
@@ -13475,7 +13475,7 @@ return (
         {/* ========================================== */}
         <View style={styles.sectionHeader}>
             <SafeIcon name="map-pin" size={20} color="#8B5CF6" />
-            <Text style={styles.sectionTitle}>{t('productManagerMobile.zoneDintervention')}/Text>
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.zoneDintervention')}</Text>
         </View>
 
         <View style={styles.hintBox}>
@@ -13584,7 +13584,7 @@ return (
         <View style={styles.hintBox}>
             <SafeIcon name="camera" size={16} color={modernColors.primary} />
             <Text style={styles.hintText}>
-                📸 <Text style={styles.hintBold}>{t('productManagerMobile.astucePhotos')}/Text> Ajoutez 5-10 photos de vos réalisations (robes, boubous, costumes). Les photos de qualité augmentent considérablement les commandes !
+                📸 <Text style={styles.hintBold}>{t('productManagerMobile.astucePhotos')}</Text> Ajoutez 5-10 photos de vos réalisations (robes, boubous, costumes). Les photos de qualité augmentent considérablement les commandes !
                 </Text>
         </View>
 
@@ -13609,7 +13609,7 @@ return (
         {/* Section 1: Type et Produit */}
         <View style={styles.sectionHeader}>
             <SafeIcon name="shield" size={20} color={modernColors.primary} />
-            <Text style={styles.sectionTitle}>{t('productManagerMobile.typeEtProduitDassurance')}/Text>
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.typeEtProduitDassurance')}</Text>
         </View>
 
         {/* ✅ PREMIER CHAMP OBLIGATOIRE: Type VIE ou NON VIE */}
@@ -13640,7 +13640,7 @@ return (
         {/* Section 2: Compagnie et Informations */}
         <View style={styles.sectionHeader}>
             <SafeIcon name="building" size={20} color={modernColors.primary} />
-            <Text style={styles.sectionTitle}>{t('productManagerMobile.compagnieEtContrat')}/Text>
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.compagnieEtContrat')}</Text>
         </View>
 
         {/* ✅ Compagnie d'assurance */}
@@ -13717,7 +13717,7 @@ return (
         {/* Section 4: Options et Primes */}
         <View style={styles.sectionHeader}>
             <SafeIcon name="dollar-sign" size={20} color={modernColors.primary} />
-            <Text style={styles.sectionTitle}>{t('productManagerMobile.optionsEtPrimes')}/Text>
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.optionsEtPrimes')}</Text>
         </View>
 
         {/* ✅ Prime de base (à partir de) */}
@@ -13971,7 +13971,7 @@ return (
         {/* ========================================== */}
         <View style={styles.sectionHeader}>
             <SafeIcon name="settings" size={20} color={modernColors.primary} />
-            <Text style={styles.sectionTitle}>{t('productManagerMobile.servicesOrganisation')}/Text>
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.servicesOrganisation')}</Text>
         </View>
 
         <ProductFieldSelector
@@ -14031,7 +14031,7 @@ return (
         {/* ========================================== */}
         <View style={styles.sectionHeader}>
             <SafeIcon name="dollar-sign" size={20} color={modernColors.primary} />
-            <Text style={styles.sectionTitle}>{t('productManagerMobile.tarifsOptionsAlimentaires')}/Text>
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.tarifsOptionsAlimentaires')}</Text>
         </View>
 
         <ProductFieldSelector
@@ -14091,7 +14091,7 @@ return (
         {/* ========================================== */}
         <View style={styles.sectionHeader}>
             <SafeIcon name="award" size={20} color={modernColors.primary} />
-            <Text style={styles.sectionTitle}>{t('productManagerMobile.certificationsPromotions')}/Text>
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.certificationsPromotions')}</Text>
         </View>
 
         <ProductFieldSelector
@@ -14119,7 +14119,7 @@ return (
         {/* ========================================== */}
         <View style={styles.sectionHeader}>
             <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
-            <Text style={styles.sectionTitle}>{t('productManagerMobile.localisationZonesDeLivraison')}/Text>
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.localisationZonesDeLivraison')}</Text>
         </View>
 
         {/* ✅ Ville du restaurant */}
@@ -14816,7 +14816,7 @@ return (
         {/* ========================================== */}
         <View style={styles.sectionHeader}>
             <SafeIcon name="file-text" size={20} color={modernColors.primary} />
-            <Text style={styles.sectionTitle}>{t('productManagerMobile.descriptionDeLaFormation')}/Text>
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.descriptionDeLaFormation')}</Text>
         </View>
 
         <View style={styles.fieldContainer}>
@@ -14840,7 +14840,7 @@ return (
         {/* ========================================== */}
         <View style={styles.sectionHeader}>
             <SafeIcon name="book-open" size={20} color={modernColors.primary} />
-            <Text style={styles.sectionTitle}>{t('productManagerMobile.typeDomaine')}/Text>
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.typeDomaine')}</Text>
         </View>
 
         <View style={styles.fieldRow}>
@@ -14873,7 +14873,7 @@ return (
         {/* ========================================== */}
         <View style={styles.sectionHeader}>
             <SafeIcon name="layers" size={20} color={modernColors.primary} />
-            <Text style={styles.sectionTitle}>{t('productManagerMobile.niveauModeDenseignement')}/Text>
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.niveauModeDenseignement')}</Text>
         </View>
 
         <View style={styles.fieldRow}>
@@ -14954,12 +14954,12 @@ return (
         {/* ========================================== */}
         <View style={styles.sectionHeader}>
             <SafeIcon name="user" size={20} color={modernColors.primary} />
-            <Text style={styles.sectionTitle}>{t('productManagerMobile.formateurHoraires')}/Text>
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.formateurHoraires')}</Text>
         </View>
 
         <View style={styles.fieldRow}>
             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                <Text style={styles.fieldLabel}>{t('productManagerMobile.nomDuFormateur')}/Text>
+                <Text style={styles.fieldLabel}>{t('productManagerMobile.nomDuFormateur')}</Text>
                     <NativeInput
                         placeholder="Ex: Jean-Paul Ngono"
                         value={newProduct.formateurNom || ''}
@@ -14968,7 +14968,7 @@ return (
                     />
             </View>
             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                <Text style={styles.fieldLabel}>{t('productManagerMobile.horaires')}/Text>
+                <Text style={styles.fieldLabel}>{t('productManagerMobile.horaires')}</Text>
                     <NativeInput
                         placeholder="Ex: Lun-Ven 18h-21h"
                         value={newProduct.horairesFormation || ''}
@@ -15013,7 +15013,7 @@ return (
         {/* ========================================== */}
         <View style={styles.sectionHeader}>
             <SafeIcon name="target" size={20} color={modernColors.primary} />
-            <Text style={styles.sectionTitle}>{t('productManagerMobile.objectifsDeLaFormation')}/Text>
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.objectifsDeLaFormation')}</Text>
         </View>
 
         <View style={styles.fieldContainer}>
@@ -15057,7 +15057,7 @@ return (
         {/* ========================================== */}
         <View style={styles.sectionHeader}>
             <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
-            <Text style={styles.sectionTitle}>{t('productManagerMobile.localisation')}/Text>
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.localisation')}</Text>
         </View>
 
         <LocationSelector
@@ -15307,7 +15307,7 @@ return (
         {/* ========== SECTION 3: VENTE & STOCK ========== */}
         <View style={styles.sectionHeader}>
             <SafeIcon name="shopping-cart" size={20} color="#10B981" />
-            <Text style={styles.sectionTitle}>{t('productManagerMobile.venteStock')}/Text>
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.venteStock')}</Text>
         </View>
 
         <View style={styles.fieldRow}>
@@ -15350,7 +15350,7 @@ return (
         {/* ========== SECTION 5: LOCALISATION ========== */}
         <View style={styles.sectionHeader}>
             <SafeIcon name="map-pin" size={20} color="#10B981" />
-            <Text style={styles.sectionTitle}>{t('productManagerMobile.localisation')}/Text>
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.localisation')}</Text>
         </View>
 
         <LocationSelector
@@ -15377,7 +15377,7 @@ return (
         {/* Section 1: Informations de base */}
         <View style={styles.sectionHeader}>
             <SafeIcon name="dumbbell" size={20} color={modernColors.primary} />
-            <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsDeBase')}/Text>
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsDeBase')}</Text>
         </View>
 
         <SelectModalitySelector
@@ -15480,7 +15480,7 @@ return (
         {/* Section 1: Informations Service */}
         <View style={styles.sectionHeader}>
             <SafeIcon name="sparkles" size={20} color={modernColors.primary} />
-            <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsService')}/Text>
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsService')}</Text>
         </View>
 
         <SelectModalitySelector
@@ -15564,7 +15564,7 @@ return (
         {/* ✅ SECTION 1: INFORMATIONS ANIMAL */}
         <View style={styles.sectionHeader}>
             <SafeIcon name="heart" size={20} color={modernColors.primary} />
-            <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsSurLanimal')}/Text>
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsSurLanimal')}</Text>
         </View>
 
         <SelectModalitySelector
@@ -15652,7 +15652,7 @@ return (
         {/* ✅ SECTION 3: LOCALISATION */}
         <View style={styles.sectionHeader}>
             <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
-            <Text style={styles.sectionTitle}>{t('productManagerMobile.localisation')}/Text>
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.localisation')}</Text>
         </View>
 
         <LocationSelector
@@ -15875,7 +15875,7 @@ return (
         {/* ✅ SECTION 3: ZONE D'INTERVENTION */}
         <View style={styles.sectionHeader}>
             <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
-            <Text style={styles.sectionTitle}>{t('productManagerMobile.zoneDintervention')}/Text>
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.zoneDintervention')}</Text>
         </View>
 
         <LocationSelector
@@ -16019,7 +16019,7 @@ return (
         {/* ========================================== */}
         <View style={styles.sectionHeader}>
             <SafeIcon name="leaf" size={20} color="#059669" />
-            <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsDuService')}/Text>
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsDuService')}</Text>
         </View>
 
         {/* Description obligatoire */}
@@ -16240,14 +16240,14 @@ return (
         <View style={styles.hintBox}>
             <SafeIcon name="camera" size={16} color={modernColors.primary} />
             <Text style={styles.hintText}>
-                📸 <Text style={styles.hintBold}>{t('productManagerMobile.astucePhotos')}/Text> Ajoutez 4-8 photos de vos réalisations (avant/après, jardins tropicaux, palmiers élagués, potagers africains). Les photos augmentent la confiance des clients !
+                📸 <Text style={styles.hintBold}>{t('productManagerMobile.astucePhotos')}</Text> Ajoutez 4-8 photos de vos réalisations (avant/après, jardins tropicaux, palmiers élagués, potagers africains). Les photos augmentent la confiance des clients !
                 </Text>
         </View>
 
         <View style={styles.hintBox}>
             <SafeIcon name="star" size={16} color="#059669" />
             <Text style={styles.hintText}>
-                🌴 <Text style={styles.hintBold}>{t('productManagerMobile.servicesPopulairesEnAfrique')}/Text>{'\n'}
+                🌴 <Text style={styles.hintBold}>{t('productManagerMobile.servicesPopulairesEnAfrique')}</Text>{'\n'}
                     • Élagage palmiers (royaux, cocotiers, dattiers){'\n'}
                     • Entretien arbres fruitiers (manguiers, avocatiers, papayers){'\n'}
                     • Création potagers africains (gombo, ndolé, manioc){'\n'}
@@ -16315,7 +16315,7 @@ return (
         {/* Section 1: Type de service */}
         <View style={styles.sectionHeader}>
             <SafeIcon name="wrench" size={20} color={modernColors.primary} />
-            <Text style={styles.sectionTitle}>{t('productManagerMobile.serviceDePlomberie')}/Text>
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.serviceDePlomberie')}</Text>
         </View>
 
         <ProductFieldSelector
@@ -16402,7 +16402,7 @@ return (
         {/* Section 3: Localisation intelligente - Zone d'intervention */}
         <View style={styles.sectionHeader}>
             <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
-            <Text style={styles.sectionTitle}>{t('productManagerMobile.zoneDintervention')}/Text>
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.zoneDintervention')}</Text>
         </View>
 
         <View style={styles.hintBox}>
@@ -16500,7 +16500,7 @@ return (
         {/* Section 3: Services */}
         <View style={styles.sectionHeader}>
             <SafeIcon name="truck" size={20} color={modernColors.primary} />
-            <Text style={styles.sectionTitle}>{t('productManagerMobile.servicesGaranties')}/Text>
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.servicesGaranties')}</Text>
         </View>
 
         <View style={styles.fieldRow}>
@@ -16535,7 +16535,7 @@ return (
         {/* Section 4: Localisation intelligente - Ville du magasin */}
         <View style={styles.sectionHeader}>
             <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
-            <Text style={styles.sectionTitle}>{t('productManagerMobile.localisationDuMagasin')}/Text>
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.localisationDuMagasin')}</Text>
         </View>
 
         <View style={styles.hintBox}>
@@ -16679,7 +16679,7 @@ return (
         {/* Section 4: Localisation intelligente - Zone d'intervention */}
         <View style={styles.sectionHeader}>
             <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
-            <Text style={styles.sectionTitle}>{t('productManagerMobile.zoneDintervention')}/Text>
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.zoneDintervention')}</Text>
         </View>
 
         <View style={styles.hintBox}>
@@ -16842,7 +16842,7 @@ return (
         {/* Section 5: Localisation intelligente - Zone d'intervention */}
         <View style={styles.sectionHeader}>
             <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
-            <Text style={styles.sectionTitle}>{t('productManagerMobile.zoneDintervention')}/Text>
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.zoneDintervention')}</Text>
         </View>
 
         <View style={styles.hintBox}>
@@ -17036,7 +17036,7 @@ required
     {/* Section 5: Localisation intelligente - Zone d'intervention */ }
     < View style = { styles.sectionHeader } >
                             <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>{t('productManagerMobile.zoneDintervention')}/Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.zoneDintervention')}</Text>
                         </View>
 
                         <View style={styles.hintBox}>
@@ -17080,7 +17080,7 @@ required
 {/* Section 6: Tarifs & Options */ }
 <View style={styles.sectionHeader}>
     <SafeIcon name="dollar-sign" size={20} color={modernColors.primary} />
-    <Text style={styles.sectionTitle}>{t('productManagerMobile.tarifsOptions')}/Text>
+    <Text style={styles.sectionTitle}>{t('productManagerMobile.tarifsOptions')}</Text>
 </View>
 
 {/* Tarif horaire spécialisé */ }
@@ -17277,7 +17277,7 @@ return (
         {/* Section 5: Localisation intelligente - Zone d'intervention */}
         <View style={styles.sectionHeader}>
             <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
-            <Text style={styles.sectionTitle}>{t('productManagerMobile.zoneDintervention')}/Text>
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.zoneDintervention')}</Text>
         </View>
 
         <View style={styles.hintBox}>
@@ -17312,7 +17312,7 @@ return (
         {/* Section 1: Type de prestation */}
         <View style={styles.sectionHeader}>
             <SafeIcon name="grid" size={20} color={modernColors.primary} />
-            <Text style={styles.sectionTitle}>{t('productManagerMobile.servicesDeCarrelage')}/Text>
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.servicesDeCarrelage')}</Text>
         </View>
 
         <ProductFieldSelector
@@ -17481,7 +17481,7 @@ return (
         {/* Section 5: Localisation intelligente - Zone d'intervention */}
         <View style={styles.sectionHeader}>
             <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
-            <Text style={styles.sectionTitle}>{t('productManagerMobile.zoneDintervention')}/Text>
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.zoneDintervention')}</Text>
         </View>
 
         <View style={styles.hintBox}>
@@ -17515,7 +17515,7 @@ return (
     <>
         <View style={styles.sectionHeader}>
             <SafeIcon name="hammer" size={20} color={modernColors.primary} />
-            <Text style={styles.sectionTitle}>{t('productManagerMobile.servicesDeMenuiserie')}/Text>
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.servicesDeMenuiserie')}</Text>
         </View>
 
         <ProductFieldSelector
@@ -17602,7 +17602,7 @@ return (
     <>
         <View style={styles.sectionHeader}>
             <SafeIcon name="droplet" size={20} color={modernColors.primary} />
-            <Text style={styles.sectionTitle}>{t('productManagerMobile.servicesDePeinture')}/Text>
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.servicesDePeinture')}</Text>
         </View>
 
         <ProductFieldSelector
@@ -17859,7 +17859,7 @@ return (
         {/* Section 6: Localisation intelligente - Zone d'intervention */}
         <View style={styles.sectionHeader}>
             <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
-            <Text style={styles.sectionTitle}>{t('productManagerMobile.zoneDintervention')}/Text>
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.zoneDintervention')}</Text>
         </View>
 
         <View style={styles.hintBox}>
@@ -18210,7 +18210,7 @@ return (
         {/* ========== SECTION 6: PAIEMENT & ZONE ========== */}
         <View style={styles.sectionHeader}>
             <SafeIcon name="credit-card" size={18} color="#F97316" />
-            <Text style={styles.sectionTitle}>{t('productManagerMobile.paiementZoneDintervention')}/Text>
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.paiementZoneDintervention')}</Text>
         </View>
 
         <View style={styles.fieldRow}>
@@ -18399,7 +18399,7 @@ return (
         {/* ========== SECTION 6: PAIEMENT & ZONE ========== */}
         <View style={styles.sectionHeader}>
             <SafeIcon name="credit-card" size={18} color="#0EA5E9" />
-            <Text style={styles.sectionTitle}>{t('productManagerMobile.paiementZoneDintervention')}/Text>
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.paiementZoneDintervention')}</Text>
         </View>
 
         <View style={styles.fieldRow}>
@@ -19842,7 +19842,7 @@ return (
         {/* ✅ SECTION 5 : INFORMATIONS VENDEUR */}
         <View style={styles.sectionHeader}>
             <SafeIcon name="user" size={20} color={modernColors.primary} />
-            <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsVendeur')}/Text>
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsVendeur')}</Text>
         </View>
 
         {/* Type de fournisseur */}
@@ -19964,7 +19964,7 @@ return (
         {/* Titre de section : Informations principales */}
         <View style={styles.sectionHeader}>
             <SafeIcon name="gift" size={20} color={modernColors.primary} />
-            <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsPrincipales')}/Text>
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsPrincipales')}</Text>
         </View>
 
         {/* Type de jouet et Âge */}
@@ -20143,7 +20143,7 @@ return (
             <>
                 <View style={styles.sectionHeader}>
                     <SafeIcon name="users" size={20} color={modernColors.primary} />
-                    <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsJeu')}/Text>
+                    <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsJeu')}</Text>
                 </View>
 
                 {/* Nombre de joueurs et Durée */}
@@ -20526,7 +20526,7 @@ return (
         {/* ========== SECTION 4: SERVICES INCLUS ========== */}
         <View style={styles.sectionHeader}>
             <SafeIcon name="package" size={20} color="#F97316" />
-            <Text style={styles.sectionTitle}>{t('productManagerMobile.servicesInclus')}/Text>
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.servicesInclus')}</Text>
         </View>
 
         <View style={styles.fieldContainer}>
@@ -20604,7 +20604,7 @@ return (
         {/* ========== SECTION 1: IDENTIFICATION DU PRODUIT ========== */}
         <View style={styles.sectionHeader}>
             <SafeIcon name="tv" size={20} color="#9C27B0" />
-            <Text style={styles.sectionTitle}>{t('productManagerMobile.identificationDuProduit')}/Text>
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.identificationDuProduit')}</Text>
         </View>
 
         {/* Description obligatoire */}
@@ -20861,7 +20861,7 @@ return (
         {/* ========== SECTION 1: INFORMATIONS PRINCIPALES ========== */}
         <View style={styles.sectionHeader}>
             <SafeIcon name="home" size={20} color={modernColors.primary} />
-            <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsPrincipales')}/Text>
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsPrincipales')}</Text>
         </View>
 
         {/* Catégorie et Style */}
@@ -21367,7 +21367,7 @@ return (
                                                     <View style={styles.suggestionsBlock}>
                                                         <View style={styles.suggestionsHeader}>
                                                             <SafeIcon name="sparkles" size={18} color={modernColors.primary} />
-                                                            <Text style={styles.suggestionsTitle}>{t('productManagerMobile.suggestionsPourVous')}/Text>
+                                                            <Text style={styles.suggestionsTitle}>{t('productManagerMobile.suggestionsPourVous')}</Text>
                                                         </View>
                                                         <Text style={styles.suggestionsSubtitle}>
                                                             Basées sur votre activité ({serviceData?.titre?.valeur || serviceData?.categorie?.valeur})
@@ -22016,13 +22016,13 @@ return (
 
                                 {/* Section Médias */}
                                 <View style={styles.mediaSectionContainer}>
-                                    <Text style={styles.sectionTitle}>{t('productManagerMobile.imagesPrincipalesDuProduit')}/Text>
+                                    <Text style={styles.sectionTitle}>{t('productManagerMobile.imagesPrincipalesDuProduit')}</Text>
 
                                         {/* Message descriptif incitatif */}
                                         <View style={styles.mediaHintContainer}>
                                             <SafeIcon name="info" size={16} color={modernColors.info} />
                                             <Text style={styles.mediaHintText}>
-                                                💡 <Text style={styles.boldText}>{t('productManagerMobile.imagesPrincipales')}/Text> : Photos générales du produit (différentes des images spécifiques aux variantes). Montrez votre produit sous tous les angles.
+                                                💡 <Text style={styles.boldText}>{t('productManagerMobile.imagesPrincipales')}</Text> : Photos générales du produit (différentes des images spécifiques aux variantes). Montrez votre produit sous tous les angles.
                                                 </Text>
                                         </View>
 
@@ -22092,7 +22092,7 @@ return (
 
                                 {/* Section Promotion - APRÈS les médias */}
                                 <View style={styles.promotionSectionContainer}>
-                                    <Text style={styles.sectionTitle}>{t('productManagerMobile.promotionOptionnel')}/Text>
+                                    <Text style={styles.sectionTitle}>{t('productManagerMobile.promotionOptionnel')}</Text>
 
                                         <TouchableOpacity
                                             style={styles.checkboxContainer}

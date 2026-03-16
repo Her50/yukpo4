@@ -50,7 +50,7 @@ export const CollaborationIndicator: React.FC<CollaborationIndicatorProps> = ({
                     {item.isActive && (
                         <View style={styles.activeIndicator}>
                             <View style={styles.activeDot} />
-                            <Text style={styles.activeText}>{t('collaborationIndicator.enLigne')}/Text>
+                            <Text style={styles.activeText}>{t('collaborationIndicator.enLigne')}</Text>
                         </View>
                     )}
                 </View>

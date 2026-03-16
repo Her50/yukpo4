@@ -81,7 +81,7 @@ const [isLoading, setIsLoading] = useState(false);
 
             {currentLocation && (
                 <View style={styles.locationContainer}>
-                    <Text style={styles.locationLabel}>{t('simpleGPSManager.positionActuelle')}/Text>
+                    <Text style={styles.locationLabel}>{t('simpleGPSManager.positionActuelle')}</Text>
                     <Text style={styles.locationText}>
                         {currentLocation.lat.toFixed(6)}, {currentLocation.lng.toFixed(6)}
                     </Text>

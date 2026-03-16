@@ -221,7 +221,7 @@ const AutomobileDashboardScreen: React.FC = () => {
                         <SafeIcon name="arrow-left" size={22} color="#fff" />
                     </TouchableOpacity>
                     <View style={{ flex: 1 }}>
-                        <Text style={s.headerTitle}>{t('automobileDashboard.dashboardAutomobile')}/Text>
+                        <Text style={s.headerTitle}>{t('automobileDashboard.dashboardAutomobile')}</Text>
                         <Text style={s.headerSub}>{user?.name || t('automobileDashboard.partenaire')}</Text>
                     </View>
                 </View>

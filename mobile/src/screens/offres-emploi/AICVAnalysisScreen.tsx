@@ -64,7 +64,7 @@ const AICVAnalysisScreen: React.FC = () => {
         if (!cvUrl) {
             Alert.alert(
                 'CV requis',
-                'Vous devez d\t('aICVAnalysisScreen.abordTelechargerVotreCvDansVotre'),
+                t('aICVAnalysisScreen.vousDevezDabordTelechargerVotreCvDansVotre'),
                 [
                     { text: t('common.cancel') },
                     {
@@ -93,7 +93,7 @@ const AICVAnalysisScreen: React.FC = () => {
             console.error('[AICVAnalysisScreen] Erreur analyse:', error);
             Alert.alert(
                 'Erreur',
-                'Impossible d\'analyser le CV. L\'IA d\'analyse n\t('aICVAnalysisScreen.estPeutetrePasEncoreOperationnelleVeuillez')
+                t('aICVAnalysisScreen.impossibleDanalyserLeCvLiaDanalyseNestPeutetre')
             );
         } finally {
             setLoading(false);
@@ -157,14 +157,14 @@ const AICVAnalysisScreen: React.FC = () => {
                 <View>
                     <NativeCard style={styles.analysisCard}>
                         <View style={styles.scoreContainer}>
-                            <Text style={styles.scoreLabel}>{t('aICVAnalysis.scoreGlobal')}/Text>
+                            <Text style={styles.scoreLabel}>{t('aICVAnalysis.scoreGlobal')}</Text>
                             <Text style={styles.scoreValue}>{analysis.score_global}/100</Text>
                         </View>
                     </NativeCard>
 
                     {analysis.points_forts && analysis.points_forts.length > 0 && (
                         <NativeCard style={styles.card}>
-                            <Text style={styles.sectionTitle}>{t('aICVAnalysis.pointsForts')}/Text>
+                            <Text style={styles.sectionTitle}>{t('aICVAnalysis.pointsForts')}</Text>
                             {analysis.points_forts.map((point, i) => (
                                 <View key={i} style={styles.pointItem}>
                                     <SafeIcon name="check-circle" size={16} color={modernColors.success} />

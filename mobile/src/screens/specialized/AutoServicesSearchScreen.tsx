@@ -236,7 +236,7 @@ const AutoServicesSearchScreen: React.FC = () => {
                         <View style={styles.headerIconContainer}>
                             <SafeIcon name="car" size={28} color="#FFFFFF" type="lucide" />
                         </View>
-                        <Text style={styles.headerTitle}>{t('autoServicesSearch.rechercheAutomobile')}/Text>
+                        <Text style={styles.headerTitle}>{t('autoServicesSearch.rechercheAutomobile')}</Text>
                         <Text style={styles.headerSubtitle}>
                             {dynamicFilters
                                 ? `${dynamicFilters.total_products} vehicule${dynamicFilters.total_products > 1 ? 's' : ''} disponible${dynamicFilters.total_products > 1 ? 's' : ''}`
@@ -331,7 +331,7 @@ const AutoServicesSearchScreen: React.FC = () => {
                 ) : dynamicFilters ? (
                     <View style={styles.filtersCard}>
                         <View style={styles.filterHeaderRow}>
-                            <Text style={styles.sectionTitle}>{t('autoServicesSearch.filtresIntelligents')}/Text>
+                            <Text style={styles.sectionTitle}>{t('autoServicesSearch.filtresIntelligents')}</Text>
                             {activeFiltersCount > 0 && (
                                 <TouchableOpacity onPress={resetFilters} style={styles.resetButton}>
                                     <SafeIcon name="x" size={14} color={ACCENT_LIGHT} type="lucide" />

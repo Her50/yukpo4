@@ -91,7 +91,7 @@ const SearchActionsBottomSheet: React.FC<SearchActionsBottomSheetProps> = ({
                         <View style={[styles.actionIconContainer, { backgroundColor: '#ECFEFF' }]}>
                             <SafeIcon name="map-pin" size={24} color={modernColors.primary} />
                         </View>
-                        <Text style={styles.actionLabel}>{t('searchActionsBottomSheet.localisation')}/Text>
+                        <Text style={styles.actionLabel}>{t('searchActionsBottomSheet.localisation')}</Text>
                         <Text style={styles.actionDescription}>GPS ou zone</Text>
                     </TouchableOpacity>
 

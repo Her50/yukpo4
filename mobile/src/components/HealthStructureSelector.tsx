@@ -163,7 +163,7 @@ const [open, setOpen] = useState(false);
                         <ScrollView style={styles.optionsList}>
                             {loading ? (
                                 <View style={styles.loadingContainer}>
-                                    <Text style={styles.loadingText}>{t('healthStructureSelector.rechercheEnCours')}/Text>
+                                    <Text style={styles.loadingText}>{t('healthStructureSelector.rechercheEnCours')}</Text>
                                     {locationEnabled && (
                                         <Text style={styles.loadingHint}>📍 Recherche dans un rayon de {radius / 1000}km</Text>
                                     )}

@@ -350,7 +350,7 @@ const SlotManagementScreen: React.FC<SlotManagementScreenProps> = ({ route, navi
                                 keyboardType="numeric"
                                 placeholder="Ex: 5000"
                             />
-                            <Text style={styles.fieldLabel}>{t('slotManagement.notesOptionnel')}/Text>
+                            <Text style={styles.fieldLabel}>{t('slotManagement.notesOptionnel')}</Text>
                             <NativeInput
                                 value={newSlot.notes}
                                 onChangeText={(v: string) => setNewSlot({ ...newSlot, notes: v })}

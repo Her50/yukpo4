@@ -242,7 +242,7 @@ const [mtnEnabled, setMtnEnabled] = useState(false);
                 <View style={styles.providerHeader}>
                     <View style={styles.providerTitleRow}>
                         <Text style={styles.providerEmoji}>💳</Text>
-                        <Text style={[styles.providerTitle, showBankCard && styles.providerTitleActiveCard]}>{t('paymentMethodSelector.carteBancaire')}/Text>
+                        <Text style={[styles.providerTitle, showBankCard && styles.providerTitleActiveCard]}>{t('paymentMethodSelector.carteBancaire')}</Text>
                     </View>
                     <Switch
                         value={showBankCard}
@@ -278,7 +278,7 @@ const [mtnEnabled, setMtnEnabled] = useState(false);
                             )}
                         </View>
                         <View style={styles.fieldGroup}>
-                            <Text style={styles.formLabel}>{t('paymentMethodSelector.nomDuTitulaire')}/Text>
+                            <Text style={styles.formLabel}>{t('paymentMethodSelector.nomDuTitulaire')}</Text>
                             <NativeInput
                                 placeholder="JEAN DUPONT"
                                 value={cardHolder}
@@ -319,7 +319,7 @@ const [mtnEnabled, setMtnEnabled] = useState(false);
                         {cardNumber.length >= 13 && !cardError && cardExpiry.length >= 5 && !expiryError && cardCVV.length >= 3 && cardHolder.length > 0 && (
                             <View style={styles.successContainer}>
                                 <SafeIcon name="check-circle" size={16} color={modernColors.success} />
-                                <Text style={styles.successText}>{t('paymentMethodSelector.informationsDeCarteValides')}/Text>
+                                <Text style={styles.successText}>{t('paymentMethodSelector.informationsDeCarteValides')}</Text>
                             </View>
                         )}
                     </View>

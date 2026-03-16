@@ -381,7 +381,7 @@ const [loading, setLoading] = useState(false);
                     <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false}>
                         {/* Points de pickup et delivery */}
                         <View style={styles.section}>
-                            <Text style={styles.sectionTitle}>{t('findCourier.pointsDeLivraison')}/Text>
+                            <Text style={styles.sectionTitle}>{t('findCourier.pointsDeLivraison')}</Text>
 
                             {/* ✅ Point de pickup - Récupéré depuis la configuration (non modifiable) */}
                             {loadingConfig ? (
@@ -493,7 +493,7 @@ const [loading, setLoading] = useState(false);
 
                         {/* Notes */}
                         <View style={styles.section}>
-                            <Text style={styles.sectionTitle}>{t('findCourier.notesOptionnel')}/Text>
+                            <Text style={styles.sectionTitle}>{t('findCourier.notesOptionnel')}</Text>
                             <TextInput
                                 style={styles.notesInput}
                                 placeholder={t('findCourier.instructionsSpecialesPourLeCoursier')}

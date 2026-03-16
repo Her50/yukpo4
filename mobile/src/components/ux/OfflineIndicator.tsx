@@ -81,7 +81,7 @@ const [isOnline, setIsOnline] = useState(true);
             accessibilityRole="alert"
         >
             <SafeIcon name="wifi-off" size={20} color="#FFFFFF" />
-            <Text style={styles.text}>{t('offlineIndicator.modeHorsLigne')}/Text>
+            <Text style={styles.text}>{t('offlineIndicator.modeHorsLigne')}</Text>
         </Animated.View>
     );
 });

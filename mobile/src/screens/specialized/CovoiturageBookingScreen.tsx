@@ -396,7 +396,7 @@ const CovoiturageBookingScreen: React.FC = () => {
 
                     <View style={styles.priceBreakdown}>
                         <View style={styles.priceRow}>
-                            <Text style={styles.priceLabel}>{t('covoiturageBooking.prixParPlace')}/Text>
+                            <Text style={styles.priceLabel}>{t('covoiturageBooking.prixParPlace')}</Text>
                             <Text style={styles.priceValue}>
                                 {covoiturage.prix_par_place.toLocaleString('fr-FR')} {covoiturage.devise}
                             </Text>
@@ -451,7 +451,7 @@ const CovoiturageBookingScreen: React.FC = () => {
                     <View style={styles.walletRow}>
                         <SafeIcon name="wallet" size={20} color={modernColors.primary} />
                         <View style={styles.walletInfo}>
-                            <Text style={styles.walletLabel}>{t('covoiturageBooking.soldeDisponible')}/Text>
+                            <Text style={styles.walletLabel}>{t('covoiturageBooking.soldeDisponible')}</Text>
                             <Text style={styles.walletBalance}>
                                 {balance.toLocaleString('fr-FR')} {covoiturage.devise}
                             </Text>

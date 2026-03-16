@@ -271,7 +271,7 @@ const PharmacieSearchScreen: React.FC = () => {
 
                 {/* ✅ RÉORIENTÉ: Formulaire de recherche - Priorité sur produits/services */}
                 <View style={styles.searchFormCard}>
-                    <Text style={styles.sectionTitle}>{t('pharmacieSearch.rechercheDeProduits')}/Text>
+                    <Text style={styles.sectionTitle}>{t('pharmacieSearch.rechercheDeProduits')}</Text>
                     <Text style={styles.sectionDescription}>
                         Recherchez des médicaments ou produits pharmaceutiques disponibles
                     </Text>
@@ -290,7 +290,7 @@ const PharmacieSearchScreen: React.FC = () => {
                     </View>
 
                     {/* Localisation (optionnelle pour recherche de produits) */}
-                    <Text style={styles.sectionTitle}>{t('pharmacieSearch.localisationOptionnelle')}/Text>
+                    <Text style={styles.sectionTitle}>{t('pharmacieSearch.localisationOptionnelle')}</Text>
                     <Text style={styles.sectionDescription}>
                         Ajoutez votre position pour trouver des produits à proximité
                     </Text>
@@ -468,7 +468,7 @@ const PharmacieSearchScreen: React.FC = () => {
 
                     {/* Options */}
                     <View style={styles.optionsSection}>
-                        <Text style={styles.sectionTitle}>{t('pharmacieSearch.optionsDeRecherche')}/Text>
+                        <Text style={styles.sectionTitle}>{t('pharmacieSearch.optionsDeRecherche')}</Text>
 
                         <View style={styles.optionCard}>
                             <View style={styles.optionContent}>

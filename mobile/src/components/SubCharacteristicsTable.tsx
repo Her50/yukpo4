@@ -600,7 +600,7 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
                         ) : (
                             <>
                                 <SafeIcon name="check-circle" size={18} color="#FFFFFF" />
-                                <Text style={styles.validateButtonText}>{t('subCharacteristicsTable.valider')}/Text>
+                                <Text style={styles.validateButtonText}>{t('subCharacteristicsTable.valider')}</Text>
                             </>
                         )}
                     </TouchableOpacity>

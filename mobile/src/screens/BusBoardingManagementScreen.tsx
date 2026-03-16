@@ -317,7 +317,7 @@ const BusBoardingManagementScreen: React.FC = () => {
                         onPress={() => handleManualValidation(passenger)}
                     >
                         <SafeIcon name="check" size={16} color="#fff" />
-                        <Text style={styles.validateButtonText}>{t('busBoardingManagement.validerManuellement')}/Text>
+                        <Text style={styles.validateButtonText}>{t('busBoardingManagement.validerManuellement')}</Text>
                     </TouchableOpacity>
                 )}
             </View>
@@ -330,7 +330,7 @@ const BusBoardingManagementScreen: React.FC = () => {
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                     <SafeIcon name="arrow-left" size={24} color="#111827" />
                 </TouchableOpacity>
-                <Text style={styles.title}>{t('busBoardingManagement.gestionEmbarquement')}/Text>
+                <Text style={styles.title}>{t('busBoardingManagement.gestionEmbarquement')}</Text>
                 <View style={styles.placeholder} />
             </View>
 
@@ -363,7 +363,7 @@ const BusBoardingManagementScreen: React.FC = () => {
                                         <Text style={styles.summaryValue}>
                                             {summary.pending_passengers}
                                         </Text>
-                                        <Text style={styles.summaryLabel}>{t('busBoardingManagement.enAttente')}/Text>
+                                        <Text style={styles.summaryLabel}>{t('busBoardingManagement.enAttente')}</Text>
                                     </View>
                                     <View style={styles.summaryStat}>
                                         <Text style={styles.summaryValue}>

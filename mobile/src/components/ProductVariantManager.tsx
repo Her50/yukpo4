@@ -294,7 +294,7 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
                                     {/* Ligne 3: Stock disponible */}
                                     <View style={styles.fieldRow}>
                                         <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                            <Text style={styles.fieldLabel}>{t('productVariantManager.stockDisponible')}/Text>
+                                            <Text style={styles.fieldLabel}>{t('productVariantManager.stockDisponible')}</Text>
                                             <NativeInput
                                                 placeholder="0"
                                                 value={variant.stockDisponible?.toString() || ''}

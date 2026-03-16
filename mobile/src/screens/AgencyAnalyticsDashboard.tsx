@@ -137,7 +137,7 @@ const [loading, setLoading] = useState(true);
         >
             {/* Header */}
             <View style={styles.header}>
-                <Text style={styles.title}>{t('agencyAnalyticsDashboard.dashboardAnalytics')}/Text>
+                <Text style={styles.title}>{t('agencyAnalyticsDashboard.dashboardAnalytics')}</Text>
                 <View style={styles.periodSelector}>
                     {(['day', 'week', 'month'] as const).map((p) => (
                         <TouchableOpacity
@@ -160,14 +160,14 @@ const [loading, setLoading] = useState(true);
                         <View style={styles.statCard}>
                             <SafeIcon name="ticket" size={24} color={modernColors.primary} />
                             <Text style={styles.statValue}>{data.overview.total_tickets}</Text>
-                            <Text style={styles.statLabel}>{t('agencyAnalyticsDashboard.ticketsVendus')}/Text>
+                            <Text style={styles.statLabel}>{t('agencyAnalyticsDashboard.ticketsVendus')}</Text>
                         </View>
                         <View style={styles.statCard}>
                             <SafeIcon name="dollar-sign" size={24} color="#10B981" />
                             <Text style={styles.statValue}>
                                 {(data.overview.total_revenue / 1000).toFixed(0)}k
                             </Text>
-                            <Text style={styles.statLabel}>{t('agencyAnalyticsDashboard.revenusFcfa')}/Text>
+                            <Text style={styles.statLabel}>{t('agencyAnalyticsDashboard.revenusFcfa')}</Text>
                         </View>
                         <View style={styles.statCard}>
                             <SafeIcon name="users" size={24} color="#F59E0B" />
@@ -205,7 +205,7 @@ const [loading, setLoading] = useState(true);
 
                     {/* Graphique tickets */}
                     <View style={styles.chartContainer}>
-                        <Text style={styles.chartTitle}>{t('agencyAnalyticsDashboard.ticketsVendus')}/Text>
+                        <Text style={styles.chartTitle}>{t('agencyAnalyticsDashboard.ticketsVendus')}</Text>
                         <BarChart
                             data={{
                                 labels: data.tickets_by_period.map((d) => d.period),

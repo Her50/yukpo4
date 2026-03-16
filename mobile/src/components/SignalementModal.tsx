@@ -105,7 +105,7 @@ const [selectedType, setSelectedType] = useState<string | null>(null);
             console.error('[SignalementModal] Erreur:', error);
             Alert.alert(
                 'Erreur',
-                error.message || 'Impossible d\t('signalementModal.enregistrerLeSignalementReessayez')
+                error.message || t('signalementModal.impossibleDenregistrerLeSignalementReessayez')
             );
         } finally {
             setLoading(false);
@@ -257,7 +257,7 @@ const [selectedType, setSelectedType] = useState<string | null>(null);
                             ) : (
                                 <>
                                     <SafeIcon name="flag" size={18} color="#FFFFFF" />
-                                    <Text style={styles.submitButtonText}>{t('signalement.envoyerLeSignalement')}/Text>
+                                    <Text style={styles.submitButtonText}>{t('signalement.envoyerLeSignalement')}</Text>
                                 </>
                             )}
                         </TouchableOpacity>

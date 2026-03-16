@@ -167,7 +167,7 @@ const [showSearchActions, setShowSearchActions] = useState(false);
                     </ScrollView>
                     {searchHistory.length > 0 && searchQuery.trim().length === 0 && (
                         <View style={styles.historyHeader}>
-                            <Text style={styles.historyHeaderText}>{t('searchBarSection.historique')}/Text>
+                            <Text style={styles.historyHeaderText}>{t('searchBarSection.historique')}</Text>
                             <TouchableOpacity
                                 onPress={() => {
                                     hapticPress();

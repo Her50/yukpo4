@@ -64,7 +64,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: num
             if (status !== 'granted') {
                 Alert.alert(
                     'Permission requise',
-                    'L\t('enhancedGPSModal.accesALaLocalisationEstNecessaire'),
+                    t('enhancedGPSModal.laccesALaLocalisationEstNecessairePourUtiliser'),
                     [{ text: 'OK' }]
                 );
             }
@@ -326,7 +326,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: num
                         <View style={styles.mapControls}>
                             <View style={styles.mapModeIndicator}>
                                 <Text style={styles.mapModeIcon}>📍</Text>
-                                <Text style={styles.mapModeText}>{t('enhancedGPS.modePoint')}/Text>
+                                <Text style={styles.mapModeText}>{t('enhancedGPS.modePoint')}</Text>
                             </View>
 
                             <View style={styles.mapStyleControls}>
@@ -343,7 +343,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: num
                         <View style={styles.mapContainer}>
                             <View style={styles.mapPlaceholder}>
                                 <Text style={styles.mapPlaceholderText}>🗺️</Text>
-                                <Text style={styles.mapPlaceholderTitle}>{t('enhancedGPS.vueSatellite')}/Text>
+                                <Text style={styles.mapPlaceholderTitle}>{t('enhancedGPS.vueSatellite')}</Text>
                                 <Text style={styles.mapPlaceholderSubtitle}>
                                     {selectedLocation
                                         ? `${selectedLocation.lat.toFixed(4)}, ${selectedLocation.lng.toFixed(4)}`

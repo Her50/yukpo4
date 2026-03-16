@@ -16,7 +16,7 @@ const OfflineIndicator: React.FC = () => {
         <View style={styles.container}>
             {!isOnline ? (
                 <View style={[styles.banner, styles.offlineBanner]}>
-                    <Text style={styles.text}>{t('offlineIndicator.modeHorsLigne')}/Text>
+                    <Text style={styles.text}>{t('offlineIndicator.modeHorsLigne')}</Text>
                     {queueLength > 0 && (
                         <Text style={styles.subtext}>
                             {queueLength} action{queueLength > 1 ? 's' : ''} en attente

@@ -93,7 +93,7 @@ const MediaUploadManager: React.FC<MediaUploadManagerProps> = ({
         });
         Alert.alert(
           t('mediaUploadManager.fonctionnaliteIndisponible'),
-          'L\t('mediaUploadManager.accesALaGalerieNestPasDisponible')',
+          t('mediaUploadManager.laccesALaGalerieNestPasDisponibleSur'),
           [{ text: 'OK' }]
         );
         setUploading(false);
@@ -106,7 +106,7 @@ const MediaUploadManager: React.FC<MediaUploadManagerProps> = ({
         console.warn('[MediaUploadManager] Permission galerie refusée:', permissionResult);
         Alert.alert(
           t('mediaUploadManager.permissionRefusee'),
-          'Vous devez autoriser l\t('mediaUploadManager.accesALaGaleriePourAjouterDes'),
+          t('mediaUploadManager.vousDevezAutoriserLaccesALaGaleriePour'),
           [
             { text: t('common.cancel'), style: 'cancel' },
             {
@@ -183,7 +183,7 @@ const MediaUploadManager: React.FC<MediaUploadManagerProps> = ({
         });
         Alert.alert(
           t('mediaUploadManager.fonctionnaliteIndisponible'),
-          'L\t('mediaUploadManager.accesALaGalerieNestPasDisponible')',
+          t('mediaUploadManager.laccesALaGalerieNestPasDisponibleSur'),
           [{ text: 'OK' }]
         );
         setUploading(false);
@@ -196,7 +196,7 @@ const MediaUploadManager: React.FC<MediaUploadManagerProps> = ({
         console.warn('[MediaUploadManager] Permission galerie refusée:', permissionResult);
         Alert.alert(
           t('mediaUploadManager.permissionRefusee'),
-          'Vous devez autoriser l\t('mediaUploadManager.accesALaGaleriePourAjouterDes'),
+          t('mediaUploadManager.vousDevezAutoriserLaccesALaGaleriePour'),
           [
             { text: t('common.cancel'), style: 'cancel' },
             {
@@ -426,7 +426,7 @@ const MediaUploadManager: React.FC<MediaUploadManagerProps> = ({
             ) : (
               <>
                 <SafeIcon name="camera" size={32} color={modernColors.primary} />
-                <Text style={styles.uploadText}>{t('mediaUploadManager.ajouterDesPhotos')}/Text>
+                <Text style={styles.uploadText}>{t('mediaUploadManager.ajouterDesPhotos')}</Text>
                 <Text style={styles.uploadHint}>
                   {images.length === 0 ? t('mediaUploadManager.laPremiereSeraLimagePrincipale') : `Encore ${maxImages - images.length} photo(s)`}
                 </Text>

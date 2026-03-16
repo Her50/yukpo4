@@ -2730,7 +2730,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                         {!formValues.variabilite_prix && (
                             <>
                                 <View style={styles.fieldGroup}>
-                                    <Text style={styles.label}>{t('ajouterProduitSimple.prixDuProduitprestation')}/Text>
+                                    <Text style={styles.label}>{t('ajouterProduitSimple.prixDuProduitprestation')}</Text>
                                         <NativeInput
                                             placeholder="Ex: 150000"
                                             value={formValues.prix_produit}

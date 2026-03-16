@@ -291,7 +291,7 @@ const OrientationScolaireHomeScreen: React.FC = () => {
                 toaster?.show?.(t('orientationScolaire.responseLocalData'), 'info');
             }
         } else {
-            setAcademicResponse('Consultez un conseiller d\t('orientationScolaireHomeScreen.orientationPourDesConseilsPersonnalises'));
+            setAcademicResponse(t('orientationScolaireHomeScreen.consultezUnConseillerDorientationPourDesConseilsPersonnalise'));
             toaster?.show?.(t('orientationScolaire.aiTemporarilyUnavailable'), 'error');
         }
         setLoadingAI(false);
@@ -970,7 +970,7 @@ const AIModal: React.FC<AIModalProps> = ({
                                 </View>
                                 {profileAnalysis.points_forts.length > 0 && (
                                     <View style={styles.pointsContainer}>
-                                        <Text style={styles.pointsTitle}>{t('orientationScolaireHome.pointsForts')}/Text>
+                                        <Text style={styles.pointsTitle}>{t('orientationScolaireHome.pointsForts')}</Text>
                                         {profileAnalysis.points_forts.map((point, i) => (
                                             <Text key={i} style={styles.pointText}>• {point}</Text>
                                         ))}

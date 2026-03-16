@@ -243,7 +243,7 @@ const [step, setStep] = useState<'alerte' | 'montant' | 'methode' | 'confirmatio
                         {/* Étape 3: Méthode de paiement (selon le prestataire) */}
                         {step === 'methode' && prestatairePaymentMethod && (
                             <View style={styles.stepContainer}>
-                                <Text style={styles.stepTitle}>{t('paiementEnLigne.modeDePaiementDuPrestataire')}/Text>
+                                <Text style={styles.stepTitle}>{t('paiementEnLigne.modeDePaiementDuPrestataire')}</Text>
 
                                 <View style={styles.prestataireMethodInfo}>
                                     <Text style={styles.prestataireMethodLabel}>
@@ -297,7 +297,7 @@ const [step, setStep] = useState<'alerte' | 'montant' | 'methode' | 'confirmatio
                                         </View>
 
                                         <View style={styles.fieldGroup}>
-                                            <Text style={styles.fieldLabel}>{t('paiementEnLigne.nomDuTitulaire')}/Text>
+                                            <Text style={styles.fieldLabel}>{t('paiementEnLigne.nomDuTitulaire')}</Text>
                                             <NativeInput
                                                 placeholder="JEAN DUPONT"
                                                 value={cardHolder}
@@ -349,7 +349,7 @@ const [step, setStep] = useState<'alerte' | 'montant' | 'methode' | 'confirmatio
                                         onPress={() => setStep('montant')}
                                     >
                                         <SafeIcon name="chevron-left" size={20} color={modernColors.text} />
-                                        <Text style={styles.backButtonText}>{t('paiementEnLigne.retour')}/Text>
+                                        <Text style={styles.backButtonText}>{t('paiementEnLigne.retour')}</Text>
                                     </TouchableOpacity>
 
                                     <TouchableOpacity
@@ -370,7 +370,7 @@ const [step, setStep] = useState<'alerte' | 'montant' | 'methode' | 'confirmatio
 
                                 <View style={styles.confirmCard}>
                                     <View style={styles.confirmRow}>
-                                        <Text style={styles.confirmLabel}>{t('paiementEnLigne.montant')}/Text>
+                                        <Text style={styles.confirmLabel}>{t('paiementEnLigne.montant')}</Text>
                                         <Text style={styles.confirmValue}>{paymentAmount} {devise}</Text>
                                     </View>
                                     <View style={styles.confirmRow}>
@@ -378,7 +378,7 @@ const [step, setStep] = useState<'alerte' | 'montant' | 'methode' | 'confirmatio
                                         <Text style={styles.confirmValue}>{prestataire?.nom_complet || 'Prestataire'}</Text>
                                     </View>
                                     <View style={styles.confirmRow}>
-                                        <Text style={styles.confirmLabel}>{t('paiementEnLigne.service')}/Text>
+                                        <Text style={styles.confirmLabel}>{t('paiementEnLigne.service')}</Text>
                                         <Text style={styles.confirmValue} numberOfLines={2}>
                                             {product ? product.nom : service.data?.titre_service?.valeur || 'Service'}
                                         </Text>
@@ -407,7 +407,7 @@ const [step, setStep] = useState<'alerte' | 'montant' | 'methode' | 'confirmatio
                                         disabled={loading}
                                     >
                                         <SafeIcon name="chevron-left" size={20} color={modernColors.text} />
-                                        <Text style={styles.backButtonText}>{t('paiementEnLigne.retour')}/Text>
+                                        <Text style={styles.backButtonText}>{t('paiementEnLigne.retour')}</Text>
                                     </TouchableOpacity>
 
                                     <TouchableOpacity

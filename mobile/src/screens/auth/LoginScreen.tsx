@@ -364,7 +364,7 @@ const LoginScreen: React.FC = () => {
 
         {/* Lien vers l'inscription */}
         <View style={styles.footer}>
-          <Text style={styles.footerText}>{t('login.pasEncoreInscrit')}/Text>
+          <Text style={styles.footerText}>{t('login.pasEncoreInscrit')}</Text>
             <TouchableOpacity onPress={() => navigation.navigate('Register' as never)}>
               <Text style={styles.footerLink}>{t('login.creerUnCompte')}</Text>
             </TouchableOpacity>

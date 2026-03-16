@@ -387,7 +387,7 @@ const TaxiBookingScreen: React.FC = () => {
             <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
                 {/* Récapitulatif taxi */}
                 <NativeCard style={styles.card}>
-                    <Text style={styles.cardTitle}>{t('taxiBooking.informationsDuTaxi')}/Text>
+                    <Text style={styles.cardTitle}>{t('taxiBooking.informationsDuTaxi')}</Text>
                     {taxi.nom_chauffeur && (
                         <View style={styles.infoRow}>
                             <SafeIcon name="user" size={16} color={modernColors.textSecondary} />
@@ -512,7 +512,7 @@ const TaxiBookingScreen: React.FC = () => {
 
                 {/* Notes */}
                 <NativeCard style={styles.card}>
-                    <Text style={styles.cardTitle}>{t('taxiBooking.notesOptionnel')}/Text>
+                    <Text style={styles.cardTitle}>{t('taxiBooking.notesOptionnel')}</Text>
                     <NativeInput
                         placeholder={t('taxiBooking.informationsSupplementairesPourLeChauffe')}
                         value={notes}
@@ -558,7 +558,7 @@ const TaxiBookingScreen: React.FC = () => {
                 {/* Contact rapide */}
                 {(taxi.telephone || taxi.whatsapp) && (
                     <NativeCard style={styles.card}>
-                        <Text style={styles.cardTitle}>{t('taxiBooking.contactRapide')}/Text>
+                        <Text style={styles.cardTitle}>{t('taxiBooking.contactRapide')}</Text>
                         <View style={styles.contactButtons}>
                             {taxi.telephone && (
                                 <TouchableOpacity

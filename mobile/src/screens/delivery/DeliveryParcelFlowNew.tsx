@@ -663,7 +663,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
     // Composants d'étapes
     const ParcelInfoStep = (
         <KeyboardAwareScreen style={styles.stepContent} showsVerticalScrollIndicator={false}>
-            <Text style={styles.stepTitle}>{t('deliveryParcelFlowNew.informationsDuColis')}/Text>
+            <Text style={styles.stepTitle}>{t('deliveryParcelFlowNew.informationsDuColis')}</Text>
             <Text style={styles.stepSubtitle}>{t('deliveryParcelFlowNew.decrivezVotreColisPourUne')}</Text>
 
             <View style={styles.typeSelector}>
@@ -805,7 +805,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
             </View>
 
             <View style={styles.inputGroup}>
-                <Text style={styles.label}>{t('deliveryParcelFlowNew.notesOptionnel')}/Text>
+                <Text style={styles.label}>{t('deliveryParcelFlowNew.notesOptionnel')}</Text>
                 <NativeInput
                     placeholder={t('deliveryParcelFlowNew.instructionsSpeciales')}
                     value={notes}
@@ -1051,7 +1051,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
             </View>
 
             <View style={styles.inputGroup}>
-                <Text style={styles.label}>{t('deliveryParcelFlowNew.photosDuColis')}/Text>
+                <Text style={styles.label}>{t('deliveryParcelFlowNew.photosDuColis')}</Text>
                 <MediaUploadManager
                     mediaUris={photos}
                     onMediaChange={setPhotos}
@@ -1229,11 +1229,11 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
 
     const RecipientInfoStep = (
         <ScrollView style={styles.stepContent} showsVerticalScrollIndicator={false}>
-            <Text style={styles.stepTitle}>{t('deliveryParcelFlowNew.informationsDuDestinataire')}/Text>
+            <Text style={styles.stepTitle}>{t('deliveryParcelFlowNew.informationsDuDestinataire')}</Text>
             <Text style={styles.stepSubtitle}>Qui va recevoir le colis ?</Text>
 
             <View style={styles.inputGroup}>
-                <Text style={styles.label}>{t('deliveryParcelFlowNew.nomDuDestinataire')}/Text>
+                <Text style={styles.label}>{t('deliveryParcelFlowNew.nomDuDestinataire')}</Text>
                 <NativeInput
                     placeholder="Ex: Jean Dupont"
                     value={recipientName}
@@ -1323,7 +1323,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
 
             {/* Informations du colis */}
             <NativeCard style={styles.summaryCard}>
-                <Text style={styles.summaryCardTitle}>{t('deliveryParcelFlowNew.informationsDuColis')}/Text>
+                <Text style={styles.summaryCardTitle}>{t('deliveryParcelFlowNew.informationsDuColis')}</Text>
                 <View style={styles.summaryRow}>
                     <Text style={styles.summaryLabel}>Type</Text>
                     <Text style={styles.summaryValue}>
@@ -1390,7 +1390,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
                     </Text>
                 </View>
                 <View style={styles.summaryRow}>
-                    <Text style={styles.summaryLabel}>{t('deliveryParcelFlowNew.livraison')}/Text>
+                    <Text style={styles.summaryLabel}>{t('deliveryParcelFlowNew.livraison')}</Text>
                     <Text style={[styles.summaryValue, { flex: 2 }]}>
                         {dropoffLocation?.address ||
                             (dropoffLocation ? `${dropoffLocation.latitude.toFixed(6)}, ${dropoffLocation.longitude.toFixed(6)}` : t('deliveryParcelFlowNew.nonDefini'))}
@@ -1412,7 +1412,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
                             </Text>
                         </View>
                         <View style={styles.summaryRow}>
-                            <Text style={styles.summaryLabel}>{t('deliveryParcelFlowNew.livraisonRetour')}/Text>
+                            <Text style={styles.summaryLabel}>{t('deliveryParcelFlowNew.livraisonRetour')}</Text>
                             <Text style={[styles.summaryValue, { flex: 2 }]}>
                                 {returnDropoffLocation.address ||
                                     `${returnDropoffLocation.latitude.toFixed(6)}, ${returnDropoffLocation.longitude.toFixed(6)}`}
@@ -1489,7 +1489,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
                     <>
                         {deliveryCost !== null && (
                             <View style={styles.summaryRow}>
-                                <Text style={styles.summaryLabel}>{t('deliveryParcelFlowNew.livraison')}/Text>
+                                <Text style={styles.summaryLabel}>{t('deliveryParcelFlowNew.livraison')}</Text>
                                 <Text style={styles.summaryValue}>{deliveryCost.toLocaleString('fr-FR')} FCFA</Text>
                             </View>
                         )}
@@ -1506,7 +1506,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
                             </Text>
                         </View>
                         <View style={styles.summaryRow}>
-                            <Text style={styles.summaryLabel}>{t('deliveryParcelFlowNew.soldeDisponible')}/Text>
+                            <Text style={styles.summaryLabel}>{t('deliveryParcelFlowNew.soldeDisponible')}</Text>
                             <Text style={[styles.summaryValue, userBalance < (deliveryCost || 0) + insuranceCost && styles.insufficientBalance]}>
                                 {userBalance.toLocaleString('fr-FR')} FCFA
                             </Text>
@@ -1592,7 +1592,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
                         <View style={styles.headerContent}>
                             <SafeIcon name="package" size={24} color="#FFFFFF" />
                             <View style={styles.headerText}>
-                                <Text style={styles.headerTitle}>{t('deliveryParcelFlowNew.livraisonDeColis')}/Text>
+                                <Text style={styles.headerTitle}>{t('deliveryParcelFlowNew.livraisonDeColis')}</Text>
                                 <Text style={styles.headerSubtitle}>{t('deliveryParcelFlowNew.expediezVotreColisEnToute')}</Text>
                             </View>
                         </View>

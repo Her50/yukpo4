@@ -42,7 +42,7 @@ const [question, setQuestion] = useState("");
         onPress={handleSubmit}
         style={styles.button}
       >
-        <Text style={styles.buttonText}>{t('captchaChallenge.valider')}/Text>
+        <Text style={styles.buttonText}>{t('captchaChallenge.valider')}</Text>
       </TouchableOpacity>
     </View>
   );

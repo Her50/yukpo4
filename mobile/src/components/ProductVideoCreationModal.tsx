@@ -355,7 +355,7 @@ const validateAICohesion = (brief: AIVideoBriefVariant, product: ManagedProduct 
     // ✅ Validation 5: Cohérence du prix
     const priceHighlight = productHighlights.find(h => h.includes('Prix courant:'));
     if (priceHighlight && !briefText.includes('prix') && !briefText.includes('coût') && !briefText.includes('tarif')) {
-        warnings.push('⚠️ Le prix n\t('productVideoCreationModal.estPasMentionneDansLeBrief'));
+        warnings.push(t('productVideoCreationModal.lePrixNestPasMentionneDansLeBrief'));
         suggestions.push(t('productVideoCreationModal.ajoutezUneReferenceAuPrixOu'));
     }
 
@@ -647,7 +647,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         if (!productToUse) {
             Alert.alert(
                 'Produit requis',
-                'Aucun produit n\t('productVideoCreationModal.estSelectionneVeuillezSelectionnerUnProduit'),
+                t('productVideoCreationModal.aucunProduitNestSelectionneVeuillezSelectionnerUnProduit'),
                 [{ text: 'OK', onPress: () => setShowAREditor(false) }]
             );
             return;
@@ -797,7 +797,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             setArEditorProduct(null);
 
             // Afficher un message d'erreur plus détaillé
-            let errorMessage = 'Impossible d\t('productVideoCreationModal.ajouterLaVideoArReessayezPlus');
+            let errorMessage = t('productVideoCreationModal.impossibleDajouterLaVideoArReessayezPlusTard');
             if (error?.response?.status === 500) {
                 errorMessage = 'Erreur serveur (500). Veuillez réessayer ou contacter le support.';
             } else if (error?.message) {
@@ -2972,11 +2972,11 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             let errorMessage = error?.message || t('productVideoCreation.impossibleDeGenererLaPrevisualisation');
 
             // ✅ AMÉLIORÉ: Détecter les erreurs de configuration du renderer
-            if (errorMessage.includes('n\t('productVideoCreationModal.estPasConfigure')) ||
+            if (errorMessage.includes(t('productVideoCreationModal.nestPasConfigure')) ||
                 errorMessage.includes('VIDEO_RENDERER') ||
                 errorMessage.includes('Configuration manquante')) {
                 errorMessage = t('productVideoCreationModal.leServiceDePrevisualisationVideoNestPas') +
-                    'Contactez l\t('productVideoCreationModal.administrateurPourActiverLeServiceDe') +
+                    t('productVideoCreationModal.contactezLadministrateurPourActiverLeServiceDeRendu') +
                     t('productVideoCreationModal.enAttendantVousPouvezUtiliserLe');
             } else if (errorMessage.includes('temporairement indisponible') ||
                 errorMessage.includes('indisponible')) {
@@ -3128,7 +3128,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         <NativeCard style={styles.sectionCard}>
             <View style={styles.emptyProductState}>
                 <SafeIcon name="alert-circle" size={32} color="#F59E0B" />
-                <Text style={styles.emptyProductTitle}>{t('productVideoCreation.produitRequis')}/Text>
+                <Text style={styles.emptyProductTitle}>{t('productVideoCreation.produitRequis')}</Text>
                 <Text style={styles.emptyProductSubtitle}>
                     Sélectionnez un produit à l'étape 1 avant d'accéder à « {stepName} ».
                 </Text>
@@ -3187,7 +3187,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                 if (!productToUse) {
                                     Alert.alert(
                                         'Produit requis',
-                                        'Veuillez d\t('productVideoCreationModal.abordSelectionnerUnProduitAvantDouvrirLediteur')'
+                                        t('productVideoCreationModal.veuillezDabordSelectionnerUnProduitAvantDouvrirLediteur')
                                     );
                                     return;
                                 }
@@ -3271,7 +3271,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                     console.error('[ProductVideoCreationModal] Camera module not available:', importError);
                                     Alert.alert(
                                         t('productVideoCreationModal.fonctionnaliteNonDisponible'),
-                                        'L\t('productVideoCreationModal.editeurArNecessiteReactnativevisioncameraVeuillezMettre')
+                                        t('productVideoCreationModal.lediteurArNecessiteReactnativevisioncameraVeuillezMettreAJou')
                                     );
                                     return;
                                 }
@@ -4046,7 +4046,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     {musicMode !== 'none' && (
                         <View style={styles.fieldGroup}>
                             <View style={styles.volumeHeaderRow}>
-                                <Text style={styles.fieldLabel}>{t('productVideoCreation.volumeMusique')}/Text>
+                                <Text style={styles.fieldLabel}>{t('productVideoCreation.volumeMusique')}</Text>
                                 <Text style={styles.volumeValueBadge}>
                                     {Math.round((Number(musicVolume) || 0.28) * 100)}%
                                 </Text>
@@ -4531,7 +4531,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     )}
                     <View style={styles.toggleRow}>
                         <View style={styles.toggleText}>
-                            <Text style={styles.toggleLabel}>{t('productVideoCreation.envoyerDansLeChatCommerce')}/Text>
+                            <Text style={styles.toggleLabel}>{t('productVideoCreation.envoyerDansLeChatCommerce')}</Text>
                             <Text style={styles.toggleDescription}>
                                 Permet à vos prospects de visionner la vidéo directement dans la
                                 conversation.
@@ -4545,7 +4545,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     </View>
                     <View style={styles.toggleRow}>
                         <View style={styles.toggleText}>
-                            <Text style={styles.toggleLabel}>{t('productVideoCreation.afficherSurLaCarteProduit')}/Text>
+                            <Text style={styles.toggleLabel}>{t('productVideoCreation.afficherSurLaCarteProduit')}</Text>
                             <Text style={styles.toggleDescription}>
                                 Ajoute la vidéo dans la galerie principale du produit (mobile & web).
                             </Text>
@@ -4726,7 +4726,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
                 {/* Informations à intégrer automatiquement */}
                 <NativeCard style={styles.sectionCard}>
-                    <Text style={styles.sectionTitle}>{t('productVideoCreation.informationsAutomatiques')}/Text>
+                    <Text style={styles.sectionTitle}>{t('productVideoCreation.informationsAutomatiques')}</Text>
                     <Text style={styles.sectionSubtitle}>
                         Choisissez quelles informations du produit seront intégrées automatiquement dans la vidéo.
                     </Text>
@@ -4745,7 +4745,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     </View>
                     <View style={styles.toggleRow}>
                         <View style={styles.toggleText}>
-                            <Text style={styles.toggleLabel}>{t('productVideoCreation.promotionsActives')}/Text>
+                            <Text style={styles.toggleLabel}>{t('productVideoCreation.promotionsActives')}</Text>
                             <Text style={styles.toggleDescription}>
                                 Ajoute badges et messages promo détectés dans votre fiche produit.
                             </Text>
@@ -5222,7 +5222,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             // ✅ CORRIGÉ: Validation de la réponse - Ne pas bloquer si l'estimation échoue
             if (!response || !response.success) {
                 setCostLoading(false);
-                const errorMsg = response?.error || 'Impossible d\t('productVideoCreationModal.estimerLeCoutPourLeMoment');
+                const errorMsg = response?.error || t('productVideoCreationModal.impossibleDestimerLeCoutPourLeMoment');
                 console.warn('[ProductVideoCreationModal] Erreur estimation coût:', errorMsg);
 
                 // ✅ CORRIGÉ: Proposer de continuer quand même
@@ -5256,7 +5256,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 // ✅ CORRIGÉ: Proposer de continuer quand même
                 Alert.alert(
                     'Estimation impossible',
-                    'Impossible d\t('productVideoCreationModal.estimerLeCoutPourLeMomentnn') +
+                    t('productVideoCreationModal.impossibleDestimerLeCoutPourLeMomentnn') +
                     t('productVideoCreationModal.souhaitezvousContinuerAvecLaGenerationDe'),
                     [
                         { text: t('common.cancel'), style: 'cancel' },
@@ -5340,7 +5340,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             }
 
             // ✅ CORRIGÉ: Messages d'erreur améliorés
-            let errorMessage = 'Erreur lors de l\t('productVideoCreationModal.estimationDuCout');
+            let errorMessage = t('productVideoCreationModal.erreurLorsDeLestimationDuCout');
 
             if (error?.message) {
                 if (msg.includes('500') || msg.includes('internal') || msg.includes('erreur 500')) {
@@ -5385,7 +5385,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         if (productIndex === null || productIndex === undefined || isNaN(Number(productIndex))) {
             Alert.alert(
                 'Index produit invalide',
-                'L\t('productVideoCreationModal.indexDuProduitEstManquantOu'),
+                t('productVideoCreationModal.lindexDuProduitEstManquantOuInvalidennveuillezSelectionner'),
                 [{ text: 'OK' }]
             );
             return;
@@ -5792,7 +5792,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             return (
                 <NativeCard style={styles.sectionCard}>
                     <View style={styles.sectionHeader}>
-                        <Text style={styles.sectionTitle}>{t('productVideoCreation.produitPrincipal')}/Text>
+                        <Text style={styles.sectionTitle}>{t('productVideoCreation.produitPrincipal')}</Text>
                         <TouchableOpacity onPress={() => setSelectedProduct(null)} style={styles.linkButton}>
                             <SafeIcon name="refresh-ccw" size={16} color={modernColors.primary} />
                             <Text style={styles.linkButtonText}>Changer</Text>
@@ -6242,7 +6242,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                                 Éditeur AR non disponible
                                             </Text>
                                             <Text style={{ fontSize: 14, color: modernColors.textSecondary, marginTop: 8, textAlign: 'center' }}>
-                                                {error?.message || 'L\t('productVideoCreationModal.editeurArNecessiteReactnativevisioncameraVeuillezMettre')}
+                                                {error?.message || t('productVideoCreationModal.lediteurArNecessiteReactnativevisioncameraVeuillezMettreAJou')}
                                             </Text>
                                             <NativeButton
                                                 title={t('productVideoCreationModal.fermer')}

@@ -306,7 +306,7 @@ const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
       <View style={styles.cardHeader}>
         <View style={styles.cardTitleContainer}>
           <SafeIcon name="star" size={20} color={modernColors.primary} />
-          <Text style={styles.cardTitle}>{t('dashboard.servicesLesPlusPerformants')}/Text>
+          <Text style={styles.cardTitle}>{t('dashboard.servicesLesPlusPerformants')}</Text>
         </View>
         <TouchableOpacity onPress={onViewAllPress} style={styles.viewAllButton}>
           <Text style={styles.viewAllText}>{t('dashboard.voirTout')}</Text>
@@ -448,7 +448,7 @@ const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
         style={styles.header}
       >
         <View style={styles.headerContent}>
-          <Text style={styles.title}>{t('dashboard.dashboardPrestataire')}/Text>
+          <Text style={styles.title}>{t('dashboard.dashboardPrestataire')}</Text>
           <Text style={styles.subtitle}>{t('dashboard.tableauDeBordIntelligentAvec')}</Text>
           <View style={styles.periodIndicator}>
             <Text style={styles.periodIndicatorText}>

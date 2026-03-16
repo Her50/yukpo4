@@ -31,7 +31,7 @@ const WalletAlertBanner: React.FC<WalletAlertBannerProps> = ({ onRecharge }) => 
                 <View style={styles.row}>
                     <SafeIcon name="wallet" size={20} color={modernColors.primary} />
                     <View style={styles.content}>
-                        <Text style={styles.title}>{t('walletAlertBanner.soldeIndisponible')}/Text>
+                        <Text style={styles.title}>{t('walletAlertBanner.soldeIndisponible')}</Text>
                         <Text style={styles.subtitle}>{t('walletAlertBanner.actualiseTonPortefeuillePourVerifier')}</Text>
                     </View>
                     <NativeButton title={t('walletAlertBanner.actualiser')} variant="outline" onPress={refreshWalletBalance} />
@@ -49,7 +49,7 @@ const WalletAlertBanner: React.FC<WalletAlertBannerProps> = ({ onRecharge }) => 
                     color={canProceed ? modernColors.success : modernColors.warning}
                 />
                 <View style={styles.content}>
-                    <Text style={styles.title}>{t('walletAlertBanner.soldeYukpoWallet')}/Text>
+                    <Text style={styles.title}>{t('walletAlertBanner.soldeYukpoWallet')}</Text>
                     <Text style={styles.balance}>
                         {walletBalance.balance.toFixed(0)} {walletBalance.currency ?? currency ?? 'XAF'}
                     </Text>

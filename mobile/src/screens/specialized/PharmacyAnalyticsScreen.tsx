@@ -70,7 +70,7 @@ const PharmacyAnalyticsScreen: React.FC = () => {
                 if (!isOwner) {
                     Alert.alert(
                         t('pharmacyAnalyticsScreen.accesRefuse'),
-                        'Vous n\t('pharmacyAnalyticsScreen.etesPasAutoriseAVoirLes'),
+                        t('pharmacyAnalyticsScreen.vousNetesPasAutoriseAVoirLesAnalytics'),
                         [{ text: 'OK', onPress: () => navigation.goBack() }]
                     );
                 }
@@ -263,9 +263,9 @@ const PharmacyAnalyticsScreen: React.FC = () => {
 
                 {/* Statistiques de revenus */}
                 <NativeCard style={styles.card}>
-                    <Text style={styles.cardTitle}>{t('pharmacyAnalytics.revenus')}/Text>
+                    <Text style={styles.cardTitle}>{t('pharmacyAnalytics.revenus')}</Text>
                     <View style={styles.detailsRow}>
-                        <Text style={styles.detailsLabel}>{t('pharmacyAnalytics.revenuTotal')}/Text>
+                        <Text style={styles.detailsLabel}>{t('pharmacyAnalytics.revenuTotal')}</Text>
                         <Text style={[styles.detailsValue, styles.revenueValue]}>
                             {formatCurrency(analytics.total_revenue)}
                         </Text>

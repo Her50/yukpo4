@@ -130,7 +130,7 @@ const [modalVisible, setModalVisible] = useState(false);
   // Version complète (pour les settings)
   return (
     <View style={styles.fullContainer}>
-      <Text style={styles.sectionTitle}>{t('languageSelector.langueDeLapplication')}/Text>
+      <Text style={styles.sectionTitle}>{t('languageSelector.langueDeLapplication')}</Text>
       {LANGUAGES.map((language) => {
         const isSelected = language.code === selectedLanguage;
         return (

@@ -128,7 +128,7 @@ const [hasPermission, setHasPermission] = useState<boolean | null>(null);
         return (
             <View style={styles.container}>
                 <ActivityIndicator size="large" color={modernColors.primary} />
-                <Text style={styles.loadingText}>{t('videoRecorder.demandeDePermissions')}/Text>
+                <Text style={styles.loadingText}>{t('videoRecorder.demandeDePermissions')}</Text>
             </View>
         );
     }

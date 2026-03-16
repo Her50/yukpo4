@@ -389,7 +389,7 @@ const BanqueSangSearchScreen: React.FC = () => {
 
                 {/* Formulaire de recherche */}
                 <View style={styles.searchFormCard}>
-                    <Text style={styles.sectionTitle}>{t('banqueSangSearch.localisation')}/Text>
+                    <Text style={styles.sectionTitle}>{t('banqueSangSearch.localisation')}</Text>
 
                     {/* Localisation GPS */}
                     <View style={styles.inputGroup}>

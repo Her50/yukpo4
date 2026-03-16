@@ -348,7 +348,7 @@ const DeliveryHomeScreen: React.FC = () => {
 
                     {/* ✅ CORRIGÉ: Livraison de colis AVANT courses supermarché */}
                     <NativeCard style={styles.card}>
-                        <Text style={styles.cardTitle}>{t('deliveryHome.livraisonDeColis')}/Text>
+                        <Text style={styles.cardTitle}>{t('deliveryHome.livraisonDeColis')}</Text>
                         <Text style={styles.cardSubtitle}>
                             Précisez les caractéristiques du colis que vous souhaitez faire transporter par un coursier.
                         </Text>

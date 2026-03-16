@@ -556,16 +556,24 @@ RÉPONSE ATTENDUE (JSON strict) :
         .unwrap_or("")
         .to_string();
     if !classe_act_owned.is_empty() && classe_act_owned != "null" {
-        let computed =
-            crate::services::book_exchange_ai_service::compute_classe_superieure(&classe_act_owned);
-        if book_info
-            .get("classe_souhaitee")
-            .and_then(|v| v.as_str())
-            .unwrap_or("")
-            .is_empty()
-            || book_info.get("classe_souhaitee").and_then(|v| v.as_str()) == Some("null")
-        {
-            book_info["classe_souhaitee"] = json!(computed);
+        // Terminale: PAS de classe supérieure → classe_souhaitee=null, mode=vente
+        if crate::services::book_exchange_ai_service::is_classe_terminale(&classe_act_owned) {
+            book_info["classe_souhaitee"] = json!(null);
+            book_info["mode_listing_suggere"] = json!("vente");
+            log::info!("[analyze_book_image] Classe Terminale → classe_souhaitee=null, mode=vente");
+        } else {
+            let computed = crate::services::book_exchange_ai_service::compute_classe_superieure(
+                &classe_act_owned,
+            );
+            if book_info
+                .get("classe_souhaitee")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .is_empty()
+                || book_info.get("classe_souhaitee").and_then(|v| v.as_str()) == Some("null")
+            {
+                book_info["classe_souhaitee"] = json!(computed);
+            }
         }
         // Ajouter le niveau si manquant
         if book_info.get("niveau").and_then(|v| v.as_str()).unwrap_or("").is_empty() {

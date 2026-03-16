@@ -141,7 +141,7 @@ const [versions, setVersions] = useState<PubliciteVersion[]>([]);
         <ScrollView style={styles.container}>
             <View style={styles.header}>
                 <SafeIcon name="history" size={24} color={modernColors.primary} />
-                <Text style={styles.headerTitle}>{t('publiciteVersionHistory.historiqueDesModifications')}/Text>
+                <Text style={styles.headerTitle}>{t('publiciteVersionHistory.historiqueDesModifications')}</Text>
                 <View style={styles.badge}>
                     <Text style={styles.badgeText}>{versions.length}</Text>
                 </View>

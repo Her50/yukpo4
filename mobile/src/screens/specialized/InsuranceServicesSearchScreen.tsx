@@ -194,7 +194,7 @@ const InsuranceServicesSearchScreen: React.FC = () => {
 
                 {/* Formulaire de recherche */}
                 <View style={styles.searchFormCard}>
-                    <Text style={styles.sectionTitle}>{t('insuranceServicesSearch.typeDassurance')}/Text>
+                    <Text style={styles.sectionTitle}>{t('insuranceServicesSearch.typeDassurance')}</Text>
 
                     {/* Type assurance */}
                     <View style={styles.inputGroup}>
@@ -248,7 +248,7 @@ const InsuranceServicesSearchScreen: React.FC = () => {
                     </View>
 
                     {/* Localisation */}
-                    <Text style={styles.sectionTitle}>{t('insuranceServicesSearch.localisation')}/Text>
+                    <Text style={styles.sectionTitle}>{t('insuranceServicesSearch.localisation')}</Text>
 
                     {/* Ville */}
                     <View style={styles.inputGroup}>

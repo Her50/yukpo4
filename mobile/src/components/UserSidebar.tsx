@@ -23,7 +23,7 @@ const UserSidebar: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>{t('userSidebar.espaceUtilisateur')}/Text>
+      <Text style={styles.title}>{t('userSidebar.espaceUtilisateur')}</Text>
       {links.map((link) => (
         <TouchableOpacity
           key={link.screen}

@@ -707,7 +707,7 @@ const MesServicesSpecialisesScreen: React.FC = () => {
                 <View style={styles.group}>
                     <View style={styles.groupHeader}>
                         <SafeIcon name="grid" size={20} color="#8B5CF6" type="lucide" />
-                        <Text style={styles.groupTitle}>{t('mesServicesSpecialises.emploiAssuranceAutres')}/Text>
+                        <Text style={styles.groupTitle}>{t('mesServicesSpecialises.emploiAssuranceAutres')}</Text>
                     </View>
                     <View style={styles.servicesGrid}>
                         {filteredAutres.map((service) => (

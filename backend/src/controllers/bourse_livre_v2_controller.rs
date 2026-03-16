@@ -403,20 +403,17 @@ pub async fn analyze_recto_verso(
     .bind::<&[String]>(&[]) // images_urls vide, on utilise recto/verso
     .bind(&session.gps_recuperation)
     .bind::<Option<&str>>(None) // ville sera déduite du GPS
-    // ✅ Terminale: forcer mode_listing='vente' (pas de classe supérieure → pas de troc)
-    // Pour les autres classes: utiliser le mode par défaut de la session
-    {
+    // ✅ $17: mode_listing — Terminale: forcer 'vente' (pas de classe supérieure → pas de troc)
+    .bind({
         let classe_act = analysis.classe_actuelle.as_deref().unwrap_or("");
-        let is_terminale = crate::services::book_exchange_ai_service::is_classe_terminale(classe_act);
+        let is_terminale =
+            crate::services::book_exchange_ai_service::is_classe_terminale(classe_act);
         if is_terminale {
             info!("[analyze_recto_verso] Classe Terminale détectée → mode_listing=vente forcé");
-        }
-        let mode = if is_terminale {
-            "vente"
+            "vente".to_string()
         } else {
-            session.mode_listing_defaut.as_deref().unwrap_or("troc")
-        };
-        mode.to_string()
+            session.mode_listing_defaut.as_deref().unwrap_or("troc").to_string()
+        }
     })
     .bind(
         analysis
@@ -435,13 +432,18 @@ pub async fn analyze_recto_verso(
     // $28: situation_troc — 'offre' pour vente/don/Terminale, 'offre_demande' pour troc
     .bind({
         let classe_act = analysis.classe_actuelle.as_deref().unwrap_or("");
-        let is_terminale = crate::services::book_exchange_ai_service::is_classe_terminale(classe_act);
+        let is_terminale =
+            crate::services::book_exchange_ai_service::is_classe_terminale(classe_act);
         let mode = if is_terminale {
             "vente"
         } else {
             session.mode_listing_defaut.as_deref().unwrap_or("troc")
         };
-        if mode == "troc" { "offre_demande" } else { "offre" }
+        if mode == "troc" {
+            "offre_demande"
+        } else {
+            "offre"
+        }
     })
     .bind(&request.session_id)
     .fetch_one(&state.pg)

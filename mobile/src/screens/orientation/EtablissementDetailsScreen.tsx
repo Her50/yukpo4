@@ -79,7 +79,7 @@ const EtablissementDetailsScreen: React.FC = () => {
                     style={styles.backButton}
                     onPress={() => navigation.goBack()}
                 >
-                    <Text style={styles.backButtonText}>{t('etablissementDetails.retour')}/Text>
+                    <Text style={styles.backButtonText}>{t('etablissementDetails.retour')}</Text>
                 </TouchableOpacity>
             </View>
         );
@@ -234,7 +234,7 @@ const EtablissementDetailsScreen: React.FC = () => {
             {etablissement.statistiques_examens &&
                 Object.keys(etablissement.statistiques_examens).length > 0 && (
                     <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>{t('etablissementDetails.statistiquesDexamens')}/Text>
+                        <Text style={styles.sectionTitle}>{t('etablissementDetails.statistiquesDexamens')}</Text>
                         {Object.entries(etablissement.statistiques_examens).map(
                             ([annee, stats]: [string, any]) => (
                                 <View key={annee} style={styles.statsCard}>

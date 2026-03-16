@@ -13,62 +13,459 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 
-/// Calcule la classe immédiatement supérieure dans le système camerounais/francophone.
-/// Hiérarchie: SIL → CP → CE1 → CE2 → CM1 → CM2 → 6ème → 5ème → 4ème → 3ème → Seconde → Première → Terminale
-/// Retourne "" (vide) pour Terminale car il n'y a PAS de classe supérieure.
-pub fn compute_classe_superieure(classe_actuelle: &str) -> String {
-    let normalized = classe_actuelle.trim().to_lowercase();
-    let mapping: &[(&str, &str)] = &[
-        ("sil", "CP"),
-        ("cp", "CE1"),
-        ("ce1", "CE2"),
-        ("ce2", "CM1"),
-        ("cm1", "CM2"),
-        ("cm2", "6ème"),
-        ("6ème", "5ème"),
-        ("6eme", "5ème"),
-        ("5ème", "4ème"),
-        ("5eme", "4ème"),
-        ("4ème", "3ème"),
-        ("4eme", "3ème"),
-        ("3ème", "Seconde"),
-        ("3eme", "Seconde"),
-        ("seconde", "Première"),
-        ("2nde", "Première"),
-        ("première", "Terminale"),
-        ("premiere", "Terminale"),
-        ("1ère", "Terminale"),
-        ("1ere", "Terminale"),
-        // Terminale → PAS de classe supérieure → retourne vide
-        ("terminale", ""),
-        ("tle", ""),
+// ============================================================================
+// SYSTÈMES SCOLAIRES MULTI-PAYS
+// ============================================================================
+
+/// Représente un système scolaire avec sa hiérarchie de classes
+pub struct SchoolSystem {
+    pub code: &'static str,
+    pub name: &'static str,
+    pub language: &'static str,
+    pub currency: &'static str,
+    /// (normalized_class, next_class, level_label) — next_class="" si dernière classe
+    pub hierarchy: &'static [(&'static str, &'static str, &'static str)],
+}
+
+/// Tous les systèmes scolaires supportés
+pub fn get_all_school_systems() -> Vec<&'static SchoolSystem> {
+    vec![
+        &SYSTEM_CAMEROUN_FR,
+        &SYSTEM_CAMEROUN_EN,
+        &SYSTEM_NIGERIA,
+        &SYSTEM_FRANCOPHONE_WEST, // Sénégal, Côte d'Ivoire, Gabon, Togo, Bénin, Burkina, Mali, Niger, Guinée
+        &SYSTEM_RDC,
+        &SYSTEM_GHANA,
+        &SYSTEM_KENYA,
+    ]
+}
+
+// -- Cameroun Francophone --
+static SYSTEM_CAMEROUN_FR: SchoolSystem = SchoolSystem {
+    code: "cm_fr",
+    name: "Cameroun (Francophone)",
+    language: "fr",
+    currency: "XAF",
+    hierarchy: &[
+        ("sil", "CP", "Primaire"),
+        ("cp", "CE1", "Primaire"),
+        ("ce1", "CE2", "Primaire"),
+        ("ce2", "CM1", "Primaire"),
+        ("cm1", "CM2", "Primaire"),
+        ("cm2", "6ème", "Primaire"),
+        ("6ème", "5ème", "Collège"),
+        ("6eme", "5ème", "Collège"),
+        ("5ème", "4ème", "Collège"),
+        ("5eme", "4ème", "Collège"),
+        ("4ème", "3ème", "Collège"),
+        ("4eme", "3ème", "Collège"),
+        ("3ème", "Seconde", "Collège"),
+        ("3eme", "Seconde", "Collège"),
+        ("seconde", "Première", "Lycée"),
+        ("2nde", "Première", "Lycée"),
+        ("première", "Terminale", "Lycée"),
+        ("premiere", "Terminale", "Lycée"),
+        ("1ère", "Terminale", "Lycée"),
+        ("1ere", "Terminale", "Lycée"),
+        ("terminale", "", "Lycée"),
+        ("tle", "", "Lycée"),
+    ],
+};
+
+// -- Cameroun Anglophone (GCE system) --
+static SYSTEM_CAMEROUN_EN: SchoolSystem = SchoolSystem {
+    code: "cm_en",
+    name: "Cameroon (Anglophone/GCE)",
+    language: "en",
+    currency: "XAF",
+    hierarchy: &[
+        ("class 1", "Class 2", "Primary"),
+        ("class1", "Class 2", "Primary"),
+        ("class 2", "Class 3", "Primary"),
+        ("class2", "Class 3", "Primary"),
+        ("class 3", "Class 4", "Primary"),
+        ("class3", "Class 4", "Primary"),
+        ("class 4", "Class 5", "Primary"),
+        ("class4", "Class 5", "Primary"),
+        ("class 5", "Class 6", "Primary"),
+        ("class5", "Class 6", "Primary"),
+        ("class 6", "Form 1", "Primary"),
+        ("class6", "Form 1", "Primary"),
+        ("form 1", "Form 2", "Secondary"),
+        ("form1", "Form 2", "Secondary"),
+        ("form 2", "Form 3", "Secondary"),
+        ("form2", "Form 3", "Secondary"),
+        ("form 3", "Form 4", "Secondary"),
+        ("form3", "Form 4", "Secondary"),
+        ("form 4", "Form 5", "Secondary"),
+        ("form4", "Form 5", "Secondary"),
+        ("form 5", "Lower Sixth", "Secondary"),
+        ("form5", "Lower Sixth", "Secondary"),
+        ("lower sixth", "Upper Sixth", "High School"),
+        ("lower 6th", "Upper Sixth", "High School"),
+        ("upper sixth", "", "High School"),
+        ("upper 6th", "", "High School"),
+    ],
+};
+
+// -- Nigeria --
+static SYSTEM_NIGERIA: SchoolSystem = SchoolSystem {
+    code: "ng",
+    name: "Nigeria",
+    language: "en",
+    currency: "NGN",
+    hierarchy: &[
+        ("primary 1", "Primary 2", "Primary"),
+        ("p1", "Primary 2", "Primary"),
+        ("primary 2", "Primary 3", "Primary"),
+        ("p2", "Primary 3", "Primary"),
+        ("primary 3", "Primary 4", "Primary"),
+        ("p3", "Primary 4", "Primary"),
+        ("primary 4", "Primary 5", "Primary"),
+        ("p4", "Primary 5", "Primary"),
+        ("primary 5", "Primary 6", "Primary"),
+        ("p5", "Primary 6", "Primary"),
+        ("primary 6", "JSS 1", "Primary"),
+        ("p6", "JSS 1", "Primary"),
+        ("jss 1", "JSS 2", "Junior Secondary"),
+        ("jss1", "JSS 2", "Junior Secondary"),
+        ("jss 2", "JSS 3", "Junior Secondary"),
+        ("jss2", "JSS 3", "Junior Secondary"),
+        ("jss 3", "SSS 1", "Junior Secondary"),
+        ("jss3", "SSS 1", "Junior Secondary"),
+        ("sss 1", "SSS 2", "Senior Secondary"),
+        ("sss1", "SSS 2", "Senior Secondary"),
+        ("sss 2", "SSS 3", "Senior Secondary"),
+        ("sss2", "SSS 3", "Senior Secondary"),
+        ("sss 3", "", "Senior Secondary"),
+        ("sss3", "", "Senior Secondary"),
+    ],
+};
+
+// -- Afrique francophone (Sénégal, Côte d'Ivoire, Gabon, Togo, Bénin, Burkina, Mali, Niger, Guinée, Congo-Brazza) --
+static SYSTEM_FRANCOPHONE_WEST: SchoolSystem = SchoolSystem {
+    code: "fr_west",
+    name: "Afrique Francophone (Sénégal, Côte d'Ivoire, Gabon, etc.)",
+    language: "fr",
+    currency: "XOF",
+    hierarchy: &[
+        ("ci", "CP", "Primaire"),
+        ("cp", "CE1", "Primaire"),
+        ("ce1", "CE2", "Primaire"),
+        ("ce2", "CM1", "Primaire"),
+        ("cm1", "CM2", "Primaire"),
+        ("cm2", "6ème", "Primaire"),
+        ("6ème", "5ème", "Collège"),
+        ("6eme", "5ème", "Collège"),
+        ("5ème", "4ème", "Collège"),
+        ("5eme", "4ème", "Collège"),
+        ("4ème", "3ème", "Collège"),
+        ("4eme", "3ème", "Collège"),
+        ("3ème", "Seconde", "Collège"),
+        ("3eme", "Seconde", "Collège"),
+        ("seconde", "Première", "Lycée"),
+        ("2nde", "Première", "Lycée"),
+        ("première", "Terminale", "Lycée"),
+        ("premiere", "Terminale", "Lycée"),
+        ("1ère", "Terminale", "Lycée"),
+        ("1ere", "Terminale", "Lycée"),
+        ("terminale", "", "Lycée"),
+        ("tle", "", "Lycée"),
+    ],
+};
+
+// -- RDC (République Démocratique du Congo) --
+static SYSTEM_RDC: SchoolSystem = SchoolSystem {
+    code: "cd",
+    name: "RDC (Congo Kinshasa)",
+    language: "fr",
+    currency: "CDF",
+    hierarchy: &[
+        ("1ère primaire", "2ème primaire", "Primaire"),
+        ("1ere primaire", "2ème primaire", "Primaire"),
+        ("2ème primaire", "3ème primaire", "Primaire"),
+        ("2eme primaire", "3ème primaire", "Primaire"),
+        ("3ème primaire", "4ème primaire", "Primaire"),
+        ("3eme primaire", "4ème primaire", "Primaire"),
+        ("4ème primaire", "5ème primaire", "Primaire"),
+        ("4eme primaire", "5ème primaire", "Primaire"),
+        ("5ème primaire", "6ème primaire", "Primaire"),
+        ("5eme primaire", "6ème primaire", "Primaire"),
+        ("6ème primaire", "1ère secondaire", "Primaire"),
+        ("6eme primaire", "1ère secondaire", "Primaire"),
+        ("1ère secondaire", "2ème secondaire", "Secondaire"),
+        ("1ere secondaire", "2ème secondaire", "Secondaire"),
+        ("2ème secondaire", "3ème secondaire", "Secondaire"),
+        ("2eme secondaire", "3ème secondaire", "Secondaire"),
+        ("3ème secondaire", "4ème secondaire", "Secondaire"),
+        ("3eme secondaire", "4ème secondaire", "Secondaire"),
+        ("4ème secondaire", "5ème secondaire", "Secondaire"),
+        ("4eme secondaire", "5ème secondaire", "Secondaire"),
+        ("5ème secondaire", "6ème secondaire", "Secondaire"),
+        ("5eme secondaire", "6ème secondaire", "Secondaire"),
+        ("6ème secondaire", "", "Secondaire"),
+        ("6eme secondaire", "", "Secondaire"),
+    ],
+};
+
+// -- Ghana --
+static SYSTEM_GHANA: SchoolSystem = SchoolSystem {
+    code: "gh",
+    name: "Ghana",
+    language: "en",
+    currency: "GHS",
+    hierarchy: &[
+        ("primary 1", "Primary 2", "Primary"),
+        ("p1", "Primary 2", "Primary"),
+        ("primary 2", "Primary 3", "Primary"),
+        ("p2", "Primary 3", "Primary"),
+        ("primary 3", "Primary 4", "Primary"),
+        ("p3", "Primary 4", "Primary"),
+        ("primary 4", "Primary 5", "Primary"),
+        ("p4", "Primary 5", "Primary"),
+        ("primary 5", "Primary 6", "Primary"),
+        ("p5", "Primary 6", "Primary"),
+        ("primary 6", "JHS 1", "Primary"),
+        ("p6", "JHS 1", "Primary"),
+        ("jhs 1", "JHS 2", "Junior High"),
+        ("jhs1", "JHS 2", "Junior High"),
+        ("jhs 2", "JHS 3", "Junior High"),
+        ("jhs2", "JHS 3", "Junior High"),
+        ("jhs 3", "SHS 1", "Junior High"),
+        ("jhs3", "SHS 1", "Junior High"),
+        ("shs 1", "SHS 2", "Senior High"),
+        ("shs1", "SHS 2", "Senior High"),
+        ("shs 2", "SHS 3", "Senior High"),
+        ("shs2", "SHS 3", "Senior High"),
+        ("shs 3", "", "Senior High"),
+        ("shs3", "", "Senior High"),
+    ],
+};
+
+// -- Kenya / East Africa --
+static SYSTEM_KENYA: SchoolSystem = SchoolSystem {
+    code: "ke",
+    name: "Kenya / East Africa",
+    language: "en",
+    currency: "KES",
+    hierarchy: &[
+        ("standard 1", "Standard 2", "Primary"),
+        ("std 1", "Standard 2", "Primary"),
+        ("standard 2", "Standard 3", "Primary"),
+        ("std 2", "Standard 3", "Primary"),
+        ("standard 3", "Standard 4", "Primary"),
+        ("std 3", "Standard 4", "Primary"),
+        ("standard 4", "Standard 5", "Primary"),
+        ("std 4", "Standard 5", "Primary"),
+        ("standard 5", "Standard 6", "Primary"),
+        ("std 5", "Standard 6", "Primary"),
+        ("standard 6", "Standard 7", "Primary"),
+        ("std 6", "Standard 7", "Primary"),
+        ("standard 7", "Standard 8", "Primary"),
+        ("std 7", "Standard 8", "Primary"),
+        ("standard 8", "Form 1", "Primary"),
+        ("std 8", "Form 1", "Primary"),
+        ("form 1", "Form 2", "Secondary"),
+        ("form1", "Form 2", "Secondary"),
+        ("form 2", "Form 3", "Secondary"),
+        ("form2", "Form 3", "Secondary"),
+        ("form 3", "Form 4", "Secondary"),
+        ("form3", "Form 4", "Secondary"),
+        ("form 4", "", "Secondary"),
+        ("form4", "", "Secondary"),
+    ],
+};
+
+// ============================================================================
+// DÉTECTION PAYS PAR GPS (bounding boxes simplifiées)
+// ============================================================================
+
+/// Détecte le code pays à partir de coordonnées GPS (lat, lng).
+/// Utilise des bounding boxes simplifiées pour les pays africains.
+/// Retourne "cm" par défaut si aucune correspondance.
+pub fn detect_country_from_gps(lat: f64, lng: f64) -> &'static str {
+    // Bounding boxes approximatives (lat_min, lat_max, lng_min, lng_max)
+    let countries: &[(&str, f64, f64, f64, f64)] = &[
+        ("cm", 1.65, 13.10, 8.40, 16.20),     // Cameroun
+        ("ng", 4.20, 13.90, 2.67, 14.68),     // Nigeria
+        ("sn", 12.30, 16.70, -17.55, -11.35), // Sénégal
+        ("ci", 4.30, 10.75, -8.60, -2.50),    // Côte d'Ivoire
+        ("ga", -3.95, 2.35, 8.65, 14.55),     // Gabon
+        ("cd", -13.46, 5.39, 12.18, 31.31),   // RDC
+        ("cg", -5.02, 3.71, 11.12, 18.65),    // Congo-Brazza
+        ("gh", 4.73, 11.18, -3.25, 1.20),     // Ghana
+        ("ke", -4.72, 5.03, 33.89, 41.91),    // Kenya
+        ("tg", 6.10, 11.14, -0.15, 1.81),     // Togo
+        ("bj", 6.22, 12.42, 0.76, 3.85),      // Bénin
+        ("bf", 9.39, 15.09, -5.52, 2.41),     // Burkina Faso
+        ("ml", 10.16, 25.00, -12.24, 4.27),   // Mali
+        ("ne", 11.69, 23.53, 0.16, 16.00),    // Niger
+        ("gn", 7.19, 12.68, -15.08, -7.64),   // Guinée
+        ("tz", -11.75, -0.98, 29.33, 40.44),  // Tanzanie
+        ("ug", -1.48, 4.23, 29.57, 35.03),    // Ouganda
+        ("rw", -2.84, -1.05, 28.86, 30.90),   // Rwanda
+        ("td", 7.44, 23.45, 13.47, 24.00),    // Tchad
+        ("cf", 2.22, 11.00, 14.42, 27.46),    // Centrafrique
     ];
-    for (key, val) in mapping {
-        if normalized == *key {
-            return val.to_string();
+    for &(code, lat_min, lat_max, lng_min, lng_max) in countries {
+        if lat >= lat_min && lat <= lat_max && lng >= lng_min && lng <= lng_max {
+            return code;
         }
     }
-    // Si non reconnu, retourner la même classe
+    "cm" // Défaut: Cameroun
+}
+
+/// Retourne le système scolaire approprié pour un code pays.
+/// Gère les regroupements (ex: Sénégal, Côte d'Ivoire → même système francophone).
+pub fn get_school_system_for_country(country_code: &str) -> &'static SchoolSystem {
+    match country_code {
+        "cm" => &SYSTEM_CAMEROUN_FR, // Défaut francophone, l'IA affinera si anglophone
+        "ng" => &SYSTEM_NIGERIA,
+        "gh" => &SYSTEM_GHANA,
+        "ke" | "tz" | "ug" | "rw" => &SYSTEM_KENYA,
+        "cd" => &SYSTEM_RDC,
+        "sn" | "ci" | "ga" | "cg" | "tg" | "bj" | "bf" | "ml" | "ne" | "gn" | "td" | "cf" => {
+            &SYSTEM_FRANCOPHONE_WEST
+        }
+        _ => &SYSTEM_CAMEROUN_FR, // Fallback global
+    }
+}
+
+/// Détecte le système scolaire à partir de GPS.
+pub fn detect_school_system_from_gps(lat: f64, lng: f64) -> &'static SchoolSystem {
+    let country = detect_country_from_gps(lat, lng);
+    get_school_system_for_country(country)
+}
+
+// ============================================================================
+// FONCTIONS UTILITAIRES MULTI-SYSTÈMES
+// ============================================================================
+
+/// Calcule la classe immédiatement supérieure.
+/// Essaie d'abord le système détecté par GPS, puis tous les systèmes en fallback.
+/// Retourne "" (vide) si c'est la dernière classe du système.
+pub fn compute_classe_superieure(classe_actuelle: &str) -> String {
+    compute_classe_superieure_with_gps(classe_actuelle, None, None)
+}
+
+/// Version GPS-aware de compute_classe_superieure.
+pub fn compute_classe_superieure_with_gps(
+    classe_actuelle: &str,
+    lat: Option<f64>,
+    lng: Option<f64>,
+) -> String {
+    let normalized = classe_actuelle.trim().to_lowercase();
+
+    // 1. Si GPS disponible, essayer le système du pays détecté en priorité
+    if let (Some(lat_v), Some(lng_v)) = (lat, lng) {
+        if lat_v != 0.0 || lng_v != 0.0 {
+            let system = detect_school_system_from_gps(lat_v, lng_v);
+            for &(key, next, _) in system.hierarchy {
+                if normalized == key {
+                    return next.to_string();
+                }
+            }
+        }
+    }
+
+    // 2. Fallback: chercher dans TOUS les systèmes
+    for system in get_all_school_systems() {
+        for &(key, next, _) in system.hierarchy {
+            if normalized == key {
+                return next.to_string();
+            }
+        }
+    }
+
+    // 3. Si non reconnu, retourner la même classe (l'IA devra affiner)
     classe_actuelle.to_string()
 }
 
-/// Vérifie si une classe est la Terminale (dernière classe, pas de troc possible)
+/// Vérifie si une classe est la dernière de son système (pas de troc possible, vente uniquement).
+/// Fonctionne pour tous les systèmes: Terminale, Upper Sixth, SSS 3, SHS 3, Form 4 (Kenya), 6ème secondaire (RDC)...
 pub fn is_classe_terminale(classe: &str) -> bool {
     let normalized = classe.trim().to_lowercase();
-    matches!(normalized.as_str(), "terminale" | "tle")
+
+    // Chercher dans tous les systèmes: une classe est "terminale" si next_class == ""
+    for system in get_all_school_systems() {
+        for &(key, next, _) in system.hierarchy {
+            if normalized == key && next.is_empty() {
+                return true;
+            }
+        }
+    }
+    false
 }
 
-/// Déduit le niveau scolaire (Primaire/Collège/Lycée) depuis la classe
+/// Déduit le niveau scolaire depuis la classe (multi-système).
 pub fn compute_niveau_from_classe(classe: &str) -> &'static str {
     let normalized = classe.trim().to_lowercase();
-    match normalized.as_str() {
-        "sil" | "cp" | "ce1" | "ce2" | "cm1" | "cm2" => "Primaire",
-        "6ème" | "6eme" | "5ème" | "5eme" | "4ème" | "4eme" | "3ème" | "3eme" => "Collège",
-        "seconde" | "2nde" | "première" | "premiere" | "1ère" | "1ere" | "terminale" | "tle" => {
-            "Lycée"
+    for system in get_all_school_systems() {
+        for &(key, _, level) in system.hierarchy {
+            if normalized == key {
+                return level;
+            }
         }
-        _ => "Non déterminé",
     }
+    "Non déterminé"
+}
+
+/// Génère la description complète de la hiérarchie pour un système donné.
+/// Utilisé dans les prompts IA pour que l'IA connaisse le système de l'utilisateur.
+pub fn get_hierarchy_description_for_prompt(system: &SchoolSystem) -> String {
+    let mut levels: Vec<(&str, Vec<String>)> = Vec::new();
+    let mut current_level = "";
+    let mut current_classes: Vec<String> = Vec::new();
+
+    // Dédupliquer (les alias comme "6eme"/"6ème" ne doivent apparaître qu'une fois)
+    let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
+
+    for &(key, next, level) in system.hierarchy {
+        // Skip les alias (si la classe suivante est la même que celle d'un autre entry)
+        let display_name = if next.is_empty() {
+            key.to_string()
+        } else {
+            key.to_string()
+        };
+        if seen.contains(&display_name) {
+            continue;
+        }
+        seen.insert(display_name.clone());
+
+        if level != current_level {
+            if !current_classes.is_empty() {
+                levels.push((current_level, current_classes.clone()));
+                current_classes.clear();
+            }
+            current_level = level;
+        }
+        // Formater: "CM2 → 6ème" ou "Terminale (FIN)"
+        if next.is_empty() {
+            current_classes.push(format!("{} (FIN - vente uniquement)", key));
+        } else {
+            current_classes.push(format!("{} → {}", key, next));
+        }
+    }
+    if !current_classes.is_empty() {
+        levels.push((current_level, current_classes));
+    }
+
+    let mut result = String::new();
+    for (level_name, classes) in &levels {
+        result.push_str(&format!("  {} : {}\n", level_name, classes.join(", ")));
+    }
+    result
+}
+
+/// Retourne la description multi-système pour le prompt IA quand on ne connaît pas
+/// le système exact (fallback universel).
+pub fn get_all_systems_description_for_prompt() -> String {
+    let mut result = String::new();
+    for system in get_all_school_systems() {
+        result.push_str(&format!("\n--- {} ---\n", system.name));
+        result.push_str(&get_hierarchy_description_for_prompt(system));
+    }
+    result
 }
 
 /// Recommandations de livres basées sur classe/matière
@@ -480,12 +877,60 @@ RÉPONSE ATTENDUE (JSON strict) :
         let lat = user_lat.unwrap_or(0.0);
         let lng = user_lng.unwrap_or(0.0);
 
+        // ✅ Détecter le système scolaire à partir du GPS de l'utilisateur
+        let detected_system = if lat != 0.0 || lng != 0.0 {
+            detect_school_system_from_gps(lat, lng)
+        } else {
+            get_school_system_for_country("cm") // Défaut Cameroun
+        };
+        let country_code = detect_country_from_gps(lat, lng);
+        let hierarchy_desc = get_hierarchy_description_for_prompt(detected_system);
+
+        // Déterminer si les programmes sont disponibles ou si l'IA doit faire un fallback
+        let programmes_info = if programmes_disponibles.is_empty()
+            || programmes_disponibles == "[]"
+            || programmes_disponibles == "Aucun"
+        {
+            format!(
+                "AUCUN programme scolaire n'est encore enregistré pour cette région. \
+                Tu DOIS utiliser tes connaissances du système éducatif {} pour déterminer \
+                si ce livre correspond au programme officiel actuel. Indique est_au_programme=true \
+                si tu es raisonnablement confiant, avec programme_match_details expliquant ton raisonnement. \
+                Mets programme_scolaire_id=null dans ce cas.",
+                detected_system.name
+            )
+        } else {
+            format!("Programmes scolaires connus : {}", programmes_disponibles)
+        };
+
+        log::info!(
+            "[BookExchangeAIService] Système scolaire détecté: {} ({}) pour GPS ({}, {})",
+            detected_system.name,
+            detected_system.code,
+            lat,
+            lng
+        );
+
         let mut variables = std::collections::HashMap::new();
         variables.insert("user_lat".to_string(), format!("{}", lat));
         variables.insert("user_lng".to_string(), format!("{}", lng));
+        variables.insert("pays_detecte".to_string(), country_code.to_uppercase());
+        variables.insert(
+            "systeme_scolaire".to_string(),
+            detected_system.name.to_string(),
+        );
+        variables.insert(
+            "langue_systeme".to_string(),
+            detected_system.language.to_string(),
+        );
+        variables.insert(
+            "devise_locale".to_string(),
+            detected_system.currency.to_string(),
+        );
+        variables.insert("hierarchie_classes".to_string(), hierarchy_desc.clone());
         variables.insert(
             "programmes_disponibles".to_string(),
-            programmes_disponibles.to_string(),
+            programmes_info.clone(),
         );
 
         let prompt = crate::services::ia::prompt_loader::load_prompt_section_with_vars(
@@ -499,24 +944,45 @@ RÉPONSE ATTENDUE (JSON strict) :
                 "[BookExchangeAIService] Erreur chargement prompt recto-verso, utilisation fallback: {}",
                 e
             );
+            // Fallback: construire un prompt hyper-contextuel directement
             format!(
-                r#"Tu es un expert en analyse de livres scolaires pour Yukpo (Cameroun/Afrique).
-Analyse les images RECTO et VERSO du livre.
-Extrais: titre, auteur, éditeur, ISBN, classe du livre (classe_actuelle), matière, niveau (Primaire/Collège/Lycée).
-Détecte le prix imprimé et la devise.
-Classe l'état en 3 niveaux: "bon", "acceptable", "rejete".
+                r#"Tu es un expert en analyse de livres scolaires pour la plateforme Yukpo.
 
-CALCUL CLASSE SUPÉRIEURE (OBLIGATOIRE):
-L'élève a DÉJÀ UTILISÉ ce livre → il passe en classe supérieure.
-classe_souhaitee = classe IMMÉDIATEMENT SUPÉRIEURE à classe_actuelle.
-Hiérarchie: SIL→CP→CE1→CE2→CM1→CM2→6ème→5ème→4ème→3ème→Seconde→Première→Terminale.
-Ex: livre "6ème" → classe_souhaitee="5ème", livre "CM2" → classe_souhaitee="6ème", livre "3ème" → classe_souhaitee="Seconde".
-Si Terminale → classe_souhaitee=null (pas de classe supérieure, livre en mode vente uniquement).
+CONTEXTE GÉOGRAPHIQUE ET ACADÉMIQUE:
+- Localisation utilisateur: lat={lat}, lng={lng}
+- Pays détecté: {country}
+- Système scolaire: {system_name}
+- Langue du système: {lang}
+- Devise locale: {currency}
 
-Localisation: lat={}, lng={}.
-Programmes connus: {}.
+HIÉRARCHIE DES CLASSES ({system_name}):
+{hierarchy}
+IMPORTANT: La DERNIÈRE classe de la hiérarchie (marquée FIN) n'a PAS de classe supérieure → classe_souhaitee=null, le livre ne peut être que VENDU.
+
+TON RÔLE - ANALYSER LES DEUX FACES DU LIVRE:
+1. EXTRACTION: titre, auteur, éditeur, ISBN, classe du livre (classe_actuelle), matière, niveau
+2. CLASSE SUPÉRIEURE (OBLIGATOIRE): L'élève a DÉJÀ UTILISÉ ce livre → il passe en classe supérieure.
+   classe_souhaitee = classe IMMÉDIATEMENT SUPÉRIEURE selon la hiérarchie ci-dessus.
+   Si c'est la dernière classe → classe_souhaitee=null.
+3. PRIX & DEVISE: Chercher le prix imprimé, identifier la devise ({currency} par défaut)
+4. ÉTAT: "bon", "acceptable" ou "rejete"
+5. PROGRAMME SCOLAIRE: {programmes}
+
+ADAPTATION INTELLIGENTE:
+- Si le livre utilise des appellations différentes du système détecté, ADAPTE-TOI.
+  Ex: un livre "Year 7" au Kenya = "Form 1", un livre "Classe de 6ème" au Sénégal = même que "6ème" au Cameroun.
+- Utilise ta connaissance des systèmes éducatifs africains pour faire la correspondance.
+- Si tu détectes que le livre vient d'un système DIFFÉRENT de celui de l'utilisateur, signale-le dans les notes.
+
 Réponds en JSON strict avec: titre, auteur, editeur, isbn, classe_actuelle, classe_souhaitee, matiere, niveau, prix_detecte, devise_detectee, etat_classification, etat_description, est_au_programme, programme_scolaire_id, programme_match_details, confidence, notes."#,
-                lat, lng, programmes_disponibles
+                lat = lat,
+                lng = lng,
+                country = country_code.to_uppercase(),
+                system_name = detected_system.name,
+                lang = detected_system.language,
+                currency = detected_system.currency,
+                hierarchy = hierarchy_desc,
+                programmes = programmes_info,
             )
         });
 
@@ -571,24 +1037,26 @@ Réponds en JSON strict avec: titre, auteur, editeur, isbn, classe_actuelle, cla
             }
         };
 
-        // ✅ Fallback déterministe: si l'IA a trouvé classe_actuelle mais pas classe_souhaitee,
-        // ou si classe_souhaitee est incorrecte, on la recalcule
+        // ✅ Fallback déterministe (GPS-aware): si l'IA a trouvé classe_actuelle mais pas classe_souhaitee,
+        // ou si classe_souhaitee est incorrecte, on la recalcule en tenant compte du système scolaire détecté
         let mut analysis = analysis;
         if let Some(ref classe_act) = analysis.classe_actuelle {
             if is_classe_terminale(classe_act) {
-                // Terminale: PAS de classe supérieure → classe_souhaitee = None
-                // Le livre sera automatiquement en mode "vente"
+                // Dernière classe du système (Terminale, Upper Sixth, SSS 3, etc.)
+                // PAS de classe supérieure → classe_souhaitee = None, mode = vente
                 log::info!(
-                    "[BookExchangeAIService] Classe Terminale détectée: classe_souhaitee=None, mode=vente"
+                    "[BookExchangeAIService] Classe terminale détectée ({}): classe_souhaitee=None, mode=vente",
+                    classe_act
                 );
                 analysis.classe_souhaitee = None;
             } else {
-                let computed = compute_classe_superieure(classe_act);
+                let computed = compute_classe_superieure_with_gps(classe_act, user_lat, user_lng);
                 if analysis.classe_souhaitee.is_none()
                     || analysis.classe_souhaitee.as_deref() == Some("")
                 {
                     log::info!(
-                        "[BookExchangeAIService] Fallback classe_souhaitee: {} → {}",
+                        "[BookExchangeAIService] Fallback classe_souhaitee (système {}): {} → {}",
+                        detected_system.name,
                         classe_act,
                         computed
                     );

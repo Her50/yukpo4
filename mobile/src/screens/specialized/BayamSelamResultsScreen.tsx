@@ -558,7 +558,7 @@ const ResultsView: React.FC<ResultsViewProps> = ({
         return (
             <View style={styles.centerContainer}>
                 <ActivityIndicator size="large" color="#F97316" />
-                <Text style={styles.loadingText}>{t('bayamSelamResults.rechercheEnCours')}/Text>
+                <Text style={styles.loadingText}>{t('bayamSelamResults.rechercheEnCours')}</Text>
             </View>
         );
     }

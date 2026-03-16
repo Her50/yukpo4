@@ -54,7 +54,7 @@ const [loading, setLoading] = useState(false);
         if (!videoUrl.startsWith('http://') && !videoUrl.startsWith('https://') && !videoUrl.startsWith('file://')) {
             Alert.alert(
                 'URL invalide',
-                'L\t('autoCutPanel.urlDeLaVideoNestPasValidennveuillez'),
+                t('autoCutPanel.lurlDeLaVideoNestPasValidennveuillezReessayer'),
                 [{ text: 'OK' }]
             );
             return;

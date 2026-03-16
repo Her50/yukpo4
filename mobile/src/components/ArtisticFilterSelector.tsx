@@ -297,7 +297,7 @@ const [filters, setFilters] = useState<ArtisticFilterConfig[]>([]);
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                <Text style={styles.title}>{t('artisticFilterSelector.filtresArtistiquesIa')}/Text>
+                <Text style={styles.title}>{t('artisticFilterSelector.filtresArtistiquesIa')}</Text>
                 <Text style={styles.subtitle}>
                     Transformez vos vidéos en œuvres d'art • {selectedFilters.size}/{maxSelection} sélectionnés
                 </Text>

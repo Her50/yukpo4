@@ -69,7 +69,7 @@ const GlobalIAStatsPanel: React.FC<GlobalIAStatsPanelProps> = ({
             <Card.Content>
                 <View style={styles.header}>
                     <Brain size={24} color={theme.colors.primary} />
-                    <Text style={styles.title}>{t('globalIAStatsPanel.statistiquesIa')}/Text>
+                    <Text style={styles.title}>{t('globalIAStatsPanel.statistiquesIa')}</Text>
                 </View>
 
                 <View style={styles.statsGrid}>

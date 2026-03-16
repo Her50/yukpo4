@@ -425,7 +425,7 @@ const HotelDashboardScreen: React.FC = () => {
                 <NativeCard style={styles.emptyCard}>
                     <View style={styles.emptyContent}>
                         <SafeIcon name="building" size={48} color={modernColors.textSecondary} />
-                        <Text style={styles.emptyTitle}>{t('hotelDashboard.bienvenueSurVotreDashboard')}/Text>
+                        <Text style={styles.emptyTitle}>{t('hotelDashboard.bienvenueSurVotreDashboard')}</Text>
                         <Text style={styles.emptyText}>
                             Commencez par ajouter votre premier bien hôtelier pour gérer vos réservations, check-in/out et tarification IA.
                         </Text>
@@ -784,7 +784,7 @@ const HotelDashboardScreen: React.FC = () => {
                             ))}
                         </View>
 
-                        <Text style={styles.inputLabel}>{t('hotelDashboard.nomDuClient')}/Text>
+                        <Text style={styles.inputLabel}>{t('hotelDashboard.nomDuClient')}</Text>
                         <TextInput
                             style={styles.input}
                             value={newReservation.nom_client}

@@ -558,7 +558,7 @@ const [courierError, setCourierError] = useState<string | null>(null);
                 {state.template ?? '—'}
             </Text>
 
-            <Text style={styles.sectionLabel}>{t('creatorStudioCard.historiquePreview')}/Text>
+            <Text style={styles.sectionLabel}>{t('creatorStudioCard.historiquePreview')}</Text>
             <View style={styles.previewHistoryHeader}>
                 {state.hasPreviewWarnings && (
                     <View style={styles.warningBadge}>
@@ -833,7 +833,7 @@ const [courierError, setCourierError] = useState<string | null>(null);
 
                 <View style={styles.passengerToggle}>
                     <View style={{ flex: 1 }}>
-                        <Text style={styles.passengerTitle}>{t('creatorStudioCard.modeTransportPassager')}/Text>
+                        <Text style={styles.passengerTitle}>{t('creatorStudioCard.modeTransportPassager')}</Text>
                         <Text style={styles.passengerSubtitle}>
                             Utilise la même file delivery mais taggue la requête pour transporter un passager.
                         </Text>
@@ -886,7 +886,7 @@ const [courierError, setCourierError] = useState<string | null>(null);
                 <View style={styles.billingBlock}>
                     <View style={styles.scheduleHeader}>
                         <View style={{ flex: 1 }}>
-                            <Text style={styles.passengerTitle}>{t('creatorStudioCard.livraisonIncluseDansLeTarif')}/Text>
+                            <Text style={styles.passengerTitle}>{t('creatorStudioCard.livraisonIncluseDansLeTarif')}</Text>
                             <Text style={styles.passengerSubtitle}>
                                 Aucun débit client (transport facturé au marchand / fournisseur).
                             </Text>

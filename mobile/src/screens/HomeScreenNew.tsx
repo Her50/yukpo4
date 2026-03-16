@@ -253,7 +253,7 @@ const HomeScreenNew: React.FC = () => {
                         </View>
 
                         <View style={styles.headerCenter}>
-                            <Text style={styles.greeting}>{t('homeScreenNew.bonjour')}/Text>
+                            <Text style={styles.greeting}>{t('homeScreenNew.bonjour')}</Text>
                             <Text style={styles.userName}>{user?.name || t('homeScreenNew.utilisateur')}</Text>
                             <View style={styles.balanceContainer}>
                                 <Text style={styles.balanceLabel}>{t('homeScreenNew.votreSolde')}</Text>

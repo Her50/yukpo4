@@ -310,7 +310,7 @@ const StorageLocationsScreen: React.FC = () => {
 
                         <KeyboardAwareScreen style={styles.modalBody} showsVerticalScrollIndicator={false}>
                             <View style={styles.formGroup}>
-                                <Text style={styles.label}>{t('storageLocations.nomDuLieuDeStock')}/Text>
+                                <Text style={styles.label}>{t('storageLocations.nomDuLieuDeStock')}</Text>
                                 <NativeInput
                                     value={formData.name}
                                     onChangeText={(text) => setFormData(prev => ({ ...prev, name: text }))}
@@ -350,7 +350,7 @@ const StorageLocationsScreen: React.FC = () => {
 
                             {/* ✅ Phase 9 - Amélioration : Sélection de la zone géographique */}
                             <View style={styles.formGroup}>
-                                <Text style={styles.label}>{t('storageLocations.zoneDeLivraisonOptionnel')}/Text>
+                                <Text style={styles.label}>{t('storageLocations.zoneDeLivraisonOptionnel')}</Text>
                                 <TouchableOpacity
                                     style={styles.selectButton}
                                     onPress={() => {

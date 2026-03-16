@@ -46,7 +46,7 @@ const [data, setData] = useState<StatusData | null>(null);
 
   return (
     <View style="p-4 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 border rounded shadow">
-      <Text style="text-lg font-semibold mb-2">{t('schedulerStatusCard.statutDeLaPlanificationIa')}/Text>
+      <Text style="text-lg font-semibold mb-2">{t('schedulerStatusCard.statutDeLaPlanificationIa')}</Text>
 
       <Text>
         État :{" "}

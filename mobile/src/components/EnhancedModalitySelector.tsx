@@ -148,7 +148,7 @@ const EnhancedModalitySelector: React.FC<EnhancedModalitySelectorProps> = ({
                                 } else {
                                     Alert.alert(
                                         '❌ Erreur',
-                                        'Impossible d\t('enhancedModalitySelector.ajouterLaModaliteVeuillezReessayer'),
+                                        t('enhancedModalitySelector.impossibleDajouterLaModaliteVeuillezReessayer'),
                                         [{ text: 'OK' }]
                                     );
                                 }
@@ -355,7 +355,7 @@ const EnhancedModalitySelector: React.FC<EnhancedModalitySelectorProps> = ({
                                                             } else {
                                                                 Alert.alert(
                                                                     '❌ Erreur',
-                                                                    'Impossible d\t('enhancedModalitySelector.ajouterLaModalite'),
+                                                                    t('enhancedModalitySelector.impossibleDajouterLaModalite'),
                                                                     [{ text: 'OK' }]
                                                                 );
                                                             }

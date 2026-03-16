@@ -313,7 +313,7 @@ const SoldeDetailScreen: React.FC = () => {
 
       {/* Liste des paiements */}
       <View style={styles.listContainer}>
-        <Text style={styles.listTitle}>{t('soldeDetail.historiqueDesPaiements')}/Text>
+        <Text style={styles.listTitle}>{t('soldeDetail.historiqueDesPaiements')}</Text>
         {loading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={theme.colors.primary} />
@@ -358,14 +358,14 @@ const SoldeDetailScreen: React.FC = () => {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>{t('soldeDetail.historiqueDeConsommation')}/Text>
+          <Text style={styles.headerTitle}>{t('soldeDetail.historiqueDeConsommation')}</Text>
         </View>
 
         {/* Solde actuel */}
         <View style={styles.balanceCard}>
           <View style={styles.balanceContent}>
             <View style={styles.balanceLeft}>
-              <Text style={styles.balanceLabel}>{t('soldeDetail.soldeActuel')}/Text>
+              <Text style={styles.balanceLabel}>{t('soldeDetail.soldeActuel')}</Text>
               <Text style={styles.balanceValue}>
                 {currentBalance.toFixed(0)} FCFA
               </Text>

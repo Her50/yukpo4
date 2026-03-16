@@ -300,7 +300,7 @@ const CandidatureCard: React.FC<CandidatureCardProps> = ({
 
             {candidature.score_matching && (
                 <View style={styles.scoreContainer}>
-                    <Text style={styles.scoreLabel}>{t('offreCandidatures.scoreDeMatching')}/Text>
+                    <Text style={styles.scoreLabel}>{t('offreCandidatures.scoreDeMatching')}</Text>
                     <Text style={styles.scoreValue}>{candidature.score_matching.toFixed(0)}%</Text>
                 </View>
             )}
@@ -373,7 +373,7 @@ const CVAnalysisModal: React.FC<CVAnalysisModalProps> = ({ visible, candidature,
                             <View>
                                 {analysis.score_global && (
                                     <View style={styles.analysisScore}>
-                                        <Text style={styles.analysisScoreLabel}>{t('offreCandidatures.scoreGlobal')}/Text>
+                                        <Text style={styles.analysisScoreLabel}>{t('offreCandidatures.scoreGlobal')}</Text>
                                         <Text style={styles.analysisScoreValue}>
                                             {analysis.score_global}/100
                                         </Text>
@@ -381,7 +381,7 @@ const CVAnalysisModal: React.FC<CVAnalysisModalProps> = ({ visible, candidature,
                                 )}
                                 {analysis.points_forts && analysis.points_forts.length > 0 && (
                                     <View style={styles.analysisSection}>
-                                        <Text style={styles.analysisSectionTitle}>{t('offreCandidatures.pointsForts')}/Text>
+                                        <Text style={styles.analysisSectionTitle}>{t('offreCandidatures.pointsForts')}</Text>
                                         {analysis.points_forts.map((point: string, i: number) => (
                                             <Text key={i} style={styles.analysisPoint}>
                                                 • {point}

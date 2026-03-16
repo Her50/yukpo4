@@ -179,7 +179,7 @@ const LivreScolaireDetailsScreen: React.FC = () => {
                 {/* Location */}
                 {(livre.ville || livre.quartier) && (
                     <View style={st.card}>
-                        <View style={st.cardHeader}><SafeIcon name="map-pin" size={18} color="#EA580C" /><Text style={st.cardTitle}>{t('livreScolaireDetails.localisation')}/Text></View>
+                        <View style={st.cardHeader}><SafeIcon name="map-pin" size={18} color="#EA580C" /><Text style={st.cardTitle}>{t('livreScolaireDetails.localisation')}</Text></View>
                         {livre.ville && <View style={st.infoRow}><Text style={st.infoLabel}>{t('livreScolaireDetails.ville')}/Text><Text style={st.infoValue}>{livre.ville}</Text></View>}
                         {livre.quartier && <View style={st.infoRow}><Text style={st.infoLabel}>Quartier</Text><Text style={st.infoValue}>{livre.quartier}</Text></View>}
                     </View>

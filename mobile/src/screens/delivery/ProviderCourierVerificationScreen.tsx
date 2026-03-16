@@ -126,7 +126,7 @@ const ProviderCourierVerificationScreen: React.FC<ProviderCourierVerificationScr
       if (parsed.type === 'courier_verification' && parsed.code) {
         handleVerify(parsed.code, 'qr_scan');
       } else {
-        setError('QR code invalide. Ce n\t('providerCourierVerificationScreen.estPasUnCodeDeVerification'));
+        setError(t('providerCourierVerificationScreen.qrCodeInvalideCeNestPasUnCode'));
         setMode('choose');
       }
     } catch {
@@ -241,7 +241,7 @@ const ProviderCourierVerificationScreen: React.FC<ProviderCourierVerificationScr
                 <View style={styles.addressRow}>
                   <View style={[styles.addressDot, { backgroundColor: modernColors.error }]} />
                   <View style={styles.addressInfo}>
-                    <Text style={styles.addressLabel}>{t('providerCourierVerification.livraison')}/Text>
+                    <Text style={styles.addressLabel}>{t('providerCourierVerification.livraison')}</Text>
                     <Text style={styles.addressText}>{verificationResult.dropoff_address}</Text>
                   </View>
                 </View>
@@ -312,7 +312,7 @@ const ProviderCourierVerificationScreen: React.FC<ProviderCourierVerificationScr
               {/* Prix de livraison */}
               {verificationResult.delivery_price && (
                 <View style={styles.priceRow}>
-                  <Text style={styles.priceLabel}>{t('providerCourierVerification.livraison')}/Text>
+                  <Text style={styles.priceLabel}>{t('providerCourierVerification.livraison')}</Text>
                   <Text style={styles.priceValue}>
                     {verificationResult.delivery_price.toLocaleString()} FCFA
                   </Text>

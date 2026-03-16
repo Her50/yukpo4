@@ -203,7 +203,7 @@ const RegisterScreen: React.FC = () => {
       await googlePromptAsync();
     } catch (error: any) {
       console.error('[RegisterScreen] Erreur lors du lancement Google OAuth:', error);
-      let errorMessage = 'Impossible de lancer l\t('registerScreen.inscriptionGoogleVeuillezReessayer');
+      let errorMessage = t('registerScreen.impossibleDeLancerLinscriptionGoogleVeuillezReessayer');
 
       if (error?.message?.includes('Custom URI scheme') || error?.message?.includes('invalid_request')) {
         errorMessage = t('registerScreen.configurationOauthManquanteLeSchemaUriPersonnalise') +

@@ -60,7 +60,7 @@ const [selectedCategory, setSelectedCategory] = useState<'cheap' | 'medium' | 'e
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                <Text style={styles.headerTitle}>{t('giftSelector.envoyerUnGift')}/Text>
+                <Text style={styles.headerTitle}>{t('giftSelector.envoyerUnGift')}</Text>
                 <TouchableOpacity onPress={onClose}>
                     <SafeIcon name="x" size={18} color="#1F2937" />
                 </TouchableOpacity>

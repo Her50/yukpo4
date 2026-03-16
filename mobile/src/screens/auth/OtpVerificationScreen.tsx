@@ -84,7 +84,7 @@ const OtpVerificationScreen: React.FC = () => {
       console.log('[OTP] Code envoyé à', data.phone_masked);
     } catch (err: any) {
       console.error('[OTP] Erreur envoi:', err);
-      setError('Impossible d\t('otpVerificationScreen.envoyerLeCodeVerifiezVotreConnexion'));
+      setError(t('otpVerificationScreen.impossibleDenvoyerLeCodeVerifiezVotreConnexion'));
     }
   }, [params]);
 

@@ -180,7 +180,7 @@ const ProductDetailScreen: React.FC = () => {
 
             Alert.alert(
                 'Produit introuvable',
-                'Ce produit n\t('productDetailScreen.existePlusOuAEteSupprime'),
+                t('productDetailScreen.ceProduitNexistePlusOuAEteSupprime'),
                 [
                     {
                         text: t('common.back'),
@@ -226,7 +226,7 @@ const ProductDetailScreen: React.FC = () => {
         return (
             <View style={styles.errorContainer}>
                 <SafeIcon name="alert-circle" size={64} color={modernColors.error} />
-                <Text style={styles.errorTitle}>{t('productDetail.produitIntrouvable')}/Text>
+                <Text style={styles.errorTitle}>{t('productDetail.produitIntrouvable')}</Text>
                 <Text style={styles.errorText}>{error || 'Ce produit n\'existe plus'}</Text>
                 <NativeButton
                     title={t('productDetail.retourAL')}accueil"

@@ -208,7 +208,7 @@ const BanqueSangDetailsScreen: React.FC = () => {
                 {/* Stocks sanguins */}
                 {stockEntries.length > 0 && (
                     <View style={st.section}>
-                        <View style={st.sectionHeader}><SafeIcon name="droplet" size={18} color="#DC2626" /><Text style={st.sectionTitle}>{t('banqueSangDetails.stocksDisponibles')}/Text></View>
+                        <View style={st.sectionHeader}><SafeIcon name="droplet" size={18} color="#DC2626" /><Text style={st.sectionTitle}>{t('banqueSangDetails.stocksDisponibles')}</Text></View>
                         <View style={st.stocksGrid}>
                             {stockEntries.map(([groupe, qty]) => {
                                 const level = qty > 20 ? 'high' : qty > 5 ? 'medium' : 'low';
@@ -239,7 +239,7 @@ const BanqueSangDetailsScreen: React.FC = () => {
                             navigation.navigate('BloodDonation' as never);
                         }}>
                             <SafeIcon name="droplet" size={18} color="#DC2626" />
-                            <Text style={st.fullBtnText}>{t('banqueSangDetails.devenirDonneur')}/Text>
+                            <Text style={st.fullBtnText}>{t('banqueSangDetails.devenirDonneur')}</Text>
                             <SafeIcon name="chevron-right" size={18} color="#9CA3AF" />
                         </TouchableOpacity>
                     )}

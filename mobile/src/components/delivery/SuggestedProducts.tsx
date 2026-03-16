@@ -89,7 +89,7 @@ const [suggestions, setSuggestions] = useState<SuggestedProduct[]>([]);
         <View style={[styles.container, style]}>
             <View style={styles.header}>
                 <SafeIcon name="sparkles" size={18} color={modernColors.primary} />
-                <Text style={styles.title}>{t('suggestedProducts.suggestionsPourVous')}/Text>
+                <Text style={styles.title}>{t('suggestedProducts.suggestionsPourVous')}</Text>
             </View>
             <FlatList
                 data={suggestions}

@@ -1657,9 +1657,8 @@ impl TrocIntelligentService {
                 let exp_id: i32 = Row::get(&row, "expediteur_id");
 
                 // Chercher un coursier déjà assigné pour ce destinataire ou expéditeur
-                let coursier_id = existing_couriers
-                    .get(&dest_id)
-                    .or_else(|| existing_couriers.get(&exp_id));
+                let coursier_id =
+                    existing_couriers.get(&dest_id).or_else(|| existing_couriers.get(&exp_id));
 
                 if let Some(&cid) = coursier_id {
                     sqlx::query(

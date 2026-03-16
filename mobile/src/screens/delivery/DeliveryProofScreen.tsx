@@ -320,11 +320,11 @@ const DeliveryProofScreen: React.FC<{ route: any }> = ({ route }) => {
                     <Text style={styles.sectionTitle}>Statut actuel</Text>
                     <View style={styles.statusCard}>
                         <View style={styles.statusItem}>
-                            <Text style={styles.statusLabel}>{t('deliveryProof.statutDeLaLivraison')}/Text>
+                            <Text style={styles.statusLabel}>{t('deliveryProof.statutDeLaLivraison')}</Text>
                             <Text style={styles.statusValue}>{delivery?.status}</Text>
                         </View>
                         <View style={styles.statusItem}>
-                            <Text style={styles.statusLabel}>{t('deliveryProof.totalDesPreuves')}/Text>
+                            <Text style={styles.statusLabel}>{t('deliveryProof.totalDesPreuves')}</Text>
                             <Text style={styles.statusValue}>{proofMedias.length} média{proofMedias.length > 1 ? 's' : ''}</Text>
                         </View>
                     </View>

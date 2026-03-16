@@ -267,7 +267,7 @@ const BloodDonationRequestScreen: React.FC = () => {
 
                 {/* Groupe sanguin requis */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>{t('bloodDonationRequest.groupeSanguinRequis')}/Text>
+                    <Text style={styles.sectionTitle}>{t('bloodDonationRequest.groupeSanguinRequis')}</Text>
                     <View style={styles.bloodGroupGrid}>
                         {GROUPES_SANGUINS.map((group) => (
                             <TouchableOpacity
@@ -329,7 +329,7 @@ const BloodDonationRequestScreen: React.FC = () => {
                 <View style={styles.section}>
                     <View style={styles.switchGroup}>
                         <View>
-                            <Text style={styles.sectionTitle}>{t('bloodDonationRequest.demandeUrgente')}/Text>
+                            <Text style={styles.sectionTitle}>{t('bloodDonationRequest.demandeUrgente')}</Text>
                             <Text style={styles.hintText}>{t('bloodDonationRequest.lesDonneursSerontNotifiesEn')}</Text>
                         </View>
                         <Switch
@@ -377,10 +377,10 @@ const BloodDonationRequestScreen: React.FC = () => {
 
                 {/* Informations additionnelles */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>{t('bloodDonationRequest.informationsAdditionnelles')}/Text>
+                    <Text style={styles.sectionTitle}>{t('bloodDonationRequest.informationsAdditionnelles')}</Text>
 
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>{t('bloodDonationRequest.nomDuPatientOptionnel')}/Text>
+                        <Text style={styles.label}>{t('bloodDonationRequest.nomDuPatientOptionnel')}</Text>
                         <NativeInput
                             value={formData.patient_name}
                             onChangeText={(text) => setFormData({ ...formData, patient_name: text })}
@@ -417,7 +417,7 @@ const BloodDonationRequestScreen: React.FC = () => {
                     </View>
 
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>{t('bloodDonationRequest.notesOptionnel')}/Text>
+                        <Text style={styles.label}>{t('bloodDonationRequest.notesOptionnel')}</Text>
                         <TextInput
                             style={styles.notesInput}
                             value={formData.notes}

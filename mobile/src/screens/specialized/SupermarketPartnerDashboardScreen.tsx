@@ -288,7 +288,7 @@ const SupermarketPartnerDashboardScreen: React.FC = () => {
             {products.length === 0 && (
                 <View style={s.emptyState}>
                     <SafeIcon name="store" size={48} color="#9CA3AF" />
-                    <Text style={s.emptyTitle}>{t('supermarketPartnerDashboard.catalogueVide')}/Text>
+                    <Text style={s.emptyTitle}>{t('supermarketPartnerDashboard.catalogueVide')}</Text>
                     <Text style={s.emptyText}>{t('supermarketPartnerDashboard.ajoutezVosProduitsPourLes')}</Text>
                     <NativeButton title={t('supermarketPartnerDashboard.ajouterDesProduits')} onPress={() => setActiveTab('catalog')} style={{ marginTop: 16 }} />
                 </View>
@@ -361,14 +361,14 @@ const SupermarketPartnerDashboardScreen: React.FC = () => {
     const renderOrders = () => (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100, padding: 16 }}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}>
-            <Text style={s.sectionTitle}>{t('supermarketPartnerDashboard.commandesEnAttenteDePickup')}/Text>
+            <Text style={s.sectionTitle}>{t('supermarketPartnerDashboard.commandesEnAttenteDePickup')}</Text>
             {loadingOrders ? (
                 <ActivityIndicator size="large" color="#10B981" style={{ marginTop: 40 }} />
             ) : orders.length === 0 ? (
                 <View style={s.emptyState}>
                     <SafeIcon name="inbox" size={48} color="#9CA3AF" />
                     <Text style={s.emptyTitle}>{t('supermarketPartnerDashboard.aucuneCommandeEnAttente')}</Text>
-                    <Text style={s.emptyText}>{t('supermarketPartnerDashboard.lesCommandesDesClientsApparaitront')}/Text>
+                    <Text style={s.emptyText}>{t('supermarketPartnerDashboard.lesCommandesDesClientsApparaitront')}</Text>
                 </View>
             ) : (
                 orders.map((order, i) => {

@@ -3275,7 +3275,8 @@
         "ouvrirLesParametres": "Ouvrir the paramètres",
         "impossibleDeCapturerLaVideo": "Impossibthe of capturer the vidéo: {{error?.message || 'Error inconnue'}}",
         "capturerUneVideo": "📹 Capturer a vidéo",
-        "accesALaCameraPourEnregistrer": "accès to the camera for inregistrer a viofo."
+        "accesALaCameraPourEnregistrer": "accès to the camera for inregistrer a viofo.",
+        "veuillezAutoriserLaccesALaCameraPourEnregistrer": "Veuillez autoriser l'accès à la caméra pour enregistrer une vidéo."
     },
     "aRVideoEditorVisionCamera": {
         "verificationDesPermissions": "Vérification of the permissions...",
@@ -3582,7 +3583,9 @@
         "aucuneVideoDisponiblePourGenererLesSoustitresnnveuillez": "No viofo avaithebthe for générer the sors-titres.\\n\\nPthease d\\'first",
         "urlDeLaVideoNestPasValidennveuillez": "URL of the viofo n\\'is",
         "ontPasPuEtreGeneresnnverifiezQueLa": "ont not pu être générés.\\n\\nCheck que the viofo contiint of l\\'is",
-        "aucunFichierAudioTrouveDansLaVideonnverifiez": "No fichier audio foad in the viofo.\\n\\nCheck que the viofo contiint of l\\'audio pour générer les sous-titres."
+        "aucunFichierAudioTrouveDansLaVideonnverifiez": "No fichier audio foad in the viofo.\\n\\nCheck que the viofo contiint of l\\'audio pour générer les sous-titres.",
+        "lurlDeLaVideoNestPasValidennveuillezReessayer": "L'URL de la vidéo n\\'est pas valide.\\n\\nVeuillez réessayer après avoir uploadé la vidéo.",
+        "erreurServeurLesSoustitresNontPasPuEtre": "Erreur serveur : Les sous-titres n'ont pas pu être générés.\\n\\nVérifiez que la vidéo contient de l\\'audio et est accessible."
     },
     "autoCutPanel": {
         "decoupageAutomatique": "Découpage Automatique",
@@ -3597,7 +3600,8 @@
         "leTraitementPrendTropDeTempsnnveuillez": "Le traitemint prind trop of temps.\\n\\nPthease réessayer with a viofo more corrte.",
         "aucuneVideoDisponiblePourLeDecoupageAutomatiquennveuill": "No viofo avaithebthe for the décorpage automatique.\\n\\nPthease d\\'first",
         "urlDeLaVideoNestPasValidennveuillez": "URL of the viofo n\\'is",
-        "erreurServeurLaVideoNaPasPu": "Error serveur : La viofo n\\'is"
+        "erreurServeurLaVideoNaPasPu": "Error serveur : La viofo n\\'is",
+        "lurlDeLaVideoNestPasValidennveuillezReessayer": "L'URL de la vidéo n\\'est pas valide.\\n\\nVeuillez réessayer après avoir uploadé la vidéo."
     },
     "autoOptimizationSettings": {
         "activee": "✓ Activée",
@@ -3849,7 +3853,8 @@
         "permissionRefusee": "Permission refusée",
         "accesALaGaleriePourAjouter": "accès to the gatherie for ajorter of images",
         "modifier": "Edit",
-        "supprimer": "Dandhande"
+        "supprimer": "Dandhande",
+        "vousDevezAutoriserLaccesALaGaleriePour": "Vous devez autoriser l'accès à la galerie pour ajouter des images"
     },
     "budgetSlider": {
         "porteeEstimee": "Portée estimée:"
@@ -4045,7 +4050,9 @@
         "etesvousSurDeVouloirSupprimerCe": "Êtes-vors sûr of vorloir supprimer ce message ?",
         "estPasActiveePourCeService": "is not activée for ce service. Contactez the prisataire for more d\\",
         "choisissezLeProduitPourLequelVous": "Choisissez the proof theit for thequel vors vorthez négocier the prix",
-        "estPasActiveePourCeServiceContactez": "is not activée for ce service. Contactez the prisataire for more d\\'informations."
+        "estPasActiveePourCeServiceContactez": "is not activée for ce service. Contactez the prisataire for more d\\'informations.",
+        "lutilisateurAEteAjouteALaConversationEt": "L'utilisateur a été ajouté à la conversation et peut maintenant voir les nouveaux messages.",
+        "laLivraisonNestPasActiveePourCeService": "La livraison n'est pas activée pour ce service. Contactez le prestataire pour plus d\\'informations."
     },
     "chaussureVariantManager": {
         "aucuneVarianteAjoutee": "Nonee variante ajoutee",
@@ -4494,7 +4501,8 @@
         "heureDeDebutDoitEtreAvant": "heure of début doit être forward l\\",
         "modifier": "Edit",
         "annuler": "Cancel",
-        "heureDeDebutDoitEtreAvantLheure": "heure of début doit être forward l\\'heure de fin"
+        "heureDeDebutDoitEtreAvantLheure": "heure of début doit être forward l\\'heure de fin",
+        "lheureDeDebutDoitEtreAvantLheureDe": "L'heure de début doit être avant l\\'heure de fin"
     },
     "deliveryParcelFlowNew": {
         "decrivezVotreColisPourUne": "Décrivez your parcel pour a meilleure estimation",
@@ -4556,7 +4564,8 @@
         "montrezLeColisASonEmplacement": "Montrez the bythisl to son emseatmint indal",
         "identiteDuDestinataireSiPresent": "iofntité of the oftinataire si présint",
         "montrezOuLeColisAEte": "Montrez où the colis a été déposé",
-        "fermer": "Close"
+        "fermer": "Close",
+        "confirmezLidentiteDuDestinataireSiPresent": "Confirmez l'identité du destinataire si présent"
     },
     "deliveryShoppingFlow": {
         "coursesSupermarche": "Courses supermarché",
@@ -4708,7 +4717,9 @@
         "ajouterUneNouvelleModalite": "Add a norvelthe modalité",
         "ajouterLaModalite": "ajorter the modalité.",
         "fermer": "Close",
-        "confirmerLajout": "Confirm l\\'ajout"
+        "confirmerLajout": "Confirm l\\'ajout",
+        "impossibleDajouterLaModaliteVeuillezReessayer": "Impossible d'ajouter la modalité. Veuillez réessayer.",
+        "impossibleDajouterLaModalite": "Impossible d'ajouter la modalité."
     },
     "enhancedSettings": {
         "parametres": "Settings",
@@ -4964,7 +4975,8 @@
         "recuperationDeVotrePosition": "Récupération of your position...",
         "positionGps": "position GPS",
         "positionActuelle": "position actuelle",
-        "accesALaLocalisationEstNecessaire": "accès to the localisation is nécessaire for utiliser candte fonctionnalité."
+        "accesALaLocalisationEstNecessaire": "accès to the localisation is nécessaire for utiliser candte fonctionnalité.",
+        "laccesALaLocalisationEstNecessairePourUtiliser": "L'accès à la localisation est nécessaire pour utiliser cette fonctionnalité."
     },
     "generativeVideoWizard": {
         "descriptionDeLaVideo": "Description de la video",
@@ -5767,12 +5779,15 @@
         "videos": "Videos",
         "accesALaGalerieNestPasDisponible": "accès to the gatherie n\\'device'application ou contacter le support.'application ou contacter le support.",
         "accesALaGaleriePourAjouterDes": "accès to the gatherie for ajorter of images. Pthease inabthe candte permission in the sandtings of l\\'application",
-        "laPremiereSeraLimagePrincipale": "La first sera l\\'image principale"
+        "laPremiereSeraLimagePrincipale": "La first sera l\\'image principale",
+        "laccesALaGalerieNestPasDisponibleSur": "L'access à la gallery n\\'est pas available sur cet appareil. please update à jour l\\'application ou contact le support.'application ou contact le support.",
+        "vousDevezAutoriserLaccesALaGaleriePour": "Vous devez autoriser l'accès à la galerie pour ajouter des images. Veuillez activer cette permission dans les paramètres de l\\'application."
     },
     "mediaUploader": {
         "photosEtVideos": "Photos et videos",
         "video": "video",
-        "accesALaCameraEtA": "accès to the camera and to the gatherie for ajorter of photos/viofos."
+        "accesALaCameraEtA": "accès to the camera and to the gatherie for ajorter of photos/viofos.",
+        "veuillezAutoriserLaccesALaCameraEtA": "Veuillez autoriser l'accès à la caméra et à la galerie pour ajouter des photos/vidéos."
     },
     "menuPlanningHub": {
         "periodeDuMenu": "Période of the menu :",
@@ -5903,7 +5918,8 @@
         "maPosition": "my Position",
         "villeQuartierLieuSite": "City, quartier, lieu, website...",
         "confirmer": "Confirm",
-        "accesALaLocalisationEstNecessaire": "accès to the localisation is nécessaire for utiliser candte fonctionnalité."
+        "accesALaLocalisationEstNecessaire": "accès to the localisation is nécessaire for utiliser candte fonctionnalité.",
+        "laccesALaLocalisationEstNecessairePourUtiliser": "L'accès à la localisation est nécessaire pour utiliser cette fonctionnalité."
     },
     "modernHome": {
         "pretADecouvrir": "Prêt à découvrir ?",
@@ -7640,7 +7656,9 @@
         "organisationDevenementsMariagesFetesCelebrations": "Organization d\\'événements, mariages, fêtes, célébrations",
         "hotesFamilialeAccueilChaleureuxPetitdejeunerMaisonchamb": "hôtes familiathe accueil chatheureux pandit-déjear maison,Chambre d'hôtes,Non classé,5,Wi-Fi|Parking,Petit-déjeuner,Oui,Non,Non,Non,Non,Oui,Oui,Non,Quartier résidentiel,Bafoussam,5.4774°N 10.4177°E,4.7",
         "emergencyNumbersHint": "💡 Emergency numbers can be added in the establishment profile",
-        "computerDescriptionHint": "💡 Describe the overall condition of the computer, its performance and any defects"
+        "computerDescriptionHint": "💡 Describe the overall condition of the computer, its performance and any defects",
+        "nomDeLarticleDeco": "Nom de l'Article déco",
+        "titreDeLactivite": "Titre de l'activité"
     },
     "productMediaCarousel": {
         "aucunMediaDisponible": "None media disponible",
@@ -7835,7 +7853,9 @@
         "accesALaCameraEstNecessaire": "accès to the camera is nécessaire for scanner the QR coof",
         "accederALaCamera": "accéofr to the camera",
         "accesALaCameraDansLes": "accès to the camera in the sandtings of l",
-        "pleaseAllowCameraAccess": "Please allow camera access in your device settings"
+        "pleaseAllowCameraAccess": "Please allow camera access in your device settings",
+        "laccesALaCameraEstNecessairePourScanner": "L'accès à la caméra est nécessaire pour scanner les QR codes",
+        "impossibleDaccederALaCamera": "Impossible d'accéder à la caméra"
     },
     "quickPreview": {
         "generationDuPreview": "Génération of the preview...",
@@ -8309,7 +8329,8 @@
     "specializedServicesButton": {
         "accederAuxServicesSpecialises": "Accéder aux services spécialisés",
         "servicesSpecialises": "Services Spécialisés",
-        "accederAuxServicesSpecialisesVeuillezReessayer": "accéofr aux services spécialisés. Pthease réessayer."
+        "accederAuxServicesSpecialisesVeuillezReessayer": "accéofr aux services spécialisés. Pthease réessayer.",
+        "impossibleDaccederAuxServicesSpecialisesVeuillezReessayer": "Impossible d'accéder aux services spécialisés. Veuillez réessayer."
     },
     "specializedServicesHub": {
         "servicesSpecialises": "Services Spécialisés",
@@ -8364,7 +8385,8 @@
         "gererLesLieuxDeStock": "Gérer the lieux of stock",
         "erreurLorsDeLaCreation": "error lors of the création",
         "aucunLieuDeStockage": "no place of stockage",
-        "adresseCompleteDeCeLieuDe": "adresse complète of ce lieu of stockage"
+        "adresseCompleteDeCeLieuDe": "adresse complète of ce lieu of stockage",
+        "entrezLadresseCompleteDeCeLieuDeStockage": "Entrez l'adresse complète de ce lieu de stockage"
     },
     "studioAudioPanel": {
         "descriptionTonaliteInstructionsIa": "Description, tonalite, instructions IA...",
@@ -9353,7 +9375,8 @@
         "mesEquipes": "Mes Éwhopes ({{teamMembershipCoat}})",
         "interet": "intérêt",
         "seDeconnecterDeLapplication": "Se déconnecter of l\\'application",
-        "besoinDaide": "Besoin d\\'help"
+        "besoinDaide": "Besoin d\\'help",
+        "trouvezLeMeilleurCheminAvecEmbouteillagesEtPoints": "Trouvez le meilleur chemin avec embouteillages et points d'intérêt"
     },
     "giftSelector": {
         "envoyerUnGift": "send a gift",
@@ -9451,7 +9474,8 @@
         "envoyerLeCodeVerifiezVotreConnexion": "invoyer the coof. Check yorr connexion.",
         "bienvenueSurYukpoVotreCompteEst": "Biinvinue on Yukpo ! Votre compte is prêt.",
         "passerLaVerification": "Passer the vérification ?",
-        "vousPourrezVerifierVotreNumeroPlus": "Vors forrez vérifier yorr numéro more tard ofpuis yorr profil. Certaines fonctionnalités seront limitées."
+        "vousPourrezVerifierVotreNumeroPlus": "Vors forrez vérifier yorr numéro more tard ofpuis yorr profil. Certaines fonctionnalités seront limitées.",
+        "impossibleDenvoyerLeCodeVerifiezVotreConnexion": "Impossible d'envoyer le code. Vérifiez votre connexion."
     },
     "partnerRegisterScreen": {
         "veuillezRemplirTousLesChampsObligatoires": "Pthease fill all the fields obligatoires",
@@ -9477,7 +9501,8 @@
         "veuillezDefinirExpopublicgoogleandroidclientidDans": "Pthease définir EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID in yorr variabthe d\\",
         "inscriptionGoogleVeuillezReessayer": "inscription Googthe. Pthease réessayer.",
         "configurationOauthManquanteLeSchemaUriPersonnalise": "Configuration OAuth manquante. Le schéma URI personnalisé n\\'is",
-        "veuillezDefinirExpopublicgoogleandroidclientidDansVosVa": "Pthease définir EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID in yorr variabthe d\\'environnement.\\n\\n"
+        "veuillezDefinirExpopublicgoogleandroidclientidDansVosVa": "Pthease définir EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID in yorr variabthe d\\'environnement.\\n\\n",
+        "impossibleDeLancerLinscriptionGoogleVeuillezReessayer": "Impossible de lancer l'inscription Google. Veuillez réessayer."
     },
     "bloodGroupManagementScreen": {
         "enregistrer": "Save"
@@ -9625,7 +9650,8 @@
         "veuillezSaisirLes6ChiffresDu": "Pthease inter the 6 chiffres of the coof",
         "estBienLeCoursierEnvoyePar": "{{result.corrier_name || 'Corrsier'}} est biin the corrier invoyé by Yukpo.",
         "coursierVerifie": "✅ Corrsier vérifié",
-        "estPasUnCodeDeVerification": "is not a coof of vérification corrier."
+        "estPasUnCodeDeVerification": "is not a coof of vérification corrier.",
+        "qrCodeInvalideCeNestPasUnCode": "QR code invalide. Ce n'est pas un code de vérification coursier."
     },
     "shoppingBudgetScreen": {},
     "shoppingPickupDropScreen": {
@@ -9824,7 +9850,12 @@
         "aucunProduitSelectionne": "No proof theit séthectionné",
         "membreAjouteALequipeAvecSucces": "Membre adofd to l\\'team",
         "membreRetireDeLequipeAvecSucces": "Membre randiré of l\\'team",
-        "abordCreerDesProduitsAvantDeCreer": "abord créer of proof theits forward of créer a fthesh promo.'team"
+        "abordCreerDesProduitsAvantDeCreer": "abord créer of proof theits forward of créer a fthesh promo.'team",
+        "messervicesscreenHandleaddproductAucunServiceDansLetatVerifi": "[MesServicesScreen] handleAddProduct - Aucun service dans l'état, vérification API directe...",
+        "vousDevezDabordCreerDesProduitsAvantDe": "Vous devez d'abord créer des produits avant de créer un flash promo.",
+        "impossibleDouvrirMesVideos": "Impossible d'ouvrir Mes Vidéos",
+        "impossibleDouvrirAnalytiquesVideos": "Impossible d'ouvrir Analytiques Vidéos",
+        "impossibleDouvrirLaCreationDeFlashPromo": "Impossible d'ouvrir la création de flash promo"
     },
     "mesServicesSpecialisesScreen": {
         "serviceCreeMaisIdIntrouvableReponse": "Servithis créé mais ID introrvabthe. Réponse: {{JSON.stringify(response.data)}}",
@@ -9921,7 +9952,12 @@
     },
     "aICVAnalysisScreen": {
         "abordTelechargerVotreCvDansVotre": "abord télécharger yorr CV in yorr profil candidat.",
-        "estPeutetrePasEncoreOperationnelleVeuillez": "is peut-être not incore opérationnelthe. Pthease réessayer more tard."
+        "estPeutetrePasEncoreOperationnelleVeuillez": "is peut-être not incore opérationnelthe. Pthease réessayer more tard.",
+        "vousDevezDabordTelechargerVotreCvDansVotre": "Vous devez d'abord télécharger votre CV dans votre profil candidat.",
+        "analyseNestPeutetrePasEncoreOperationnelleVeuillezReessayer": "analyse n'est peut-être pas encore opérationnelle. Veuillez réessayer plus tard.",
+        "iaDanalyseNestPeutetrePasEncoreOperationnelleVeuillez": "IA d'analyse n'est peut-être pas encore opérationnelle. Veuillez réessayer plus tard.",
+        "analyserLeCvLiaDanalyseNestPeutetrePas": "analyser le CV. L'IA d'analyse n'est peut-être pas encore opérationnelle. Veuillez réessayer plus tard.",
+        "impossibleDanalyserLeCvLiaDanalyseNestPeutetre": "Impossible d'analyser le CV. L'IA d'analyse n'est peut-être pas encore opérationnelle. Veuillez réessayer plus tard."
     },
     "aISalaryPredictionScreen": {
         "predictionEnCours": "Prédiction in corrs...",
@@ -10014,16 +10050,19 @@
     "experiencesEtudiantsScreen": {},
     "fournituresScolairesScreen": {},
     "orientationAICompareProgramsScreen": {
-        "abordCompleterVotreProfilEtudiant": "abord compléter yorr profil étudiant"
+        "abordCompleterVotreProfilEtudiant": "abord compléter yorr profil étudiant",
+        "veuillezDabordCompleterVotreProfilEtudiant": "Veuillez d'abord compléter votre profil étudiant"
     },
     "orientationAIProfileAnalysisScreen": {
         "voirRecommandationsProgrammes": "See recommandations programmes",
-        "abordCompleterVotreProfilEtudiant": "abord compléter yorr profil étudiant"
+        "abordCompleterVotreProfilEtudiant": "abord compléter yorr profil étudiant",
+        "veuillezDabordCompleterVotreProfilEtudiant": "Veuillez d'abord compléter votre profil étudiant"
     },
     "orientationAIRecommendationsScreen": {
         "generationEnCours": "Génération in corrs...",
         "genererLesRecommandations": "Générer the recommandations",
-        "abordCompleterVotreProfilEtudiant": "abord compléter yorr profil étudiant"
+        "abordCompleterVotreProfilEtudiant": "abord compléter yorr profil étudiant",
+        "veuillezDabordCompleterVotreProfilEtudiant": "Veuillez d'abord compléter votre profil étudiant"
     },
     "orientationScolaireHomeScreen": {
         "rechercheAcademique": "Recherche académithat: {{acaofmicQuery.trim()}}",
@@ -10034,7 +10073,8 @@
         "leCamerounCompte8UniversitesD": "Le Cameroa compte 8 aiversités d\\",
         "pourDesConseilsPersonnalisesEnOrientation": "Porr of conseils personnalisés in oriintation scotheire, créez yorr profil étudiant and consultez the recommandations IA. Vors porvez aussi contacter a conseilther d\\",
         "orientationPourDesConseilsPersonnalises": "oriintation for of conseils personnalisés.",
-        "pourDesConseilsPersonnalisesEnOrientationScolaire": "Porr of conseils personnalisés in oriintation scotheire, créez yorr profil étudiant and consultez the recommandations IA. Vors porvez aussi contacter a conseilther d\\'orientation."
+        "pourDesConseilsPersonnalisesEnOrientationScolaire": "Porr of conseils personnalisés in oriintation scotheire, créez yorr profil étudiant and consultez the recommandations IA. Vors porvez aussi contacter a conseilther d\\'orientation.",
+        "consultezUnConseillerDorientationPourDesConseilsPersonnalise": "Consultez un conseiller d'orientation pour des conseils personnalisés."
     },
     "orientationScolaireHubScreen": {
         "superieur": "Supérieur",
@@ -10056,7 +10096,8 @@
     "productDetailScreen": {
         "voirTousLesProduitsSimilaires": "🔍 See all the proof thects simitheires",
         "pourVoirCeProduitVeuillezVous": "Porr voir ce proof theit, veuilthez vors connecter or créer a compte gratuitemint.",
-        "existePlusOuAEteSupprime": "existe more or a été supprimé."
+        "existePlusOuAEteSupprime": "existe more or a été supprimé.",
+        "ceProduitNexistePlusOuAEteSupprime": "Ce produit n'existe plus ou a été supprimé."
     },
     "productStatsScreen": {
         "impossibleDeChargerLesStatistiques": "Unabthe of charger the statistiques"
@@ -10118,7 +10159,8 @@
     "myServicesScreen": {},
     "serviceDetailScreen": {},
     "serviceDetailSharedScreen": {
-        "existePasOuAEteSupprime": "existe not or a été supprimé"
+        "existePasOuAEteSupprime": "existe not or a été supprimé",
+        "ceServiceNexistePasOuAEteSupprime": "Ce service n'existe pas ou a été supprimé"
     },
     "servicesInteragisScreen": {},
     "servicesListScreen": {
@@ -10150,7 +10192,10 @@
         "paye": "Payé",
         "serviceIaTemporairementIndisponibleReessayezPlus": "Service IA temporairemint inavaithebthe. Réessayez more tard.",
         "ajouter": "Add",
-        "enregistrerUneAgence": "Save a Agince"
+        "enregistrerUneAgence": "Save a Agince",
+        "seats": "seats",
+        "rows": "rows",
+        "boarded": "boarded"
     },
     "agenceVoyageListScreen": {},
     "agenceVoyageSearchScreen": {
@@ -10204,7 +10249,9 @@
         "miseAJour": "Mise to day...",
         "mettreAJourLesStocks": "Mandtre to day the stocks",
         "urgence24hActive": "urgince 24h activé",
-        "enregistrerUneBanqueDeSang": "Save a Banque of Sang"
+        "enregistrerUneBanqueDeSang": "Save a Banque of Sang",
+        "serviceDurgence24hActive": "service d'urgence 24h activé' : ",
+        "serviceDurgenceDesactive": "Emergency service disabled"
     },
     "banqueSangListScreen": {},
     "banqueSangSearchScreen": {
@@ -10244,7 +10291,8 @@
         "reservationConfirmee": "Réservation confirmée",
         "examenSouhaite": "examin sorhaité",
         "reservationEnCours": "Réservation in progress...",
-        "confirmerLeRendezvous": "Confirm the rinofz-vors"
+        "confirmerLeRendezvous": "Confirm the rinofz-vors",
+        "typeDexamenSouhaite": "Type d'examen souhaité"
     },
     "bookPackagesScreen": {
         "marquerConstitue": "Marthatr constituted",
@@ -10401,7 +10449,14 @@
         "estPeutetrePasEncoreOperationnelle": "is peut-être not incore opérationnelthe.",
         "decrivezVosSymptomesPourObtenirUne": "Décrivez yorr symptômes for obtinir a évaluation.",
         "serviceIaMomentanementIndisponible": "Service IA momintanémint inavaithebthe.",
-        "reserveDepuisLapplication": "Réservé ofpuis l\\'application"
+        "reserveDepuisLapplication": "Réservé ofpuis l\\'application",
+        "analyseDimageTerminee": "Analyse d'image terminée",
+        "imagesNestPeutetrePasEncoreOperationnelle": "images n'est peut-être pas encore opérationnelle.",
+        "analyseDimagesNestPeutetrePasEncoreOperationnelle": "analyse d'images n'est peut-être pas encore opérationnelle.",
+        "iaDanalyseDimagesNestPeutetrePasEncoreOperationnelle": "IA d'analyse d'images n'est peut-être pas encore opérationnelle.",
+        "imageLiaDanalyseDimagesNestPeutetrePasEncore": "image. L'IA d'analyse d'images n'est peut-être pas encore opérationnelle.",
+        "analyserLimageLiaDanalyseDimagesNestPeutetrePas": "analyser l'image. L'IA d'analyse d'images n'est peut-être pas encore opérationnelle.",
+        "impossibleDanalyserLimageLiaDanalyseDimagesNestPeutetre": "Impossible d'analyser l'image. L'IA d'analyse d'images n'est peut-être pas encore opérationnelle."
     },
     "hopitalListScreen": {},
     "hopitalSearchScreen": {
@@ -10458,7 +10513,8 @@
     "immobilierDetailsScreen": {
         "partager": "Share",
         "reserverUnSejour": "Réserver a séday",
-        "aPasRepondu": "a not réponof the)"
+        "aPasRepondu": "a not réponof the)",
+        "calculLocalLeServeurNaPasRepondu": "Calcul local (le serveur n'a pas répondu)"
     },
     "immobilierFormScreen": {
         "adresseExacte": "Address exacte...",
@@ -10510,7 +10566,8 @@
     "labAnalyticsScreen": {
         "deCompletion": "{{compthandionRate}}% of complétion",
         "accesRefuse": "Accès refusé",
-        "etesPasAutoriseAVoirLes": "êtes not autorisé to voir the analytics of ce theboratoire. Seul the propriétaire peut accéofr to ces data."
+        "etesPasAutoriseAVoirLes": "êtes not autorisé to voir the analytics of ce theboratoire. Seul the propriétaire peut accéofr to ces data.",
+        "vousNetesPasAutoriseAVoirLesAnalytics": "Vous n'êtes pas autorisé à voir les analytics de ce laboratoire. Seul le propriétaire peut accéder à ces données."
     },
     "laboratoireDetailsScreen": {
         "nresultatsEnLigne": "\\nRésultats in ligne",
@@ -10537,7 +10594,18 @@
         "estPasEncoreOperationnelle": "is not incore opérationnelthe.",
         "imageTerminee": "image terminée",
         "estPeutetrePasEncoreOperationnelle": "is peut-être not incore opérationnelthe.",
-        "aucunePathologieTrouveeEssayezAvecDautresSymptomes": "No pathologie foaof. Essayez with d\\'autres symptômes."
+        "aucunePathologieTrouveeEssayezAvecDautresSymptomes": "No pathologie foaof. Essayez with d\\'autres symptômes.",
+        "iaDeRecherchePathologiqueNestPasEncoreOperationnelle": "IA de recherche pathologique n'est pas encore opérationnelle.",
+        "liaDeRecherchePathologiqueNestPasEncoreOperationnelle": "L'IA de recherche pathologique n'est pas encore opérationnelle.",
+        "analyseDimageTerminee": "Analyse d'image terminée",
+        "imagesNestPeutetrePasEncoreOperationnelle": "images n'est peut-être pas encore opérationnelle.",
+        "analyseDimagesNestPeutetrePasEncoreOperationnelle": "analyse d'images n'est peut-être pas encore opérationnelle.",
+        "iaDanalyseDimagesNestPeutetrePasEncoreOperationnelle": "IA d'analyse d'images n'est peut-être pas encore opérationnelle.",
+        "imageLiaDanalyseDimagesNestPeutetrePasEncore": "image. L'IA d'analyse d'images n'est peut-être pas encore opérationnelle.",
+        "analyserLimageLiaDanalyseDimagesNestPeutetrePas": "analyser l'image. L'IA d'analyse d'images n'est peut-être pas encore opérationnelle.",
+        "impossibleDanalyserLimageLiaDanalyseDimagesNestPeutetre": "Impossible d'analyser l'image. L'IA d'analyse d'images n'est peut-être pas encore opérationnelle.",
+        "analyseLiaDanalyseDimagesNestPeutetrePasEncore": "analyse. L'IA d'analyse d'images n'est peut-être pas encore opérationnelle.",
+        "erreurLorsDeLanalyseLiaDanalyseDimagesNest": "Erreur lors de l'analyse. L'IA d'analyse d'images n'est peut-être pas encore opérationnelle."
     },
     "laboratoireListScreen": {},
     "laboratoireSearchScreen": {
@@ -10593,7 +10661,8 @@
         "generation": "Génération...",
         "genererLaRecette": "Générer the recipe",
         "preparerEtLaverTousLesIngredients": "Prébyer and thever tors the ingrédiints.",
-        "ingredientPrincipalEtCuireAFeu": "ingrédiint principal and cuire to feu moyin."
+        "ingredientPrincipalEtCuireAFeu": "ingrédiint principal and cuire to feu moyin.",
+        "ajouterLingredientPrincipalEtCuireAFeuMoyen": "Ajouter l'ingrédient principal et cuire à feu moyen."
     },
     "menuWeekCalendarScreen": {
         "annuler": "Canthisl",
@@ -10636,7 +10705,8 @@
         "refuse": "Refusé",
         "complete": "Complété",
         "annule": "Annulé",
-        "avezPasEncoreDeTrocCreezen": "avez not incore of troc. Create-in a ofpuis a livre !"
+        "avezPasEncoreDeTrocCreezen": "avez not incore of troc. Create-in a ofpuis a livre !",
+        "vousNavezPasEncoreDeTrocCreezenUn": "Vous n'avez pas encore de troc. Créez-en un depuis un livre !"
     },
     "myBloodDonationsScreen": {
         "completee": "Complétée"
@@ -10722,7 +10792,10 @@
         "contreindique": "Contre-indiqué",
         "moderee": "Modérée",
         "imageDuMedicamentLiaD": "image of the médicamint. L\\'IA d\\",
-        "imageDuMedicamentLiaDanalyseD": "image of the médicamint. L\\'IA d\\'analyse d\\"
+        "imageDuMedicamentLiaDanalyseD": "image of the médicamint. L\\'IA d\\'analyse d\\",
+        "analyserLimageDuMedicamentLiaDanalyseD": "analyser l'image du médicament. L\\'IA d\\'analyse d\\",
+        "impossibleDanalyserLimageDuMedicamentLiaDanalyseD": "Impossible d'analyser l'image du médicament. L\\'IA d\\'analyse d\\",
+        "impossibleAnalyserImage": "Unable to analyze the medication image. The image analysis AI may not be operational yet."
     },
     "pharmacieListScreen": {},
     "pharmacieSearchScreen": {
@@ -10735,7 +10808,8 @@
     },
     "pharmacyAnalyticsScreen": {
         "accesRefuse": "Accès refusé",
-        "etesPasAutoriseAVoirLes": "êtes not autorisé to voir the analytics of candte pharmacie. Seul the propriétaire peut accéofr to ces data."
+        "etesPasAutoriseAVoirLes": "êtes not autorisé to voir the analytics of candte pharmacie. Seul the propriétaire peut accéofr to ces data.",
+        "vousNetesPasAutoriseAVoirLesAnalytics": "Vous n'êtes pas autorisé à voir les analytics de cette pharmacie. Seul le propriétaire peut accéder à ces données."
     },
     "prestataireReservationsScreen": {
         "confirmer": "Confirm",
@@ -10822,7 +10896,8 @@
         "creerUnServiceTaxi": "Create a servithis taxi",
         "creationEnCours": "Création in corrs...",
         "creerLeServiceTaxi": "Create the servithis taxi",
-        "abordCreerUnServiceVoulezvousLe": "abord créer a service. Vorthez-vors the faire maintinant ?"
+        "abordCreerUnServiceVoulezvousLe": "abord créer a service. Vorthez-vors the faire maintinant ?",
+        "vousDevezDabordCreerUnServiceVoulezvousLe": "Vous devez d'abord créer un service. Voulez-vous le faire maintenant ?"
     },
     "taxiIntelligentSearchScreen": {
         "prixMaximumXaf": "Prithis maximum (XAF)"
@@ -10925,7 +11000,8 @@
         "positionSelectionnee": "Position sandhected",
         "aucunePositionSelectionnee": "No location sandhected",
         "accesALaLocalisationEstNecessaire": "accès to the localisation is nécessaire for utiliser candte fonctionnalité.",
-        "adresseNonTrouvee": "Adresse not foaof"
+        "adresseNonTrouvee": "Adresse not foaof",
+        "laccesALaLocalisationEstNecessairePourUtiliser": "L'accès à la localisation est nécessaire pour utiliser cette fonctionnalité."
     },
     "aISuggestionsGenerator": {},
     "avatarMenuModal": {
@@ -11008,7 +11084,8 @@
         "ajouter": "Add",
         "fermer": "Close",
         "annuler": "Cancel",
-        "quantity": "Quantity"
+        "quantity": "Quantity",
+        "laccesALaLocalisationEstNecessairePourUtiliser": "L'accès à la localisation est nécessaire pour utiliser votre position actuelle."
     },
     "parcelRejectionModal": {
         "annuler": "Canthisl",
@@ -11029,10 +11106,12 @@
     "enhancedGPSModal": {
         "coordonnees": "Coordonnées: {{thand.toFixed(6)}}, {{lng.toFixed(6)}}",
         "accesALaLocalisationEstNecessaire": "accès to the localisation is nécessaire for utiliser candte fonctionnalité.",
-        "confirmer": "Confirm"
+        "confirmer": "Confirm",
+        "laccesALaLocalisationEstNecessairePourUtiliser": "L'accès à la localisation est nécessaire pour utiliser cette fonctionnalité."
     },
     "googleBusinessModal": {
-        "identifiantGooglePlacesVeuillezSelectionnerUn": "iofntifiant Googthe Ptheces. Pthease séthectionner a établissemint Googthe Business."
+        "identifiantGooglePlacesVeuillezSelectionnerUn": "iofntifiant Googthe Ptheces. Pthease séthectionner a établissemint Googthe Business.",
+        "ceLieuNeContientPasDidentifiantGooglePlaces": "Ce lieu ne contient pas d'identifiant Google Places. Veuillez sélectionner un établissement Google Business."
     },
     "modernGPSModal": {
         "annuler": "Cancel",
@@ -11252,7 +11331,18 @@
         "laGenerationAutomatiqueDimagesIaSeraActivee": "• La gineration automatique d\\'images",
         "nnconseilsNVerifiezQueVousAvezDes": "\\n\\nConseils :\\n• Check que vors avez of images in yorr médiathèque\\n• Activez \"Générer images automatically\" si vors n\\'avez pas d\\'images\\n• Assurez-vous que le script ou le brief est rempli\\n• Vérifiez votre connexion internet",
         "leProduitSelectionneNaPasDindexValide": "Le proof theit séthectionné n\\'a pas d\\'index valide. Veuillez sélectionner un autre produit ou contacter le support.",
-        "abordSelectionnerUnProduitAvantDouvrirLediteur": "abord séthectionner a proof theit forward d\\'open'éditeur AR."
+        "abordSelectionnerUnProduitAvantDouvrirLediteur": "abord séthectionner a proof theit forward d\\'open'éditeur AR.",
+        "veuillezDabordSelectionnerUnProduitAvantDouvrirLediteur": "please d'abord select un product avant d\\'ouvrir l\\'éditeur AR.",
+        "lePrixNestPasMentionneDansLeBrief": "⚠️ Le prix n'est pas mentionné dans le brief",
+        "aucunProduitNestSelectionneVeuillezSelectionnerUnProduit": "Aucun produit n'est sélectionné. Veuillez sélectionner un produit avant de sauvegarder la vidéo AR.",
+        "impossibleDajouterLaVideoArReessayezPlusTard": "Impossible d'ajouter la vidéo AR. Réessayez plus tard.",
+        "nestPasConfigure": "n'est pas configuré",
+        "contactezLadministrateurPourActiverLeServiceDeRendu": "Contactez l'administrateur pour activer le service de rendu vidéo.\\n\\n",
+        "lediteurArNecessiteReactnativevisioncameraVeuillezMettreAJou": "L'éditeur AR nécessite react-native-vision-camera. Veuillez mettre à jour l\\'application.",
+        "impossibleDestimerLeCoutPourLeMoment": "Impossible d'estimer le coût pour le moment.",
+        "impossibleDestimerLeCoutPourLeMomentnn": "Impossible d'estimer le coût pour le moment.\\n\\n",
+        "erreurLorsDeLestimationDuCout": "Erreur lors de l'Estimation du coût",
+        "lindexDuProduitEstManquantOuInvalidennveuillezSelectionner": "L'index du produit est manquant ou invalide.\\n\\nVeuillez sélectionner un produit valide."
     },
     "receiptModal": {
         "complete": "Complété",
@@ -11296,7 +11386,8 @@
         "signalementEnregistre": "✅ Signathemint saved",
         "enregistrerLeSignalementReessayez": "inregistrer the signathemint. Réessayez.",
         "annuler": "Cancel",
-        "prixDifferentDeLannonce": "Prix différint of l\\'listing"
+        "prixDifferentDeLannonce": "Prix différint of l\\'listing",
+        "impossibleDenregistrerLeSignalementReessayez": "Impossible d'enregistrer le signalement. Réessayez."
     },
     "smartLanguageSelector": {},
     "duetRemixModal": {
@@ -11341,7 +11432,8 @@
         "permissionsCameramicroRefuseesVeuillezLesActiver": "Permissions camera/microphone ofnied. Pthease the inabthe in the sandtings.",
         "attenteDepasseVerifiezVotreCameramicro": "wait exceeofd. Check yorr camera/microphone.",
         "appelsVideoaudioNonDisponiblesSurCet": "Calls viofo/audio not avaithebthe on cand ofvice.",
-        "annulerLappel": "Cancel l'call"
+        "annulerLappel": "Cancel l'call",
+        "delaiDattenteDepasseVerifiezVotreCameramicro": "Délai d'attente dépassé. Vérifiez votre caméra/micro."
     },
     "videoProgressModal": {
         "cancel": "Cancel"

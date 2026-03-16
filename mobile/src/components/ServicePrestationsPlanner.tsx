@@ -142,7 +142,7 @@ const [schedules, setSchedules] = useState<PrestationSchedule[]>(
                                 <Text style={styles.prestationTitle}>{schedule.prestation}</Text>
 
                                 <View style={styles.daysContainer}>
-                                    <Text style={styles.sectionLabel}>{t('servicePrestationsPlanner.joursDisponibles')}/Text>
+                                    <Text style={styles.sectionLabel}>{t('servicePrestationsPlanner.joursDisponibles')}</Text>
                                     <View style={styles.daysGrid}>
                                         {DAYS_OF_WEEK.map(day => (
                                             <TouchableOpacity

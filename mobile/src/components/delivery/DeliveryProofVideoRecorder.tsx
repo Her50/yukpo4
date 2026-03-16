@@ -138,7 +138,7 @@ const [hasPermission, setHasPermission] = useState<boolean | null>(null);
                 tips: [
                     'Montrez l\'état du colis',
                     'Vérifiez l\'adresse de destination',
-                    'Confirmez l\t('deliveryProofVideoRecorder.identiteDuDestinataireSiPresent')
+                    t('deliveryProofVideoRecorder.confirmezLidentiteDuDestinataireSiPresent')
                 ]
             };
         } else {
@@ -160,7 +160,7 @@ const [hasPermission, setHasPermission] = useState<boolean | null>(null);
         return (
             <View style={styles.container}>
                 <ActivityIndicator size="large" color={modernColors.primary} />
-                <Text style={styles.loadingText}>{t('deliveryProofVideoRecorder.demandeDePermissions')}/Text>
+                <Text style={styles.loadingText}>{t('deliveryProofVideoRecorder.demandeDePermissions')}</Text>
             </View>
         );
     }

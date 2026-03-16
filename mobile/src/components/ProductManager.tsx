@@ -97,7 +97,7 @@ const [showAddForm, setShowAddForm] = useState(false);
         <Card style={styles.container}>
             <Card.Content>
                 <View style={styles.header}>
-                    <Text style={styles.title}>{t('productManager.gestionDesProduits')}/Text>
+                    <Text style={styles.title}>{t('productManager.gestionDesProduits')}</Text>
                     <TouchableOpacity
                         style={styles.addButton}
                         onPress={() => setShowAddForm(!showAddForm)}

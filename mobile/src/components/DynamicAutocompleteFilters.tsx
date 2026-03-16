@@ -164,7 +164,7 @@ const [selectedFilters, setSelectedFilters] = useState<Record<string, string[]>>
                 {/* Filtres actifs */}
                 {activeFiltersCount > 0 && (
                     <View style={styles.activeFiltersSection}>
-                        <Text style={styles.sectionTitle}>{t('dynamicAutocompleteFilters.filtresActifs')}/Text>
+                        <Text style={styles.sectionTitle}>{t('dynamicAutocompleteFilters.filtresActifs')}</Text>
                         <ScrollView
                             horizontal
                             showsHorizontalScrollIndicator={false}

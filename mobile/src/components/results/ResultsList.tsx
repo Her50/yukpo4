@@ -386,7 +386,7 @@ const ResultsList: React.FC<ResultsListProps> = ({
             return (
                 <View style={styles.loadingContainer}>
                     <ActivityIndicator size="large" color={modernColors.primary} />
-                    <Text style={styles.loadingText}>{t('resultsList.rechercheEnCours')}/Text>
+                    <Text style={styles.loadingText}>{t('resultsList.rechercheEnCours')}</Text>
                 </View>
             );
         }

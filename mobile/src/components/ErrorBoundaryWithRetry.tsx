@@ -140,7 +140,7 @@ export class ErrorBoundaryWithRetry extends Component<Props, State> {
                             <SafeIcon name="alert-circle" size={64} color={modernColors.error} />
                         </View>
 
-                        <Text style={styles.title}>{t('errorBoundaryWithRetry.oupsUneErreurSestProduite')}/Text>
+                        <Text style={styles.title}>{t('errorBoundaryWithRetry.oupsUneErreurSestProduite')}</Text>
 
                         <Text style={styles.message}>
                             L'application a rencontré une erreur inattendue.{canRetry ? t('errorBoundaryWithRetry.tentativeDeRecuperationAutomatique') : ''}

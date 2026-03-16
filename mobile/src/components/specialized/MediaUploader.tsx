@@ -58,7 +58,7 @@ const [uploading, setUploading] = useState(false);
         if (cameraStatus !== 'granted' || libraryStatus !== 'granted') {
             Alert.alert(
                 'Permissions requises',
-                'Veuillez autoriser l\t('mediaUploader.accesALaCameraEtA')
+                t('mediaUploader.veuillezAutoriserLaccesALaCameraEtA')
             );
             return false;
         }

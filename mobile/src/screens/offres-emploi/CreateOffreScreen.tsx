@@ -74,7 +74,7 @@ const CreateOffreScreen: React.FC = () => {
                     style={styles.button}
                     onPress={() => (navigation as any).navigate('Login')}
                 >
-                    <Text style={styles.buttonText}>{t('createOffre.seConnecter')}/Text>
+                    <Text style={styles.buttonText}>{t('createOffre.seConnecter')}</Text>
                 </TouchableOpacity>
             </View>
         );

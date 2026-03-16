@@ -225,7 +225,7 @@ const GlobalPromoManagerScreen: React.FC = () => {
             <LinearGradient colors={modernColors.primaryGradient} style={styles.header}>
                 <View style={styles.headerContent}>
                     <Text style={styles.headerTitle}>🔥 Configuration Black Friday</Text>
-                    <Text style={styles.headerSubtitle}>{t('globalPromoManager.gestionDesCampagnesGlobales')}/Text>
+                    <Text style={styles.headerSubtitle}>{t('globalPromoManager.gestionDesCampagnesGlobales')}</Text>
                 </View>
             </LinearGradient>
 
@@ -574,7 +574,7 @@ const GlobalPromoManagerScreen: React.FC = () => {
                             <View style={styles.form}>
                                 <View style={styles.row}>
                                     <View style={[styles.field, styles.fieldHalf]}>
-                                        <Text style={styles.label}>{t('globalPromoManager.idService')}/Text>
+                                        <Text style={styles.label}>{t('globalPromoManager.idService')}</Text>
                                         <TextInput
                                             style={styles.input}
                                             value={entryForm.serviceId}
@@ -613,7 +613,7 @@ const GlobalPromoManagerScreen: React.FC = () => {
                                         />
                                     </View>
                                     <View style={[styles.field, styles.fieldHalf]}>
-                                        <Text style={styles.label}>{t('globalPromoManager.stockPromo')}/Text>
+                                        <Text style={styles.label}>{t('globalPromoManager.stockPromo')}</Text>
                                         <TextInput
                                             style={styles.input}
                                             value={entryForm.stockCap}
@@ -801,7 +801,7 @@ const GlobalPromoManagerScreen: React.FC = () => {
                                         </Text>
                                     </View>
                                     <View style={styles.detailRow}>
-                                        <Text style={styles.detailLabel}>{t('globalPromoManager.stockCible')}/Text>
+                                        <Text style={styles.detailLabel}>{t('globalPromoManager.stockCible')}</Text>
                                         <Text style={styles.detailValue}>
                                             {selectedEntryForDetails.stockCap ? selectedEntryForDetails.stockCap : '—'}
                                         </Text>

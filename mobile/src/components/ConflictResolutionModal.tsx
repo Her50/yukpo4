@@ -92,7 +92,7 @@ const [resolving, setResolving] = useState(false);
                         <View style={styles.infoSection}>
                             <Text style={styles.sectionTitle}>{t('conflictResolution.detailsDuConflit')}</Text>
                             <View style={styles.infoRow}>
-                                <Text style={styles.infoLabel}>{t('conflictResolution.serviceId')}/Text>
+                                <Text style={styles.infoLabel}>{t('conflictResolution.serviceId')}</Text>
                                 <Text style={styles.infoValue}>{conflict.service_id}</Text>
                             </View>
                             <View style={styles.infoRow}>

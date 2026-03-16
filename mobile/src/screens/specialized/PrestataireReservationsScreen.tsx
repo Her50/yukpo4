@@ -174,7 +174,7 @@ const [reservations, setReservations] = useState<Reservation[]>([]);
 
             {item.notes && (
                 <View style={styles.notesContainer}>
-                    <Text style={styles.notesLabel}>{t('prestataireReservations.notesClient')}/Text>
+                    <Text style={styles.notesLabel}>{t('prestataireReservations.notesClient')}</Text>
                     <Text style={styles.notes}>{item.notes}</Text>
                 </View>
             )}
@@ -240,7 +240,7 @@ const [reservations, setReservations] = useState<Reservation[]>([]);
                     style={[styles.filterButton, statusFilter === 'pending' && styles.filterActive]}
                     onPress={() => setStatusFilter('pending')}
                 >
-                    <Text style={styles.filterText}>{t('prestataireReservations.enAttente')}/Text>
+                    <Text style={styles.filterText}>{t('prestataireReservations.enAttente')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                     style={[

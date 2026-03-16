@@ -260,7 +260,7 @@ const CreateServiceScreen: React.FC = () => {
           <Card style={styles.card}>
             <View style={styles.cardContent}>
               <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>{t('createService.informationsDeBase')}/Text>
+                <Text style={styles.sectionTitle}>{t('createService.informationsDeBase')}</Text>
                 {suggestionData && (
                   <View style={styles.aiIndicator}>
                     <SafeIcon name="cpu" size={16} color={modernColors.primary} />
@@ -303,7 +303,7 @@ const CreateServiceScreen: React.FC = () => {
               </View>
 
               <View style={styles.switchContainer}>
-                <Text style={styles.switchLabel}>{t('createService.serviceTarissable')}/Text>
+                <Text style={styles.switchLabel}>{t('createService.serviceTarissable')}</Text>
                 <Switch
                   value={formData.is_tarissable}
                   onValueChange={(value) => {
@@ -372,7 +372,7 @@ const CreateServiceScreen: React.FC = () => {
         {currentStep === 2 && (
           <Card style={styles.card}>
             <View style={styles.cardContent}>
-              <Text style={styles.sectionTitle}>{t('createService.localisation')}/Text>
+              <Text style={styles.sectionTitle}>{t('createService.localisation')}</Text>
 
               <View style={styles.gpsContainer}>
                 <TextInput
@@ -461,7 +461,7 @@ const CreateServiceScreen: React.FC = () => {
           <Card style={styles.card}>
             <View style={styles.cardContent}>
               <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>{t('createService.informationsDeContact')}/Text>
+                <Text style={styles.sectionTitle}>{t('createService.informationsDeContact')}</Text>
                 {userContactInfo && (
                   <View style={styles.aiIndicator}>
                     <SafeIcon name="check" size={16} color={modernColors.success} />

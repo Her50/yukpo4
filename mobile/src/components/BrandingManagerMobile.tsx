@@ -38,7 +38,7 @@ const [showImagePreview, setShowImagePreview] = useState<string | null>(null);
             if (!permissionResult.granted) {
                 Alert.alert(
                     t('brandingManagerMobile.permissionRefusee'),
-                    'Vous devez autoriser l\t('brandingManagerMobile.accesALaGaleriePourAjouter')
+                    t('brandingManagerMobile.vousDevezAutoriserLaccesALaGaleriePour')
                 );
                 return;
             }

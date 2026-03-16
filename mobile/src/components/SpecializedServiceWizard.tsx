@@ -156,7 +156,7 @@ const [currentStep, setCurrentStep] = useState(1);
 
             {wizardData.type && (
                 <View style={styles.nomInputContainer}>
-                    <Text style={styles.inputLabel}>{t('specializedServiceWizard.nomDuService')}/Text>
+                    <Text style={styles.inputLabel}>{t('specializedServiceWizard.nomDuService')}</Text>
                     <View style={styles.inputContainer}>
                         <TextInput
                             style={styles.input}

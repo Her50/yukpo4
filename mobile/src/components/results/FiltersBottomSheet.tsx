@@ -100,7 +100,7 @@ const FiltersBottomSheet: React.FC<FiltersBottomSheetProps> = ({
         >
             <BottomSheetView style={styles.headerContainer}>
                 <View style={styles.header}>
-                    <Text style={styles.title}>{t('filtersBottomSheet.filtresEtTri')}/Text>
+                    <Text style={styles.title}>{t('filtersBottomSheet.filtresEtTri')}</Text>
                     <TouchableOpacity onPress={handleReset} style={styles.resetButton}>
                         <SafeIcon name="rotate-ccw" size={18} color={modernColors.primary} />
                         <Text style={styles.resetText}>{t('filtersBottomSheet.reinitialiser')}</Text>

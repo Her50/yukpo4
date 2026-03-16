@@ -126,7 +126,7 @@ const GlobalPromoCatalogScreen: React.FC = () => {
         <SafeNativeView style={styles.container}>
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                    <Text style={styles.backButtonText}>{t('globalPromoCatalog.retour')}/Text>
+                    <Text style={styles.backButtonText}>{t('globalPromoCatalog.retour')}</Text>
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>🛍️ Black Friday</Text>
                 <View style={styles.placeholder} />

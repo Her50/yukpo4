@@ -124,7 +124,7 @@ const HospitalAIRecommendationsScreen: React.FC = () => {
                                     style={styles.symptomsInput}
                                 />
 
-                                <Text style={styles.label}>{t('hospitalAIRecommendations.localisationOptionnel')}/Text>
+                                <Text style={styles.label}>{t('hospitalAIRecommendations.localisationOptionnel')}</Text>
                                 <NativeInput
                                     placeholder={t('hospitalAIRecommendations.exYaoundeDouala')}
                                     value={location}

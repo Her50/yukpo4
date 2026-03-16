@@ -52,7 +52,7 @@ const SimpleErrorScreen: React.FC<SimpleErrorScreenProps> = ({
 
           <TouchableOpacity style={styles.homeButton} onPress={handleGoHome}>
             <Ionicons name="home" size={20} color="white" />
-            <Text style={styles.homeButtonText}>{t('simpleError.accueil')}/Text>
+            <Text style={styles.homeButtonText}>{t('simpleError.accueil')}</Text>
           </TouchableOpacity>
         </View>
       </View>

@@ -272,7 +272,7 @@ const BusTicketSearchScreen: React.FC = () => {
 
                 {/* Formulaire de recherche */}
                 <View style={styles.searchFormCard}>
-                    <Text style={styles.sectionTitle}>{t('busTicketSearch.rechercheDeTrajet')}/Text>
+                    <Text style={styles.sectionTitle}>{t('busTicketSearch.rechercheDeTrajet')}</Text>
                     {/* Ville de départ */}
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>

@@ -146,7 +146,7 @@ const ServicesDashboard: React.FC = () => {
                 >
                     <SafeIcon name="arrow-left" size={24} color="#111827" />
                 </TouchableOpacity>
-                <Text style={styles.title}>{t('servicesDashboard.dashboardStatistiques')}/Text>
+                <Text style={styles.title}>{t('servicesDashboard.dashboardStatistiques')}</Text>
             </View>
 
             {/* Statistiques principales */}

@@ -221,7 +221,7 @@ const HealthServicesHubScreen: React.FC = () => {
                 {loadingDuty ? (
                     <View style={styles.dutyCard}>
                         <ActivityIndicator size="small" color="#10B981" />
-                        <Text style={styles.dutyLoadingText}>{t('healthServicesHub.recherchePharmacieDeGarde')}/Text>
+                        <Text style={styles.dutyLoadingText}>{t('healthServicesHub.recherchePharmacieDeGarde')}</Text>
                     </View>
                 ) : dutyPharmacy ? (
                     <View style={styles.dutyCard}>
@@ -260,7 +260,7 @@ const HealthServicesHubScreen: React.FC = () => {
                 ) : null}
 
                 {/* Grille des services */}
-                <Text style={styles.sectionTitle}>{t('healthServicesHub.servicesDisponibles')}/Text>
+                <Text style={styles.sectionTitle}>{t('healthServicesHub.servicesDisponibles')}</Text>
                 <View style={styles.servicesGrid}>
                     {healthServices.map((service) => (
                         <TouchableOpacity
@@ -327,7 +327,7 @@ const HealthServicesHubScreen: React.FC = () => {
                     <Text style={styles.tipsTitle}>{t('healthServicesHub.conseilsSante')}</Text>
                     <View style={styles.tipItem}>
                         <SafeIcon name="check-circle" size={14} color="#10B981" type="lucide" />
-                        <Text style={styles.tipText}>{t('healthServicesHub.lesPharmaciesDeGardeChangent')}/Text>
+                        <Text style={styles.tipText}>{t('healthServicesHub.lesPharmaciesDeGardeChangent')}</Text>
                     </View>
                     <View style={styles.tipItem}>
                         <SafeIcon name="check-circle" size={14} color="#10B981" type="lucide" />

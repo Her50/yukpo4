@@ -313,7 +313,7 @@ const PharmacieDetailsScreen: React.FC = () => {
 
                 {/* Horaires */}
                 <View style={st.section}>
-                    <View style={st.sectionHeader}><SafeIcon name="clock" size={18} color="#10B981" /><Text style={st.sectionTitle}>{t('pharmacieDetails.horaires')}/Text></View>
+                    <View style={st.sectionHeader}><SafeIcon name="clock" size={18} color="#10B981" /><Text style={st.sectionTitle}>{t('pharmacieDetails.horaires')}</Text></View>
                     {pharmacie.permanent_24h ? (
                         <View style={st.infoCard}><SafeIcon name="clock" size={16} color="#F59E0B" /><Text style={st.infoCardText}>Ouvert 24h/24 - 7j/7</Text></View>
                     ) : (

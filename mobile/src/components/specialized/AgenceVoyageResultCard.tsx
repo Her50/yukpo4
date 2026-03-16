@@ -124,7 +124,7 @@ const AgenceVoyageResultCard: React.FC<AgenceVoyageResultCardProps> = ({
                     <Text style={styles.title}>{agency.nom_agence}</Text>
                     {agency.peut_emettre_tickets_bus && (
                         <View style={styles.badge}>
-                            <Text style={styles.badgeText}>{t('agenceVoyageResultCard.ticketsBus')}/Text>
+                            <Text style={styles.badgeText}>{t('agenceVoyageResultCard.ticketsBus')}</Text>
                         </View>
                     )}
                 </View>
@@ -163,7 +163,7 @@ const AgenceVoyageResultCard: React.FC<AgenceVoyageResultCardProps> = ({
             {/* Afficher les tickets bus disponibles si présents */}
             {busTickets && busTickets.length > 0 && (
                 <View style={styles.ticketsSection}>
-                    <Text style={styles.ticketsSectionTitle}>{t('agenceVoyageResultCard.ticketsDisponibles')}/Text>
+                    <Text style={styles.ticketsSectionTitle}>{t('agenceVoyageResultCard.ticketsDisponibles')}</Text>
                     {busTickets.map((ticket, index) => (
                         <BusTicketCard
                             key={ticket.product_id || index}

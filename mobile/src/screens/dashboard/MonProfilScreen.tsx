@@ -131,7 +131,7 @@ const MonProfilScreen: React.FC = () => {
                         </View>
 
                         <View style={styles.inputGroup}>
-                            <Text style={styles.inputLabel}>{t('monProfil.solde')}/Text>
+                            <Text style={styles.inputLabel}>{t('monProfil.solde')}</Text>
                             <Text style={styles.inputValue}>
                                 {user?.credits?.toLocaleString() || '0'} XAF
                             </Text>
@@ -176,7 +176,7 @@ const MonProfilScreen: React.FC = () => {
                             onPress={() => navigation.navigate('SoldeDetail' as never)}
                         >
                             <Ionicons name="time" size={24} color={theme.colors.primary} />
-                            <Text style={styles.actionText}>{t('monProfil.historique')}/Text>
+                            <Text style={styles.actionText}>{t('monProfil.historique')}</Text>
                             <Ionicons name="chevron-forward" size={20} color={theme.colors.textSecondary} />
                         </TouchableOpacity>
 

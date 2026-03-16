@@ -35,7 +35,7 @@ const [hasGoogleBusiness, setHasGoogleBusiness] = useState<boolean | null>(null)
     if (!location.place_id) {
       Alert.alert(
         'Erreur',
-        'Ce lieu ne contient pas d\t('googleBusinessModal.identifiantGooglePlacesVeuillezSelectionnerUn')
+        t('googleBusinessModal.ceLieuNeContientPasDidentifiantGooglePlaces')
       );
       return;
     }
@@ -109,7 +109,7 @@ const [hasGoogleBusiness, setHasGoogleBusiness] = useState<boolean | null>(null)
                   activeOpacity={0.8}
                 >
                   <SafeIcon name="Check" size={20} color="white" />
-                  <Text style={styles.buttonText}>{t('googleBusiness.ouiJaiUnGoogleBusiness')}/Text>
+                  <Text style={styles.buttonText}>{t('googleBusiness.ouiJaiUnGoogleBusiness')}</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity

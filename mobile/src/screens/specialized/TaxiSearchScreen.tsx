@@ -223,7 +223,7 @@ const TaxiSearchScreen: React.FC = () => {
 
                 {/* Formulaire de recherche */}
                 <View style={styles.searchFormCard}>
-                    <Text style={styles.sectionTitle}>{t('taxiSearch.localisation')}/Text>
+                    <Text style={styles.sectionTitle}>{t('taxiSearch.localisation')}</Text>
 
                     {/* Lieu (universel : ville, quartier, établissement, point GPS) */}
                     <View style={styles.inputGroup}>
@@ -345,7 +345,7 @@ const TaxiSearchScreen: React.FC = () => {
 
                     {/* Options */}
                     <View style={styles.optionsSection}>
-                        <Text style={styles.sectionTitle}>{t('taxiSearch.optionsDeRecherche')}/Text>
+                        <Text style={styles.sectionTitle}>{t('taxiSearch.optionsDeRecherche')}</Text>
 
                         <View style={styles.optionCard}>
                             <View style={styles.optionContent}>

@@ -88,7 +88,7 @@ const ServiceDetailScreen: React.FC = () => {
   if (!service) {
     return (
       <View style={styles.errorContainer}>
-        <Text>{t('serviceDetail.serviceNonTrouv')}/Text>
+        <Text>{t('serviceDetail.serviceNonTrouv')}</Text>
       </View>
     );
   }
@@ -145,14 +145,14 @@ const ServiceDetailScreen: React.FC = () => {
             
             {service.location && (
               <View style={styles.detailItem}>
-                <Text style={styles.detailLabel}>{t('serviceDetail.localisation')}/Text>
+                <Text style={styles.detailLabel}>{t('serviceDetail.localisation')}</Text>
                 <Text style={styles.detailValue}>{service.location}</Text>
               </View>
             )}
 
             {service.rating && (
               <View style={styles.detailItem}>
-                <Text style={styles.detailLabel}>{t('serviceDetail.note')}/Text>
+                <Text style={styles.detailLabel}>{t('serviceDetail.note')}</Text>
                 <Text style={styles.detailValue}>
                   {service.rating}/5 ({service.reviews || 0} avis)
                 </Text>
@@ -161,7 +161,7 @@ const ServiceDetailScreen: React.FC = () => {
 
             {service.contact && (
               <View style={styles.detailItem}>
-                <Text style={styles.detailLabel}>{t('serviceDetail.contact')}/Text>
+                <Text style={styles.detailLabel}>{t('serviceDetail.contact')}</Text>
                 <Text style={styles.detailValue}>{service.contact}</Text>
               </View>
             )}

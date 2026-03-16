@@ -285,7 +285,7 @@ const ImmobilierSearchScreen: React.FC = () => {
                 <View style={styles.searchFormCard}>
                     {/* Mode de recherche */}
                     <View style={styles.inputGroup}>
-                        <Text style={styles.sectionTitle}>{t('immobilierSearch.modeDeRecherche')}/Text>
+                        <Text style={styles.sectionTitle}>{t('immobilierSearch.modeDeRecherche')}</Text>
                         <View style={styles.modeSelector}>
                             <TouchableOpacity
                                 style={[styles.modeButton, searchMode === 'point' && styles.modeButtonActive]}
@@ -330,7 +330,7 @@ const ImmobilierSearchScreen: React.FC = () => {
                     {/* Localisation selon le mode */}
                     {searchMode === 'point' && (
                         <View style={styles.inputGroup}>
-                            <Text style={styles.sectionTitle}>{t('immobilierSearch.localisation')}/Text>
+                            <Text style={styles.sectionTitle}>{t('immobilierSearch.localisation')}</Text>
                             <LocationSelector
                                 label={t('immobilierSearch.ville')}
                                 value={typeof ville === 'string' ? (ville ? { raw: ville, place_name: ville } : '') : ville}
@@ -372,7 +372,7 @@ const ImmobilierSearchScreen: React.FC = () => {
 
                     {searchMode === 'zone' && (
                         <View style={styles.inputGroup}>
-                            <Text style={styles.sectionTitle}>{t('immobilierSearch.zoneDeRecherche')}/Text>
+                            <Text style={styles.sectionTitle}>{t('immobilierSearch.zoneDeRecherche')}</Text>
                             <TouchableOpacity
                                 style={styles.zoneButton}
                                 onPress={() => {

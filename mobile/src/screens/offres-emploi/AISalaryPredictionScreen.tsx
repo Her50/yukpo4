@@ -76,7 +76,7 @@ const AISalaryPredictionScreen: React.FC = () => {
 
             {!prediction ? (
                 <NativeCard style={styles.card}>
-                    <Text style={styles.sectionTitle}>{t('aISalaryPrediction.informationsDuPoste')}/Text>
+                    <Text style={styles.sectionTitle}>{t('aISalaryPrediction.informationsDuPoste')}</Text>
 
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>Titre du poste *</Text>
@@ -113,7 +113,7 @@ const AISalaryPredictionScreen: React.FC = () => {
                     </View>
 
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>{t('aISalaryPrediction.ville')}/Text>
+                        <Text style={styles.label}>{t('aISalaryPrediction.ville')}</Text>
                         <TextInput
                             style={styles.input}
                             placeholder="Ex: Douala"

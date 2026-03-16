@@ -79,7 +79,7 @@ const ShoppingSummaryScreen: React.FC = () => {
                         <Text style={styles.detailValue}>{pickup?.label ?? t('shoppingSummary.nonDefini')}</Text>
                     </View>
                     <View style={styles.detailRow}>
-                        <Text style={styles.detailLabel}>{t('shoppingSummary.livraison')}/Text>
+                        <Text style={styles.detailLabel}>{t('shoppingSummary.livraison')}</Text>
                         <Text style={styles.detailValue}>{dropoff?.label ?? t('shoppingSummary.nonDefini')}</Text>
                     </View>
                     {comment ? (
@@ -99,13 +99,13 @@ const ShoppingSummaryScreen: React.FC = () => {
                     <View style={styles.section}>
                         <Text style={styles.sectionTitle}>Estimation Yukpo</Text>
                         <View style={styles.summaryLine}>
-                            <Text style={styles.detailLabel}>{t('shoppingSummary.panier')}/Text>
+                            <Text style={styles.detailLabel}>{t('shoppingSummary.panier')}</Text>
                             <Text style={styles.detailValue}>
                                 {estimate.subtotal.toFixed(0)} {estimate.currency}
                             </Text>
                         </View>
                         <View style={styles.summaryLine}>
-                            <Text style={styles.detailLabel}>{t('shoppingSummary.livraison')}/Text>
+                            <Text style={styles.detailLabel}>{t('shoppingSummary.livraison')}</Text>
                             <Text style={styles.detailValue}>
                                 {estimate.deliveryFee.toFixed(0)} {estimate.currency}
                             </Text>

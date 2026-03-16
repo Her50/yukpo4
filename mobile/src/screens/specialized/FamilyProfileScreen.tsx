@@ -180,7 +180,7 @@ const FamilyProfileScreen: React.FC = () => {
             <View style={styles.form}>
                 {/* Nombre de personnes */}
                 <NativeCard style={styles.card}>
-                    <Text style={styles.label}>{t('familyProfile.compositionDeLaFamille')}/Text>
+                    <Text style={styles.label}>{t('familyProfile.compositionDeLaFamille')}</Text>
                     <View style={styles.row}>
                         <View style={styles.inputGroup}>
                             <Text style={styles.inputLabel}>Total</Text>

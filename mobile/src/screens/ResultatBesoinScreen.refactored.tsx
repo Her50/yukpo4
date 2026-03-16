@@ -1050,7 +1050,7 @@ const ResultatBesoinScreen: React.FC = () => {
                     showsHorizontalScrollIndicator={false}
                     contentContainerStyle={styles.filtersScroll}
                 >
-                    <Text style={styles.filtersLabel}>{t('resultatBesoinScreen.refactored.filtres')}/Text>
+                    <Text style={styles.filtersLabel}>{t('resultatBesoinScreen.refactored.filtres')}</Text>
                     {filters.map((filter, index) => (
                         <View key={index} style={styles.filterChip}>
                             <Text style={styles.filterText}>{filter}</Text>

@@ -468,7 +468,7 @@ const OffresEmploiFormScreen: React.FC = () => {
                     </View>
 
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>{t('offresEmploiForm.localisationGps')}/Text>
+                        <Text style={styles.label}>{t('offresEmploiForm.localisationGps')}</Text>
                         <TouchableOpacity
                             style={styles.gpsButton}
                             onPress={() => setShowGPSModal(true)}

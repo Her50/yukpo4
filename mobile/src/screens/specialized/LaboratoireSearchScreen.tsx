@@ -248,7 +248,7 @@ const LaboratoireSearchScreen: React.FC = () => {
 
                 {/* ✅ RÉORIENTÉ: Formulaire de recherche - Priorité sur examens */}
                 <View style={styles.searchFormCard}>
-                    <Text style={styles.sectionTitle}>{t('laboratoireSearch.rechercheDexamens')}/Text>
+                    <Text style={styles.sectionTitle}>{t('laboratoireSearch.rechercheDexamens')}</Text>
                     <Text style={styles.sectionDescription}>
                         Recherchez un type d'examen médical spécifique
                     </Text>
@@ -267,7 +267,7 @@ const LaboratoireSearchScreen: React.FC = () => {
                     </View>
 
                     {/* Localisation (optionnelle pour recherche d'examens) */}
-                    <Text style={styles.sectionTitle}>{t('laboratoireSearch.localisationOptionnelle')}/Text>
+                    <Text style={styles.sectionTitle}>{t('laboratoireSearch.localisationOptionnelle')}</Text>
                     <Text style={styles.sectionDescription}>
                         Ajoutez votre position pour trouver des examens à proximité
                     </Text>
@@ -448,7 +448,7 @@ const LaboratoireSearchScreen: React.FC = () => {
 
                     {/* Options */}
                     <View style={styles.optionsSection}>
-                        <Text style={styles.sectionTitle}>{t('laboratoireSearch.optionsDeRecherche')}/Text>
+                        <Text style={styles.sectionTitle}>{t('laboratoireSearch.optionsDeRecherche')}</Text>
 
                         <View style={styles.optionCard}>
                             <View style={styles.optionContent}>

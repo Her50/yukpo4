@@ -238,7 +238,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
             if (response.success) {
                 Alert.alert(
                     t('chatModalMobile.utilisateurInvite'),
-                    'L\t('chatModalMobile.utilisateurAEteAjouteALa'),
+                    t('chatModalMobile.lutilisateurAEteAjouteALaConversationEt'),
                     [{ text: 'OK' }]
                 );
                 loadParticipants(); // Recharger la liste
@@ -1264,7 +1264,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                     if (!deliveryEnabled) {
                                         Alert.alert(
                                             'Livraison non disponible',
-                                            'La livraison n\t('chatModalMobile.estPasActiveePourCeServiceContactez')
+                                            t('chatModalMobile.laLivraisonNestPasActiveePourCeService')
                                         );
                                         return;
                                     }

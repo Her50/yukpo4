@@ -272,7 +272,7 @@ const [loading, setLoading] = useState(true);
                     {metadata.permanent_24h && (
                         <View style={styles.infoRow}>
                             <SafeIcon name="clock" size={16} color={modernColors.primary} />
-                            <Text style={styles.infoText}>{t('serviceDetail.service247')}/Text>
+                            <Text style={styles.infoText}>{t('serviceDetail.service247')}</Text>
                         </View>
                     )}
                     {metadata.services && Array.isArray(metadata.services) && (

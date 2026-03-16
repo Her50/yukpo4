@@ -181,7 +181,7 @@ const [model, setModel] = useState<BusModel>(
                         </View>
 
                         <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
-                            <Text style={styles.label}>{t('busModelForm.prixDeBaseFcfa')}/Text>
+                            <Text style={styles.label}>{t('busModelForm.prixDeBaseFcfa')}</Text>
                             <TextInput
                                 style={styles.input}
                                 value={model.prix_base.toString()}

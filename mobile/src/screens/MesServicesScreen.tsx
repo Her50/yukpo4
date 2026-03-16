@@ -537,7 +537,7 @@ const MesServicesScreen: React.FC = () => {
 
       // ✅ CORRECTION: Si toujours pas de service trouvé, faire un appel API direct pour vérifier
       if (!foundServiceId) {
-        logger.log('[MesServicesScreen] handleAddProduct - Aucun service dans l\t('mesServicesScreen.etatVerificationApiDirecte'));
+        logger.log(t('mesServicesScreen.messervicesscreenHandleaddproductAucunServiceDansLetatVerifi'));
         try {
           const directResponse = await apiGet('/api/prestataire/services');
           if (directResponse.success && Array.isArray(directResponse.data) && directResponse.data.length > 0) {
@@ -1247,7 +1247,7 @@ const MesServicesScreen: React.FC = () => {
                 onPress={() => {
                   const productsList = prepareProductsForSelector();
                   if (productsList.length === 0) {
-                    toaster.warning('Vous devez d\t('mesServicesScreen.abordCreerDesProduitsAvantDe'));
+                    toaster.warning(t('mesServicesScreen.vousDevezDabordCreerDesProduitsAvantDe'));
                     return;
                   }
                   setProductsForSelection(productsList);
@@ -1433,7 +1433,7 @@ const MesServicesScreen: React.FC = () => {
                     }
                   } catch (error) {
                     logger.error('Erreur navigation vers VideoFeed:', error);
-                    toaster.error('Impossible d\t('mesServicesScreen.ouvrirMesVideos'));
+                    toaster.error(t('mesServicesScreen.impossibleDouvrirMesVideos'));
                   }
                 }}
               >
@@ -1464,7 +1464,7 @@ const MesServicesScreen: React.FC = () => {
                     }
                   } catch (error) {
                     logger.error('Erreur navigation vers VideoAnalytics:', error);
-                    toaster.error('Impossible d\t('mesServicesScreen.ouvrirAnalytiquesVideos'));
+                    toaster.error(t('mesServicesScreen.impossibleDouvrirAnalytiquesVideos'));
                   }
                 }}
               >
@@ -1858,7 +1858,7 @@ const MesServicesScreen: React.FC = () => {
                   });
                 } catch (error) {
                   logger.error('Erreur navigation CreateFlashPromo:', error);
-                  toaster.error('Impossible d\t('mesServicesScreen.ouvrirLaCreationDeFlashPromo'));
+                  toaster.error(t('mesServicesScreen.impossibleDouvrirLaCreationDeFlashPromo'));
                 }
               } else {
                 // Plusieurs produits : naviguer avec la liste des produits sélectionnés
@@ -1875,7 +1875,7 @@ const MesServicesScreen: React.FC = () => {
                   });
                 } catch (error) {
                   logger.error('Erreur navigation CreateFlashPromo (multiple):', error);
-                  toaster.error('Impossible d\t('mesServicesScreen.ouvrirLaCreationDeFlashPromo'));
+                  toaster.error(t('mesServicesScreen.impossibleDouvrirLaCreationDeFlashPromo'));
                 }
               }
 
@@ -1982,7 +1982,7 @@ const MesServicesScreen: React.FC = () => {
               onPress: () => {
                 const productsList = prepareProductsForSelector();
                 if (productsList.length === 0) {
-                  toaster.warning('Vous devez d\t('mesServicesScreen.abordCreerDesProduitsAvantDeCreer'));
+                  toaster.warning(t('mesServicesScreen.vousDevezDabordCreerDesProduitsAvantDe'));
                   return;
                 }
                 setProductsForSelection(productsList);
@@ -2029,7 +2029,7 @@ const MesServicesScreen: React.FC = () => {
                     (navigation as any).navigate('VideoFeed');
                   }
                 } catch (error) {
-                  toaster.error('Impossible d\t('mesServicesScreen.ouvrirMesVideos'));
+                  toaster.error(t('mesServicesScreen.impossibleDouvrirMesVideos'));
                 }
               },
             },
@@ -2056,7 +2056,7 @@ const MesServicesScreen: React.FC = () => {
                     (navigation as any).navigate('VideoAnalytics');
                   }
                 } catch (error) {
-                  toaster.error('Impossible d\t('mesServicesScreen.ouvrirAnalytiquesVideos'));
+                  toaster.error(t('mesServicesScreen.impossibleDouvrirAnalytiquesVideos'));
                 }
               },
             },
@@ -2078,7 +2078,7 @@ const MesServicesScreen: React.FC = () => {
                 // Préparer la liste des produits et ouvrir le sélecteur en mode multiple
                 const productsList = prepareProductsForSelector();
                 if (productsList.length === 0) {
-                  toaster.warning('Vous devez d\t('mesServicesScreen.abordCreerDesProduitsAvantDe'));
+                  toaster.warning(t('mesServicesScreen.vousDevezDabordCreerDesProduitsAvantDe'));
                   return;
                 }
                 setProductsForSelection(productsList);

@@ -5673,7 +5673,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 <View style={styles.iconCircle}>
                   <SafeIcon name="star" size={32} color={modernColors.primary} />
                 </View>
-                <Text style={styles.introTitle}>{t('formulaireYukpoIntelligent.formulaireYukpoIntelligent')}/Text>
+                <Text style={styles.introTitle}>{t('formulaireYukpoIntelligent.formulaireYukpoIntelligent')}</Text>
                 <Text style={styles.introDescription}>
                   Notre IA va analyser vos données et générer un formulaire personnalisé adapté à votre besoin
                 </Text>
@@ -5755,7 +5755,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                       <SafeIcon name="map-pin" size={18} color={modernColors.error} />
                     </View>
                     <View style={styles.dataContent}>
-                      <Text style={styles.dataLabel}>{t('formulaireYukpoIntelligent.positionGps')}/Text>
+                      <Text style={styles.dataLabel}>{t('formulaireYukpoIntelligent.positionGps')}</Text>
                       <Text style={styles.dataText}>{gps}</Text>
                     </View>
                   </View>

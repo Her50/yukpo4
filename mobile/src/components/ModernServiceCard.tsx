@@ -317,7 +317,7 @@ const [showChatModal, setShowChatModal] = useState(false);
 
                 <TouchableOpacity style={styles.secondaryButton} onPress={handleFavorite}>
                     <SafeIcon name="heart" size={16} color={modernColors.textSecondary} />
-                    <Text style={styles.secondaryButtonText}>{t('modernServiceCard.favoris')}/Text>
+                    <Text style={styles.secondaryButtonText}>{t('modernServiceCard.favoris')}</Text>
                 </TouchableOpacity>
             </View>
 

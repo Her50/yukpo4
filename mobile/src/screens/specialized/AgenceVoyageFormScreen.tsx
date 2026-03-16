@@ -501,7 +501,7 @@ const AgenceVoyageFormScreen: React.FC = () => {
             </View>
             {loadingSchedules ? <ActivityIndicator size="large" color="#2563EB" style={{ marginTop: 32 }} /> :
                 schedules.length === 0 ? (
-                    <View style={s.emptyDash}><SafeIcon name="clock" size={48} color="#9CA3AF" /><Text style={s.emptyTitle}>{t('agenceVoyageForm.aucunHoraire')}/Text><Text style={s.emptyText}>{t('agenceVoyageForm.creezVosHorairesDeDepart')}</Text></View>
+                    <View style={s.emptyDash}><SafeIcon name="clock" size={48} color="#9CA3AF" /><Text style={s.emptyTitle}>{t('agenceVoyageForm.aucunHoraire')}</Text><Text style={s.emptyText}>{t('agenceVoyageForm.creezVosHorairesDeDepart')}</Text></View>
                 ) : (
                     schedules.map((sch: any, i: number) => (
                         <View key={i} style={s.scheduleCardFull}>
@@ -533,7 +533,7 @@ const AgenceVoyageFormScreen: React.FC = () => {
                 <View key={i} style={s.busCard}>
                     <View style={{ flex: 1 }}>
                         <Text style={s.busName}>{model.name || `Bus ${i + 1}`}</Text>
-                        <Text style={s.busSub}>{model.total_seats} places · {model.rows || '?'} rangées</Text>
+                        <Text style={s.busSub}>{model.total_seats} {t('agenceVoyageFormScreen.seats')} · {model.rows || '?'} {t('agenceVoyageFormScreen.rows')}</Text>
                     </View>
                     <View style={{ flexDirection: 'row', gap: 8 }}>
                         <TouchableOpacity onPress={() => { setEditingModelIndex(i); setShowBusModelForm(true); }}><SafeIcon name="edit" size={18} color="#2563EB" /></TouchableOpacity>
@@ -565,7 +565,7 @@ const AgenceVoyageFormScreen: React.FC = () => {
                     <TouchableOpacity style={s.addTimeBtn} onPress={() => setScheduleForm({ ...scheduleForm, departure_times: [...scheduleForm.departure_times, '08:00'] })}>
                         <SafeIcon name="plus" size={16} color="#2563EB" /><Text style={s.addTimeBtnText}>{t('agenceVoyageForm.ajouterUnHoraire')}</Text>
                     </TouchableOpacity>
-                    <Text style={[s.label, { marginTop: 16 }]}>{t('agenceVoyageForm.jourOptionnel')}/Text>
+                    <Text style={[s.label, { marginTop: 16 }]}>{t('agenceVoyageForm.jourOptionnel')}</Text>
                     <View style={s.daysRow}>{DAYS_OF_WEEK.map(d => (
                         <TouchableOpacity key={d.value} style={[s.dayBtn, scheduleForm.day_of_week === d.value && s.dayBtnOn]} onPress={() => setScheduleForm({ ...scheduleForm, day_of_week: scheduleForm.day_of_week === d.value ? null : d.value })}>
                             <Text style={[s.dayBtnText, scheduleForm.day_of_week === d.value && s.dayBtnTextOn]}>{d.short}</Text>
@@ -618,7 +618,7 @@ const AgenceVoyageFormScreen: React.FC = () => {
                         </View>
                         <View style={{ flex: 1, minWidth: '45%', alignItems: 'center', padding: 8, backgroundColor: '#FEF3C7', borderRadius: 8 }}>
                             <Text style={{ fontSize: 20, fontWeight: '700', color: '#D97706' }}>{boardingSummary.pending_passengers}</Text>
-                            <Text style={{ fontSize: 11, color: '#6B7280' }}>{t('agenceVoyageForm.enAttente')}/Text>
+                            <Text style={{ fontSize: 11, color: '#6B7280' }}>{t('agenceVoyageForm.enAttente')}</Text>
                         </View>
                         <View style={{ flex: 1, minWidth: '45%', alignItems: 'center', padding: 8, backgroundColor: '#FEE2E2', borderRadius: 8 }}>
                             <Text style={{ fontSize: 20, fontWeight: '700', color: '#EF4444' }}>{boardingSummary.no_show_passengers}</Text>
@@ -645,7 +645,7 @@ const AgenceVoyageFormScreen: React.FC = () => {
                             {!p.is_validated && (
                                 <TouchableOpacity style={{ backgroundColor: '#10B981', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 6 }}
                                     onPress={() => handleManualValidation(p.reservation_id)}>
-                                    <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600' }}>{t('agenceVoyageForm.valider')}/Text>
+                                    <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600' }}>{t('agenceVoyageForm.valider')}</Text>
                                 </TouchableOpacity>
                             )}
                         </View>
@@ -654,10 +654,10 @@ const AgenceVoyageFormScreen: React.FC = () => {
             )}
 
             {/* Sold Tickets */}
-            <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827', marginBottom: 12 }}>Tickets vendus ({agencyTickets.length})</Text>
+            <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827', marginBottom: 12 }}>{t('agenceVoyageFormScreen.ticketsVendus', { count: agencyTickets.length })}</Text>
             {loadingTickets ? <ActivityIndicator size="large" color="#2563EB" style={{ marginTop: 32 }} /> :
                 agencyTickets.length === 0 ? (
-                    <View style={s.emptyDash}><SafeIcon name="ticket" size={48} color="#9CA3AF" /><Text style={s.emptyTitle}>{t('agenceVoyageForm.aucunTicketVendu')}/Text><Text style={s.emptyText}>{t('agenceVoyageForm.lesTicketsApparaitrontIciUne')}</Text></View>
+                    <View style={s.emptyDash}><SafeIcon name="ticket" size={48} color="#9CA3AF" /><Text style={s.emptyTitle}>{t('agenceVoyageForm.aucunTicketVendu')}</Text><Text style={s.emptyText}>{t('agenceVoyageForm.lesTicketsApparaitrontIciUne')}</Text></View>
                 ) : (
                     agencyTickets.map((ticket: any, i: number) => (
                         <TouchableOpacity key={i} style={{ backgroundColor: '#fff', borderRadius: 10, padding: 14, marginBottom: 8, borderLeftWidth: 3, borderLeftColor: ticket.payment_status === 'completed' ? '#10B981' : '#F59E0B' }}
@@ -678,7 +678,7 @@ const AgenceVoyageFormScreen: React.FC = () => {
                                         <Text style={{ fontSize: 10, color: ticket.payment_status === 'completed' ? '#059669' : '#D97706', fontWeight: '600' }}>{ticket.payment_status === 'completed' ? t('agenceVoyageFormScreen.paye') : 'En cours'}</Text>
                                     </View>
                                     {ticket.boarded_count !== undefined && (
-                                        <Text style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>{ticket.boarded_count}/{ticket.number_of_tickets} embarqué(s)</Text>
+                                        <Text style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>{ticket.boarded_count}/{ticket.number_of_tickets} {t('agenceVoyageFormScreen.boarded')}</Text>
                                     )}
                                 </View>
                             </View>
@@ -821,4 +821,4 @@ const s = StyleSheet.create({
     modalFooter: { flexDirection: 'row', gap: 12, padding: 16, borderTopWidth: 1, borderTopColor: '#E5E7EB' },
 });
 
-export default AgenceVoyageFormScreen;
+ex

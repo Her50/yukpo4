@@ -89,7 +89,7 @@ const BusTicketQRScannerScreen: React.FC = () => {
                     <SafeIcon name="arrow-left" size={24} color="#111827" />
                 </TouchableOpacity>
                 <View style={{ flex: 1 }}>
-                    <Text style={styles.title}>{t('busTicketQRScanner.scannerTicketBus')}/Text>
+                    <Text style={styles.title}>{t('busTicketQRScanner.scannerTicketBus')}</Text>
                     <Text style={styles.subtitle}>{scanCount} ticket(s) validé(s)</Text>
                 </View>
             </View>

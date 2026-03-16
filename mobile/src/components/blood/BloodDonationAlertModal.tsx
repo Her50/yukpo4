@@ -244,7 +244,7 @@ const BloodDonationAlertModal: React.FC<BloodDonationAlertModalProps> = ({
                             <View style={styles.infoRow}>
                                 <SafeIcon name="navigation" size={18} color={modernColors.primary} />
                                 <View style={styles.infoTextContainer}>
-                                    <Text style={styles.infoLabel}>{t('bloodDonationAlert.localisation')}/Text>
+                                    <Text style={styles.infoLabel}>{t('bloodDonationAlert.localisation')}</Text>
                                     <Text style={styles.infoValue}>{requestData.location}</Text>
                                 </View>
                             </View>
@@ -285,7 +285,7 @@ const BloodDonationAlertModal: React.FC<BloodDonationAlertModalProps> = ({
 
                         {/* Informations importantes */}
                         <View style={styles.importantInfo}>
-                            <Text style={styles.importantInfoTitle}>{t('bloodDonationAlert.informationsImportantes')}/Text>
+                            <Text style={styles.importantInfoTitle}>{t('bloodDonationAlert.informationsImportantes')}</Text>
                             <Text style={styles.importantInfoText}>
                                 • Vous avez été sélectionné car votre groupe sanguin ({requestData.groupe_sanguin}) est compatible
                             </Text>

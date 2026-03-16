@@ -99,7 +99,7 @@ const BloodBankResultCard: React.FC<BloodBankResultCardProps> = ({ banque }) => 
             <View style={styles.stocksSection}>
                 <View style={styles.stocksHeader}>
                     <View style={styles.stocksHeaderLeft}>
-                        <Text style={styles.stocksLabel}>{t('bloodBankResultCard.stocksDisponibles')}/Text>
+                        <Text style={styles.stocksLabel}>{t('bloodBankResultCard.stocksDisponibles')}</Text>
                         {totalStock > 0 && (
                             <Text style={styles.stocksTotal}>
                                 {totalStock} poches totales

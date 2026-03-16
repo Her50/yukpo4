@@ -262,7 +262,7 @@ const HopitalSearchScreen: React.FC = () => {
                     </View>
 
                     {/* Localisation (optionnelle pour recherche de services) */}
-                    <Text style={styles.sectionTitle}>{t('hopitalSearch.localisationOptionnelle')}/Text>
+                    <Text style={styles.sectionTitle}>{t('hopitalSearch.localisationOptionnelle')}</Text>
                     <Text style={styles.sectionDescription}>
                         Ajoutez votre position pour trouver des services à proximité
                     </Text>
@@ -541,7 +541,7 @@ const HopitalSearchScreen: React.FC = () => {
 
                     {/* Options */}
                     <View style={styles.optionsSection}>
-                        <Text style={styles.sectionTitle}>{t('hopitalSearch.optionsDeRecherche')}/Text>
+                        <Text style={styles.sectionTitle}>{t('hopitalSearch.optionsDeRecherche')}</Text>
 
                         <View style={styles.optionCard}>
                             <View style={styles.optionContent}>

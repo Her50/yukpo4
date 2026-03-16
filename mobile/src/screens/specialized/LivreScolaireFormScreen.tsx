@@ -631,7 +631,7 @@ const LivreScolaireFormScreen: React.FC = () => {
 
                     {/* ✅ NOUVEAU: Section Upload d'images */}
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>{t('livreScolaireForm.photosDuLivre')}/Text>
+                        <Text style={styles.label}>{t('livreScolaireForm.photosDuLivre')}</Text>
                         <Text style={styles.labelSubtext}>
                             Prenez une photo ou sélectionnez depuis la galerie. L'IA analysera automatiquement la première image.
                         </Text>
@@ -741,7 +741,7 @@ const LivreScolaireFormScreen: React.FC = () => {
 
                     {/* GPS */}
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>{t('livreScolaireForm.positionGps')}/Text>
+                        <Text style={styles.label}>{t('livreScolaireForm.positionGps')}</Text>
                         <TouchableOpacity
                             style={styles.gpsButton}
                             onPress={() => setShowGPSModal(true)}
@@ -807,7 +807,7 @@ const LivreScolaireFormScreen: React.FC = () => {
                                 </View>
 
                                 <View style={styles.analysisResults}>
-                                    <Text style={styles.analysisSectionTitle}>{t('livreScolaireForm.informationsExtraites')}/Text>
+                                    <Text style={styles.analysisSectionTitle}>{t('livreScolaireForm.informationsExtraites')}</Text>
 
                                     {iaAnalysisResult.titre && (
                                         <View style={styles.analysisItem}>
@@ -881,7 +881,7 @@ const LivreScolaireFormScreen: React.FC = () => {
 
                                     {iaAnalysisResult.notes && (
                                         <View style={styles.analysisItem}>
-                                            <Text style={styles.analysisLabel}>{t('livreScolaireForm.notes')}/Text>
+                                            <Text style={styles.analysisLabel}>{t('livreScolaireForm.notes')}</Text>
                                             <Text style={styles.analysisValue}>{iaAnalysisResult.notes}</Text>
                                         </View>
                                     )}

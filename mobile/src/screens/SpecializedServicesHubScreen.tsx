@@ -569,7 +569,7 @@ const SpecializedServicesHubScreen: React.FC = () => {
                                 (navigation as any).navigate('GestionServicesSpecialises');
                             }}
                         >
-                            <Text style={styles.seeAllText}>{t('specializedServicesHub.voirTous')}/Text>
+                            <Text style={styles.seeAllText}>{t('specializedServicesHub.voirTous')}</Text>
                         </TouchableOpacity>
                     </View>
 

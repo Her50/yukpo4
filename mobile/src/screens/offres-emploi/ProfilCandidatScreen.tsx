@@ -117,7 +117,7 @@ const ProfilCandidatScreen: React.FC = () => {
                     style={styles.button}
                     onPress={() => (navigation as any).navigate('Login')}
                 >
-                    <Text style={styles.buttonText}>{t('profilCandidat.seConnecter')}/Text>
+                    <Text style={styles.buttonText}>{t('profilCandidat.seConnecter')}</Text>
                 </TouchableOpacity>
             </View>
         );
@@ -280,7 +280,7 @@ const ProfilCandidatScreen: React.FC = () => {
 
                 {/* Localisation */}
                 <View style={styles.field}>
-                    <Text style={styles.label}>{t('profilCandidat.ville')}/Text>
+                    <Text style={styles.label}>{t('profilCandidat.ville')}</Text>
                     <NativeInput
                         value={formData.ville}
                         onChangeText={(text) => setFormData({ ...formData, ville: text })}

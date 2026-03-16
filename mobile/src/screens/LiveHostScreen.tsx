@@ -161,7 +161,7 @@ export default function LiveHostScreen() {
         }}
       >
         <SafeIcon name="zap" size={20} color="#FFFFFF" />
-        <Text style={styles.controlButtonText}>{t('liveHost.venteFlash')}/Text>
+        <Text style={styles.controlButtonText}>{t('liveHost.venteFlash')}</Text>
       </TouchableOpacity>
 
       <TouchableOpacity

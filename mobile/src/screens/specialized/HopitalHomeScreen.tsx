@@ -281,10 +281,10 @@ const HopitalHomeScreen: React.FC = () => {
                     // Gérer différents formats de réponse
                     const analysis = ar?.analysis || ar;
                     setImageAnalysis(analysis);
-                    toaster.success('Analyse d\t('hopitalHomeScreen.imageTerminee'));
+                    toaster.success(t('hopitalHomeScreen.analyseDimageTerminee'));
                 } else {
                     const ar = analysisResponse.data as any;
-                    const errorMsg = analysisResponse.error || ar?.error || 'Impossible d\'analyser l\'image. L\'IA d\'analyse d\'images n\t('hopitalHomeScreen.estPeutetrePasEncoreOperationnelle');
+                    const errorMsg = analysisResponse.error || ar?.error || t('hopitalHomeScreen.impossibleDanalyserLimageLiaDanalyseDimagesNestPeutetre');
                     toaster.error(errorMsg);
                     setImageAnalysis(null);
                 }
@@ -498,7 +498,7 @@ const HopitalHomeScreen: React.FC = () => {
                             }}
                         >
                             <SafeIcon name="search" size={18} color="#FFFFFF" type="lucide" />
-                            <Text style={styles.quickActionText}>{t('hopitalHome.recherchePathologie')}/Text>
+                            <Text style={styles.quickActionText}>{t('hopitalHome.recherchePathologie')}</Text>
                         </TouchableOpacity>
                     </View>
                 </LinearGradient>
@@ -530,7 +530,7 @@ const HopitalHomeScreen: React.FC = () => {
             {loading && availableServices.length === 0 ? (
                 <View style={styles.content}>
                     <ActivityIndicator size="large" color="#DC2626" />
-                    <Text style={styles.placeholderText}>{t('hopitalHome.rechercheDesServicesDisponibles')}/Text>
+                    <Text style={styles.placeholderText}>{t('hopitalHome.rechercheDesServicesDisponibles')}</Text>
                 </View>
             ) : availableServices.length > 0 ? (
                 <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
@@ -552,7 +552,7 @@ const HopitalHomeScreen: React.FC = () => {
                             </View>
                             {service.available_services.length > 0 && (
                                 <View style={styles.servicesList}>
-                                    <Text style={styles.servicesListTitle}>{t('hopitalHome.servicesDisponibles')}/Text>
+                                    <Text style={styles.servicesListTitle}>{t('hopitalHome.servicesDisponibles')}</Text>
                                     {service.available_services.slice(0, 5).map((s, index) => (
                                         <Text key={index} style={styles.serviceItem}>• {s}</Text>
                                     ))}
@@ -890,7 +890,7 @@ const AIModal: React.FC<AIModalProps> = ({
                                     <View style={styles.analysisContainer}>
                                         <View style={styles.analysisHeader}>
                                             <SafeIcon name="check-circle" size={24} color="#DC2626" type="lucide" />
-                                            <Text style={styles.analysisTitle}>{t('hopitalHome.rapportDanalyseIa')}/Text>
+                                            <Text style={styles.analysisTitle}>{t('hopitalHome.rapportDanalyseIa')}</Text>
                                         </View>
 
                                         {imageAnalysis.description && (

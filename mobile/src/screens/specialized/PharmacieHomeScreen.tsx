@@ -382,7 +382,7 @@ const PharmacieHomeScreen: React.FC = () => {
                     setShowAIChat(true);
                 } else {
                     const ar = analysisResponse.data as any;
-                    const errorMsg = analysisResponse.error || ar?.error || 'Impossible d\'analyser l\t('pharmacieHomeScreen.imageDuMedicamentLiaDanalyseD')'images n\'est peut-être pas encore opérationnelle.';
+                    const errorMsg = analysisResponse.error || ar?.error || t('pharmacieHomeScreen.impossibleAnalyserImage');
                     Alert.alert(
                         t('message.error'),
                         errorMsg,

@@ -224,7 +224,7 @@ const BanqueSangFormScreen: React.FC = () => {
             <View style={[s.urgenceCard, { backgroundColor: formData.urgence_24h ? '#FEF2F2' : '#F3F4F6' }]}>
                 <SafeIcon name="alert-triangle" size={20} color={formData.urgence_24h ? '#DC2626' : '#6B7280'} />
                 <Text style={[s.urgenceText, { color: formData.urgence_24h ? '#DC2626' : '#6B7280' }]}>
-                    {formData.urgence_24h ? 'Service d\t('banqueSangFormScreen.urgence24hActive') : 'Service d\'urgence désactivé'}
+                    {formData.urgence_24h ? t('banqueSangFormScreen.serviceDurgence24hActive') : t('banqueSangFormScreen.serviceDurgenceDesactive')}
                 </Text>
             </View>
 
@@ -243,7 +243,7 @@ const BanqueSangFormScreen: React.FC = () => {
             {/* Stock Summary */}
             {groupsWithStock > 0 && (
                 <>
-                    <Text style={s.sectionTitle}>{t('banqueSangForm.stocksDisponibles')}/Text>
+                    <Text style={s.sectionTitle}>{t('banqueSangForm.stocksDisponibles')}</Text>
                     <View style={s.bloodGrid}>
                         {GROUPES_SANGUINS.map(g => {
                             const qty = parseInt(stocks[g]?.quantite || '0');
@@ -313,7 +313,7 @@ const BanqueSangFormScreen: React.FC = () => {
     const renderStocksTab = () => (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100, padding: 16 }}>
             <View style={s.stockHeader}>
-                <Text style={s.sectionTitle}>{t('banqueSangForm.gestionDesStocks')}/Text>
+                <Text style={s.sectionTitle}>{t('banqueSangForm.gestionDesStocks')}</Text>
                 <Text style={s.stockSummary}>{groupsWithStock}/{GROUPES_SANGUINS.length} groupes · {totalStock} unités</Text>
             </View>
             {GROUPES_SANGUINS.map(group => {

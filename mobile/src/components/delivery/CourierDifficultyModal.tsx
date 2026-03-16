@@ -243,7 +243,7 @@ const [difficultyType, setDifficultyType] = useState<'breakdown' | 'illness' | n
 
                         {/* Position du relais */}
                         <View style={styles.section}>
-                            <Text style={styles.label}>{t('courierDifficulty.positionDuRelais')}/Text>
+                            <Text style={styles.label}>{t('courierDifficulty.positionDuRelais')}</Text>
                             <Text style={styles.helperText}>
                                 Indiquez où le nouveau coursier doit venir récupérer le colis
                             </Text>
@@ -287,7 +287,7 @@ const [difficultyType, setDifficultyType] = useState<'breakdown' | 'illness' | n
 
                         {/* Notes optionnelles */}
                         <View style={styles.section}>
-                            <Text style={styles.label}>{t('courierDifficulty.notesOptionnel')}/Text>
+                            <Text style={styles.label}>{t('courierDifficulty.notesOptionnel')}</Text>
                             <NativeInput
                                 placeholder={t('courierDifficulty.detailsSupplementairesSurLaDifficulte')}
                                 value={notes}

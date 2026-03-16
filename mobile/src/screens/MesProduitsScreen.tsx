@@ -2680,7 +2680,7 @@ const MesProduitsScreen: React.FC = () => {
                                 <SafeIcon name="truck" size={18} color="#3B82F6" />
                             </View>
                             <View style={styles.productActionTextCol}>
-                                <Text style={styles.productActionLabel}>{t('mesProduits.livraison')}/Text>
+                                <Text style={styles.productActionLabel}>{t('mesProduits.livraison')}</Text>
                                 <Text style={styles.productActionHint}>Configurer la livraison</Text>
                             </View>
                         </TouchableOpacity>

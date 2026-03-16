@@ -191,7 +191,7 @@ const RestaurantDashboardScreen: React.FC = () => {
             {menuItems.length === 0 && (
                 <View style={s.emptyState}>
                     <SafeIcon name="utensils" size={48} color="#9CA3AF" />
-                    <Text style={s.emptyTitle}>{t('restaurantDashboard.menuVide')}/Text>
+                    <Text style={s.emptyTitle}>{t('restaurantDashboard.menuVide')}</Text>
                     <Text style={s.emptyText}>{t('restaurantDashboard.ajoutezVosPremiersPlatsPour')}</Text>
                     <NativeButton title={t('restaurantDashboard.creerLeMenu')} onPress={() => setActiveTab('menu')} style={{ marginTop: 16 }} />
                 </View>
@@ -280,7 +280,7 @@ const RestaurantDashboardScreen: React.FC = () => {
                         <SafeIcon name="arrow-left" size={22} color="#fff" />
                     </TouchableOpacity>
                     <View style={{ flex: 1 }}>
-                        <Text style={s.headerTitle}>{t('restaurantDashboard.dashboardRestaurant')}/Text>
+                        <Text style={s.headerTitle}>{t('restaurantDashboard.dashboardRestaurant')}</Text>
                         <Text style={s.headerSub}>{user?.name || t('restaurantDashboard.partenaire')}</Text>
                     </View>
                 </View>

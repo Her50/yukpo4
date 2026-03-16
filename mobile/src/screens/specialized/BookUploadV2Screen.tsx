@@ -274,7 +274,7 @@ const BookUploadV2Screen: React.FC = () => {
     const renderGPSStep = () => (
         <View style={styles.centerContainer}>
             <SafeIcon name="map-pin" size={64} color={modernColors.primary} />
-            <Text style={styles.stepTitle}>{t('bookUploadV2.localisationObligatoire')}/Text>
+            <Text style={styles.stepTitle}>{t('bookUploadV2.localisationObligatoire')}</Text>
             <Text style={styles.stepSubtitle}>
                 Indiquez où le coursier peut récupérer vos livres
             </Text>

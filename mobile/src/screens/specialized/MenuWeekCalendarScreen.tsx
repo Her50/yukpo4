@@ -769,7 +769,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                         <SafeIcon name="arrow-left" size={24} color="#fff" />
                     </TouchableOpacity>
                     <View style={styles.headerTitleContainer}>
-                        <Text style={styles.headerTitle}>{t('menuWeekCalendar.menuDeLaSemaine')}/Text>
+                        <Text style={styles.headerTitle}>{t('menuWeekCalendar.menuDeLaSemaine')}</Text>
                         <Text style={styles.headerSubtitle} numberOfLines={1}>
                             {/* ✅ CORRIGÉ: Format compact de la date */}
                             {(() => {
@@ -943,7 +943,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                             }}
                         >
                             <SafeIcon name="ShoppingCart" size={20} color="#fff" type="lucide" />
-                            <Text style={styles.actionButtonText}>{t('menuWeekCalendar.listeDeCourses')}/Text>
+                            <Text style={styles.actionButtonText}>{t('menuWeekCalendar.listeDeCourses')}</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={[styles.actionButton, styles.courierButton]}
@@ -1117,7 +1117,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                             }}
                         >
                             <SafeIcon name="ShoppingCart" size={20} color="#fff" type="lucide" />
-                            <Text style={styles.actionButtonText}>{t('menuWeekCalendar.listeDeCourses')}/Text>
+                            <Text style={styles.actionButtonText}>{t('menuWeekCalendar.listeDeCourses')}</Text>
                         </TouchableOpacity>
                     </View>
                 </ScrollView>
@@ -1146,7 +1146,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                             </Text>
 
                             <View style={styles.inputGroup}>
-                                <Text style={styles.label}>{t('menuWeekCalendar.nomDuPlat')}/Text>
+                                <Text style={styles.label}>{t('menuWeekCalendar.nomDuPlat')}</Text>
                                 <NativeInput
                                     value={recipeRequest}
                                     onChangeText={setRecipeRequest}
@@ -1158,7 +1158,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                             {/* Suggestions de plats du menu */}
                             {menu && (
                                 <View style={styles.suggestionsContainer}>
-                                    <Text style={styles.suggestionsTitle}>{t('menuWeekCalendar.platsDeVotreMenu')}/Text>
+                                    <Text style={styles.suggestionsTitle}>{t('menuWeekCalendar.platsDeVotreMenu')}</Text>
                                     <View style={styles.suggestionsList}>
                                         {Array.from(new Set(
                                             menu.meals.flatMap(m => [
@@ -1895,7 +1895,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
 
                         <ScrollView style={styles.modalBody}>
                             <View style={styles.inputGroup}>
-                                <Text style={styles.label}>{t('menuWeekCalendar.jour')}/Text>
+                                <Text style={styles.label}>{t('menuWeekCalendar.jour')}</Text>
                                 <View style={styles.pickerContainer}>
                                     <View style={styles.pickerRow}>
                                         {DAYS.map((day, index) => (
@@ -1959,7 +1959,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                             </View>
 
                             <View style={styles.inputGroup}>
-                                <Text style={styles.label}>{t('menuWeekCalendar.nomDuRepas')}/Text>
+                                <Text style={styles.label}>{t('menuWeekCalendar.nomDuRepas')}</Text>
                                 <NativeInput
                                     value={newMealName}
                                     onChangeText={setNewMealName}
@@ -2085,7 +2085,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                                                 <Text style={styles.feesTotalValue}>{formatPrice(fees.total)}</Text>
                                             </View>
                                             <View style={styles.feesRow}>
-                                                <Text style={styles.feesLabel}>{t('menuWeekCalendar.soldeDisponible')}/Text>
+                                                <Text style={styles.feesLabel}>{t('menuWeekCalendar.soldeDisponible')}</Text>
                                                 <Text style={[styles.feesValue, userBalance < fees.total && { color: modernColors.error }]}>
                                                     {formatPrice(userBalance)}
                                                 </Text>

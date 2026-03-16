@@ -70,7 +70,7 @@ const LabAnalyticsScreen: React.FC = () => {
                 if (!isOwner) {
                     Alert.alert(
                         t('labAnalyticsScreen.accesRefuse'),
-                        'Vous n\t('labAnalyticsScreen.etesPasAutoriseAVoirLes'),
+                        t('labAnalyticsScreen.vousNetesPasAutoriseAVoirLesAnalytics'),
                         [{ text: 'OK', onPress: () => navigation.goBack() }]
                     );
                 }

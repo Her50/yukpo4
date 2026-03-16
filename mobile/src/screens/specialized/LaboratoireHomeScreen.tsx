@@ -207,7 +207,7 @@ const LaboratoireHomeScreen: React.FC = () => {
                 }
             } else {
                 const r = response.data as any;
-                const errorMsg = r?.message || response.error || 'L\'IA de recherche pathologique n\t('laboratoireHomeScreen.estPasEncoreOperationnelle');
+                const errorMsg = r?.message || response.error || t('laboratoireHomeScreen.liaDeRecherchePathologiqueNestPasEncoreOperationnelle');
                 toaster.error(errorMsg);
                 setPathologyResults([]);
             }
@@ -323,21 +323,21 @@ const LaboratoireHomeScreen: React.FC = () => {
                 const analysis = r?.analysis || r;
                 if (analysis) {
                     setImageAnalysis(analysis);
-                    toaster.success('Analyse d\t('laboratoireHomeScreen.imageTerminee'));
+                    toaster.success(t('laboratoireHomeScreen.analyseDimageTerminee'));
                 } else {
-                    const errorMsg = 'Impossible d\'analyser l\'image. L\'IA d\'analyse d\'images n\t('laboratoireHomeScreen.estPeutetrePasEncoreOperationnelle');
+                    const errorMsg = t('laboratoireHomeScreen.impossibleDanalyserLimageLiaDanalyseDimagesNestPeutetre');
                     toaster.error(errorMsg);
                     setImageAnalysis(null);
                 }
             } else {
                 const r = response.data as any;
-                const errorMsg = r?.message || response.error || 'Impossible d\'analyser l\'image. L\'IA d\'analyse d\'images n\t('laboratoireHomeScreen.estPeutetrePasEncoreOperationnelle');
+                const errorMsg = r?.message || response.error || t('laboratoireHomeScreen.impossibleDanalyserLimageLiaDanalyseDimagesNestPeutetre');
                 toaster.error(errorMsg);
                 setImageAnalysis(null);
             }
         } catch (err: any) {
             console.error('[LaboratoireHomeScreen] Erreur analyse image:', err);
-            const errorMsg = err.message || err.error || 'Erreur lors de l\'analyse. L\'IA d\'analyse d\'images n\t('laboratoireHomeScreen.estPeutetrePasEncoreOperationnelle');
+            const errorMsg = err.message || err.error || t('laboratoireHomeScreen.erreurLorsDeLanalyseLiaDanalyseDimagesNest');
             toaster.error(errorMsg);
             setImageAnalysis(null);
         } finally {
@@ -365,7 +365,7 @@ const LaboratoireHomeScreen: React.FC = () => {
                         </TouchableOpacity>
                         <View style={styles.headerTitleContainer}>
                             <Text style={styles.headerTitle}>Laboratoires</Text>
-                            <Text style={styles.headerSubtitle}>{t('laboratoireHome.rechercheDexamens')}/Text>
+                            <Text style={styles.headerSubtitle}>{t('laboratoireHome.rechercheDexamens')}</Text>
                         </View>
                         <TouchableOpacity
                             onPress={() => {
@@ -467,7 +467,7 @@ const LaboratoireHomeScreen: React.FC = () => {
                             }}
                         >
                             <SafeIcon name="search" size={18} color="#FFFFFF" type="lucide" />
-                            <Text style={styles.quickActionText}>{t('laboratoireHome.recherchePathologie')}/Text>
+                            <Text style={styles.quickActionText}>{t('laboratoireHome.recherchePathologie')}</Text>
                         </TouchableOpacity>
                     </View>
                 </LinearGradient>
@@ -499,7 +499,7 @@ const LaboratoireHomeScreen: React.FC = () => {
             {loading && availableLaboratories.length === 0 ? (
                 <View style={styles.content}>
                     <ActivityIndicator size="large" color="#2563EB" />
-                    <Text style={styles.placeholderText}>{t('laboratoireHome.rechercheDesLaboratoiresDisponibles')}/Text>
+                    <Text style={styles.placeholderText}>{t('laboratoireHome.rechercheDesLaboratoiresDisponibles')}</Text>
                 </View>
             ) : availableLaboratories.length > 0 ? (
                 <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>

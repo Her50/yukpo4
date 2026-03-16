@@ -186,7 +186,7 @@ const DeclarationSinistreScreen: React.FC = () => {
                     <Text style={s.summaryValue}>{policy?.nom_produit || 'N/A'}</Text>
                 </View>
                 <View style={s.summaryRow}>
-                    <Text style={s.summaryLabel}>{t('declarationSinistre.typeSinistre')}/Text>
+                    <Text style={s.summaryLabel}>{t('declarationSinistre.typeSinistre')}</Text>
                     <Text style={s.summaryValue}>{TYPES_SINISTRES.find(t => t.key === typeSinistre)?.label || typeSinistre}</Text>
                 </View>
                 <View style={s.summaryRow}>

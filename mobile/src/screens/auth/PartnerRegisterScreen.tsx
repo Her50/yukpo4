@@ -615,7 +615,7 @@ const PartnerRegisterScreen: React.FC = () => {
                   style={styles.input}
                 />
 
-                <Text style={styles.label}>{t('partnerRegister.photoDuPermisDeConduire')}/Text>
+                <Text style={styles.label}>{t('partnerRegister.photoDuPermisDeConduire')}</Text>
                 <TouchableOpacity
                   onPress={async () => {
                     try {

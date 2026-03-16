@@ -257,7 +257,7 @@ const SpecializedServicesSection: React.FC<SpecializedServicesSectionProps> = ({
                         (navigation as any).navigate('SpecializedServicesHub');
                     }}
                 >
-                    <Text style={styles.seeAllText}>{t('specializedServicesSection.voirTous')}/Text>
+                    <Text style={styles.seeAllText}>{t('specializedServicesSection.voirTous')}</Text>
                 </TouchableOpacity>
             </View>
 

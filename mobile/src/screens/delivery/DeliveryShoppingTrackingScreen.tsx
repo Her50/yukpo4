@@ -590,7 +590,7 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
                         <View style={styles.card}>
                             <View style={styles.cardHeader}>
                                 <SafeIcon name="clock" size={20} color={modernColors.primary} />
-                                <Text style={styles.cardTitle}>{t('deliveryShoppingTracking.historique')}/Text>
+                                <Text style={styles.cardTitle}>{t('deliveryShoppingTracking.historique')}</Text>
                             </View>
                             <TimelineStepper checkpoints={timeline} currentStatus={delivery?.status || 'pending'} />
                         </View>

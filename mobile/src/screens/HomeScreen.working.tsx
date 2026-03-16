@@ -109,7 +109,7 @@ const [expanded, setExpanded] = useState(false);
                         <Text style={styles.promotionsMainIcon}>­ƒÄ»</Text>
                     </View>
                     <View style={styles.promotionsMainText}>
-                        <Text style={styles.promotionsMainTitle}>{t('homeScreen.working.promotionsLives')}/Text>
+                        <Text style={styles.promotionsMainTitle}>{t('homeScreen.working.promotionsLives')}</Text>
                         <Text style={styles.promotionsMainSubtitle}>3 options disponibles</Text>
                     </View>
                     <Animated.View

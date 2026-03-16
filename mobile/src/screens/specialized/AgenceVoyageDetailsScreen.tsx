@@ -201,7 +201,7 @@ const AgenceVoyageDetailsScreen: React.FC = () => {
                 <SafeIcon name="alert-circle" size={48} color="#9CA3AF" />
                 <Text style={{ fontSize: 16, color: '#6B7280', marginTop: 16 }}>{t('agenceVoyageDetails.agenceNonTrouvee')}</Text>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginTop: 16 }}>
-                    <Text style={{ color: '#2563EB', fontWeight: '600' }}>{t('agenceVoyageDetails.retour')}/Text>
+                    <Text style={{ color: '#2563EB', fontWeight: '600' }}>{t('agenceVoyageDetails.retour')}</Text>
                 </TouchableOpacity>
             </View>
         );
@@ -312,7 +312,7 @@ const AgenceVoyageDetailsScreen: React.FC = () => {
                     <View style={st.card}>
                         <View style={st.cardHeader}>
                             <SafeIcon name="clock" size={18} color="#2563EB" />
-                            <Text style={st.cardTitle}>{t('agenceVoyageDetails.horairesDouverture')}/Text>
+                            <Text style={st.cardTitle}>{t('agenceVoyageDetails.horairesDouverture')}</Text>
                         </View>
                         <View style={st.hoursRow}>
                             <View style={st.hoursBadge}>
@@ -423,7 +423,7 @@ const AgenceVoyageDetailsScreen: React.FC = () => {
                 <View style={st.card}>
                     <View style={st.cardHeader}>
                         <SafeIcon name="sparkles" size={18} color="#8B5CF6" />
-                        <Text style={st.cardTitle}>{t('agenceVoyageDetails.assistantVoyageIa')}/Text>
+                        <Text style={st.cardTitle}>{t('agenceVoyageDetails.assistantVoyageIa')}</Text>
                     </View>
                     {aiSuggestion ? (
                         <View style={st.aiResult}>

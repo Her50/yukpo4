@@ -992,7 +992,7 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                         style={styles.createButton}
                         onPress={() => navigation.goBack()}
                     >
-                        <Text style={styles.createButtonText}>{t('gestionServicesSpecialises.retour')}/Text>
+                        <Text style={styles.createButtonText}>{t('gestionServicesSpecialises.retour')}</Text>
                     </TouchableOpacity>
                 </View>
             </View>

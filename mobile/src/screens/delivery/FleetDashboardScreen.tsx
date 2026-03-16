@@ -312,7 +312,7 @@ const FleetDashboardScreen: React.FC = () => {
                         <SafeIcon name="star" size={24} color="#f59e0b" type="lucide" />
                         <View style={styles.statCardWideText}>
                             <Text style={styles.statValue}>{stats.avg_rating.toFixed(1)}/5</Text>
-                            <Text style={styles.statLabel}>{t('fleetDashboard.noteMoyenneFlotte')}/Text>
+                            <Text style={styles.statLabel}>{t('fleetDashboard.noteMoyenneFlotte')}</Text>
                         </View>
                     </View>
                 </NativeCard>
@@ -321,7 +321,7 @@ const FleetDashboardScreen: React.FC = () => {
                         <SafeIcon name="banknote" size={24} color="#22c55e" type="lucide" />
                         <View style={styles.statCardWideText}>
                             <Text style={styles.statValue}>{formatCurrency(stats.monthly_revenue_cents)}</Text>
-                            <Text style={styles.statLabel}>{t('fleetDashboard.revenusCeMois')}/Text>
+                            <Text style={styles.statLabel}>{t('fleetDashboard.revenusCeMois')}</Text>
                         </View>
                     </View>
                 </NativeCard>
@@ -346,7 +346,7 @@ const FleetDashboardScreen: React.FC = () => {
                     <View style={styles.quickSectionHeader}>
                         <Text style={styles.sectionSubtitle}>Meilleurs coursiers</Text>
                         <TouchableOpacity onPress={() => setActiveTab('couriers')}>
-                            <Text style={styles.seeAllLink}>{t('fleetDashboard.voirTous')}/Text>
+                            <Text style={styles.seeAllLink}>{t('fleetDashboard.voirTous')}</Text>
                         </TouchableOpacity>
                     </View>
                     {couriers
@@ -487,7 +487,7 @@ const FleetDashboardScreen: React.FC = () => {
             {item.has_documents && (
                 <View style={styles.docBadge}>
                     <SafeIcon name="file-text" size={14} color={modernColors.primary} type="lucide" />
-                    <Text style={styles.docBadgeText}>{t('fleetDashboard.documentsFournis')}/Text>
+                    <Text style={styles.docBadgeText}>{t('fleetDashboard.documentsFournis')}</Text>
                 </View>
             )}
 
@@ -585,7 +585,7 @@ const FleetDashboardScreen: React.FC = () => {
             {/* Header */}
             <View style={styles.header}>
                 <View>
-                    <Text style={styles.headerTitle}>{t('fleetDashboard.gestionDeFlotte')}/Text>
+                    <Text style={styles.headerTitle}>{t('fleetDashboard.gestionDeFlotte')}</Text>
                     <Text style={styles.headerSubtitle}>{fleetLabel}</Text>
                 </View>
                 <TouchableOpacity onPress={onRefresh} style={styles.refreshButton}>

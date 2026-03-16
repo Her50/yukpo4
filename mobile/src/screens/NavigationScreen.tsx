@@ -1261,7 +1261,7 @@ const NavigationScreen: React.FC = () => {
                                     </View>
                                     <View style={st.flex1}>
                                         <Text style={{ fontSize: 18, fontWeight: '800', color: modernColors.text }}>Marche libre en cours</Text>
-                                        <Text style={{ fontSize: 12, color: '#10B981', fontWeight: '600' }}>{t('navigation.suiviGpsActif')}/Text>
+                                        <Text style={{ fontSize: 12, color: '#10B981', fontWeight: '600' }}>{t('navigation.suiviGpsActif')}</Text>
                                     </View>
                                 </View>
                                 <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginBottom: 12 }}>
@@ -2287,7 +2287,7 @@ const NavigationScreen: React.FC = () => {
             <View style={{ marginBottom: 12 }}>
                 <Text style={st.secTitle}>{t('navigation.pointsDinteretAProximite')}</Text>
                 {loadingPOI ? (
-                    <NativeCard style={st.loadCard}><ActivityIndicator color={modernColors.primary} /><Text style={st.loadText}>{t('navigation.rechercheDesPoi')}/Text></NativeCard>
+                    <NativeCard style={st.loadCard}><ActivityIndicator color={modernColors.primary} /><Text style={st.loadText}>{t('navigation.rechercheDesPoi')}</Text></NativeCard>
                 ) : pointsOfInterest.length === 0 ? (
                     <NativeCard style={st.emptyCard}><Text style={st.emptyText}>{t('navigation.aucunPoiTrouve')}</Text></NativeCard>
                 ) : (
@@ -2389,7 +2389,7 @@ const NavigationScreen: React.FC = () => {
             <TouchableOpacity style={st.healthPreviewEmpty} onPress={() => { setShowActivityStats(true); loadActivityStats(activityPeriod); }} activeOpacity={0.7}>
                 <Text style={{ fontSize: 20 }}>📊</Text>
                 <View style={st.flex1}>
-                    <Text style={st.healthPreviewTitle}>{t('navigation.statistiquesCoachIa')}/Text>
+                    <Text style={st.healthPreviewTitle}>{t('navigation.statistiquesCoachIa')}</Text>
                         <Text style={st.healthPreviewSub}>{t('navigation.vo2maxDefisCo2BadgesConseils')}</Text>
                 </View>
                 <SafeIcon name="ChevronRight" size={20} color={modernColors.textSecondary} />

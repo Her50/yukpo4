@@ -141,7 +141,7 @@ const BanqueSangListScreen: React.FC = () => {
 
                 {item.stocks && Object.keys(item.stocks).length > 0 && (
                     <View style={styles.stocksContainer}>
-                        <Text style={styles.stocksLabel}>{t('banqueSangList.stocksDisponibles')}/Text>
+                        <Text style={styles.stocksLabel}>{t('banqueSangList.stocksDisponibles')}</Text>
                         <View style={styles.stocksRow}>
                             {Object.entries(item.stocks).slice(0, 4).map(([groupe, qty]) => (
                                 <View key={groupe} style={styles.stockBadge}>

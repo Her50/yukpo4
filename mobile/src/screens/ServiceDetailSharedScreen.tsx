@@ -280,8 +280,8 @@ const ServiceDetailSharedScreen: React.FC = () => {
     return (
       <View style={styles.errorContainer}>
         <SafeIcon name="alert-circle" size={64} color={modernColors.error} />
-        <Text style={styles.errorTitle}>{t('serviceDetailShared.serviceIntrouvable')}/Text>
-        <Text style={styles.errorMessage}>{error || 'Ce service n\t('serviceDetailSharedScreen.existePasOuAEteSupprime')}</Text>
+        <Text style={styles.errorTitle}>{t('serviceDetailShared.serviceIntrouvable')}</Text>
+        <Text style={styles.errorMessage}>{error || t('serviceDetailSharedScreen.ceServiceNexistePasOuAEteSupprime')}</Text>
         <NativeButton
           title={t('serviceDetailShared.retourAL')}accueil"
           onPress={() => (navigation as any).navigate('Home')}

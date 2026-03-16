@@ -61,7 +61,7 @@ const CovoiturageIntelligentSearchScreen: React.FC = () => {
 
             {item.match_reasons && item.match_reasons.length > 0 && (
                 <View style={styles.reasonsContainer}>
-                    <Text style={styles.reasonsTitle}>{t('covoiturageIntelligentSearch.pointsPositifs')}/Text>
+                    <Text style={styles.reasonsTitle}>{t('covoiturageIntelligentSearch.pointsPositifs')}</Text>
                     {item.match_reasons.map((reason: string, index: number) => (
                         <Text key={index} style={styles.reason}>✓ {reason}</Text>
                     ))}

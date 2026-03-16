@@ -116,7 +116,7 @@ const [rating, setRating] = useState(0);
                     <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
                         {/* Note globale */}
                         <View style={styles.section}>
-                            <Text style={styles.sectionTitle}>{t('ticketRating.noteGlobale')}/Text>
+                            <Text style={styles.sectionTitle}>{t('ticketRating.noteGlobale')}</Text>
                             <View style={styles.starsContainer}>
                                 {[1, 2, 3, 4, 5].map((star) => (
                                     <TouchableOpacity

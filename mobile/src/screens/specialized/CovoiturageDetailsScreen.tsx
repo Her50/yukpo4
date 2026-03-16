@@ -213,7 +213,7 @@ const CovoiturageDetailsScreen: React.FC = () => {
                         </View>
 
                         <View style={{ marginBottom: 14 }}>
-                            <Text style={st.label}>{t('covoiturageDetails.notesOptionnel')}/Text>
+                            <Text style={st.label}>{t('covoiturageDetails.notesOptionnel')}</Text>
                             <TextInput style={st.textInput} value={notes} onChangeText={setNotes} placeholder={t('covoiturageDetails.informationsComplementaires')} placeholderTextColor="#9CA3AF" multiline />
                         </View>
 

@@ -149,7 +149,7 @@ const [hasPermission, setHasPermission] = useState<boolean | null>(null);
         return (
             <View style={styles.container}>
                 <ActivityIndicator size="large" color={modernColors.primary} />
-                <Text style={styles.permissionText}>{t('livreScolaireValidationVideoRecorder.demandeDautorisation')}/Text>
+                <Text style={styles.permissionText}>{t('livreScolaireValidationVideoRecorder.demandeDautorisation')}</Text>
             </View>
         );
     }
@@ -165,7 +165,7 @@ const [hasPermission, setHasPermission] = useState<boolean | null>(null);
                     Veuillez autoriser l'accès à la caméra dans les paramètres
                 </Text>
                 <TouchableOpacity style={styles.cancelButton} onPress={onCancel}>
-                    <Text style={styles.cancelButtonText}>{t('livreScolaireValidationVideoRecorder.retour')}/Text>
+                    <Text style={styles.cancelButtonText}>{t('livreScolaireValidationVideoRecorder.retour')}</Text>
                 </TouchableOpacity>
             </View>
         );

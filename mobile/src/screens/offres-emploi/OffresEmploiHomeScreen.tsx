@@ -214,7 +214,7 @@ const OffresEmploiHomeScreen: React.FC = () => {
                             <SafeIcon name="arrow-left" size={24} color="#FFFFFF" />
                         </TouchableOpacity>
                         <View style={styles.headerTitleContainer}>
-                            <Text style={styles.headerTitle}>{t('offresEmploiHome.rechercheDemploi')}/Text>
+                            <Text style={styles.headerTitle}>{t('offresEmploiHome.rechercheDemploi')}</Text>
                             {totalResults > 0 && (
                                 <Text style={styles.headerSubtitle}>
                                     {totalResults} offre{totalResults > 1 ? 's' : ''} disponible{totalResults > 1 ? 's' : ''}
@@ -380,7 +380,7 @@ const OffresEmploiHomeScreen: React.FC = () => {
                 {loading && offres.length === 0 ? (
                     <View style={styles.centerContainer}>
                         <ActivityIndicator size="large" color={modernColors.primary} />
-                        <Text style={styles.loadingText}>{t('offresEmploiHome.rechercheDoffres')}/Text>
+                        <Text style={styles.loadingText}>{t('offresEmploiHome.rechercheDoffres')}</Text>
                     </View>
                 ) : error && offres.length === 0 ? (
                     <View style={styles.centerContainer}>
@@ -595,7 +595,7 @@ const AIModal: React.FC<AIModalProps> = ({
                                 <Text style={styles.analysisTitle}>Score global: {cvAnalysis.score_global}/100</Text>
                                 {cvAnalysis.points_forts.length > 0 && (
                                     <View style={styles.pointsContainer}>
-                                        <Text style={styles.pointsTitle}>{t('offresEmploiHome.pointsForts')}/Text>
+                                        <Text style={styles.pointsTitle}>{t('offresEmploiHome.pointsForts')}</Text>
                                         {cvAnalysis.points_forts.map((point, i) => (
                                             <Text key={i} style={styles.pointText}>• {point}</Text>
                                         ))}

@@ -207,7 +207,7 @@ const InsuranceQuoteRequestScreen: React.FC = () => {
 
             <ScrollView style={styles.scrollContent} contentContainerStyle={styles.scrollContainer}>
                 {/* Type d'assurance */}
-                <Text style={styles.fieldLabel}>{t('insuranceQuoteRequest.typeDassurance')}/Text>
+                <Text style={styles.fieldLabel}>{t('insuranceQuoteRequest.typeDassurance')}</Text>
                 <View style={styles.chipContainer}>
                     {TYPES_ASSURANCE.map((type) => (
                         <TouchableOpacity
@@ -295,7 +295,7 @@ const InsuranceQuoteRequestScreen: React.FC = () => {
                 {/* Champs conditionnels Habitation */}
                 {(typeAssurance === 'Habitation') && (
                     <>
-                        <Text style={styles.sectionLabel}>{t('insuranceQuoteRequest.bienImmobilier')}/Text>
+                        <Text style={styles.sectionLabel}>{t('insuranceQuoteRequest.bienImmobilier')}</Text>
                         <NativeInput
                             placeholder={t('insuranceQuoteRequest.typeDeBienAppartementMaison')}
                             value={bienType}
@@ -316,7 +316,7 @@ const InsuranceQuoteRequestScreen: React.FC = () => {
                         <View style={styles.loadingContainer}>
                             <ActivityIndicator size="large" color={modernColors.primary} />
                             <Text style={styles.loadingText}>{t('insuranceQuoteRequest.generationDuDevisEnCours')}</Text>
-                            <Text style={styles.loadingSubtext}>{t('insuranceQuoteRequest.notreIaAnalyseVotreProfil')}/Text>
+                            <Text style={styles.loadingSubtext}>{t('insuranceQuoteRequest.notreIaAnalyseVotreProfil')}</Text>
                         </View>
                     ) : (
                         <NativeButton

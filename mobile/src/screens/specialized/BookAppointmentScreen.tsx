@@ -288,7 +288,7 @@ const [selectedDate, setSelectedDate] = useState<string>('');
                             </Text>
                         </View>
 
-                        <Text style={styles.fieldLabel}>{t('bookAppointment.nomDuPatient')}/Text>
+                        <Text style={styles.fieldLabel}>{t('bookAppointment.nomDuPatient')}</Text>
                         <NativeInput
                             value={patientName}
                             onChangeText={setPatientName}
@@ -296,7 +296,7 @@ const [selectedDate, setSelectedDate] = useState<string>('');
                         />
 
                         <Text style={styles.fieldLabel}>
-                            {serviceType === 'hopital' ? 'Motif de consultation' : 'Type d\t('bookAppointmentScreen.examenSouhaite')}
+                            {serviceType === 'hopital' ? 'Motif de consultation' : t('bookAppointmentScreen.typeDexamenSouhaite')}
                         </Text>
                         <NativeInput
                             value={reason}

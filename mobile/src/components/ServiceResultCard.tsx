@@ -189,7 +189,7 @@ const ServiceResultCard: React.FC<ServiceResultCardProps> = ({
                     <Text style={styles.prestataireName}>{normalizedService.prestataire?.nom}</Text>
                     <View style={styles.onlineIndicator}>
                         <View style={styles.onlineDot} />
-                        <Text style={styles.onlineText}>{t('serviceResultCard.enLigne')}/Text>
+                        <Text style={styles.onlineText}>{t('serviceResultCard.enLigne')}</Text>
                     </View>
                 </View>
             </View>
@@ -217,7 +217,7 @@ const ServiceResultCard: React.FC<ServiceResultCardProps> = ({
                     <Text style={styles.secondaryButtonText}>Galerie</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.secondaryButton} onPress={handleFavorite}>
-                    <Text style={styles.secondaryButtonText}>{t('serviceResultCard.favoris')}/Text>
+                    <Text style={styles.secondaryButtonText}>{t('serviceResultCard.favoris')}</Text>
                 </TouchableOpacity>
             </View>
 

@@ -147,7 +147,7 @@ const BloodGroupManagementScreen: React.FC = () => {
             {/* Header */}
             <View style={styles.header}>
                 <SafeIcon name="droplet" size={48} color={modernColors.primary} />
-                <Text style={styles.title}>{t('bloodGroupManagement.gestionDuDonDeSang')}/Text>
+                <Text style={styles.title}>{t('bloodGroupManagement.gestionDuDonDeSang')}</Text>
                 <Text style={styles.subtitle}>
                     Enregistrez votre groupe sanguin pour être notifié en cas de besoin urgent
                 </Text>
@@ -200,7 +200,7 @@ const BloodGroupManagementScreen: React.FC = () => {
             {/* Informations dernier don */}
             {lastDonationDate && (
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>{t('bloodGroupManagement.historiqueDeDon')}/Text>
+                    <Text style={styles.sectionTitle}>{t('bloodGroupManagement.historiqueDeDon')}</Text>
                     <View style={styles.infoCard}>
                         <View style={styles.infoRow}>
                             <SafeIcon name="calendar" size={20} color={modernColors.primary} />
@@ -247,7 +247,7 @@ const BloodGroupManagementScreen: React.FC = () => {
                 <View style={styles.importantInfo}>
                     <SafeIcon name="info" size={20} color={modernColors.primary} />
                     <View style={styles.importantInfoText}>
-                        <Text style={styles.importantInfoTitle}>{t('bloodGroupManagement.informationsImportantes')}/Text>
+                        <Text style={styles.importantInfoTitle}>{t('bloodGroupManagement.informationsImportantes')}</Text>
                         <Text style={styles.importantInfoItem}>
                             • Le délai minimum entre deux dons est de 8 semaines (56 jours)
                         </Text>

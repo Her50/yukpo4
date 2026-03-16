@@ -35,7 +35,7 @@ const ErrorScreen: React.FC<ErrorScreenProps> = ({
       <View style={styles.errorCard}>
         <Ionicons name="warning" size={48} color="#FF6B6B" style={styles.errorIcon} />
         
-        <Text style={styles.errorTitle}>{t('error.oupsUneErreurSestProduite')}/Text>
+        <Text style={styles.errorTitle}>{t('error.oupsUneErreurSestProduite')}</Text>
         
         <Text style={styles.errorMessage}>
           {error}
@@ -55,7 +55,7 @@ const ErrorScreen: React.FC<ErrorScreenProps> = ({
             onPress={handleGoHome}
           >
             <Ionicons name="home" size={20} color="#6366F1" />
-            <Text style={styles.homeButtonText}>{t('error.accueil')}/Text>
+            <Text style={styles.homeButtonText}>{t('error.accueil')}</Text>
           </TouchableOpacity>
         </View>
       </View>

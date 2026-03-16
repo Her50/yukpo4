@@ -221,7 +221,7 @@ const [loading, setLoading] = useState(true);
         <View style={styles.sectionHeader}>
           <View style={styles.sectionTitleRow}>
             <Text style={styles.sectionEmoji}>🏦</Text>
-            <Text style={[styles.sectionTitle, bankEnabled && { color: '#1D4ED8' }]}>{t('platformPaymentSettings.compteBancaire')}/Text>
+            <Text style={[styles.sectionTitle, bankEnabled && { color: '#1D4ED8' }]}>{t('platformPaymentSettings.compteBancaire')}</Text>
           </View>
           <Switch
             value={bankEnabled}

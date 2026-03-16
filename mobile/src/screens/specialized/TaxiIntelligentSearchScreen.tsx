@@ -76,7 +76,7 @@ const TaxiIntelligentSearchScreen: React.FC = () => {
 
             {item.match_reasons && item.match_reasons.length > 0 && (
                 <View style={styles.reasonsContainer}>
-                    <Text style={styles.reasonsTitle}>{t('taxiIntelligentSearch.pointsPositifs')}/Text>
+                    <Text style={styles.reasonsTitle}>{t('taxiIntelligentSearch.pointsPositifs')}</Text>
                     {item.match_reasons.map((reason: string, index: number) => (
                         <Text key={index} style={styles.reason}>✓ {reason}</Text>
                     ))}
@@ -95,7 +95,7 @@ const TaxiIntelligentSearchScreen: React.FC = () => {
     return (
         <ScrollView style={styles.container}>
             <View style={styles.searchSection}>
-                <Text style={styles.title}>{t('taxiIntelligentSearch.rechercheIntelligenteDeTaxi')}/Text>
+                <Text style={styles.title}>{t('taxiIntelligentSearch.rechercheIntelligenteDeTaxi')}</Text>
 
                 {/* Position actuelle */}
                 <View style={styles.gpsSection}>

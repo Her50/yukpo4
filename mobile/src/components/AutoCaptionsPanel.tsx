@@ -61,7 +61,7 @@ const [loading, setLoading] = useState(false);
         if (!videoUrl.startsWith('http://') && !videoUrl.startsWith('https://') && !videoUrl.startsWith('file://')) {
             Alert.alert(
                 'URL invalide',
-                'L\t('autoCaptionsPanel.urlDeLaVideoNestPasValidennveuillez'),
+                t('autoCaptionsPanel.lurlDeLaVideoNestPasValidennveuillezReessayer'),
                 [{ text: 'OK' }]
             );
             return;
@@ -91,7 +91,7 @@ const [loading, setLoading] = useState(false);
 
             if (error?.message) {
                 if (error.message.includes('500') || error.message.includes('Erreur 500')) {
-                    errorMessage = 'Erreur serveur : Les sous-titres n\t('autoCaptionsPanel.ontPasPuEtreGeneresnnverifiezQueLa');
+                    errorMessage = t('autoCaptionsPanel.erreurServeurLesSoustitresNontPasPuEtre');
                 } else if (error.message.includes('audio') || error.message.includes('fichier audio')) {
                     errorMessage = t('autoCaptionsPanel.aucunFichierAudioTrouveDansLaVideonnverifiez');
                 } else if (error.message.includes('timeout') || error.message.includes('Timeout')) {

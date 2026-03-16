@@ -431,7 +431,7 @@ const LaboratoireDetailsScreen: React.FC = () => {
                                 )}
                             </View>
                         )}
-                        <Text style={{ fontSize: 14, fontWeight: '600', color: '#111827', marginBottom: 6 }}>{t('laboratoireDetails.notesOptionnel')}/Text>
+                        <Text style={{ fontSize: 14, fontWeight: '600', color: '#111827', marginBottom: 6 }}>{t('laboratoireDetails.notesOptionnel')}</Text>
                         <TextInput style={[st.searchInput, { minHeight: 80, marginBottom: 16 }]} placeholder={t('laboratoireDetails.ajoutezDesNotes')} placeholderTextColor="#9CA3AF" value={bookingNotes} onChangeText={setBookingNotes} multiline />
                         <TouchableOpacity style={[st.analyzeBtn, { backgroundColor: '#0D9488' }, (bookingExamination || !selectedExamination) && { opacity: 0.5 }]} disabled={bookingExamination || !selectedExamination} onPress={handleConfirmBooking}>
                             {bookingExamination ? <ActivityIndicator size="small" color="#fff" /> : <Text style={st.analyzeBtnText}>{t('laboratoireDetails.confirmerLaReservation')}</Text>}

@@ -187,9 +187,9 @@ const FlashSaleScreen: React.FC = () => {
         <SafeNativeView style={styles.container}>
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                    <Text style={styles.backButtonText}>{t('flashSale.retour')}/Text>
+                    <Text style={styles.backButtonText}>{t('flashSale.retour')}</Text>
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>{t('flashSale.ventesFlash')}/Text>
+                <Text style={styles.headerTitle}>{t('flashSale.ventesFlash')}</Text>
                 <View style={styles.placeholder} />
             </View>
 

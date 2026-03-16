@@ -666,7 +666,7 @@ const DeliveryShoppingFlow: React.FC<DeliveryShoppingFlowProps> = ({
                         <View style={styles.section}>
                             <View style={styles.sectionHeader}>
                                 <SafeIcon name="shopping-bag" size={18} color={modernColors.primary} />
-                                <Text style={styles.sectionTitle}>{t('deliveryShoppingFlow.panier')}/Text>
+                                <Text style={styles.sectionTitle}>{t('deliveryShoppingFlow.panier')}</Text>
                                 {!showAddItem && (
                                     <TouchableOpacity
                                         style={styles.addButton}

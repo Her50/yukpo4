@@ -158,7 +158,7 @@ const AnalyticsDashboardScreen: React.FC = () => {
     >
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>{t('analyticsDashboard.analyticsDashboard')}/Text>
+        <Text style={styles.title}>{t('analyticsDashboard.analyticsDashboard')}</Text>
         <Text style={styles.subtitle}>
           {new Date(analytics.period_start).toLocaleDateString('fr-FR')} -{' '}
           {new Date(analytics.period_end).toLocaleDateString('fr-FR')}
@@ -198,7 +198,7 @@ const AnalyticsDashboardScreen: React.FC = () => {
         <NativeCard style={styles.kpiCard}>
           <View style={styles.kpiHeader}>
             <SafeIcon name="dollar-sign" size={20} color={modernColors.primary} />
-            <Text style={styles.kpiTitle}>{t('analyticsDashboard.revenusTotaux')}/Text>
+            <Text style={styles.kpiTitle}>{t('analyticsDashboard.revenusTotaux')}</Text>
           </View>
           <Text style={styles.kpiValue}>{formatCurrency(analytics.revenue_stats.total_revenue)}</Text>
           <Text style={styles.kpiSubtext}>
@@ -235,7 +235,7 @@ const AnalyticsDashboardScreen: React.FC = () => {
         <NativeCard style={styles.kpiCard}>
           <View style={styles.kpiHeader}>
             <SafeIcon name="package" size={20} color={modernColors.primary} />
-            <Text style={styles.kpiTitle}>{t('analyticsDashboard.servicesActifs')}/Text>
+            <Text style={styles.kpiTitle}>{t('analyticsDashboard.servicesActifs')}</Text>
           </View>
           <Text style={styles.kpiValue}>{analytics.service_stats.active_services}</Text>
           <Text style={styles.kpiSubtext}>sur {analytics.service_stats.total_services} services</Text>
@@ -246,11 +246,11 @@ const AnalyticsDashboardScreen: React.FC = () => {
       <NativeCard style={styles.sectionCard}>
         <View style={styles.sectionHeader}>
           <SafeIcon name="truck" size={24} color={modernColors.primary} />
-          <Text style={styles.sectionTitle}>{t('analyticsDashboard.statistiquesDeLivraison')}/Text>
+          <Text style={styles.sectionTitle}>{t('analyticsDashboard.statistiquesDeLivraison')}</Text>
         </View>
         <View style={styles.statsList}>
           <View style={styles.statRow}>
-            <Text style={styles.statLabel}>{t('analyticsDashboard.totalLivraisons')}/Text>
+            <Text style={styles.statLabel}>{t('analyticsDashboard.totalLivraisons')}</Text>
             <Text style={styles.statValue}>{formatNumber(analytics.delivery_stats.total_deliveries)}</Text>
           </View>
           <View style={styles.statRow}>
@@ -266,13 +266,13 @@ const AnalyticsDashboardScreen: React.FC = () => {
             </Text>
           </View>
           <View style={styles.statRow}>
-            <Text style={styles.statLabel}>{t('analyticsDashboard.enAttente')}/Text>
+            <Text style={styles.statLabel}>{t('analyticsDashboard.enAttente')}</Text>
             <Text style={[styles.statValue, styles.statValueWarning]}>
               {formatNumber(analytics.delivery_stats.pending_deliveries)}
             </Text>
           </View>
           <View style={[styles.statRow, styles.statRowBorder]}>
-            <Text style={[styles.statLabel, styles.statLabelBold]}>{t('analyticsDashboard.revenuMoyenParLivraison')}/Text>
+            <Text style={[styles.statLabel, styles.statLabelBold]}>{t('analyticsDashboard.revenuMoyenParLivraison')}</Text>
             <Text style={[styles.statValue, styles.statValueBold]}>
               {formatCurrency(analytics.delivery_stats.avg_revenue_per_delivery)}
             </Text>
@@ -284,29 +284,29 @@ const AnalyticsDashboardScreen: React.FC = () => {
       <NativeCard style={styles.sectionCard}>
         <View style={styles.sectionHeader}>
           <SafeIcon name="package" size={24} color={modernColors.primary} />
-          <Text style={styles.sectionTitle}>{t('analyticsDashboard.statistiquesDeServices')}/Text>
+          <Text style={styles.sectionTitle}>{t('analyticsDashboard.statistiquesDeServices')}</Text>
         </View>
         <View style={styles.statsList}>
           <View style={styles.statRow}>
-            <Text style={styles.statLabel}>{t('analyticsDashboard.totalServices')}/Text>
+            <Text style={styles.statLabel}>{t('analyticsDashboard.totalServices')}</Text>
             <Text style={styles.statValue}>{formatNumber(analytics.service_stats.total_services)}</Text>
           </View>
           <View style={styles.statRow}>
-            <Text style={styles.statLabel}>{t('analyticsDashboard.servicesActifs')}/Text>
+            <Text style={styles.statLabel}>{t('analyticsDashboard.servicesActifs')}</Text>
             <Text style={[styles.statValue, styles.statValueSuccess]}>
               {formatNumber(analytics.service_stats.active_services)}
             </Text>
           </View>
           <View style={styles.statRow}>
-            <Text style={styles.statLabel}>{t('analyticsDashboard.totalVues')}/Text>
+            <Text style={styles.statLabel}>{t('analyticsDashboard.totalVues')}</Text>
             <Text style={styles.statValue}>{formatNumber(analytics.service_stats.total_views)}</Text>
           </View>
           <View style={styles.statRow}>
-            <Text style={styles.statLabel}>{t('analyticsDashboard.totalInteractions')}/Text>
+            <Text style={styles.statLabel}>{t('analyticsDashboard.totalInteractions')}</Text>
             <Text style={styles.statValue}>{formatNumber(analytics.service_stats.total_interactions)}</Text>
           </View>
           <View style={styles.statRow}>
-            <Text style={styles.statLabel}>{t('analyticsDashboard.noteMoyenne')}/Text>
+            <Text style={styles.statLabel}>{t('analyticsDashboard.noteMoyenne')}</Text>
             <Text style={styles.statValue}>
               {analytics.service_stats.avg_rating
                 ? `${analytics.service_stats.avg_rating.toFixed(1)} ⭐`
@@ -314,7 +314,7 @@ const AnalyticsDashboardScreen: React.FC = () => {
             </Text>
           </View>
           <View style={[styles.statRow, styles.statRowBorder]}>
-            <Text style={[styles.statLabel, styles.statLabelBold]}>{t('analyticsDashboard.totalAvis')}/Text>
+            <Text style={[styles.statLabel, styles.statLabelBold]}>{t('analyticsDashboard.totalAvis')}</Text>
             <Text style={[styles.statValue, styles.statValueBold]}>
               {formatNumber(analytics.service_stats.total_reviews)}
             </Text>

@@ -211,7 +211,7 @@ const [mode, setMode] = useState<LocationMode>(initialMode);
                     {locationLoading ? (
                         <>
                             <ActivityIndicator size="small" color={modernColors.primary} />
-                            <Text style={styles.infoText}>{t('locationProximityFilter.localisationEnCours')}/Text>
+                            <Text style={styles.infoText}>{t('locationProximityFilter.localisationEnCours')}</Text>
                         </>
                     ) : location ? (
                         <>

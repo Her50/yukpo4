@@ -50,14 +50,14 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({
             if (status !== 'granted') {
                 Alert.alert(
                     'Permission requise',
-                    'L\t('qRCodeScanner.accesALaCameraEstNecessaire'),
+                    t('qRCodeScanner.laccesALaCameraEstNecessairePourScanner'),
                 [{ text: 'OK', onPress: onClose }]
                 );
             }
         } catch (error: any) {
             console.error('[QRCodeScanner] Erreur permission:', error);
             if (onError) {
-                onError('Impossible d\t('qRCodeScanner.accederALaCamera'));
+                onError(t('qRCodeScanner.impossibleDaccederALaCamera'));
             }
         }
     };
@@ -91,7 +91,7 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({
             >
                 <View style={styles.container}>
                     <View style={styles.header}>
-                        <Text style={styles.title}>{t('qRCodeScanner.demandeDePermission')}/Text>
+                        <Text style={styles.title}>{t('qRCodeScanner.demandeDePermission')}</Text>
                             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
                                 <SafeIcon name="x" size={24} color="#111827" />
                             </TouchableOpacity>

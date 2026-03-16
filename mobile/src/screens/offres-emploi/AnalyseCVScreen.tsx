@@ -149,7 +149,7 @@ const AnalyseCVScreen: React.FC = () => {
 
                     {/* Informations extraites */}
                     <NativeCard style={styles.card}>
-                        <Text style={styles.sectionTitle}>{t('analyseCV.informationsExtraites')}/Text>
+                        <Text style={styles.sectionTitle}>{t('analyseCV.informationsExtraites')}</Text>
                         {analysis.experience_years_extracted !== undefined && (
                             <View style={styles.infoRow}>
                                 <Text style={styles.infoLabel}>{t('analyseCV.experience')}</Text>

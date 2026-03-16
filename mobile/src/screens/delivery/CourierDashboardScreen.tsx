@@ -140,7 +140,7 @@ const CourierDashboardScreen: React.FC = () => {
                     refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
                 >
                     <View style={styles.header}>
-                        <Text style={styles.title}>{t('courierDashboard.tableauDeBordCoursier')}/Text>
+                        <Text style={styles.title}>{t('courierDashboard.tableauDeBordCoursier')}</Text>
                         <Text style={styles.subtitle}>Suivez vos performances et livraisons</Text>
                     </View>
 

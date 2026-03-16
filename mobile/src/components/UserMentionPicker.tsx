@@ -310,7 +310,7 @@ const [searchQuery, setSearchQuery] = useState(currentQuery);
                         {loading ? (
                             <View style={styles.loadingContainer}>
                                 <ActivityIndicator size="large" color={modernColors.primary} />
-                                <Text style={styles.loadingText}>{t('userMentionPicker.rechercheEnCours')}/Text>
+                                <Text style={styles.loadingText}>{t('userMentionPicker.rechercheEnCours')}</Text>
                             </View>
                         ) : (
                             <>

@@ -165,7 +165,7 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                         t('menuPlanningHubScreen.preparerEtLaverTousLesIngredients'),
                         'Faire chauffer l\'huile dans une marmite.',
                         'Ajouter les oignons et faire revenir 5 min.',
-                        'Ajouter l\t('menuPlanningHubScreen.ingredientPrincipalEtCuireAFeu'),
+                        t('menuPlanningHubScreen.ajouterLingredientPrincipalEtCuireAFeuMoyen'),
                         'Assaisonner et servir chaud.',
                     ],
                     nutrition_per_serving: { calories: 350, proteins: 25, carbs: 40, fats: 12, fiber: 5 },
@@ -380,7 +380,7 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
 
             {/* ✅ RÉORGANISÉ: Section génération menu (fonctionnalité principale) */}
             <View style={[styles.section, styles.menuSection]}>
-                <Text style={styles.sectionTitle}>{t('menuPlanningHub.menuDeLaSemaine')}/Text>
+                <Text style={styles.sectionTitle}>{t('menuPlanningHub.menuDeLaSemaine')}</Text>
 
                 {currentMenu ? (
                     <NativeCard style={styles.menuCard}>
@@ -492,7 +492,7 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
             {/* ✅ NOUVEAU: Section historique des menus et listes d'achats */}
             {(historyMenus.length > 0 || historyShoppingLists.length > 0) && (
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>{t('menuPlanningHub.historique')}/Text>
+                    <Text style={styles.sectionTitle}>{t('menuPlanningHub.historique')}</Text>
 
                     {/* Historique des menus */}
                     {historyMenus.length > 0 && (
@@ -588,7 +588,7 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                         onPress={() => navigation.navigate('ShoppingList' as never)}
                     >
                         <SafeIcon name="ShoppingCart" size={28} color="#10B981" type="lucide" />
-                        <Text style={styles.quickActionText}>{t('menuPlanningHub.listeCourses')}/Text>
+                        <Text style={styles.quickActionText}>{t('menuPlanningHub.listeCourses')}</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
@@ -637,7 +637,7 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                             </Text>
 
                             <View style={styles.inputGroup}>
-                                <Text style={styles.label}>{t('menuPlanningHub.nomDuPlat')}/Text>
+                                <Text style={styles.label}>{t('menuPlanningHub.nomDuPlat')}</Text>
                                 <TextInput
                                     value={recipeRequest}
                                     onChangeText={setRecipeRequest}

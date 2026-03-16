@@ -95,7 +95,7 @@ const ModernHomeScreen: React.FC = () => {
           {/* Header moderne */}
           <View style={styles.header}>
             <View style={styles.headerLeft}>
-              <Text style={styles.greeting}>{t('modernHome.bonjour')}/Text>
+              <Text style={styles.greeting}>{t('modernHome.bonjour')}</Text>
               <Text style={styles.userName}>{t('modernHome.pretADecouvrir')}</Text>
             </View>
             <View style={styles.headerRight}>

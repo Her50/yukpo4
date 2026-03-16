@@ -48,7 +48,7 @@ const OrientationAICompareProgramsScreen: React.FC = () => {
             if (!profile) {
                 Alert.alert(
                     'Profil requis',
-                    'Veuillez d\t('orientationAICompareProgramsScreen.abordCompleterVotreProfilEtudiant'),
+                    t('orientationAICompareProgramsScreen.veuillezDabordCompleterVotreProfilEtudiant'),
                     [
                         { text: t('common.cancel'), style: 'cancel' },
                         {

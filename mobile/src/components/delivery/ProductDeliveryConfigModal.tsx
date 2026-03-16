@@ -1350,7 +1350,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                             />
                         </View>
                         <View style={[styles.section, { flex: 1, marginLeft: 8 }]}>
-                            <Text style={styles.label}>{t('productDeliveryConfig.volumeCm')}/Text>
+                            <Text style={styles.label}>{t('productDeliveryConfig.volumeCm')}</Text>
                             <TextInput
                                 style={styles.input}
                                 value={config.volume_cm3}
@@ -1436,7 +1436,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
 
                     {/* Mode de facturation */}
                     <View style={styles.section}>
-                        <Text style={styles.label}>{t('productDeliveryConfig.modeDeFacturation')}/Text>
+                        <Text style={styles.label}>{t('productDeliveryConfig.modeDeFacturation')}</Text>
                         <TouchableOpacity
                             style={styles.select}
                             onPress={() => {

@@ -186,7 +186,7 @@ const ShoppingListScreen: React.FC<ShoppingListScreenProps> = () => {
                     </TouchableOpacity>
                     <View style={styles.headerTitleContainer}>
                         <SafeIcon name="ShoppingCart" size={32} color="#fff" type="lucide" />
-                        <Text style={styles.headerTitle}>{t('shoppingList.listeDeCourses')}/Text>
+                        <Text style={styles.headerTitle}>{t('shoppingList.listeDeCourses')}</Text>
                     </View>
                     {shoppingList && (
                         <Text style={styles.headerSubtitle}>

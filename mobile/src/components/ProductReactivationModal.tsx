@@ -354,7 +354,7 @@ const [loading, setLoading] = useState(false);
                                 {!canAffordReactivation() && selectedProducts.size > 0 && (
                                     <View style={styles.insufficientBadge}>
                                         <SafeIcon name="alert-triangle" size={16} color="#EF4444" />
-                                        <Text style={styles.insufficientText}>{t('productReactivation.soldeInsuffisant')}/Text>
+                                        <Text style={styles.insufficientText}>{t('productReactivation.soldeInsuffisant')}</Text>
                                     </View>
                                 )}
                             </View>

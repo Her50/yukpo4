@@ -113,7 +113,7 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0
             title: t('userAvatarMenu.navigationIntelligente'),
             icon: '🧭',
             route: 'NavigationScreen',
-            description: 'Trouvez le meilleur chemin avec embouteillages et points d\t('userAvatarMenu.interet'),
+            description: t('userAvatarMenu.trouvezLeMeilleurCheminAvecEmbouteillagesEtPoints'),
             highlighted: true
         },
         // ✅ AMÉLIORÉ 2026-01-23: Produits consultés en deuxième position
@@ -329,7 +329,7 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0
                                     onNavigate('SoldeDetail');
                                 }}
                             >
-                                <Text style={styles.balanceLabel}>{t('userAvatarMenu.solde')}/Text>
+                                <Text style={styles.balanceLabel}>{t('userAvatarMenu.solde')}</Text>
                                     <Text style={styles.balanceAmount}>
                                         {(balance != null ? balance : 0).toLocaleString('fr-FR')} <Text style={styles.balanceCurrency}>FCFA</Text>
                                     </Text>

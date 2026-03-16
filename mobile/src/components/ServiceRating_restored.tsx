@@ -227,7 +227,7 @@ const [showReviewFormLocal, setShowReviewFormLocal] = useState(showReviewForm);
             <Text style={styles.formTitle}>Donnez votre avis</Text>
 
             <View style={styles.ratingInput}>
-              <Text style={styles.ratingLabel}>{t('serviceRating_restored.note')}/Text>
+              <Text style={styles.ratingLabel}>{t('serviceRating_restored.note')}</Text>
               {renderStars(rating, true, 24)}
               {rating > 0 && (
                 <Text style={[styles.ratingText, { color: getRatingColor(rating) }]}>

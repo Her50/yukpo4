@@ -203,7 +203,7 @@ const ShareServiceModal: React.FC<ShareServiceModalProps> = ({ open, onClose, se
                 onPress={handleNativeShare}
               >
                 <LinkIcon size={16} color="white" />
-                <Text style={styles.nativeShareButtonText}>{t('shareService.partageNatif')}/Text>
+                <Text style={styles.nativeShareButtonText}>{t('shareService.partageNatif')}</Text>
               </TouchableOpacity>
             </View>
           </View>

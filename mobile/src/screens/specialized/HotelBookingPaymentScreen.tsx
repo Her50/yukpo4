@@ -285,7 +285,7 @@ const HotelBookingPaymentScreen: React.FC = () => {
                 {/* Résumé */}
                 <View style={styles.summarySection}>
                     <View style={styles.summaryRow}>
-                        <Text style={styles.summaryLabel}>{t('hotelBookingPayment.montantTotal')}/Text>
+                        <Text style={styles.summaryLabel}>{t('hotelBookingPayment.montantTotal')}</Text>
                         <Text style={styles.summaryValue}>{formatPrice(montantTotal)}</Text>
                     </View>
                     {paymentType === 'advance' && (

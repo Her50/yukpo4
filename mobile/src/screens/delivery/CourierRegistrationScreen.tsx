@@ -1005,7 +1005,7 @@ const CourierRegistrationScreen: React.FC = () => {
                 contentContainerStyle={[styles.scrollContent, { paddingBottom: Platform.OS === 'android' ? 400 : 350 }]}
             >
                 <View style={styles.header}>
-                    <Text style={styles.title}>{t('courierRegistration.devenirCoursierYukpo')}/Text>
+                    <Text style={styles.title}>{t('courierRegistration.devenirCoursierYukpo')}</Text>
                         <Text style={styles.subtitle}>
                             Complétez ce formulaire pour devenir coursier. Toutes les informations seront vérifiées avant validation.
                         </Text>
@@ -1064,7 +1064,7 @@ const CourierRegistrationScreen: React.FC = () => {
 
                 {/* Informations personnelles */}
                 <NativeCard style={styles.card}>
-                    <Text style={styles.sectionTitle}>{t('courierRegistration.informationsPersonnelles')}/Text>
+                    <Text style={styles.sectionTitle}>{t('courierRegistration.informationsPersonnelles')}</Text>
                         <View style={styles.inputContainer}>
                             <Text style={styles.inputLabel}>{t('courierRegistration.nomComplet')}</Text>
                             <TextInput
@@ -1255,7 +1255,7 @@ const CourierRegistrationScreen: React.FC = () => {
                             />
                             {/* ✅ NOUVEAU 2026-01-04: Champ pour télécharger l'image du moyen de transport */}
                             <View style={styles.inputContainer}>
-                                <Text style={styles.inputLabel}>{t('courierRegistration.photoDuMoyenDeTransport')}/Text>
+                                <Text style={styles.inputLabel}>{t('courierRegistration.photoDuMoyenDeTransport')}</Text>
                                     <View style={styles.documentRow}>
                                         <View style={styles.documentInfo}>
                                             {vehicleImage && <Text style={styles.documentName}>{vehicleImage.name}</Text>}
@@ -1281,7 +1281,7 @@ const CourierRegistrationScreen: React.FC = () => {
                     )}
                     {/* ✅ AMÉLIORÉ 2026-01-12: Champ partenaire (obligatoire) - Rendu opérationnel */}
                     <View style={styles.inputContainer}>
-                        <Text style={styles.inputLabel}>{t('courierRegistration.partenaireDeLivraison')}/Text>
+                        <Text style={styles.inputLabel}>{t('courierRegistration.partenaireDeLivraison')}</Text>
                             <Text style={styles.helperText}>
                                 Sélectionnez le partenaire de logistique auquel vous appartenez. Ce champ permet de gérer les coursiers qui feront les achats pour l'utilisateur au marché.
                             </Text>
@@ -1398,7 +1398,7 @@ const CourierRegistrationScreen: React.FC = () => {
                         <>
                             <View style={styles.documentRow}>
                                 <View style={styles.documentInfo}>
-                                    <Text style={styles.documentLabel}>{t('courierRegistration.carteGrise')}/Text>
+                                    <Text style={styles.documentLabel}>{t('courierRegistration.carteGrise')}</Text>
                                         {vehicleRegistration && (
                                             <Text style={styles.documentName}>{vehicleRegistration.name}</Text>
                                         )}

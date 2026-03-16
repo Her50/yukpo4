@@ -162,7 +162,7 @@ const TrocMatchingScreen: React.FC = () => {
         return (
             <View style={styles.centerContainer}>
                 <ActivityIndicator size="large" color={modernColors.primary} />
-                <Text style={styles.loadingText}>{t('trocMatching.rechercheDeMatchings')}/Text>
+                <Text style={styles.loadingText}>{t('trocMatching.rechercheDeMatchings')}</Text>
             </View>
         );
     }

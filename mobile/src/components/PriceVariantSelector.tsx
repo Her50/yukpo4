@@ -276,7 +276,7 @@ export const PriceVariantSelector: React.FC<PriceVariantSelectorProps> = ({
                     <SafeIcon name="layers" size={18} color={modernColors.primary} />
                     <View style={{ flex: 1 }}>
                         <Text style={styles.compactEmptyTitle}>{t('priceVariantSelector.ajouterUneVariante')}</Text>
-                        <Text style={styles.compactEmptyText}>{t('priceVariantSelector.exTailleMFormuleVip')}/Text>
+                        <Text style={styles.compactEmptyText}>{t('priceVariantSelector.exTailleMFormuleVip')}</Text>
                     </View>
                     <SafeIcon name="plus" size={18} color={modernColors.primary} />
                 </TouchableOpacity>
@@ -381,7 +381,7 @@ export const PriceVariantSelector: React.FC<PriceVariantSelectorProps> = ({
 
                             {/* Stock (optionnel) */}
                             <View style={styles.inputGroup}>
-                                <Text style={styles.inputLabel}>{t('priceVariantSelector.stockOptionnel')}/Text>
+                                <Text style={styles.inputLabel}>{t('priceVariantSelector.stockOptionnel')}</Text>
                                 <TextInput
                                     style={styles.input}
                                     placeholder="0"

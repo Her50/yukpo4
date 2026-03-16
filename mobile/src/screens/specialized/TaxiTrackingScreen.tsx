@@ -182,7 +182,7 @@ const TaxiTrackingScreen: React.FC = () => {
                     <SafeIcon name="arrow-left" size={24} color="#111827" />
                 </TouchableOpacity>
                 <View style={styles.headerContent}>
-                    <Text style={styles.headerTitle}>{t('taxiTracking.suiviDuTaxi')}/Text>
+                    <Text style={styles.headerTitle}>{t('taxiTracking.suiviDuTaxi')}</Text>
                     <Text style={styles.headerSubtitle}>{getStatusText()}</Text>
                 </View>
             </View>

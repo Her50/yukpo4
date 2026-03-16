@@ -272,7 +272,7 @@ const [callState, setCallState] = useState<'connecting' | 'ringing' | 'active' |
                 if (error.message.includes('Permission')) {
                     errorMessage = t('webRTCCallModal.permissionsCameramicroRefuseesVeuillezLesActiver');
                 } else if (error.message.includes('timeout') || error.message.includes('Timeout')) {
-                    errorMessage = 'Délai d\t('webRTCCallModal.attenteDepasseVerifiezVotreCameramicro');
+                    errorMessage = t('webRTCCallModal.delaiDattenteDepasseVerifiezVotreCameramicro');
                 } else if (error.message.includes('WebRTC non disponible')) {
                     errorMessage = t('webRTCCallModal.appelsVideoaudioNonDisponiblesSurCet');
                 }

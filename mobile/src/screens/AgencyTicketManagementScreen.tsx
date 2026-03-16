@@ -244,7 +244,7 @@ const AgencyTicketManagementScreen: React.FC = () => {
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                     <SafeIcon name="arrow-left" size={24} color="#111827" />
                 </TouchableOpacity>
-                <Text style={styles.title}>{t('agencyTicketManagement.gestionDesTickets')}/Text>
+                <Text style={styles.title}>{t('agencyTicketManagement.gestionDesTickets')}</Text>
                 <View style={styles.placeholder} />
             </View>
 
@@ -252,7 +252,7 @@ const AgencyTicketManagementScreen: React.FC = () => {
             <View style={styles.statsContainer}>
                 <View style={styles.statCard}>
                     <Text style={styles.statValue}>{stats.total}</Text>
-                    <Text style={styles.statLabel}>{t('agencyTicketManagement.totalTickets')}/Text>
+                    <Text style={styles.statLabel}>{t('agencyTicketManagement.totalTickets')}</Text>
                 </View>
                 <View style={styles.statCard}>
                     <Text style={styles.statValue}>{stats.todayCount}</Text>

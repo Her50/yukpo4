@@ -276,7 +276,7 @@ const AgenceVoyageSearchScreen: React.FC = () => {
                 <View style={styles.searchFormCard}>
                     {searchMode === 'tickets' ? (
                         <>
-                            <Text style={styles.sectionTitle}>{t('agenceVoyageSearch.rechercheDeTicketsBus')}/Text>
+                            <Text style={styles.sectionTitle}>{t('agenceVoyageSearch.rechercheDeTicketsBus')}</Text>
                             <Text style={styles.sectionDescription}>
                                 Recherchez des tickets de bus pour votre trajet. Les villes de départ et d'arrivée sont obligatoires.
                             </Text>
@@ -354,7 +354,7 @@ const AgenceVoyageSearchScreen: React.FC = () => {
                             </View>
 
                             {/* Localisation GPS (optionnelle pour tickets) */}
-                            <Text style={styles.sectionTitle}>{t('agenceVoyageSearch.localisationOptionnelle')}/Text>
+                            <Text style={styles.sectionTitle}>{t('agenceVoyageSearch.localisationOptionnelle')}</Text>
                             <Text style={styles.sectionDescription}>
                                 Ajoutez votre position pour trouver des tickets à proximité
                             </Text>
@@ -412,7 +412,7 @@ const AgenceVoyageSearchScreen: React.FC = () => {
                         </>
                     ) : (
                         <>
-                            <Text style={styles.sectionTitle}>{t('agenceVoyageSearch.localisationOptionnelle')}/Text>
+                            <Text style={styles.sectionTitle}>{t('agenceVoyageSearch.localisationOptionnelle')}</Text>
                             <Text style={styles.sectionDescription}>
                                 Recherchez des agences de voyage à proximité
                             </Text>
@@ -496,7 +496,7 @@ const AgenceVoyageSearchScreen: React.FC = () => {
 
                     {/* Options */}
                     <View style={styles.optionsSection}>
-                        <Text style={styles.sectionTitle}>{t('agenceVoyageSearch.optionsDeRecherche')}/Text>
+                        <Text style={styles.sectionTitle}>{t('agenceVoyageSearch.optionsDeRecherche')}</Text>
 
                         <View style={styles.optionCard}>
                             <View style={styles.optionContent}>

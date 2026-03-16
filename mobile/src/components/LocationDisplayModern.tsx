@@ -147,7 +147,7 @@ const [locationText, setLocationText] = useState<string>('');
       <View style={[styles.container, compact && styles.compactContainer, customStyle]}>
         <View style={styles.loadingContainer}>
           <MapPin size={16} color="#E0E0E0" />
-          <Text style={styles.loadingText}>{t('locationDisplayModern.localisationEnCours')}/Text>
+          <Text style={styles.loadingText}>{t('locationDisplayModern.localisationEnCours')}</Text>
         </View>
       </View>
     );

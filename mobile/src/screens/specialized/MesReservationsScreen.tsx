@@ -236,7 +236,7 @@ const [reservations, setReservations] = useState<Reservation[]>([]);
                     style={[styles.filterButton, statusFilter === 'pending' && styles.filterActive]}
                     onPress={() => setStatusFilter('pending')}
                 >
-                    <Text style={styles.filterText}>{t('mesReservations.enAttente')}/Text>
+                    <Text style={styles.filterText}>{t('mesReservations.enAttente')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                     style={[

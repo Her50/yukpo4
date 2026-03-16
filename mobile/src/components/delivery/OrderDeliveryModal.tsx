@@ -662,7 +662,7 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
             if (status !== 'granted') {
                 Alert.alert(
                     'Permission requise',
-                    'L\t('orderDeliveryModal.accesALaLocalisationEstNecessaire')
+                    t('orderDeliveryModal.laccesALaLocalisationEstNecessairePourUtiliser')
                 );
                 return;
             }
@@ -1347,7 +1347,7 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
 
                             {/* Niveau d'urgence - Sélecteur visuel */}
                             <View style={styles.preferenceItem}>
-                                <Text style={styles.preferenceLabel}>{t('orderDelivery.modeDeLivraison')}/Text>
+                                <Text style={styles.preferenceLabel}>{t('orderDelivery.modeDeLivraison')}</Text>
                                 <View style={styles.deliveryModeContainer}>
                                     {[
                                         { key: 'standard' as const, label: 'Standard', icon: 'truck' as const, desc: '2-4h', color: '#3B82F6' },

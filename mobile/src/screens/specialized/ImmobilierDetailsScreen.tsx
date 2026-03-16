@@ -101,7 +101,7 @@ const ImmobilierDetailsScreen: React.FC = () => {
                 const monthlyRate = rate / 100 / 12;
                 const nbMonths = duration * 12;
                 const mensualite = montant * (monthlyRate * Math.pow(1 + monthlyRate, nbMonths)) / (Math.pow(1 + monthlyRate, nbMonths) - 1);
-                setLoanResult({ property_price: price, down_payment: Math.round(apport), loan_amount: Math.round(montant), interest_rate: rate, loan_duration_years: duration, monthly_payment: Math.round(mensualite), total_interest: Math.round(mensualite * nbMonths - montant), total_cost: Math.round(mensualite * nbMonths), affordability_analysis: 'Calcul local (le serveur n\t('immobilierDetailsScreen.aPasRepondu') });
+                setLoanResult({ property_price: price, down_payment: Math.round(apport), loan_amount: Math.round(montant), interest_rate: rate, loan_duration_years: duration, monthly_payment: Math.round(mensualite), total_interest: Math.round(mensualite * nbMonths - montant), total_cost: Math.round(mensualite * nbMonths), affordability_analysis: t('immobilierDetailsScreen.calculLocalLeServeurNaPasRepondu') });
             }
         } catch { Alert.alert('Erreur', 'Impossible de simuler le prêt'); }
         finally { setLoadingLoan(false); }
@@ -315,7 +315,7 @@ const ImmobilierDetailsScreen: React.FC = () => {
 
                         <View style={st.loanGroup}><Text style={st.loanLabel}>Apport personnel (%)</Text><TextInput style={st.loanInput} value={loanDownPayment} onChangeText={setLoanDownPayment} keyboardType="numeric" placeholder="10" placeholderTextColor="#9CA3AF" /></View>
                         <View style={st.loanGroup}><Text style={st.loanLabel}>{t('immobilierDetails.dureeAnnees')}</Text><TextInput style={st.loanInput} value={loanDuration} onChangeText={setLoanDuration} keyboardType="numeric" placeholder="20" placeholderTextColor="#9CA3AF" /></View>
-                        <View style={st.loanGroup}><Text style={st.loanLabel}>{t('immobilierDetails.revenuMensuelOptionnelFcfa')}/Text><TextInput style={st.loanInput} value={loanMonthlyIncome} onChangeText={setLoanMonthlyIncome} keyboardType="numeric" placeholder="500000" placeholderTextColor="#9CA3AF" /></View>
+                        <View style={st.loanGroup}><Text style={st.loanLabel}>{t('immobilierDetails.revenuMensuelOptionnelFcfa')}</Text><TextInput style={st.loanInput} value={loanMonthlyIncome} onChangeText={setLoanMonthlyIncome} keyboardType="numeric" placeholder="500000" placeholderTextColor="#9CA3AF" /></View>
 
                         {!loanResult ? (
                             <TouchableOpacity style={st.primaryBtn} onPress={handleConfirmLoanSimulation} disabled={loadingLoan}>

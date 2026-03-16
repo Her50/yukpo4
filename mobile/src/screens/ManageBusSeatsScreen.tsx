@@ -185,7 +185,7 @@ const ManageBusSeatsScreen: React.FC = () => {
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                     <SafeIcon name="arrow-left" size={24} color="#111827" />
                 </TouchableOpacity>
-                <Text style={styles.title}>{t('manageBusSeats.gestionDesPlaces')}/Text>
+                <Text style={styles.title}>{t('manageBusSeats.gestionDesPlaces')}</Text>
                 <View style={styles.placeholder} />
             </View>
 

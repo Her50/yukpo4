@@ -234,7 +234,7 @@ const EtablissementSearchScreen: React.FC = () => {
 
                 {/* Formulaire de recherche */}
                 <View style={styles.searchFormCard}>
-                    <Text style={styles.sectionTitle}>{t('etablissementSearch.localisation')}/Text>
+                    <Text style={styles.sectionTitle}>{t('etablissementSearch.localisation')}</Text>
 
                     {/* Ville */}
                     <View style={styles.inputGroup}>

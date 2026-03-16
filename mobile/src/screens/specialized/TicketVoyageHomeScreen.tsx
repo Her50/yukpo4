@@ -350,7 +350,7 @@ const TicketVoyageHomeScreen: React.FC = () => {
                             <SafeIcon name="arrow-left" size={22} color="#FFFFFF" />
                         </TouchableOpacity>
                         <View style={styles.headerTitleContainer}>
-                            <Text style={[styles.headerTitle, { color: '#FFFFFF' }]}>{t('ticketVoyageHome.ticketsDeVoyage')}/Text>
+                            <Text style={[styles.headerTitle, { color: '#FFFFFF' }]}>{t('ticketVoyageHome.ticketsDeVoyage')}</Text>
                         </View>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                             <TouchableOpacity
@@ -552,7 +552,7 @@ const TicketVoyageHomeScreen: React.FC = () => {
                 ) : loading && tickets.length === 0 ? (
                     <View style={styles.centerContainer}>
                         <ActivityIndicator size="large" color={modernColors.primary} />
-                        <Text style={styles.loadingText}>{t('ticketVoyageHome.rechercheDeVoyages')}/Text>
+                        <Text style={styles.loadingText}>{t('ticketVoyageHome.rechercheDeVoyages')}</Text>
                     </View>
                 ) : error && tickets.length === 0 ? (
                     <View style={styles.centerContainer}>

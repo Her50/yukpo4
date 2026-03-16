@@ -299,11 +299,11 @@ const SettingsScreen: React.FC = () => {
 
   const renderNotificationsSection = () => (
     <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{t('settings.notifications')}/Text>
+      <Text style={styles.sectionTitle}>{t('settings.notifications')}</Text>
 
       <View style={styles.settingRow}>
         <View style={styles.settingInfo}>
-          <Text style={styles.settingTitle}>{t('settings.notificationsEmail')}/Text>
+          <Text style={styles.settingTitle}>{t('settings.notificationsEmail')}</Text>
           <Text style={styles.settingDescription}>Recevoir des notifications par email</Text>
         </View>
         <Switch
@@ -316,7 +316,7 @@ const SettingsScreen: React.FC = () => {
 
       <View style={styles.settingRow}>
         <View style={styles.settingInfo}>
-          <Text style={styles.settingTitle}>{t('settings.notificationsPush')}/Text>
+          <Text style={styles.settingTitle}>{t('settings.notificationsPush')}</Text>
           <Text style={styles.settingDescription}>Recevoir des notifications push</Text>
         </View>
         <Switch
@@ -329,7 +329,7 @@ const SettingsScreen: React.FC = () => {
 
       <View style={styles.settingRow}>
         <View style={styles.settingInfo}>
-          <Text style={styles.settingTitle}>{t('settings.notificationsSms')}/Text>
+          <Text style={styles.settingTitle}>{t('settings.notificationsSms')}</Text>
           <Text style={styles.settingDescription}>Recevoir des notifications par SMS</Text>
         </View>
         <Switch
@@ -388,7 +388,7 @@ const SettingsScreen: React.FC = () => {
 
       <View style={styles.settingRow}>
         <View style={styles.settingInfo}>
-          <Text style={styles.settingTitle}>{t('settings.afficherLaLocalisation')}/Text>
+          <Text style={styles.settingTitle}>{t('settings.afficherLaLocalisation')}</Text>
           <Text style={styles.settingDescription}>{t('settingsScreen.partagerVotrePosition')}</Text>
         </View>
         <Switch
@@ -505,7 +505,7 @@ const SettingsScreen: React.FC = () => {
 
       <View style={styles.settingRow}>
         <View style={styles.settingInfo}>
-          <Text style={styles.settingTitle}>{t('settings.modeCompact')}/Text>
+          <Text style={styles.settingTitle}>{t('settings.modeCompact')}</Text>
           <Text style={styles.settingDescription}>Interface plus compacte</Text>
         </View>
         <Switch

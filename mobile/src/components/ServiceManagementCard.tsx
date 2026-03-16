@@ -311,7 +311,7 @@ const ServiceManagementCard: React.FC<ServiceManagementCardProps> = ({
                 {service.promotion?.active && (
                     <View style={styles.promotionBanner}>
                         <Text style={styles.promotionIcon}>🎉</Text>
-                        <Text style={styles.promotionText}>{t('serviceManagementCard.promotionActive')}/Text>
+                        <Text style={styles.promotionText}>{t('serviceManagementCard.promotionActive')}</Text>
                     </View>
                 )}
             </View>

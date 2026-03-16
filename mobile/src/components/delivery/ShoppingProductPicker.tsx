@@ -61,7 +61,7 @@ const [vector, setVector] = useState<string[]>([]);
                     <SafeIcon name="shopping-basket" size={20} color={modernColors.primary} />
                 </View>
                 <View style={styles.headerText}>
-                    <Text style={styles.title}>{t('shoppingProductPicker.ajouterDesProduits')}/Text>
+                    <Text style={styles.title}>{t('shoppingProductPicker.ajouterDesProduits')}</Text>
                     <Text style={styles.subtitle}>Utilise les suggestions intelligentes pour ton panier</Text>
                 </View>
             </View>
@@ -103,7 +103,7 @@ const [vector, setVector] = useState<string[]>([]);
             </View>
 
             <View style={styles.noteSection}>
-                <Text style={styles.inputLabel}>{t('shoppingProductPicker.notePourLeCoursier')}/Text>
+                <Text style={styles.inputLabel}>{t('shoppingProductPicker.notePourLeCoursier')}</Text>
                 <NativeInput
                     value={note}
                     onChangeText={setNote}

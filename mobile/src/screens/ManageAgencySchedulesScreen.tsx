@@ -328,7 +328,7 @@ const ManageAgencySchedulesScreen: React.FC = () => {
                             </View>
 
                             <View style={styles.formGroup}>
-                                <Text style={styles.label}>{t('manageAgencySchedules.joursDeLaSemaine')}/Text>
+                                <Text style={styles.label}>{t('manageAgencySchedules.joursDeLaSemaine')}</Text>
                                 <View style={styles.daysGrid}>
                                     {DAYS_OF_WEEK.map((day) => (
                                         <TouchableOpacity

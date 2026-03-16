@@ -160,10 +160,10 @@ const BusReturnRequestFormScreen: React.FC = () => {
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                         <SafeIcon name="arrow-left" size={24} color="#111827" />
                     </TouchableOpacity>
-                    <Text style={styles.title}>{t('busReturnRequestForm.demandeDeRetour')}/Text>
+                    <Text style={styles.title}>{t('busReturnRequestForm.demandeDeRetour')}</Text>
                 </View>
                 <View style={styles.errorContainer}>
-                    <Text style={styles.errorText}>{t('busReturnRequestForm.informationsDeTicketManquantes')}/Text>
+                    <Text style={styles.errorText}>{t('busReturnRequestForm.informationsDeTicketManquantes')}</Text>
                 </View>
             </View>
         );
@@ -181,7 +181,7 @@ const BusReturnRequestFormScreen: React.FC = () => {
             <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
                 {outboundTicket && (
                     <View style={styles.ticketInfoCard}>
-                        <Text style={styles.cardTitle}>{t('busReturnRequestForm.ticketAller')}/Text>
+                        <Text style={styles.cardTitle}>{t('busReturnRequestForm.ticketAller')}</Text>
                         <Text style={styles.ticketRoute}>
                             {outboundTicket.departure_city} → {outboundTicket.arrival_city}
                         </Text>

@@ -105,7 +105,7 @@ export const ProductComparison: React.FC<ProductComparisonProps> = ({
             >
                 <View style={styles.modalContainer}>
                     <View style={styles.modalHeader}>
-                        <Text style={styles.modalTitle}>{t('productComparison.comparaisonProduits')}/Text>
+                        <Text style={styles.modalTitle}>{t('productComparison.comparaisonProduits')}</Text>
                         <TouchableOpacity onPress={() => setShowComparison(false)}>
                             <SafeIcon name="x" size={24} color="#6B7280" />
                         </TouchableOpacity>

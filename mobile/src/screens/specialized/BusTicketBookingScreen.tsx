@@ -133,7 +133,7 @@ const BusTicketBookingScreen: React.FC = () => {
                     <Text style={styles.title}>{t('busTicketBooking.reservation')}</Text>
                 </View>
                 <View style={styles.errorContainer}>
-                    <Text style={styles.errorText}>{t('busTicketBooking.informationsDeTicketManquantes')}/Text>
+                    <Text style={styles.errorText}>{t('busTicketBooking.informationsDeTicketManquantes')}</Text>
                 </View>
             </View>
         );
@@ -200,7 +200,7 @@ const BusTicketBookingScreen: React.FC = () => {
                     />
 
                     <View style={styles.priceContainer}>
-                        <Text style={styles.priceLabel}>{t('busTicketBooking.prixParPlace')}/Text>
+                        <Text style={styles.priceLabel}>{t('busTicketBooking.prixParPlace')}</Text>
                         <Text style={styles.price}>
                             {ticketData?.ticket_price
                                 ? `${ticketData.ticket_price.toLocaleString('fr-FR')} FCFA`

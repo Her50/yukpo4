@@ -335,7 +335,7 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                     <SafeIcon name="arrow-left" size={24} color={modernColors.text} />
                 </TouchableOpacity>
-                <Text style={styles.title}>{t('deliveryPartnersAdmin.gestionDesPartenaires')}/Text>
+                <Text style={styles.title}>{t('deliveryPartnersAdmin.gestionDesPartenaires')}</Text>
                 {activeTab === 'approved' && (
                     <TouchableOpacity onPress={handleCreate} style={styles.addButton}>
                         <SafeIcon name="plus" size={24} color={modernColors.primary} />
@@ -401,7 +401,7 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
                                             </Text>
                                         </View>
                                         <View style={styles.statusBadgePending}>
-                                            <Text style={styles.statusTextPending}>{t('deliveryPartnersAdmin.enAttente')}/Text>
+                                            <Text style={styles.statusTextPending}>{t('deliveryPartnersAdmin.enAttente')}</Text>
                                         </View>
                                     </View>
                                 </TouchableOpacity>
@@ -754,7 +754,7 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
                                 </View>
 
                                 <View style={styles.inputContainer}>
-                                    <Text style={styles.inputLabel}>{t('deliveryPartnersAdmin.ville')}/Text>
+                                    <Text style={styles.inputLabel}>{t('deliveryPartnersAdmin.ville')}</Text>
                                     <TextInput
                                         style={styles.textInput}
                                         placeholder={t('deliveryPartnersAdmin.ville')}
@@ -860,7 +860,7 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
                                             size={20}
                                             color={editForm.is_active ? modernColors.primary : modernColors.textSecondary}
                                         />
-                                        <Text style={styles.checkboxLabel}>{t('deliveryPartnersAdmin.partenaireActif')}/Text>
+                                        <Text style={styles.checkboxLabel}>{t('deliveryPartnersAdmin.partenaireActif')}</Text>
                                     </TouchableOpacity>
                                 </View>
 

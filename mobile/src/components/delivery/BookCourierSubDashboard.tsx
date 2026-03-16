@@ -208,7 +208,7 @@ const BookCourierSubDashboard: React.FC<BookCourierSubDashboardProps> = ({ onRef
                 <TouchableOpacity style={styles.sectionHeader} onPress={() => setExpanded(!expanded)}>
                     <View style={styles.sectionTitleRow}>
                         <SafeIcon name="book-open" size={20} color={modernColors.primary} />
-                        <Text style={styles.sectionTitle}>{t('bookCourierSubDashboard.livresScolaires')}/Text>
+                        <Text style={styles.sectionTitle}>{t('bookCourierSubDashboard.livresScolaires')}</Text>
                     </View>
                     <SafeIcon name={expanded ? 'chevron-up' : 'chevron-down'} size={20} color={modernColors.textSecondary} />
                 </TouchableOpacity>
@@ -229,7 +229,7 @@ const BookCourierSubDashboard: React.FC<BookCourierSubDashboardProps> = ({ onRef
             <TouchableOpacity style={styles.sectionHeader} onPress={() => setExpanded(!expanded)}>
                 <View style={styles.sectionTitleRow}>
                     <SafeIcon name="book-open" size={20} color={modernColors.primary} />
-                    <Text style={styles.sectionTitle}>{t('bookCourierSubDashboard.livresScolaires')}/Text>
+                    <Text style={styles.sectionTitle}>{t('bookCourierSubDashboard.livresScolaires')}</Text>
                     {totalPaquets > 0 && (
                         <View style={styles.badge}>
                             <Text style={styles.badgeText}>{totalPaquets}</Text>

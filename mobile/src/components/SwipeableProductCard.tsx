@@ -122,7 +122,7 @@ const SwipeableProductCard: React.FC<SwipeableProductCardProps> = ({
               color="#FFFFFF"
               type="ionicons"
             />
-            <Text style={styles.actionButtonText}>{t('swipeableProductCard.favoris')}/Text>
+            <Text style={styles.actionButtonText}>{t('swipeableProductCard.favoris')}</Text>
           </TouchableOpacity>
         </Animated.View>
         <Animated.View

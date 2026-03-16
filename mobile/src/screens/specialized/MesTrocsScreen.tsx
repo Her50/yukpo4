@@ -313,7 +313,7 @@ const MesTrocsScreen: React.FC = () => {
                     <Text style={styles.emptyText}>{t('mesTrocs.aucunTroc')}</Text>
                     <Text style={styles.emptySubtext}>
                         {filter === 'all'
-                            ? 'Vous n\t('mesTrocsScreen.avezPasEncoreDeTrocCreezen')
+                            ? t('mesTrocsScreen.vousNavezPasEncoreDeTrocCreezenUn')
                             : `Aucun troc avec le statut "${filters.find(f => f.key === filter)?.label}".`
                         }
                     </Text>

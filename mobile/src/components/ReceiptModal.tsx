@@ -126,7 +126,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
                                         </View>
                                     )}
                                     <View style={[styles.paymentRow, styles.totalRow]}>
-                                        <Text style={styles.totalLabel}>{t('receipt.totalTokens')}/Text>
+                                        <Text style={styles.totalLabel}>{t('receipt.totalTokens')}</Text>
                                         <Text style={styles.totalValue}>
                                             {(receiptData.tokens + receiptData.bonus).toLocaleString()} tokens
                                         </Text>

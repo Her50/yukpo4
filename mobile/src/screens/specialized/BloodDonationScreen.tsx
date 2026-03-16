@@ -362,7 +362,7 @@ const BloodDonationScreen: React.FC = () => {
                         <NativeCard style={styles.profileCard}>
                             <View style={styles.profileCardHeader}>
                                 <SafeIcon name="calendar" size={20} color="#6366F1" />
-                                <Text style={styles.profileCardTitle}>{t('bloodDonation.historique')}/Text>
+                                <Text style={styles.profileCardTitle}>{t('bloodDonation.historique')}</Text>
                             </View>
                             {myBloodGroups[0].last_donation_date ? (
                                 <View>
@@ -496,7 +496,7 @@ const BloodDonationScreen: React.FC = () => {
 
                     {/* Tableau complet */}
                     <NativeCard style={styles.profileCard}>
-                        <Text style={styles.profileCardTitle}>{t('bloodDonation.tableauComplet')}/Text>
+                        <Text style={styles.profileCardTitle}>{t('bloodDonation.tableauComplet')}</Text>
                         <View style={styles.compatibilityTable}>
                             <View style={styles.tableHeader}>
                                 <Text style={[styles.tableCell, styles.tableHeaderCell]}>Groupe</Text>

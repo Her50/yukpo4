@@ -272,7 +272,7 @@ const LivreScolaireSearchScreen: React.FC = () => {
 
                 {/* Formulaire de recherche */}
                 <View style={styles.searchFormCard}>
-                    <Text style={styles.sectionTitle}>{t('livreScolaireSearch.informationsDuLivre')}/Text>
+                    <Text style={styles.sectionTitle}>{t('livreScolaireSearch.informationsDuLivre')}</Text>
                     {/* Classe actuelle */}
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>
@@ -372,7 +372,7 @@ const LivreScolaireSearchScreen: React.FC = () => {
                     </View>
 
                     {/* Localisation */}
-                    <Text style={styles.sectionTitle}>{t('livreScolaireSearch.localisation')}/Text>
+                    <Text style={styles.sectionTitle}>{t('livreScolaireSearch.localisation')}</Text>
 
                     {/* Ville */}
                     <View style={styles.inputGroup}>

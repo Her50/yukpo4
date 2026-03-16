@@ -266,7 +266,7 @@ const TaxiFormScreen: React.FC = () => {
             <View style={{ flexDirection: 'row', gap: 8 }}>
                 {formData.paiement_cash && <View style={s.payBadge}><Text style={s.payText}>💵 Cash</Text></View>}
                 {formData.paiement_mobile_money && <View style={s.payBadge}><Text style={s.payText}>📱 Mobile Money</Text></View>}
-                {formData.paiement_carte && <View style={s.payBadge}><Text style={s.payText}>{t('taxiForm.carte')}/Text></View>}
+                {formData.paiement_carte && <View style={s.payBadge}><Text style={s.payText}>{t('taxiForm.carte')}</Text></View>}
             </View>
         </ScrollView>
     );
@@ -322,7 +322,7 @@ const TaxiFormScreen: React.FC = () => {
             </View>
 
             {/* Options */}
-            <Text style={[s.sectionTitle, { marginTop: 8 }]}>{t('taxiForm.optionsPaiements')}/Text>
+            <Text style={[s.sectionTitle, { marginTop: 8 }]}>{t('taxiForm.optionsPaiements')}</Text>
             {[
                 { label: 'Cash', key: 'paiement_cash' },
                 { label: 'Mobile Money', key: 'paiement_mobile_money' },

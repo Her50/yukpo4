@@ -178,7 +178,7 @@ const [curve, setCurve] = useState<BezierCurve>({
                     {/* Contrôles numériques */}
                     <View style={styles.controls}>
                         <View style={styles.controlRow}>
-                            <Text style={styles.controlLabel}>{t('curveEditor.point1X1Y1')}/Text>
+                            <Text style={styles.controlLabel}>{t('curveEditor.point1X1Y1')}</Text>
                             <View style={styles.inputGroup}>
                                 <TextInput
                                     style={styles.input}
@@ -205,7 +205,7 @@ const [curve, setCurve] = useState<BezierCurve>({
                             </View>
                         </View>
                         <View style={styles.controlRow}>
-                            <Text style={styles.controlLabel}>{t('curveEditor.point2X2Y2')}/Text>
+                            <Text style={styles.controlLabel}>{t('curveEditor.point2X2Y2')}</Text>
                             <View style={styles.inputGroup}>
                                 <TextInput
                                     style={styles.input}

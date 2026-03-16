@@ -120,7 +120,7 @@ const StorageLocationSelector: React.FC<StorageLocationSelectorProps> = ({
                             setNewLocationData(prev => ({ ...prev, name: name.trim() }));
                             Alert.prompt(
                                 'Adresse',
-                                'Entrez l\t('storageLocationSelector.adresseCompleteDeCeLieuDe'),
+                                t('storageLocationSelector.entrezLadresseCompleteDeCeLieuDeStockage'),
                                 [
                                     { text: t('common.cancel'), style: 'cancel', onPress: () => { } },
                                     {

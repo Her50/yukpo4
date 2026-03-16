@@ -237,7 +237,7 @@ const SpecializedSearchScreen: React.FC = () => {
             <View style={styles.formContainer}>
                 {/* ✅ NOUVEAU Phase 4.2: Bouton filtres */}
                 <View style={styles.filtersHeader}>
-                    <Text style={styles.filtersTitle}>{t('specializedSearch.filtresDeRecherche')}/Text>
+                    <Text style={styles.filtersTitle}>{t('specializedSearch.filtresDeRecherche')}</Text>
                     <TouchableOpacity
                         style={styles.filtersButton}
                         onPress={() => setShowFilters(true)}
@@ -277,7 +277,7 @@ const SpecializedSearchScreen: React.FC = () => {
 
                 {/* GPS */}
                 <View style={styles.inputGroup}>
-                    <Text style={styles.label}>{t('specializedSearch.localisationOptionnel')}/Text>
+                    <Text style={styles.label}>{t('specializedSearch.localisationOptionnel')}</Text>
                     <TouchableOpacity
                         style={styles.gpsButton}
                         onPress={() => setShowGPSModal(true)}

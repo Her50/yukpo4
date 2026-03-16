@@ -345,7 +345,7 @@ const BourseLivreScreen: React.FC = () => {
         <View style={styles.container}>
             {/* Header avec recherche */}
             <View style={styles.header}>
-                <Text style={styles.headerTitle}>{t('bourseLivre.bourseDuLivre')}/Text>
+                <Text style={styles.headerTitle}>{t('bourseLivre.bourseDuLivre')}</Text>
                 <Text style={styles.headerSubtitle}>
                     Échangez vos livres scolaires facilement
                 </Text>

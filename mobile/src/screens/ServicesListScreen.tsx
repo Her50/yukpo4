@@ -74,7 +74,7 @@ const ServicesListScreen: React.FC = () => {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>{t('servicesList.catalogueDesServices')}/Text>
+          <Text style={styles.title}>{t('servicesList.catalogueDesServices')}</Text>
           <Text style={styles.subtitle}>
             Découvrez tous les services disponibles sur{' '}
             <Text style={styles.brandYuk}>Yuk</Text>
@@ -120,7 +120,7 @@ const ServicesListScreen: React.FC = () => {
         </View>
 
         {/* Liste des services */}
-        <Text style={styles.sectionTitle}>{t('servicesList.servicesDisponibles')}/Text>
+        <Text style={styles.sectionTitle}>{t('servicesList.servicesDisponibles')}</Text>
 
         {filtered.length === 0 ? (
           <View style={styles.emptyState}>

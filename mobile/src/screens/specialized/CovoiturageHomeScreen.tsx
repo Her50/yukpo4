@@ -547,7 +547,7 @@ const CovoiturageHomeScreen: React.FC = () => {
                     ) : loading && covoiturages.length === 0 ? (
                         <View style={styles.centerContainer}>
                             <ActivityIndicator size="large" color={modernColors.primary} />
-                            <Text style={styles.loadingText}>{t('covoiturageHome.rechercheDeTrajets')}/Text>
+                            <Text style={styles.loadingText}>{t('covoiturageHome.rechercheDeTrajets')}</Text>
                         </View>
                     ) : error && covoiturages.length === 0 ? (
                         <View style={styles.centerContainer}>

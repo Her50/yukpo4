@@ -63,7 +63,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: num
             if (status !== 'granted') {
                 Alert.alert(
                     'Permission requise',
-                    'L\t('modernGPSSelector.accesALaLocalisationEstNecessaire'),
+                    t('modernGPSSelector.laccesALaLocalisationEstNecessairePourUtiliser'),
                     [{ text: 'OK' }]
                 );
                 return;

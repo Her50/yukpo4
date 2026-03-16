@@ -102,7 +102,7 @@ const [filters, setFilters] = useState<SearchFilters>(initialFilters);
             <View style={styles.overlay}>
                 <View style={styles.modal}>
                     <View style={styles.header}>
-                        <Text style={styles.title}>{t('searchFilters.filtresEtTri')}/Text>
+                        <Text style={styles.title}>{t('searchFilters.filtresEtTri')}</Text>
                         <TouchableOpacity onPress={onClose} style={styles.closeButton}>
                             <SafeIcon name="x" size={24} color="#111827" />
                         </TouchableOpacity>

@@ -161,7 +161,7 @@ const InsuranceServicesResultsScreen: React.FC = () => {
             {loading && !refreshing ? (
                 <View style={styles.centerContainer}>
                     <ActivityIndicator size="large" color={modernColors.primary} />
-                    <Text style={styles.loadingText}>{t('insuranceServicesResults.rechercheEnCours')}/Text>
+                    <Text style={styles.loadingText}>{t('insuranceServicesResults.rechercheEnCours')}</Text>
                 </View>
             ) : results.length === 0 ? (
                 <View style={styles.centerContainer}>

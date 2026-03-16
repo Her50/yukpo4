@@ -105,12 +105,12 @@ const [duplicatedProduct, setDuplicatedProduct] = useState<Product | null>(null)
                         <Text style={styles.previewTitle}>{t('productDuplication.apercuDuProduitDuplique')}</Text>
 
                         <View style={styles.fieldRow}>
-                            <Text style={styles.fieldLabel}>{t('productDuplication.nomDuProduit')}/Text>
+                            <Text style={styles.fieldLabel}>{t('productDuplication.nomDuProduit')}</Text>
                             <Text style={styles.fieldValue}>{duplicatedProduct.nom}</Text>
                         </View>
 
                         <View style={styles.fieldRow}>
-                            <Text style={styles.fieldLabel}>{t('productDuplication.type')}/Text>
+                            <Text style={styles.fieldLabel}>{t('productDuplication.type')}</Text>
                             <Text style={styles.fieldValue}>{duplicatedProduct.type}</Text>
                         </View>
 
@@ -127,7 +127,7 @@ const [duplicatedProduct, setDuplicatedProduct] = useState<Product | null>(null)
                         )}
 
                         <View style={styles.fieldRow}>
-                            <Text style={styles.fieldLabel}>{t('productDuplication.images')}/Text>
+                            <Text style={styles.fieldLabel}>{t('productDuplication.images')}</Text>
                             <Text style={styles.fieldValue}>
                                 {duplicatedProduct.images?.length || 0} image(s) (réinitialisées)
                             </Text>
@@ -146,7 +146,7 @@ const [duplicatedProduct, setDuplicatedProduct] = useState<Product | null>(null)
 
                         <View style={styles.actionItem}>
                             <SafeIcon name="edit" size={16} color={modernColors.primary} />
-                            <Text style={styles.actionText}>{t('productDuplication.modifierLeNomDuProduit')}/Text>
+                            <Text style={styles.actionText}>{t('productDuplication.modifierLeNomDuProduit')}</Text>
                         </View>
 
                         <View style={styles.actionItem}>

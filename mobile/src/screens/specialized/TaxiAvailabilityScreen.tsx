@@ -192,7 +192,7 @@ const TaxiAvailabilityScreen: React.FC = () => {
                 </NativeCard>
 
                 <NativeCard style={styles.card}>
-                    <Text style={styles.sectionTitle}>{t('taxiAvailability.positionGpsActuelle')}/Text>
+                    <Text style={styles.sectionTitle}>{t('taxiAvailability.positionGpsActuelle')}</Text>
                     <Text style={styles.sectionDescription}>
                         Mettez à jour votre position GPS pour que les clients puissent vous trouver facilement
                     </Text>

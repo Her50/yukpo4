@@ -359,7 +359,7 @@ const ExternalProvidersAdminScreen: React.FC = () => {
 
                         <ScrollView style={styles.modalBody}>
                             <View style={styles.inputContainer}>
-                                <Text style={styles.inputLabel}>{t('externalProvidersAdmin.nomDuPrestataire')}/Text>
+                                <Text style={styles.inputLabel}>{t('externalProvidersAdmin.nomDuPrestataire')}</Text>
                                 <TextInput
                                     style={styles.textInput}
                                     placeholder={t('externalProvidersAdmin.exPharmacieDuCentreRestaurant')}
@@ -451,7 +451,7 @@ const ExternalProvidersAdminScreen: React.FC = () => {
                                 <View style={styles.successBanner}>
                                     <SafeIcon name="check-circle" size={40} color="#22C55E" />
                                     <Text style={styles.successTitle}>{createdProvider.provider_name}</Text>
-                                    <Text style={styles.successSubtitle}>{t('externalProvidersAdmin.lesIdentifiantsCidessousPermettentDe')}/Text>
+                                    <Text style={styles.successSubtitle}>{t('externalProvidersAdmin.lesIdentifiantsCidessousPermettentDe')}</Text>
                                 </View>
 
                                 {/* Clé API */}
@@ -505,14 +505,14 @@ const ExternalProvidersAdminScreen: React.FC = () => {
                                 </NativeCard>
 
                                 {/* Boutons de partage */}
-                                <Text style={[styles.sectionTitle, { marginTop: 16 }]}>{t('externalProvidersAdmin.envoyerAuPrestataire')}/Text>
+                                <Text style={[styles.sectionTitle, { marginTop: 16 }]}>{t('externalProvidersAdmin.envoyerAuPrestataire')}</Text>
 
                                 <TouchableOpacity
                                     style={styles.whatsappMainBtn}
                                     onPress={() => sendViaWhatsApp(createdProvider)}
                                 >
                                     <SafeIcon name="message-circle" size={22} color="white" />
-                                    <Text style={styles.whatsappMainBtnText}>{t('externalProvidersAdmin.envoyerParWhatsapp')}/Text>
+                                    <Text style={styles.whatsappMainBtnText}>{t('externalProvidersAdmin.envoyerParWhatsapp')}</Text>
                                 </TouchableOpacity>
 
                                 <View style={[styles.shareButtons, { marginTop: 10 }]}>
@@ -586,7 +586,7 @@ const ExternalProvidersAdminScreen: React.FC = () => {
                                 </NativeCard>
 
                                 <NativeCard style={styles.detailCard}>
-                                    <Text style={styles.detailLabel}>{t('externalProvidersAdmin.formulaireWeb')}/Text>
+                                    <Text style={styles.detailLabel}>{t('externalProvidersAdmin.formulaireWeb')}</Text>
                                     <Text style={styles.urlText} selectable>
                                         {FORM_URL}
                                     </Text>
@@ -621,7 +621,7 @@ const ExternalProvidersAdminScreen: React.FC = () => {
                                     )}
                                 </NativeCard>
 
-                                <Text style={styles.sectionTitle}>{t('externalProvidersAdmin.envoyerLesIdentifiants')}/Text>
+                                <Text style={styles.sectionTitle}>{t('externalProvidersAdmin.envoyerLesIdentifiants')}</Text>
 
                                 <View style={styles.shareButtons}>
                                     <TouchableOpacity

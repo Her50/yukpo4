@@ -330,7 +330,7 @@ const HotelQRScannerScreen: React.FC = () => {
                 {renderPaymentStatusBadge(scanData.payment_status)}
               </View>
               <View style={styles.amountRow}>
-                <Text style={styles.amountLabel}>{t('hotelQRScanner.montantTotal')}/Text>
+                <Text style={styles.amountLabel}>{t('hotelQRScanner.montantTotal')}</Text>
                 <Text style={styles.amountValue}>
                   {formatAmount(scanData.montant_total)}
                 </Text>

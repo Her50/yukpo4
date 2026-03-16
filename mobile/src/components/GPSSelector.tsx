@@ -46,7 +46,7 @@ const [location, setLocation] = useState<Location.LocationObject | null>(null);
             if (status !== 'granted') {
                 Alert.alert(
                     'Permission requise',
-                    'L\t('gPSSelector.accesALaLocalisationEstNecessaire'),
+                    t('gPSSelector.laccesALaLocalisationEstNecessairePourUtiliser'),
                     [{ text: 'OK' }]
                 );
                 return;

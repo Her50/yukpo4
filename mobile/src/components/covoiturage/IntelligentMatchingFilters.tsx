@@ -77,7 +77,7 @@ const [filters, setFilters] = useState<MatchingFilters>(
             </View>
 
             <View style={styles.filterRow}>
-                <Text style={styles.label}>{t('intelligentMatchingFilters.horaireFlexible30min')}/Text>
+                <Text style={styles.label}>{t('intelligentMatchingFilters.horaireFlexible30min')}</Text>
                 <Switch
                     value={filters.horaire_flexible}
                     onValueChange={(value) => updateFilter('horaire_flexible', value)}

@@ -37,7 +37,7 @@ const DynamicMenu: React.FC<Props> = ({ role }) => {
 
       {role !== 'public' && (
         <section>
-          <Text style="font-bold text-sm text-gray-500 mb-1">{t('dynamicMenu.utilisateur')}/Text>
+          <Text style="font-bold text-sm text-gray-500 mb-1">{t('dynamicMenu.utilisateur')}</Text>
           {routesByRole.user.map((r) => (
             <a
               href={String(r.path)}

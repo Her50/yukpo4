@@ -58,7 +58,7 @@ export const SpecializedServicesButton: React.FC<SpecializedServicesButtonProps>
             // ✅ AMÉLIORÉ: Afficher un message d'erreur à l'utilisateur
             Alert.alert(
                 'Erreur',
-                'Impossible d\t('specializedServicesButton.accederAuxServicesSpecialisesVeuillezReessayer'),
+                t('specializedServicesButton.impossibleDaccederAuxServicesSpecialisesVeuillezReessayer'),
                 [{ text: 'OK' }]
             );
         } finally {

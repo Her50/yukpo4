@@ -52,7 +52,7 @@ export const ARVideoEditor: React.FC<ARVideoEditorProps> = ({
             if (!cameraPermission.granted) {
                 Alert.alert(
                     'Permission requise',
-                    'Veuillez autoriser l\t('aRVideoEditor.accesALaCameraPourEnregistrer'),
+                    t('aRVideoEditor.veuillezAutoriserLaccesALaCameraPourEnregistrer'),
                     [
                         { text: t('common.cancel'), style: 'cancel' },
                         {

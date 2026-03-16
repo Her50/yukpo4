@@ -50,7 +50,7 @@ const TopServicesCard: React.FC<TopServicesCardProps> = ({
         return (
             <View style={styles.container}>
                 <View style={styles.header}>
-                    <Text style={styles.title}>{t('topServicesCard.servicesLesPlusPerformants')}/Text>
+                    <Text style={styles.title}>{t('topServicesCard.servicesLesPlusPerformants')}</Text>
                 </View>
                 <View style={styles.emptyContainer}>
                     <Text style={styles.emptyIcon}>💼</Text>
@@ -66,7 +66,7 @@ const TopServicesCard: React.FC<TopServicesCardProps> = ({
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                <Text style={styles.title}>{t('topServicesCard.servicesLesPlusPerformants')}/Text>
+                <Text style={styles.title}>{t('topServicesCard.servicesLesPlusPerformants')}</Text>
                 {onViewAllPress && (
                     <TouchableOpacity onPress={onViewAllPress} style={styles.viewAllButton}>
                         <Text style={styles.viewAllText}>{t('topServicesCard.voirTout')}</Text>

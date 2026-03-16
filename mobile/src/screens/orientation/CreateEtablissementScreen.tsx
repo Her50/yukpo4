@@ -316,11 +316,11 @@ const CreateEtablissementScreen: React.FC = () => {
 
                 {/* Localisation */}
                 <View style={styles.sectionTitle}>
-                    <Text style={styles.sectionTitleText}>{t('createEtablissement.localisation')}/Text>
+                    <Text style={styles.sectionTitleText}>{t('createEtablissement.localisation')}</Text>
                 </View>
 
                 <View style={styles.field}>
-                    <Text style={styles.label}>{t('createEtablissement.ville')}/Text>
+                    <Text style={styles.label}>{t('createEtablissement.ville')}</Text>
                     <NativeInput
                         value={formData.ville}
                         onChangeText={(text) => setFormData({ ...formData, ville: text })}
@@ -503,7 +503,7 @@ const CreateEtablissementScreen: React.FC = () => {
                 {etablissementId && (
                     <>
                         <View style={styles.sectionTitle}>
-                            <Text style={styles.sectionTitleText}>{t('createEtablissement.statistiquesEtPerformances')}/Text>
+                            <Text style={styles.sectionTitleText}>{t('createEtablissement.statistiquesEtPerformances')}</Text>
                         </View>
 
                         <View style={styles.field}>

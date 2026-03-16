@@ -100,7 +100,7 @@ const BusTicketQRScreen: React.FC = () => {
                         ) : (
                             <View style={styles.noQR}>
                                 <SafeIcon name="alert-circle" size={48} color="#9CA3AF" />
-                                <Text style={styles.noQRText}>{t('busTicketQR.qrCodeNonDisponible')}/Text>
+                                <Text style={styles.noQRText}>{t('busTicketQR.qrCodeNonDisponible')}</Text>
                             </View>
                         )}
                     </View>

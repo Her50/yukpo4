@@ -337,7 +337,7 @@ const [filter, setFilter] = useState<'all' | 'images' | 'videos'>('all');
                         </View>
                         <Text style={styles.emptyTitle}>{t('serviceGallery.aucunResultat')}</Text>
                         <TouchableOpacity style={styles.emptyButton} onPress={() => setFilter('all')}>
-                            <Text style={styles.emptyButtonText}>{t('serviceGallery.voirTousLesMedias')}/Text>
+                            <Text style={styles.emptyButtonText}>{t('serviceGallery.voirTousLesMedias')}</Text>
                         </TouchableOpacity>
                     </View>
                 ) : (

@@ -37,7 +37,7 @@ const OrientationAIRecommendationsScreen: React.FC = () => {
             if (!profile) {
                 Alert.alert(
                     'Profil requis',
-                    'Veuillez d\t('orientationAIRecommendationsScreen.abordCompleterVotreProfilEtudiant'),
+                    t('orientationAIRecommendationsScreen.veuillezDabordCompleterVotreProfilEtudiant'),
                     [
                         { text: t('common.cancel'), style: 'cancel' },
                         {
@@ -124,7 +124,7 @@ const OrientationAIRecommendationsScreen: React.FC = () => {
                             )}
                             {rec.points_forts && rec.points_forts.length > 0 && (
                                 <View style={styles.pointsSection}>
-                                    <Text style={styles.pointsLabel}>{t('orientationAIRecommendations.pointsForts')}/Text>
+                                    <Text style={styles.pointsLabel}>{t('orientationAIRecommendations.pointsForts')}</Text>
                                     {rec.points_forts.map((point: string, idx: number) => (
                                         <Text key={idx} style={styles.pointText}>• {point}</Text>
                                     ))}

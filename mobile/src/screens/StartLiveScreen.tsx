@@ -195,7 +195,7 @@ export default function StartLiveScreen() {
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('startLive.informationsDuLive')}/Text>
+          <Text style={styles.sectionTitle}>{t('startLive.informationsDuLive')}</Text>
           <Text style={styles.sectionDescription}>
             Donnez un titre attractif pour votre audience
           </Text>

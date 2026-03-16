@@ -412,7 +412,7 @@ const [media, setMedia] = useState<MediaItem[]>([]);
                         <SafeIcon name="arrow-left" size={22} color="#374151" />
                     </TouchableOpacity>
                     <View style={styles.headerCenter}>
-                        <Text style={styles.headerTitle}>{t('productGallery.galerieProduits')}/Text>
+                        <Text style={styles.headerTitle}>{t('productGallery.galerieProduits')}</Text>
                         <Text style={styles.headerSubtitle}>
                             {media.length} média{media.length !== 1 ? 's' : ''}
                         </Text>

@@ -191,8 +191,8 @@ const DashboardPrestataireScreen: React.FC = () => {
     <ScrollView style={styles.container}>
       {/* En-t�te avec s�lecteur de p�riode */}
       <View style={styles.header}>
-        <Text style={styles.title}>{t('dashboardPrestataire.dashboardPrestataire')}/Text>
-        <Text style={styles.subtitle}>{t('dashboardPrestataire.statistiquesEtPerformancesDeVos')}/Text>
+        <Text style={styles.title}>{t('dashboardPrestataire.dashboardPrestataire')}</Text>
+        <Text style={styles.subtitle}>{t('dashboardPrestataire.statistiquesEtPerformancesDeVos')}</Text>
 
         <View style={styles.periodSelector}>
           {(['7d', '30d', '90d'] as const).map((period) => (
@@ -223,7 +223,7 @@ const DashboardPrestataireScreen: React.FC = () => {
           </View>
           <View style={styles.statContent}>
             <Text style={styles.statNumber}>{dashboardData.totalServices}</Text>
-            <Text style={styles.statLabel}>{t('dashboardPrestataire.servicesTotaux')}/Text>
+            <Text style={styles.statLabel}>{t('dashboardPrestataire.servicesTotaux')}</Text>
           </View>
         </View>
 
@@ -233,7 +233,7 @@ const DashboardPrestataireScreen: React.FC = () => {
           </View>
           <View style={styles.statContent}>
             <Text style={styles.statNumber}>{dashboardData.activeServices}</Text>
-            <Text style={styles.statLabel}>{t('dashboardPrestataire.servicesActifs')}/Text>
+            <Text style={styles.statLabel}>{t('dashboardPrestataire.servicesActifs')}</Text>
           </View>
         </View>
 
@@ -263,7 +263,7 @@ const DashboardPrestataireScreen: React.FC = () => {
           </View>
           <View style={styles.statContent}>
             <Text style={styles.statNumber}>{dashboardData.averageRating.toFixed(1)}</Text>
-            <Text style={styles.statLabel}>{t('dashboardPrestataire.noteMoyenne')}/Text>
+            <Text style={styles.statLabel}>{t('dashboardPrestataire.noteMoyenne')}</Text>
           </View>
         </View>
 
@@ -316,7 +316,7 @@ const DashboardPrestataireScreen: React.FC = () => {
 
       {/* Services les mieux performants */}
       <View style={styles.sectionCard}>
-        <Text style={styles.sectionTitle}>{t('dashboardPrestataire.servicesLesMieuxPerformants')}/Text>
+        <Text style={styles.sectionTitle}>{t('dashboardPrestataire.servicesLesMieuxPerformants')}</Text>
 
         {dashboardData.topPerformingServices.map((service, index) => (
           <View key={service.id} style={styles.serviceItem}>

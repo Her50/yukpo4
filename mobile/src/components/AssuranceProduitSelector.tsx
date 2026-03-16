@@ -232,7 +232,7 @@ const [modalVisible, setModalVisible] = useState(false);
                             </Text>
                         </View>
 
-                        <Text style={styles.addModalLabel}>{t('assuranceProduitSelector.nomDuProduit')}/Text>
+                        <Text style={styles.addModalLabel}>{t('assuranceProduitSelector.nomDuProduit')}</Text>
                         <TextInput
                             style={styles.addModalInput}
                             placeholder={t('assuranceProduitSelector.ex', { typeAssurance === 'VIE' ? 'Épargne retraite' : 'Assurance habitation': typeAssurance === 'VIE' ? 'Épargne retraite' : 'Assurance habitation' })}

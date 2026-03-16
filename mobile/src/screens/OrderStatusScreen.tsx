@@ -129,7 +129,7 @@ const OrderStatusScreen: React.FC = () => {
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                         <SafeIcon name="arrow-back" size={24} color={modernColors.text} />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>{t('orderStatus.suiviDeCommande')}/Text>
+                    <Text style={styles.headerTitle}>{t('orderStatus.suiviDeCommande')}</Text>
                     <View style={{ width: 40 }} />
                 </View>
                 <View style={styles.loadingContainer}>
@@ -147,7 +147,7 @@ const OrderStatusScreen: React.FC = () => {
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                         <SafeIcon name="arrow-back" size={24} color={modernColors.text} />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>{t('orderStatus.suiviDeCommande')}/Text>
+                    <Text style={styles.headerTitle}>{t('orderStatus.suiviDeCommande')}</Text>
                     <View style={{ width: 40 }} />
                 </View>
                 <View style={styles.errorContainer}>
@@ -180,7 +180,7 @@ const OrderStatusScreen: React.FC = () => {
                 >
                     <SafeIcon name="arrow-back" size={24} color={modernColors.text} />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>{t('orderStatus.suiviDeCommande')}/Text>
+                <Text style={styles.headerTitle}>{t('orderStatus.suiviDeCommande')}</Text>
                 <View style={{ width: 40 }} />
             </View>
 
@@ -198,9 +198,9 @@ const OrderStatusScreen: React.FC = () => {
 
                 {/* Informations produit */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>{t('orderStatus.informationsProduit')}/Text>
+                    <Text style={styles.sectionTitle}>{t('orderStatus.informationsProduit')}</Text>
                     <View style={styles.infoRow}>
-                        <Text style={styles.infoLabel}>{t('orderStatus.serviceId')}/Text>
+                        <Text style={styles.infoLabel}>{t('orderStatus.serviceId')}</Text>
                         <Text style={styles.infoValue}>{order.service_id}</Text>
                     </View>
                     <View style={styles.infoRow}>
@@ -229,7 +229,7 @@ const OrderStatusScreen: React.FC = () => {
 
                 {/* Dates importantes */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>{t('orderStatus.historique')}/Text>
+                    <Text style={styles.sectionTitle}>{t('orderStatus.historique')}</Text>
                     <View style={styles.infoRow}>
                         <Text style={styles.infoLabel}>{t('orderStatus.creeeLe')}</Text>
                         <Text style={styles.infoValue}>{formatDate(order.created_at)}</Text>
@@ -293,7 +293,7 @@ const OrderStatusScreen: React.FC = () => {
                             accessibilityHint="Valide cette commande en attente"
                         >
                             <SafeIcon name="checkmark-circle" size={20} color="#FFF" />
-                            <Text style={styles.actionButtonText}>{t('orderStatus.valider')}/Text>
+                            <Text style={styles.actionButtonText}>{t('orderStatus.valider')}</Text>
                         </TouchableOpacity>
                     </View>
                 )}

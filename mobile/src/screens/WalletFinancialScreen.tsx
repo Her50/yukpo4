@@ -193,7 +193,7 @@ const WalletFinancialScreen: React.FC = () => {
 
         return (
             <View style={styles.chartContainer}>
-                <Text style={styles.chartTitle}>{t('walletFinancial.revenusQuotidiens')}/Text>
+                <Text style={styles.chartTitle}>{t('walletFinancial.revenusQuotidiens')}</Text>
                 <View style={styles.chartBars}>
                     {dailyRevenue.map((day, index) => {
                         const height = Math.max(4, (day.amount_cents / maxAmount) * 100);
@@ -286,7 +286,7 @@ const WalletFinancialScreen: React.FC = () => {
                 <NativeCard style={styles.kpiCard}>
                     <View style={styles.kpiHeader}>
                         <SafeIcon name="bar-chart-3" size={16} color={modernColors.primary} />
-                        <Text style={styles.kpiLabel}>{t('walletFinancial.revenuNet')}/Text>
+                        <Text style={styles.kpiLabel}>{t('walletFinancial.revenuNet')}</Text>
                     </View>
                     <Text style={[styles.kpiValue, {
                         color: summary.net_income_cents >= 0 ? modernColors.success : modernColors.error

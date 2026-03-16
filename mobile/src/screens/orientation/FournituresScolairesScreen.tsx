@@ -100,7 +100,7 @@ const FournituresScolairesScreen: React.FC = () => {
                 </TouchableOpacity>
             ) : (
                 <View style={styles.infoBox}>
-                    <Text style={styles.infoText}>{t('fournituresScolaires.listeDisponibleEnLigne')}/Text>
+                    <Text style={styles.infoText}>{t('fournituresScolaires.listeDisponibleEnLigne')}</Text>
                 </View>
             )}
             {item.etablissement_id && (

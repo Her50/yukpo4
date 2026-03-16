@@ -559,7 +559,7 @@ const ServicesScreen: React.FC = () => {
         {showStats && (
           <View style={styles.statsContainer}>
             <View style={styles.statsTitleRow}>
-              <Text style={styles.sectionTitle}>{t('services.statistiques')}/Text>
+              <Text style={styles.sectionTitle}>{t('services.statistiques')}</Text>
               <TouchableOpacity onPress={() => setShowStats(false)}>
                 <SafeIcon name="x" size={20} color={modernColors.textSecondary} />
               </TouchableOpacity>

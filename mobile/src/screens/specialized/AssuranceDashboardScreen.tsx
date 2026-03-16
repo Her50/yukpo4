@@ -613,10 +613,10 @@ const AssuranceDashboardScreen: React.FC = () => {
                         </TouchableOpacity>
                     </View>
                     <ScrollView style={{ maxHeight: 500 }} showsVerticalScrollIndicator={false}>
-                        <Text style={s.fieldLabel}>{t('assuranceDashboard.nomDuProduit')}/Text>
+                        <Text style={s.fieldLabel}>{t('assuranceDashboard.nomDuProduit')}</Text>
                         <TextInput style={s.input} placeholder="Ex: Assurance Auto Tous Risques" value={newProduct.nom_produit || ''} onChangeText={v => setNewProduct(p => ({ ...p, nom_produit: v }))} />
 
-                        <Text style={s.fieldLabel}>{t('assuranceDashboard.typeDassurance')}/Text>
+                        <Text style={s.fieldLabel}>{t('assuranceDashboard.typeDassurance')}</Text>
                         <View style={s.typeSelector}>
                             {TYPES_ASSURANCE.map(t => (
                                 <TouchableOpacity key={t.key}
@@ -697,7 +697,7 @@ const AssuranceDashboardScreen: React.FC = () => {
                         <SafeIcon name="arrow-left" size={22} color="#fff" />
                     </TouchableOpacity>
                     <View style={{ flex: 1 }}>
-                        <Text style={s.headerTitle}>{t('assuranceDashboard.dashboardAssurance')}/Text>
+                        <Text style={s.headerTitle}>{t('assuranceDashboard.dashboardAssurance')}</Text>
                         <Text style={s.headerSub}>{user?.name || t('assuranceDashboard.partenaire')}</Text>
                     </View>
                     <TouchableOpacity onPress={() => (navigation as any).navigate('InsuranceServicesSearch')} style={s.backBtn}>

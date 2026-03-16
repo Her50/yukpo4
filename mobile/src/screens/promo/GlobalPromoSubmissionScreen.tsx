@@ -126,7 +126,7 @@ const [form, setForm] = useState({
                         </View>
 
                         <View style={styles.field}>
-                            <Text style={styles.label}>{t('globalPromoSubmission.stockPromoOptionnel')}/Text>
+                            <Text style={styles.label}>{t('globalPromoSubmission.stockPromoOptionnel')}</Text>
                             <TextInput
                                 style={styles.input}
                                 placeholder="Ex: 25"

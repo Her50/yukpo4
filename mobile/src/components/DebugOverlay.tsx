@@ -166,7 +166,7 @@ const [isExpanded, setIsExpanded] = useState(false);
                                     </Text>
                                 </View>
                                 <View style={styles.summaryItem}>
-                                    <Text style={styles.summaryLabel}>{t('debugOverlay.totalLogs')}/Text>
+                                    <Text style={styles.summaryLabel}>{t('debugOverlay.totalLogs')}</Text>
                                     <Text style={styles.summaryValue}>{summary.total}</Text>
                                 </View>
                                 <View style={styles.summaryItem}>

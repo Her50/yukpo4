@@ -37,7 +37,7 @@ const OrientationAIProfileAnalysisScreen: React.FC = () => {
             if (!profile) {
                 Alert.alert(
                     'Profil requis',
-                    'Veuillez d\t('orientationAIProfileAnalysisScreen.abordCompleterVotreProfilEtudiant'),
+                    t('orientationAIProfileAnalysisScreen.veuillezDabordCompleterVotreProfilEtudiant'),
                     [
                         { text: t('common.cancel'), style: 'cancel' },
                         {
@@ -108,7 +108,7 @@ const OrientationAIProfileAnalysisScreen: React.FC = () => {
                     {/* Points forts */}
                     {analysis.points_forts && analysis.points_forts.length > 0 && (
                         <NativeCard style={styles.card}>
-                            <Text style={styles.sectionTitle}>{t('orientationAIProfileAnalysis.pointsForts')}/Text>
+                            <Text style={styles.sectionTitle}>{t('orientationAIProfileAnalysis.pointsForts')}</Text>
                             <View style={styles.badgesContainer}>
                                 {analysis.points_forts.map((point: string, index: number) => (
                                     <NativeBadge

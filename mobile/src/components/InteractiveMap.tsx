@@ -112,7 +112,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ latitude: number; lon
                 <TouchableOpacity onPress={onClose} style={styles.closeButton}>
                     <Text style={styles.closeIcon}>✕</Text>
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>{t('interactiveMap.carte3dInteractive')}/Text>
+                <Text style={styles.headerTitle}>{t('interactiveMap.carte3dInteractive')}</Text>
                 <View style={styles.headerActions}>
                     <TouchableOpacity
                         style={[styles.mapStyleButton, mapStyle === '3d' && styles.mapStyleButtonActive]}

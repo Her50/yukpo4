@@ -30,7 +30,7 @@ const [payload, setPayload] = useState("");
     <View style={styles.container}>
       <Text style={styles.title}>🤖 YukAI Gateway</Text>
 
-      <Text style={styles.label}>{t('yukAIGateway.serviceCible')}/Text>
+      <Text style={styles.label}>{t('yukAIGateway.serviceCible')}</Text>
       <View style={styles.pickerContainer}>
         <Picker
           selectedValue={service}
@@ -62,7 +62,7 @@ const [payload, setPayload] = useState("");
         {loading ? (
           <ActivityIndicator color="white" />
         ) : (
-          <Text style={styles.buttonText}>{t('yukAIGateway.envoyer')}/Text>
+          <Text style={styles.buttonText}>{t('yukAIGateway.envoyer')}</Text>
         )}
       </TouchableOpacity>
 

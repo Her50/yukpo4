@@ -167,7 +167,7 @@ const [editedTimeline, setEditedTimeline] = useState<VideoTimeline>(timeline);
                             </View>
 
                             <View style={styles.fieldRow}>
-                                <Text style={styles.fieldLabel}>{t('timelineEditor.positionDuTexte')}/Text>
+                                <Text style={styles.fieldLabel}>{t('timelineEditor.positionDuTexte')}</Text>
                                 <View style={styles.optionsRow}>
                                     {['top', 'center', 'bottom'].map((pos) => (
                                         <TouchableOpacity

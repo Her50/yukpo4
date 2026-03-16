@@ -75,7 +75,7 @@ const OptionsPrimesManager: React.FC<OptionsPrimesManagerProps> = ({
         <View style={styles.container}>
             {/* Header */}
             <View style={styles.header}>
-                <Text style={styles.headerTitle}>{t('optionsPrimesManager.optionsPrimes')}/Text>
+                <Text style={styles.headerTitle}>{t('optionsPrimesManager.optionsPrimes')}</Text>
                 {!readonly && (
                     <TouchableOpacity style={styles.addButton} onPress={handleAddOption}>
                         <SafeIcon name="plus" size={16} color="#FFFFFF" />

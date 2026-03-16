@@ -155,10 +155,10 @@ const LabAIAnalysisScreen: React.FC = () => {
             <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
                 {/* Informations de l'examen */}
                 <NativeCard style={styles.card}>
-                    <Text style={styles.cardTitle}>{t('labAIAnalysis.informationsDeLexamen')}/Text>
+                    <Text style={styles.cardTitle}>{t('labAIAnalysis.informationsDeLexamen')}</Text>
 
                     <View style={styles.infoRow}>
-                        <Text style={styles.infoLabel}>{t('labAIAnalysis.typeDexamen')}/Text>
+                        <Text style={styles.infoLabel}>{t('labAIAnalysis.typeDexamen')}</Text>
                         <Text style={styles.infoValue}>
                             {examinationResults.examination_type_name || t('labAIAnalysis.nonSpecifie')}
                         </Text>
@@ -251,7 +251,7 @@ const LabAIAnalysisScreen: React.FC = () => {
 
                             {analysisResult.confidence && (
                                 <View style={styles.confidenceContainer}>
-                                    <Text style={styles.confidenceLabel}>{t('labAIAnalysis.confianceDeLanalyse')}/Text>
+                                    <Text style={styles.confidenceLabel}>{t('labAIAnalysis.confianceDeLanalyse')}</Text>
                                     <View style={styles.confidenceBar}>
                                         <View
                                             style={[

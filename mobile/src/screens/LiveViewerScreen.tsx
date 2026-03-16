@@ -184,7 +184,7 @@ export default function LiveViewerScreen() {
                     <SafeIcon name="video-off" size={48} color="#9CA3AF" />
                     <Text style={styles.emptyText}>Ce live n'est plus disponible</Text>
                     <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-                        <Text style={styles.backBtnText}>{t('liveViewer.retour')}/Text>
+                        <Text style={styles.backBtnText}>{t('liveViewer.retour')}</Text>
                     </TouchableOpacity>
                 </View>
             </SafeAreaView>
@@ -231,7 +231,7 @@ export default function LiveViewerScreen() {
                 {/* Flash Sales section */}
                 {flashSales.length > 0 && (
                     <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>{t('liveViewer.ventesFlash')}/Text>
+                        <Text style={styles.sectionTitle}>{t('liveViewer.ventesFlash')}</Text>
                         {flashSales.map(sale => {
                             const startsAtMs = new Date(sale.start_at).getTime();
                             const endsAtMs = new Date(sale.end_at).getTime();

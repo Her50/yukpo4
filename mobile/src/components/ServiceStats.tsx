@@ -90,7 +90,7 @@ const ServiceStats: React.FC<ServiceStatsProps> = ({ serviceId, compact = false 
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>{t('serviceStats.statistiquesDuService')}/Text>
+      <Text style={styles.title}>{t('serviceStats.statistiquesDuService')}</Text>
 
       <View style={styles.statsGrid}>
         {renderStatItem('👁️', stats.views, 'Vues')}

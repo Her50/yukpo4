@@ -149,7 +149,7 @@ const BusTicketDetailsScreen: React.FC = () => {
 
                 {/* Trip Info */}
                 <View style={st.card}>
-                    <View style={st.cardHeader}><SafeIcon name="map" size={18} color="#0284C7" /><Text style={st.cardTitle}>{t('busTicketDetails.informationsDuTrajet')}/Text></View>
+                    <View style={st.cardHeader}><SafeIcon name="map" size={18} color="#0284C7" /><Text style={st.cardTitle}>{t('busTicketDetails.informationsDuTrajet')}</Text></View>
                     <View style={st.infoRow}><Text style={st.infoLabel}>Date</Text><Text style={st.infoValue}>{formatDate(ticket.departure_date)}</Text></View>
                     {(ticket as any).duration_minutes && (<View style={st.infoRow}><Text style={st.infoLabel}>{t('busTicketDetails.duree')}</Text><Text style={st.infoValue}>{(ticket as any).duration_minutes} min</Text></View>)}
                     {ticket.bus_number && (<View style={st.infoRow}><Text style={st.infoLabel}>Bus</Text><Text style={st.infoValue}>#{ticket.bus_number}</Text></View>)}
@@ -186,7 +186,7 @@ const BusTicketDetailsScreen: React.FC = () => {
 
                     {isPaid && !ticket.is_round_trip && (
                         <TouchableOpacity style={[st.primaryBtn, { backgroundColor: '#0284C7' }]} onPress={() => navigation.navigate('BusReturnRequestForm' as never, { outboundPaymentId: ticket.payment_id, outboundTicket: ticket } as never)}>
-                            <SafeIcon name="repeat" size={20} color="#fff" /><Text style={st.primaryBtnText}>{t('busTicketDetails.demandeDeRetour')}/Text>
+                            <SafeIcon name="repeat" size={20} color="#fff" /><Text style={st.primaryBtnText}>{t('busTicketDetails.demandeDeRetour')}</Text>
                         </TouchableOpacity>
                     )}
 

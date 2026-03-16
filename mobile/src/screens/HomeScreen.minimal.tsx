@@ -85,7 +85,7 @@ const [step, setStep] = useState(1);
     <ScrollView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Yukpomnang</Text>
-        <Text style={styles.subtitle}>{t('homeScreen.minimal.modeDiagnosticHomescreen')}/Text>
+        <Text style={styles.subtitle}>{t('homeScreen.minimal.modeDiagnosticHomescreen')}</Text>
       </View>
 
       <View style={styles.content}>

@@ -387,7 +387,7 @@ const TaxiHomeScreen: React.FC = () => {
         if (!taxiForm.service_id) {
             Alert.alert(
                 'Service requis',
-                'Vous devez d\t('taxiHomeScreen.abordCreerUnServiceVoulezvousLe'),
+                t('taxiHomeScreen.vousDevezDabordCreerUnServiceVoulezvousLe'),
                 [
                     { text: t('common.cancel') },
                     {
@@ -807,7 +807,7 @@ const TaxiHomeScreen: React.FC = () => {
                     ) : loading && taxis.length === 0 ? (
                         <View style={styles.centerContainer}>
                             <ActivityIndicator size="large" color={modernColors.primary} />
-                            <Text style={styles.loadingText}>{t('taxiHome.rechercheDeTaxis')}/Text>
+                            <Text style={styles.loadingText}>{t('taxiHome.rechercheDeTaxis')}</Text>
                         </View>
                     ) : error && taxis.length === 0 ? (
                         <View style={styles.centerContainer}>
@@ -1066,7 +1066,7 @@ const CreateTaxiForm: React.FC<CreateTaxiFormProps> = ({
     return (
         <KeyboardAwareScreen style={styles.formContainer} contentContainerStyle={styles.formContent}>
             <View style={styles.formSection}>
-                <Text style={styles.formSectionTitle}>{t('taxiHome.informationsDuChauffeur')}/Text>
+                <Text style={styles.formSectionTitle}>{t('taxiHome.informationsDuChauffeur')}</Text>
                 <NativeInput
                     placeholder={t('taxiHome.nomDuChauffeur')}
                     value={taxiForm.nom_chauffeur || ''}
@@ -1191,7 +1191,7 @@ const CreateTaxiForm: React.FC<CreateTaxiFormProps> = ({
                     >
                         {taxiForm.paiement_carte && <SafeIcon name="check" size={16} color="#06B6D4" type="lucide" />}
                     </TouchableOpacity>
-                    <Text style={styles.checkboxLabel}>{t('taxiHome.carteBancaire')}/Text>
+                    <Text style={styles.checkboxLabel}>{t('taxiHome.carteBancaire')}</Text>
                 </View>
             </View>
 

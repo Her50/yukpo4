@@ -622,7 +622,7 @@ const ImmobilierHomeScreen: React.FC = () => {
             {loading && properties.length === 0 ? (
                 <View style={styles.centerContainer}>
                     <ActivityIndicator size="large" color={modernColors.primary} />
-                    <Text style={styles.loadingText}>{t('immobilierHome.rechercheDeBiens')}/Text>
+                    <Text style={styles.loadingText}>{t('immobilierHome.rechercheDeBiens')}</Text>
                 </View>
             ) : error && properties.length === 0 ? (
                 <View style={styles.centerContainer}>
@@ -657,7 +657,7 @@ const ImmobilierHomeScreen: React.FC = () => {
                                     onPress={() => handleToggleFavorite(item)}
                                 >
                                     <SafeIcon name="heart" size={14} color={favorites.has(item.id.toString()) ? '#EF4444' : '#9CA3AF'} type="lucide" />
-                                    <Text style={{ marginLeft: 4, fontSize: 11, color: favorites.has(item.id.toString()) ? '#EF4444' : '#6B7280' }}>{t('immobilierHome.favori')}/Text>
+                                    <Text style={{ marginLeft: 4, fontSize: 11, color: favorites.has(item.id.toString()) ? '#EF4444' : '#6B7280' }}>{t('immobilierHome.favori')}</Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity
                                     style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#EFF6FF', borderRadius: 8, paddingVertical: 7, borderWidth: 1, borderColor: '#BFDBFE' }}
@@ -807,7 +807,7 @@ const ImmobilierHomeScreen: React.FC = () => {
 
                         {(() => {
                             const loan = calculateLoan();
-                            if (!loan) return <Text style={{ color: '#9CA3AF', textAlign: 'center' }}>{t('immobilierHome.prixNonDisponible')}/Text>;
+                            if (!loan) return <Text style={{ color: '#9CA3AF', textAlign: 'center' }}>{t('immobilierHome.prixNonDisponible')}</Text>;
                             return (
                                 <View style={{ backgroundColor: '#ECFDF5', borderRadius: 12, padding: 16 }}>
                                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
